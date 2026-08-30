@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { GET } from './route';
 
 describe('GET /api/books route handler', () => {
-  it('should fetch and return public domain books JSON with zero copyright', async () => {
+  it('should fetch and return public domain books JSON with zero copyright and latencyMs', async () => {
     const req = new NextRequest('http://localhost:3000/api/books?search=Jane+Austen');
     const res = await GET(req);
 
@@ -11,10 +11,14 @@ describe('GET /api/books route handler', () => {
     const json = await res.json();
     expect(json.results).toBeDefined();
     expect(Array.isArray(json.results)).toBe(true);
+    expect(json.source).toBe('upstream');
+    expect(json.latencyMs).toBeDefined();
   });
 
-  it('should pass topic, language, and page query parameters', async () => {
-    const req = new NextRequest('http://localhost:3000/api/books?topic=Philosophy&languages=en&page=2');
+  it('should pass topic, language, page, era, sort, and mime_type query parameters', async () => {
+    const req = new NextRequest(
+      'http://localhost:3000/api/books?topic=Philosophy&languages=en&page=2&author_year_start=1800&author_year_end=1900&sort=popular&mime_type=text/html'
+    );
     const res = await GET(req);
 
     expect(res.status).toBe(200);
@@ -22,29 +26,34 @@ describe('GET /api/books route handler', () => {
     expect(json.results).toBeDefined();
   });
 
-  it('should handle fetch failure gracefully', async () => {
+  it('should return error response when upstream API returns an error status', async () => {
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        statusText: 'Not Found',
+      new Response(JSON.stringify({ detail: 'Invalid query parameter' }), {
+        status: 400,
+        statusText: 'Bad Request',
       })
     );
 
-    const req = new NextRequest('http://localhost:3000/api/books');
+    const req = new NextRequest('http://localhost:3000/api/books?page=999999');
     const res = await GET(req);
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain('Upstream Gutenberg API error');
+    expect(json.results).toHaveLength(0);
     fetchSpy.mockRestore();
   });
 
-  it('should handle network exception gracefully', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network error'));
+  it('should return 504 status code when upstream API times out or network fails', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network connection failed'));
 
-    const req = new NextRequest('http://localhost:3000/api/books');
+    const req = new NextRequest('http://localhost:3000/api/books?page=1');
     const res = await GET(req);
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(504);
+    const json = await res.json();
+    expect(json.error).toContain('Unable to connect to Gutenberg API');
+    expect(json.results).toHaveLength(0);
     fetchSpy.mockRestore();
   });
 });
-

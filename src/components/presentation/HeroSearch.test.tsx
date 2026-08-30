@@ -4,10 +4,11 @@ import React from 'react';
 import { HeroSearch } from './HeroSearch';
 
 describe('HeroSearch component', () => {
-  it('should render headline, search input, and topics', () => {
+  it('should render headline, featured classic, and 4-pillar benefit strip', () => {
     const handleSearchChange = vi.fn();
     const handleTopicChange = vi.fn();
     const handleLangChange = vi.fn();
+    const handleReadFeatured = vi.fn();
 
     render(
       <HeroSearch
@@ -17,10 +18,15 @@ describe('HeroSearch component', () => {
         onTopicChange={handleTopicChange}
         selectedLanguage=""
         onLanguageChange={handleLangChange}
+        onReadFeaturedBook={handleReadFeatured}
       />
     );
 
     expect(screen.getByText(/Timeless Literature/i)).toBeInTheDocument();
+    expect(screen.getByText(/Free Forever/i)).toBeInTheDocument();
+    expect(screen.getByText(/Featured Classic/i)).toBeInTheDocument();
+    expect(screen.getByText(/100% Public Domain/i)).toBeInTheDocument();
+    expect(screen.getByText(/Zero Setup or Keys/i)).toBeInTheDocument();
     expect(screen.getByTestId('search-input')).toBeInTheDocument();
     expect(screen.getByTestId('topic-chip-philosophy')).toBeInTheDocument();
 
@@ -32,6 +38,32 @@ describe('HeroSearch component', () => {
 
     fireEvent.change(screen.getByTestId('language-select'), { target: { value: 'fr' } });
     expect(handleLangChange).toHaveBeenCalledWith('fr');
+
+    const readBtn = screen.getByRole('button', { name: /Read Volume/i });
+    fireEvent.click(readBtn);
+    expect(handleReadFeatured).toHaveBeenCalled();
+  });
+
+  it('should clear search input and submit search correctly', () => {
+    const handleSearch = vi.fn();
+    const handleSearchChange = vi.fn();
+
+    render(
+      <HeroSearch
+        search="Shelley"
+        onSearch={handleSearch}
+        onSearchChange={handleSearchChange}
+      />
+    );
+
+    const clearBtn = screen.getByLabelText('Clear search');
+    fireEvent.click(clearBtn);
+    expect(handleSearchChange).toHaveBeenCalledWith('');
+
+    const input = screen.getByTestId('search-input');
+    fireEvent.change(input, { target: { value: 'Plato' } });
+    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
+    fireEvent.click(searchBtn);
+    expect(handleSearch).toHaveBeenCalledWith('Plato');
   });
 });
-

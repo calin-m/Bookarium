@@ -56,3 +56,11 @@ global.IntersectionObserver = class IntersectionObserver {
 window.scrollTo = vi.fn();
 Element.prototype.scrollTo = vi.fn();
 
+// Mock next/font/google
+vi.mock('next/font/google', () => ({
+  Playfair_Display: () => ({ variable: '--font-serif', className: 'font-serif' }),
+  Inter: () => ({ variable: '--font-sans', className: 'font-sans' }),
+  JetBrains_Mono: () => ({ variable: '--font-mono', className: 'font-mono' }),
+}));
+
+

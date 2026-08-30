@@ -12,10 +12,10 @@ describe('Navbar component', () => {
 
   it('should render brand and navigation items', () => {
     render(<Navbar activeView="catalog" />);
-    expect(screen.getByText('Bookarium')).toBeInTheDocument();
-    expect(screen.getByText('Catalog')).toBeInTheDocument();
-    expect(screen.getByText('Bookshelf')).toBeInTheDocument();
-    expect(screen.getByText('Liked')).toBeInTheDocument();
+    expect(screen.getByText(/Bookarium/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Catalog' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Bookshelf')).toBeInTheDocument();
+    expect(screen.getByLabelText('Liked Books')).toBeInTheDocument();
   });
 
   it('should display saved books count badge when items are saved', () => {
@@ -32,7 +32,7 @@ describe('Navbar component', () => {
     fireEvent.click(bookshelfBtn);
     expect(handleViewChange).toHaveBeenCalledWith('bookshelf');
 
-    const brand = screen.getByText('Bookarium');
+    const brand = screen.getByText(/Bookarium/i);
     fireEvent.click(brand);
     expect(handleViewChange).toHaveBeenCalledWith('catalog');
   });
@@ -44,4 +44,3 @@ describe('Navbar component', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 });
-

@@ -31,7 +31,8 @@ Never manually craft static component matrices, route catalogs, or architectural
 - All book metadata and content fetching must strictly enforce `copyright=false` or verify public domain status (Zero-Copyright / CC0 / Gutenberg Public Domain).
 - Never require end-user API keys or proprietary authentication for catalog browsing, reading, or downloading.
 
-### Rule 5: Git Commit & Staging Protocol (Conventional Commits)
+### Rule 5: Git Commit & Staging Protocol (Human Execution Only)
+**Provide Git commands strictly only when explicitly requested by the user.**
 When the user asks for commit commands, diff reviews, or release instructions:
 1. **Never commit blindly:** Ensure all verification passes succeed via `npm run verify`.
 2. **Conventional Commit Standard:** Format commit messages following the standard specification:
@@ -47,6 +48,7 @@ When the user asks for commit commands, diff reviews, or release instructions:
    git commit -m "feat(scope): descriptive summary in imperative mood"
    ```
 4. **Living Documentation Auto-Staging:** Ensure auto-generated files (`ARCHITECTURE.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) are staged alongside the implementation.
+5. **Strict Human Terminal Execution for Git:** Autonomous AI agents must never execute `git commit`, `git push`, `git merge`, or branch-modifying Git commands directly via background terminal tools. Git commit and push commands must strictly be provided in copy-pasteable blocks for the human developer to inspect, verify, and execute.
 
 ### Rule 6: Automated Verification Engine Protocol
 Before committing any changes, pushing branches, or opening pull requests, the full 7-Gateway Quality Engine must pass with zero errors:

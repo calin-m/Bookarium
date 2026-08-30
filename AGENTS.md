@@ -13,5 +13,15 @@ Welcome to **Bookarium**. When contributing or generating code for this reposito
    - Local persistent state: Zustand (`useBookshelfStore`, `useReaderStore`).
 5. **Co-located Testing**: Every single component (`*.tsx`), hook (`*.ts`), store (`*.ts`), and route handler (`route.ts`) must have an adjacent `*.test.ts` or `*.test.tsx` testing its behavior with `@testing-library/react` and MSW.
 6. **Coverage Enforcement**: Never allow test coverage to drop below 80% on lines, functions, statements, or branches.
-7. **Git Commit Protocol**: Always provide conventional commit commands (`feat:`, `fix:`, etc.) and ensure living docs (`ARCHITECTURE.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`) are synced.
-8. **7-Gateway Quality Engine**: Run `npm run verify` prior to commits to guarantee zero errors across all passes.
+7. **Git Protocol (Human Execution Only)**: Provide conventional commit commands (`feat:`, `fix:`, etc.) only when explicitly requested by the user. AI agents must never execute `git commit` or `git push` directly.
+8. **7-Gateway Quality Engine**: Run `npm run verify` prior to proposing commits to guarantee zero errors across all passes.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

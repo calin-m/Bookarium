@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BookOpen, Bookmark, Heart, Sun, Moon, ShieldCheck } from 'lucide-react';
+import { BookOpen, Bookmark, Heart, Sun, Moon } from 'lucide-react';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 
 export interface NavbarProps {
@@ -29,85 +28,98 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-lg bg-white/85 dark:bg-stone-900/85 border-b border-stone-200/70 dark:border-stone-800/70 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-paper-100/90 dark:bg-[#0e1117]/90 border-b border-stone-200/80 dark:border-stone-800/80 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4 py-3">
         {/* Brand */}
         <div
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center gap-3 cursor-pointer group select-none"
           onClick={() => onViewChange?.('catalog')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onViewChange?.('catalog');
+            }
+          }}
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-primary-500/20 group-hover:scale-105 transition-transform">
-            <BookOpen className="w-5 h-5" />
+          <div className="w-8 h-8 rounded bg-primary-600 dark:bg-primary-500 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+            <BookOpen className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100 font-serif">
-                Bookarium
-              </span>
-              <Badge variant="primary" size="sm" className="hidden sm:inline-flex gap-1 text-[10px]">
-                <ShieldCheck className="w-3 h-3 text-primary-600" />
-                Zero-Copyright
-              </Badge>
-            </div>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400 hidden sm:block">
-              Free & Legal Public Domain Library
-            </p>
+            <span className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100 font-serif">
+              BOOKARIUM
+            </span>
           </div>
         </div>
 
-        {/* View Switcher & Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Button
-            variant={activeView === 'catalog' ? 'primary' : 'ghost'}
-            size="sm"
+        {/* Booksaw Editorial Navigation Links */}
+        <nav className="flex items-center gap-1 sm:gap-2">
+          {/* Catalog */}
+          <button
+            type="button"
             onClick={() => onViewChange?.('catalog')}
+            className={`px-3 py-1.5 rounded text-xs font-mono tracking-wider uppercase transition-all ${
+              activeView === 'catalog'
+                ? 'text-primary-600 dark:text-primary-400 font-bold border-b-2 border-primary-600'
+                : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100'
+            }`}
           >
             Catalog
-          </Button>
+          </button>
 
-          <Button
-            variant={activeView === 'bookshelf' ? 'primary' : 'ghost'}
-            size="sm"
+          {/* Bookshelf */}
+          <button
+            type="button"
             onClick={() => onViewChange?.('bookshelf')}
-            className="relative gap-1.5"
+            className={`px-3 py-1.5 rounded text-xs font-mono tracking-wider uppercase flex items-center gap-1.5 transition-all ${
+              activeView === 'bookshelf'
+                ? 'text-primary-600 dark:text-primary-400 font-bold border-b-2 border-primary-600'
+                : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100'
+            }`}
             aria-label="Bookshelf"
           >
-            <Bookmark className="w-4 h-4" />
-            <span className="hidden sm:inline">Bookshelf</span>
+            <Bookmark className="w-3.5 h-3.5" />
+            <span>Bookshelf</span>
             {hasMounted && savedBooks.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-primary-700 text-white font-bold">
+              <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-primary-600 text-white font-bold">
                 {savedBooks.length}
               </span>
             )}
-          </Button>
+          </button>
 
-          <Button
-            variant={activeView === 'likes' ? 'primary' : 'ghost'}
-            size="sm"
+          {/* Favorites */}
+          <button
+            type="button"
             onClick={() => onViewChange?.('likes')}
-            className="relative gap-1.5"
+            className={`px-3 py-1.5 rounded text-xs font-mono tracking-wider uppercase flex items-center gap-1.5 transition-all ${
+              activeView === 'likes'
+                ? 'text-red-600 dark:text-red-400 font-bold border-b-2 border-red-600'
+                : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100'
+            }`}
             aria-label="Liked Books"
           >
-            <Heart className="w-4 h-4 text-red-500" />
-            <span className="hidden sm:inline">Liked</span>
+            <Heart className="w-3.5 h-3.5 text-red-500" />
+            <span className="hidden sm:inline">Favorites</span>
             {hasMounted && likedBookIds.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-red-600 text-white font-bold">
+              <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-red-600 text-white font-bold">
                 {likedBookIds.length}
               </span>
             )}
-          </Button>
+          </button>
 
-          <div className="h-5 w-[1px] bg-stone-200 dark:bg-stone-700 mx-1" />
+          <div className="h-4 w-[1px] bg-stone-300 dark:bg-stone-700 mx-1" />
 
+          {/* Theme Switcher */}
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
             aria-label="Toggle dark mode"
+            className="h-8 w-8 rounded text-stone-600 dark:text-stone-300"
           >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-stone-600" />}
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </Button>
-        </div>
+        </nav>
       </div>
     </header>
   );

@@ -12,16 +12,16 @@ export interface BookshelfRackProps {
   onDownloadClick?: (book: GutendexBook) => void;
 }
 
-// Preset palette of realistic library book binding colors
+// Preset palette of modern studio spine colors
 const SPINE_PALETTES = [
-  { bg: 'from-[#4a181d] to-[#2e0f12]', text: 'spine-emboss-gold', accent: '#d4af37', name: 'burgundy' },
-  { bg: 'from-[#1a2d42] to-[#101b28]', text: 'spine-emboss-silver', accent: '#c0c0c0', name: 'navy' },
-  { bg: 'from-[#233a29] to-[#152419]', text: 'spine-emboss-gold', accent: '#d4af37', name: 'forest' },
-  { bg: 'from-[#5e3215] to-[#3d1f0c]', text: 'spine-emboss-gold', accent: '#f5deb3', name: 'cognac' },
-  { bg: 'from-[#423321] to-[#291f14]', text: 'spine-emboss-gold', accent: '#d4af37', name: 'leather' },
-  { bg: 'from-[#2a2826] to-[#171615]', text: 'spine-emboss-silver', accent: '#e0e0e0', name: 'charcoal' },
-  { bg: 'from-[#4f2838] to-[#311823]', text: 'spine-emboss-gold', accent: '#f3e5ab', name: 'plum' },
-  { bg: 'from-[#1f3a3d] to-[#122325]', text: 'spine-emboss-silver', accent: '#d0e0e3', name: 'teal' },
+  { bg: 'from-[#334155] to-[#1e293b]', text: 'spine-emboss-silver', accent: '#94a3b8', name: 'slate' },
+  { bg: 'from-[#c2410c] to-[#7c2d12]', text: 'spine-emboss-gold', accent: '#fed7aa', name: 'terracotta' },
+  { bg: 'from-[#1e3a8a] to-[#0f172a]', text: 'spine-emboss-silver', accent: '#93c5fd', name: 'navy' },
+  { bg: 'from-[#14532d] to-[#052e16]', text: 'spine-emboss-gold', accent: '#86efac', name: 'forest' },
+  { bg: 'from-[#78350f] to-[#451a03]', text: 'spine-emboss-gold', accent: '#fde68a', name: 'amber' },
+  { bg: 'from-[#3f3f46] to-[#18181b]', text: 'spine-emboss-silver', accent: '#e4e4e7', name: 'zinc' },
+  { bg: 'from-[#701a75] to-[#4a044e]', text: 'spine-emboss-gold', accent: '#f5d0fe', name: 'fuchsia' },
+  { bg: 'from-[#0f766e] to-[#134e4a]', text: 'spine-emboss-silver', accent: '#99f6e4', name: 'teal' },
 ];
 
 export const BookshelfRack: React.FC<BookshelfRackProps> = ({
@@ -38,8 +38,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
   if (books.length === 0) {
     return (
-      <div className="py-16 text-center text-stone-500 font-serif">
-        <p className="text-lg">No books found on this shelf.</p>
+      <div className="py-16 text-center text-slate-400 font-sans">
+        <p className="text-base">No books found on this shelf.</p>
       </div>
     );
   }
@@ -56,7 +56,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       {shelves.map((shelfBooks, shelfIndex) => (
         <div key={shelfIndex} className="relative">
           {/* Back wall of the shelf niche */}
-          <div className="relative bg-paper-200/70 dark:bg-stone-900/60 rounded-t-xl p-4 sm:p-6 pb-0 border-x border-t border-stone-300/40 dark:border-stone-800/60 shadow-inner">
+          <div className="relative bg-slate-100/70 dark:bg-slate-900/60 rounded-t-2xl p-4 sm:p-6 pb-0 border-x border-t border-slate-200/80 dark:border-slate-800 shadow-inner">
             
             {/* Shelf Items Row */}
             <div className="flex items-end justify-start sm:justify-center gap-2 sm:gap-3.5 overflow-x-auto pb-1 pt-10 min-h-[300px] scrollbar-none px-2">
@@ -96,22 +96,22 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                   >
                     {/* Bookmark Ribbon Hanging Out Top */}
                     {bookSaved && (
-                      <div className="absolute -top-3 right-2 w-3 h-5 bg-amber-600 dark:bg-amber-500 rounded-t-sm shadow-sm z-20 transition-transform group-hover:-translate-y-1" />
+                      <div className="absolute -top-3 right-2 w-3 h-5 bg-orange-600 rounded-t-sm shadow-xs z-20 transition-transform group-hover:-translate-y-1" />
                     )}
 
-                    {/* 3D Vertical Book Spine */}
+                    {/* Modern Vertical Spine */}
                     <div
-                      className={`relative w-full h-full rounded-t-md bg-gradient-to-r ${palette.bg} shadow-book group-hover:shadow-book-hover group-hover:-translate-y-3.5 group-hover:scale-[1.03] transition-all duration-300 flex flex-col justify-between p-2 border-t border-x border-white/20 overflow-hidden`}
+                      className={`relative w-full h-full rounded-t-md bg-gradient-to-r ${palette.bg} shadow-modern-sm group-hover:shadow-modern-hover group-hover:-translate-y-3.5 group-hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between p-2 border-t border-x border-white/15 overflow-hidden`}
                     >
-                      {/* Spine Texture Highlights (Embossed Bands) */}
-                      <div className="w-full h-2 border-y border-white/25 dark:border-white/15 my-1" />
+                      {/* Spine Top Line Accent */}
+                      <div className="w-full h-1.5 border-y border-white/20 my-1" />
 
                       {/* Reading Progress Indicator Pip */}
                       {progress > 0 && (
-                        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
                       )}
 
-                      {/* Vertical Title & Author */}
+                      {/* Vertical Title */}
                       <div className="flex-1 flex flex-col items-center justify-center overflow-hidden my-2">
                         <span
                           className={`font-serif text-xs sm:text-sm font-bold tracking-wider [writing-mode:vertical-rl] rotate-180 line-clamp-1 max-h-[160px] truncate ${palette.text}`}
@@ -121,8 +121,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                       </div>
 
                       {/* Bottom Author & Vol Seal */}
-                      <div className="w-full flex flex-col items-center gap-1 border-t border-white/20 pt-1.5">
-                        <span className="font-mono text-[9px] uppercase tracking-tighter text-stone-300/80 [writing-mode:vertical-rl] rotate-180 line-clamp-1 max-h-[50px]">
+                      <div className="w-full flex flex-col items-center gap-1 border-t border-white/15 pt-1.5">
+                        <span className="font-mono text-[9px] uppercase tracking-tighter text-slate-300/80 [writing-mode:vertical-rl] rotate-180 line-clamp-1 max-h-[50px]">
                           {authorName}
                         </span>
                         <div className="w-2 h-2 rounded-full border border-white/30 flex items-center justify-center">
@@ -132,34 +132,34 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     </div>
 
                     {/* Hover Floating Card Preview / Quick Actions */}
-                    <div className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden group-hover:flex flex-col w-56 p-3 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md rounded-xl shadow-2xl border border-stone-200 dark:border-stone-700 z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden group-hover:flex flex-col w-56 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-modern-hover border border-slate-200 dark:border-slate-800 z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/5">
                       <div className="flex items-start justify-between gap-1 mb-1.5">
-                        <span className="text-[10px] uppercase font-mono tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                        <span className="text-[10px] uppercase font-mono tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1">
                           <Sparkles className="w-2.5 h-2.5" /> Public Domain
                         </span>
                         {progress > 0 && (
-                          <span className="text-[10px] font-medium text-stone-500">
+                          <span className="text-[10px] font-medium text-slate-400">
                             {progress}% read
                           </span>
                         )}
                       </div>
 
-                      <h4 className="font-serif font-bold text-stone-900 dark:text-stone-100 text-xs line-clamp-2 leading-tight mb-1">
+                      <h4 className="font-serif font-bold text-slate-900 dark:text-white text-xs line-clamp-2 leading-tight mb-1">
                         {book.title}
                       </h4>
-                      <p className="text-[11px] text-stone-600 dark:text-stone-400 mb-2 truncate">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2 truncate">
                         {authorName}
                       </p>
 
                       {/* Quick Action Buttons */}
-                      <div className="flex items-center gap-1.5 pt-2 border-t border-stone-100 dark:border-stone-800">
+                      <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             openReader(book);
                           }}
-                          className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-[11px] font-medium transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-medium transition-colors"
                           aria-label={`Open reader for ${book.title}`}
                         >
                           <BookOpen className="w-3 h-3" />
@@ -172,7 +172,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                             e.stopPropagation();
                             if (onDownloadClick) onDownloadClick(book);
                           }}
-                          className="p-1 rounded-lg border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 transition-colors"
+                          className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
                           aria-label={`Download formats for ${book.title}`}
                         >
                           <Download className="w-3 h-3" />
@@ -186,8 +186,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                           }}
                           className={`p-1 rounded-lg border transition-colors ${
                             bookSaved
-                              ? 'border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-amber-600'
-                              : 'border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300'
+                              ? 'border-orange-600 bg-orange-50 dark:bg-orange-950/40 text-orange-600'
+                              : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
                           }`}
                           aria-label={bookSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
                         >
@@ -203,7 +203,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                           className={`p-1 rounded-lg border transition-colors ${
                             bookLiked
                               ? 'border-red-500 bg-red-50 dark:bg-red-950/40 text-red-500'
-                              : 'border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300'
+                              : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
                           }`}
                           aria-label={bookLiked ? 'Unlike book' : 'Like book'}
                         >
@@ -217,10 +217,9 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
             </div>
           </div>
 
-          {/* Realistic Wooden Shelf Ledge Base */}
-          <div className="shelf-wood-ledge w-full h-4 sm:h-5 rounded-b-lg border-t border-amber-900/40 relative z-10">
-            {/* Fine Brass Plaque / Shelf Label */}
-            <div className="absolute right-4 -top-2 px-2 py-0.5 rounded bg-amber-950/90 border border-amber-500/40 text-[9px] font-mono uppercase tracking-widest text-amber-300/80 shadow-sm hidden sm:block">
+          {/* Architectural Modern Rail Ledge */}
+          <div className="shelf-wood-ledge w-full h-4 rounded-b-xl border-t border-slate-700/60 relative z-10">
+            <div className="absolute right-4 -top-2 px-2 py-0.5 rounded bg-slate-900/90 border border-slate-700/80 text-[9px] font-mono uppercase tracking-widest text-slate-300 shadow-xs hidden sm:block">
               Shelf {shelfIndex + 1}
             </div>
           </div>
@@ -229,4 +228,3 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     </div>
   );
 };
-

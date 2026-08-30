@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BookOpen, AlertCircle, ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, Library } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { BookCard } from './BookCard';
 import { BookshelfRack } from './BookshelfRack';
-import { StaggerGroup } from '@/components/motion/StaggerGroup';
 import { Button } from '@/components/ui/Button';
+import { LayoutGrid, Library, RotateCcw, AlertTriangle, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export type BookViewMode = 'grid' | 'shelf';
 
@@ -21,6 +20,8 @@ export interface BookGridProps {
   onDownloadClick?: (book: GutendexBook) => void;
   emptyTitle?: string;
   emptyDescription?: string;
+  viewMode?: BookViewMode;
+  onViewModeChange?: (mode: BookViewMode) => void;
   initialViewMode?: BookViewMode;
   showViewToggle?: boolean;
 }
@@ -36,10 +37,21 @@ export const BookGrid: React.FC<BookGridProps> = ({
   onDownloadClick,
   emptyTitle = 'No public domain books found',
   emptyDescription = 'Try adjusting your search terms, topic filters, or language selection.',
+  viewMode: controlledViewMode,
+  onViewModeChange,
   initialViewMode = 'grid',
   showViewToggle = true,
 }) => {
-  const [viewMode, setViewMode] = useState<BookViewMode>(initialViewMode);
+  const [internalViewMode, setInternalViewMode] = useState<BookViewMode>(initialViewMode);
+  const activeViewMode = controlledViewMode ?? internalViewMode;
+
+  const handleViewToggle = (mode: BookViewMode) => {
+    if (onViewModeChange) {
+      onViewModeChange(mode);
+    } else {
+      setInternalViewMode(mode);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -69,20 +81,21 @@ export const BookGrid: React.FC<BookGridProps> = ({
 
   if (isError) {
     return (
-      <div className="py-16 text-center max-w-md mx-auto flex flex-col items-center">
-        <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 flex items-center justify-center mb-4">
-          <AlertCircle className="w-6 h-6" />
+      <div className="py-16 text-center space-y-4 max-w-md mx-auto">
+        <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+          <AlertTriangle className="w-6 h-6" />
         </div>
-        <h3 className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100 mb-2">
-          Failed to load public domain catalog
+        <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 font-serif">
+          Failed to fetch books
         </h3>
-        <p className="text-sm text-stone-600 dark:text-stone-400 mb-6">
-          Unable to reach the Gutendex public domain book mirror. Check your network connection.
+        <p className="text-xs text-stone-500 font-sans">
+          There was an issue connecting to the public domain archive. Please check your internet
+          connection and retry.
         </p>
         {onRetry && (
-          <Button variant="primary" onClick={onRetry} className="gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Retry Connection
+          <Button variant="primary" size="sm" onClick={onRetry} className="gap-2 mx-auto">
+            <RotateCcw className="w-3.5 h-3.5" />
+            Retry Query
           </Button>
         )}
       </div>
@@ -91,55 +104,52 @@ export const BookGrid: React.FC<BookGridProps> = ({
 
   if (books.length === 0) {
     return (
-      <div className="py-16 text-center max-w-md mx-auto flex flex-col items-center">
-        <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center mb-4">
-          <BookOpen className="w-7 h-7" />
+      <div className="py-20 text-center space-y-3 max-w-md mx-auto">
+        <div className="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 flex items-center justify-center mx-auto">
+          <BookOpen className="w-6 h-6" />
         </div>
-        <h3 className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100 mb-2">
+        <h3 className="text-base font-bold text-stone-800 dark:text-stone-200 font-serif">
           {emptyTitle}
         </h3>
-        <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed">
-          {emptyDescription}
-        </p>
+        <p className="text-xs text-stone-500 font-sans leading-relaxed">{emptyDescription}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 py-4">
-      {/* Top Header with Layout Switcher */}
+    <div className="space-y-8" data-testid="book-grid-container">
+      {/* Optional In-Section View Mode Switcher Header */}
       {showViewToggle && (
-        <div className="flex items-center justify-between border-b border-stone-200/80 dark:border-stone-800/80 pb-3">
-          <div className="text-xs font-mono text-stone-500 uppercase tracking-wider">
-            Showing <span className="font-semibold text-stone-900 dark:text-stone-100">{books.length}</span> works
+        <div className="flex items-center justify-between border-b border-stone-200/80 dark:border-stone-800/80 pb-4">
+          <div className="text-xs font-mono uppercase tracking-widest text-stone-500">
+            {books.length} Volumes Available
           </div>
 
-          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800/80 p-1 rounded-lg border border-stone-200/80 dark:border-stone-700/80">
+          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-lg border border-stone-200 dark:border-stone-700">
             <button
               type="button"
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              onClick={() => handleViewToggle('grid')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all ${
+                activeViewMode === 'grid'
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-bold'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
               }`}
-              aria-label="Editorial grid view"
-              aria-pressed={viewMode === 'grid'}
+              aria-label="Grid cover view"
+              aria-pressed={activeViewMode === 'grid'}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Editorial Grid</span>
+              <span className="hidden sm:inline">Cover Grid</span>
             </button>
-
             <button
               type="button"
-              onClick={() => setViewMode('shelf')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                viewMode === 'shelf'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              onClick={() => handleViewToggle('shelf')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all ${
+                activeViewMode === 'shelf'
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-bold'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
               }`}
               aria-label="Bookshelf spine view"
-              aria-pressed={viewMode === 'shelf'}
+              aria-pressed={activeViewMode === 'shelf'}
             >
               <Library className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Bookshelf Rack</span>
@@ -149,14 +159,14 @@ export const BookGrid: React.FC<BookGridProps> = ({
       )}
 
       {/* Main Content: Grid vs. Shelf */}
-      {viewMode === 'shelf' ? (
+      {activeViewMode === 'shelf' ? (
         <BookshelfRack books={books} onDownloadClick={onDownloadClick} />
       ) : (
-        <StaggerGroup className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {books.map((book) => (
             <BookCard key={book.id} book={book} onDownloadClick={onDownloadClick} />
           ))}
-        </StaggerGroup>
+        </div>
       )}
 
       {/* Pagination Bar */}

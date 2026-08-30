@@ -6,10 +6,9 @@ import { Footer } from './Footer';
 describe('Footer component', () => {
   it('should render legal manifesto, links, and attribution', () => {
     render(<Footer />);
-    expect(screen.getByText(/Zero-Copyright/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/CC0 Public Domain/i)[0]).toBeInTheDocument();
     expect(screen.getByText('Project Gutenberg')).toBeInTheDocument();
     expect(screen.getByText('Standard Ebooks')).toBeInTheDocument();
     expect(screen.getByText(/Zero API Keys Required/i)).toBeInTheDocument();
   });
 });
-

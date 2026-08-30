@@ -25,6 +25,8 @@ export interface GutendexResponse {
   next: string | null;
   previous: string | null;
   results: GutendexBook[];
+  source?: 'upstream' | 'cache';
+  latencyMs?: number;
 }
 
 export const mockBooks: GutendexBook[] = [

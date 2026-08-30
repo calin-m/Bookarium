@@ -4,54 +4,89 @@
 
 @layer base {
   :root {
-    --background: #faf8f5;
-    --foreground: #1c1917;
+    --background: #f9f8f6;
+    --foreground: #111111;
     --card: #ffffff;
-    --card-foreground: #1c1917;
+    --card-foreground: #111111;
     --popover: #ffffff;
-    --popover-foreground: #1c1917;
-    --primary: #c5681c;
+    --popover-foreground: #111111;
+    --primary: #c05621;
     --primary-foreground: #ffffff;
-    --secondary: #f4ede2;
-    --secondary-foreground: #1c1917;
-    --muted: #f4ede2;
-    --muted-foreground: #78716c;
-    --accent: #f0e6d6;
-    --accent-foreground: #1c1917;
-    --destructive: #b91c1c;
+    --secondary: #f3f1ec;
+    --secondary-foreground: #111111;
+    --muted: #f3f1ec;
+    --muted-foreground: #666666;
+    --accent: #ebe7e0;
+    --accent-foreground: #111111;
+    --destructive: #dc2626;
     --destructive-foreground: #ffffff;
-    --border: #e8ded1;
-    --input: #e8ded1;
-    --ring: #c5681c;
+    --border: #e8e5df;
+    --input: #e8e5df;
+    --ring: #c05621;
     --radius: 0.75rem;
   }
 
   .dark {
-    --background: #121110;
-    --foreground: #f5f5f4;
-    --card: #1c1a18;
-    --card-foreground: #f5f5f4;
-    --popover: #1c1a18;
-    --popover-foreground: #f5f5f4;
-    --primary: #e39f48;
-    --primary-foreground: #121110;
-    --secondary: #262320;
-    --secondary-foreground: #f5f5f4;
-    --muted: #262320;
-    --muted-foreground: #a8a29e;
-    --accent: #2c2825;
-    --accent-foreground: #f5f5f4;
-    --destructive: #991b1b;
-    --destructive-foreground: #f5f5f4;
-    --border: #2e2925;
-    --input: #2e2925;
-    --ring: #e39f48;
+    --background: #0e1117;
+    --foreground: #f3f4f6;
+    --card: #161b26;
+    --card-foreground: #f3f4f6;
+    --popover: #161b26;
+    --popover-foreground: #f3f4f6;
+    --primary: #ec843f;
+    --primary-foreground: #0e1117;
+    --secondary: #252c3b;
+    --secondary-foreground: #f3f4f6;
+    --muted: #252c3b;
+    --muted-foreground: #9ca3af;
+    --accent: #1e2430;
+    --accent-foreground: #f3f4f6;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #252c3b;
+    --input: #252c3b;
+    --ring: #ec843f;
   }
 
   body {
-    @apply bg-background text-foreground transition-colors duration-200 antialiased selection:bg-amber-200 dark:selection:bg-amber-900/60;
+    @apply bg-background text-foreground transition-colors duration-200 antialiased selection:bg-orange-100 dark:selection:bg-orange-950;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Booksaw Open Book / Card Shadow */
+.open-book-spread {
+  background: #ffffff;
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    inset 0 0 20px rgba(0, 0, 0, 0.02);
+}
+
+.dark .open-book-spread {
+  background: #161b26;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.book-center-crease {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.15) 50%,
+    rgba(0, 0, 0, 0.06) 100%
+  );
+}
+
+.dark .book-center-crease {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.6) 50%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
 }
 
 /* Drop-cap utility for book reader */
@@ -68,36 +103,36 @@
   color: var(--primary);
 }
 
-/* Shelf Ledge Styling */
+/* Modern Architectural Spine Rail */
 .shelf-wood-ledge {
   background: linear-gradient(
     180deg,
-    #5a3a22 0%,
-    #3d2514 60%,
-    #24150b 100%
+    #4a5568 0%,
+    #2d3748 60%,
+    #1a202c 100%
   );
-  box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.4), inset 0 2px 3px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
 .dark .shelf-wood-ledge {
   background: linear-gradient(
     180deg,
-    #332115 0%,
-    #20140c 60%,
-    #110a05 100%
+    #2d3748 0%,
+    #1a202c 60%,
+    #0f172a 100%
   );
-  box-shadow: 0 10px 20px -2px rgba(0, 0, 0, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 20px -2px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.08);
 }
 
 /* Embossed Spine Text */
 .spine-emboss-gold {
-  color: #f7e6b8;
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.3);
+  color: #fef08a;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7), 0 1px 1px rgba(255, 255, 255, 0.2);
 }
 
 .spine-emboss-silver {
-  color: #e5e7eb;
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.2);
+  color: #f1f5f9;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7), 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
 /* Custom Scrollbar */
@@ -111,10 +146,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(168, 150, 130, 0.3);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 150, 130, 0.6);
+  background: rgba(148, 163, 184, 0.5);
 }

@@ -3,22 +3,33 @@
 import React, { useState } from 'react';
 import { Navbar } from '@/components/presentation/Navbar';
 import { HeroSearch } from '@/components/presentation/HeroSearch';
+import { StickyCatalogToolbar, type ActiveFilterChip } from '@/components/presentation/StickyCatalogToolbar';
+import { AdvancedFilterDrawer, LITERARY_ERAS } from '@/components/presentation/AdvancedFilterDrawer';
 import { BookGrid } from '@/components/presentation/BookGrid';
+import { EditorialArticles } from '@/components/presentation/EditorialArticles';
 import { BookReaderModal } from '@/components/presentation/BookReaderModal';
 import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
 import { Footer } from '@/components/presentation/Footer';
-import { useBooks } from '@/hooks/queries/useBooks';
+import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 import type { GutendexBook } from '@/mocks/handlers';
-import { Trash2 } from 'lucide-react';
+import { Trash2, BookOpen, Quote, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export default function Home() {
+  const openReader = useReaderStore((s) => s.openReader);
   const [activeView, setActiveView] = useState<'catalog' | 'bookshelf' | 'likes'>('catalog');
   const [search, setSearch] = useState('');
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState('');
+  const [era, setEra] = useState('');
+  const [sort, setSort] = useState<'popular' | 'descending' | 'ascending' | ''>('popular');
+  const [format, setFormat] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(32);
+  const [viewMode, setViewMode] = useState<'grid' | 'shelf'>('grid');
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [selectedDownloadBook, setSelectedDownloadBook] = useState<GutendexBook | null>(null);
 
   // Bookshelf store items
@@ -26,19 +37,32 @@ export default function Home() {
   const likedBookIds = useBookshelfStore((s) => s.likedBookIds);
   const clearBookshelf = useBookshelfStore((s) => s.clearBookshelf);
 
+  // Era Start/End derivation
+  const selectedEraObj = LITERARY_ERAS.find((e) => e.id === era);
+
   // Server Query
+  const queryParams = {
+    search,
+    topic,
+    languages: language,
+    authorYearStart: selectedEraObj?.start,
+    authorYearEnd: selectedEraObj?.end,
+    sort: sort || undefined,
+    mimeType: format || undefined,
+    page,
+    copyright: false,
+  };
+
   const {
     data: booksData,
     isLoading,
     isError,
+    isFetching,
     refetch,
-  } = useBooks({
-    search,
-    topic,
-    languages: language,
-    page,
-    copyright: false,
-  });
+  } = useBooks(queryParams);
+
+  // Predictive Next-Page Prefetching
+  const prefetchNextPage = usePrefetchNextPage(queryParams, Boolean(booksData?.next));
 
   const handleSearchChange = (val: string) => {
     setSearch(val);
@@ -55,8 +79,88 @@ export default function Home() {
     setPage(1);
   };
 
+  const handleEraChange = (val: string) => {
+    setEra(val);
+    setPage(1);
+  };
+
+  const handleSortChange = (val: 'popular' | 'descending' | 'ascending' | '') => {
+    setSort(val);
+    setPage(1);
+  };
+
+  const handleFormatChange = (val: string) => {
+    setFormat(val);
+    setPage(1);
+  };
+
+  const handleResetAllFilters = () => {
+    setSearch('');
+    setTopic('');
+    setLanguage('');
+    setEra('');
+    setSort('popular');
+    setFormat('');
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    if (typeof window !== 'undefined') {
+      const el = document.getElementById('catalog-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  // Derive active filter chips for sticky toolbar
+  const activeChips: ActiveFilterChip[] = [];
+  if (era) {
+    activeChips.push({
+      id: 'era',
+      label: selectedEraObj?.label.split('(')[0].trim() || era,
+      onRemove: () => setEra(''),
+    });
+  }
+  if (topic) {
+    activeChips.push({
+      id: 'topic',
+      label: topic,
+      onRemove: () => setTopic(''),
+    });
+  }
+  if (language) {
+    activeChips.push({
+      id: 'lang',
+      label: `Lang: ${language.toUpperCase()}`,
+      onRemove: () => setLanguage(''),
+    });
+  }
+  if (sort && sort !== 'popular') {
+    activeChips.push({
+      id: 'sort',
+      label: `Sort: ${sort}`,
+      onRemove: () => setSort('popular'),
+    });
+  }
+  if (format) {
+    activeChips.push({
+      id: 'format',
+      label: format.includes('epub') ? 'EPUB' : format.includes('html') ? 'HTML' : 'Text',
+      onRemove: () => setFormat(''),
+    });
+  }
+  if (search) {
+    activeChips.push({
+      id: 'search',
+      label: `"${search}"`,
+      onRemove: () => setSearch(''),
+    });
+  }
+
   // Derive displayed books based on active view
-  let displayedBooks = booksData?.results || [];
+  let displayedBooks = booksData?.results ? booksData.results.slice(0, pageSize) : [];
   let isDisplayLoading = isLoading;
   let isDisplayError = isError;
 
@@ -65,7 +169,6 @@ export default function Home() {
     isDisplayLoading = false;
     isDisplayError = false;
   } else if (activeView === 'likes') {
-    // Books matching liked IDs from current catalog or saved
     const allKnown = [...(booksData?.results || []), ...savedBooks];
     const uniqueKnown = Array.from(new Map(allKnown.map((b) => [b.id, b])).values());
     displayedBooks = uniqueKnown.filter((b) => likedBookIds.includes(b.id));
@@ -74,7 +177,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-paper-50/50 dark:bg-stone-950">
+    <div className="min-h-screen flex flex-col justify-between bg-[#f9f8f6] dark:bg-[#0e1117] text-stone-900 dark:text-stone-100 transition-colors">
       <Navbar activeView={activeView} onViewChange={setActiveView} />
 
       <main className="flex-1">
@@ -86,47 +189,75 @@ export default function Home() {
             onTopicChange={handleTopicChange}
             selectedLanguage={language}
             onLanguageChange={handleLanguageChange}
+            onReadFeaturedBook={() => {
+              if (displayedBooks[0]) {
+                openReader(displayedBooks[0]);
+              }
+            }}
           />
         )}
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Section Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 dark:text-stone-100">
-                  {activeView === 'catalog' && (search || topic ? 'Search Catalog' : 'Curated Library Editions')}
-                  {activeView === 'bookshelf' && 'Personal Reading Shelf'}
-                  {activeView === 'likes' && 'Favorite Works'}
-                </h2>
-                {activeView === 'catalog' && (
-                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                    CC0 / Free
-                  </span>
-                )}
-              </div>
-              <p className="text-xs sm:text-sm text-stone-500 font-serif italic mt-1">
-                {activeView === 'catalog' &&
-                  (booksData
-                    ? `Displaying ${displayedBooks.length} of ${booksData.count.toLocaleString()} public domain volumes`
-                    : 'Searching Project Gutenberg catalog...')}
-                {activeView === 'bookshelf' &&
-                  `You have ${savedBooks.length} titles preserved on your personal shelf`}
-                {activeView === 'likes' &&
-                  `You have ${likedBookIds.length} titles in your favorites`}
-              </p>
+        {/* Sticky Sub-Header Toolbar for Catalog View */}
+        {activeView === 'catalog' && (
+          <StickyCatalogToolbar
+            page={page}
+            onPageChange={handlePageChange}
+            hasNextPage={Boolean(booksData?.next)}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onOpenFilters={() => setIsFilterDrawerOpen(true)}
+            activeFilterCount={activeChips.length}
+            activeFilterChips={activeChips}
+            onClearAllFilters={handleResetAllFilters}
+            isFetching={isFetching}
+            onPrefetchNext={prefetchNextPage}
+            latencyMs={booksData?.latencyMs}
+            isError={isError}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+          />
+        )}
+
+        <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Booksaw Centered Section Header */}
+          <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
+            <div className="text-[11px] font-mono tracking-widest uppercase text-stone-400 dark:text-stone-500 font-semibold">
+              {activeView === 'catalog' && 'SOME QUALITY BOOKS • ZERO COPYRIGHT'}
+              {activeView === 'bookshelf' && 'PERSONAL ARCHIVE • PRESERVED LOCALLY'}
+              {activeView === 'likes' && 'CURATED FAVORITES'}
+            </div>
+            
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+                {activeView === 'catalog' && (search || topic || era ? 'Search Catalog' : 'Featured Public Domain Books')}
+                {activeView === 'bookshelf' && 'Personal Reading Shelf'}
+                {activeView === 'likes' && 'Favorite Works'}
+              </h2>
             </div>
 
+            <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 font-serif italic">
+              {activeView === 'catalog' &&
+                (booksData
+                  ? `Displaying ${displayedBooks.length} of ${booksData.count.toLocaleString()} public domain volumes`
+                  : 'Searching Project Gutenberg catalog...')}
+              {activeView === 'bookshelf' &&
+                `You have ${savedBooks.length} titles preserved on your personal shelf`}
+              {activeView === 'likes' &&
+                `You have ${likedBookIds.length} titles in your favorites`}
+            </p>
+
             {activeView === 'bookshelf' && savedBooks.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearBookshelf}
-                className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1.5 self-start sm:self-auto text-xs"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Clear Shelf
-              </Button>
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearBookshelf}
+                  className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1.5 text-xs font-mono uppercase"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear Shelf
+                </Button>
+              </div>
             )}
           </div>
 
@@ -138,10 +269,12 @@ export default function Home() {
             isError={isDisplayError}
             onRetry={refetch}
             page={page}
-            onPageChange={activeView === 'catalog' ? setPage : undefined}
+            onPageChange={activeView === 'catalog' ? handlePageChange : undefined}
             hasNextPage={Boolean(booksData?.next)}
             onDownloadClick={(book) => setSelectedDownloadBook(book)}
-            initialViewMode={activeView === 'bookshelf' ? 'shelf' : 'grid'}
+            viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}
+            onViewModeChange={setViewMode}
+            showViewToggle={false} // Managed by StickyToolbar
             emptyTitle={
               activeView === 'bookshelf'
                 ? 'Your personal shelf is currently empty'
@@ -154,10 +287,66 @@ export default function Home() {
                 ? 'Click the bookmark ribbon on any volume to place it on your shelf for offline access.'
                 : activeView === 'likes'
                 ? 'Click the heart icon on any work to save it to your favorites.'
-                : 'Try adjusting your search keywords, collection facets, or clearing the language filter.'
+                : 'Try adjusting your search keywords, collection facets, or clearing the language/era filter.'
             }
           />
         </div>
+
+        {/* Booksaw Editorial Quote / Best Classic Section */}
+        {activeView === 'catalog' && (
+          <section className="bg-stone-100/70 dark:bg-stone-900/50 border-t border-stone-200/80 dark:border-stone-800 py-16 transition-colors">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-white dark:bg-stone-900 rounded-2xl p-8 sm:p-12 border border-stone-200 dark:border-stone-800 shadow-booksaw">
+                <div className="md:col-span-4 flex justify-center">
+                  <div className="w-48 aspect-[2/3] rounded-lg bg-gradient-to-br from-stone-900 to-stone-800 text-white p-5 flex flex-col justify-between shadow-booksaw-hover border-r-2 border-stone-700">
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-primary-400">
+                      Classic of the Century
+                    </div>
+                    <div>
+                      <h4 className="font-serif font-bold text-lg leading-tight">
+                        Moby Dick
+                      </h4>
+                      <p className="text-xs text-stone-300 font-mono mt-1">
+                        Herman Melville
+                      </p>
+                    </div>
+                    <div className="text-[10px] font-mono text-emerald-400">
+                      Public Domain • 1851
+                    </div>
+                  </div>
+                </div>
+
+                <div className="md:col-span-8 space-y-4 text-left">
+                  <Quote className="w-8 h-8 text-primary-500/40" />
+                  <blockquote className="text-xl sm:text-2xl font-serif italic text-stone-900 dark:text-stone-100 leading-snug">
+                    &ldquo;There is no friend as loyal as a book. A library is an infinity of voices waiting to speak across centuries.&rdquo;
+                  </blockquote>
+                  <p className="text-xs font-mono uppercase tracking-widest text-stone-500">
+                    Ernest Hemingway • Preserved for Public Humanity
+                  </p>
+                  <div className="pt-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        if (displayedBooks[1]) openReader(displayedBooks[1]);
+                        else if (displayedBooks[0]) openReader(displayedBooks[0]);
+                      }}
+                      className="font-mono text-xs uppercase tracking-wider gap-2 px-5 py-2.5 rounded bg-primary-600 hover:bg-primary-700 text-white font-bold"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      <span>Start Reading Classics</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Booksaw 3-Column Editorial Articles / Manifesto */}
+        {activeView === 'catalog' && <EditorialArticles />}
       </main>
 
       {/* Reader Modal */}
@@ -168,6 +357,24 @@ export default function Home() {
         book={selectedDownloadBook}
         isOpen={Boolean(selectedDownloadBook)}
         onClose={() => setSelectedDownloadBook(null)}
+      />
+
+      {/* Advanced Filter Drawer */}
+      <AdvancedFilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        selectedEra={era}
+        onEraChange={handleEraChange}
+        selectedSort={sort}
+        onSortChange={handleSortChange}
+        selectedTopic={topic}
+        onTopicChange={handleTopicChange}
+        selectedLanguage={language}
+        onLanguageChange={handleLanguageChange}
+        selectedFormat={format}
+        onFormatChange={handleFormatChange}
+        onResetAll={handleResetAllFilters}
+        activeFilterCount={activeChips.length}
       />
 
       <Footer />

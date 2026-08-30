@@ -14,9 +14,9 @@ describe('BookGrid component', () => {
     const handleRetry = vi.fn();
     render(<BookGrid isError onRetry={handleRetry} />);
 
-    expect(screen.getByText(/Failed to load public domain catalog/i)).toBeInTheDocument();
+    expect(screen.getByText(/Failed to fetch books/i)).toBeInTheDocument();
 
-    const retryBtn = screen.getByRole('button', { name: /Retry Connection/i });
+    const retryBtn = screen.getByRole('button', { name: /Retry Query/i });
     fireEvent.click(retryBtn);
     expect(handleRetry).toHaveBeenCalledTimes(1);
   });
@@ -63,7 +63,7 @@ describe('BookGrid component', () => {
     expect(screen.getByTestId(`shelf-book-${mockBooks[0].id}`)).toBeInTheDocument();
 
     // Click back to grid
-    const gridBtn = screen.getByLabelText('Editorial grid view');
+    const gridBtn = screen.getByLabelText('Grid cover view');
     fireEvent.click(gridBtn);
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
   });

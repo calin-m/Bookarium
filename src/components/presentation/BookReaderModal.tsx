@@ -41,7 +41,7 @@ export const BookReaderModal: React.FC = () => {
   const toggleSave = useBookshelfStore((s) => s.toggleSaveBook);
 
   const [readerWidth, setReaderWidth] = useState<ReaderWidth>('comfortable');
-  const [dropCap, setDropCap] = useState(true);
+  const [dropCap] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -84,8 +84,8 @@ export const BookReaderModal: React.FC = () => {
   const currentProgress = getProgress(currentBook.id);
 
   const themeStyles = {
-    light: 'bg-[#faf8f5] text-[#1c1917]',
-    dark: 'bg-[#121110] text-[#f5f5f4]',
+    light: 'bg-[#f8f9fa] text-[#0f172a]',
+    dark: 'bg-[#0b0f17] text-[#f8fafc]',
     sepia: 'bg-[#f5eedb] text-[#3e2d1e]',
   };
 
