@@ -11,6 +11,7 @@ import {
 } from './catalog-filters';
 import { FEATURED_HERO_BOOK } from './featured-books';
 import { LITERARY_QUOTES } from './literary-quotes';
+import { READER_THEMES } from './reader-themes';
 
 describe('src/config configuration modules', () => {
   describe('API_ENDPOINTS', () => {
@@ -68,6 +69,16 @@ describe('src/config configuration modules', () => {
         expect(q.quote.length).toBeGreaterThan(10);
         expect(q.citation.length).toBeGreaterThan(0);
       }
+    });
+  });
+
+  describe('reader-themes', () => {
+    it('provides complete theme configs for light, sepia, and dark', () => {
+      expect(READER_THEMES.light.surface).toContain('bg-[#fcfbf9]');
+      expect(READER_THEMES.sepia.surface).toContain('bg-[#f4ebd9]');
+      expect(READER_THEMES.dark.surface).toContain('bg-[#0c0e12]');
+      expect(READER_THEMES.sepia.header).toContain('bg-[#ede2cc]');
+      expect(READER_THEMES.dark.header).toContain('bg-[#12151c]');
     });
   });
 });

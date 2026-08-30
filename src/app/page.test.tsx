@@ -97,18 +97,18 @@ describe('Home page integration', () => {
   it('should open advanced filter drawer and apply era and sort filters', () => {
     renderHome();
 
-    const openFiltersBtn = screen.getByRole('button', { name: /Open advanced filters/i });
+    const openFiltersBtn = screen.getByTestId('open-filters-btn');
     fireEvent.click(openFiltersBtn);
 
-    expect(screen.getByText('Advanced Archive Filters')).toBeInTheDocument();
+    expect(screen.getByTestId('advanced-filter-drawer')).toBeInTheDocument();
 
     const eraOption = screen.getByTestId('era-option-victorian');
     fireEvent.click(eraOption);
 
-    const applyBtn = screen.getByRole('button', { name: /Apply filters/i });
+    const applyBtn = screen.getByTestId('apply-filters-btn');
     fireEvent.click(applyBtn);
 
-    expect(screen.queryByText('Advanced Archive Filters')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('advanced-filter-drawer')).not.toBeInTheDocument();
     expect(screen.getByText(/19th Century Victorian & Romantic/i)).toBeInTheDocument();
   });
 

@@ -28,13 +28,13 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
   return (
     <Card
       variant="default"
-      className="group relative flex flex-col h-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-primary-500/50 dark:hover:border-primary-500/50 shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1 transition-all duration-300 rounded-xl overflow-hidden"
+      className="group relative flex flex-col h-full bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1 transition-all duration-300 rounded-xl overflow-hidden"
       data-testid={`book-card-${book.id}`}
     >
       {/* Top Cover Visual with Booksaw Directional Depth */}
-      <div className="relative aspect-[3/4] w-full bg-paper-200/60 dark:bg-stone-800/60 overflow-hidden flex items-center justify-center p-3 sm:p-4 border-b border-stone-100 dark:border-stone-800/60">
+      <div className="relative aspect-[3/4] w-full bg-muted/60 overflow-hidden flex items-center justify-center p-3 sm:p-4 border-b border-border">
         {formats.coverImage ? (
-          <div className="relative w-full h-full rounded-md overflow-hidden shadow-sm group-hover:scale-[1.02] transition-transform duration-300">
+          <div className="relative w-full h-full rounded-md overflow-hidden shadow-xs group-hover:scale-[1.02] transition-transform duration-300">
             <img
               src={formats.coverImage}
               alt={`Cover of ${book.title}`}
@@ -43,7 +43,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
             />
           </div>
         ) : (
-          <div className="w-full h-full rounded-md bg-gradient-to-br from-stone-900 via-stone-800 to-stone-950 text-white p-4 flex flex-col justify-between shadow-sm border border-stone-700">
+          <div className="w-full h-full rounded-md bg-gradient-to-br from-stone-900 via-stone-800 to-stone-950 text-white p-4 flex flex-col justify-between shadow-xs border border-stone-700">
             <div>
               <div className="flex items-center gap-1 text-[10px] uppercase font-mono tracking-widest text-primary-400 font-semibold mb-2">
                 <Sparkles className="w-3 h-3" /> Public Domain
@@ -68,8 +68,8 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
             }}
             className={`p-1.5 rounded-full backdrop-blur-md transition-all shadow-xs ${
               isLiked
-                ? 'bg-red-500 text-white scale-105'
-                : 'bg-white/90 dark:bg-stone-900/90 text-stone-600 dark:text-stone-300 hover:text-red-500'
+                ? 'bg-destructive text-destructive-foreground scale-105'
+                : 'bg-card/90 text-muted-foreground hover:text-destructive'
             }`}
             aria-label={isLiked ? 'Unlike book' : 'Like book'}
           >
@@ -84,8 +84,8 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
             }}
             className={`p-1.5 rounded-full backdrop-blur-md transition-all shadow-xs ${
               isSaved
-                ? 'bg-primary-600 text-white scale-105'
-                : 'bg-white/90 dark:bg-stone-900/90 text-stone-600 dark:text-stone-300 hover:text-primary-600'
+                ? 'bg-primary text-primary-foreground scale-105'
+                : 'bg-card/90 text-muted-foreground hover:text-primary'
             }`}
             aria-label={isSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
           >
@@ -95,7 +95,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
 
         {/* Subject Pill */}
         <div className="absolute bottom-2.5 left-2.5 z-20">
-          <Badge variant="outline" size="sm" className="bg-white/95 dark:bg-stone-900/95 text-[10px] backdrop-blur-md border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-mono uppercase">
+          <Badge variant="outline" size="sm" className="bg-card/95 text-[10px] backdrop-blur-md border-border text-foreground font-mono uppercase">
             {primarySubject}
           </Badge>
         </div>
@@ -104,15 +104,15 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
       {/* Book Metadata Content */}
       <div className="p-4 flex-1 flex flex-col justify-between gap-3">
         <div>
-          <h2 className="font-serif font-bold text-stone-900 dark:text-stone-100 text-sm sm:text-base leading-snug line-clamp-2 mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+          <h2 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 mb-1 group-hover:text-primary transition-colors">
             {book.title}
           </h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400 font-sans line-clamp-1">
+          <p className="text-xs text-muted-foreground font-sans line-clamp-1">
             {authorNames}
           </p>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-stone-100 dark:border-stone-800 text-xs text-stone-400">
+        <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
           <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
           <span className="text-[10px] font-mono font-medium tracking-wider text-emerald-700 dark:text-emerald-400 uppercase">
             CC0 / Free
@@ -123,7 +123,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
         <div className="grid grid-cols-2 gap-2 mt-0.5">
           <Link
             href={`/read/${book.id}`}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white rounded font-mono uppercase tracking-wider font-bold transition-colors shadow-xs active:scale-[0.98]"
+            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs bg-primary hover:opacity-90 text-primary-foreground rounded font-mono uppercase tracking-wider font-bold transition-opacity shadow-xs active:scale-[0.98]"
             aria-label={`Read ${book.title}`}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -134,11 +134,11 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
             variant="outline"
             size="sm"
             onClick={() => onDownloadClick?.(book)}
-            className="w-full gap-1.5 text-xs rounded border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 font-mono uppercase tracking-wider font-medium"
+            className="w-full gap-1.5 text-xs rounded border-border hover:bg-muted text-foreground font-mono uppercase tracking-wider font-medium"
             aria-label={`Download options for ${book.title}`}
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Formats</span>
+            <span>Get</span>
           </Button>
         </div>
       </div>

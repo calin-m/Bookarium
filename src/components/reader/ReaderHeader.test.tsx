@@ -16,6 +16,12 @@ describe('ReaderHeader', () => {
     onToggleControls: vi.fn(),
     totalChapters: 61,
     currentChapterIndex: 5,
+    theme: 'sepia' as const,
+    fontSize: 18,
+    onFontSizeChange: vi.fn(),
+    readingMode: 'paginated' as const,
+    onReadingModeChange: vi.fn(),
+    onThemeChange: vi.fn(),
   };
 
   it('renders book title, author, and progress metrics correctly', () => {
@@ -53,5 +59,34 @@ describe('ReaderHeader', () => {
     fireEvent.click(screen.getByLabelText('Typography & Theme Controls'));
     expect(onToggleControls).toHaveBeenCalledTimes(1);
   });
-});
 
+  it('triggers quick desktop controls for font size, theme, and reading mode', () => {
+    const onFontSizeChange = vi.fn();
+    const onThemeChange = vi.fn();
+    const onReadingModeChange = vi.fn();
+
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        onFontSizeChange={onFontSizeChange}
+        onThemeChange={onThemeChange}
+        onReadingModeChange={onReadingModeChange}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText('Increase Font Size'));
+    expect(onFontSizeChange).toHaveBeenCalledWith(20);
+
+    fireEvent.click(screen.getByLabelText('Decrease Font Size'));
+    expect(onFontSizeChange).toHaveBeenCalledWith(16);
+
+    fireEvent.click(screen.getByLabelText('Dark Theme'));
+    expect(onThemeChange).toHaveBeenCalledWith('dark');
+
+    fireEvent.click(screen.getByLabelText('Light Theme'));
+    expect(onThemeChange).toHaveBeenCalledWith('light');
+
+    fireEvent.click(screen.getByText('Scroll'));
+    expect(onReadingModeChange).toHaveBeenCalledWith('scroll');
+  });
+});

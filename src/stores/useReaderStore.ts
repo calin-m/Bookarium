@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook } from '@/mocks/handlers';
+import { useThemeStore, applyThemeToDocument } from './useThemeStore';
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
@@ -60,6 +61,8 @@ export const useReaderStore = create<ReaderState>()(
 
       setTheme: (theme) => {
         set({ theme });
+        useThemeStore.getState().setTheme(theme);
+        applyThemeToDocument(theme);
       },
 
       setProgress: (bookId, progress) => {

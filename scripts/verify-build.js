@@ -145,7 +145,7 @@ function pass2ServerMocks() {
 // -------------------------------------------------------------
 function pass3ClientUI() {
   logHeader('Pass 3: Vitest Unit Suite & Coverage Assertion (>= 80%)');
-  const res = runCommand(`${npmCmd} run test:coverage`);
+  const res = runCommand(`${npmCmd} run test:coverage -- --reporter=verbose`);
   if (!res.success) {
     logFail('Unit test suite failed:');
     console.error(res.stdout || res.stderr);
@@ -153,17 +153,14 @@ function pass3ClientUI() {
   }
 
   if (res.stdout) {
-    const tableMatch = res.stdout.match(/(-{10,}[\s\S]*?-{10,}\s*\n[\s\S]*?={10,}[\s\S]*?={10,})/);
-    if (tableMatch) {
-      console.log(tableMatch[1]);
-    }
+    console.log(res.stdout.trim());
   }
 
   const covSummaryPath = path.join(rootDir, 'coverage', 'coverage-summary.json');
   if (fs.existsSync(covSummaryPath)) {
     const cov = JSON.parse(fs.readFileSync(covSummaryPath, 'utf-8'));
     const { lines, statements, functions, branches } = cov.total;
-    console.log(`📊 Total Coverage: Lines: ${lines.pct}%, Stmts: ${statements.pct}%, Funcs: ${functions.pct}%, Branches: ${branches.pct}%`);
+    console.log(`\n📊 Total Coverage: Lines: ${lines.pct}%, Stmts: ${statements.pct}%, Funcs: ${functions.pct}%, Branches: ${branches.pct}%`);
     if (lines.pct < 80 || statements.pct < 80 || functions.pct < 80 || branches.pct < 80) {
       logFail(`Coverage threshold unmet (Target: >= 80%).`);
       return false;

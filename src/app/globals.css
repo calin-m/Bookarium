@@ -5,47 +5,69 @@
 @layer base {
   :root {
     --background: #f9f8f6;
-    --foreground: #111111;
+    --foreground: #1c1917;
     --card: #ffffff;
-    --card-foreground: #111111;
+    --card-foreground: #1c1917;
     --popover: #ffffff;
-    --popover-foreground: #111111;
+    --popover-foreground: #1c1917;
     --primary: #c05621;
     --primary-foreground: #ffffff;
-    --secondary: #f3f1ec;
-    --secondary-foreground: #111111;
-    --muted: #f3f1ec;
-    --muted-foreground: #666666;
+    --secondary: #f5f5f4;
+    --secondary-foreground: #1c1917;
+    --muted: #f5f3ec;
+    --muted-foreground: #78716c;
     --accent: #ebe7e0;
-    --accent-foreground: #111111;
+    --accent-foreground: #1c1917;
     --destructive: #dc2626;
     --destructive-foreground: #ffffff;
-    --border: #e8e5df;
-    --input: #e8e5df;
+    --border: #e7e5e4;
+    --input: #e7e5e4;
     --ring: #c05621;
     --radius: 0.75rem;
   }
 
   .dark {
     --background: #0e1117;
-    --foreground: #f3f4f6;
-    --card: #161b26;
-    --card-foreground: #f3f4f6;
-    --popover: #161b26;
-    --popover-foreground: #f3f4f6;
+    --foreground: #f5f5f4;
+    --card: #1c1917;
+    --card-foreground: #f5f5f4;
+    --popover: #1c1917;
+    --popover-foreground: #f5f5f4;
     --primary: #ec843f;
     --primary-foreground: #0e1117;
-    --secondary: #252c3b;
-    --secondary-foreground: #f3f4f6;
-    --muted: #252c3b;
-    --muted-foreground: #9ca3af;
-    --accent: #1e2430;
-    --accent-foreground: #f3f4f6;
+    --secondary: #292524;
+    --secondary-foreground: #f5f5f4;
+    --muted: #1c1917;
+    --muted-foreground: #a8a29e;
+    --accent: #292524;
+    --accent-foreground: #f5f5f4;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --border: #252c3b;
-    --input: #252c3b;
+    --border: #292524;
+    --input: #292524;
     --ring: #ec843f;
+  }
+
+  .sepia {
+    --background: #f4ebd9;
+    --foreground: #2d261e;
+    --card: #fdfaf3;
+    --card-foreground: #2d261e;
+    --popover: #fdfaf3;
+    --popover-foreground: #2d261e;
+    --primary: #9c4c1e;
+    --primary-foreground: #fdfaf3;
+    --secondary: #ede2cc;
+    --secondary-foreground: #2d261e;
+    --muted: #ede2cc;
+    --muted-foreground: #7c6f5d;
+    --accent: #e5d8be;
+    --accent-foreground: #2d261e;
+    --destructive: #be123c;
+    --destructive-foreground: #ffffff;
+    --border: #dfd2b9;
+    --input: #dfd2b9;
+    --ring: #9c4c1e;
   }
 
   html {
@@ -70,7 +92,7 @@
 }
 
 .dark .open-book-spread {
-  background: #161b26;
+  background: #12151c;
   box-shadow: 
     0 25px 50px -12px rgba(0, 0, 0, 0.5),
     0 1px 3px rgba(0, 0, 0, 0.3),

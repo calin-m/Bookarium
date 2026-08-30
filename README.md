@@ -7,7 +7,7 @@
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.19-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Vitest](https://img.shields.io/badge/Vitest-4.1.11-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.20%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.34%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
@@ -46,13 +46,17 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
 
 * **Zero API Key Requirement**: Works instantly out of the box with zero third-party developer keys, sign-ups, or credit card walls.
 * **Strict Public Domain Integrity**: All queries programmatically enforce `copyright=false` through Gutendex and Project Gutenberg.
+* **Interactive Studio Bookshelf Mode**:
+  * **Skeuomorphic Wooden Ledge**: Tactile shelf presentation with physical depth shadows, spine ledges, and linen backdrops.
+  * **Embossed Vertical Spines**: Distinct palette-styled book spines with dynamic heights, gold/silver embossed lettering, bookmark ribbons, and glowing progress pips.
+  * **Hover Action Cards**: Floating preview cards elevated above the shelf with instant `Read`, `Download`, and `Bookmark` actions.
 * **Dedicated In-Browser Focus Reader (`/read/[id]`)**:
   * **Intelligent Gutenberg Chapter Engine**: Detects true prose chapters while filtering front-matter index clusters and preserving prefaces and extracts.
   * **True Book-Wide Global Pagination**: Calculates virtual pages across the entire volume (e.g. 901 pages for *Moby Dick*, 503 pages for *Pride and Prejudice*) with keyboard (`←`/`→`) and input page jumping.
   * **Sticky Thin Editorial Footer**: Docked pagination bar with zero vertical jumping or layout shift.
   * **Zero Cumulative Layout Shift (0 CLS)**: `scrollbar-gutter: stable` and standardized scrollbar tokens prevent horizontal reflows.
-  * **Table of Contents Drawer**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`).
-  * **Font Scaler & Typography Controls**: Real-time font sizing (12px–36px), Serif / Sans / Mono families, and compact/comfortable reading widths.
+  * **Table of Contents Drawer**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`) and estimated read times.
+  * **Font Scaler & Dynamic Line Height Controls**: Real-time font sizing (12px–32px), dynamic line height (1.2–2.4), Serif / Sans / Mono families, and compact/comfortable reading widths.
 * **Dynamic Literary Passages & Quotes**: Rotating showcase of iconic classic quotes linking straight to unabridged volumes with an interactive shuffle trigger.
 * **Direct Download Hub**: Multi-format downloads including direct EPUB, clean plain text, mobile-friendly HTML, and Kindle formats.
 * **Offline Personal Bookshelf**: Curated collections, reading queue, reading history, and liked titles stored locally via Zustand.
@@ -133,9 +137,9 @@ flowchart TD
 flowchart LR
     subgraph ReaderState ["Zustand Reader Store (useReaderStore)"]
         ActiveBook["Active Book Metadata"]
-        FontSize["Font Size (12px - 36px)"]
+        FontSize["Font Size (12px - 32px)"]
         FontFamily["Font Family: Serif | Sans | Mono"]
-        LineHeight["Line Height: 1.4 - 2.0"]
+        LineHeight["Line Height: 1.2 - 2.4"]
         Theme["Theme: Light | Dark | Sepia"]
         Progress["Global Page & Book Progress %"]
     end

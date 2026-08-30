@@ -11,7 +11,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="relative flex items-center w-full">
         {icon && (
-          <div className="absolute left-3.5 text-stone-400 dark:text-stone-500 pointer-events-none flex items-center">
+          <div className="absolute left-3.5 text-muted-foreground pointer-events-none flex items-center">
             {icon}
           </div>
         )}
@@ -20,7 +20,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           value={value}
           ref={ref}
           className={cn(
-            'flex h-11 w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-4 text-sm text-stone-900 dark:text-stone-100 shadow-sm transition-colors placeholder:text-stone-400 dark:placeholder:text-stone-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50',
+            'flex h-11 w-full rounded-xl border border-border bg-card px-4 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50',
             icon && 'pl-10',
             onClear && Boolean(value) && 'pr-10',
             className
@@ -31,7 +31,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <button
             type="button"
             onClick={onClear}
-            className="absolute right-3 p-1 rounded-md text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
+            className="absolute right-3 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Clear input"
           >
             <svg
@@ -55,4 +55,3 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 );
 
 Input.displayName = 'Input';
-

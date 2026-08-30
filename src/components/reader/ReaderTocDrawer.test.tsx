@@ -1,4 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+beforeAll(() => {
+  // JSDOM does not implement scrollIntoView; provide a no‑op stub.
+  Element.prototype.scrollIntoView = () => {};
+});
+
+import { beforeAll, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { ReaderTocDrawer } from './ReaderTocDrawer';
@@ -17,6 +22,7 @@ describe('ReaderTocDrawer', () => {
     activeChapterIndex: 1,
     onSelectChapter: vi.fn(),
     bookTitle: 'Moby Dick',
+    theme: 'sepia' as const,
   };
 
   it('renders table of contents with chapters and starting page badges', () => {
@@ -29,14 +35,18 @@ describe('ReaderTocDrawer', () => {
     expect(screen.getByText('p. 8')).toBeInTheDocument();
   });
 
-  it('filters chapters based on search query', () => {
+  it('filters chapters based on search query and clears search query', () => {
     render(<ReaderTocDrawer {...defaultProps} />);
 
-    const searchInput = screen.getByPlaceholderText('Search chapters or sections...');
+    const searchInput = screen.getByLabelText('Search chapters or sections');
     fireEvent.change(searchInput, { target: { value: 'Carpet' } });
 
     expect(screen.getByText('Chapter 2: The Carpet-Bag')).toBeInTheDocument();
     expect(screen.queryByText('Chapter 1: Loomings')).not.toBeInTheDocument();
+
+    const clearBtn = screen.getByLabelText('Clear search');
+    fireEvent.click(clearBtn);
+    expect(screen.getByText('Chapter 1: Loomings')).toBeInTheDocument();
   });
 
   it('calls onSelectChapter and onClose when a chapter item is clicked', () => {
@@ -56,9 +66,16 @@ describe('ReaderTocDrawer', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('closes drawer on Escape key press', () => {
+    const onClose = vi.fn();
+    render(<ReaderTocDrawer {...defaultProps} onClose={onClose} />);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('does not render when isOpen is false', () => {
     const { container } = render(<ReaderTocDrawer {...defaultProps} isOpen={false} />);
     expect(container.firstChild).toBeNull();
   });
 });
-

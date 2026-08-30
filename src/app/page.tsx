@@ -103,7 +103,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-[#f9f8f6] dark:bg-[#0e1117] text-stone-900 dark:text-stone-100 transition-colors">
+    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-200">
       <Navbar activeView={activeView} onViewChange={setActiveView} />
 
       <main className="flex-1">
@@ -146,21 +146,21 @@ export default function Home() {
         <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Booksaw Centered Section Header */}
           <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-            <div className="text-[11px] font-mono tracking-widest uppercase text-stone-400 dark:text-stone-500 font-semibold">
+            <div className="text-[11px] font-mono tracking-widest uppercase text-muted-foreground font-semibold">
               {activeView === 'catalog' && 'SOME QUALITY BOOKS • ZERO COPYRIGHT'}
               {activeView === 'bookshelf' && 'PERSONAL ARCHIVE • PRESERVED LOCALLY'}
               {activeView === 'likes' && 'CURATED FAVORITES'}
             </div>
             
             <div className="flex items-center justify-center gap-3">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground tracking-tight">
                 {activeView === 'catalog' && (search || topic || era ? 'Search Catalog' : 'Featured Public Domain Books')}
                 {activeView === 'bookshelf' && 'Personal Reading Shelf'}
                 {activeView === 'likes' && 'Favorite Works'}
               </h2>
             </div>
 
-            <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 font-serif italic">
+            <p className="text-xs sm:text-sm text-muted-foreground font-serif italic">
               {activeView === 'catalog' &&
                 (booksData
                   ? `Displaying ${displayedBooks.length} of ${booksData.count.toLocaleString()} public domain volumes`
@@ -177,7 +177,7 @@ export default function Home() {
                   variant="outline"
                   size="sm"
                   onClick={clearBookshelf}
-                  className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1.5 text-xs font-mono uppercase"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Clear Shelf
@@ -219,9 +219,9 @@ export default function Home() {
 
         {/* Booksaw Editorial Quote / Best Classic Section */}
         {activeView === 'catalog' && (
-          <section className="bg-stone-100/70 dark:bg-stone-900/50 border-t border-stone-200/80 dark:border-stone-800 py-16 transition-colors">
+          <section className="bg-muted border-t border-border py-16 transition-colors">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-white dark:bg-stone-900 rounded-2xl p-8 sm:p-12 border border-stone-200 dark:border-stone-800 shadow-booksaw">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-card rounded-2xl p-8 sm:p-12 border border-border shadow-booksaw">
                 <div className="md:col-span-4 flex justify-center">
                   <div className="w-48 aspect-[2/3] rounded-lg bg-gradient-to-br from-stone-900 to-stone-800 text-white p-5 flex flex-col justify-between shadow-booksaw-hover border-r-2 border-stone-700">
                     <div className="text-[10px] font-mono uppercase tracking-widest text-primary-400">

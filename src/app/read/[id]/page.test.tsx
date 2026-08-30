@@ -139,4 +139,29 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
   });
+
+  it('handles quick desktop theme switching and font size adjustments', () => {
+    render(<BookReaderPage />);
+
+    const sepiaBtn = screen.getByLabelText('Sepia Theme');
+    fireEvent.click(sepiaBtn);
+    expect(useReaderStore.getState().theme).toBe('sepia');
+
+    const darkBtn = screen.getByLabelText('Dark Theme');
+    fireEvent.click(darkBtn);
+    expect(useReaderStore.getState().theme).toBe('dark');
+
+    const increaseFontBtn = screen.getByLabelText('Increase Font Size');
+    fireEvent.click(increaseFontBtn);
+    expect(useReaderStore.getState().fontSize).toBe(20);
+  });
+
+  it('handles page jump input directly from footer', () => {
+    render(<BookReaderPage />);
+
+    const pageInput = screen.getByLabelText('Current Page Number');
+    fireEvent.change(pageInput, { target: { value: '3' } });
+
+    expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
+  });
 });

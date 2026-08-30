@@ -16,9 +16,9 @@ export const Badge: React.FC<BadgeProps> = ({
   const baseStyles = 'inline-flex items-center font-medium rounded-full transition-colors';
 
   const variants = {
-    primary: 'bg-primary-100 text-primary-900 dark:bg-primary-900/40 dark:text-primary-200 border border-primary-200 dark:border-primary-800',
-    secondary: 'bg-stone-100 text-stone-800 dark:bg-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700',
-    outline: 'border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300',
+    primary: 'bg-primary/15 text-primary border border-primary/30',
+    secondary: 'bg-muted text-foreground border border-border',
+    outline: 'border border-border text-foreground',
     success: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800',
     sepia: 'bg-sepia-surface text-sepia-text border border-sepia-border',
   };
@@ -34,4 +34,3 @@ export const Badge: React.FC<BadgeProps> = ({
     </span>
   );
 };
-

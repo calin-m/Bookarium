@@ -11,6 +11,7 @@ import {
   calculateVolumePageSpread,
   type ChapterSection,
 } from '@/lib/gutenberg-parser';
+import { READER_THEMES } from '@/config/reader-themes';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
 import { ReaderFooter } from '@/components/reader/ReaderFooter';
 import { ReaderTocDrawer } from '@/components/reader/ReaderTocDrawer';
@@ -107,6 +108,23 @@ export default function BookReaderPage() {
     setCurrentChapterPage(1);
   }, []);
 
+  const handlePageJump = useCallback(
+    (targetGlobalPage: number) => {
+      const clamped = Math.max(1, Math.min(targetGlobalPage, totalVolumePages));
+      for (let i = 0; i < chaptersWithPagination.length; i++) {
+        const ch = chaptersWithPagination[i];
+        const nextCh = chaptersWithPagination[i + 1];
+        const endPage = nextCh ? nextCh.startPageNumber - 1 : totalVolumePages;
+        if (clamped >= ch.startPageNumber && clamped <= endPage) {
+          setActiveChapterIndex(i);
+          setCurrentChapterPage(clamped - ch.startPageNumber + 1);
+          break;
+        }
+      }
+    },
+    [chaptersWithPagination, totalVolumePages]
+  );
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -131,8 +149,10 @@ export default function BookReaderPage() {
     activeChapterIndex === chaptersWithPagination.length - 1 &&
     currentChapterPage === activeChapterPageCount;
 
+  const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
+
   return (
-    <div className="h-screen flex flex-col overflow-hidden select-none bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
+    <div className={`h-screen flex flex-col overflow-hidden select-none transition-colors duration-200 ${activeTheme.surface}`}>
       
       {/* Top Navigation & Toolbar */}
       <ReaderHeader
@@ -142,11 +162,27 @@ export default function BookReaderPage() {
         progress={volumeProgress}
         onBack={() => router.push('/')}
         isTocOpen={isTocOpen}
-        onToggleToc={() => setIsTocOpen((prev) => !prev)}
+        onToggleToc={() => {
+          setIsTocOpen((prev) => {
+            if (!prev) setIsControlsOpen(false);
+            return !prev;
+          });
+        }}
         isControlsOpen={isControlsOpen}
-        onToggleControls={() => setIsControlsOpen((prev) => !prev)}
+        onToggleControls={() => {
+          setIsControlsOpen((prev) => {
+            if (!prev) setIsTocOpen(false);
+            return !prev;
+          });
+        }}
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
+        theme={theme}
+        fontSize={fontSize}
+        onFontSizeChange={setFontSize}
+        readingMode={readingMode}
+        onReadingModeChange={setReadingMode}
+        onThemeChange={setTheme}
       />
 
       {/* Floating Appearance & Typography Controls Popover */}
@@ -175,6 +211,7 @@ export default function BookReaderPage() {
         activeChapterIndex={activeChapterIndex}
         onSelectChapter={handleSelectChapter}
         bookTitle={bookMeta?.title}
+        theme={theme}
       />
 
       {/* Main Editorial Reading Canvas */}
@@ -203,9 +240,14 @@ export default function BookReaderPage() {
         chapterPageCount={activeChapterPageCount}
         onPrevPage={handlePrevPage}
         onNextPage={handleNextPage}
+        onPageJump={handlePageJump}
         isPrevDisabled={isPrevDisabled}
         isNextDisabled={isNextDisabled}
         readingMode={readingMode}
+        theme={theme}
+        currentChapterIndex={activeChapterIndex}
+        totalChapters={chaptersWithPagination.length || 1}
+        onSelectChapter={handleSelectChapter}
       />
 
     </div>

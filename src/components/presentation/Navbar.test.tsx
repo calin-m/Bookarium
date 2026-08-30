@@ -3,11 +3,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { Navbar } from './Navbar';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useThemeStore } from '@/stores/useThemeStore';
 import { mockBooks } from '@/mocks/handlers';
 
 describe('Navbar component', () => {
   beforeEach(() => {
     useBookshelfStore.getState().clearBookshelf();
+    useThemeStore.setState({ theme: 'light' });
+    document.documentElement.className = '';
   });
 
   it('should render brand and navigation items', () => {
@@ -37,10 +40,22 @@ describe('Navbar component', () => {
     expect(handleViewChange).toHaveBeenCalledWith('catalog');
   });
 
-  it('should toggle theme when clicking theme button', () => {
+  it('should cycle through themes when clicking theme button', () => {
     render(<Navbar activeView="catalog" />);
-    const themeBtn = screen.getByLabelText('Toggle dark mode');
+    const themeBtn = screen.getByRole('button', { name: /Current theme:/i });
+
+    // Light -> Sepia
     fireEvent.click(themeBtn);
+    expect(useThemeStore.getState().theme).toBe('sepia');
+    expect(document.documentElement.classList.contains('sepia')).toBe(true);
+
+    // Sepia -> Dark
+    fireEvent.click(themeBtn);
+    expect(useThemeStore.getState().theme).toBe('dark');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
+
+    // Dark -> Light
+    fireEvent.click(themeBtn);
+    expect(useThemeStore.getState().theme).toBe('light');
   });
 });

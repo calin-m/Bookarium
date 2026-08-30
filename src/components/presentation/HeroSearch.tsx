@@ -88,7 +88,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   };
 
   return (
-    <section className="relative overflow-hidden bg-[#f5f3ec] dark:bg-[#0e1117] pt-12 sm:pt-20 pb-16 border-b border-stone-200/90 dark:border-stone-800 transition-colors">
+    <section className="relative overflow-hidden bg-muted pt-12 sm:pt-20 pb-16 border-b border-border transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-16">
         
         {/* Booksaw Asymmetric Hero Split Layout */}
@@ -97,43 +97,43 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
           {/* Left Column (Editorial Typography + Search + Language) */}
           <div className="lg:col-span-7 space-y-6 text-left">
             {/* Category Kicker */}
-            <div className="text-[11px] font-mono tracking-widest uppercase text-stone-500 dark:text-stone-400 font-semibold flex items-center gap-2.5">
-              <span className="w-8 h-[1.5px] bg-primary-600 dark:bg-primary-500" />
+            <div className="text-[11px] font-mono tracking-widest uppercase text-muted-foreground font-semibold flex items-center gap-2.5">
+              <span className="w-8 h-[1.5px] bg-primary" />
               <span>THE PUBLIC DOMAIN ATHENAEUM • 70,000+ VOLUMES</span>
             </div>
 
             {/* Classical Serif Headline */}
             <div className="space-y-1">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold text-stone-900 dark:text-stone-100 tracking-tight leading-[1.08]">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold text-foreground tracking-tight leading-[1.08]">
                 Timeless Literature.
               </h1>
-              <div className="text-4xl sm:text-5xl md:text-6xl font-serif italic text-primary-600 dark:text-primary-400 tracking-normal leading-[1.08]">
+              <div className="text-4xl sm:text-5xl md:text-6xl font-serif italic text-primary tracking-normal leading-[1.08]">
                 Free Forever.
               </div>
             </div>
 
             {/* Description */}
-            <p className="text-stone-600 dark:text-stone-400 text-sm sm:text-base max-w-lg font-sans leading-relaxed">
+            <p className="text-muted-foreground text-sm sm:text-base max-w-lg font-sans leading-relaxed">
               Explore humanity&apos;s greatest public domain books. Zero subscriptions, zero DRM restrictions, readable directly in your browser or downloaded in full format.
             </p>
 
             {/* Booksaw Spotlight Search Input */}
             <form onSubmit={handleSubmit} className="relative max-w-xl pt-1">
-              <div className="relative flex items-center shadow-booksaw rounded-lg overflow-hidden border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 focus-within:ring-2 focus-within:ring-primary-500/40 transition-all">
-                <Search className="w-4 h-4 text-stone-400 ml-4 shrink-0" />
+              <div className="relative flex items-center shadow-booksaw rounded-lg overflow-hidden border border-border bg-card focus-within:ring-2 focus-within:ring-primary/40 transition-all">
+                <Search className="w-4 h-4 text-muted-foreground ml-4 shrink-0" />
                 <input
                   type="text"
                   value={query}
                   onChange={(e) => handleInputChange(e.target.value)}
                   placeholder="Search 70,000+ classics by title or author (e.g. Austen, Plato)..."
-                  className="w-full py-3.5 pl-3 pr-10 bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none"
+                  className="w-full py-3.5 pl-3 pr-10 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden"
                   data-testid="search-input"
                 />
                 {query && (
                   <button
                     type="button"
                     onClick={handleClear}
-                    className="p-1.5 mr-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
+                    className="p-1.5 mr-2 text-muted-foreground hover:text-foreground transition-colors"
                     aria-label="Clear search"
                   >
                     <X className="w-4 h-4" />
@@ -142,7 +142,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                 <Button
                   type="submit"
                   size="sm"
-                  className="mr-2 px-6 py-2.5 font-mono text-xs uppercase tracking-wider rounded bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 font-bold"
+                  className="mr-2 px-6 py-2.5 font-mono text-xs uppercase tracking-wider rounded bg-foreground hover:opacity-90 text-background font-bold"
                 >
                   Search
                 </Button>
@@ -152,8 +152,8 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
             {/* Genre Quick Links & Language Selector */}
             <div className="space-y-3 pt-2">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-mono uppercase text-stone-400 mr-1 select-none flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-primary-500" /> Curated:
+                <span className="text-[11px] font-mono uppercase text-muted-foreground mr-1 select-none flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-primary" /> Curated:
                 </span>
                 {HERO_POPULAR_TOPICS.map((topic) => {
                   const isSelected = selectedTopic.toLowerCase() === topic.id;
@@ -165,8 +165,8 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                       data-testid={`topic-chip-${topic.id || 'all'}`}
                       className={`px-3 py-1 text-xs font-mono rounded border transition-all ${
                         isSelected
-                          ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 border-stone-900 dark:border-stone-100 font-bold shadow-xs'
-                          : 'bg-white/90 dark:bg-stone-900/90 border-stone-300/80 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:border-stone-500'
+                          ? 'bg-foreground text-background border-foreground font-bold shadow-xs'
+                          : 'bg-card border-border text-foreground hover:border-primary'
                       }`}
                     >
                       {topic.label}
@@ -176,17 +176,17 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
               </div>
 
               {/* Language Selector */}
-              <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
-                <Globe className="w-3.5 h-3.5 text-stone-400" />
-                <span className="font-mono text-[11px] uppercase text-stone-400">Language:</span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="font-mono text-[11px] uppercase text-muted-foreground">Language:</span>
                 <select
                   value={selectedLanguage}
                   onChange={(e) => onLanguageChange?.(e.target.value)}
                   data-testid="language-select"
-                  className="bg-transparent border border-stone-300 dark:border-stone-700 rounded px-2 py-0.5 text-xs text-stone-700 dark:text-stone-300 focus:outline-hidden focus:border-primary-500 cursor-pointer"
+                  className="bg-card border border-border rounded px-2 py-0.5 text-xs text-foreground focus:outline-hidden focus:border-primary cursor-pointer"
                 >
                   {HERO_LANGUAGES.map((lang) => (
-                    <option key={lang.value} value={lang.value} className="dark:bg-stone-900">
+                    <option key={lang.value} value={lang.value} className="bg-card text-foreground">
                       {lang.label}
                     </option>
                   ))}
@@ -262,22 +262,22 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
         </div>
 
         {/* Booksaw 4-Pillar Value Proposition Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-8 border-t border-stone-300/80 dark:border-stone-800">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-8 border-t border-border">
           {FEATURES.map((feature, idx) => {
             const Icon = feature.icon;
             return (
               <div
                 key={idx}
-                className="flex items-start gap-3.5 p-4 rounded-xl bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 shadow-xs"
+                className="flex items-start gap-3.5 p-4 rounded-xl bg-card border border-border shadow-xs"
               >
-                <div className="w-9 h-9 rounded-lg bg-stone-100 dark:bg-stone-800 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0 border border-stone-200 dark:border-stone-700">
+                <div className="w-9 h-9 rounded-lg bg-muted text-primary flex items-center justify-center shrink-0 border border-border">
                   <Icon className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-serif font-bold text-stone-900 dark:text-stone-100">
+                  <h4 className="text-xs font-serif font-bold text-foreground">
                     {feature.title}
                   </h4>
-                  <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-normal mt-0.5">
+                  <p className="text-[11px] text-muted-foreground leading-normal mt-0.5">
                     {feature.desc}
                   </p>
                 </div>

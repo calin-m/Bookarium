@@ -60,17 +60,17 @@ export const BookGrid: React.FC<BookGridProps> = ({
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 flex flex-col gap-4 animate-pulse"
+              className="rounded-xl border border-border bg-card p-4 flex flex-col gap-4 animate-pulse"
               data-testid="book-skeleton"
             >
-              <div className="aspect-[3/4] w-full bg-stone-200 dark:bg-stone-800 rounded-lg" />
+              <div className="aspect-[3/4] w-full bg-muted rounded-lg" />
               <div className="space-y-2">
-                <div className="h-4 bg-stone-200 dark:bg-stone-800 rounded w-3/4" />
-                <div className="h-3 bg-stone-200 dark:bg-stone-800 rounded w-1/2" />
+                <div className="h-4 bg-muted rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-1/2" />
               </div>
               <div className="grid grid-cols-2 gap-2 mt-auto">
-                <div className="h-8 bg-stone-200 dark:bg-stone-800 rounded-lg" />
-                <div className="h-8 bg-stone-200 dark:bg-stone-800 rounded-lg" />
+                <div className="h-8 bg-muted rounded-lg" />
+                <div className="h-8 bg-muted rounded-lg" />
               </div>
             </div>
           ))}
@@ -82,13 +82,13 @@ export const BookGrid: React.FC<BookGridProps> = ({
   if (isError) {
     return (
       <div className="py-16 text-center space-y-4 max-w-md mx-auto">
-        <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+        <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
           <AlertTriangle className="w-6 h-6" />
         </div>
-        <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 font-serif">
+        <h3 className="text-lg font-bold text-foreground font-serif">
           Failed to fetch books
         </h3>
-        <p className="text-xs text-stone-500 font-sans">
+        <p className="text-xs text-muted-foreground font-sans">
           There was an issue connecting to the public domain archive. Please check your internet
           connection and retry.
         </p>
@@ -105,13 +105,13 @@ export const BookGrid: React.FC<BookGridProps> = ({
   if (books.length === 0) {
     return (
       <div className="py-20 text-center space-y-3 max-w-md mx-auto">
-        <div className="w-12 h-12 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 flex items-center justify-center mx-auto">
+        <div className="w-12 h-12 rounded-full bg-muted text-muted-foreground flex items-center justify-center mx-auto">
           <BookOpen className="w-6 h-6" />
         </div>
-        <h3 className="text-base font-bold text-stone-800 dark:text-stone-200 font-serif">
+        <h3 className="text-base font-bold text-foreground font-serif">
           {emptyTitle}
         </h3>
-        <p className="text-xs text-stone-500 font-sans leading-relaxed">{emptyDescription}</p>
+        <p className="text-xs text-muted-foreground font-sans leading-relaxed">{emptyDescription}</p>
       </div>
     );
   }
@@ -120,19 +120,19 @@ export const BookGrid: React.FC<BookGridProps> = ({
     <div className="space-y-8" data-testid="book-grid-container">
       {/* Optional In-Section View Mode Switcher Header */}
       {showViewToggle && (
-        <div className="flex items-center justify-between border-b border-stone-200/80 dark:border-stone-800/80 pb-4">
-          <div className="text-xs font-mono uppercase tracking-widest text-stone-500">
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
             {books.length} Volumes Available
           </div>
 
-          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-lg border border-stone-200 dark:border-stone-700">
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border border-border">
             <button
               type="button"
               onClick={() => handleViewToggle('grid')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all ${
                 activeViewMode === 'grid'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-bold'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                  ? 'bg-card text-foreground shadow-xs font-bold'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               aria-label="Grid cover view"
               aria-pressed={activeViewMode === 'grid'}
@@ -145,8 +145,8 @@ export const BookGrid: React.FC<BookGridProps> = ({
               onClick={() => handleViewToggle('shelf')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all ${
                 activeViewMode === 'shelf'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-bold'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                  ? 'bg-card text-foreground shadow-xs font-bold'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               aria-label="Bookshelf spine view"
               aria-pressed={activeViewMode === 'shelf'}
@@ -171,7 +171,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
 
       {/* Pagination Bar */}
       {onPageChange && (
-        <div className="flex items-center justify-center gap-3 pt-6 border-t border-stone-200/80 dark:border-stone-800/80">
+        <div className="flex items-center justify-center gap-3 pt-6 border-t border-border">
           <Button
             variant="outline"
             size="sm"
@@ -184,7 +184,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
             Previous
           </Button>
 
-          <span className="text-xs font-mono px-3 text-stone-600 dark:text-stone-400">
+          <span className="text-xs font-mono px-3 text-muted-foreground">
             Page {page}
           </span>
 

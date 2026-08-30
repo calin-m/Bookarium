@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, Type, Sun, Moon, Coffee, AlignLeft, Columns } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
+import { READER_THEMES } from '@/config/reader-themes';
 
 export interface ReaderControlsProps {
   isOpen: boolean;
@@ -37,22 +38,36 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
   columnWidth,
   onColumnWidthChange,
 }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
+
+  const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
 
   return (
     <div
-      className="absolute top-16 right-4 sm:right-6 z-50 w-80 sm:w-96 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl p-5 text-stone-900 dark:text-stone-100 transition-all"
+      className={`absolute top-16 right-4 sm:right-6 z-50 w-80 sm:w-96 rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-5 transition-all animate-in fade-in zoom-in-95 duration-150`}
       role="region"
       aria-label="Reading Controls"
     >
-      <div className="flex items-center justify-between pb-3 mb-4 border-b border-stone-200 dark:border-stone-800">
+      <div className={`flex items-center justify-between pb-3 mb-4 border-b ${activeTheme.border}`}>
         <h3 className="font-serif font-bold text-sm flex items-center gap-2">
           <Type className="w-4 h-4 text-primary-600" /> Typography & Reading Mode
         </h3>
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+          className="p-1 rounded-md opacity-60 hover:opacity-100 transition-opacity"
           aria-label="Close Appearance Controls"
         >
           <X className="w-4 h-4" />
@@ -62,85 +77,73 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
       <div className="space-y-4 text-xs font-mono">
         {/* Surface Theme */}
         <div>
-          <label className="block text-stone-500 dark:text-stone-400 mb-2 uppercase tracking-wider text-[10px]">
+          <label className={`block ${activeTheme.textMuted} mb-2 uppercase tracking-wider text-[10px]`}>
             Reading Surface
           </label>
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => onThemeChange('light')}
+              aria-pressed={theme === 'light'}
               className={`p-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
                 theme === 'light'
-                  ? 'border-primary-600 bg-stone-100 text-stone-950 font-bold shadow-xs'
-                  : 'border-stone-200 dark:border-stone-700 bg-white text-stone-700'
+                  ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
+                  : `${activeTheme.pill} ${activeTheme.inactivePill}`
               }`}
             >
-              <Sun className="w-3.5 h-3.5" /> Light
+              <Sun className="w-3.5 h-3.5 text-amber-500" /> Light
             </button>
             <button
               type="button"
               onClick={() => onThemeChange('sepia')}
+              aria-pressed={theme === 'sepia'}
               className={`p-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
                 theme === 'sepia'
-                  ? 'border-amber-700 bg-[#f4ebd9] text-[#2c1d11] font-bold shadow-xs'
-                  : 'border-amber-200 bg-[#faf6ed] text-[#4a3525]'
+                  ? `${activeTheme.activePill} border-amber-700 font-bold shadow-xs`
+                  : `${activeTheme.pill} ${activeTheme.inactivePill}`
               }`}
             >
-              <Coffee className="w-3.5 h-3.5" /> Sepia
+              <Coffee className="w-3.5 h-3.5 text-amber-700" /> Sepia
             </button>
             <button
               type="button"
               onClick={() => onThemeChange('dark')}
+              aria-pressed={theme === 'dark'}
               className={`p-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
                 theme === 'dark'
-                  ? 'border-primary-500 bg-stone-950 text-white font-bold shadow-xs'
-                  : 'border-stone-700 bg-stone-800 text-stone-300'
+                  ? `${activeTheme.activePill} border-primary-500 font-bold shadow-xs`
+                  : `${activeTheme.pill} ${activeTheme.inactivePill}`
               }`}
             >
-              <Moon className="w-3.5 h-3.5" /> Dark
+              <Moon className="w-3.5 h-3.5 text-indigo-400" /> Dark
             </button>
           </div>
         </div>
 
         {/* Font Family */}
         <div>
-          <label className="block text-stone-500 dark:text-stone-400 mb-2 uppercase tracking-wider text-[10px]">
+          <label className={`block ${activeTheme.textMuted} mb-2 uppercase tracking-wider text-[10px]`}>
             Typeface
           </label>
           <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => onFontFamilyChange('serif')}
-              className={`p-2 rounded-lg border font-serif text-sm transition-all ${
-                fontFamily === 'serif'
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/40 text-primary-900 dark:text-primary-100 font-bold'
-                  : 'border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800'
-              }`}
-            >
-              Serif
-            </button>
-            <button
-              type="button"
-              onClick={() => onFontFamilyChange('sans')}
-              className={`p-2 rounded-lg border font-sans text-sm transition-all ${
-                fontFamily === 'sans'
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/40 text-primary-900 dark:text-primary-100 font-bold'
-                  : 'border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800'
-              }`}
-            >
-              Sans
-            </button>
-            <button
-              type="button"
-              onClick={() => onFontFamilyChange('mono')}
-              className={`p-2 rounded-lg border font-mono text-sm transition-all ${
-                fontFamily === 'mono'
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/40 text-primary-900 dark:text-primary-100 font-bold'
-                  : 'border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800'
-              }`}
-            >
-              Mono
-            </button>
+            {(['serif', 'sans', 'mono'] as const).map((fam) => (
+              <button
+                key={fam}
+                type="button"
+                onClick={() => onFontFamilyChange(fam)}
+                aria-pressed={fontFamily === fam}
+                aria-label={`Font family ${fam}`}
+                className={`p-2 rounded-lg border text-sm capitalize transition-all ${
+                  fam === 'serif' ? 'font-serif' : fam === 'mono' ? 'font-mono' : 'font-sans'
+                } ${
+                  fontFamily === fam
+                    ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
+                    : `${activeTheme.pill} ${activeTheme.inactivePill}`
+                }`}
+              >
+                {fam.charAt(0).toUpperCase() + fam.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -148,49 +151,58 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div className="flex justify-between mb-1">
-              <span className="text-[10px] text-stone-500 uppercase">Size</span>
+              <span className={`text-[10px] uppercase ${activeTheme.textMuted}`}>Size</span>
               <span className="text-[10px] font-bold">{fontSize}px</span>
             </div>
             <input
               type="range"
-              min="14"
-              max="28"
+              min="12"
+              max="32"
               step="1"
               value={fontSize}
               onChange={(e) => onFontSizeChange(Number(e.target.value))}
-              className="w-full accent-primary-600"
+              aria-label="Font size in pixels"
+              aria-valuemin={12}
+              aria-valuemax={32}
+              aria-valuenow={fontSize}
+              className="w-full accent-primary-600 cursor-pointer"
             />
           </div>
 
           <div>
             <div className="flex justify-between mb-1">
-              <span className="text-[10px] text-stone-500 uppercase">Line Height</span>
+              <span className={`text-[10px] uppercase ${activeTheme.textMuted}`}>Line Spacing</span>
               <span className="text-[10px] font-bold">{lineHeight}</span>
             </div>
             <input
               type="range"
-              min="1.4"
+              min="1.2"
               max="2.4"
               step="0.1"
               value={lineHeight}
               onChange={(e) => onLineHeightChange(Number(e.target.value))}
-              className="w-full accent-primary-600"
+              aria-label="Line height spacing"
+              aria-valuemin={1.2}
+              aria-valuemax={2.4}
+              aria-valuenow={lineHeight}
+              className="w-full accent-primary-600 cursor-pointer"
             />
           </div>
         </div>
 
         {/* Reading Mode & Page Width */}
-        <div className="pt-3 border-t border-stone-200 dark:border-stone-800 grid grid-cols-2 gap-3">
+        <div className={`pt-3 border-t ${activeTheme.border} grid grid-cols-2 gap-3`}>
           <div>
-            <label className="block text-stone-500 mb-1.5 uppercase text-[10px]">Paging</label>
+            <label className={`block ${activeTheme.textMuted} mb-1.5 uppercase text-[10px]`}>Paging</label>
             <div className="grid grid-cols-2 gap-1">
               <button
                 type="button"
                 onClick={() => onReadingModeChange('paginated')}
-                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 ${
+                aria-pressed={readingMode === 'paginated'}
+                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-all ${
                   readingMode === 'paginated'
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-200 font-bold'
-                    : 'border-stone-200 dark:border-stone-700'
+                    ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
+                    : `${activeTheme.pill} ${activeTheme.inactivePill}`
                 }`}
               >
                 <Columns className="w-3 h-3" /> Page
@@ -198,10 +210,11 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               <button
                 type="button"
                 onClick={() => onReadingModeChange('scroll')}
-                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 ${
+                aria-pressed={readingMode === 'scroll'}
+                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-all ${
                   readingMode === 'scroll'
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-200 font-bold'
-                    : 'border-stone-200 dark:border-stone-700'
+                    ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
+                    : `${activeTheme.pill} ${activeTheme.inactivePill}`
                 }`}
               >
                 <AlignLeft className="w-3 h-3" /> Scroll
@@ -210,17 +223,18 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           </div>
 
           <div>
-            <label className="block text-stone-500 mb-1.5 uppercase text-[10px]">Width</label>
+            <label className={`block ${activeTheme.textMuted} mb-1.5 uppercase text-[10px]`}>Width</label>
             <div className="grid grid-cols-3 gap-1">
               {(['narrow', 'normal', 'wide'] as const).map((w) => (
                 <button
                   key={w}
                   type="button"
                   onClick={() => onColumnWidthChange(w)}
-                  className={`p-1.5 rounded text-[10px] border capitalize text-center ${
+                  aria-pressed={columnWidth === w}
+                  className={`p-1.5 rounded text-[10px] border capitalize text-center transition-all ${
                     columnWidth === w
-                      ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/40 text-primary-800 dark:text-primary-200 font-bold'
-                      : 'border-stone-200 dark:border-stone-700'
+                      ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
+                      : `${activeTheme.pill} ${activeTheme.inactivePill}`
                   }`}
                 >
                   {w.slice(0, 3)}
@@ -234,4 +248,3 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
     </div>
   );
 };
-

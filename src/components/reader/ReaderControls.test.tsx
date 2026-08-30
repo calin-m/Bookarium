@@ -28,9 +28,17 @@ describe('ReaderControls', () => {
     expect(screen.getByText('Light')).toBeInTheDocument();
     expect(screen.getByText('Sepia')).toBeInTheDocument();
     expect(screen.getByText('Dark')).toBeInTheDocument();
-    expect(screen.getByText('Serif')).toBeInTheDocument();
-    expect(screen.getByText('Sans')).toBeInTheDocument();
-    expect(screen.getByText('Mono')).toBeInTheDocument();
+    expect(screen.getByLabelText('Font family serif')).toBeInTheDocument();
+    expect(screen.getByLabelText('Font family sans')).toBeInTheDocument();
+    expect(screen.getByLabelText('Font family mono')).toBeInTheDocument();
+  });
+
+  it('renders correctly under sepia and dark themes', () => {
+    const { rerender } = render(<ReaderControls {...defaultProps} theme="sepia" />);
+    expect(screen.getByRole('region', { name: 'Reading Controls' })).toHaveClass('bg-[#ede2cc]');
+
+    rerender(<ReaderControls {...defaultProps} theme="dark" />);
+    expect(screen.getByRole('region', { name: 'Reading Controls' })).toHaveClass('bg-[#12151c]');
   });
 
   it('triggers onThemeChange and onFontFamilyChange', () => {
@@ -71,9 +79,37 @@ describe('ReaderControls', () => {
     expect(onColumnWidthChange).toHaveBeenCalledWith('narrow');
   });
 
+  it('handles font size and line height slider changes with proper aria attributes', () => {
+    const onFontSizeChange = vi.fn();
+    const onLineHeightChange = vi.fn();
+
+    render(
+      <ReaderControls
+        {...defaultProps}
+        onFontSizeChange={onFontSizeChange}
+        onLineHeightChange={onLineHeightChange}
+      />
+    );
+
+    const fontSlider = screen.getByLabelText('Font size in pixels');
+    fireEvent.change(fontSlider, { target: { value: '22' } });
+    expect(onFontSizeChange).toHaveBeenCalledWith(22);
+
+    const lineSlider = screen.getByLabelText('Line height spacing');
+    fireEvent.change(lineSlider, { target: { value: '2.0' } });
+    expect(onLineHeightChange).toHaveBeenCalledWith(2.0);
+  });
+
+  it('closes controls on Escape key press', () => {
+    const onClose = vi.fn();
+    render(<ReaderControls {...defaultProps} onClose={onClose} />);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('does not render when isOpen is false', () => {
     const { container } = render(<ReaderControls {...defaultProps} isOpen={false} />);
     expect(container.firstChild).toBeNull();
   });
 });
-

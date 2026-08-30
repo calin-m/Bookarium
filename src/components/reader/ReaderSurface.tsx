@@ -4,6 +4,7 @@ import React from 'react';
 import { BookOpen, RefreshCw, AlertCircle } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
+import { READER_THEMES } from '@/config/reader-themes';
 
 export interface ReaderSurfaceProps {
   theme: ReaderTheme;
@@ -36,6 +37,8 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   isError,
   onRetry,
 }) => {
+  const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
+
   const fontClass =
     fontFamily === 'serif'
       ? 'font-serif'
@@ -47,24 +50,17 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     columnWidth === 'narrow'
       ? 'max-w-xl'
       : columnWidth === 'wide'
-      ? 'max-w-4xl'
-      : 'max-w-2xl';
-
-  const surfaceThemeClass =
-    theme === 'sepia'
-      ? 'reader-surface-sepia bg-[#f4ebd9] text-[#2c1d11]'
-      : theme === 'dark'
-      ? 'reader-surface-dark bg-[#0c0e12] text-[#e2e8f0]'
-      : 'reader-surface-light bg-[#fcfbf9] text-[#1a1a1a]';
+      ? 'max-w-5xl'
+      : 'max-w-3xl';
 
   if (isLoading) {
     return (
-      <main className="flex-1 flex flex-col items-center justify-center p-8 text-center" role="main">
+      <main className={`flex-1 flex flex-col items-center justify-center p-8 text-center ${activeTheme.surface}`} role="main">
         <div className="w-12 h-12 rounded-full border-2 border-primary-500 border-t-transparent animate-spin mb-4" />
-        <p className="font-serif text-base font-bold text-stone-700 dark:text-stone-300">
+        <p className="font-serif text-base font-bold">
           Fetching Masterwork from Project Gutenberg Mirror...
         </p>
-        <p className="text-xs font-mono text-stone-400 mt-1">
+        <p className={`text-xs font-mono mt-1 ${activeTheme.textMuted}`}>
           Parsing typography AST, chapters, and volume pagination
         </p>
       </main>
@@ -73,12 +69,12 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
 
   if (isError) {
     return (
-      <main className="flex-1 flex flex-col items-center justify-center p-8 text-center" role="main">
+      <main className={`flex-1 flex flex-col items-center justify-center p-8 text-center ${activeTheme.surface}`} role="main">
         <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
-        <h2 className="font-serif text-lg font-bold text-stone-900 dark:text-stone-100 mb-2">
+        <h2 className="font-serif text-lg font-bold mb-2">
           Unable to Load Masterwork Text
         </h2>
-        <p className="text-xs font-mono text-stone-500 max-w-md mb-6">
+        <p className={`text-xs font-mono max-w-md mb-6 ${activeTheme.textMuted}`}>
           The Project Gutenberg plain-text mirror could not be streamed. Please check your network connection or try again.
         </p>
         {onRetry && (
@@ -99,18 +95,24 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
 
   return (
     <main
-      className={`flex-1 overflow-y-scroll transition-colors duration-300 ${surfaceThemeClass}`}
+      className={`flex-1 overflow-y-scroll transition-colors duration-200 ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
       role="main"
       style={{
         fontSize: `${fontSize}px`,
-        lineHeight,
+        lineHeight: `${lineHeight}`,
       }}
     >
-      <article className={`mx-auto px-6 sm:px-10 py-10 sm:py-16 ${widthClass} ${fontClass}`}>
+      <article
+        className={`mx-auto px-6 sm:px-12 py-10 sm:py-16 ${widthClass} ${fontClass}`}
+        style={{
+          fontSize: `${fontSize}px`,
+          lineHeight: `${lineHeight}`,
+        }}
+      >
         
         {/* Chapter Title Banner */}
         {chapter && (
-          <header className="mb-10 pb-6 border-b border-black/10 dark:border-white/10 text-center">
+          <header className={`mb-10 pb-6 border-b text-center ${activeTheme.border}`}>
             <span className="text-[11px] font-mono uppercase tracking-widest text-primary-600 dark:text-primary-400 font-bold block mb-2">
               Section {activeChapterIndex + 1} of {totalChapters}
             </span>
@@ -120,10 +122,17 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
           </header>
         )}
 
-        {/* Formatted Book Body */}
-        <div className="space-y-6 select-text whitespace-pre-wrap leading-relaxed text-inherit font-normal antialiased">
+        {/* Formatted Book Body with Dynamic Line Height */}
+        <div
+          data-testid="reader-content-body"
+          className="space-y-6 select-text whitespace-pre-wrap text-inherit font-normal antialiased"
+          style={{
+            fontSize: `${fontSize}px`,
+            lineHeight: `${lineHeight}`,
+          }}
+        >
           {contentToDisplay || (
-            <div className="p-8 text-center text-xs font-mono text-stone-400">
+            <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
               <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
               Empty section or end of text volume.
             </div>
@@ -134,4 +143,3 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     </main>
   );
 };
-

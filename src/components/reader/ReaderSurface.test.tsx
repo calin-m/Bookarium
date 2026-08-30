@@ -37,6 +37,22 @@ describe('ReaderSurface', () => {
     expect(screen.getByText('Section 1 of 5')).toBeInTheDocument();
   });
 
+  it('applies dynamic fontSize and lineHeight directly to the content body', () => {
+    const { rerender } = render(<ReaderSurface {...defaultProps} fontSize={22} lineHeight={2.2} />);
+
+    const contentBody = screen.getByTestId('reader-content-body');
+    expect(contentBody).toHaveStyle({
+      fontSize: '22px',
+      lineHeight: '2.2',
+    });
+
+    rerender(<ReaderSurface {...defaultProps} fontSize={14} lineHeight={1.4} />);
+    expect(contentBody).toHaveStyle({
+      fontSize: '14px',
+      lineHeight: '1.4',
+    });
+  });
+
   it('renders loading spinner and status message when isLoading is true', () => {
     render(<ReaderSurface {...defaultProps} isLoading={true} />);
 
@@ -64,4 +80,3 @@ describe('ReaderSurface', () => {
     expect(screen.getByRole('main')).toHaveClass('reader-surface-dark');
   });
 });
-

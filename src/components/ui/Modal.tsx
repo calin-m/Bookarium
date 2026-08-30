@@ -70,15 +70,15 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Modal Surface */}
       <div
         className={cn(
-          'relative w-full bg-white dark:bg-stone-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-stone-800 z-10 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200',
+          'relative w-full bg-card text-foreground rounded-2xl shadow-2xl border border-border z-10 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200',
           maxWidths[maxWidth],
           className
         )}
       >
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             {title && (
-              <h2 id="modal-title" className="text-lg font-semibold text-stone-900 dark:text-stone-100">
+              <h2 id="modal-title" className="text-lg font-semibold text-foreground">
                 {title}
               </h2>
             )}
@@ -86,7 +86,7 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="ml-auto p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                className="ml-auto p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
@@ -100,4 +100,3 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 };
-

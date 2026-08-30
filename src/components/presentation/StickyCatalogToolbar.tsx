@@ -71,7 +71,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
   return (
     <div
-      className="sticky top-16 z-30 w-full backdrop-blur-xl bg-white/95 dark:bg-[#0e1117]/95 border-b border-stone-200/90 dark:border-stone-800/90 shadow-xs transition-colors py-2.5 px-4 sm:px-6 lg:px-8"
+      className="sticky top-16 z-30 w-full backdrop-blur-xl bg-background/95 border-b border-border shadow-xs transition-colors py-2.5 px-4 sm:px-6 lg:px-8"
       data-testid="sticky-catalog-toolbar"
     >
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
@@ -83,17 +83,18 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             variant="outline"
             size="sm"
             onClick={onOpenFilters}
+            data-testid="open-filters-btn"
             className={`text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border transition-all ${
               activeFilterCount > 0
-                ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300'
-                : 'border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-foreground hover:border-primary'
             }`}
             aria-label="Open advanced filters"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span>Filters</span>
             {activeFilterCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-primary-600 text-white text-[10px] flex items-center justify-center font-mono font-bold">
+              <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-mono font-bold">
                 {activeFilterCount}
               </span>
             )}
@@ -104,13 +105,13 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             {activeFilterChips.map((chip) => (
               <span
                 key={chip.id}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono bg-muted text-foreground border border-border"
               >
                 <span>{chip.label}</span>
                 <button
                   type="button"
                   onClick={chip.onRemove}
-                  className="hover:text-red-500 rounded-full p-0.5"
+                  className="hover:text-destructive rounded-full p-0.5"
                   aria-label={`Remove filter ${chip.label}`}
                 >
                   <X className="w-3 h-3" />
@@ -122,7 +123,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               <button
                 type="button"
                 onClick={onClearAllFilters}
-                className="text-xs font-mono text-primary-600 dark:text-primary-400 hover:underline px-1 py-0.5 ml-1"
+                className="text-xs font-mono text-primary hover:underline px-1 py-0.5 ml-1"
               >
                 Clear all
               </button>
@@ -131,9 +132,9 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
           {/* Per Page / Batch Size Selector */}
           {onPageSizeChange && (
-            <div className="hidden lg:flex items-center gap-1 text-xs font-mono text-stone-500 pl-2 border-l border-stone-200 dark:border-stone-700">
-              <span className="text-[11px] uppercase tracking-wider text-stone-400">Show:</span>
-              <div className="flex items-center bg-stone-100 dark:bg-stone-800 p-0.5 rounded-md border border-stone-200 dark:border-stone-700">
+            <div className="hidden lg:flex items-center gap-1 text-xs font-mono text-muted-foreground pl-2 border-l border-border">
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Show:</span>
+              <div className="flex items-center bg-muted p-0.5 rounded-md border border-border">
                 {pageSizes.map((size) => (
                   <button
                     key={size}
@@ -141,8 +142,8 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                     onClick={() => onPageSizeChange(size)}
                     className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
                       pageSize === size
-                        ? 'bg-white dark:bg-stone-700 text-primary-600 dark:text-primary-400 shadow-xs'
-                        : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+                        ? 'bg-card text-primary shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                     aria-label={`Show ${size} books per page`}
                   >
@@ -163,7 +164,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono tracking-wider transition-all border ${
                 isError
-                  ? 'bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-800'
+                  ? 'bg-destructive/10 text-destructive border-destructive/30'
                   : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
               }`}
               title="Gutenberg API Status"
@@ -171,7 +172,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             >
               {isError ? (
                 <>
-                  <WifiOff className="w-3 h-3 text-red-600 dark:text-red-400" />
+                  <WifiOff className="w-3 h-3 text-destructive" />
                   <span className="font-bold">API Offline</span>
                 </>
               ) : (
@@ -184,7 +185,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
             {/* Part 2: Live Latency / Roundtrip Badge */}
             <div
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-mono bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700"
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-mono bg-muted text-foreground border border-border"
               title="Real-time API response roundtrip time"
               data-testid="api-latency-badge"
             >
@@ -193,17 +194,17 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             </div>
           </div>
 
-          <div className="h-4 w-[1px] bg-stone-300 dark:bg-stone-700" />
+          <div className="h-4 w-[1px] bg-border" />
 
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg border border-stone-200 dark:border-stone-700">
+          <div className="flex items-center bg-muted p-0.5 rounded-lg border border-border">
             <button
               type="button"
               onClick={() => onViewModeChange('grid')}
               className={`p-1.5 rounded-md text-xs transition-all ${
                 viewMode === 'grid'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               aria-label="Grid view"
               title="Cover Grid View (2:3 Portrait Cards)"
@@ -216,8 +217,8 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               onClick={() => onViewModeChange('shelf')}
               className={`p-1.5 rounded-md text-xs transition-all ${
                 viewMode === 'shelf'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               aria-label="Shelf view"
               title="Spine Shelf View (Architectural Bookcase)"
@@ -227,7 +228,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             </button>
           </div>
 
-          <div className="h-4 w-[1px] bg-stone-300 dark:bg-stone-700" />
+          <div className="h-4 w-[1px] bg-border" />
 
           {/* Sticky Pagination Controls */}
           {onPageChange && (
@@ -246,13 +247,13 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
               {/* Direct Page Jump Form */}
               <form onSubmit={handleJumpSubmit} className="flex items-center gap-1">
-                <span className="text-xs font-mono text-stone-500 select-none">Pg</span>
+                <span className="text-xs font-mono text-muted-foreground select-none">Pg</span>
                 <input
                   type="text"
                   value={jumpPageInput || page}
                   onChange={(e) => setJumpPageInput(e.target.value)}
                   onFocus={() => setJumpPageInput(String(page))}
-                  className="w-10 h-8 text-center text-xs font-mono font-bold rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-primary-500"
+                  className="w-10 h-8 text-center text-xs font-mono font-bold rounded border border-border bg-card text-foreground focus:outline-hidden focus:border-primary"
                   aria-label="Jump to page"
                 />
               </form>
@@ -272,7 +273,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               </Button>
 
               {isFetching && (
-                <Loader2 className="w-3.5 h-3.5 text-primary-600 animate-spin ml-1" />
+                <Loader2 className="w-3.5 h-3.5 text-primary animate-spin ml-1" />
               )}
             </div>
           )}

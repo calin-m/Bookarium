@@ -3,21 +3,21 @@ import { ShieldCheck, Heart, ExternalLink, BookOpen } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="w-full border-t border-stone-200/90 dark:border-stone-800 bg-[#f5f3ec] dark:bg-[#0b0e14] py-16 transition-colors">
+    <footer className="w-full border-t border-border bg-muted text-foreground py-16 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           
           {/* Col 1: About Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-primary-600 dark:bg-primary-500 flex items-center justify-center text-white">
+              <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-primary-foreground">
                 <BookOpen className="w-3.5 h-3.5" />
               </div>
-              <span className="text-xl font-serif font-bold text-stone-900 dark:text-stone-100">
+              <span className="text-xl font-serif font-bold text-foreground">
                 BOOKARIUM
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 leading-relaxed font-sans">
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
               A high-performance, keyless public domain digital library. Dedicated to free, universal
               access to the world’s greatest literature, philosophy, and timeless works.
             </p>
@@ -29,18 +29,18 @@ export const Footer: React.FC = () => {
 
           {/* Col 2: Open Data Sources */}
           <div>
-            <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-900 dark:text-stone-100 mb-4 pb-1 border-b border-stone-200 dark:border-stone-800">
+            <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground mb-4 pb-1 border-b border-border">
               Open Archives
             </h4>
-            <ul className="space-y-2.5 text-xs text-stone-600 dark:text-stone-400 font-mono">
+            <ul className="space-y-2.5 text-xs text-muted-foreground font-mono">
               <li>
                 <a
                   href="https://www.gutenberg.org"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
                 >
-                  Project Gutenberg <ExternalLink className="w-3 h-3 text-stone-400" />
+                  Project Gutenberg <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
               </li>
               <li>
@@ -48,9 +48,9 @@ export const Footer: React.FC = () => {
                   href="https://gutendex.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
                 >
-                  Gutendex Mirror <ExternalLink className="w-3 h-3 text-stone-400" />
+                  Gutendex Mirror <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
               </li>
               <li>
@@ -58,9 +58,9 @@ export const Footer: React.FC = () => {
                   href="https://standardebooks.org"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
                 >
-                  Standard Ebooks <ExternalLink className="w-3 h-3 text-stone-400" />
+                  Standard Ebooks <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
               </li>
               <li>
@@ -68,9 +68,9 @@ export const Footer: React.FC = () => {
                   href="https://openlibrary.org"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
                 >
-                  Open Library Archive <ExternalLink className="w-3 h-3 text-stone-400" />
+                  Open Library Archive <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
               </li>
             </ul>
@@ -78,10 +78,10 @@ export const Footer: React.FC = () => {
 
           {/* Col 3: Popular Genres */}
           <div>
-            <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-900 dark:text-stone-100 mb-4 pb-1 border-b border-stone-200 dark:border-stone-800">
+            <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground mb-4 pb-1 border-b border-border">
               Preserved Collections
             </h4>
-            <ul className="space-y-2.5 text-xs text-stone-600 dark:text-stone-400 font-sans">
+            <ul className="space-y-2.5 text-xs text-muted-foreground font-sans">
               <li>Classical Philosophy & Ethics</li>
               <li>Gothic & Romantic Fiction</li>
               <li>Victorian Poetry & Sonnets</li>
@@ -92,24 +92,32 @@ export const Footer: React.FC = () => {
 
           {/* Col 4: Legal & CC0 Manifesto */}
           <div className="space-y-3">
-            <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-stone-900 dark:text-stone-100 mb-4 pb-1 border-b border-stone-200 dark:border-stone-800">
+            <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground mb-4 pb-1 border-b border-border">
               100% Legal & Open
             </h4>
-            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed font-sans">
+            <p className="text-xs text-muted-foreground leading-relaxed font-sans">
               All books listed in Bookarium are in the public domain worldwide. Zero DRM, no subscriptions, zero user tracking.
             </p>
-            <div className="text-xs text-stone-500 font-mono flex items-center gap-1 pt-2">
-              Crafted with <Heart className="w-3 h-3 text-red-500 fill-current" /> for open culture.
+            <div className="pt-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+                Zero API Keys Required • Public Domain Preservation
+              </span>
             </div>
           </div>
 
         </div>
 
-        {/* Bottom copyright / legal strip */}
-        <div className="mt-12 pt-8 border-t border-stone-300/70 dark:border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-stone-500">
-          <p>© {new Date().getFullYear()} BOOKARIUM. Zero Rights Reserved (CC0 Public Domain Dedication).</p>
-          <p>Zero API Keys Required • Offline Local Storage Enabled</p>
+        {/* Bottom Copyright Strip */}
+        <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-muted-foreground">
+          <div>
+            © {new Date().getFullYear()} Bookarium. Designed for Literature.
+          </div>
+          <div className="flex items-center gap-1">
+            <span>Built with precision for the public domain</span>
+            <Heart className="w-3 h-3 text-destructive fill-current ml-1" />
+          </div>
         </div>
+
       </div>
     </footer>
   );

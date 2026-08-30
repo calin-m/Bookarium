@@ -12,17 +12,23 @@ describe('ReaderFooter', () => {
     chapterPageCount: 4,
     onPrevPage: vi.fn(),
     onNextPage: vi.fn(),
+    onPageJump: vi.fn(),
     isPrevDisabled: false,
     isNextDisabled: false,
     readingMode: 'paginated' as const,
+    theme: 'sepia' as const,
   };
 
   it('renders global volume pagination and chapter title', () => {
     render(<ReaderFooter {...defaultProps} />);
 
     expect(screen.getByText('Chapter 5')).toBeInTheDocument();
-    expect(screen.getByText('18')).toBeInTheDocument();
-    expect(screen.getByText('901')).toBeInTheDocument();
+    const input = screen.getByLabelText('Current Page Number');
+    expect(input).toHaveValue(18);
+    expect(input).toHaveAttribute('aria-valuemin', '1');
+    expect(input).toHaveAttribute('aria-valuemax', '901');
+    expect(input).toHaveAttribute('aria-valuenow', '18');
+    expect(screen.getByText('of 901')).toBeInTheDocument();
   });
 
   it('triggers onPrevPage and onNextPage callbacks when buttons are clicked', () => {
@@ -44,6 +50,15 @@ describe('ReaderFooter', () => {
     expect(onNextPage).toHaveBeenCalledTimes(1);
   });
 
+  it('handles page jump input changes', () => {
+    const onPageJump = vi.fn();
+    render(<ReaderFooter {...defaultProps} onPageJump={onPageJump} />);
+
+    const input = screen.getByLabelText('Current Page Number');
+    fireEvent.change(input, { target: { value: '42' } });
+    expect(onPageJump).toHaveBeenCalledWith(42);
+  });
+
   it('disables previous and next buttons when boundary disabled flags are set', () => {
     render(
       <ReaderFooter
@@ -57,16 +72,23 @@ describe('ReaderFooter', () => {
     expect(screen.getByLabelText('Next Page')).toBeDisabled();
   });
 
-  it('renders continuous flow indicator when in scroll mode', () => {
+  it('renders continuous flow indicator and chapter navigation when in scroll mode', () => {
+    const onSelectChapter = vi.fn();
     render(
       <ReaderFooter
         {...defaultProps}
         readingMode="scroll"
+        currentChapterIndex={2}
+        totalChapters={10}
+        onSelectChapter={onSelectChapter}
       />
     );
 
-    expect(screen.getByText('Continuous Flow Mode')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Previous Page')).not.toBeInTheDocument();
+    expect(screen.getByText('Chapter 3 of 10')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Previous Chapter'));
+    expect(onSelectChapter).toHaveBeenCalledWith(1);
+
+    fireEvent.click(screen.getByLabelText('Next Chapter'));
+    expect(onSelectChapter).toHaveBeenCalledWith(3);
   });
 });
-
