@@ -1,0 +1,15 @@
+{
+  "preCommit": [
+    "npm run lint",
+    "npm run typecheck",
+    "npm test"
+  ],
+  "prePush": [
+    "npm run audit:quality",
+    "npm run verify:build"
+  ],
+  "postBuild": [
+    "npm run matrix:generate"
+  ]
+}
+

@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Next.js Build Outputs
+.next/
+out/
+build/
+dist/
+
+# Test Coverage & Audit Artifacts
+coverage/
+.nyc_output/
+
+# Environment Variables
+.env*.local
+.env
+!.env.example
+
+# Debug & Execution Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor & IDE Configs
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# TypeScript Cache
+*.tsbuildinfo
+next-env.d.ts.bak

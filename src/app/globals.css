@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #faf8f5;
+    --foreground: #1c1917;
+    --card: #ffffff;
+    --card-foreground: #1c1917;
+    --popover: #ffffff;
+    --popover-foreground: #1c1917;
+    --primary: #c5681c;
+    --primary-foreground: #ffffff;
+    --secondary: #f4ede2;
+    --secondary-foreground: #1c1917;
+    --muted: #f4ede2;
+    --muted-foreground: #78716c;
+    --accent: #f0e6d6;
+    --accent-foreground: #1c1917;
+    --destructive: #b91c1c;
+    --destructive-foreground: #ffffff;
+    --border: #e8ded1;
+    --input: #e8ded1;
+    --ring: #c5681c;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: #121110;
+    --foreground: #f5f5f4;
+    --card: #1c1a18;
+    --card-foreground: #f5f5f4;
+    --popover: #1c1a18;
+    --popover-foreground: #f5f5f4;
+    --primary: #e39f48;
+    --primary-foreground: #121110;
+    --secondary: #262320;
+    --secondary-foreground: #f5f5f4;
+    --muted: #262320;
+    --muted-foreground: #a8a29e;
+    --accent: #2c2825;
+    --accent-foreground: #f5f5f4;
+    --destructive: #991b1b;
+    --destructive-foreground: #f5f5f4;
+    --border: #2e2925;
+    --input: #2e2925;
+    --ring: #e39f48;
+  }
+
+  body {
+    @apply bg-background text-foreground transition-colors duration-200 antialiased selection:bg-amber-200 dark:selection:bg-amber-900/60;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Drop-cap utility for book reader */
+.reader-drop-cap::first-letter {
+  float: left;
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 3.25em;
+  line-height: 0.8;
+  padding-top: 4px;
+  padding-right: 8px;
+  padding-bottom: 2px;
+  margin-right: 4px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Shelf Ledge Styling */
+.shelf-wood-ledge {
+  background: linear-gradient(
+    180deg,
+    #5a3a22 0%,
+    #3d2514 60%,
+    #24150b 100%
+  );
+  box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.4), inset 0 2px 3px rgba(255, 255, 255, 0.2);
+}
+
+.dark .shelf-wood-ledge {
+  background: linear-gradient(
+    180deg,
+    #332115 0%,
+    #20140c 60%,
+    #110a05 100%
+  );
+  box-shadow: 0 10px 20px -2px rgba(0, 0, 0, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+/* Embossed Spine Text */
+.spine-emboss-gold {
+  color: #f7e6b8;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.spine-emboss-silver {
+  color: #e5e7eb;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 150, 130, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 150, 130, 0.6);
+}

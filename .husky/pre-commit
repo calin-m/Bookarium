@@ -1,0 +1,2 @@
+#!/bin/sh
+npm run verify && git add ARCHITECTURE.md CHANGELOG.md docs/QUALITY_AUDIT_REPORT.md docs/quality-audit-results.json

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/app/**/*.{ts,tsx}",
+    "src/components/**/*.{ts,tsx}",
+    "src/hooks/**/*.{ts,tsx}",
+    "src/stores/**/*.{ts,tsx}",
+    "src/lib/**/*.{ts,tsx}",
+    "src/mocks/**/*.{ts,tsx}",
+    "scripts/**/*.js"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "scripts/**/*.js"
+  ],
+  "ignoreDependencies": [
+    "@testing-library/user-event",
+    "@babel/parser",
+    "@babel/traverse",
+    "@types/babel__traverse",
+    "eslint",
+    "eslint-config-next",
+    "husky"
+  ],
+  "ignoreExportsUsedInFile": true
+}
