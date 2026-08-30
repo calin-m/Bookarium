@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { sampleBookText } from '@/mocks/handlers';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 export async function fetchBookContent(url?: string, bookId?: number): Promise<string> {
   if (!url && !bookId) {
@@ -11,7 +12,7 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
     if (bookId) params.set('id', String(bookId));
     if (url) params.set('url', url);
 
-    const res = await fetch(`/api/books/content?${params.toString()}`);
+    const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?${params.toString()}`);
     if (!res.ok) {
       return sampleBookText;
     }

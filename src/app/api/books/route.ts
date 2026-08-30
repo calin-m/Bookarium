@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     gutendexParams.set('mime_type', mimeType.trim());
   }
 
-  const apiUrl = `https://gutendex.com/books/?${gutendexParams.toString()}`;
+  const apiUrl = `${API_ENDPOINTS.GUTENDEX_BASE_URL}/?${gutendexParams.toString()}`;
 
   try {
     const controller = new AbortController();

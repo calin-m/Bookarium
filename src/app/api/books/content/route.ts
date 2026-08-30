@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   // URLs to try in order
   const targetUrls: string[] = [];
   if (bookId) {
-    targetUrls.push(`https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`);
+    targetUrls.push(`${API_ENDPOINTS.GUTENBERG_CACHE_BASE_URL}/${bookId}/pg${bookId}.txt`);
   }
   if (urlParam && !targetUrls.includes(urlParam)) {
     targetUrls.push(urlParam);

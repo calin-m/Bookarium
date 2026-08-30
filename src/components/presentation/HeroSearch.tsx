@@ -13,6 +13,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { HERO_POPULAR_TOPICS, HERO_LANGUAGES } from '@/config/catalog-filters';
+import { FEATURED_HERO_BOOK } from '@/config/featured-books';
 
 export interface HeroSearchProps {
   search?: string;
@@ -25,25 +27,6 @@ export interface HeroSearchProps {
   onLanguageChange?: (lang: string) => void;
   onReadFeaturedBook?: () => void;
 }
-
-const TOPICS = [
-  { label: 'All Books', id: '' },
-  { label: 'Philosophy', id: 'philosophy' },
-  { label: 'Fiction', id: 'fiction' },
-  { label: 'Poetry', id: 'poetry' },
-  { label: 'Science', id: 'science' },
-  { label: 'Drama', id: 'drama' },
-  { label: 'History', id: 'history' },
-];
-
-const LANGUAGES = [
-  { label: 'All Languages', value: '' },
-  { label: 'English', value: 'en' },
-  { label: 'French', value: 'fr' },
-  { label: 'German', value: 'de' },
-  { label: 'Spanish', value: 'es' },
-  { label: 'Italian', value: 'it' },
-];
 
 const FEATURES = [
   {
@@ -169,14 +152,14 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
             {/* Genre Quick Links & Language Selector */}
             <div className="space-y-3 pt-2">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-mono uppercase text-stone-400 mr-1 select-none">
-                  Genre:
+                <span className="text-[11px] font-mono uppercase text-stone-400 mr-1 select-none flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-primary-500" /> Curated:
                 </span>
-                {TOPICS.map((topic) => {
+                {HERO_POPULAR_TOPICS.map((topic) => {
                   const isSelected = selectedTopic.toLowerCase() === topic.id;
                   return (
                     <button
-                      key={topic.id}
+                      key={topic.id || 'all'}
                       type="button"
                       onClick={() => handleTopicClick(topic.id)}
                       data-testid={`topic-chip-${topic.id || 'all'}`}
@@ -200,9 +183,9 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                   value={selectedLanguage}
                   onChange={(e) => onLanguageChange?.(e.target.value)}
                   data-testid="language-select"
-                  className="bg-transparent border border-stone-300 dark:border-stone-700 rounded px-2 py-0.5 text-xs text-stone-700 dark:text-stone-300 focus:outline-none focus:border-primary-500"
+                  className="bg-transparent border border-stone-300 dark:border-stone-700 rounded px-2 py-0.5 text-xs text-stone-700 dark:text-stone-300 focus:outline-hidden focus:border-primary-500 cursor-pointer"
                 >
-                  {LANGUAGES.map((lang) => (
+                  {HERO_LANGUAGES.map((lang) => (
                     <option key={lang.value} value={lang.value} className="dark:bg-stone-900">
                       {lang.label}
                     </option>
@@ -230,28 +213,28 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                     <span className="flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-primary-400" /> Featured Classic
                     </span>
-                    <span>Vol. 1342</span>
+                    <span>{FEATURED_HERO_BOOK.volumeNumber}</span>
                   </div>
 
                   <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white leading-tight mb-2">
-                    Pride and Prejudice
+                    {FEATURED_HERO_BOOK.title}
                   </h3>
                   <p className="text-xs font-mono uppercase tracking-wider text-stone-300">
-                    Jane Austen • 1813
+                    {FEATURED_HERO_BOOK.author} • {FEATURED_HERO_BOOK.year}
                   </p>
                 </div>
 
                 {/* Center Book Quote Excerpt */}
                 <div className="relative z-10 my-4 p-3 rounded bg-white/5 backdrop-blur-xs border border-white/10">
                   <p className="text-xs font-serif italic text-stone-200 leading-relaxed">
-                    &ldquo;It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.&rdquo;
+                    &ldquo;{FEATURED_HERO_BOOK.quoteExcerpt}&rdquo;
                   </p>
                 </div>
 
                 {/* Bottom Action Pill */}
                 <div className="relative z-10 pt-3 border-t border-white/10 flex items-center justify-between">
                   <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
-                    CC0 / Public Domain
+                    {FEATURED_HERO_BOOK.license}
                   </span>
                   {onReadFeaturedBook && (
                     <button

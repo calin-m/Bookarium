@@ -5,33 +5,20 @@ import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/presentation/Navbar';
 import { HeroSearch } from '@/components/presentation/HeroSearch';
 import { StickyCatalogToolbar, type ActiveFilterChip } from '@/components/presentation/StickyCatalogToolbar';
-import { AdvancedFilterDrawer, LITERARY_ERAS } from '@/components/presentation/AdvancedFilterDrawer';
+import { AdvancedFilterDrawer } from '@/components/presentation/AdvancedFilterDrawer';
 import { BookGrid } from '@/components/presentation/BookGrid';
 import { LiteraryQuotes } from '@/components/presentation/LiteraryQuotes';
-import { BookReaderModal } from '@/components/presentation/BookReaderModal';
 import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
 import { Footer } from '@/components/presentation/Footer';
 import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
+import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import { useReaderStore } from '@/stores/useReaderStore';
 import type { GutendexBook } from '@/mocks/handlers';
 import { Trash2, BookOpen, Quote, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export default function Home() {
   const router = useRouter();
-  const openReader = useReaderStore((s) => s.openReader);
-  const [activeView, setActiveView] = useState<'catalog' | 'bookshelf' | 'likes'>('catalog');
-  const [search, setSearch] = useState('');
-  const [topic, setTopic] = useState('');
-  const [language, setLanguage] = useState('');
-  const [era, setEra] = useState('');
-  const [sort, setSort] = useState<'popular' | 'descending' | 'ascending' | ''>('popular');
-  const [format, setFormat] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(32);
-  const [viewMode, setViewMode] = useState<'grid' | 'shelf'>('grid');
-  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [selectedDownloadBook, setSelectedDownloadBook] = useState<GutendexBook | null>(null);
 
   // Bookshelf store items
@@ -39,22 +26,37 @@ export default function Home() {
   const likedBookIds = useBookshelfStore((s) => s.likedBookIds);
   const clearBookshelf = useBookshelfStore((s) => s.clearBookshelf);
 
-  // Era Start/End derivation
-  const selectedEraObj = LITERARY_ERAS.find((e) => e.id === era);
-
-  // Server Query
-  const queryParams = {
+  // Centralized Catalog Filters Hook
+  const {
+    activeView,
     search,
     topic,
-    languages: language,
-    authorYearStart: selectedEraObj?.start,
-    authorYearEnd: selectedEraObj?.end,
-    sort: sort || undefined,
-    mimeType: format || undefined,
+    language,
+    era,
+    sort,
+    format,
     page,
-    copyright: false,
-  };
+    pageSize,
+    viewMode,
+    isFilterDrawerOpen,
+    queryParams,
+    activeFilterChips,
+    setActiveView,
+    setPage,
+    setPageSize,
+    setViewMode,
+    setIsFilterDrawerOpen,
+    handleSearchChange,
+    handleTopicChange,
+    handleLanguageChange,
+    handleEraChange,
+    handleSortChange,
+    handleFormatChange,
+    handleResetAllFilters,
+    removeFilterChip,
+  } = useCatalogFilters();
 
+  // Server Query
   const {
     data: booksData,
     isLoading,
@@ -66,46 +68,6 @@ export default function Home() {
   // Predictive Next-Page Prefetching
   const prefetchNextPage = usePrefetchNextPage(queryParams, Boolean(booksData?.next));
 
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(1);
-  };
-
-  const handleTopicChange = (val: string) => {
-    setTopic(val);
-    setPage(1);
-  };
-
-  const handleLanguageChange = (val: string) => {
-    setLanguage(val);
-    setPage(1);
-  };
-
-  const handleEraChange = (val: string) => {
-    setEra(val);
-    setPage(1);
-  };
-
-  const handleSortChange = (val: 'popular' | 'descending' | 'ascending' | '') => {
-    setSort(val);
-    setPage(1);
-  };
-
-  const handleFormatChange = (val: string) => {
-    setFormat(val);
-    setPage(1);
-  };
-
-  const handleResetAllFilters = () => {
-    setSearch('');
-    setTopic('');
-    setLanguage('');
-    setEra('');
-    setSort('popular');
-    setFormat('');
-    setPage(1);
-  };
-
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     if (typeof window !== 'undefined') {
@@ -116,50 +78,12 @@ export default function Home() {
     }
   };
 
-  // Derive active filter chips for sticky toolbar
-  const activeChips: ActiveFilterChip[] = [];
-  if (era) {
-    activeChips.push({
-      id: 'era',
-      label: selectedEraObj?.label.split('(')[0].trim() || era,
-      onRemove: () => setEra(''),
-    });
-  }
-  if (topic) {
-    activeChips.push({
-      id: 'topic',
-      label: topic,
-      onRemove: () => setTopic(''),
-    });
-  }
-  if (language) {
-    activeChips.push({
-      id: 'lang',
-      label: `Lang: ${language.toUpperCase()}`,
-      onRemove: () => setLanguage(''),
-    });
-  }
-  if (sort && sort !== 'popular') {
-    activeChips.push({
-      id: 'sort',
-      label: `Sort: ${sort}`,
-      onRemove: () => setSort('popular'),
-    });
-  }
-  if (format) {
-    activeChips.push({
-      id: 'format',
-      label: format.includes('epub') ? 'EPUB' : format.includes('html') ? 'HTML' : 'Text',
-      onRemove: () => setFormat(''),
-    });
-  }
-  if (search) {
-    activeChips.push({
-      id: 'search',
-      label: `"${search}"`,
-      onRemove: () => setSearch(''),
-    });
-  }
+  // Convert chips for toolbar interface
+  const toolbarChips: ActiveFilterChip[] = activeFilterChips.map((chip) => ({
+    id: chip.id,
+    label: chip.label,
+    onRemove: () => removeFilterChip(chip.id),
+  }));
 
   // Derive displayed books based on active view
   let displayedBooks = booksData?.results ? booksData.results.slice(0, pageSize) : [];
@@ -207,8 +131,8 @@ export default function Home() {
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onOpenFilters={() => setIsFilterDrawerOpen(true)}
-            activeFilterCount={activeChips.length}
-            activeFilterChips={activeChips}
+            activeFilterCount={toolbarChips.length}
+            activeFilterChips={toolbarChips}
             onClearAllFilters={handleResetAllFilters}
             isFetching={isFetching}
             onPrefetchNext={prefetchNextPage}
@@ -330,8 +254,8 @@ export default function Home() {
                       variant="primary"
                       size="sm"
                       onClick={() => {
-                        if (displayedBooks[1]) openReader(displayedBooks[1]);
-                        else if (displayedBooks[0]) openReader(displayedBooks[0]);
+                        const targetId = displayedBooks[0]?.id || 2701;
+                        router.push(`/read/${targetId}`);
                       }}
                       className="font-mono text-xs uppercase tracking-wider gap-2 px-5 py-2.5 rounded bg-primary-600 hover:bg-primary-700 text-white font-bold"
                     >
@@ -349,9 +273,6 @@ export default function Home() {
         {/* Booksaw 3-Column Literary Quotes & Passages */}
         {activeView === 'catalog' && <LiteraryQuotes />}
       </main>
-
-      {/* Reader Modal */}
-      <BookReaderModal />
 
       {/* Download Hub Drawer */}
       <DownloadDrawer
@@ -375,7 +296,7 @@ export default function Home() {
         selectedFormat={format}
         onFormatChange={handleFormatChange}
         onResetAll={handleResetAllFilters}
-        activeFilterCount={activeChips.length}
+        activeFilterCount={toolbarChips.length}
       />
 
       <Footer />

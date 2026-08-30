@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import React, { useEffect } from 'react';
 import type { GutendexResponse } from '@/mocks/handlers';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 export interface UseBooksParams {
   ids?: string | number;
@@ -52,8 +53,8 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
   // In browser runtime, route through internal Next.js API proxy to avoid CORS & timeouts
   const isBrowser = typeof window !== 'undefined';
   const url = isBrowser
-    ? `/api/books?${searchParams.toString()}`
-    : `https://gutendex.com/books?${searchParams.toString()}`;
+    ? `${API_ENDPOINTS.INTERNAL_API_BOOKS}?${searchParams.toString()}`
+    : `${API_ENDPOINTS.GUTENDEX_BASE_URL}?${searchParams.toString()}`;
 
   const res = await fetch(url);
   if (!res.ok) {
