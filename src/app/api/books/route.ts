@@ -11,12 +11,16 @@ export async function GET(request: NextRequest) {
   const authorYearEnd = searchParams.get('author_year_end') || '';
   const sort = searchParams.get('sort') || '';
   const mimeType = searchParams.get('mime_type') || '';
+  const ids = searchParams.get('ids') || '';
 
   const gutendexParams = new URLSearchParams();
 
   // STRICT ZERO-COPYRIGHT ENFORCEMENT
   gutendexParams.set('copyright', 'false');
 
+  if (ids.trim()) {
+    gutendexParams.set('ids', ids.trim());
+  }
   if (search.trim()) {
     gutendexParams.set('search', search.trim());
   }

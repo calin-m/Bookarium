@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import Home from './page';
@@ -7,12 +7,59 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { mockBooks } from '@/mocks/handlers';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
+
+vi.mock('@/hooks/queries/useBooks', () => ({
+  useBooks: () => ({
+    data: {
+      count: mockBooks.length,
+      next: null,
+      previous: null,
+      results: mockBooks,
+      source: 'upstream',
+      latencyMs: 140,
+    },
+    isLoading: false,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
+  usePrefetchNextPage: () => vi.fn(),
+}));
+
+vi.mock('@/hooks/queries/useBookContent', () => ({
+  useBookContent: () => ({
+    data: 'Sample book text content',
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
+vi.mock('@/components/presentation/LiteraryQuotes', () => ({
+  LiteraryQuotes: () => <section data-testid="literary-quotes">Words That Shaped Humanity</section>,
+}));
+
+vi.mock('@/components/presentation/Footer', () => ({
+  Footer: () => <footer data-testid="footer-mock">Footer</footer>,
+}));
+
+const testQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      gcTime: Infinity,
+      staleTime: Infinity,
+    },
+  },
+});
+
 function renderHome() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
   return render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={testQueryClient}>
       <Home />
     </QueryClientProvider>
   );
@@ -24,18 +71,15 @@ describe('Home page integration', () => {
     useReaderStore.setState({ isOpen: false, currentBook: null });
   });
 
-  it('should render catalog, hero search, sticky toolbar, and books list', async () => {
+  it('should render catalog, hero search, sticky toolbar, and books list', () => {
     renderHome();
 
     expect(screen.getByText(/Timeless Literature/i)).toBeInTheDocument();
     expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
-    });
+    expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
   });
 
-  it('should handle search, topic, and language change interactions', async () => {
+  it('should handle search, topic, and language change interactions', () => {
     renderHome();
 
     const searchInput = screen.getByTestId('search-input');
@@ -47,12 +91,10 @@ describe('Home page integration', () => {
     const langSelect = screen.getByTestId('language-select');
     fireEvent.change(langSelect, { target: { value: 'en' } });
 
-    await waitFor(() => {
-      expect(screen.getByText(/Search Catalog/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/Search Catalog/i)).toBeInTheDocument();
   });
 
-  it('should open advanced filter drawer and apply era and sort filters', async () => {
+  it('should open advanced filter drawer and apply era and sort filters', () => {
     renderHome();
 
     const openFiltersBtn = screen.getByRole('button', { name: /Open advanced filters/i });
@@ -70,7 +112,7 @@ describe('Home page integration', () => {
     expect(screen.getByText(/19th Century Victorian & Romantic/i)).toBeInTheDocument();
   });
 
-  it('should switch between catalog, bookshelf, and likes views with item actions', async () => {
+  it('should switch between catalog, bookshelf, and likes views with item actions', () => {
     // Pre-populate bookshelf and likes
     useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
     useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
@@ -93,12 +135,10 @@ describe('Home page integration', () => {
     expect(screen.getByText('Favorite Works')).toBeInTheDocument();
   });
 
-  it('should open download hub and close it', async () => {
+  it('should open download hub and close it', () => {
     renderHome();
 
-    await waitFor(() => {
-      expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
-    });
+    expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
 
     const formatButtons = screen.getAllByRole('button', { name: /Download options for/i });
     fireEvent.click(formatButtons[0]);

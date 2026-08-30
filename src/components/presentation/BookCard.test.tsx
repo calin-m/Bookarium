@@ -21,15 +21,12 @@ describe('BookCard component', () => {
     expect(screen.getByText(/65\.4k reads/i)).toBeInTheDocument();
   });
 
-  it('should trigger openReader when clicking Read button', () => {
+  it('should render link to /read/[id] when clicking Read button', () => {
     const book = mockBooks[0];
     render(<BookCard book={book} />);
 
-    const readBtn = screen.getByRole('button', { name: /Read Pride and Prejudice/i });
-    fireEvent.click(readBtn);
-
-    expect(useReaderStore.getState().isOpen).toBe(true);
-    expect(useReaderStore.getState().currentBook?.id).toBe(book.id);
+    const readLink = screen.getByRole('link', { name: /Read Pride and Prejudice/i });
+    expect(readLink).toHaveAttribute('href', `/read/${book.id}`);
   });
 
   it('should toggle like and bookmark state on button clicks', () => {

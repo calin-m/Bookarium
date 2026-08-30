@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { extractBookFormats, formatDownloadCount, truncate } from '@/lib/utils';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import { useReaderStore } from '@/stores/useReaderStore';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -20,7 +20,6 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
   const toggleSave = useBookshelfStore((s) => s.toggleSaveBook);
   const isLiked = useBookshelfStore((s) => s.isBookLiked(book.id));
   const toggleLike = useBookshelfStore((s) => s.toggleLikeBook);
-  const openReader = useReaderStore((s) => s.openReader);
 
   const formats = extractBookFormats(book.formats);
   const authorNames = book.authors.map((a) => a.name.split(',').reverse().join(' ').trim()).join(', ') || 'Anonymous';
@@ -122,16 +121,14 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-2 mt-0.5">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => openReader(book)}
-            className="w-full gap-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white rounded font-mono uppercase tracking-wider font-bold"
+          <Link
+            href={`/read/${book.id}`}
+            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white rounded font-mono uppercase tracking-wider font-bold transition-colors shadow-xs active:scale-[0.98]"
             aria-label={`Read ${book.title}`}
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Read</span>
-          </Button>
+          </Link>
 
           <Button
             variant="outline"

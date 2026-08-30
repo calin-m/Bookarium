@@ -6,8 +6,16 @@ import { mockBooks } from '@/mocks/handlers';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 
+const pushMock = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: pushMock,
+  }),
+}));
+
 describe('BookshelfRack Component', () => {
   beforeEach(() => {
+    pushMock.mockClear();
     useBookshelfStore.getState().clearBookshelf();
     useReaderStore.getState().closeReader();
   });
@@ -44,12 +52,11 @@ describe('BookshelfRack Component', () => {
     expect(handleBookClick).toHaveBeenCalledTimes(2);
   });
 
-  it('opens reader using default handler if onBookClick is omitted', () => {
+  it('opens reader route using default handler if onBookClick is omitted', () => {
     render(<BookshelfRack books={mockBooks} />);
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
-    expect(useReaderStore.getState().isOpen).toBe(true);
-    expect(useReaderStore.getState().currentBook?.id).toBe(mockBooks[0].id);
+    expect(pushMock).toHaveBeenCalledWith(`/read/${mockBooks[0].id}`);
   });
 
   it('handles quick action download and bookmark clicks', () => {

@@ -48,9 +48,15 @@
     --ring: #ec843f;
   }
 
+  html {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-background text-foreground transition-colors duration-200 antialiased selection:bg-orange-100 dark:selection:bg-orange-950;
     font-feature-settings: "rlig" 1, "calt" 1;
+    scrollbar-gutter: stable;
   }
 }
 
@@ -137,8 +143,8 @@
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -146,10 +152,94 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.25);
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(148, 163, 184, 0.6);
 }
+
+/* Reader Distinct Theme High-Visibility Scrollbars (0 CLS Guaranteed) */
+.reader-surface-light {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #c5bcb0 #f1ede4;
+}
+.reader-surface-light::-webkit-scrollbar,
+.reader-surface-light *::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.reader-surface-light::-webkit-scrollbar-track,
+.reader-surface-light *::-webkit-scrollbar-track {
+  background: #f1ede4;
+  border-radius: 6px;
+}
+.reader-surface-light::-webkit-scrollbar-thumb,
+.reader-surface-light *::-webkit-scrollbar-thumb {
+  background: #c5bcb0;
+  border-radius: 6px;
+  border: 2px solid #f1ede4;
+}
+.reader-surface-light::-webkit-scrollbar-thumb:hover,
+.reader-surface-light *::-webkit-scrollbar-thumb:hover {
+  background: #a89d8f;
+}
+
+.reader-surface-sepia {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #b59e7e #e8dcc4;
+}
+.reader-surface-sepia::-webkit-scrollbar,
+.reader-surface-sepia *::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.reader-surface-sepia::-webkit-scrollbar-track,
+.reader-surface-sepia *::-webkit-scrollbar-track {
+  background: #e8dcc4;
+  border-radius: 6px;
+}
+.reader-surface-sepia::-webkit-scrollbar-thumb,
+.reader-surface-sepia *::-webkit-scrollbar-thumb {
+  background: #b59e7e;
+  border-radius: 6px;
+  border: 2px solid #e8dcc4;
+}
+.reader-surface-sepia::-webkit-scrollbar-thumb:hover,
+.reader-surface-sepia *::-webkit-scrollbar-thumb:hover {
+  background: #967f60;
+}
+
+.reader-surface-dark {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #3b4455 #151921;
+}
+.reader-surface-dark::-webkit-scrollbar,
+.reader-surface-dark *::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.reader-surface-dark::-webkit-scrollbar-track,
+.reader-surface-dark *::-webkit-scrollbar-track {
+  background: #151921;
+  border-radius: 6px;
+}
+.reader-surface-dark::-webkit-scrollbar-thumb,
+.reader-surface-dark *::-webkit-scrollbar-thumb {
+  background: #3b4455;
+  border-radius: 6px;
+  border: 2px solid #151921;
+}
+.reader-surface-dark::-webkit-scrollbar-thumb:hover,
+.reader-surface-dark *::-webkit-scrollbar-thumb:hover {
+  background: #56627a;
+}
+
+

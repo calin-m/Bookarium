@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import type { GutendexResponse } from '@/mocks/handlers';
 
 export interface UseBooksParams {
+  ids?: string | number;
   search?: string;
   topic?: string;
   languages?: string;
@@ -20,6 +21,9 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
   // Enforce zero-copyright public domain filter
   searchParams.set('copyright', params.copyright !== undefined ? String(params.copyright) : 'false');
 
+  if (params.ids) {
+    searchParams.set('ids', String(params.ids).trim());
+  }
   if (params.search?.trim()) {
     searchParams.set('search', params.search.trim());
   }

@@ -31,24 +31,20 @@ Never manually craft static component matrices, route catalogs, or architectural
 - All book metadata and content fetching must strictly enforce `copyright=false` or verify public domain status (Zero-Copyright / CC0 / Gutenberg Public Domain).
 - Never require end-user API keys or proprietary authentication for catalog browsing, reading, or downloading.
 
-### Rule 5: Git Commit & Staging Protocol (Human Execution Only)
-**Provide Git commands strictly only when explicitly requested by the user.**
-When the user asks for commit commands, diff reviews, or release instructions:
-1. **Never commit blindly:** Ensure all verification passes succeed via `npm run verify`.
-2. **Conventional Commit Standard:** Format commit messages following the standard specification:
-   - `feat(reader): ...` for new features
-   - `fix(catalog): ...` for bug fixes
-   - `refactor(stores): ...` for code structure changes without feature alteration
-   - `test(e2e): ...` for test additions or updates
-   - `docs(adr): ...` for documentation updates
-   - `chore(deps): ...` for dependency or build adjustments
-3. **Atomic Staging Commands:** Output clear, copy-pasteable Git commands grouped cleanly:
-   ```bash
-   git add .
-   git commit -m "feat(scope): descriptive summary in imperative mood"
-   ```
-4. **Living Documentation Auto-Staging:** Ensure auto-generated files (`ARCHITECTURE.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) are staged alongside the implementation.
-5. **Strict Human Terminal Execution for Git:** Autonomous AI agents must never execute `git commit`, `git push`, `git merge`, or branch-modifying Git commands directly via background terminal tools. Git commit and push commands must strictly be provided in copy-pasteable blocks for the human developer to inspect, verify, and execute.
+### Rule 5: Conventional Commit Formatting & User-Driven Commit Execution Protocol
+- **Agent Prohibition:** The AI agent is strictly prohibited from executing `git commit`, `git push`, `git merge`, or branch-modifying Git commands directly.
+- **On-Demand Command Formulation Only:** The AI agent must only generate and provide Git commit commands when explicitly requested by the user (e.g. when the user asks "how do I commit this?", "generate commit command", or asks to commit a completed step). The agent must NOT automatically append git commands to general Q&A or intermediate discussion turns.
+- **Diff Inspection & Structure:** When requested, the agent inspects staged changes via `git status --short` and `git diff` to formulate Conventional Commit commands with distinct multi-part `-m` flags for the user to review and execute (using Windows PowerShell backtick (`) line continuation):
+  ```powershell
+  git add .
+  git commit `
+    -m "feat(scope): concise imperative summary" `
+    -m "[PHASE]: Implementation phase or milestone" `
+    -m "[WHY]: Motivation and business/architectural justification" `
+    -m "[WHAT]: Comprehensive bulleted list of modifications" `
+    -m "[VERIFICATION]: 7-Gateway verification command and test results"
+  ```
+- **Living Documentation Auto-Staging:** Ensure auto-generated files (`ARCHITECTURE.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) are staged alongside the implementation.
 
 ### Rule 6: Automated Verification Engine Protocol
 Before committing any changes, pushing branches, or opening pull requests, the full 7-Gateway Quality Engine must pass with zero errors:

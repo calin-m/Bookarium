@@ -1,13 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { sampleBookText } from '@/mocks/handlers';
 
-export async function fetchBookContent(url?: string, _bookId?: number): Promise<string> {
-  if (!url) {
+export async function fetchBookContent(url?: string, bookId?: number): Promise<string> {
+  if (!url && !bookId) {
     return sampleBookText;
   }
 
   try {
-    const res = await fetch(url);
+    const params = new URLSearchParams();
+    if (bookId) params.set('id', String(bookId));
+    if (url) params.set('url', url);
+
+    const res = await fetch(`/api/books/content?${params.toString()}`);
     if (!res.ok) {
       return sampleBookText;
     }
@@ -27,4 +31,3 @@ export function useBookContent(contentUrl?: string, bookId?: number) {
     staleTime: 60 * 60 * 1000, // 1 hour caching for book text
   });
 }
-

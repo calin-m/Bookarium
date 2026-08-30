@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/presentation/Navbar';
 import { HeroSearch } from '@/components/presentation/HeroSearch';
 import { StickyCatalogToolbar, type ActiveFilterChip } from '@/components/presentation/StickyCatalogToolbar';
 import { AdvancedFilterDrawer, LITERARY_ERAS } from '@/components/presentation/AdvancedFilterDrawer';
 import { BookGrid } from '@/components/presentation/BookGrid';
-import { EditorialArticles } from '@/components/presentation/EditorialArticles';
+import { LiteraryQuotes } from '@/components/presentation/LiteraryQuotes';
 import { BookReaderModal } from '@/components/presentation/BookReaderModal';
 import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
 import { Footer } from '@/components/presentation/Footer';
@@ -18,6 +19,7 @@ import { Trash2, BookOpen, Quote, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export default function Home() {
+  const router = useRouter();
   const openReader = useReaderStore((s) => s.openReader);
   const [activeView, setActiveView] = useState<'catalog' | 'bookshelf' | 'likes'>('catalog');
   const [search, setSearch] = useState('');
@@ -190,9 +192,8 @@ export default function Home() {
             selectedLanguage={language}
             onLanguageChange={handleLanguageChange}
             onReadFeaturedBook={() => {
-              if (displayedBooks[0]) {
-                openReader(displayedBooks[0]);
-              }
+              const targetId = displayedBooks[0]?.id || 1342;
+              router.push(`/read/${targetId}`);
             }}
           />
         )}
@@ -345,8 +346,8 @@ export default function Home() {
           </section>
         )}
 
-        {/* Booksaw 3-Column Editorial Articles / Manifesto */}
-        {activeView === 'catalog' && <EditorialArticles />}
+        {/* Booksaw 3-Column Literary Quotes & Passages */}
+        {activeView === 'catalog' && <LiteraryQuotes />}
       </main>
 
       {/* Reader Modal */}

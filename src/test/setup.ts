@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import React from 'react';
 import { beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { server } from '../mocks/server';
 
@@ -62,5 +63,40 @@ vi.mock('next/font/google', () => ({
   Inter: () => ({ variable: '--font-sans', className: 'font-sans' }),
   JetBrains_Mono: () => ({ variable: '--font-mono', className: 'font-mono' }),
 }));
+
+// Mock next/navigation
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+  }),
+  useParams: () => ({ id: '1342' }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
+}));
+
+// Mock framer-motion for instantaneous test execution
+vi.mock('framer-motion', async () => {
+  const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
+  return {
+    ...actual,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+    motion: {
+      div: ({ children, className, ...props }: any) =>
+        React.createElement('div', { className, ...props }, children),
+      section: ({ children, className, ...props }: any) =>
+        React.createElement('section', { className, ...props }, children),
+      article: ({ children, className, ...props }: any) =>
+        React.createElement('article', { className, ...props }, children),
+      span: ({ children, className, ...props }: any) =>
+        React.createElement('span', { className, ...props }, children),
+      button: ({ children, className, ...props }: any) =>
+        React.createElement('button', { className, ...props }, children),
+    },
+  };
+});
+
 
 

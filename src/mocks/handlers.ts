@@ -278,5 +278,12 @@ export const handlers = [
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
   }),
+
+  // Book content internal proxy handler
+  http.get('/api/books/content', () => {
+    return new HttpResponse(sampleBookText, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }),
 ];
 

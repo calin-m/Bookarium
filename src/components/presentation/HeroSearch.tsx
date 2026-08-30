@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import {
   Search,
-  BookOpen,
   X,
   Globe,
   ArrowRight,

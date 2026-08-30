@@ -16,14 +16,46 @@ An ultra-refined, high-performance web application for discovering, reading, and
 
 ---
 
-## 🎯 Project Scope & Core Principles
+## 🎨 Design Inspiration & Aesthetic Philosophy
 
-Bookarium is engineered as a zero-friction, privacy-first gateway to the world's greatest public domain literature:
-- **Zero API Key Requirement**: Works instantly out of the box with zero third-party developer keys, sign-ups, or credit card walls.
-- **Strict Public Domain Integrity**: All queries programmatically enforce `copyright=false` through Gutendex and Project Gutenberg.
-- **In-Browser Focus Reader**: Distraction-free reading environment featuring dynamic font scaling (12px–32px), Serif/Sans/Mono typography, Light/Dark/Sepia themes, and real-time reading progress persistence to `localStorage`.
-- **Direct Download Hub**: Multi-format downloads including direct EPUB, clean plain text, mobile-friendly HTML, and Kindle formats.
-- **Offline Personal Bookshelf**: Curated collections, reading queue, reading history, and liked titles stored locally via Zustand.
+Bookarium's visual identity and tactile layout are deeply inspired by classical editorial typography, archival letterpress printing, and modern Figma bookstore design systems:
+
+* **Figma Editorial Concept**: Inspired by the minimalist elegance of curated bookstore layouts (such as the *Booksaw / Classic Editorial Bookstore* design concepts on the Figma Community).
+* **Open-Book Skeuomorphic Details**: Custom open-book card spreads with subtle center spine creases (`.book-center-crease`), realistic paper texture shadows (`shadow-booksaw`), and page depth elevation.
+* **Warm Editorial Palettes**:
+  * **Day / Standard**: Clean cream-paper tones (`#f9f8f6`, `#f5f3ec`) with rich obsidian ink typography.
+  * **Sepia Reading**: Warm amber parchment tones (`#f4ebd9`, `#ede2cc`) for eye comfort during long reading sessions.
+  * **Dark Mode**: High-contrast slate obsidian canvas (`#0c0e12`, `#0e1117`) preserving focus in low-light settings.
+* **Refined Typography**: Pairings of classic literary serifs, clean sans-serifs, and monospace archival metadata accents.
+
+---
+
+## 🌐 Data Sources & API References
+
+Bookarium runs on an open, decentralized architecture requiring **Zero Third-Party Developer Keys**:
+
+| Service / Source | Endpoint / Provider | Description & Usage |
+|---|---|---|
+| **Gutendex REST API** | [`https://gutendex.com/`](https://gutendex.com/) | Open-source JSON Web API indexing over 70,000+ Project Gutenberg public domain titles. Provides search, topic filters, author timelines, download metrics, and metadata with strict `copyright=false` filtering. |
+| **Project Gutenberg CDN** | [`https://www.gutenberg.org/`](https://www.gutenberg.org/) | Direct content delivery network providing unabridged plain text (`.txt`), official EPUB packages (`.epub.images`, `.epub.noimages`), Kindle/MOBI formats, and web-ready HTML. |
+| **Public Domain Archive Proxy** | `/api/books` & `/api/books/content` | Next.js server-side route proxies providing caching, CORS handling, and guaranteed public domain integrity before client delivery. |
+
+---
+
+## 🎯 Key Features & Capabilities
+
+* **Zero API Key Requirement**: Works instantly out of the box with zero third-party developer keys, sign-ups, or credit card walls.
+* **Strict Public Domain Integrity**: All queries programmatically enforce `copyright=false` through Gutendex and Project Gutenberg.
+* **Dedicated In-Browser Focus Reader (`/read/[id]`)**:
+  * **Intelligent Gutenberg Chapter Engine**: Detects true prose chapters while filtering front-matter index clusters and preserving prefaces and extracts.
+  * **True Book-Wide Global Pagination**: Calculates virtual pages across the entire volume (e.g. 901 pages for *Moby Dick*, 503 pages for *Pride and Prejudice*) with keyboard (`←`/`→`) and input page jumping.
+  * **Sticky Thin Editorial Footer**: Docked pagination bar with zero vertical jumping or layout shift.
+  * **Zero Cumulative Layout Shift (0 CLS)**: `scrollbar-gutter: stable` and standardized scrollbar tokens prevent horizontal reflows.
+  * **Table of Contents Drawer**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`).
+  * **Font Scaler & Typography Controls**: Real-time font sizing (12px–36px), Serif / Sans / Mono families, and compact/comfortable reading widths.
+* **Dynamic Literary Passages & Quotes**: Rotating showcase of iconic classic quotes linking straight to unabridged volumes with an interactive shuffle trigger.
+* **Direct Download Hub**: Multi-format downloads including direct EPUB, clean plain text, mobile-friendly HTML, and Kindle formats.
+* **Offline Personal Bookshelf**: Curated collections, reading queue, reading history, and liked titles stored locally via Zustand.
 
 ---
 
@@ -40,23 +72,25 @@ flowchart TD
         Hero["Hero Search & Subject Chips (HeroSearch.tsx)"]
         Grid["Interactive Book Grid & Filtering (BookGrid.tsx)"]
         Card["Book Card Component (BookCard.tsx)"]
-        Reader["In-Browser Focus Reader (BookReaderModal.tsx)"]
+        Quotes["Dynamic Literary Quotes (LiteraryQuotes.tsx)"]
+        Reader["Dedicated In-Browser Reader (src/app/read/[id]/page.tsx)"]
         Drawer["Multi-Format Download Drawer (DownloadDrawer.tsx)"]
         FooterComp["Site Footer & Stats (Footer.tsx)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• bookmarks: []\n• queue: []\n• history: []\n• likes: []")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• fontSize (12-32px)\n• fontFamily (serif/sans/mono)\n• progress: {}")]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• queue: []\n• history: []\n• likedBookIds: []")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• fontSize (12-36px)\n• fontFamily (serif/sans/mono)\n• progress: {}")]
         
         QueryBooks["🔄 useBooks(query, topic, page)"]
-        QueryContent["🔄 useBookContent(textUrl)"]
+        QueryContent["🔄 useBookContent(textUrl, bookId)"]
         
         Nav -->|View Bookshelf| StoreShelf
         Hero -->|Filter Query| QueryBooks
         QueryBooks --> Grid
         Grid --> Card
-        Card -->|Open Reader| StoreReader
+        Card -->|Open Reader Route| Reader
         Card -->|Open Downloads| Drawer
         Card -->|Bookmark / Like| StoreShelf
+        Quotes -->|Read Volume| Reader
         Reader --> StoreReader
         Reader --> QueryContent
         FooterComp --> Nav
@@ -64,12 +98,14 @@ flowchart TD
 
     subgraph APILayer ["Server Route & Public Domain API"]
         ProxyRoute["GET /api/books\n(Enforces copyright=false)"]
+        ContentProxy["GET /api/books/content\n(Unabridged Text Stream)"]
         GutendexAPI["🌐 Gutendex API\n(70,000+ Gutenberg Titles)"]
         GutenbergContent["🌐 Project Gutenberg Content CDN\n(text/plain & EPUB)"]
         
         QueryBooks --> ProxyRoute
         ProxyRoute --> GutendexAPI
-        QueryContent --> GutenbergContent
+        QueryContent --> ContentProxy
+        ContentProxy --> GutenbergContent
     end
 
     subgraph QualityGateEngine ["7-Gateway Verification Engine"]
@@ -97,17 +133,19 @@ flowchart TD
 flowchart LR
     subgraph ReaderState ["Zustand Reader Store (useReaderStore)"]
         ActiveBook["Active Book Metadata"]
-        FontSize["Font Size (12px - 32px)"]
+        FontSize["Font Size (12px - 36px)"]
         FontFamily["Font Family: Serif | Sans | Mono"]
         LineHeight["Line Height: 1.4 - 2.0"]
         Theme["Theme: Light | Dark | Sepia"]
-        Progress["Scroll Progress %"]
+        Progress["Global Page & Book Progress %"]
     end
 
-    subgraph ReaderView ["Focus Reader Modal (BookReaderModal.tsx)"]
-        Toolbar["Floating Minimalist Control Bar"]
-        ContentArea["Rendered Typography Layout"]
+    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]
+        Toolbar["Top Editorial Reader Bar"]
+        ContentArea["Book Page Rendering Area"]
         ProgressBar["Top Reading Progress Indicator"]
+        FooterBar["Sticky Bottom Pagination Bar"]
+        TOC["Table of Contents Slide-Over Drawer"]
     end
 
     subgraph Persistence ["Browser LocalStorage"]
@@ -118,43 +156,10 @@ flowchart LR
     Toolbar -->|Adjust Size / Family / Theme| ReaderState
     ReaderState --> ContentArea
     ReaderState --> ProgressBar
-    ContentArea -->|Scroll Event| Progress
-    Progress --> LSProgress
+    FooterBar -->|Page Flip / Jump| ReaderState
+    TOC -->|"Select Chapter [p. X]"| ReaderState
     ReaderState <--> LSState
-```
-
----
-
-### 3. Atomic Component Hierarchy
-
-```mermaid
-graph TD
-    subgraph Atoms ["UI Primitives (src/components/ui/)"]
-        Button["Button.tsx"]
-        Badge["Badge.tsx"]
-        Card["Card.tsx"]
-        Input["Input.tsx"]
-        Modal["Modal.tsx"]
-    end
-
-    subgraph Motion ["Motion Wrappers (src/components/motion/)"]
-        MotionRev["MotionReveal.tsx"]
-        Stagger["StaggerGroup.tsx"]
-    end
-
-    subgraph Organisms ["Domain Presentation (src/components/presentation/)"]
-        Navbar["Navbar.tsx"]
-        HeroSearch["HeroSearch.tsx"]
-        BookCard["BookCard.tsx"]
-        BookGrid["BookGrid.tsx"]
-        ReaderModal["BookReaderModal.tsx"]
-        DownloadDrawer["DownloadDrawer.tsx"]
-        Footer["Footer.tsx"]
-    end
-
-    Atoms --> Organisms
-    Motion --> Organisms
-    Organisms --> Page["src/app/page.tsx"]
+    ReaderState <--> LSProgress
 ```
 
 ---
@@ -238,6 +243,6 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 ---
 
-## ⚖️ License
+## ⚖️ License & Public Domain Notice
 
-Licensed under the **MIT License**. All queried literature and books are in the **Public Domain** (Zero Copyright / CC0).
+Licensed under the **MIT License**. All queried literature and book texts originate from **Project Gutenberg** and are in the **Public Domain** (Zero Copyright / CC0) in accordance with international public domain statutes.

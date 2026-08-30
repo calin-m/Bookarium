@@ -9,10 +9,6 @@ import {
   Library,
   X,
   Loader2,
-  Activity,
-  Server,
-  Database,
-  Wifi,
   WifiOff,
   Zap,
 } from 'lucide-react';

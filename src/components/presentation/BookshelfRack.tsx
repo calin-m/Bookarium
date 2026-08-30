@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -29,11 +30,11 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   onBookClick,
   onDownloadClick,
 }) => {
+  const router = useRouter();
   const isSaved = useBookshelfStore((s) => s.isBookSaved);
   const toggleSave = useBookshelfStore((s) => s.toggleSaveBook);
   const isLiked = useBookshelfStore((s) => s.isBookLiked);
   const toggleLike = useBookshelfStore((s) => s.toggleLikeBook);
-  const openReader = useReaderStore((s) => s.openReader);
   const getProgress = useReaderStore((s) => s.getProgress);
 
   if (books.length === 0) {
@@ -80,13 +81,13 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     style={{ height: `${heightVariance}px`, width: `${widthVariance}px` }}
                     onClick={() => {
                       if (onBookClick) onBookClick(book);
-                      else openReader(book);
+                      else router.push(`/read/${book.id}`);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         if (onBookClick) onBookClick(book);
-                        else openReader(book);
+                        else router.push(`/read/${book.id}`);
                       }
                     }}
                     tabIndex={0}
@@ -157,7 +158,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            openReader(book);
+                            if (onBookClick) onBookClick(book);
+                            else router.push(`/read/${book.id}`);
                           }}
                           className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-medium transition-colors"
                           aria-label={`Open reader for ${book.title}`}
