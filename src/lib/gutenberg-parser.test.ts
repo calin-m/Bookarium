@@ -205,5 +205,58 @@ Release Date: October 31, 1993 [eBook #84]
     expect(spacePages.length).toBeGreaterThanOrEqual(2);
     expect(spacePages[0].endsWith('word')).toBe(true);
   });
+
+  it('parses short story anthologies with front-matter CONTENTS lists into individual story sections', () => {
+    const anthologyText = `
+*** START OF THE PROJECT GUTENBERG EBOOK GHOST STORIES ***
+
+Twenty-Five Ghost Stories
+
+CONTENTS.
+
+                                                                    PAGE
+Preface                                                                5
+The Black Cat                                                          7
+The Flayed Hand                                                       28
+The Vengeance of a Tree                                               37
+
+PREFACE
+
+This collection of ghost stories owes its publication to an interest...
+
+THE BLACK CAT.
+BY EDGAR ALLAN POE.
+
+For the most wild, yet most homely narrative which I am about to pen...
+
+THE FLAYED HAND.
+BY GUY DE MAUPASSANT.
+
+One evening about eight months ago I met with some college comrades...
+
+THE VENGEANCE OF A TREE.
+BY ELEANOR F. LEWIS.
+
+All draped with blue denim was the room...
+
+*** END OF THE PROJECT GUTENBERG EBOOK GHOST STORIES ***
+`;
+
+    const sections = parseGutenbergChapters(anthologyText);
+    expect(sections.length).toBeGreaterThanOrEqual(4);
+
+    const blackCat = sections.find((s) => s.title.includes('The Black Cat'));
+    expect(blackCat).toBeDefined();
+    expect(blackCat?.content).toContain('For the most wild, yet most homely narrative');
+
+    const flayedHand = sections.find((s) => s.title.includes('The Flayed Hand'));
+    expect(flayedHand).toBeDefined();
+    expect(flayedHand?.content).toContain('One evening about eight months ago');
+
+    const tree = sections.find((s) => s.title.includes('The Vengeance of a Tree'));
+    expect(tree).toBeDefined();
+    expect(tree?.content).toContain('All draped with blue denim');
+  });
 });
+
 

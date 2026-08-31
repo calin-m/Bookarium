@@ -170,16 +170,18 @@ export const BookGrid: React.FC<BookGridProps> = ({
         </div>
       )}
 
-      {/* Main Content: Grid vs. Shelf */}
-      {activeViewMode === 'shelf' ? (
-        <BookshelfRack books={books} onDownloadClick={onDownloadClick} />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {books.map((book) => (
-            <BookCard key={book.id} book={book} onDownloadClick={onDownloadClick} />
-          ))}
-        </div>
-      )}
+      {/* Main Content: Grid vs. Shelf with smooth page fade */}
+      <div key={`catalog-page-${page}`} className="animate-page-turn">
+        {activeViewMode === 'shelf' ? (
+          <BookshelfRack books={books} onDownloadClick={onDownloadClick} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {books.map((book) => (
+              <BookCard key={book.id} book={book} onDownloadClick={onDownloadClick} />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Pagination Bar */}
       {onPageChange && (

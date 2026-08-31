@@ -46,23 +46,23 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
     <footer
       className={`sticky bottom-0 z-40 shrink-0 border-t transition-colors duration-200 ${activeTheme.footer}`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between gap-4 font-mono text-xs select-none">
+      <div className="w-full px-3 sm:px-6 md:px-8 h-12 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4 font-mono text-xs select-none">
         
-        {/* Left: Active Chapter Breadcrumb */}
-        <div className="flex items-center gap-2 min-w-0">
+        {/* Left Track (1fr): Active Chapter Breadcrumb with Graceful Truncation */}
+        <div className="flex items-center gap-2 min-w-0 justify-self-start">
           <BookMarked className="w-4 h-4 text-primary-500 shrink-0" />
-          <span className="font-serif font-medium truncate max-w-[180px] sm:max-w-xs md:max-w-sm">
+          <span className="font-serif font-medium truncate" title={chapterTitle || 'Preamble'}>
             {chapterTitle || 'Preamble'}
           </span>
           {readingMode === 'paginated' && chapterPageCount > 1 && (
-            <span className={`hidden sm:inline-block text-[11px] font-mono ${activeTheme.textMuted}`}>
+            <span className={`hidden md:inline-block text-[11px] font-mono shrink-0 ${activeTheme.textMuted}`}>
               (Sec. p. {chapterPage}/{chapterPageCount})
             </span>
           )}
         </div>
 
-        {/* Center: True Continuous Book Pagination & Page Jumper */}
-        <div className="flex items-center gap-2">
+        {/* Center Track (auto): Mathematically Locked to Screen Dead-Center */}
+        <div className="flex items-center justify-center justify-self-center">
           {readingMode === 'paginated' ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className={`hidden sm:inline ${activeTheme.textMuted}`}>Page</span>
@@ -85,7 +85,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
                 aria-valuenow={globalPage}
               />
               <span className={activeTheme.textMuted}>of {totalBookPages}</span>
-              <span className={`hidden md:inline text-[10px] opacity-60 ml-1`}>
+              <span className={`hidden lg:inline text-[10px] opacity-60 ml-1`}>
                 • ❦ Public Domain ❦
               </span>
             </div>
@@ -99,8 +99,8 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
           )}
         </div>
 
-        {/* Right: Prev / Next Navigation */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Right Track (1fr): Prev / Next Navigation Permanently Docked */}
+        <div className="flex items-center gap-1.5 shrink-0 justify-self-end">
           {readingMode === 'paginated' ? (
             <>
               <button

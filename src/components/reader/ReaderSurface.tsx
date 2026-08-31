@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { BookOpen, RefreshCw, AlertCircle, ZoomIn } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
@@ -15,6 +15,7 @@ export interface ReaderSurfaceProps {
   readingMode: 'paginated' | 'scroll';
   chapter?: ChapterSection;
   currentPageText: string;
+  chapterPage?: number;
   activeChapterIndex: number;
   totalChapters: number;
   isLoading: boolean;
@@ -36,6 +37,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   readingMode,
   chapter,
   currentPageText,
+  chapterPage,
   activeChapterIndex,
   totalChapters,
   isLoading,
@@ -48,10 +50,24 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   onFontSizeChange,
 }) => {
   const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
+  const mainRef = useRef<HTMLElement>(null);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const pinchStartRef = useRef<{ distance: number; initialFontSize: number } | null>(null);
   const [zoomFeedback, setZoomFeedback] = useState<{ visible: boolean; size: number } | null>(null);
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Smooth animated scroll-to-top on page or chapter transition
+  useEffect(() => {
+    if (readingMode === 'paginated' && mainRef.current) {
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      mainRef.current.scrollTo({
+        top: 0,
+        behavior: prefersReducedMotion ? 'instant' : 'smooth',
+      });
+    }
+  }, [currentPageText, activeChapterIndex, readingMode]);
 
   const fontClass =
     fontFamily === 'serif'
@@ -180,6 +196,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
 
   return (
     <main
+      ref={mainRef}
       className={`relative flex-1 overflow-y-scroll transition-colors duration-200 ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
       role="main"
       onTouchStart={handleTouchStart}
@@ -207,57 +224,57 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
         </div>
       )}
       <article
-        className={`mx-auto px-6 sm:px-12 py-10 sm:py-16 ${widthClass} ${fontClass}`}
+        key={readingMode === 'paginated' ? `p-${activeChapterIndex}-${chapterPage ?? (contentToDisplay?.slice(0, 30) || '0')}` : `s-${activeChapterIndex}`}
+        className={`mx-auto px-6 sm:px-12 py-10 sm:py-16 ${widthClass} ${fontClass} animate-page-turn`}
         style={{
           fontSize: `${fontSize}px`,
           lineHeight: `${lineHeight}`,
         }}
       >
-        
-        {/* Archival Opening Frontispiece (Section 1 / Book Opening) */}
-        {activeChapterIndex === 0 && (bookTitle || bookAuthor) ? (
-          <header className={`mb-12 pb-8 border-b text-center ${activeTheme.border}`}>
-            <span className="inline-block text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-primary-600 dark:text-primary-400 font-bold mb-3 px-2.5 py-0.5 rounded-full border border-primary-500/30">
-              Project Gutenberg Public Domain Edition
-            </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold tracking-tight text-inherit mb-3">
-              {bookTitle || chapter?.displayTitle || chapter?.title}
-            </h1>
-            {bookAuthor && (
-              <p className="text-base sm:text-lg font-serif italic text-muted-foreground">
-                by {bookAuthor}
-              </p>
+          
+          {/* Archival Opening Frontispiece (Section 1 / Book Opening) */}
+          {activeChapterIndex === 0 && (bookTitle || bookAuthor) ? (
+            <header className={`mb-12 pb-8 border-b text-center ${activeTheme.border}`}>
+              <span className="inline-block text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-primary-600 dark:text-primary-400 font-bold mb-3 px-2.5 py-0.5 rounded-full border border-primary-500/30">
+                Project Gutenberg Public Domain Edition
+              </span>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold tracking-tight text-inherit mb-3">
+                {bookTitle || chapter?.displayTitle || chapter?.title}
+              </h1>
+              {bookAuthor && (
+                <p className="text-base sm:text-lg font-serif italic text-muted-foreground">
+                  by {bookAuthor}
+                </p>
+              )}
+            </header>
+          ) : chapter ? (
+            /* Chapter Title Banner for subsequent sections */
+            <header className={`mb-10 pb-6 border-b text-center ${activeTheme.border}`}>
+              <span className="text-[11px] font-mono uppercase tracking-widest text-primary-600 dark:text-primary-400 font-bold block mb-2">
+                Section {activeChapterIndex + 1} of {totalChapters}
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold tracking-tight text-inherit">
+                {chapter.displayTitle || chapter.title}
+              </h2>
+            </header>
+          ) : null}
+
+          {/* Formatted Book Body with Dynamic Line Height and Clean Word Boundaries */}
+          <div
+            data-testid="reader-content-body"
+            className="space-y-6 select-text whitespace-pre-wrap text-inherit font-normal antialiased [word-break:normal] [overflow-wrap:break-word] [hyphens:none]"
+            style={{
+              fontSize: `${fontSize}px`,
+              lineHeight: `${lineHeight}`,
+            }}
+          >
+            {contentToDisplay || (
+              <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
+                <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                Empty section or end of text volume.
+              </div>
             )}
-          </header>
-        ) : chapter ? (
-          /* Chapter Title Banner for subsequent sections */
-          <header className={`mb-10 pb-6 border-b text-center ${activeTheme.border}`}>
-            <span className="text-[11px] font-mono uppercase tracking-widest text-primary-600 dark:text-primary-400 font-bold block mb-2">
-              Section {activeChapterIndex + 1} of {totalChapters}
-            </span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold tracking-tight text-inherit">
-              {chapter.displayTitle || chapter.title}
-            </h2>
-          </header>
-        ) : null}
-
-        {/* Formatted Book Body with Dynamic Line Height and Clean Word Boundaries */}
-        <div
-          data-testid="reader-content-body"
-          className="space-y-6 select-text whitespace-pre-wrap text-inherit font-normal antialiased [word-break:normal] [overflow-wrap:break-word] [hyphens:none]"
-          style={{
-            fontSize: `${fontSize}px`,
-            lineHeight: `${lineHeight}`,
-          }}
-        >
-          {contentToDisplay || (
-            <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
-              <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              Empty section or end of text volume.
-            </div>
-          )}
-        </div>
-
+          </div>
       </article>
     </main>
   );

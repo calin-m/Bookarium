@@ -207,6 +207,76 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
     validMatches.push(item);
   }
 
+  // Strategy 2: If standard CHAPTER/BOOK regex found <= 2 matches, check for a structured Front-Matter TOC (e.g. short story anthologies)
+  if (validMatches.length <= 2) {
+    const tocHeadingRegex = /(?:^|\n\n)\s*(?:CONTENTS|TABLE OF CONTENTS|INDEX)\b\.?/i;
+    const match = tocHeadingRegex.exec(mainBody);
+    if (match) {
+      const start = match.index + match[0].length;
+      const tocSlice = mainBody.slice(start, start + 4000);
+      const lines = tocSlice.split('\n');
+      const tocItems: string[] = [];
+      let foundTable = false;
+      let tocEndOffset = 0;
+
+      for (const line of lines) {
+        const clean = line.trim();
+        if (!clean) {
+          tocEndOffset += line.length + 1;
+          continue;
+        }
+        if (/^(?:PAGE|CHAPTER|\.|\-)+$/i.test(clean)) {
+          foundTable = true;
+          tocEndOffset += line.length + 1;
+          continue;
+        }
+        const hasPageNumber = /\b\d+\s*$/.test(clean);
+        if (hasPageNumber) {
+          foundTable = true;
+          const titleOnly = clean.replace(/\s+(?:\.{2,}|\d+|[IVXLCDM]+)\s*$/i, '').trim();
+          if (titleOnly.length >= 3 && titleOnly.length < 80) {
+            tocItems.push(titleOnly);
+          }
+          tocEndOffset += line.length + 1;
+        } else if (foundTable) {
+          break;
+        } else {
+          tocEndOffset += line.length + 1;
+        }
+      }
+
+      if (tocItems.length >= 2) {
+        const searchStart = start + tocEndOffset;
+        const searchSlice = mainBody.slice(searchStart);
+        const tocMatches: { index: number; title: string; bodyLength: number }[] = [];
+
+        for (const title of tocItems) {
+          const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+          const regex = new RegExp(`(?:^|\\n\\n)\\s*(${escaped}[.\\s]*)(?:\\n+(?:BY\\s+[^\\n]+|[A-Z\\s]{3,}))?(?=\\n\\n|$)`, 'i');
+          const headingMatch = regex.exec(searchSlice);
+          if (headingMatch) {
+            tocMatches.push({
+              index: searchStart + headingMatch.index,
+              title,
+              bodyLength: 0,
+            });
+          }
+        }
+
+        if (tocMatches.length >= 2) {
+          tocMatches.sort((a, b) => a.index - b.index);
+          for (let i = 0; i < tocMatches.length; i++) {
+            const startIdx = tocMatches[i].index;
+            const endIdx = i + 1 < tocMatches.length ? tocMatches[i + 1].index : mainBody.length;
+            tocMatches[i].bodyLength = endIdx - startIdx;
+          }
+          validMatches.length = 0;
+          validMatches.push(...tocMatches);
+        }
+      }
+    }
+  }
+
   const sections: ChapterSection[] = [];
 
   if (validMatches.length === 0) {
@@ -315,7 +385,7 @@ export function extractGutenbergHeaderMetadata(rawText: string | undefined | nul
   const authorMatch = /^Author:\s*([^\r\n]+)/im.exec(headerSlice);
 
   return {
-    title: titleMatch ? titleMatch[1].trim() : undefined,
-    author: authorMatch ? authorMatch[1].trim() : undefined,
+    title: titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : undefined,
+    author: authorMatch ? authorMatch[1].replace(/\s+/g, ' ').trim() : undefined,
   };
 }

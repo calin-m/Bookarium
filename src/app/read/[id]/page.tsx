@@ -194,6 +194,7 @@ export default function BookReaderPage() {
         readingMode={readingMode}
         chapter={activeChapter}
         currentPageText={currentPageText}
+        chapterPage={currentChapterPage}
         activeChapterIndex={activeChapterIndex}
         totalChapters={chaptersWithPagination.length || 1}
         isLoading={isContentLoading}

@@ -64,11 +64,12 @@ export const LiteraryQuotes: React.FC = () => {
             <Link
               key={item.id}
               href={`/read/${item.bookId}`}
-              className="group relative flex flex-col justify-between p-7 sm:p-8 rounded-xl bg-card border border-border shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1.5 transition-all duration-300 cursor-pointer"
+              className="group relative flex flex-col justify-between p-7 sm:p-8 rounded-xl bg-card border border-border shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1.5 transition-all duration-300 cursor-pointer h-full"
               data-testid={`quote-card-${item.id}`}
               aria-label={`Read ${item.bookTitle} by ${item.author}`}
             >
-              <div className="space-y-5">
+              {/* Top Section: Category Kicker & Quote Passage (Grows vertically to push bottom info down) */}
+              <div className="flex-1 flex flex-col space-y-5 mb-6">
                 {/* Category & Era Kicker */}
                 <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-3 border-b border-border">
                   <span className="text-primary font-bold flex items-center gap-1.5">
@@ -79,31 +80,33 @@ export const LiteraryQuotes: React.FC = () => {
                 </div>
 
                 {/* Decorative Quote Icon & Passage */}
-                <div className="relative">
+                <div className="relative flex-1">
                   <Quote className="w-8 h-8 text-primary/20 absolute -top-3 -left-2 -z-0" />
                   <p className="relative z-10 font-serif italic text-base sm:text-lg text-foreground leading-relaxed transition-colors indent-7 sm:indent-8">
                     &ldquo;{item.quote}&rdquo;
                   </p>
                 </div>
+              </div>
 
-                {/* Citation & Author Attribution */}
-                <div className="pt-2">
+              {/* Bottom Section: Citation, Author Attribution & Read Prompt (Permanently aligned at the bottom across all cards) */}
+              <div className="pt-4 border-t border-border space-y-4">
+                <div>
                   <div className="font-serif font-bold text-sm text-foreground group-hover:text-primary transition-colors">
                     {item.author}
                   </div>
                   <div className="text-xs text-muted-foreground font-serif italic">
                     {item.bookTitle}
                   </div>
-                  <div className="text-[11px] font-mono text-muted-foreground mt-1">
+                  <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
                     {item.citation}
                   </div>
                 </div>
-              </div>
 
-              {/* Read Action Prompt */}
-              <div className="pt-6 mt-6 border-t border-border flex items-center justify-between text-xs font-mono text-primary font-bold">
-                <span>Read Full Volume</span>
-                <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform" />
+                {/* Read Action Prompt */}
+                <div className="pt-3 border-t border-border/50 flex items-center justify-between text-xs font-mono text-primary font-bold">
+                  <span>Read Full Volume</span>
+                  <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform" />
+                </div>
               </div>
             </Link>
           ))}

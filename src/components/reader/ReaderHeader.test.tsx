@@ -25,7 +25,7 @@ describe('ReaderHeader', () => {
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('Jane Austen')).toBeInTheDocument();
-    expect(screen.getByText(/Section 6 of 61/i)).toBeInTheDocument();
+    expect(screen.getByText(/Section 6\/61/i)).toBeInTheDocument();
     expect(screen.getByText(/45% Progress/i)).toBeInTheDocument();
   });
 
@@ -76,25 +76,44 @@ describe('ReaderHeader', () => {
     expect(onThemeChange).toHaveBeenCalledWith('sepia');
   });
 
-  it('toggles metadata view between literary title/author and Gutenberg volume info', () => {
+  it('opens and closes the Gutenberg Archive volume info modal', () => {
     render(<ReaderHeader {...defaultProps} />);
 
-    // Default: Literary title and author
+    // Default: Literary title and author visible
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('Jane Austen')).toBeInTheDocument();
 
-    const toggleBtn = screen.getByLabelText(/Switch to Gutenberg Archive Volume Info/i);
-    fireEvent.click(toggleBtn);
+    const infoBtn = screen.getByLabelText(/View Gutenberg Archive Volume Info/i);
+    fireEvent.click(infoBtn);
 
-    // Toggled: Gutenberg Volume metadata
-    expect(screen.getByText('Gutenberg Volume #1342')).toBeInTheDocument();
-    expect(screen.getByText('Project Gutenberg Public Domain Archive')).toBeInTheDocument();
+    // Modal opens with detailed metadata
+    expect(screen.getByText('Public Domain Masterwork')).toBeInTheDocument();
+    expect(screen.getByText('View on Gutenberg.org')).toBeInTheDocument();
 
-    // Toggle back
-    const toggleBackBtn = screen.getByLabelText(/Switch to Literary Title & Author/i);
-    fireEvent.click(toggleBackBtn);
+    // Close modal via close button
+    const closeBtn = screen.getByLabelText('Close Information Modal');
+    fireEvent.click(closeBtn);
 
-    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
-    expect(screen.getByText('Jane Austen')).toBeInTheDocument();
+    expect(screen.queryByText('Public Domain Masterwork')).not.toBeInTheDocument();
+  });
+
+  it('sanitizes and renders extra long titles and multiline strings gracefully', () => {
+    const longTitle = 'The German Classics of the Nineteenth and Twentieth Centuries,\r\nMasterpieces of German Literature Translated into English. in Twenty Volumes, Volume 01';
+    const longAuthor = 'Kuno Francke\r\nand William Guild Howard';
+
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        title={longTitle}
+        author={longAuthor}
+        bookId={59828}
+      />
+    );
+
+    const expectedCleanTitle = 'The German Classics of the Nineteenth and Twentieth Centuries, Masterpieces of German Literature Translated into English. in Twenty Volumes, Volume 01';
+    const expectedCleanAuthor = 'Kuno Francke and William Guild Howard';
+
+    expect(screen.getByText(expectedCleanTitle)).toBeInTheDocument();
+    expect(screen.getByText(expectedCleanAuthor)).toBeInTheDocument();
   });
 });
