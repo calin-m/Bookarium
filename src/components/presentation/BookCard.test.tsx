@@ -52,15 +52,15 @@ describe('BookCard component', () => {
     expect(handleDownload).toHaveBeenCalledWith(book);
   });
 
-  it('should fallback to styled gradient cover when image onError fires', () => {
+  it('should call onPreviewClick when clicking book cover visual', () => {
+    const handlePreview = vi.fn();
     const book = mockBooks[0];
-    render(<BookCard book={book} />);
+    render(<BookCard book={book} onPreviewClick={handlePreview} />);
 
-    const img = screen.getByAltText(`Cover of ${book.title}`);
-    fireEvent.error(img);
-
-    expect(screen.queryByAltText(`Cover of ${book.title}`)).not.toBeInTheDocument();
-    expect(screen.getByText('Public Domain')).toBeInTheDocument();
+    const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${book.title}`);
+    fireEvent.click(coverVisual);
+    expect(handlePreview).toHaveBeenCalledWith(book, expect.any(Object));
   });
 });
+
 

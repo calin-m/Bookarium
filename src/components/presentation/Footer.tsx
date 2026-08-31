@@ -27,7 +27,7 @@ export const Footer: React.FC = () => {
               A high-performance, keyless public domain digital library. Dedicated to free, universal
               access to the world’s greatest literature, philosophy, and timeless works.
             </p>
-            <div className="inline-flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-mono font-medium">
+            <div className="inline-flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 [html.sepia_&]:text-emerald-400 font-mono font-medium">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>100% CC0 Public Domain</span>
             </div>

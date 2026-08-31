@@ -260,7 +260,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
           {/* Right Column: Booksaw Standing 3D Book Spotlight with Realistic 3D Opening Physics */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
             <div
-              className={`relative group cursor-pointer book-3d-stage ${
+              className={`relative group cursor-pointer book-3d-stage hero-3d-stage ${
                 pinState === 'open' ? 'book-open' : pinState === 'closed' ? 'book-closed' : ''
               }`}
               onClick={handleBookClick}
@@ -283,15 +283,15 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
               <div className="book-3d-rig relative">
                 
                 {/* Desktop Open Book Spread Base (Right Page: straight left spine, rounded right outer edge) */}
-                <div className="hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border/60 p-6 flex-col justify-between text-foreground z-0 overflow-hidden">
+                <div className="hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex-col justify-between text-foreground z-0 overflow-hidden">
                   <div key={`right-page-base-${activeFeatured.id}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
                     <div>
-                      <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border/40">
+                      <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
                         <span>Notable Passage</span>
                         <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{activeFeatured.license}</span>
                       </div>
 
-                      <div className="p-3.5 rounded-lg bg-card/60 border border-border/60 shadow-xs mb-2">
+                      <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
                         <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
                         <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8">
                           &ldquo;{activeFeatured.quoteExcerpt}&rdquo;
@@ -300,7 +300,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                     </div>
 
                     {/* Right Page Footer Actions */}
-                    <div className="pt-2.5 border-t border-border/30 flex items-center justify-between gap-2">
+                    <div className="pt-2.5 border-t border-border flex items-center justify-between gap-2">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -322,7 +322,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                             e.stopPropagation();
                             onReadFeaturedBook(activeFeatured);
                           }}
-                          className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-white bg-primary-600 hover:bg-primary-700 px-3.5 py-1.5 rounded shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                          className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-primary-foreground bg-primary hover:opacity-90 px-3.5 py-1.5 rounded shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
                           aria-label="Read Volume"
                         >
                           <span>Read Volume</span>
@@ -341,14 +341,14 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                     onAnimationEnd={() => setIsTurningLeaf(false)}
                   >
                     {/* Front Face of Turning Leaf: Outgoing Right Page quote lifting away */}
-                    <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border/60 p-6 flex flex-col justify-between text-foreground overflow-hidden">
+                    <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
                       <div>
-                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border/40">
+                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
                           <span>Notable Passage</span>
                           <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{prevFeatured.license}</span>
                         </div>
 
-                        <div className="p-3.5 rounded-lg bg-card/60 border border-border/60 shadow-xs mb-2">
+                        <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
                           <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
                           <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8">
                             &ldquo;{prevFeatured.quoteExcerpt}&rdquo;
@@ -358,9 +358,9 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                     </div>
 
                     {/* Back Face of Turning Leaf: Incoming Left Page title & quote landing onto left side */}
-                    <div className="turning-leaf-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border/60 p-6 flex flex-col justify-between text-foreground overflow-hidden">
+                    <div className="turning-leaf-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
                       <div>
-                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border/40">
+                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border">
                           <span className="flex items-center gap-1">
                             <Sparkles className="w-3 h-3" /> Public Domain
                           </span>
@@ -381,7 +381,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                         </div>
                       </div>
 
-                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border/30">
+                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
                         <span className="truncate max-w-[160px]">{activeFeatured.primarySubject}</span>
                         <span className="opacity-60">p. 1</span>
                       </div>
@@ -444,7 +444,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                               e.stopPropagation();
                               onReadFeaturedBook(activeFeatured);
                             }}
-                            className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded transition-colors"
+                            className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-primary-foreground bg-primary hover:opacity-90 px-3 py-1 rounded transition-colors"
                             aria-label="Read Volume"
                           >
                             <span>Read Volume</span>
@@ -456,10 +456,10 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                   </div>
 
                   {/* BACK FACE: Inside Left Page (Visible when rotated -180deg on desktop hover) */}
-                  <div className="absolute inset-0 book-3d-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border/60 p-6 flex flex-col justify-between text-foreground overflow-hidden">
+                  <div className="absolute inset-0 book-3d-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
                     <div key={`left-page-content-${isTurningLeaf ? prevFeatured.id : activeFeatured.id}`} className="flex flex-col justify-between h-full relative">
                       <div>
-                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border/40">
+                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border">
                           <span className="flex items-center gap-1">
                             <Sparkles className="w-3 h-3" /> Public Domain
                           </span>
@@ -480,7 +480,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                         </div>
                       </div>
 
-                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border/30">
+                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
                         <span className="truncate max-w-[160px]">{(isTurningLeaf ? prevFeatured : activeFeatured).primarySubject}</span>
                         <span className="opacity-60">p. 1</span>
                       </div>

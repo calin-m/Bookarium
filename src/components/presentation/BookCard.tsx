@@ -15,9 +15,10 @@ import { Card } from '@/components/ui/Card';
 export interface BookCardProps {
   book: GutendexBook;
   onDownloadClick?: (book: GutendexBook) => void;
+  onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
 }
 
-export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => {
+export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPreviewClick }) => {
   const hasMounted = useHasMounted();
   const [imageError, setImageError] = React.useState(false);
   const rawIsSaved = useBookshelfStore((s) => s.isBookSaved(book.id));
@@ -37,14 +38,45 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
       className="group relative flex flex-col h-full bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1 transition-all duration-300 rounded-xl overflow-hidden"
       data-testid={`book-card-${book.id}`}
     >
-      {/* Top Cover Visual with Booksaw Directional Depth */}
-      <div className="relative aspect-[3/4] w-full bg-muted overflow-hidden flex items-center justify-center p-3 sm:p-4 border-b border-border">
+      {/* Top Cover Visual with Booksaw Directional Depth & Click-to-Open Affordance */}
+      <div
+        onClick={(e) => {
+          if (onPreviewClick) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            onPreviewClick(book, {
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+            });
+          }
+        }}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && onPreviewClick) {
+            e.preventDefault();
+            const rect = e.currentTarget.getBoundingClientRect();
+            onPreviewClick(book, {
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+            });
+          }
+        }}
+        tabIndex={onPreviewClick ? 0 : undefined}
+        role={onPreviewClick ? 'button' : undefined}
+        aria-label={onPreviewClick ? `Flip open 3D preview for ${book.title}` : undefined}
+        title={onPreviewClick ? `Click to flip open 3D spread for ${book.title}` : undefined}
+        className={`relative aspect-[3/4] w-full bg-muted/60 overflow-hidden flex items-center justify-center p-2.5 sm:p-3 border-b border-border select-none ${
+          onPreviewClick ? 'cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary' : ''
+        }`}
+      >
         {formats.coverImage && !imageError ? (
-          <div className="relative w-full h-full rounded-md overflow-hidden shadow-xs group-hover:scale-[1.02] transition-transform duration-300">
+          <div className="relative w-full h-full flex items-center justify-center group-hover:scale-[1.03] transition-transform duration-300">
             <img
               src={formats.coverImage}
               alt={`Cover of ${book.title}`}
-              className="w-full h-full object-cover object-center"
+              className="max-w-full max-h-full w-auto h-auto object-contain rounded-sm shadow-md"
               loading="lazy"
               onError={() => setImageError(true)}
             />
@@ -100,11 +132,16 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
           </button>
         </div>
 
-        {/* Subject Pill */}
-        <div className="absolute bottom-2.5 left-2.5 z-20">
-          <Badge variant="outline" size="sm" className="bg-card text-[10px] border-border text-foreground font-mono uppercase">
+        {/* Subject Pill / Flip Open Hover Affordance */}
+        <div className="absolute bottom-2.5 left-2.5 z-20 flex items-center gap-1.5">
+          <Badge variant="outline" size="sm" className="bg-card text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors">
             {primarySubject}
           </Badge>
+          {onPreviewClick && (
+            <span className="hidden sm:inline-flex opacity-0 group-hover:opacity-100 items-center gap-1 text-[9px] font-mono font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded shadow-xs transition-opacity">
+              Flip Open 📖
+            </span>
+          )}
         </div>
       </div>
 
@@ -121,7 +158,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
 
         <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
           <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
-          <span className="text-[10px] font-mono font-medium tracking-wider text-emerald-700 dark:text-emerald-400 uppercase">
+          <span className="text-[10px] font-mono font-medium tracking-wider text-emerald-700 dark:text-emerald-400 [html.sepia_&]:text-emerald-400 uppercase">
             CC0 / Free
           </span>
         </div>

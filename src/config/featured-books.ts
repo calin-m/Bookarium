@@ -150,3 +150,62 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
 
 export const FEATURED_HERO_BOOK: FeaturedHeroBook = FEATURED_HERO_BOOKS[0];
 
+export interface BookPassage {
+  chapterLabel: string;
+  openingLine: string;
+  quoteExcerpt: string;
+}
+
+export function getBookPassages(book: {
+  id: number;
+  title: string;
+  authors?: { name: string }[];
+  subjects?: string[];
+}): BookPassage[] {
+  const featured = FEATURED_HERO_BOOKS.find(
+    (f) => f.id === book.id || f.title.toLowerCase() === book.title.toLowerCase()
+  );
+
+  const author =
+    book.authors?.[0]?.name.split(',').reverse().join(' ').trim() || 'the author';
+  const subject = book.subjects?.[0]?.split('--')[0].trim() || 'timeless literature';
+
+  if (featured) {
+    return [
+      {
+        chapterLabel: 'Chapter I • The Beginning',
+        openingLine: featured.openingLine,
+        quoteExcerpt: featured.quoteExcerpt,
+      },
+      {
+        chapterLabel: 'Notable Soliloquy',
+        openingLine: `In the unfolding tapestry of ${featured.title}, ${featured.author} explores profound human truths across ${featured.primarySubject.toLowerCase()}.`,
+        quoteExcerpt: featured.quoteExcerpt,
+      },
+      {
+        chapterLabel: 'Public Domain Colophon',
+        openingLine: `This edition of ${featured.title} is preserved in the worldwide public domain, free of copyright restrictions for all readers.`,
+        quoteExcerpt: `“To read without reflecting is like eating without digesting.” A preserved masterpiece by ${featured.author} (${featured.year}).`,
+      },
+    ];
+  }
+
+  return [
+    {
+      chapterLabel: 'Chapter I • Opening Excerpt',
+      openingLine: `“Here begins the timeless account of ${book.title}, a celebrated work by ${author} touching upon the enduring themes of ${subject.toLowerCase()}.”`,
+      quoteExcerpt: `“A room without books is like a body without a soul.” Discover the complete unabridged text preserved freely in the public domain.`,
+    },
+    {
+      chapterLabel: 'Literary Context & Themes',
+      openingLine: `Preserved within the Project Gutenberg archive as ID #${book.id}, this work stands as a testament to historical scholarship and human creativity in ${subject.toLowerCase()}.`,
+      quoteExcerpt: `“There is no friend as loyal as a book.” Dive into the world crafted by ${author} across this complete digital edition.`,
+    },
+    {
+      chapterLabel: 'Public Domain Colophon',
+      openingLine: `Transcribed from original physical editions into open UTF-8 format, freely readable and downloadable under the Zero-Copyright CC0 public domain dedication.`,
+      quoteExcerpt: `“Books are the quietest and most constant of friends; they are the most accessible and wisest of counselors, and the most patient of teachers.”`,
+    },
+  ];
+}
+

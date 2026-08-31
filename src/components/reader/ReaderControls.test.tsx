@@ -35,7 +35,7 @@ describe('ReaderControls', () => {
 
   it('renders correctly under sepia and dark themes', () => {
     const { rerender } = render(<ReaderControls {...defaultProps} theme="sepia" />);
-    expect(screen.getByRole('region', { name: 'Reading Controls' })).toHaveClass('bg-[#ede2cc]');
+    expect(screen.getByRole('region', { name: 'Reading Controls' })).toHaveClass('bg-[#332219]');
 
     rerender(<ReaderControls {...defaultProps} theme="dark" />);
     expect(screen.getByRole('region', { name: 'Reading Controls' })).toHaveClass('bg-[#161b26]');

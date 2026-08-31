@@ -139,7 +139,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {currentTheme === 'light' ? (
                   <Sun className="w-4 h-4 text-amber-500" />
                 ) : currentTheme === 'sepia' ? (
-                  <Coffee className="w-4 h-4 text-amber-700" />
+                  <Coffee className="w-4 h-4 text-amber-500" />
                 ) : (
                   <Moon className="w-4 h-4 text-indigo-400" />
                 )}

@@ -9,6 +9,7 @@ import { AdvancedFilterDrawer } from '@/components/presentation/AdvancedFilterDr
 import { BookGrid } from '@/components/presentation/BookGrid';
 import { LiteraryQuotes } from '@/components/presentation/LiteraryQuotes';
 import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
+import { BookPreviewModal } from '@/components/presentation/BookPreviewModal';
 import { Footer } from '@/components/presentation/Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
@@ -22,6 +23,8 @@ import { Button } from '@/components/ui/Button';
 export default function Home() {
   const router = useRouter();
   const [selectedDownloadBook, setSelectedDownloadBook] = useState<GutendexBook | null>(null);
+  const [selectedPreviewBook, setSelectedPreviewBook] = useState<GutendexBook | null>(null);
+  const [previewOriginRect, setPreviewOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
   // Bookshelf store items
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
@@ -262,6 +265,10 @@ export default function Home() {
             onPageChange={activeView === 'catalog' ? handlePageChange : undefined}
             hasNextPage={Boolean(booksData?.next)}
             onDownloadClick={(book) => setSelectedDownloadBook(book)}
+            onPreviewClick={(book, rect) => {
+              setSelectedPreviewBook(book);
+              setPreviewOriginRect(rect || null);
+            }}
             viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}
             onViewModeChange={setViewMode}
             showViewToggle={false} // Managed by StickyToolbar
@@ -338,6 +345,22 @@ export default function Home() {
         {/* Booksaw 3-Column Literary Quotes & Passages */}
         {activeView === 'catalog' && <LiteraryQuotes />}
       </main>
+
+      {/* 3D Open Book Preview Spread Modal */}
+      <BookPreviewModal
+        book={selectedPreviewBook}
+        originRect={previewOriginRect}
+        isOpen={Boolean(selectedPreviewBook)}
+        onClose={() => {
+          setSelectedPreviewBook(null);
+          setPreviewOriginRect(null);
+        }}
+        onReadBook={(book) => {
+          useReaderStore.getState().openReader(book);
+          router.push(`/read/${book.id}`);
+        }}
+        onDownloadBook={(book) => setSelectedDownloadBook(book)}
+      />
 
       {/* Download Hub Drawer */}
       <DownloadDrawer

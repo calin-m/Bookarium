@@ -67,4 +67,14 @@ describe('BookGrid component', () => {
     fireEvent.click(gridBtn);
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
   });
+
+  it('should forward onPreviewClick to BookCard', () => {
+    const handlePreview = vi.fn();
+    render(<BookGrid books={mockBooks} onPreviewClick={handlePreview} />);
+
+    const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${mockBooks[0].title}`);
+    fireEvent.click(coverVisual);
+    expect(handlePreview).toHaveBeenCalledWith(mockBooks[0], expect.any(Object));
+  });
 });
+

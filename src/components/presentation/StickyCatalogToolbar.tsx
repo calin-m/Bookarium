@@ -100,7 +100,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             <span>Filters</span>
             {activeFilterCount > 0 && (
               <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold ${
-                isFiltersOpen ? 'bg-white text-primary-700' : 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'
+                isFiltersOpen ? 'bg-primary text-primary-foreground' : 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 [html.sepia_&]:bg-primary/30 [html.sepia_&]:text-primary-foreground'
               }`}>
                 {activeFilterCount}
               </span>
@@ -172,7 +172,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border ${
                 isError
                   ? 'bg-destructive/10 text-destructive border-destructive/30'
-                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                  : 'bg-emerald-50 dark:bg-emerald-950/40 [html.sepia_&]:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 [html.sepia_&]:text-emerald-300 border-emerald-300 dark:border-emerald-800 [html.sepia_&]:border-emerald-800'
               }`}
               title="Gutenberg API Status"
               data-testid="api-status-badge"

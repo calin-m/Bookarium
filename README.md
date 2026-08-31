@@ -24,11 +24,20 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 * **Open-Book Skeuomorphic Details**: Custom open-book card spreads with subtle center spine creases (`.book-center-crease`), realistic paper texture shadows (`shadow-booksaw`), and page depth elevation.
 * **Warm Editorial Palettes & 100% Solid Surfaces**:
   * **Day / Standard**: Crisp cream-paper tones (`#fcfbf9`, `#ffffff`) with rich obsidian ink typography and 100% solid, non-transparent surfaces.
-  * **Sepia Reading**: Warm amber parchment tones (`#f4ebd9`, `#ede2cc`) for eye comfort during long reading sessions.
+  * **Sepia / Cozy Coffee (Warm Midtone)**: Warm roasted espresso and cafe mocha tones (`#251d18`, `#322720`) with steamed milk cream typography (`#f5ece1`) and warm caramel accents for eye comfort in ambient evening light.
   * **Dark Mode**: High-contrast slate obsidian canvas (`#0e1117`, `#161b26`) preserving focus in low-light settings.
 * **Refined Typography**: Pairings of classic literary serifs, clean sans-serifs, and monospace archival metadata accents.
 
 ---
+
+## 🛠️ UI Improvements (v2.3.0)
+
+- **Crisp, non‑blurred text** – removed CSS `scale()` on the 3‑D book rig and set explicit pixel widths (`w-[280px] sm:w-[330px] md:w-[370px]`) for 1:1 vector rendering.
+- **Smoother shuffle animation** – added a `group`‑based hover rotation and `animate‑spin` on click; unique React keys prevent reconciliation glitches.
+- **Refined center‑crease shadow** – softened gradient opacity to better match the hero‑section’s subtle gutter shadow.
+- **Responsive typography** – updated title, author, excerpt, and footer font sizes to mirror the hero section’s proportions.
+- **Accessibility & lint clean‑up** – memoised callbacks, eliminated ESLint hook‑dependency warnings, and ensured full test coverage.
+- **Verified by the 7‑Gateway Quality Engine** – all lint, type‑check, unit‑test, and build passes succeed (`npm run verify`).
 
 ## 🌐 Data Sources & API References
 

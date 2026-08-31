@@ -19,7 +19,7 @@ export const Badge: React.FC<BadgeProps> = ({
     primary: 'bg-primary/15 text-primary border border-primary/30',
     secondary: 'bg-muted text-foreground border border-border',
     outline: 'border border-border text-foreground',
-    success: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800',
+    success: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 [html.sepia_&]:bg-emerald-950/50 [html.sepia_&]:text-emerald-300 border border-emerald-200 dark:border-emerald-800 [html.sepia_&]:border-emerald-800',
     sepia: 'bg-sepia-surface text-sepia-text border border-sepia-border',
   };
 

@@ -28,14 +28,14 @@ function getInitialUrlParams() {
   try {
     const sp = new URLSearchParams(window.location.search);
     return {
-      search: sp.get('search') || '',
-      topic: sp.get('topic') || '',
-      language: sp.get('languages') || sp.get('language') || '',
-      era: sp.get('era') || '',
-      sort: (sp.get('sort') as CatalogSortOption) || 'popular',
-      format: sp.get('format') || sp.get('mime_type') || '',
-      page: parseInt(sp.get('page') || '1', 10) || 1,
-      view: (sp.get('view') as CatalogView) || 'catalog',
+      search: sp.get('search') || undefined,
+      topic: sp.get('topic') || undefined,
+      language: sp.get('languages') || sp.get('language') || undefined,
+      era: sp.get('era') || undefined,
+      sort: (sp.get('sort') as CatalogSortOption) || undefined,
+      format: sp.get('format') || sp.get('mime_type') || undefined,
+      page: sp.get('page') ? parseInt(sp.get('page')!, 10) : undefined,
+      view: (sp.get('view') as CatalogView) || undefined,
     };
   } catch {
     return {};
@@ -43,16 +43,14 @@ function getInitialUrlParams() {
 }
 
 export function useCatalogFilters() {
-  const initialParams = useMemo(() => getInitialUrlParams(), []);
-
-  const [activeView, setActiveView] = useState<CatalogView>(initialParams.view || 'catalog');
-  const [search, setSearch] = useState(initialParams.search || '');
-  const [topic, setTopic] = useState(initialParams.topic || '');
-  const [language, setLanguage] = useState(initialParams.language || '');
-  const [era, setEra] = useState(initialParams.era || '');
-  const [sort, setSort] = useState<CatalogSortOption>(initialParams.sort || 'popular');
-  const [format, setFormat] = useState(initialParams.format || '');
-  const [page, setPage] = useState(initialParams.page || 1);
+  const [activeView, setActiveView] = useState<CatalogView>(() => getInitialUrlParams().view || 'catalog');
+  const [search, setSearch] = useState(() => getInitialUrlParams().search || '');
+  const [topic, setTopic] = useState(() => getInitialUrlParams().topic || '');
+  const [language, setLanguage] = useState(() => getInitialUrlParams().language || '');
+  const [era, setEra] = useState(() => getInitialUrlParams().era || '');
+  const [sort, setSort] = useState<CatalogSortOption>(() => getInitialUrlParams().sort || 'popular');
+  const [format, setFormat] = useState(() => getInitialUrlParams().format || '');
+  const [page, setPage] = useState(() => getInitialUrlParams().page || 1);
   const [pageSize, setPageSize] = useState(32);
   const [viewMode, setViewMode] = useState<CatalogViewMode>('grid');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);

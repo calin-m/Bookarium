@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import Home from './page';
@@ -155,5 +155,22 @@ describe('Home page integration', () => {
     const closeBtn = screen.getByLabelText('Close modal');
     fireEvent.click(closeBtn);
     expect(screen.queryByText('Zero-Copyright Download Hub')).not.toBeInTheDocument();
+  });
+
+  it('should open 3D book preview modal when book cover is clicked and close it', async () => {
+    renderHome();
+
+    const previewTrigger = screen.getByLabelText(`Flip open 3D preview for ${mockBooks[0].title}`);
+    expect(previewTrigger).toBeInTheDocument();
+    fireEvent.click(previewTrigger);
+
+    expect(screen.getByTestId('book-preview-modal')).toBeInTheDocument();
+    const bookStage = screen.getByTestId('preview-book-stage');
+    expect(bookStage).toBeInTheDocument();
+    fireEvent.click(bookStage);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('book-preview-modal')).not.toBeInTheDocument();
+    });
   });
 });
