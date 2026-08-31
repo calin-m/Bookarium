@@ -130,10 +130,9 @@ function pass1Typecheck() {
 // -------------------------------------------------------------
 function pass2ServerMocks() {
   logHeader('Pass 2: Vitest MSW Server & React Query Validation');
-  const res = runCommand(`${npxCmd} vitest run src/hooks/queries src/app/api`);
+  const res = runCommand(`${npxCmd} vitest run src/hooks/queries src/app/api --reporter=verbose`, true);
   if (!res.success) {
-    logFail('MSW server mock or query hook test failed:');
-    console.error(res.stdout || res.stderr);
+    logFail('MSW server mock or query hook test failed.');
     return false;
   }
   logPass('MSW v2 network interception and React Query hooks verified.');
@@ -145,15 +144,10 @@ function pass2ServerMocks() {
 // -------------------------------------------------------------
 function pass3ClientUI() {
   logHeader('Pass 3: Vitest Unit Suite & Coverage Assertion (>= 80%)');
-  const res = runCommand(`${npmCmd} run test:coverage -- --reporter=verbose`);
+  const res = runCommand(`${npmCmd} run test:coverage -- --reporter=verbose`, true);
   if (!res.success) {
-    logFail('Unit test suite failed:');
-    console.error(res.stdout || res.stderr);
+    logFail('Unit test suite failed.');
     return false;
-  }
-
-  if (res.stdout) {
-    console.log(res.stdout.trim());
   }
 
   const covSummaryPath = path.join(rootDir, 'coverage', 'coverage-summary.json');

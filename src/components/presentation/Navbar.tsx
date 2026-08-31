@@ -61,25 +61,27 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Booksaw Editorial Navigation Links */}
-        <nav className="flex items-center gap-1 sm:gap-2">
+        <nav className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Catalog */}
           <button
             type="button"
             onClick={() => onViewChange?.('catalog')}
-            className={`px-3 py-1.5 rounded text-xs font-mono tracking-wider uppercase transition-all ${
+            className={`px-2 sm:px-3 py-1.5 rounded text-xs font-mono tracking-wider uppercase flex items-center gap-1 sm:gap-1.5 transition-all ${
               activeView === 'catalog'
                 ? 'text-primary font-bold border-b-2 border-primary'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
+            aria-label="Catalog"
           >
-            Catalog
+            <BookOpen className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Catalog</span>
           </button>
 
           {/* Bookshelf */}
           <button
             type="button"
             onClick={() => onViewChange?.('bookshelf')}
-            className={`px-3 py-1.5 rounded text-xs font-mono tracking-wider uppercase flex items-center gap-1.5 transition-all ${
+            className={`px-2 sm:px-3 py-1.5 rounded text-xs font-mono tracking-wider uppercase flex items-center gap-1 sm:gap-1.5 transition-all ${
               activeView === 'bookshelf'
                 ? 'text-primary font-bold border-b-2 border-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -87,7 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             aria-label="Bookshelf"
           >
             <Bookmark className="w-3.5 h-3.5" />
-            <span>Bookshelf</span>
+            <span className="hidden sm:inline">Bookshelf</span>
             {hasMounted && savedBooks.length > 0 && (
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-primary text-primary-foreground font-bold">
                 {savedBooks.length}
@@ -99,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => onViewChange?.('likes')}
-            className={`px-3 py-1.5 rounded text-xs font-mono tracking-wider uppercase flex items-center gap-1.5 transition-all ${
+            className={`px-2 sm:px-3 py-1.5 rounded text-xs font-mono tracking-wider uppercase flex items-center gap-1 sm:gap-1.5 transition-all ${
               activeView === 'likes'
                 ? 'text-destructive font-bold border-b-2 border-destructive'
                 : 'text-muted-foreground hover:text-foreground'
@@ -115,7 +117,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          <div className="h-4 w-[1px] bg-border mx-1" />
+          <div className="h-4 w-[1px] bg-border mx-0.5 sm:mx-1" />
 
           {/* 3-Way Universal Theme Switcher (Light -> Sepia -> Dark) */}
           {(() => {

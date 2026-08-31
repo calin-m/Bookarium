@@ -55,15 +55,16 @@ export function reflowGutenbergParagraphs(rawText: string | undefined | null): s
     const lines = para.split('\n');
     if (lines.length <= 1) return para.trim();
 
-    // Check if the block is poetry/verse/indented (e.g. lines have leading spaces or all lines are very short)
-    const hasIndentedLines = lines.some((l) => /^\s{3,}|\t/.test(l));
+    // In Project Gutenberg, standard paragraphs often start with 2-5 spaces on the first line only.
+    // Verse/poetry or blockquotes have all lines deeply indented (4+ spaces) or all lines are very short (< 45 chars).
+    const allLinesIndented = lines.length > 1 && lines.every((l) => /^\s{4,}|\t/.test(l));
     const isShortVerse = lines.length > 2 && lines.every((l) => l.trim().length > 0 && l.trim().length < 45);
 
-    if (hasIndentedLines || isShortVerse) {
+    if (allLinesIndented || isShortVerse) {
       return para.replace(/^\n+|\n+$/g, '');
     }
 
-    // Join single newlines with a single space to allow natural browser text wrapping
+    // Join single newlines with a single space to allow natural browser text wrapping across any column width
     return lines
       .map((l) => l.trim())
       .filter(Boolean)

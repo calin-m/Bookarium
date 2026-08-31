@@ -47,10 +47,11 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
 * **Zero API Key Requirement**: Works instantly out of the box with zero third-party developer keys, sign-ups, or credit card walls.
 * **Strict Public Domain Integrity**: All queries programmatically enforce `copyright=false` through Gutendex and Project Gutenberg.
 * **100% Live Dual-Gateway Data Pipeline**: Next.js Server Route Proxy paired with direct client upstream failover to `https://gutendex.com/` guaranteeing 100% uptime on serverless platforms (such as Vercel) without reliance on local mock fallbacks.
-* **Deep Archive Query UX & Live Telemetry**: Sticky catalog toolbar equipped with real-time roundtrip latency telemetry, direct page jumping, animated `Info` indicators, and informative tooltips explaining relational SQL offsets across 70,000+ public domain volumes.
-* **Floating Back to Top & Quick Navigation**: Motion-animated scroll-to-top button with viewport threshold detection and single-click root catalog refresh on brand header.
+* **Deep Archive Query UX & Live Telemetry**: Sticky catalog toolbar equipped with real-time roundtrip latency telemetry, direct page jumping, animated `Info` indicators, responsive mobile two-tier wrapping, and informative tooltips explaining relational SQL offsets across 70,000+ public domain volumes.
+* **Header Navigation & Brand Reset**: Clean top bar with unified iconography (**Catalog** `<BookOpen>`, **Bookshelf** `<Bookmark>`, **Favorites** `<Heart>`), live badge counters, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
+* **Floating Back to Top & Quick Navigation**: Motion-animated scroll-to-top button with viewport threshold detection.
 * **Interactive Studio Bookshelf Mode**:
-  * **Skeuomorphic Wooden Ledge**: Tactile shelf presentation with physical depth shadows, spine ledges, and linen backdrops.
+  * **Skeuomorphic Wooden Ledge**: Tactile shelf presentation with physical depth shadows, spine ledges, linen backdrops, and smooth horizontal touch-panning (`touch-pan-x`) on mobile devices.
   * **Embossed Vertical Spines**: Distinct palette-styled book spines with dynamic heights, gold/silver embossed lettering, bookmark ribbons, and glowing progress pips.
   * **Hover Action Cards**: Floating preview cards elevated above the shelf with instant `Read`, `Download`, and `Bookmark` actions.
 * **Dedicated In-Browser Focus Reader (`/read/[id]`)**:
@@ -77,22 +78,23 @@ flowchart TD
     User["👤 Reader / Literature Enthusiast"]
     
     subgraph ClientApp ["Bookarium Next.js 16 SPA (src/app/page.tsx)"]
-        Nav["Navigation & Bookshelf Toggle (Navbar.tsx)"]
+        Nav["Navigation & Brand Reset (Navbar.tsx)"]
         Hero["Hero Search & Subject Chips (HeroSearch.tsx)"]
         Grid["Interactive Book Grid & Filtering (BookGrid.tsx)"]
         Card["Book Card Component (BookCard.tsx)"]
         Quotes["Dynamic Literary Quotes (LiteraryQuotes.tsx)"]
         Reader["Dedicated In-Browser Reader (src/app/read/[id]/page.tsx)"]
         Drawer["Multi-Format Download Drawer (DownloadDrawer.tsx)"]
+        BackToTopComp["Floating Back to Top Button (BackToTop.tsx)"]
         FooterComp["Site Footer & Stats (Footer.tsx)"]
         
         StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• queue: []\n• history: []\n• likedBookIds: []")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• fontSize (12-36px)\n• fontFamily (serif/sans/mono)\n• progress: {}")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• fontSize (12-36px)\n• fontFamily (serif/sans/mono)\n• columnWidth (narrow/normal/wide)\n• progress: {}")]
         
         QueryBooks["🔄 useBooks(query, topic, page)"]
         QueryContent["🔄 useBookContent(textUrl, bookId)"]
         
-        Nav -->|View Bookshelf| StoreShelf
+        Nav -->|View Bookshelf / Reset| StoreShelf
         Hero -->|Filter Query| QueryBooks
         QueryBooks --> Grid
         Grid --> Card
@@ -102,17 +104,21 @@ flowchart TD
         Quotes -->|Read Volume| Reader
         Reader --> StoreReader
         Reader --> QueryContent
+        BackToTopComp -->|Smooth Scroll| Nav
         FooterComp --> Nav
     end
 
-    subgraph APILayer ["Server Route & Public Domain API"]
-        ProxyRoute["GET /api/books\n(Enforces copyright=false)"]
+    subgraph APILayer ["100% Live Dual-Gateway Data Pipeline"]
+        ProxyRoute["Gateway 1: GET /api/books\n(SSR Proxy with 6s Timeout)"]
+        DirectUpstream["Gateway 2: Direct Upstream Fetch\n(Client-Side Failover Bypasses 504s)"]
         ContentProxy["GET /api/books/content\n(Unabridged Text Stream)"]
-        GutendexAPI["🌐 Gutendex API\n(70,000+ Gutenberg Titles)"]
+        GutendexAPI["🌐 Gutendex REST API\n(70,000+ Gutenberg Titles)"]
         GutenbergContent["🌐 Project Gutenberg Content CDN\n(text/plain & EPUB)"]
         
-        QueryBooks --> ProxyRoute
+        QueryBooks -->|Primary| ProxyRoute
         ProxyRoute --> GutendexAPI
+        QueryBooks -.->|Failover on Timeout/504| DirectUpstream
+        DirectUpstream --> GutendexAPI
         QueryContent --> ContentProxy
         ContentProxy --> GutenbergContent
     end
@@ -142,18 +148,33 @@ flowchart TD
 flowchart LR
     subgraph ReaderState ["Zustand Reader Store (useReaderStore)"]
         ActiveBook["Active Book Metadata"]
-        FontSize["Font Size (12px - 36px)"]
+        FontSize["Font Size: 12px - 36px"]
         FontFamily["Font Family: Serif | Sans | Mono"]
         LineHeight["Line Height: 1.2 - 2.6"]
+        ColumnWidth["Column Width: Narrow (576px) | Normal (768px) | Wide (1024px)"]
+        ReadingMode["Reading Mode: Paginated | Scroll"]
         Theme["Theme: Light | Dark | Sepia"]
         Progress["Global Page & Book Progress %"]
     end
 
+    subgraph ParsingEngine ["Gutenberg Typography & Segmentation AST"]
+        RawText["Raw Plain Text Stream"]
+        Reflow["reflowGutenbergParagraphs\n(Normalizes 70-col hard wraps)"]
+        TOCFilter["Front-Matter TOC Suppressor"]
+        Segmentation["Chapter Section Segmentation"]
+        VirtualPages["Virtual Continuous Page Spread (5600 chars/pg)"]
+        
+        RawText --> Reflow
+        Reflow --> TOCFilter
+        TOCFilter --> Segmentation
+        Segmentation --> VirtualPages
+    end
+
     subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]
         Toolbar["Top Editorial Reader Bar"]
-        ContentArea["Book Page Rendering Area"]
+        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap)"]
         ProgressBar["Top Reading Progress Indicator"]
-        FooterBar["Sticky Bottom Pagination Bar"]
+        FooterBar["Sticky Bottom Pagination & Page Jump"]
         TOC["Table of Contents Slide-Over Drawer"]
     end
 
@@ -162,7 +183,8 @@ flowchart LR
         LSProgress[("bookarium-progress-map")]
     end
 
-    Toolbar -->|Adjust Size / Family / Theme| ReaderState
+    Toolbar -->|Adjust Size / Family / Width / Mode / Theme| ReaderState
+    VirtualPages --> ReaderView
     ReaderState --> ContentArea
     ReaderState --> ProgressBar
     FooterBar -->|Page Flip / Jump| ReaderState

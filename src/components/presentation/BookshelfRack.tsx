@@ -57,10 +57,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       {shelves.map((shelfBooks, shelfIndex) => (
         <div key={shelfIndex} className="relative z-10 hover:z-30">
           {/* Back wall of the shelf niche */}
-          <div className="relative bg-card rounded-t-2xl p-4 sm:p-6 pb-0 border-x border-t border-border shadow-inner overflow-visible">
+          <div className="relative bg-card rounded-t-2xl p-4 sm:p-6 pb-0 border-x border-t border-border shadow-inner overflow-hidden sm:overflow-visible">
             
             {/* Shelf Items Row */}
-            <div className="flex items-end justify-start sm:justify-center gap-2 sm:gap-3.5 overflow-visible pb-1 pt-12 min-h-[310px] px-2">
+            <div className="flex items-end justify-start sm:justify-center gap-2 sm:gap-3.5 overflow-x-auto sm:overflow-visible scrollbar-none pb-1 pt-12 min-h-[310px] px-2 touch-pan-x snap-x">
               {shelfBooks.map((book, bookIndex) => {
                 const palette = SPINE_PALETTES[(book.id + bookIndex) % SPINE_PALETTES.length];
                 

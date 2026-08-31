@@ -39,7 +39,7 @@ describe('StickyCatalogToolbar component', () => {
     expect(screen.getByText('French')).toBeInTheDocument();
     
     // 2-Part API badge checks
-    expect(screen.getByTestId('api-status-badge')).toHaveTextContent('Live API');
+    expect(screen.getByTestId('api-status-badge')).toHaveTextContent('Live');
     expect(screen.getByTestId('api-latency-badge')).toHaveTextContent('85ms');
 
     // Page size selector checks
@@ -84,6 +84,6 @@ describe('StickyCatalogToolbar component', () => {
       />
     );
 
-    expect(screen.getByTestId('api-status-badge')).toHaveTextContent('API Offline');
+    expect(screen.getByTestId('api-status-badge')).toHaveTextContent('Offline');
   });
 });

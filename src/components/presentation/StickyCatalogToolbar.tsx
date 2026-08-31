@@ -158,13 +158,13 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
         </div>
 
         {/* Right Side: 2-Part API Telemetry, View Mode & Sticky Pagination */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-between sm:justify-end w-full sm:w-auto pt-1 sm:pt-0 border-t sm:border-t-0 border-border/60">
           
           {/* 2-Part API Status & Latency Indicator */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             {/* Part 1: Live API Status Badge */}
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono tracking-wider transition-all border ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border ${
                 isError
                   ? 'bg-destructive/10 text-destructive border-destructive/30'
                   : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
@@ -175,19 +175,19 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               {isError ? (
                 <>
                   <WifiOff className="w-3 h-3 text-destructive" />
-                  <span className="font-bold">API Offline</span>
+                  <span className="font-bold">Offline</span>
                 </>
               ) : (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="font-bold">Live API</span>
+                  <span className="font-bold">Live</span>
                 </>
               )}
             </div>
 
             {/* Part 2: Live Latency / Roundtrip Badge */}
             <div
-              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-mono bg-muted text-foreground border border-border"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-mono bg-muted text-foreground border border-border"
               title="Real-time API response roundtrip time"
               data-testid="api-latency-badge"
             >
@@ -196,7 +196,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             </div>
           </div>
 
-          <div className="h-4 w-[1px] bg-border" />
+          <div className="h-4 w-[1px] bg-border hidden xs:block" />
 
           {/* View Mode Toggle */}
           <div className="flex items-center bg-muted p-0.5 rounded-lg border border-border">
@@ -230,17 +230,17 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             </button>
           </div>
 
-          <div className="h-4 w-[1px] bg-border" />
+          <div className="h-4 w-[1px] bg-border hidden xs:block" />
 
           {/* Sticky Pagination Controls */}
           {onPageChange && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 sm:gap-1.5">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={page <= 1 || isFetching}
                 onClick={() => onPageChange(page - 1)}
-                className="h-8 px-2.5 rounded-md text-xs font-mono"
+                className="h-8 px-2 sm:px-2.5 rounded-md text-xs font-mono"
                 aria-label="Previous page"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
@@ -259,7 +259,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                   value={jumpPageInput || page}
                   onChange={(e) => setJumpPageInput(e.target.value)}
                   onFocus={() => setJumpPageInput(String(page))}
-                  className="w-10 h-8 text-center text-xs font-mono font-bold rounded border border-border bg-card text-foreground focus:outline-hidden focus:border-primary"
+                  className="w-9 sm:w-10 h-8 text-center text-xs font-mono font-bold rounded border border-border bg-card text-foreground focus:outline-hidden focus:border-primary"
                   aria-label="Jump to page"
                   title="Enter page number and press Enter"
                 />
@@ -272,7 +272,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                 onClick={() => onPageChange(page + 1)}
                 onMouseEnter={onPrefetchNext}
                 onFocus={onPrefetchNext}
-                className="h-8 px-2.5 rounded-md text-xs font-mono"
+                className="h-8 px-2 sm:px-2.5 rounded-md text-xs font-mono"
                 aria-label="Next page"
               >
                 <span className="hidden sm:inline">Next</span>

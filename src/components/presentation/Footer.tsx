@@ -30,7 +30,7 @@ export const Footer: React.FC = () => {
           {/* Col 2: Open Data Sources */}
           <div>
             <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground mb-4 pb-1 border-b border-border">
-              Open Archives
+              Data Engine
             </h4>
             <ul className="space-y-2.5 text-xs text-muted-foreground font-mono">
               <li>
@@ -40,7 +40,7 @@ export const Footer: React.FC = () => {
                   rel="noopener noreferrer"
                   className="hover:text-primary transition-colors inline-flex items-center gap-1"
                 >
-                  Project Gutenberg <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                  Project Gutenberg Archive <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
               </li>
               <li>
@@ -50,28 +50,11 @@ export const Footer: React.FC = () => {
                   rel="noopener noreferrer"
                   className="hover:text-primary transition-colors inline-flex items-center gap-1"
                 >
-                  Gutendex Mirror <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                  Gutendex REST API <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
               </li>
-              <li>
-                <a
-                  href="https://standardebooks.org"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
-                >
-                  Standard Ebooks <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://openlibrary.org"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
-                >
-                  Open Library Archive <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                </a>
+              <li className="text-[11px] font-sans text-muted-foreground/80 pt-1 leading-relaxed">
+                70,000+ unabridged public domain volumes indexed with strict zero-copyright verification.
               </li>
             </ul>
           </div>
