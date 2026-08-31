@@ -28,13 +28,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     onViewChange?.('catalog');
     if (typeof window !== 'undefined') {
       try {
+        window.scrollTo({ top: 0, behavior: 'instant' });
         if (window.location.pathname === '/' && !window.location.search) {
           window.location.reload();
         } else {
           router.push('/');
         }
       } catch {
-        // Safe fallback for test/sandboxed environments
+        router.push('/');
       }
     }
   };

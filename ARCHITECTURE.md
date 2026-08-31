@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST.  
 > **Last Synchronized**: `2026-08-31`  
-> **Topology Health**: `47` Modules Analyzed • `109` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `47` Modules Analyzed • `112` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -154,7 +154,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`layout.tsx`](src/app/layout.tsx) | `./providers`, `./globals.css` | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/page.tsx) | `components/presentation/Navbar`, `components/presentation/HeroSearch`, `components/presentation/StickyCatalogToolbar`, `components/presentation/AdvancedFilterDrawer`, `components/presentation/BookGrid`, `components/presentation/LiteraryQuotes`, `components/presentation/DownloadDrawer`, `components/presentation/BookPreviewModal`, `components/presentation/Footer`, `components/ui/BackToTop`, `hooks/queries/useBooks`, `hooks/useCatalogFilters`, `stores/useBookshelfStore`, `stores/useReaderStore`, `hooks/useHasMounted`, `mocks/handlers`, `components/ui/Button` | _App Route Entry_ | Production Module |
 | [`providers.tsx`](src/app/providers.tsx) | _Root Primitive_ | _Direct Root Consumer_ | Production Module |
-| [`page.tsx`](src/app/read/[id]/page.tsx) | `hooks/queries/useBookContent`, `hooks/queries/useBooks`, `stores/useReaderStore`, `lib/gutenberg-parser`, `config/reader-themes`, `components/reader/ReaderHeader`, `components/reader/ReaderFooter`, `components/reader/ReaderTocDrawer`, `components/reader/ReaderControls`, `components/reader/ReaderSurface` | _App Route Entry_ | Production Module |
+| [`page.tsx`](src/app/read/[id]/page.tsx) | `hooks/queries/useBookContent`, `hooks/queries/useBooks`, `stores/useReaderStore`, `hooks/useHasMounted`, `lib/gutenberg-parser`, `config/reader-themes`, `components/reader/ReaderHeader`, `components/reader/ReaderFooter`, `components/reader/ReaderTocDrawer`, `components/reader/ReaderControls`, `components/reader/ReaderSurface` | _App Route Entry_ | Production Module |
 | [`MotionReveal.tsx`](src/components/motion/MotionReveal.tsx) | `./motion-config` | _Direct Root Consumer_ | Production Module |
 | [`StaggerGroup.tsx`](src/components/motion/StaggerGroup.tsx) | `./motion-config` | _Direct Root Consumer_ | Production Module |
 | [`motion-config.ts`](src/components/motion/motion-config.ts) | _Root Primitive_ | _Direct Root Consumer_ | Production Module |
@@ -165,7 +165,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`BookshelfRack.tsx`](src/components/presentation/BookshelfRack.tsx) | `mocks/handlers`, `stores/useBookshelfStore`, `stores/useReaderStore`, `hooks/useHasMounted` | _Direct Root Consumer_ | Production Module |
 | [`DownloadDrawer.tsx`](src/components/presentation/DownloadDrawer.tsx) | `mocks/handlers`, `lib/utils`, `components/ui/Modal`, `components/ui/Button`, `components/ui/Badge` | `page.tsx` | Production Module |
 | [`Footer.tsx`](src/components/presentation/Footer.tsx) | _Root Primitive_ | `page.tsx` | Production Module |
-| [`HeroSearch.tsx`](src/components/presentation/HeroSearch.tsx) | `components/ui/Button`, `config/catalog-filters`, `config/featured-books`, `lib/gutenberg-parser`, `hooks/queries/useBookContent`, `mocks/handlers`, `./LanguageSelector` | `page.tsx` | Production Module |
+| [`HeroSearch.tsx`](src/components/presentation/HeroSearch.tsx) | `hooks/useHasMounted`, `components/ui/Button`, `config/catalog-filters`, `config/featured-books`, `lib/gutenberg-parser`, `hooks/queries/useBookContent`, `mocks/handlers`, `./LanguageSelector` | `page.tsx` | Production Module |
 | [`LanguageSelector.tsx`](src/components/presentation/LanguageSelector.tsx) | `config/catalog-filters` | _Direct Root Consumer_ | Production Module |
 | [`LiteraryQuotes.tsx`](src/components/presentation/LiteraryQuotes.tsx) | `config/literary-quotes` | `page.tsx` | Production Module |
 | [`Navbar.tsx`](src/components/presentation/Navbar.tsx) | `stores/useBookshelfStore`, `stores/useThemeStore`, `hooks/useHasMounted`, `components/ui/Button` | `page.tsx` | Production Module |
@@ -188,8 +188,8 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`reader-themes.ts`](src/config/reader-themes.ts) | `stores/useReaderStore` | `page.tsx`, `ReaderControls.tsx`, `ReaderFooter.tsx`, `ReaderHeader.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx` | Production Module |
 | [`useBookContent.ts`](src/hooks/queries/useBookContent.ts) | `mocks/handlers`, `config/api-endpoints` | `page.tsx`, `BookPreviewModal.tsx`, `HeroSearch.tsx` | Production Module |
 | [`useBooks.ts`](src/hooks/queries/useBooks.ts) | `mocks/handlers`, `config/api-endpoints` | `page.tsx`, `page.tsx` | Production Module |
-| [`useCatalogFilters.ts`](src/hooks/useCatalogFilters.ts) | `config/catalog-filters` | `page.tsx` | Production Module |
-| [`useHasMounted.ts`](src/hooks/useHasMounted.ts) | _Root Primitive_ | `page.tsx`, `BookCard.tsx`, `BookPreviewModal.tsx`, `BookshelfRack.tsx`, `Navbar.tsx`, `ReaderControls.tsx`, `ReaderTocDrawer.tsx` | Production Module |
+| [`useCatalogFilters.ts`](src/hooks/useCatalogFilters.ts) | `config/catalog-filters`, `hooks/useHasMounted` | `page.tsx` | Production Module |
+| [`useHasMounted.ts`](src/hooks/useHasMounted.ts) | _Root Primitive_ | `page.tsx`, `page.tsx`, `BookCard.tsx`, `BookPreviewModal.tsx`, `BookshelfRack.tsx`, `HeroSearch.tsx`, `Navbar.tsx`, `ReaderControls.tsx`, `ReaderTocDrawer.tsx`, `useCatalogFilters.ts` | Production Module |
 | [`usePerformanceTier.ts`](src/hooks/usePerformanceTier.ts) | _Root Primitive_ | _Direct Root Consumer_ | Production Module |
 | [`gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | _Root Primitive_ | `page.tsx`, `BookPreviewModal.tsx`, `HeroSearch.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx` | Production Module |
 | [`utils.ts`](src/lib/utils.ts) | _Root Primitive_ | `BookCard.tsx`, `BookPreviewModal.tsx`, `DownloadDrawer.tsx`, `Badge.tsx`, `Button.tsx`, `Card.tsx`, `Input.tsx`, `Modal.tsx` | Production Module |

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useBookContent } from '@/hooks/queries/useBookContent';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useHasMounted } from '@/hooks/useHasMounted';
 import {
   parseGutenbergChapters,
   getCharsPerPage,
@@ -23,16 +24,22 @@ import { ReaderSurface } from '@/components/reader/ReaderSurface';
 export default function BookReaderPage() {
   const params = useParams();
   const router = useRouter();
+  const hasMounted = useHasMounted();
   const rawId = params?.id;
   const bookId = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '';
   const numericId = parseInt(bookId, 10) || 0;
 
-  // Global Reader Store
-  const currentBook = useReaderStore((s) => s.currentBook);
-  const fontSize = useReaderStore((s) => s.fontSize);
-  const lineHeight = useReaderStore((s) => s.lineHeight);
-  const fontFamily = useReaderStore((s) => s.fontFamily);
-  const theme = useReaderStore((s) => s.theme);
+  // Global Reader Store (Guarded with useHasMounted for zero SSR hydration mismatch)
+  const rawCurrentBook = useReaderStore((s) => s.currentBook);
+  const currentBook = hasMounted ? rawCurrentBook : null;
+  const rawFontSize = useReaderStore((s) => s.fontSize);
+  const fontSize = hasMounted ? rawFontSize : 18;
+  const rawLineHeight = useReaderStore((s) => s.lineHeight);
+  const lineHeight = hasMounted ? rawLineHeight : 1.75;
+  const rawFontFamily = useReaderStore((s) => s.fontFamily);
+  const fontFamily = hasMounted ? rawFontFamily : 'serif';
+  const rawTheme = useReaderStore((s) => s.theme);
+  const theme = hasMounted ? rawTheme : 'light';
   const setFontSize = useReaderStore((s) => s.setFontSize);
   const setLineHeight = useReaderStore((s) => s.setLineHeight);
   const setFontFamily = useReaderStore((s) => s.setFontFamily);
@@ -163,7 +170,13 @@ export default function BookReaderPage() {
         author={bookAuthor}
         bookId={bookId}
         progress={volumeProgress}
-        onBack={() => router.push('/')}
+        onBack={() => {
+          if (typeof window !== 'undefined' && window.history.length > 1) {
+            router.back();
+          } else {
+            router.push('/');
+          }
+        }}
         isTocOpen={isTocOpen}
         onToggleToc={() => {
           setIsTocOpen((prev) => {

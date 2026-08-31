@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 const subscribeHourly = (callback: () => void) => {
   const interval = setInterval(callback, 60 * 1000);
@@ -16,7 +17,7 @@ const getHourlySnapshot = () => {
 };
 
 const getHourlyServerSnapshot = () => {
-  return getCurrentHourlyIndex();
+  return 0;
 };
 import {
   Search,
@@ -94,6 +95,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   const [prevPassageIndex, setPrevPassageIndex] = useState(0);
   const [isTurningLeaf, setIsTurningLeaf] = useState(false);
   const [pinState, setPinState] = useState<'auto' | 'open' | 'closed'>('auto');
+  const hasMounted = useHasMounted();
   const [isHovered, setIsHovered] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -154,7 +156,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
       };
     }
 
-    const idx = hourlyIndex % FEATURED_HERO_BOOKS.length;
+    const idx = hasMounted ? (hourlyIndex % FEATURED_HERO_BOOKS.length) : 0;
     const b = FEATURED_HERO_BOOKS[idx] || FEATURED_HERO_BOOKS[0];
     return {
       ...b,
@@ -168,7 +170,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
         download_count: 50000,
       } as GutendexBook,
     };
-  }, [featuredBook, books, hourlyIndex]);
+  }, [featuredBook, books, hourlyIndex, hasMounted]);
 
   // On-demand fetch of full text for the active Featured Book to dynamically extract authentic quotes
   const { data: rawBookText } = useBookContent(undefined, activeFeatured.id);

@@ -30,14 +30,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v2.5.0)
+## 🛠️ Latest Improvements (v2.6.0)
 
-- **Hourly Deterministic "Featured Book" Rotation** – Dynamically features a public domain classic rotated every hour on the clock using zero-cron deterministic synchronization (`useSyncExternalStore` + `Math.floor(Date.now() / 3600000)`), eliminating SSR hydration pop and refresh flash.
-- **In-Book Chapter Passage Shuffling with Optical 3D Realism** – Shuffling cycles through genuine multi-chapter passages of the open volume while preserving the underlying left page content until the turning leaf physically completes its $-180^\circ$ swing.
-- **Flush Top-Left "Click for Preview" Card Affordance** – Repositioned the preview hover affordance to `top-0 left-0` with `rounded-tl-xl rounded-br-md` matching the card's outer radius with zero margin on desktop hover.
-- **Zero-Layout-Shift Background Scroll Freeze** – Non-destructive wheel and touch event interception that freezes background scrolling when 3D book previews are open without modifying body dimensions or scrollbar gutters (0 CLS / 0 horizontal shift).
-- **Refined Catalog Section Title** – Catalog section title streamlined to **"Public Domain Books"** with smooth ambient header transitions.
-- **Verified by the 7-Gateway Quality Engine** – 42/42 test files passed, 212/212 tests passed with **92.1% line coverage** (`npm run verify`).
+- **Catalog Scroll Position & History-Aware Back Navigation** – Reader Back button navigates through browser history (`router.back()`), seamlessly returning readers to their exact previous catalog scroll coordinates, preserved search parameters, and active page numbers.
+- **Single-Click Brand Refresh & Fresh Homepage Reset** – Clicking/tapping the **Bookarium** brand logo in the header resets the view to catalog, scrolls instantly to the top ($y = 0$), and navigates to the clean root `/`, restoring the initial experience.
+- **Rock-Solid SSR Zero-Hydration-Mismatch Guarding** – Guarded `useCatalogFilters` URL query resolution, `HeroSearch` hourly sync, and `useReaderStore` persisted preferences with `useHasMounted()`, eliminating all SSR hydration mismatch errors across direct deep links (e.g. `/?page=5`, direct `/read/[id]` links).
+- **Streamlined 3D Preview to Reader Flow** – Automatically clears preview modal state when opening the reader from 3D spreads, eliminating the redundant "double-back" step.
+- **Verified by the 7-Gateway Quality Engine** – 42/42 test files passed, 213/213 tests passed with **92.1% line coverage** (`npm run verify`).
 
 ## 🌐 Data Sources & API References
 

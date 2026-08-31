@@ -363,6 +363,8 @@ export default function Home() {
           setPreviewOriginRect(null);
         }}
         onReadBook={(book) => {
+          setSelectedPreviewBook(null);
+          setPreviewOriginRect(null);
           useReaderStore.getState().openReader(book);
           router.push(`/read/${book.id}`);
         }}

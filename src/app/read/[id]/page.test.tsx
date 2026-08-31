@@ -7,12 +7,14 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { mockBooks } from '@/mocks/handlers';
 
 const mockPush = vi.fn();
+const mockBack = vi.fn();
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: '1342' }),
   useRouter: () => ({
     push: mockPush,
+    back: mockBack,
   }),
 }));
 
@@ -70,7 +72,24 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getByLabelText('Typography & Theme Controls')).toBeInTheDocument();
   });
 
-  it('navigates back to catalog when back button is clicked', () => {
+  it('navigates back to previous scroll position when back button is clicked', () => {
+    Object.defineProperty(window, 'history', {
+      writable: true,
+      value: { length: 3 },
+    });
+
+    render(<BookReaderPage />);
+
+    fireEvent.click(screen.getByLabelText('Back to Catalog'));
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it('falls back to router.push("/") when history length is <= 1', () => {
+    Object.defineProperty(window, 'history', {
+      writable: true,
+      value: { length: 1 },
+    });
+
     render(<BookReaderPage />);
 
     fireEvent.click(screen.getByLabelText('Back to Catalog'));
