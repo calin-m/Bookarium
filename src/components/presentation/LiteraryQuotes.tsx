@@ -81,7 +81,7 @@ export const LiteraryQuotes: React.FC = () => {
                 {/* Decorative Quote Icon & Passage */}
                 <div className="relative">
                   <Quote className="w-8 h-8 text-primary/20 absolute -top-3 -left-2 -z-0" />
-                  <p className="relative z-10 font-serif italic text-base sm:text-lg text-foreground leading-relaxed transition-colors">
+                  <p className="relative z-10 font-serif italic text-base sm:text-lg text-foreground leading-relaxed transition-colors indent-7 sm:indent-8">
                     &ldquo;{item.quote}&rdquo;
                   </p>
                 </div>

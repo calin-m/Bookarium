@@ -4,6 +4,7 @@ import {
   calculateReadingTime,
   calculateVolumePageSpread,
   getCharsPerPage,
+  reflowGutenbergParagraphs,
 } from './gutenberg-parser';
 
 describe('src/lib/gutenberg-parser', () => {
@@ -16,6 +17,32 @@ describe('src/lib/gutenberg-parser', () => {
   it('correctly calculates reading time based on 200 WPM', () => {
     const text = new Array(400).fill('word').join(' ');
     expect(calculateReadingTime(text)).toBe(2);
+  });
+
+  it('reflows single-newline Gutenberg hard wraps while preserving double newlines', () => {
+    const rawParagraph = `Call me Ishmael. Some years ago—never mind how long
+precisely—having little or no money in my purse, and
+nothing particular to interest me on shore.
+
+There now is your insular city of the Manhattoes, belted
+round by wharves as Indian isles by coral reefs.`;
+
+    const expected = `Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore.
+
+There now is your insular city of the Manhattoes, belted round by wharves as Indian isles by coral reefs.`;
+
+    expect(reflowGutenbergParagraphs(rawParagraph)).toBe(expected);
+    expect(reflowGutenbergParagraphs('')).toBe('');
+    expect(reflowGutenbergParagraphs(null)).toBe('');
+  });
+
+  it('preserves indented verse and poetry lines during reflow', () => {
+    const poem = `    The sea! the sea! the open sea!
+    The blue, the fresh, the ever free!
+    Without a mark, without a bound,
+    It runneth the earth's wide regions round;`;
+
+    expect(reflowGutenbergParagraphs(poem)).toBe(poem);
   });
 
   it('calculates dynamic characters per page scaled by font size', () => {

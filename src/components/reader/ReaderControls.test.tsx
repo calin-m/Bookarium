@@ -75,7 +75,7 @@ describe('ReaderControls', () => {
     fireEvent.click(screen.getByText('Scroll'));
     expect(onReadingModeChange).toHaveBeenCalledWith('scroll');
 
-    fireEvent.click(screen.getByText('nar'));
+    fireEvent.click(screen.getByText('Narrow'));
     expect(onColumnWidthChange).toHaveBeenCalledWith('narrow');
   });
 

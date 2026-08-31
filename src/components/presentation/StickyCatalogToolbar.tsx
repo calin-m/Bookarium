@@ -11,6 +11,8 @@ import {
   Loader2,
   WifiOff,
   Zap,
+  Info,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -246,7 +248,11 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               </Button>
 
               {/* Direct Page Jump Form */}
-              <form onSubmit={handleJumpSubmit} className="flex items-center gap-1">
+              <form
+                onSubmit={handleJumpSubmit}
+                className="flex items-center gap-1"
+                title="Jump directly to any page (e.g. 35). Note: Deep offset queries scan 70,000+ volumes from the live Gutenberg archive."
+              >
                 <span className="text-xs font-mono text-muted-foreground select-none">Pg</span>
                 <input
                   type="text"
@@ -255,6 +261,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                   onFocus={() => setJumpPageInput(String(page))}
                   className="w-10 h-8 text-center text-xs font-mono font-bold rounded border border-border bg-card text-foreground focus:outline-hidden focus:border-primary"
                   aria-label="Jump to page"
+                  title="Enter page number and press Enter"
                 />
               </form>
 
@@ -273,7 +280,37 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               </Button>
 
               {isFetching && (
-                <Loader2 className="w-3.5 h-3.5 text-primary animate-spin ml-1" />
+                <div
+                  className="group relative inline-flex items-center ml-1"
+                  data-testid="archive-fetching-badge"
+                >
+                  <div
+                    tabIndex={0}
+                    role="status"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-lg text-[11px] font-mono tracking-wider transition-all cursor-help focus:outline-hidden focus:ring-1 focus:ring-primary shadow-xs"
+                    aria-label={`Fetching page ${page} from archive. Hover or click for details.`}
+                  >
+                    <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
+                    <span className="hidden sm:inline">Fetching Pg {page}...</span>
+                    <Info className="w-3.5 h-3.5 text-primary/80 animate-bounce hover:text-primary shrink-0" />
+                  </div>
+
+                  {/* Rich Animated Tooltip Popover Card */}
+                  <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto pointer-events-none transition-all duration-200 ease-out absolute top-full right-0 mt-2 w-72 p-3.5 bg-card text-foreground border border-border rounded-xl shadow-booksaw-hover z-50 text-xs space-y-2 text-left">
+                    <div className="font-serif font-bold text-foreground flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-primary">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Deep Archive Query
+                      </span>
+                      <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                        Page {page}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
+                      Scanning through <strong>70,000+ public domain titles</strong>. Large page offsets compute deep relational queries on live Gutenberg servers and may take a moment to deliver.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           )}

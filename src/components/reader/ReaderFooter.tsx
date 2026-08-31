@@ -68,6 +68,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
               <span className={`hidden sm:inline ${activeTheme.textMuted}`}>Page</span>
               <input
                 type="number"
+                role="spinbutton"
                 min={1}
                 max={totalBookPages}
                 value={globalPage}

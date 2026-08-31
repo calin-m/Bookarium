@@ -280,13 +280,13 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   type="button"
                   onClick={() => onColumnWidthChange(w)}
                   aria-pressed={columnWidth === w}
-                  className={`p-1.5 rounded text-[10px] border capitalize text-center transition-all ${
+                  className={`py-1.5 px-1 rounded text-[10px] sm:text-[11px] font-mono border capitalize text-center transition-all ${
                     columnWidth === w
                       ? `${activeTheme.activePill} border-primary-600 dark:border-primary-500/70 font-bold shadow-xs`
                       : `${activeTheme.pill} ${activeTheme.inactivePill}`
                   }`}
                 >
-                  {w.slice(0, 3)}
+                  {w.charAt(0).toUpperCase() + w.slice(1)}
                 </button>
               ))}
             </div>

@@ -41,6 +41,39 @@ export function calculateReadingTime(text: string): number {
 }
 
 /**
+ * Reflows Project Gutenberg plain-text paragraphs by joining single-newline hard wraps
+ * into fluid prose blocks while preserving double-spaced paragraph breaks, dialogue, and verse.
+ */
+export function reflowGutenbergParagraphs(rawText: string | undefined | null): string {
+  if (!rawText) return '';
+  const normalized = rawText.replace(/\r\n/g, '\n');
+  const paragraphs = normalized.split(/\n{2,}/);
+
+  const reflowed = paragraphs.map((para) => {
+    if (!para.trim()) return '';
+
+    const lines = para.split('\n');
+    if (lines.length <= 1) return para.trim();
+
+    // Check if the block is poetry/verse/indented (e.g. lines have leading spaces or all lines are very short)
+    const hasIndentedLines = lines.some((l) => /^\s{3,}|\t/.test(l));
+    const isShortVerse = lines.length > 2 && lines.every((l) => l.trim().length > 0 && l.trim().length < 45);
+
+    if (hasIndentedLines || isShortVerse) {
+      return para.replace(/^\n+|\n+$/g, '');
+    }
+
+    // Join single newlines with a single space to allow natural browser text wrapping
+    return lines
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join(' ');
+  });
+
+  return reflowed.filter(Boolean).join('\n\n');
+}
+
+/**
  * Parse raw Gutenberg plain-text into clean structured chapter sections.
  * Suppresses front-matter Table of Contents (TOC) lists, prefaces, extracts, and closing license matter.
  */
@@ -125,7 +158,7 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
         id: 0,
         title: 'Complete Volume',
         displayTitle: 'Complete Volume',
-        content: mainBody.trim() || text.trim(),
+        content: reflowGutenbergParagraphs(mainBody.trim() || text.trim()),
         startPageNumber: 1,
         pageCount: 1,
       });
@@ -141,7 +174,7 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
       id: 0,
       title: 'Title & Preamble',
       displayTitle: 'Title & Preamble',
-      content: preambleContent,
+      content: reflowGutenbergParagraphs(preambleContent),
       startPageNumber: 1,
       pageCount: 1,
     });
@@ -157,7 +190,7 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
       id: i + 1,
       title: current.title,
       displayTitle: current.title.replace(/\n+/g, ' — '),
-      content: rawContent,
+      content: reflowGutenbergParagraphs(rawContent),
       startPageNumber: 1,
       pageCount: 1,
     });
@@ -169,7 +202,7 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
       id: sections.length,
       title: 'Project Gutenberg License & Colophon',
       displayTitle: 'Colophon & License',
-      content: postBody.trim(),
+      content: reflowGutenbergParagraphs(postBody.trim()),
       startPageNumber: 1,
       pageCount: 1,
     });

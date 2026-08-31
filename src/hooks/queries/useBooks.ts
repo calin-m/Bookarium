@@ -52,18 +52,77 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
     searchParams.set('mime_type', params.mimeType.trim());
   }
 
-  // In browser runtime, route through internal Next.js API proxy to avoid CORS & timeouts
   const isBrowser = typeof window !== 'undefined';
-  const url = isBrowser
-    ? `${API_ENDPOINTS.INTERNAL_API_BOOKS}?${searchParams.toString()}`
-    : `${API_ENDPOINTS.GUTENDEX_BASE_URL}?${searchParams.toString()}`;
 
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch books: ${res.statusText}`);
+  // Strategy 1: Browser runtime - try internal Next.js API proxy with quick failover
+  if (isBrowser) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const internalUrl = `${API_ENDPOINTS.INTERNAL_API_BOOKS}?${searchParams.toString()}`;
+      const res = await fetch(internalUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (Array.isArray(data.results) || data.count !== undefined)) {
+          return data;
+        }
+      }
+    } catch {
+      // Fall through to Strategy 2 (Direct client-side API fetch)
+    }
+
+    // Strategy 2: Direct Client Upstream Fetch (bypasses serverless datacenter IP blocks)
+    const directUrl = `${API_ENDPOINTS.GUTENDEX_BASE_URL}/?${searchParams.toString()}`;
+    let directRes: Response;
+    try {
+      directRes = await fetch(directUrl, {
+        headers: { Accept: 'application/json' },
+      });
+    } catch (netErr: any) {
+      throw new Error(`Failed to fetch books: ${netErr?.message || 'Network error'}`);
+    }
+
+    if (!directRes.ok) {
+      throw new Error(`Failed to fetch books: ${directRes.statusText || directRes.status}`);
+    }
+
+    const data = await directRes.json();
+    const filteredResults = (data.results || []).filter((b: any) => b.copyright !== true);
+    return {
+      ...data,
+      results: filteredResults,
+      count: data.count !== undefined ? data.count : filteredResults.length,
+      source: 'upstream',
+    };
+  } else {
+    // Server runtime: Direct fetch to Gutendex
+    const directUrl = `${API_ENDPOINTS.GUTENDEX_BASE_URL}/?${searchParams.toString()}`;
+    let res: Response;
+    try {
+      res = await fetch(directUrl, {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'Bookarium/1.0 (Public Domain Library Reader)',
+        },
+      });
+    } catch (netErr: any) {
+      throw new Error(`Failed to fetch books: ${netErr?.message || 'Network error'}`);
+    }
+    if (!res.ok) {
+      throw new Error(`Failed to fetch books: ${res.statusText || res.status}`);
+    }
+    const data = await res.json();
+    const filteredResults = (data.results || []).filter((b: any) => b.copyright !== true);
+    return {
+      ...data,
+      results: filteredResults,
+      count: data.count !== undefined ? data.count : filteredResults.length,
+      source: 'upstream',
+    };
   }
-
-  return res.json();
 }
 
 export function useBooks(params: UseBooksParams = {}) {

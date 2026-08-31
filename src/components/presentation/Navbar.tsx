@@ -22,20 +22,33 @@ export const Navbar: React.FC<NavbarProps> = ({
   const cycleTheme = useThemeStore((s) => s.cycleTheme);
   const hasMounted = useHasMounted();
 
+  const handleBrandClick = () => {
+    onViewChange?.('catalog');
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname === '/' && !window.location.search) {
+        window.location.reload();
+      } else {
+        window.location.href = '/';
+      }
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full bg-background border-b border-border transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4 py-3">
         {/* Brand */}
         <div
           className="flex items-center gap-3 cursor-pointer group select-none"
-          onClick={() => onViewChange?.('catalog')}
+          onClick={handleBrandClick}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
-              onViewChange?.('catalog');
+              handleBrandClick();
             }
           }}
+          title="Refresh and return to catalog"
+          aria-label="Bookarium logo, click to refresh catalog"
         >
           <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-primary-foreground shadow-xs group-hover:scale-105 transition-transform">
             <BookOpen className="w-4 h-4" />

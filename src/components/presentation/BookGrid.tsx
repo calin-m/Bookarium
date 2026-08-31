@@ -5,7 +5,7 @@ import type { GutendexBook } from '@/mocks/handlers';
 import { BookCard } from './BookCard';
 import { BookshelfRack } from './BookshelfRack';
 import { Button } from '@/components/ui/Button';
-import { LayoutGrid, Library, RotateCcw, AlertTriangle, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutGrid, Library, RotateCcw, AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Loader2, Info } from 'lucide-react';
 
 export type BookViewMode = 'grid' | 'shelf';
 
@@ -56,6 +56,18 @@ export const BookGrid: React.FC<BookGridProps> = ({
   if (isLoading) {
     return (
       <div className="space-y-6 py-8">
+        <div
+          className="flex items-center justify-center gap-2.5 p-3.5 bg-muted/70 border border-border rounded-xl text-xs font-mono text-muted-foreground text-center shadow-xs"
+          title="Live public domain database query in progress"
+        >
+          <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+          <span>
+            Fetching Page <span className="text-foreground font-bold">{page}</span> from the public domain archive... Deep page queries calculate relational offsets across 70,000+ volumes and may take a moment.
+          </span>
+          <span className="inline-flex items-center text-primary ml-1" title="Live Gutenberg relational query in progress">
+            <Info className="w-3.5 h-3.5 animate-bounce text-primary/90 shrink-0" />
+          </span>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <div

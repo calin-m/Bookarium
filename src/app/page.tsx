@@ -10,6 +10,7 @@ import { BookGrid } from '@/components/presentation/BookGrid';
 import { LiteraryQuotes } from '@/components/presentation/LiteraryQuotes';
 import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
 import { Footer } from '@/components/presentation/Footer';
+import { BackToTop } from '@/components/ui/BackToTop';
 import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -338,6 +339,7 @@ export default function Home() {
         activeFilterCount={toolbarChips.length}
       />
 
+      <BackToTop />
       <Footer />
     </div>
   );

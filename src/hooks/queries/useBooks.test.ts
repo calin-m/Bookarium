@@ -91,12 +91,79 @@ describe('useBooks hook', () => {
     prefetchSpy.mockRestore();
   });
 
-  it('should throw error when fetch fails', async () => {
+  it('should fallback to direct upstream when internal proxy fails', async () => {
+    let callCount = 0;
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      callCount++;
+      if (String(url).includes('/api/books')) {
+        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
+      }
+      return new Response(
+        JSON.stringify({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [{ id: 1342, title: 'Direct Gutenberg Pride', copyright: false, authors: [] }],
+        }),
+        { status: 200 }
+      );
+    });
+
+    const data = await fetchBooks({ search: 'Pride' });
+    expect(data).toBeDefined();
+    expect(data.results[0].title).toBe('Direct Gutenberg Pride');
+    expect(data.source).toBe('upstream');
+    expect(callCount).toBeGreaterThanOrEqual(2);
+    fetchSpy.mockRestore();
+  });
+
+  it('should throw error when both internal proxy and direct API fail', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network connection failed'));
+
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Failed to fetch books:');
+    fetchSpy.mockRestore();
+  });
+
+  it('should throw when direct upstream returns non-ok status', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      if (String(url).includes('/api/books')) {
+        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
+      }
+      return new Response('Upstream error', { status: 500, statusText: 'Internal Server Error' });
+    });
+
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Failed to fetch books:');
+    fetchSpy.mockRestore();
+  });
+
+  it('should fetch in server environment when window is undefined', async () => {
+    const originalWindow = global.window;
+    delete (global as any).window;
+
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response('Server error', { status: 500, statusText: 'Internal Server Error' })
+      new Response(
+        JSON.stringify({
+          count: 1,
+          results: [{ id: 1342, title: 'Server Gutenberg Pride', copyright: false, authors: [] }],
+        }),
+        { status: 200 }
+      )
     );
 
-    await expect(fetchBooks()).rejects.toThrow('Failed to fetch books: Internal Server Error');
+    const data = await fetchBooks({ search: 'Pride' });
+    expect(data.results[0].title).toBe('Server Gutenberg Pride');
     fetchSpy.mockRestore();
+    (global as any).window = originalWindow;
+  });
+
+  it('should throw in server environment when server fetch fails', async () => {
+    const originalWindow = global.window;
+    delete (global as any).window;
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Server socket error'));
+
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Failed to fetch books:');
+    fetchSpy.mockRestore();
+    (global as any).window = originalWindow;
   });
 });
