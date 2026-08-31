@@ -112,11 +112,8 @@ describe('Home page integration', () => {
     expect(screen.getByText(/19th Century Victorian & Romantic/i)).toBeInTheDocument();
   });
 
-  it('should switch between catalog, bookshelf, and likes views with item actions', () => {
-    // Pre-populate bookshelf and likes
+  it('should switch to bookshelf view and handle clearing shelf', () => {
     useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
-    useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
-
     renderHome();
 
     const bookshelfBtn = screen.getByLabelText('Bookshelf');
@@ -128,6 +125,11 @@ describe('Home page integration', () => {
     const clearBtn = screen.getByRole('button', { name: /Clear Shelf/i });
     fireEvent.click(clearBtn);
     expect(useBookshelfStore.getState().savedBooks).toHaveLength(0);
+  });
+
+  it('should switch to favorites view and handle clearing favorites', () => {
+    useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
+    renderHome();
 
     const likedBtn = screen.getByLabelText('Liked Books');
     fireEvent.click(likedBtn);

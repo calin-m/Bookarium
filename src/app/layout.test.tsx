@@ -10,13 +10,24 @@ describe('RootLayout', () => {
   });
 
   it('should render children within html structure', () => {
-    render(
-      <RootLayout>
-        <div data-testid="layout-children">Layout App</div>
-      </RootLayout>
-    );
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
+        return;
+      }
+      originalError(...args);
+    };
 
-    expect(screen.getByTestId('layout-children')).toBeInTheDocument();
+    try {
+      render(
+        <RootLayout>
+          <div data-testid="layout-children">Layout App</div>
+        </RootLayout>
+      );
+      expect(screen.getByTestId('layout-children')).toBeInTheDocument();
+    } finally {
+      console.error = originalError;
+    }
   });
 });
 

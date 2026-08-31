@@ -140,7 +140,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('handles quick desktop theme switching and font size adjustments', () => {
+  it('handles quick desktop theme switching', () => {
     render(<BookReaderPage />);
 
     const sepiaBtn = screen.getByLabelText('Sepia Theme');
@@ -150,10 +150,17 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     const darkBtn = screen.getByLabelText('Dark Theme');
     fireEvent.click(darkBtn);
     expect(useReaderStore.getState().theme).toBe('dark');
+  });
 
-    const increaseFontBtn = screen.getByLabelText('Increase Font Size');
-    fireEvent.click(increaseFontBtn);
-    expect(useReaderStore.getState().fontSize).toBe(20);
+  it('handles quick font size adjustments', () => {
+    render(<BookReaderPage />);
+
+    const appearanceBtn = screen.getByLabelText('Typography & Theme Controls');
+    fireEvent.click(appearanceBtn);
+
+    const fontSlider = screen.getByLabelText('Font size in pixels');
+    fireEvent.change(fontSlider, { target: { value: '22' } });
+    expect(useReaderStore.getState().fontSize).toBe(22);
   });
 
   it('handles page jump input directly from footer', () => {

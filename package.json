@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "knip": "knip",
     "test": "vitest run --coverage",
+    "test:fast": "vitest run",
     "test:ui": "vitest --ui --open",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

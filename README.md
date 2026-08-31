@@ -7,7 +7,7 @@
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.19-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Vitest](https://img.shields.io/badge/Vitest-4.1.11-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-93.37%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.8%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
@@ -46,7 +46,18 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
 
 * **Zero API Key Requirement**: Works instantly out of the box with zero third-party developer keys, sign-ups, or credit card walls.
 * **Strict Public Domain Integrity**: All queries programmatically enforce `copyright=false` through Gutendex and Project Gutenberg.
-* **100% Live Dual-Gateway Data Pipeline**: Next.js Server Route Proxy paired with direct client upstream failover to `https://gutendex.com/` guaranteeing 100% uptime on serverless platforms (such as Vercel) without reliance on local mock fallbacks.
+* **100% Live Dual-Gateway Data Pipeline**: Next.js Server Route Proxy paired with direct client upstream failover to `https://gutendex.com/` guaranteeing 100% uptime on serverless platforms without reliance on local mock fallbacks.
+* **Dynamic Rotating 3D Featured Masterwork Spotlight**:
+  * Curated pool of 10 iconic public domain classics (*Pride and Prejudice, Frankenstein, Moby Dick, The Great Gatsby, Alice in Wonderland, Dorian Gray, Sherlock Holmes, Dracula, A Tale of Two Cities, The Time Machine*).
+  * Auto-rotates across sessions with an interactive **`[ ↻ Vol. #X ]`** shuffle button to cycle through classics without page reloads.
+  * 1-Click instant reader handoff with 0ms metadata population.
+* **Collapsible Left-Side Catalog Filter Sidebar & Push-Content Desktop Layout**:
+  * Slide-out left-docked filter drawer (`slide-in-from-left duration-300`) with zero dark background dimming.
+  * On desktop, opening filters smoothly pushes the entire webpage content (`<main>`) to the right (`lg:pl-96 duration-300`), allowing non-blocking side-by-side catalog browsing and live filter tweaking.
+  * The **Filters** button functions as an interactive toggle (`Open / Close`) with active state highlights.
+* **Flush 0px Sticky Header & Floating Shadow Elevation**:
+  * Seamless 0px flush alignment between the top navbar and sticky toolbar with a floating `shadow-md` elevation over scrolling book cards.
+  * Horizontally scrollable active filter chips strip (`overflow-x-auto scrollbar-none`) preventing vertical height shifts (0 CLS).
 * **Deep Archive Query UX & Live Telemetry**: Sticky catalog toolbar equipped with real-time roundtrip latency telemetry, direct page jumping, animated `Info` indicators, responsive mobile two-tier wrapping, and informative tooltips explaining relational SQL offsets across 70,000+ public domain volumes.
 * **Header Navigation & Brand Reset**: Clean top bar with unified iconography (**Catalog** `<BookOpen>`, **Bookshelf** `<Bookmark>`, **Favorites** `<Heart>`), live badge counters, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
 * **Floating Back to Top & Quick Navigation**: Motion-animated scroll-to-top button with viewport threshold detection.
@@ -55,12 +66,12 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
   * **Embossed Vertical Spines**: Distinct palette-styled book spines with dynamic heights, gold/silver embossed lettering, bookmark ribbons, and glowing progress pips.
   * **Hover Action Cards**: Floating preview cards elevated above the shelf with instant `Read`, `Download`, and `Bookmark` actions.
 * **Dedicated In-Browser Focus Reader (`/read/[id]`)**:
+  * **Triple-Tier Metadata Resolution & Info Switcher**: Instant reader metadata resolution (Store $\to$ Plain-Text Header Parsing $\to$ API) with a header `[ ⇄ Info ]` toggle switching seamlessly between Literary View (*Title & Author*) and Gutenberg Archival View (*Volume # & Archive Status*).
   * **Intelligent Gutenberg Chapter Engine**: Detects true prose chapters while filtering front-matter index clusters and preserving prefaces and extracts.
   * **Gutenberg Paragraph Reflow Engine**: Normalizes legacy 70-character hard linebreaks into fluid prose across Narrow (`576px`), Normal (`768px`), and Wide (`1024px`) reading layouts while preserving double-spaced paragraphs, dialogue, and indented poetry/verse.
-  * **True Book-Wide Global Pagination**: Calculates virtual pages across the entire volume (e.g. 901 pages for *Moby Dick*, 503 pages for *Pride and Prejudice*) with keyboard (`←`/`→`) and input page jumping.
-  * **Sticky Thin Editorial Footer**: Docked pagination bar with zero vertical jumping or layout shift.
-  * **Zero Cumulative Layout Shift (0 CLS)**: `scrollbar-gutter: stable` and standardized scrollbar tokens prevent horizontal reflows.
-  * **Table of Contents Drawer**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`), read-time estimates, and solid opaque surfaces with dark dismiss overlays.
+  * **True Book-Wide Global Pagination**: Calculates virtual pages across the entire volume with keyboard (`←`/`→`) and input page jumping.
+  * **Zero Cumulative Layout Shift (0 CLS)**: `scrollbar-gutter: stable`, fixed aspect ratios, and no synthetic body overflow locks ensure 100% layout stability.
+  * **Table of Contents Drawer**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`), read-time estimates, and solid opaque surfaces with transparent backdrops.
   * **Font Scaler & Dynamic Line Spacing Sliders**: Real-time font sizing (12px–36px) and dynamic line height (1.2–2.6) with 1-click presets (`14px / 18px / 24px` and `1.4 Compact / 1.8 Standard / 2.2 Spacious`) and top bar quick spacing cycler (`↕`).
   * **Typography & Width Modes**: 1-click column width presets (**Narrow** / **Normal** / **Wide**) and reading mode switching (**Page** / **Scroll**).
 * **Dynamic Literary Passages & Quotes**: Rotating showcase of iconic classic quotes with classical first-line editorial indentation and interactive shuffle discovery.

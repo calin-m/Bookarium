@@ -158,6 +158,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
+                            useReaderStore.getState().openReader(book);
                             if (onBookClick) onBookClick(book);
                             else router.push(`/read/${book.id}`);
                           }}

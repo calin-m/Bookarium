@@ -6,6 +6,7 @@ import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { extractBookFormats, formatDownloadCount, truncate } from '@/lib/utils';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -127,6 +128,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
         <div className="grid grid-cols-2 gap-2 mt-0.5">
           <Link
             href={`/read/${book.id}`}
+            onClick={() => useReaderStore.getState().openReader(book)}
             className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs bg-primary hover:opacity-90 text-primary-foreground rounded font-mono uppercase tracking-wider font-bold transition-opacity shadow-xs active:scale-[0.98]"
             aria-label={`Read ${book.title}`}
           >

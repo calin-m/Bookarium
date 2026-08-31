@@ -33,7 +33,7 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
   const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
   const hasMounted = useHasMounted();
 
-  // Escape key handler & body scroll lock
+  // Escape key handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -42,12 +42,10 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
     };
 
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
       window.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
-      document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
@@ -56,8 +54,8 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
   useEffect(() => {
     if (isOpen && activeItemRef.current) {
       if (activeItemRef.current && typeof activeItemRef.current.scrollIntoView === 'function') {
-  activeItemRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
-}
+        activeItemRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
     }
   }, [isOpen]);
 
@@ -73,16 +71,16 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
 
   return createPortal(
     <>
-      {/* Click-outside backdrop to dismiss */}
+      {/* Click-outside backdrop to dismiss without dimming the background */}
       <div
-        className="fixed inset-0 z-[9998] bg-black/40"
+        className="fixed inset-0 z-[9998] bg-transparent"
         onClick={onClose}
         aria-hidden="true"
         data-testid="toc-backdrop"
       />
 
       <div
-        className={`fixed top-14 sm:top-16 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] max-w-sm sm:w-96 max-h-[calc(100vh-4.5rem)] rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-5 transition-all animate-in fade-in duration-150 flex flex-col`}
+        className={`fixed top-14 sm:top-16 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] max-w-sm sm:w-96 max-h-[calc(100vh-4.5rem)] rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 transition-all animate-in fade-in duration-150 flex flex-col`}
         role="dialog"
         aria-modal="true"
         aria-label="Table of Contents"

@@ -60,20 +60,20 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
 
   return createPortal(
     <>
-      {/* Click-outside backdrop to dismiss */}
+      {/* Click-outside backdrop to dismiss without dimming the background */}
       <div
-        className="fixed inset-0 z-[9998] bg-black/40"
+        className="fixed inset-0 z-[9998] bg-transparent"
         onClick={onClose}
         aria-hidden="true"
         data-testid="controls-backdrop"
       />
 
       <div
-        className={`fixed top-14 sm:top-16 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] max-w-sm sm:w-96 max-h-[calc(100vh-4.5rem)] overflow-y-auto rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-5 transition-all animate-in fade-in duration-150 ${activeTheme.scrollbarClass}`}
+        className={`fixed top-14 sm:top-16 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] max-w-sm sm:w-96 max-h-[calc(100vh-4.5rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 transition-all animate-in fade-in duration-150`}
         role="region"
         aria-label="Reading Controls"
       >
-      <div className={`flex items-center justify-between pb-3 mb-4 border-b ${activeTheme.border}`}>
+      <div className={`flex items-center justify-between pb-2 mb-3 border-b ${activeTheme.border}`}>
         <h3 className="font-serif font-bold text-sm flex items-center gap-2">
           <Type className="w-4 h-4 text-primary-600 dark:text-primary-400" /> Typography & Reading Mode
         </h3>
@@ -87,10 +87,10 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
         </button>
       </div>
 
-      <div className="space-y-4 text-xs font-mono">
+      <div className="space-y-3 text-xs font-mono">
         {/* Surface Theme */}
         <div>
-          <label className={`block ${activeTheme.textMuted} mb-2 uppercase tracking-wider text-[10px]`}>
+          <label className={`block ${activeTheme.textMuted} mb-1.5 uppercase tracking-wider text-[10px]`}>
             Reading Surface
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -98,7 +98,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               type="button"
               onClick={() => onThemeChange('light')}
               aria-pressed={theme === 'light'}
-              className={`p-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
+              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
                 theme === 'light'
                   ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
                   : `${activeTheme.pill} ${activeTheme.inactivePill}`
@@ -110,7 +110,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               type="button"
               onClick={() => onThemeChange('sepia')}
               aria-pressed={theme === 'sepia'}
-              className={`p-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
+              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
                 theme === 'sepia'
                   ? `${activeTheme.activePill} border-amber-700 font-bold shadow-xs`
                   : `${activeTheme.pill} ${activeTheme.inactivePill}`
@@ -122,7 +122,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               type="button"
               onClick={() => onThemeChange('dark')}
               aria-pressed={theme === 'dark'}
-              className={`p-2.5 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
+              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
                 theme === 'dark'
                   ? `${activeTheme.activePill} border-primary-500 font-bold shadow-xs`
                   : `${activeTheme.pill} ${activeTheme.inactivePill}`

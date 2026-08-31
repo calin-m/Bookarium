@@ -4,32 +4,20 @@ import React from 'react';
 import { StickyCatalogToolbar } from './StickyCatalogToolbar';
 
 describe('StickyCatalogToolbar component', () => {
-  it('should render filter trigger, active chips, view switcher, pagination controls, 2-part API badge, and page size selector', () => {
-    const handlePageChange = vi.fn();
-    const handleViewModeChange = vi.fn();
-    const handleOpenFilters = vi.fn();
-    const handleClearAll = vi.fn();
-    const handleRemoveChip = vi.fn();
-    const handlePageSizeChange = vi.fn();
-
+  it('should render filter trigger, active chips, and 2-part API status badge', () => {
     render(
       <StickyCatalogToolbar
         page={1}
-        onPageChange={handlePageChange}
-        hasNextPage={true}
         viewMode="grid"
-        onViewModeChange={handleViewModeChange}
-        onOpenFilters={handleOpenFilters}
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
         activeFilterCount={2}
         activeFilterChips={[
-          { id: 'era', label: 'Victorian', onRemove: handleRemoveChip },
-          { id: 'lang', label: 'French', onRemove: handleRemoveChip },
+          { id: 'era', label: 'Victorian', onRemove: vi.fn() },
+          { id: 'lang', label: 'French', onRemove: vi.fn() },
         ]}
-        onClearAllFilters={handleClearAll}
-        isFetching={false}
+        onClearAllFilters={vi.fn()}
         latencyMs={85}
-        pageSize={16}
-        onPageSizeChange={handlePageSizeChange}
       />
     );
 
@@ -37,16 +25,51 @@ describe('StickyCatalogToolbar component', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('Victorian')).toBeInTheDocument();
     expect(screen.getByText('French')).toBeInTheDocument();
-    
-    // 2-Part API badge checks
     expect(screen.getByTestId('api-status-badge')).toHaveTextContent('Live');
     expect(screen.getByTestId('api-latency-badge')).toHaveTextContent('85ms');
+  });
 
-    // Page size selector checks
+  it('should handle page size selection', () => {
+    const handlePageSizeChange = vi.fn();
+    render(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        pageSize={16}
+        onPageSizeChange={handlePageSizeChange}
+      />
+    );
+
     expect(screen.getByText('Show:')).toBeInTheDocument();
     const size32Btn = screen.getByLabelText('Show 32 books per page');
     fireEvent.click(size32Btn);
     expect(handlePageSizeChange).toHaveBeenCalledWith(32);
+  });
+
+  it('should trigger filter opening, remove individual chips, and clear all filters', () => {
+    const handleOpenFilters = vi.fn();
+    const handleRemoveChip = vi.fn();
+    const handleClearAll = vi.fn();
+
+    render(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={handleOpenFilters}
+        activeFilterCount={2}
+        activeFilterChips={[
+          { id: 'era', label: 'Victorian', onRemove: handleRemoveChip },
+          { id: 'lang', label: 'French', onRemove: vi.fn() },
+        ]}
+        onClearAllFilters={handleClearAll}
+      />
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /Open advanced filters/i }));
     expect(handleOpenFilters).toHaveBeenCalled();
@@ -56,9 +79,41 @@ describe('StickyCatalogToolbar component', () => {
 
     fireEvent.click(screen.getByText('Clear all'));
     expect(handleClearAll).toHaveBeenCalled();
+  });
+
+  it('should handle view mode switching between grid and shelf', () => {
+    const handleViewModeChange = vi.fn();
+    render(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={handleViewModeChange}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+      />
+    );
 
     fireEvent.click(screen.getByLabelText('Shelf view'));
     expect(handleViewModeChange).toHaveBeenCalledWith('shelf');
+  });
+
+  it('should handle pagination next button and direct page jump form', () => {
+    const handlePageChange = vi.fn();
+    render(
+      <StickyCatalogToolbar
+        page={1}
+        onPageChange={handlePageChange}
+        hasNextPage={true}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+      />
+    );
 
     const nextBtn = screen.getByRole('button', { name: /Next page/i });
     fireEvent.click(nextBtn);

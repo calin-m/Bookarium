@@ -9,7 +9,7 @@ import {
   HERO_LANGUAGES,
   FORMAT_FILTERS,
 } from './catalog-filters';
-import { FEATURED_HERO_BOOK } from './featured-books';
+import { FEATURED_HERO_BOOK, FEATURED_HERO_BOOKS } from './featured-books';
 import { LITERARY_QUOTES } from './literary-quotes';
 import { READER_THEMES } from './reader-themes';
 
@@ -50,11 +50,16 @@ describe('src/config configuration modules', () => {
   });
 
   describe('featured-books', () => {
-    it('provides valid hero book spotlight', () => {
+    it('provides valid hero book spotlight and collection of classics', () => {
       expect(FEATURED_HERO_BOOK.id).toBe(1342);
       expect(FEATURED_HERO_BOOK.title).toBe('Pride and Prejudice');
       expect(FEATURED_HERO_BOOK.author).toBe('Jane Austen');
       expect(FEATURED_HERO_BOOK.license).toContain('Public Domain');
+
+      expect(FEATURED_HERO_BOOKS.length).toBeGreaterThanOrEqual(10);
+      expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'Frankenstein')).toBe(true);
+      expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'Moby Dick')).toBe(true);
+      expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'The Great Gatsby')).toBe(true);
     });
   });
 

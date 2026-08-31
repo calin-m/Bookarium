@@ -9,6 +9,7 @@ import {
   parseGutenbergChapters,
   getCharsPerPage,
   calculateVolumePageSpread,
+  extractGutenbergHeaderMetadata,
   type ChapterSection,
 } from '@/lib/gutenberg-parser';
 import { READER_THEMES } from '@/config/reader-themes';
@@ -26,6 +27,7 @@ export default function BookReaderPage() {
   const numericId = parseInt(bookId, 10) || 0;
 
   // Global Reader Store
+  const currentBook = useReaderStore((s) => s.currentBook);
   const fontSize = useReaderStore((s) => s.fontSize);
   const lineHeight = useReaderStore((s) => s.lineHeight);
   const fontFamily = useReaderStore((s) => s.fontFamily);
@@ -46,8 +48,16 @@ export default function BookReaderPage() {
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, refetch } = useBookContent(undefined, numericId);
-  const { data: booksData } = useBooks({ search: String(bookId), page: 1, copyright: false });
-  const bookMeta = booksData?.results?.find((b) => b.id === numericId);
+  const { data: booksData } = useBooks({ ids: numericId > 0 ? String(numericId) : '', page: 1, copyright: false });
+  
+  // Multi-tier metadata resolution: Client Store -> API Result -> Raw Gutenberg Header Extraction
+  const extractedMeta = useMemo(() => {
+    return extractGutenbergHeaderMetadata(contentText);
+  }, [contentText]);
+
+  const bookMeta = (currentBook?.id === numericId ? currentBook : undefined) || booksData?.results?.find((b) => b.id === numericId);
+  const bookTitle = bookMeta?.title || extractedMeta.title || (numericId > 0 ? `Gutenberg Volume #${numericId}` : 'Public Domain Classic');
+  const bookAuthor = bookMeta?.authors?.[0]?.name || extractedMeta.author || 'Classic Masterwork';
 
   // Parse Chapters and Volume Spread
   const rawChapters = useMemo<ChapterSection[]>(() => {
@@ -108,38 +118,31 @@ export default function BookReaderPage() {
     setCurrentChapterPage(1);
   }, []);
 
-  const handlePageJump = useCallback(
-    (targetGlobalPage: number) => {
-      const clamped = Math.max(1, Math.min(targetGlobalPage, totalVolumePages));
-      for (let i = 0; i < chaptersWithPagination.length; i++) {
-        const ch = chaptersWithPagination[i];
-        const nextCh = chaptersWithPagination[i + 1];
-        const endPage = nextCh ? nextCh.startPageNumber - 1 : totalVolumePages;
-        if (clamped >= ch.startPageNumber && clamped <= endPage) {
-          setActiveChapterIndex(i);
-          setCurrentChapterPage(clamped - ch.startPageNumber + 1);
-          break;
-        }
+  const handlePageJump = useCallback((targetPage: number) => {
+    let accumulatedPages = 0;
+    for (let i = 0; i < chaptersWithPagination.length; i++) {
+      const chap = chaptersWithPagination[i];
+      if (targetPage <= accumulatedPages + chap.pageCount) {
+        setActiveChapterIndex(i);
+        setCurrentChapterPage(Math.max(1, targetPage - accumulatedPages));
+        return;
       }
-    },
-    [chaptersWithPagination, totalVolumePages]
-  );
+      accumulatedPages += chap.pageCount;
+    }
+  }, [chaptersWithPagination]);
 
-  // Keyboard Shortcuts
+  // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-      if (e.key === 'ArrowLeft') {
-        handlePrevPage();
-      } else if (e.key === 'ArrowRight') {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        e.preventDefault();
         handleNextPage();
-      } else if (e.key === 'Escape') {
-        setIsTocOpen(false);
-        setIsControlsOpen(false);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        handlePrevPage();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handlePrevPage, handleNextPage]);
@@ -156,8 +159,8 @@ export default function BookReaderPage() {
       
       {/* Top Navigation & Toolbar */}
       <ReaderHeader
-        title={bookMeta?.title || `Gutenberg Volume #${bookId}`}
-        author={bookMeta?.authors?.[0]?.name || 'Classic Masterwork'}
+        title={bookTitle}
+        author={bookAuthor}
         bookId={bookId}
         progress={volumeProgress}
         onBack={() => router.push('/')}
@@ -178,12 +181,6 @@ export default function BookReaderPage() {
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
         theme={theme}
-        fontSize={fontSize}
-        onFontSizeChange={setFontSize}
-        lineHeight={lineHeight}
-        onLineHeightChange={setLineHeight}
-        readingMode={readingMode}
-        onReadingModeChange={setReadingMode}
         onThemeChange={setTheme}
       />
 
@@ -202,6 +199,8 @@ export default function BookReaderPage() {
         isLoading={isContentLoading}
         isError={isContentError}
         onRetry={() => refetch()}
+        bookTitle={bookTitle}
+        bookAuthor={bookAuthor}
       />
 
       {/* Fixed Sticky 0-CLS Bottom Pagination Footer */}

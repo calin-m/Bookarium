@@ -58,13 +58,21 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-black/60 animate-in fade-in duration-200"
+      className="fixed top-0 lg:top-16 inset-y-0 left-0 z-50 lg:z-30 flex justify-start animate-in fade-in duration-200 pointer-events-none"
       role="dialog"
       aria-modal="true"
       aria-labelledby="advanced-filter-title"
       data-testid="advanced-filter-drawer"
     >
-      <div className="w-full max-w-md h-full bg-background text-foreground flex flex-col justify-between shadow-2xl border-l border-border animate-in slide-in-from-right duration-300 overflow-hidden">
+      {/* Click-outside transparent backdrop on mobile / tablet */}
+      <div
+        className="fixed inset-0 bg-transparent pointer-events-auto lg:hidden"
+        onClick={onClose}
+        aria-hidden="true"
+        data-testid="filter-backdrop"
+      />
+
+      <div className="relative w-full max-w-sm sm:max-w-md lg:w-96 h-full lg:h-[calc(100vh-4rem)] bg-card text-foreground flex flex-col justify-between shadow-2xl border-r border-border animate-in slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
         
         {/* Drawer Header */}
         <div className="p-6 border-b border-border flex items-center justify-between bg-card">

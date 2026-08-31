@@ -29,6 +29,7 @@ export interface StickyCatalogToolbarProps {
   viewMode: 'grid' | 'shelf';
   onViewModeChange: (mode: 'grid' | 'shelf') => void;
   onOpenFilters: () => void;
+  isFiltersOpen?: boolean;
   activeFilterCount: number;
   activeFilterChips: ActiveFilterChip[];
   onClearAllFilters: () => void;
@@ -47,6 +48,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   viewMode,
   onViewModeChange,
   onOpenFilters,
+  isFiltersOpen = false,
   activeFilterCount,
   activeFilterChips,
   onClearAllFilters,
@@ -73,7 +75,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
   return (
     <div
-      className="sticky top-16 z-30 w-full bg-background border-b border-border shadow-xs transition-colors py-2.5 px-4 sm:px-6 lg:px-8"
+      className="sticky top-16 z-30 w-full bg-background border-b border-border shadow-md transition-colors py-2.5 px-4 sm:px-6 lg:px-8"
       data-testid="sticky-catalog-toolbar"
     >
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
@@ -87,33 +89,36 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             onClick={onOpenFilters}
             data-testid="open-filters-btn"
             className={`text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border transition-all ${
-              activeFilterCount > 0
-                ? 'border-primary bg-primary/10 text-primary'
+              isFiltersOpen || activeFilterCount > 0
+                ? 'border-primary bg-primary text-primary-foreground shadow-xs'
                 : 'border-border text-foreground hover:border-primary'
             }`}
-            aria-label="Open advanced filters"
+            aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
+            aria-expanded={isFiltersOpen}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span>Filters</span>
             {activeFilterCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-mono font-bold">
+              <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold ${
+                isFiltersOpen ? 'bg-white text-primary' : 'bg-primary text-primary-foreground'
+              }`}>
                 {activeFilterCount}
               </span>
             )}
           </Button>
 
           {/* Active Filter Chips */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full sm:max-w-md md:max-w-lg shrink min-w-0 py-0.5">
             {activeFilterChips.map((chip) => (
               <span
                 key={chip.id}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono bg-muted text-foreground border border-border"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono bg-muted text-foreground border border-border shrink-0"
               >
                 <span>{chip.label}</span>
                 <button
                   type="button"
                   onClick={chip.onRemove}
-                  className="hover:text-destructive rounded-full p-0.5"
+                  className="hover:text-destructive rounded-full p-0.5 shrink-0"
                   aria-label={`Remove filter ${chip.label}`}
                 >
                   <X className="w-3 h-3" />
@@ -125,7 +130,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               <button
                 type="button"
                 onClick={onClearAllFilters}
-                className="text-xs font-mono text-primary hover:underline px-1 py-0.5 ml-1"
+                className="text-xs font-mono text-primary hover:underline px-1 py-0.5 ml-1 shrink-0"
               >
                 Clear all
               </button>

@@ -14,6 +14,7 @@ import { BackToTop } from '@/components/ui/BackToTop';
 import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 import type { GutendexBook } from '@/mocks/handlers';
 import { Trash2, BookOpen, Quote, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -132,7 +133,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-200">
       <Navbar activeView={activeView} onViewChange={setActiveView} />
 
-      <main className="flex-1">
+      <main className={`flex-1 transition-all duration-300 ${isFilterDrawerOpen ? 'lg:pl-96' : 'lg:pl-0'}`}>
         {activeView === 'catalog' && (
           <HeroSearch
             search={search}
@@ -141,8 +142,30 @@ export default function Home() {
             onTopicChange={handleTopicChange}
             selectedLanguage={language}
             onLanguageChange={handleLanguageChange}
-            onReadFeaturedBook={() => {
-              const targetId = displayedBooks[0]?.id || 1342;
+            onReadFeaturedBook={(featured) => {
+              if (featured) {
+                const bookPayload: GutendexBook = {
+                  id: featured.id,
+                  title: featured.title,
+                  authors: [{ name: featured.author, birth_year: null, death_year: null }],
+                  translators: [],
+                  subjects: [featured.primarySubject],
+                  bookshelves: [],
+                  languages: ['en'],
+                  copyright: false,
+                  media_type: 'Text',
+                  formats: {},
+                  download_count: 50000,
+                };
+                useReaderStore.getState().openReader(bookPayload);
+                router.push(`/read/${featured.id}`);
+                return;
+              }
+              const targetBook = displayedBooks[0];
+              if (targetBook) {
+                useReaderStore.getState().openReader(targetBook);
+              }
+              const targetId = targetBook?.id || 1342;
               router.push(`/read/${targetId}`);
             }}
           />
@@ -156,7 +179,8 @@ export default function Home() {
             hasNextPage={Boolean(booksData?.next)}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
-            onOpenFilters={() => setIsFilterDrawerOpen(true)}
+            onOpenFilters={() => setIsFilterDrawerOpen((prev) => !prev)}
+            isFiltersOpen={isFilterDrawerOpen}
             activeFilterCount={toolbarChips.length}
             activeFilterChips={toolbarChips}
             onClearAllFilters={handleResetAllFilters}

@@ -29,12 +29,38 @@ describe('ReaderSurface', () => {
     onRetry: vi.fn(),
   };
 
-  it('renders chapter heading and page content', () => {
-    render(<ReaderSurface {...defaultProps} />);
+  it('renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections', () => {
+    const { rerender } = render(
+      <ReaderSurface
+        {...defaultProps}
+        activeChapterIndex={0}
+        bookTitle="Moby Dick"
+        bookAuthor="Herman Melville"
+      />
+    );
 
-    expect(screen.getByText('Chapter 1: Loomings')).toBeInTheDocument();
-    expect(screen.getByText('Call me Ishmael. Some years ago...')).toBeInTheDocument();
-    expect(screen.getByText('Section 1 of 5')).toBeInTheDocument();
+    expect(screen.getByText('Moby Dick')).toBeInTheDocument();
+    expect(screen.getByText('by Herman Melville')).toBeInTheDocument();
+    expect(screen.getByText(/Project Gutenberg Public Domain Edition/i)).toBeInTheDocument();
+
+    // Rerender as Section 2 (Chapter 2)
+    rerender(
+      <ReaderSurface
+        {...defaultProps}
+        activeChapterIndex={1}
+        chapter={{
+          id: 2,
+          title: 'Chapter 2: The Carpet-Bag',
+          displayTitle: 'Chapter 2: The Carpet-Bag',
+          content: 'I stuffed a shirt or two into my old carpet-bag...',
+          startPageNumber: 4,
+          pageCount: 2,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Chapter 2: The Carpet-Bag')).toBeInTheDocument();
+    expect(screen.getByText('Section 2 of 5')).toBeInTheDocument();
   });
 
   it('applies dynamic fontSize and lineHeight directly to the content body', () => {

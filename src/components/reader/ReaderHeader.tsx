@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { ArrowLeft, BookOpen, List, Sliders, Sparkles, Sun, Moon, Coffee } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, ArrowLeftRight, BookOpen, List, Sliders, Sparkles, Sun, Moon, Coffee } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { READER_THEMES } from '@/config/reader-themes';
 
@@ -18,12 +18,6 @@ export interface ReaderHeaderProps {
   theme?: ReaderTheme;
   totalChapters?: number;
   currentChapterIndex?: number;
-  fontSize?: number;
-  onFontSizeChange?: (size: number) => void;
-  lineHeight?: number;
-  onLineHeightChange?: (height: number) => void;
-  readingMode?: 'paginated' | 'scroll';
-  onReadingModeChange?: (mode: 'paginated' | 'scroll') => void;
   onThemeChange?: (theme: ReaderTheme) => void;
 }
 
@@ -40,14 +34,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   theme = 'light',
   totalChapters = 1,
   currentChapterIndex = 0,
-  fontSize,
-  onFontSizeChange,
-  lineHeight,
-  onLineHeightChange,
-  readingMode,
-  onReadingModeChange,
   onThemeChange,
 }) => {
+  const [isArchiveView, setIsArchiveView] = useState(false);
   const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
 
   return (
@@ -56,120 +45,64 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-4">
         
-        {/* Left: Back Link & Breadcrumb */}
-        <div className="flex items-center gap-3 min-w-0">
+        {/* Left: Back Link & Book Title/Author with Archive Toggle */}
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 sm:flex-initial max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl">
           <button
             type="button"
             onClick={onBack}
-            className={`p-2 -ml-2 rounded-lg border transition-all ${activeTheme.button}`}
+            className={`p-2 -ml-2 rounded-lg border shrink-0 transition-all ${activeTheme.button}`}
             aria-label="Back to Catalog"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
 
           <div className="min-w-0 flex flex-col justify-center">
-            <h1 className="text-sm sm:text-base font-serif font-bold truncate">
-              {title || `Volume #${bookId}`}
-            </h1>
-            <p className={`text-[11px] font-mono truncate ${activeTheme.textMuted}`}>
-              {author || 'Public Domain Classic'}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h1 className="text-sm sm:text-base font-serif font-bold truncate text-foreground">
+                {isArchiveView ? `Gutenberg Volume #${bookId}` : (title || `Volume #${bookId}`)}
+              </h1>
+              {bookId && (
+                <button
+                  type="button"
+                  onClick={() => setIsArchiveView((prev) => !prev)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono border transition-all shrink-0 ${
+                    isArchiveView
+                      ? 'bg-primary text-primary-foreground border-primary font-bold shadow-xs'
+                      : `${activeTheme.pill} hover:border-primary-500 hover:text-primary-600`
+                  }`}
+                  title={isArchiveView ? 'Switch to Literary Title & Author' : 'Switch to Gutenberg Archive Volume Info'}
+                  aria-label={isArchiveView ? 'Switch to Literary Title & Author' : 'Switch to Gutenberg Archive Volume Info'}
+                >
+                  <ArrowLeftRight className="w-2.5 h-2.5 opacity-75" />
+                  <span>Info</span>
+                </button>
+              )}
+            </div>
+            <p className={`text-[11px] sm:text-xs font-mono truncate ${activeTheme.textMuted}`}>
+              {isArchiveView ? 'Project Gutenberg Public Domain Archive' : (author || 'Public Domain Classic')}
             </p>
           </div>
         </div>
 
-        {/* Center: Reading Progress & Chapter Tracker */}
-        <div className="hidden lg:flex items-center gap-3">
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-mono ${activeTheme.pill}`}>
+        {/* Center: Clean Progress & Section Tracker */}
+        <div className="hidden md:flex items-center gap-2 shrink-0">
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-mono ${activeTheme.pill}`}>
             <BookOpen className="w-3.5 h-3.5 opacity-80" />
             <span>
               Section {currentChapterIndex + 1} of {totalChapters}
             </span>
-          </div>
-
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-mono ${activeTheme.activePill}`}>
+            <span className="opacity-40">•</span>
             <Sparkles className="w-3.5 h-3.5 text-primary-500" />
-            <span>{Math.round(progress)}% Volume Progress</span>
+            <span>{Math.round(progress)}% Progress</span>
           </div>
         </div>
 
-        {/* Right: Quick Controls & Modals */}
+        {/* Right: Theme Switcher, Table of Contents & Typography Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           
-          {/* Quick Reading Mode Switcher (Desktop) */}
-          {readingMode && onReadingModeChange && (
-            <div className={`hidden md:flex items-center rounded-lg p-0.5 border text-xs ${activeTheme.pill}`}>
-              <button
-                type="button"
-                onClick={() => onReadingModeChange('paginated')}
-                className={`px-2 py-1 rounded text-[11px] font-mono transition-all ${
-                  readingMode === 'paginated'
-                    ? activeTheme.activePill
-                    : activeTheme.inactivePill
-                }`}
-              >
-                Pages
-              </button>
-              <button
-                type="button"
-                onClick={() => onReadingModeChange('scroll')}
-                className={`px-2 py-1 rounded text-[11px] font-mono transition-all ${
-                  readingMode === 'scroll'
-                    ? activeTheme.activePill
-                    : activeTheme.inactivePill
-                }`}
-              >
-                Scroll
-              </button>
-            </div>
-          )}
-
-          {/* Quick Font Size Adjusters (Desktop) */}
-          {fontSize !== undefined && onFontSizeChange && (
-            <div className={`hidden md:flex items-center rounded-lg p-0.5 border text-xs ${activeTheme.pill}`}>
-              <button
-                type="button"
-                onClick={() => onFontSizeChange(Math.max(fontSize - 2, 12))}
-                className={`px-2 py-1 font-mono text-[11px] hover:text-primary-600 transition-colors`}
-                aria-label="Decrease Font Size"
-              >
-                A-
-              </button>
-              <span className={`px-1 font-mono text-[10px] ${activeTheme.textMuted}`}>
-                {fontSize}px
-              </span>
-              <button
-                type="button"
-                onClick={() => onFontSizeChange(Math.min(fontSize + 2, 36))}
-                className={`px-2 py-1 font-mono text-[11px] hover:text-primary-600 transition-colors`}
-                aria-label="Increase Font Size"
-              >
-                A+
-              </button>
-            </div>
-          )}
-
-          {/* Quick Line Height Toggle (Desktop) */}
-          {lineHeight !== undefined && onLineHeightChange && (
-            <div className={`hidden lg:flex items-center rounded-lg p-0.5 border text-xs ${activeTheme.pill}`}>
-              <button
-                type="button"
-                onClick={() => {
-                  const nextLh = lineHeight <= 1.4 ? 1.8 : lineHeight <= 1.8 ? 2.2 : 1.4;
-                  onLineHeightChange(nextLh);
-                }}
-                className={`px-2 py-1 font-mono text-[11px] hover:text-primary-600 transition-colors flex items-center gap-1`}
-                aria-label="Toggle Line Spacing Preset"
-                title="Cycle Line Height: Compact (1.4) → Standard (1.8) → Spacious (2.2)"
-              >
-                <span className="text-[10px] uppercase text-muted-foreground">↕</span>
-                <span>{lineHeight}</span>
-              </button>
-            </div>
-          )}
-
-          {/* Quick Theme Switchers (Desktop) */}
+          {/* Quick Theme Switchers (Light / Sepia / Dark) */}
           {onThemeChange && (
-            <div className={`hidden sm:flex items-center rounded-lg p-0.5 border text-xs ${activeTheme.pill}`}>
+            <div className={`flex items-center rounded-lg p-0.5 border text-xs ${activeTheme.pill}`}>
               <button
                 type="button"
                 onClick={() => onThemeChange('light')}
@@ -219,7 +152,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             <List className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Contents</span>
             {totalChapters > 1 && (
-              <span className={`text-[10px] opacity-70`}>
+              <span className="text-[10px] opacity-70">
                 ({currentChapterIndex + 1}/{totalChapters})
               </span>
             )}

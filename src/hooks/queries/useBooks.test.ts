@@ -166,4 +166,17 @@ describe('useBooks hook', () => {
     fetchSpy.mockRestore();
     (global as any).window = originalWindow;
   });
+
+  it('should handle simulated offline network drop in useBooks hook', async () => {
+    const { TestWrapper } = createWrapper();
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(new TypeError('NetworkError: Failed to fetch'));
+
+    const { result } = renderHook(() => useBooks({ search: 'NonExistent' }), {
+      wrapper: TestWrapper,
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeDefined();
+    fetchSpy.mockRestore();
+  });
 });

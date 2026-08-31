@@ -1,70 +1,145 @@
-# Architecture Matrix & Dependency Graph — Bookarium
+# Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST.  
 > **Last Synchronized**: `2026-08-31`  
-> **Topology Health**: `45` Modules Analyzed • `89` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `45` Modules Analyzed • `91` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
 ## 🏛️ System Architecture & Data Flow
 
-Bookarium is built on a **100% Pure API Architecture** with real-time telemetry, zero local mock archives, and deterministic state isolation.
+Bookarium is built on a **100% Pure Live API Architecture** with real-time telemetry, zero local mock archives, and deterministic state isolation.
 
 ```mermaid
 flowchart TD
-    User["👤 Reader"]
+    User["👤 Reader / Public Domain Explorer"]
     
-    subgraph Frontend ["Client SPA Layer (Next.js 16 App Router)"]
-        Nav["Navbar.tsx
-(Brand, Tabs, Theme)"]
-        Toolbar["StickyCatalogToolbar.tsx
-(Filters, 2-Part Telemetry, Batch Selector)"]
-        Hero["HeroSearch.tsx
-(Search & Subject Facets)"]
-        Drawer["AdvancedFilterDrawer.tsx
-(Eras, Sort, Formats)"]
-        Grid["BookGrid.tsx
-(Cover Grid & 3D Spine Shelf)"]
-        Reader["BookReaderModal.tsx
-(Focus Mode & Typography)"]
+    subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]
+        Nav["Navbar.tsx\n(Brand Reset, Navigation Tabs, Theme Cycler)"]
+        Hero["HeroSearch.tsx\n(Dynamic 3D Rotating Spotlight & Search)"]
+        Toolbar["StickyCatalogToolbar.tsx\n(0px Flush Header, Filters Toggle, Telemetry)"]
+        FilterDrawer["AdvancedFilterDrawer.tsx\n(Left Push-Sidebar: Eras, Sort, Formats)"]
+        Grid["BookGrid.tsx\n(Editorial Card Grid & 3D Wooden Shelf)"]
+        ReaderPage["Dedicated Reader Page (/read/[id])\n(Multi-Tier Meta, Chapter AST, Virtual Pagination)"]
+        Downloads["DownloadDrawer.tsx\n(EPUB, MOBI, TXT Direct Streams)"]
         
-        StoreShelf[("⚡ Bookshelf Store
-(localStorage)")]
-        StoreReader[("📖 Reader Store
-(Theme & Progress)")]
+        StoreShelf[("⚡ Bookshelf Store\n(localStorage: saved, likes, queue, history)")]
+        StoreReader[("📖 Reader Store\n(localStorage: theme, typography, progress map)")]
+        StoreTheme[("🎨 Theme Store\n(localStorage: day, sepia, obsidian)")]
         
-        QueryBooks["🔄 useBooks(params)"]
-        QueryText["🔄 useBookContent(url)"]
+        QueryBooks["🔄 useBooks(search, topic, page, sort, era)"]
+        QueryContent["🔄 useBookContent(url, bookId)"]
     end
 
-    subgraph ServerLayer ["Next.js Server Proxy (/api/books)"]
-        Proxy["GET /api/books
-(SWR 120s Cache, Latency Tracking)"]
+    subgraph ServerLayer ["Next.js Edge Proxy Layer"]
+        ProxyBooks["GET /api/books\n(SWR 120s Cache, Latency Tracking, copyright=false)"]
+        ProxyContent["GET /api/books/content\n(Unabridged Text Stream, SWR 24h)"]
     end
 
-    subgraph UpstreamServices ["100% Live Gutenberg Network"]
-        Gutendex["🌐 Gutendex Search API
-(70,000+ Titles)"]
-        GutenbergCDN["🌐 Project Gutenberg CDN
-(EPUB & Raw Text Streams)"]
+    subgraph UpstreamServices ["100% Public Domain Gutenberg Network"]
+        Gutendex["🌐 Gutendex Search API\n(70,000+ Zero-Copyright Volumes)"]
+        GutenbergCDN["🌐 Project Gutenberg CDN\n(Official EPUB & Raw Plain-Text)"]
     end
 
     User <--> Nav
+    User <--> Hero
     User <--> Toolbar
-    Toolbar --> Drawer
+    Toolbar --> FilterDrawer
     Toolbar --> Grid
-    Grid --> Reader
+    Grid --> ReaderPage
+    Grid --> Downloads
     
     Toolbar --> QueryBooks
-    QueryBooks --> Proxy
-    Proxy --> Gutendex
+    QueryBooks --> ProxyBooks
+    ProxyBooks --> Gutendex
+    QueryBooks -.->|Client Failover on 504| Gutendex
     
-    Reader --> QueryText
-    QueryText --> GutenbergCDN
+    ReaderPage --> QueryContent
+    QueryContent --> ProxyContent
+    ProxyContent --> GutenbergCDN
     
     Grid --> StoreShelf
-    Reader --> StoreReader
+    Nav --> StoreShelf
+    Nav --> StoreTheme
+    ReaderPage --> StoreReader
 ```
+
+---
+
+## 🧩 Component Catalog & Props Interface Matrix
+
+Auto-extracted from Component TypeScript interfaces:
+
+| Component | Exported Props Interface | Primary Props & Signals | Architectural Role |
+| :--- | :--- | :--- | :--- |
+| **`HeroSearch`** | `HeroSearchProps` | `search`, `onSearchChange`, `selectedTopic`, `selectedLanguage`, `onReadFeaturedBook` | Dynamic rotating 3D book spotlight, unified search bar, and popular topic pills |
+| **`StickyCatalogToolbar`** | `StickyCatalogToolbarProps` | `page`, `onPageChange`, `viewMode`, `onOpenFilters`, `isFiltersOpen`, `activeFilterChips`, `latencyMs` | 0px flush sticky toolbar with live latency telemetry and filter toggle |
+| **`BookCard`** | `BookCardProps` | `book`, `onDownloadClick` | Open-book skeuomorphic cover, like/save actions, and instant reader handoff |
+| **`BookGrid`** | `BookGridProps` | `books`, `isLoading`, `isError`, `page`, `viewMode`, `onViewModeChange`, `onDownloadClick` | Responsive catalog container toggling between Editorial Grid and 3D Shelf |
+| **`BookshelfRack`** | `BookshelfRackProps` | `books`, `onRemoveBook`, `onDownloadClick` | Skeuomorphic wooden shelf with embossed vertical book spines and touch panning |
+| **`AdvancedFilterDrawer`** | `AdvancedFilterDrawerProps` | `isOpen`, `onClose`, `selectedEra`, `selectedSort`, `selectedTopic`, `selectedLanguage`, `selectedFormat` | Collapsible left-side filter sidebar with desktop smooth push transition |
+| **`DownloadDrawer`** | `DownloadDrawerProps` | `book`, `isOpen`, `onClose` | Multi-format download hub (EPUB, MOBI, Plain Text, HTML) |
+| **`Navbar`** | `NavbarProps` | `activeView`, `onViewChange` | Top brand header, live badge counters, view switcher, and theme cycler |
+| **`LiteraryQuotes`** | _Autonomous_ | None (Internal Shuffle State) | 3-column classic literary passage showcase with shuffle discovery |
+| **`ReaderHeader`** | `ReaderHeaderProps` | `title`, `author`, `activeChapterTitle`, `readingMode`, `currentVolumeNumber` | Focus reader header with dual-mode `[ ⇄ Info ]` metadata switcher |
+| **`ReaderControls`** | `ReaderControlsProps` | `isOpen`, `fontSize`, `fontFamily`, `lineHeight`, `theme`, `columnWidth` | Compact typography and reading mode customization popover (0 scrollbars) |
+| **`ReaderTocDrawer`** | `ReaderTocDrawerProps` | `isOpen`, `chapters`, `activeChapterIndex`, `onSelectChapter` | Table of Contents slide-over with page numbers and transparent backdrop |
+| **`ReaderSurface`** | `ReaderSurfaceProps` | `content`, `fontSize`, `fontFamily`, `lineHeight`, `columnWidth`, `currentPage` | Fluid paragraph reflow engine with continuous virtual page spreads |
+| **`ReaderFooter`** | `ReaderFooterProps` | `currentPage`, `totalPages`, `progressPercentage`, `onPageJump` | Thin sticky bottom pagination bar with direct page jump input |
+
+---
+
+## ⚡ State Management & Store Architecture
+
+Zustand client-side state stores with persistent browser storage:
+
+### 1. `useBookshelfStore` (`src/stores/useBookshelfStore.ts`)
+* **Storage Key**: `bookarium-bookshelf` (localStorage)
+* **State Tree**:
+  * `savedBooks: GutendexBook[]` — Books saved to personal collection.
+  * `likedBookIds: number[]` — IDs of favorited masterworks.
+  * `readingQueue: GutendexBook[]` — Up next reading list.
+  * `readingHistory: ReadingHistoryEntry[]` — Timeline of recently read volumes with timestamps.
+* **Core Actions**: `saveBook`, `removeBook`, `toggleSave`, `toggleLike`, `addToQueue`, `removeFromQueue`, `recordHistory`, `clearAllBooks`.
+
+### 2. `useReaderStore` (`src/stores/useReaderStore.ts`)
+* **Storage Keys**: `bookarium-reader-preferences`, `bookarium-progress-map` (localStorage)
+* **State Tree**:
+  * `currentBook: GutendexBook | null` — Active book metadata payload.
+  * `fontSize: number` — Active font size (12px–36px, default 18px).
+  * `fontFamily: 'serif' | 'sans' | 'mono'` — Active font pairing.
+  * `lineHeight: number` — Active line height (1.2–2.6, default 1.8).
+  * `theme: 'light' | 'sepia' | 'dark'` — Active reader theme.
+  * `columnWidth: 'narrow' | 'normal' | 'wide'` — Reading column width (576px / 768px / 1024px).
+  * `readingMode: 'page' | 'scroll'` — Virtual paginated vs. vertical scroll.
+  * `progress: Record<number, BookProgress>` — Per-book percentage and chapter bookmarks.
+* **Core Actions**: `openReader`, `closeReader`, `setFontSize`, `setFontFamily`, `setLineHeight`, `setTheme`, `setColumnWidth`, `setReadingMode`, `saveProgress`.
+
+### 3. `useThemeStore` (`src/stores/useThemeStore.ts`)
+* **Storage Key**: `bookarium-theme` (localStorage)
+* **State Tree**: `theme: 'light' | 'dark' | 'sepia'`
+* **Core Actions**: `setTheme`, `cycleTheme`, `applyThemeToDocument`.
+
+---
+
+## 🌐 API Routes, Query Hooks & Network Contracts
+
+| Endpoint / Hook | Method / Layer | Query Parameters | Cache & Fallback Strategy | Upstream Target |
+| :--- | :--- | :--- | :--- | :--- |
+| **`/api/books`** | `GET` (Route) | `search`, `topic`, `languages`, `page`, `sort`, `author_year_start`, `author_year_end`, `mime_type`, `ids` | `s-maxage=120, stale-while-revalidate=600` • Real-time latency tracking | `https://gutendex.com/books/` |
+| **`/api/books/content`** | `GET` (Route) | `url`, `id` | `s-maxage=86400, stale-while-revalidate=604800` • UTF-8 plain text streaming | `https://www.gutenberg.org/cache/epub/{id}/pg{id}.txt` |
+| **`useBooks`** | TanStack Query | `{ search, topic, languages, page, sort, era, mimeType, enabled }` | `placeholderData: keepPreviousData` • 5m staleTime • Direct client failover on 504 | `/api/books` $\to$ Gutendex |
+| **`useBookContent`** | TanStack Query | `{ textUrl, bookId, enabled }` | 24h cache • Automated Gutenberg chapter AST parsing | `/api/books/content` $\to$ Gutenberg CDN |
+
+---
+
+## 📚 Curated Configurations & Design Token Registry
+
+* **`FEATURED_HERO_BOOKS`** (`src/config/featured-books.ts`): 10 curated classic masterpieces (*Pride and Prejudice, Frankenstein, Moby Dick, The Great Gatsby, Alice in Wonderland, Dorian Gray, Sherlock Holmes, Dracula, A Tale of Two Cities, The Time Machine*) with verified volume numbers and quotes.
+* **`LITERARY_ERAS`** (`src/config/catalog-filters.ts`): 6 historical eras spanning from Antiquity (-800 to 500) to Mid-20th Century (1914 to 1960).
+* **`GENRE_FACETS`** (`src/config/catalog-filters.ts`): Curated genre tags (Gothic & Horror, Philosophy, Adventure, Sci-Fi, Poetry, Drama, Detective & Mystery, History).
+* **`READER_THEMES`** (`src/config/reader-themes.ts`): 3 reading themes (Day Paper, Sepia Parchment, Obsidian Dark) with color tokens for background, text, borders, and accents.
+* **`LITERARY_QUOTES`** (`src/config/literary-quotes.ts`): 12 literary passages and opening lines from immortal masterworks.
 
 ---
 
@@ -77,14 +152,14 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`route.ts`](src/app/api/books/content/route.ts) | `config/api-endpoints` | _App Route Entry_ | Production Module |
 | [`route.ts`](src/app/api/books/route.ts) | `config/api-endpoints` | _App Route Entry_ | Production Module |
 | [`layout.tsx`](src/app/layout.tsx) | `./providers`, `./globals.css` | _App Route Entry_ | Production Module |
-| [`page.tsx`](src/app/page.tsx) | `components/presentation/Navbar`, `components/presentation/HeroSearch`, `components/presentation/StickyCatalogToolbar`, `components/presentation/AdvancedFilterDrawer`, `components/presentation/BookGrid`, `components/presentation/LiteraryQuotes`, `components/presentation/DownloadDrawer`, `components/presentation/Footer`, `components/ui/BackToTop`, `hooks/queries/useBooks`, `hooks/useCatalogFilters`, `stores/useBookshelfStore`, `mocks/handlers`, `components/ui/Button` | _App Route Entry_ | Production Module |
+| [`page.tsx`](src/app/page.tsx) | `components/presentation/Navbar`, `components/presentation/HeroSearch`, `components/presentation/StickyCatalogToolbar`, `components/presentation/AdvancedFilterDrawer`, `components/presentation/BookGrid`, `components/presentation/LiteraryQuotes`, `components/presentation/DownloadDrawer`, `components/presentation/Footer`, `components/ui/BackToTop`, `hooks/queries/useBooks`, `hooks/useCatalogFilters`, `stores/useBookshelfStore`, `stores/useReaderStore`, `mocks/handlers`, `components/ui/Button` | _App Route Entry_ | Production Module |
 | [`providers.tsx`](src/app/providers.tsx) | _Root Primitive_ | _Direct Root Consumer_ | Production Module |
 | [`page.tsx`](src/app/read/[id]/page.tsx) | `hooks/queries/useBookContent`, `hooks/queries/useBooks`, `stores/useReaderStore`, `lib/gutenberg-parser`, `config/reader-themes`, `components/reader/ReaderHeader`, `components/reader/ReaderFooter`, `components/reader/ReaderTocDrawer`, `components/reader/ReaderControls`, `components/reader/ReaderSurface` | _App Route Entry_ | Production Module |
 | [`MotionReveal.tsx`](src/components/motion/MotionReveal.tsx) | `./motion-config` | _Direct Root Consumer_ | Production Module |
 | [`StaggerGroup.tsx`](src/components/motion/StaggerGroup.tsx) | `./motion-config` | _Direct Root Consumer_ | Production Module |
 | [`motion-config.ts`](src/components/motion/motion-config.ts) | _Root Primitive_ | _Direct Root Consumer_ | Production Module |
 | [`AdvancedFilterDrawer.tsx`](src/components/presentation/AdvancedFilterDrawer.tsx) | `components/ui/Button`, `config/catalog-filters` | `page.tsx` | Production Module |
-| [`BookCard.tsx`](src/components/presentation/BookCard.tsx) | `mocks/handlers`, `lib/utils`, `stores/useBookshelfStore`, `hooks/useHasMounted`, `components/ui/Badge`, `components/ui/Button`, `components/ui/Card` | _Direct Root Consumer_ | Production Module |
+| [`BookCard.tsx`](src/components/presentation/BookCard.tsx) | `mocks/handlers`, `lib/utils`, `stores/useBookshelfStore`, `stores/useReaderStore`, `hooks/useHasMounted`, `components/ui/Badge`, `components/ui/Button`, `components/ui/Card` | _Direct Root Consumer_ | Production Module |
 | [`BookGrid.tsx`](src/components/presentation/BookGrid.tsx) | `mocks/handlers`, `./BookCard`, `./BookshelfRack`, `components/ui/Button` | `page.tsx` | Production Module |
 | [`BookshelfRack.tsx`](src/components/presentation/BookshelfRack.tsx) | `mocks/handlers`, `stores/useBookshelfStore`, `stores/useReaderStore` | _Direct Root Consumer_ | Production Module |
 | [`DownloadDrawer.tsx`](src/components/presentation/DownloadDrawer.tsx) | `mocks/handlers`, `lib/utils`, `components/ui/Modal`, `components/ui/Button`, `components/ui/Badge` | `page.tsx` | Production Module |
@@ -117,7 +192,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | _Root Primitive_ | `page.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx` | Production Module |
 | [`utils.ts`](src/lib/utils.ts) | _Root Primitive_ | `BookCard.tsx`, `DownloadDrawer.tsx`, `Badge.tsx`, `Button.tsx`, `Card.tsx`, `Input.tsx`, `Modal.tsx` | Production Module |
 | [`useBookshelfStore.ts`](src/stores/useBookshelfStore.ts) | `mocks/handlers` | `page.tsx`, `BookCard.tsx`, `BookshelfRack.tsx`, `Navbar.tsx` | Production Module |
-| [`useReaderStore.ts`](src/stores/useReaderStore.ts) | `mocks/handlers`, `./useThemeStore` | `page.tsx`, `BookshelfRack.tsx`, `ReaderControls.tsx`, `ReaderFooter.tsx`, `ReaderHeader.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx`, `reader-themes.ts` | Production Module |
+| [`useReaderStore.ts`](src/stores/useReaderStore.ts) | `mocks/handlers`, `./useThemeStore` | `page.tsx`, `page.tsx`, `BookCard.tsx`, `BookshelfRack.tsx`, `ReaderControls.tsx`, `ReaderFooter.tsx`, `ReaderHeader.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx`, `reader-themes.ts` | Production Module |
 | [`useThemeStore.ts`](src/stores/useThemeStore.ts) | _Root Primitive_ | `Navbar.tsx` | Production Module |
 
 ---
@@ -127,11 +202,11 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 1. **100% Pure Live API Queries**: All catalog items are retrieved in real-time from Project Gutenberg (`https://gutendex.com/books/`).
 2. **2-Part Visible Telemetry**: `StickyCatalogToolbar.tsx` renders live API connectivity status alongside exact roundtrip latency in milliseconds.
 3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.
-4. **Edge SWR Caching**: Common queries are cached with `s-maxage=120, stale-while-revalidate=300` for sub-10ms response times on repeated visits.
-5. **On-Demand Text Streaming**: Large book texts (2MB–5MB) are fetched strictly when the focus reader modal opens.
+4. **Edge SWR Caching**: Common queries are cached with `s-maxage=120, stale-while-revalidate=600` for sub-10ms response times on repeated visits.
+5. **On-Demand Text Streaming**: Large book texts (2MB–5MB) are fetched strictly when the focus reader opens.
 
 ---
 
 ## 🔒 Verification & Compliance
 
-This architecture file is verified deterministically by **Pass 4 of the 7-Gateway Quality Engine** (`npm run verify`).
+This architecture document is verified deterministically by **Pass 4 of the 7-Gateway Quality Engine** (`npm run verify`).

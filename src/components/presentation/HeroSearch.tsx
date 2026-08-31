@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   X,
@@ -11,10 +11,11 @@ import {
   Download,
   Bookmark,
   Sparkles,
+  RotateCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { HERO_POPULAR_TOPICS, HERO_LANGUAGES } from '@/config/catalog-filters';
-import { FEATURED_HERO_BOOK } from '@/config/featured-books';
+import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
 
 export interface HeroSearchProps {
   search?: string;
@@ -25,7 +26,7 @@ export interface HeroSearchProps {
   onTopicSelect?: (topic: string) => void;
   selectedLanguage?: string;
   onLanguageChange?: (lang: string) => void;
-  onReadFeaturedBook?: () => void;
+  onReadFeaturedBook?: (book?: FeaturedHeroBook) => void;
 }
 
 const FEATURES = [
@@ -63,6 +64,14 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   onReadFeaturedBook,
 }) => {
   const [query, setQuery] = useState(search);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+
+  const activeFeatured = FEATURED_HERO_BOOKS[featuredIndex] || FEATURED_HERO_BOOKS[0];
+
+  const handleNextFeatured = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFeaturedIndex((prev) => (prev + 1) % FEATURED_HERO_BOOKS.length);
+  };
 
   const handleInputChange = (val: string) => {
     setQuery(val);
@@ -197,7 +206,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
           {/* Right Column: Booksaw Standing 3D Book Cover Spotlight */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
-            <div className="relative group cursor-pointer" onClick={onReadFeaturedBook}>
+            <div className="relative group cursor-pointer" onClick={() => onReadFeaturedBook?.(activeFeatured)}>
               
               {/* 3D Physical Book Spine & Cover Wrapper */}
               <div className="relative w-64 sm:w-72 md:w-80 aspect-[2/3] rounded-r-lg rounded-l-sm bg-gradient-to-r from-stone-900 via-stone-800 to-stone-950 p-6 flex flex-col justify-between text-white shadow-[25px_25px_50px_rgba(0,0,0,0.18),0_10px_20px_rgba(0,0,0,0.08)] group-hover:-translate-y-2 group-hover:shadow-[30px_35px_60px_rgba(0,0,0,0.22)] transition-all duration-300 border-r-2 border-stone-700">
@@ -213,35 +222,44 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                     <span className="flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-primary-400" /> Featured Classic
                     </span>
-                    <span>{FEATURED_HERO_BOOK.volumeNumber}</span>
+                    <button
+                      type="button"
+                      onClick={handleNextFeatured}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                      title="Shuffle to Next Featured Masterpiece"
+                      aria-label="Shuffle to Next Featured Masterpiece"
+                    >
+                      <RotateCw className="w-2.5 h-2.5" />
+                      <span>{activeFeatured.volumeNumber}</span>
+                    </button>
                   </div>
 
                   <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white leading-tight mb-2">
-                    {FEATURED_HERO_BOOK.title}
+                    {activeFeatured.title}
                   </h3>
                   <p className="text-xs font-mono uppercase tracking-wider text-stone-300">
-                    {FEATURED_HERO_BOOK.author} • {FEATURED_HERO_BOOK.year}
+                    {activeFeatured.author} • {activeFeatured.year}
                   </p>
                 </div>
 
                 {/* Center Book Quote Excerpt */}
                 <div className="relative z-10 my-4 p-3 rounded bg-stone-900 border border-stone-800">
                   <p className="text-xs font-serif italic text-stone-200 leading-relaxed">
-                    &ldquo;{FEATURED_HERO_BOOK.quoteExcerpt}&rdquo;
+                    &ldquo;{activeFeatured.quoteExcerpt}&rdquo;
                   </p>
                 </div>
 
                 {/* Bottom Action Pill */}
                 <div className="relative z-10 pt-3 border-t border-white/10 flex items-center justify-between">
                   <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
-                    {FEATURED_HERO_BOOK.license}
+                    {activeFeatured.license}
                   </span>
                   {onReadFeaturedBook && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onReadFeaturedBook();
+                        onReadFeaturedBook(activeFeatured);
                       }}
                       className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded transition-colors"
                       aria-label="Read Volume"

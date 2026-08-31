@@ -20,6 +20,8 @@ export interface ReaderSurfaceProps {
   isLoading: boolean;
   isError: boolean;
   onRetry?: () => void;
+  bookTitle?: string;
+  bookAuthor?: string;
 }
 
 export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
@@ -36,6 +38,8 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   isLoading,
   isError,
   onRetry,
+  bookTitle,
+  bookAuthor,
 }) => {
   const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
 
@@ -110,8 +114,23 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
         }}
       >
         
-        {/* Chapter Title Banner */}
-        {chapter && (
+        {/* Archival Opening Frontispiece (Section 1 / Book Opening) */}
+        {activeChapterIndex === 0 && (bookTitle || bookAuthor) ? (
+          <header className={`mb-12 pb-8 border-b text-center ${activeTheme.border}`}>
+            <span className="inline-block text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-primary-600 dark:text-primary-400 font-bold mb-3 px-2.5 py-0.5 rounded-full border border-primary-500/30">
+              Project Gutenberg Public Domain Edition
+            </span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold tracking-tight text-inherit mb-3">
+              {bookTitle || chapter?.displayTitle || chapter?.title}
+            </h1>
+            {bookAuthor && (
+              <p className="text-base sm:text-lg font-serif italic text-muted-foreground">
+                by {bookAuthor}
+              </p>
+            )}
+          </header>
+        ) : chapter ? (
+          /* Chapter Title Banner for subsequent sections */
           <header className={`mb-10 pb-6 border-b text-center ${activeTheme.border}`}>
             <span className="text-[11px] font-mono uppercase tracking-widest text-primary-600 dark:text-primary-400 font-bold block mb-2">
               Section {activeChapterIndex + 1} of {totalChapters}
@@ -120,7 +139,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
               {chapter.displayTitle || chapter.title}
             </h2>
           </header>
-        )}
+        ) : null}
 
         {/* Formatted Book Body with Dynamic Line Height */}
         <div

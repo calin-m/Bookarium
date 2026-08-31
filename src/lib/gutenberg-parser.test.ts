@@ -5,6 +5,7 @@ import {
   calculateVolumePageSpread,
   getCharsPerPage,
   reflowGutenbergParagraphs,
+  extractGutenbergHeaderMetadata,
 } from './gutenberg-parser';
 
 describe('src/lib/gutenberg-parser', () => {
@@ -160,6 +161,22 @@ I stuffed a shirt or two into my old bag... ${'content '.repeat(100)}
     expect(chapters.length).toBe(1);
     expect(chapters[0].title).toBe('Complete Volume');
     expect(chapters[0].content).toBe(unformatted);
+  });
+
+  it('extracts Title and Author directly from Gutenberg header preamble', () => {
+    const headerText = `
+The Project Gutenberg eBook of Frankenstein; Or, The Modern Prometheus
+Title: Frankenstein
+       or, The Modern Prometheus
+Author: Mary Wollstonecraft (Godwin) Shelley
+Release Date: October 31, 1993 [eBook #84]
+    `;
+
+    const meta = extractGutenbergHeaderMetadata(headerText);
+    expect(meta.title).toBe('Frankenstein');
+    expect(meta.author).toContain('Mary Wollstonecraft');
+
+    expect(extractGutenbergHeaderMetadata(null)).toEqual({});
   });
 });
 

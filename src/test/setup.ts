@@ -57,6 +57,18 @@ global.IntersectionObserver = class IntersectionObserver {
 window.scrollTo = vi.fn();
 Element.prototype.scrollTo = vi.fn();
 
+// Mock window.location.reload for JSDOM
+Object.defineProperty(window, 'location', {
+  configurable: true,
+  value: {
+    ...window.location,
+    reload: vi.fn(),
+    href: 'http://localhost:3000/',
+    pathname: '/',
+    search: '',
+  },
+});
+
 // Mock next/font/google
 vi.mock('next/font/google', () => ({
   Playfair_Display: () => ({ variable: '--font-serif', className: 'font-serif' }),

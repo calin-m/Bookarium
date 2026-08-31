@@ -17,10 +17,6 @@ describe('ReaderHeader', () => {
     totalChapters: 61,
     currentChapterIndex: 5,
     theme: 'sepia' as const,
-    fontSize: 18,
-    onFontSizeChange: vi.fn(),
-    readingMode: 'paginated' as const,
-    onReadingModeChange: vi.fn(),
     onThemeChange: vi.fn(),
   };
 
@@ -29,8 +25,8 @@ describe('ReaderHeader', () => {
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('Jane Austen')).toBeInTheDocument();
-    expect(screen.getByText('45% Volume Progress')).toBeInTheDocument();
-    expect(screen.getByText('Section 6 of 61')).toBeInTheDocument();
+    expect(screen.getByText(/Section 6 of 61/i)).toBeInTheDocument();
+    expect(screen.getByText(/45% Progress/i)).toBeInTheDocument();
   });
 
   it('triggers onBack when back button is clicked', () => {
@@ -60,32 +56,15 @@ describe('ReaderHeader', () => {
     expect(onToggleControls).toHaveBeenCalledTimes(1);
   });
 
-  it('triggers quick desktop controls for font size, line height, theme, and reading mode', () => {
-    const onFontSizeChange = vi.fn();
-    const onLineHeightChange = vi.fn();
+  it('triggers right-side theme controls for light, sepia, and dark', () => {
     const onThemeChange = vi.fn();
-    const onReadingModeChange = vi.fn();
 
     render(
       <ReaderHeader
         {...defaultProps}
-        fontSize={18}
-        onFontSizeChange={onFontSizeChange}
-        lineHeight={1.4}
-        onLineHeightChange={onLineHeightChange}
         onThemeChange={onThemeChange}
-        onReadingModeChange={onReadingModeChange}
       />
     );
-
-    fireEvent.click(screen.getByLabelText('Increase Font Size'));
-    expect(onFontSizeChange).toHaveBeenCalledWith(20);
-
-    fireEvent.click(screen.getByLabelText('Decrease Font Size'));
-    expect(onFontSizeChange).toHaveBeenCalledWith(16);
-
-    fireEvent.click(screen.getByLabelText('Toggle Line Spacing Preset'));
-    expect(onLineHeightChange).toHaveBeenCalledWith(1.8);
 
     fireEvent.click(screen.getByLabelText('Dark Theme'));
     expect(onThemeChange).toHaveBeenCalledWith('dark');
@@ -93,7 +72,29 @@ describe('ReaderHeader', () => {
     fireEvent.click(screen.getByLabelText('Light Theme'));
     expect(onThemeChange).toHaveBeenCalledWith('light');
 
-    fireEvent.click(screen.getByText('Scroll'));
-    expect(onReadingModeChange).toHaveBeenCalledWith('scroll');
+    fireEvent.click(screen.getByLabelText('Sepia Theme'));
+    expect(onThemeChange).toHaveBeenCalledWith('sepia');
+  });
+
+  it('toggles metadata view between literary title/author and Gutenberg volume info', () => {
+    render(<ReaderHeader {...defaultProps} />);
+
+    // Default: Literary title and author
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.getByText('Jane Austen')).toBeInTheDocument();
+
+    const toggleBtn = screen.getByLabelText(/Switch to Gutenberg Archive Volume Info/i);
+    fireEvent.click(toggleBtn);
+
+    // Toggled: Gutenberg Volume metadata
+    expect(screen.getByText('Gutenberg Volume #1342')).toBeInTheDocument();
+    expect(screen.getByText('Project Gutenberg Public Domain Archive')).toBeInTheDocument();
+
+    // Toggle back
+    const toggleBackBtn = screen.getByLabelText(/Switch to Literary Title & Author/i);
+    fireEvent.click(toggleBackBtn);
+
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.getByText('Jane Austen')).toBeInTheDocument();
   });
 });

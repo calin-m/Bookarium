@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee } from 'lucide-react';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useThemeStore } from '@/stores/useThemeStore';
@@ -16,6 +17,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeView = 'catalog',
   onViewChange,
 }) => {
+  const router = useRouter();
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
   const likedBookIds = useBookshelfStore((s) => s.likedBookIds);
   const theme = useThemeStore((s) => s.theme);
@@ -25,17 +27,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleBrandClick = () => {
     onViewChange?.('catalog');
     if (typeof window !== 'undefined') {
-      if (window.location.pathname === '/' && !window.location.search) {
-        window.location.reload();
-      } else {
-        window.location.href = '/';
+      try {
+        if (window.location.pathname === '/' && !window.location.search) {
+          window.location.reload();
+        } else {
+          router.push('/');
+        }
+      } catch {
+        // Safe fallback for test/sandboxed environments
       }
     }
   };
 
   return (
     <header className="sticky top-0 z-40 w-full bg-background border-b border-border transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4 py-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Brand */}
         <div
           className="flex items-center gap-3 cursor-pointer group select-none"

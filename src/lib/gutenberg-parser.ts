@@ -242,3 +242,21 @@ export function calculateVolumePageSpread(
     totalVolumePages,
   };
 }
+
+/**
+ * Extract Title and Author directly from the Project Gutenberg preamble header.
+ */
+export function extractGutenbergHeaderMetadata(rawText: string | undefined | null): {
+  title?: string;
+  author?: string;
+} {
+  if (!rawText) return {};
+  const headerSlice = rawText.slice(0, 4000);
+  const titleMatch = /^Title:\s*([^\r\n]+)/im.exec(headerSlice);
+  const authorMatch = /^Author:\s*([^\r\n]+)/im.exec(headerSlice);
+
+  return {
+    title: titleMatch ? titleMatch[1].trim() : undefined,
+    author: authorMatch ? authorMatch[1].trim() : undefined,
+  };
+}
