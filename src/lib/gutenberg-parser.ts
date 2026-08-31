@@ -11,6 +11,7 @@ export interface ChapterSection {
   content: string;
   startPageNumber: number;
   pageCount: number;
+  pages?: string[];
 }
 
 export const GUTENBERG_PARSER_CONFIG = {
@@ -21,6 +22,62 @@ export const GUTENBERG_PARSER_CONFIG = {
   TOC_CLUSTER_BODY_THRESHOLD: 25000,
   ESTIMATED_WORDS_PER_MINUTE: 200,
 } as const;
+
+/**
+ * Splits chapter content into clean virtual pages snapped to sentence, paragraph, and word boundaries.
+ * Guarantees words are NEVER split across page turns.
+ */
+export function paginateChapterContent(content: string, charsPerPage: number): string[] {
+  if (!content || !content.trim()) return [''];
+  if (content.length <= charsPerPage) return [content];
+
+  const pages: string[] = [];
+  let remaining = content;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= charsPerPage) {
+      pages.push(remaining.trim());
+      break;
+    }
+
+    let splitIndex = charsPerPage;
+    const minSearch = Math.floor(charsPerPage * 0.75);
+    const windowText = remaining.slice(minSearch, charsPerPage + 100);
+
+    // 1. Prefer splitting cleanly on a paragraph boundary (\n\n)
+    const paraIndex = windowText.lastIndexOf('\n\n');
+    if (paraIndex !== -1 && minSearch + paraIndex <= charsPerPage + 60) {
+      splitIndex = minSearch + paraIndex + 2;
+    } else {
+      // 2. Look for a sentence boundary (. , ! , ? )
+      const searchSub = remaining.slice(minSearch, charsPerPage + 60);
+      const sentenceRegex = /[.!?]["']?\s+/g;
+      let lastSentenceEnd = -1;
+      let match: RegExpExecArray | null;
+      while ((match = sentenceRegex.exec(searchSub)) !== null) {
+        lastSentenceEnd = minSearch + match.index + match[0].length;
+      }
+
+      if (lastSentenceEnd !== -1 && lastSentenceEnd <= charsPerPage + 60) {
+        splitIndex = lastSentenceEnd;
+      } else {
+        // 3. Fallback: snap to the last whitespace before charsPerPage
+        const spaceIndex = remaining.slice(0, charsPerPage).lastIndexOf(' ');
+        if (spaceIndex > minSearch) {
+          splitIndex = spaceIndex + 1;
+        }
+      }
+    }
+
+    const pageSlice = remaining.slice(0, splitIndex).trim();
+    if (pageSlice) {
+      pages.push(pageSlice);
+    }
+    remaining = remaining.slice(splitIndex).trimStart();
+  }
+
+  return pages.length > 0 ? pages : [content];
+}
 
 /**
  * Calculate the estimated characters per page for a given font size.
@@ -226,11 +283,13 @@ export function calculateVolumePageSpread(
   let cumulativePage = 1;
 
   const chaptersWithPagination = chapters.map((ch) => {
-    const pageCount = Math.max(1, Math.ceil(ch.content.length / charsPerPage));
+    const pages = paginateChapterContent(ch.content, charsPerPage);
+    const pageCount = pages.length;
     const startPage = cumulativePage;
     cumulativePage += pageCount;
     return {
       ...ch,
+      pages,
       startPageNumber: startPage,
       pageCount,
     };

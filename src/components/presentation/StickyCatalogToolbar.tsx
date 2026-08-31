@@ -84,14 +84,14 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
         <div className="flex items-center gap-2.5 flex-wrap min-w-0">
           {/* Advanced Filters Button */}
           <Button
-            variant="outline"
+            variant={isFiltersOpen || activeFilterCount > 0 ? 'primary' : 'outline'}
             size="sm"
             onClick={onOpenFilters}
             data-testid="open-filters-btn"
             className={`text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border transition-all ${
               isFiltersOpen || activeFilterCount > 0
-                ? 'border-primary bg-primary text-primary-foreground shadow-xs'
-                : 'border-border text-foreground hover:border-primary'
+                ? 'border-primary-600 bg-primary-600 text-white hover:bg-primary-700 hover:text-white shadow-xs'
+                : 'border-border text-foreground hover:border-primary hover:bg-muted hover:text-foreground'
             }`}
             aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
             aria-expanded={isFiltersOpen}
@@ -100,7 +100,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             <span>Filters</span>
             {activeFilterCount > 0 && (
               <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold ${
-                isFiltersOpen ? 'bg-white text-primary' : 'bg-primary text-primary-foreground'
+                isFiltersOpen ? 'bg-white text-primary-700' : 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'
               }`}>
                 {activeFilterCount}
               </span>

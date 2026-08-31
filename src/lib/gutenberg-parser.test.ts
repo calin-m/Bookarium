@@ -6,6 +6,7 @@ import {
   getCharsPerPage,
   reflowGutenbergParagraphs,
   extractGutenbergHeaderMetadata,
+  paginateChapterContent,
 } from './gutenberg-parser';
 
 describe('src/lib/gutenberg-parser', () => {
@@ -177,6 +178,32 @@ Release Date: October 31, 1993 [eBook #84]
     expect(meta.author).toContain('Mary Wollstonecraft');
 
     expect(extractGutenbergHeaderMetadata(null)).toEqual({});
+  });
+
+  it('paginates chapter content snapping cleanly to sentence and word boundaries without splitting words', () => {
+    const text = 'First sentence of the page. Second sentence of the page. Third sentence of the page. Fourth sentence of the page.';
+    const pages = paginateChapterContent(text, 60);
+
+    expect(pages.length).toBeGreaterThanOrEqual(2);
+    // Ensure each page starts and ends on clean word/sentence boundaries
+    for (const page of pages) {
+      expect(page.trim()).not.toMatch(/^\S{1,2}\s/); // No orphaned fragments
+      expect(page).not.toContain('\n\n\n');
+    }
+
+    expect(paginateChapterContent('', 100)).toEqual(['']);
+    expect(paginateChapterContent('Short text', 500)).toEqual(['Short text']);
+
+    // Test paragraph boundary snapping
+    const multiParaText = 'First paragraph content that spans a good number of words.\n\nSecond paragraph starting fresh.\n\nThird paragraph concluding the section.';
+    const paraPages = paginateChapterContent(multiParaText, 70);
+    expect(paraPages.length).toBeGreaterThanOrEqual(2);
+
+    // Test space boundary fallback (text without punctuation)
+    const longUnpunctuated = 'word '.repeat(30).trim();
+    const spacePages = paginateChapterContent(longUnpunctuated, 50);
+    expect(spacePages.length).toBeGreaterThanOrEqual(2);
+    expect(spacePages[0].endsWith('word')).toBe(true);
   });
 });
 

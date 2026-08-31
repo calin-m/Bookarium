@@ -10,6 +10,7 @@ import {
   getCharsPerPage,
   calculateVolumePageSpread,
   extractGutenbergHeaderMetadata,
+  paginateChapterContent,
   type ChapterSection,
 } from '@/lib/gutenberg-parser';
 import { READER_THEMES } from '@/config/reader-themes';
@@ -71,14 +72,13 @@ export default function BookReaderPage() {
   const activeChapter = chaptersWithPagination[activeChapterIndex] || chaptersWithPagination[0];
   const activeChapterPageCount = activeChapter?.pageCount || 1;
 
-  // Slice Current Page Text for Paginated Mode
+  // Retrieve Current Page Text for Paginated Mode
   const currentPageText = useMemo(() => {
     if (!activeChapter?.content) return '';
     if (readingMode === 'scroll') return activeChapter.content;
 
-    const charsPerPage = getCharsPerPage(fontSize);
-    const startOffset = (currentChapterPage - 1) * charsPerPage;
-    return activeChapter.content.slice(startOffset, startOffset + charsPerPage);
+    const pages = activeChapter.pages || paginateChapterContent(activeChapter.content, getCharsPerPage(fontSize));
+    return pages[currentChapterPage - 1] || pages[0] || '';
   }, [activeChapter, currentChapterPage, fontSize, readingMode]);
 
   // Global Page & Progress Calculations
@@ -201,6 +201,9 @@ export default function BookReaderPage() {
         onRetry={() => refetch()}
         bookTitle={bookTitle}
         bookAuthor={bookAuthor}
+        onPreviousPage={handlePrevPage}
+        onNextPage={handleNextPage}
+        onFontSizeChange={setFontSize}
       />
 
       {/* Fixed Sticky 0-CLS Bottom Pagination Footer */}

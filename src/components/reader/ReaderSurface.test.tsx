@@ -105,4 +105,196 @@ describe('ReaderSurface', () => {
     rerender(<ReaderSurface {...defaultProps} theme="dark" />);
     expect(screen.getByRole('main')).toHaveClass('reader-surface-dark');
   });
+
+  it('triggers next and previous page handlers on mobile horizontal swipe gestures', () => {
+    const onNextPage = vi.fn();
+    const onPreviousPage = vi.fn();
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
+      />
+    );
+
+    const mainSurface = screen.getByRole('main');
+
+    // Simulate Swipe Left (Next Page: deltaX = 100 - 200 = -100px)
+    fireEvent.touchStart(mainSurface, {
+      touches: [{ clientX: 200, clientY: 300 }],
+    });
+    fireEvent.touchEnd(mainSurface, {
+      changedTouches: [{ clientX: 100, clientY: 305 }],
+    });
+    expect(onNextPage).toHaveBeenCalledTimes(1);
+
+    // Simulate Swipe Right (Previous Page: deltaX = 250 - 100 = +150px)
+    fireEvent.touchStart(mainSurface, {
+      touches: [{ clientX: 100, clientY: 300 }],
+    });
+    fireEvent.touchEnd(mainSurface, {
+      changedTouches: [{ clientX: 250, clientY: 305 }],
+    });
+    expect(onPreviousPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders correctly in scroll reading mode and handles empty content fallback', () => {
+    const { rerender } = render(
+      <ReaderSurface
+        {...defaultProps}
+        readingMode="scroll"
+        currentPageText=""
+        chapter={{
+          id: 1,
+          title: 'Full Chapter',
+          displayTitle: 'Full Chapter',
+          content: 'Unabridged chapter content displayed in scroll mode.',
+          startPageNumber: 1,
+          pageCount: 1,
+        }}
+      />
+    );
+
+    expect(screen.getByText('Unabridged chapter content displayed in scroll mode.')).toBeInTheDocument();
+
+    // Rerender with empty chapter content
+    rerender(
+      <ReaderSurface
+        {...defaultProps}
+        readingMode="scroll"
+        currentPageText=""
+        chapter={{
+          id: 1,
+          title: 'Empty',
+          displayTitle: 'Empty',
+          content: '',
+          startPageNumber: 1,
+          pageCount: 1,
+        }}
+      />
+    );
+
+    expect(screen.getByText(/Empty section or end of text volume/i)).toBeInTheDocument();
+  });
+
+  it('ignores vertical touch swipes or touches in scroll mode', () => {
+    const onNextPage = vi.fn();
+    const { rerender } = render(
+      <ReaderSurface
+        {...defaultProps}
+        readingMode="scroll"
+        onNextPage={onNextPage}
+      />
+    );
+
+    const mainSurface = screen.getByRole('main');
+
+    // In scroll mode, touch events do not trigger page turning
+    fireEvent.touchStart(mainSurface, {
+      touches: [{ clientX: 200, clientY: 300 }],
+    });
+    fireEvent.touchEnd(mainSurface, {
+      changedTouches: [{ clientX: 100, clientY: 300 }],
+    });
+    expect(onNextPage).not.toHaveBeenCalled();
+
+    // In paginated mode with vertical dominant gesture (deltaY > deltaX)
+    rerender(
+      <ReaderSurface
+        {...defaultProps}
+        readingMode="paginated"
+        onNextPage={onNextPage}
+      />
+    );
+
+    fireEvent.touchStart(mainSurface, {
+      touches: [{ clientX: 200, clientY: 100 }],
+    });
+    fireEvent.touchEnd(mainSurface, {
+      changedTouches: [{ clientX: 210, clientY: 300 }],
+    });
+    expect(onNextPage).not.toHaveBeenCalled();
+  });
+
+  it('renders narrow, wide, mono, and sans typography and layout modes', () => {
+    const { rerender } = render(
+      <ReaderSurface
+        {...defaultProps}
+        columnWidth="narrow"
+        fontFamily="mono"
+      />
+    );
+    expect(screen.getByRole('article')).toHaveClass('max-w-xl font-mono');
+
+    rerender(
+      <ReaderSurface
+        {...defaultProps}
+        columnWidth="wide"
+        fontFamily="sans"
+      />
+    );
+    expect(screen.getByRole('article')).toHaveClass('max-w-5xl font-sans');
+  });
+
+  it('handles two-finger pinch gestures to scale font size and displays floating HUD pill', () => {
+    const onFontSizeChange = vi.fn();
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        fontSize={18}
+        onFontSizeChange={onFontSizeChange}
+      />
+    );
+
+    const mainSurface = screen.getByRole('main');
+
+    // 1. Start two-finger pinch with initial distance of 100px
+    fireEvent.touchStart(mainSurface, {
+      touches: [
+        { clientX: 100, clientY: 100 },
+        { clientX: 200, clientY: 100 },
+      ],
+    });
+
+    // Font size HUD appears
+    expect(screen.getByTestId('font-zoom-hud')).toBeInTheDocument();
+    expect(screen.getByText(/Font Size: 18px/i)).toBeInTheDocument();
+
+    // 2. Pinch out / spread fingers to distance of 150px (scale = 1.5 -> target size = 27px)
+    fireEvent.touchMove(mainSurface, {
+      touches: [
+        { clientX: 75, clientY: 100 },
+        { clientX: 225, clientY: 100 },
+      ],
+    });
+
+    expect(onFontSizeChange).toHaveBeenCalledWith(27);
+    expect(screen.getByText(/Font Size: 27px/i)).toBeInTheDocument();
+
+    // 3. Pinch in beyond minimum (target size < 12px -> clamped to 12px)
+    fireEvent.touchMove(mainSurface, {
+      touches: [
+        { clientX: 140, clientY: 100 },
+        { clientX: 160, clientY: 100 },
+      ],
+    });
+    expect(onFontSizeChange).toHaveBeenCalledWith(12);
+    expect(screen.getByText(/\(Min\)/i)).toBeInTheDocument();
+
+    // 4. Pinch out beyond maximum (target size > 36px -> clamped to 36px)
+    fireEvent.touchMove(mainSurface, {
+      touches: [
+        { clientX: 0, clientY: 100 },
+        { clientX: 400, clientY: 100 },
+      ],
+    });
+    expect(onFontSizeChange).toHaveBeenCalledWith(36);
+    expect(screen.getByText(/\(Max\)/i)).toBeInTheDocument();
+
+    // 5. Release pinch touch
+    fireEvent.touchEnd(mainSurface, {
+      changedTouches: [{ clientX: 0, clientY: 100 }],
+    });
+  });
 });

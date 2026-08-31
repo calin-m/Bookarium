@@ -73,6 +73,8 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
   * **Zero Cumulative Layout Shift (0 CLS)**: `scrollbar-gutter: stable`, fixed aspect ratios, and no synthetic body overflow locks ensure 100% layout stability.
   * **Table of Contents Drawer**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`), read-time estimates, and solid opaque surfaces with transparent backdrops.
   * **Font Scaler & Dynamic Line Spacing Sliders**: Real-time font sizing (12px–36px) and dynamic line height (1.2–2.6) with 1-click presets (`14px / 18px / 24px` and `1.4 Compact / 1.8 Standard / 2.2 Spacious`) and top bar quick spacing cycler (`↕`).
+  * **Pinch‑to‑Zoom Font Scaling (Mobile)**: Two‑finger pinch gestures adjust the font size between 12 px – 36 px, displaying a transient HUD pill with the current size.
+  * **Filters Button Hover Contrast Fix**: Updated button variant and hover styling for clear text contrast when the sidebar is opened.
   * **Typography & Width Modes**: 1-click column width presets (**Narrow** / **Normal** / **Wide**) and reading mode switching (**Page** / **Scroll**).
 * **Dynamic Literary Passages & Quotes**: Rotating showcase of iconic classic quotes with classical first-line editorial indentation and interactive shuffle discovery.
 * **Direct Download Hub**: Multi-format downloads including direct EPUB, clean plain text, mobile-friendly HTML, and Kindle formats.
