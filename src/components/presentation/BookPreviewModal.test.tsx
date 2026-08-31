@@ -165,4 +165,20 @@ describe('BookPreviewModal component', () => {
 
     expect(bookStage.style.transform).toBe('translate3d(0px, 0px, 0px) scale(1)');
   });
+
+  it('prevents background scroll via event interception when open and restores it when unmounted', () => {
+    const { unmount } = renderWithQueryClient(
+      <BookPreviewModal book={defaultBook} isOpen={true} onClose={vi.fn()} />
+    );
+
+    const wheelEvent = new Event('wheel', { cancelable: true });
+    window.dispatchEvent(wheelEvent);
+    expect(wheelEvent.defaultPrevented).toBe(true);
+
+    unmount();
+
+    const afterUnmountEvent = new Event('wheel', { cancelable: true });
+    window.dispatchEvent(afterUnmountEvent);
+    expect(afterUnmountEvent.defaultPrevented).toBe(false);
+  });
 });

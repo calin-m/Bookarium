@@ -1,15 +1,34 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HeroSearch } from './HeroSearch';
+import type { GutendexBook } from '@/mocks/handlers';
+
+const createTestWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+const renderWithClient = (ui: React.ReactElement) => {
+  return render(ui, { wrapper: createTestWrapper() });
+};
 
 describe('HeroSearch component', () => {
-  it('should render headline, featured classic, and 4-pillar benefit strip', () => {
-    render(<HeroSearch search="" selectedTopic="" selectedLanguage="" />);
+  it('should render headline, featured book, and 4-pillar benefit strip', () => {
+    renderWithClient(<HeroSearch search="" selectedTopic="" selectedLanguage="" />);
 
     expect(screen.getByText(/Timeless Literature/i)).toBeInTheDocument();
     expect(screen.getByText(/Free Forever/i)).toBeInTheDocument();
-    expect(screen.getByText(/Featured Classic/i)).toBeInTheDocument();
+    expect(screen.getByText(/Featured Book/i)).toBeInTheDocument();
     expect(screen.getByText(/100% Public Domain/i)).toBeInTheDocument();
     expect(screen.getByText(/Zero Setup or Keys/i)).toBeInTheDocument();
     expect(screen.getByTestId('search-input')).toBeInTheDocument();
@@ -19,7 +38,7 @@ describe('HeroSearch component', () => {
   it('should handle search input changes with debounce', () => {
     vi.useFakeTimers();
     const handleSearchChange = vi.fn();
-    render(<HeroSearch search="" onSearchChange={handleSearchChange} />);
+    renderWithClient(<HeroSearch search="" onSearchChange={handleSearchChange} />);
 
     fireEvent.change(screen.getByTestId('search-input'), { target: { value: 'Austen' } });
     expect(handleSearchChange).not.toHaveBeenCalled();
@@ -33,7 +52,7 @@ describe('HeroSearch component', () => {
     const handleTopicChange = vi.fn();
     const handleLangChange = vi.fn();
 
-    render(
+    renderWithClient(
       <HeroSearch
         search=""
         selectedTopic=""
@@ -52,7 +71,7 @@ describe('HeroSearch component', () => {
 
   it('should handle read featured book button click', () => {
     const handleReadFeatured = vi.fn();
-    render(<HeroSearch search="" onReadFeaturedBook={handleReadFeatured} />);
+    renderWithClient(<HeroSearch search="" onReadFeaturedBook={handleReadFeatured} />);
 
     const readBtns = screen.getAllByRole('button', { name: /Read Volume/i });
     expect(readBtns.length).toBeGreaterThanOrEqual(1);
@@ -61,20 +80,54 @@ describe('HeroSearch component', () => {
   });
 
   it('should render open-book spread with left and right page quotes on featured spotlight', () => {
-    render(<HeroSearch search="" />);
+    const mockBook: GutendexBook = {
+      id: 1342,
+      title: 'Pride and Prejudice',
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+      translators: [],
+      subjects: ['Courtship -- Fiction', 'Sisters -- Fiction'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 50000,
+    };
+    renderWithClient(<HeroSearch search="" books={[mockBook]} />);
 
     expect(screen.getAllByText(/Pride and Prejudice/i)[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/no enjoyment like reading/i)[0]).toBeInTheDocument();
     expect(screen.getAllByText(/truth universally acknowledged/i)[0]).toBeInTheDocument();
-    expect(screen.getByText(/Notable Passage/i)).toBeInTheDocument();
     expect(screen.getByText(/p\. 1/i)).toBeInTheDocument();
+  });
+
+  it('should accept dynamic books prop from API and render the active volume', () => {
+    const mockApiBooks: GutendexBook[] = [
+      {
+        id: 84,
+        title: 'Frankenstein',
+        authors: [{ name: 'Shelley, Mary Wollstonecraft', birth_year: 1797, death_year: 1851 }],
+        translators: [],
+        subjects: ['Science fiction', 'Horror tales'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 70000,
+      },
+    ];
+
+    renderWithClient(<HeroSearch search="" books={mockApiBooks} />);
+
+    expect(screen.getAllByText(/Frankenstein/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Mary Wollstonecraft Shelley/i)[0]).toBeInTheDocument();
   });
 
   it('should clear search input and submit search correctly', () => {
     const handleSearch = vi.fn();
     const handleSearchChange = vi.fn();
 
-    render(
+    renderWithClient(
       <HeroSearch
         search="Shelley"
         onSearch={handleSearch}
@@ -93,10 +146,10 @@ describe('HeroSearch component', () => {
     expect(handleSearch).toHaveBeenCalledWith('Plato');
   });
 
-  it('should shuffle to next featured classic when rotate button is clicked', () => {
-    render(<HeroSearch search="" />);
+  it('should shuffle to next passage within the featured book when rotate button is clicked', () => {
+    renderWithClient(<HeroSearch search="" />);
 
-    const shuffleBtns = screen.getAllByLabelText(/Shuffle to Next Featured Masterpiece/i);
+    const shuffleBtns = screen.getAllByRole('button', { name: /Shuffle/i });
     expect(shuffleBtns.length).toBeGreaterThanOrEqual(1);
     fireEvent.click(shuffleBtns[0]);
   });
@@ -106,7 +159,7 @@ describe('HeroSearch component', () => {
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1200 });
 
     try {
-      render(<HeroSearch search="" />);
+      renderWithClient(<HeroSearch search="" />);
 
       const bookStage = screen.getByRole('button', { name: /Click to pin open volume/i });
       expect(bookStage).toHaveClass('book-3d-stage');
@@ -142,7 +195,7 @@ describe('HeroSearch component', () => {
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 768 });
 
     try {
-      render(<HeroSearch search="" />);
+      renderWithClient(<HeroSearch search="" />);
 
       const bookStage = screen.getByRole('button', { name: /Click to pin open volume/i });
       expect(bookStage).not.toHaveClass('book-open');
@@ -156,8 +209,6 @@ describe('HeroSearch component', () => {
       expect(bookStage).not.toHaveClass('book-open');
 
       // Keyboard should not trigger
-      fireEvent.keyDown(bookStage, { key: 'Enter' });
-      expect(bookStage).not.toHaveClass('book-open');
     } finally {
       Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
     }

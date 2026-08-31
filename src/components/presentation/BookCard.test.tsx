@@ -100,10 +100,14 @@ describe('BookCard component', () => {
   it('applies opacity-0 when isPreviewActive is true', () => {
     const book = mockBooks[0];
     render(<BookCard book={book} isPreviewActive={true} />);
-
     const card = screen.getByTestId(`book-card-${book.id}`);
     expect(card).toHaveClass('opacity-0');
   });
+
+  it('should render Click for Preview hover badge when onPreviewClick is provided', () => {
+    const book = mockBooks[0];
+    render(<BookCard book={book} onPreviewClick={vi.fn()} />);
+
+    expect(screen.getByText(/Click for Preview/i)).toBeInTheDocument();
+  });
 });
-
-

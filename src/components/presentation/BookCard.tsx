@@ -106,7 +106,16 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
           </div>
         )}
 
-        {/* Quick Action Overlay Badges */}
+        {/* Top-Left Hover Affordance: Click for Preview (Desktop hover only, flush with top-left card corner) */}
+        {onPreviewClick && (
+          <div className="absolute top-0 left-0 z-20 hidden lg:flex opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+            <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold bg-primary text-primary-foreground px-2.5 py-1 rounded-tl-xl rounded-br-md rounded-tr-none rounded-bl-none shadow-xs tracking-wider uppercase">
+              Click for Preview 📖
+            </span>
+          </div>
+        )}
+
+        {/* Quick Action Overlay Badges (Top-Right) */}
         <div className="absolute top-2.5 right-2.5 flex flex-col gap-1.5 z-20">
           <button
             type="button"
@@ -141,16 +150,11 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
           </button>
         </div>
 
-        {/* Subject Pill / Flip Open Hover Affordance */}
+        {/* Subject Pill (Bottom-Left) */}
         <div className="absolute bottom-2.5 left-2.5 z-20 flex items-center gap-1.5">
           <Badge variant="outline" size="sm" className="bg-card text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors">
             {primarySubject}
           </Badge>
-          {onPreviewClick && (
-            <span className="hidden lg:inline-flex opacity-0 group-hover:opacity-100 items-center gap-1 text-[9px] font-mono font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded shadow-xs transition-opacity">
-              Flip Open 📖
-            </span>
-          )}
         </div>
       </div>
 

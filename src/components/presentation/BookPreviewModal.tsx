@@ -179,6 +179,23 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
     setIsTurningLeaf(true);
   }, [isTurningLeaf, passages.length, activePassageIndex]);
 
+  // Freeze background scrolling without modifying body dimensions or scrollbars (zero layout shift)
+  useEffect(() => {
+    if (!isOpen || !book) return;
+
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener('wheel', preventScroll, { passive: false });
+    window.addEventListener('touchmove', preventScroll, { passive: false });
+
+    return () => {
+      window.removeEventListener('wheel', preventScroll);
+      window.removeEventListener('touchmove', preventScroll);
+    };
+  }, [isOpen, book]);
+
   // Keyboard navigation: Escape to close, ArrowRight to shuffle
   useEffect(() => {
     if (!isOpen) return;
@@ -216,8 +233,9 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden select-none overscroll-none"
       onClick={handleClose}
+      onWheel={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
       aria-label={`Preview of ${book.title}`}
@@ -225,7 +243,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
     >
       {/* Soft Ambient Backdrop: Fades smoothly in on open and out on close */}
       <div
-        className={`absolute inset-0 bg-background/40 dark:bg-black/50 backdrop-blur-[2px] pointer-events-none transition-opacity duration-500 ease-out ${
+        className={`absolute inset-0 bg-background/50 dark:bg-black/60 backdrop-blur-sm pointer-events-none transition-all duration-700 ease-out ${
           isGlidedIn && !isClosing ? 'opacity-100' : 'opacity-0'
         }`}
       />

@@ -1,6 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
+
+const subscribeHourly = (callback: () => void) => {
+  const interval = setInterval(callback, 60 * 1000);
+  return () => clearInterval(interval);
+};
+
+const getCurrentHourlyIndex = () => {
+  return Math.floor(Date.now() / (1000 * 60 * 60));
+};
+
+const getHourlySnapshot = () => {
+  return getCurrentHourlyIndex();
+};
+
+const getHourlyServerSnapshot = () => {
+  return getCurrentHourlyIndex();
+};
 import {
   Search,
   X,
@@ -15,7 +32,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
-import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
+import { getBookPassages, type BookPassage, FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
+import { extractDynamicBookPassages } from '@/lib/gutenberg-parser';
+import { useBookContent } from '@/hooks/queries/useBookContent';
+import type { GutendexBook } from '@/mocks/handlers';
 import { LanguageSelector } from './LanguageSelector';
 
 export interface HeroSearchProps {
@@ -27,7 +47,9 @@ export interface HeroSearchProps {
   onTopicSelect?: (topic: string) => void;
   selectedLanguage?: string;
   onLanguageChange?: (lang: string) => void;
-  onReadFeaturedBook?: (book?: FeaturedHeroBook) => void;
+  onReadFeaturedBook?: (book?: FeaturedHeroBook | GutendexBook) => void;
+  featuredBook?: GutendexBook | FeaturedHeroBook;
+  books?: GutendexBook[];
 }
 
 const FEATURES = [
@@ -63,11 +85,13 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   selectedLanguage = '',
   onLanguageChange,
   onReadFeaturedBook,
+  featuredBook,
+  books,
 }) => {
   const [prevSearch, setPrevSearch] = useState(search);
   const [query, setQuery] = useState(search);
-  const [featuredIndex, setFeaturedIndex] = useState(0);
-  const [prevFeaturedIndex, setPrevFeaturedIndex] = useState(0);
+  const [activePassageIndex, setActivePassageIndex] = useState(0);
+  const [prevPassageIndex, setPrevPassageIndex] = useState(0);
   const [isTurningLeaf, setIsTurningLeaf] = useState(false);
   const [pinState, setPinState] = useState<'auto' | 'open' | 'closed'>('auto');
   const [isHovered, setIsHovered] = useState(false);
@@ -86,13 +110,115 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
     };
   }, []);
 
-  const activeFeatured = FEATURED_HERO_BOOKS[featuredIndex] || FEATURED_HERO_BOOKS[0];
-  const prevFeatured = FEATURED_HERO_BOOKS[prevFeaturedIndex] || FEATURED_HERO_BOOKS[0];
+  // Deterministic hourly rotation: the Featured Book changes every hour (3,600,000 ms)
+  const hourlyIndex = useSyncExternalStore(subscribeHourly, getHourlySnapshot, getHourlyServerSnapshot);
 
-  const handleNextFeatured = (e: React.MouseEvent) => {
+  // Stable active Featured Book: anchored deterministically by hour to prevent flash-on-refresh
+  const activeFeatured: FeaturedHeroBook & { rawBook?: GutendexBook } = useMemo(() => {
+    const targetCustom = featuredBook || (books && books.length > 0 ? books[0] : null);
+    if (targetCustom) {
+      if ('rawBook' in targetCustom && targetCustom.rawBook) {
+        return targetCustom as FeaturedHeroBook & { rawBook?: GutendexBook };
+      }
+      if ('authors' in targetCustom) {
+        const b = targetCustom as GutendexBook;
+        const authorName =
+          b.authors?.map((a) => a.name.split(',').reverse().join(' ').trim()).join(', ') || 'Anonymous';
+        const subject = b.subjects?.[0]?.split('--')[0]?.trim() || 'Classic Literature';
+
+        return {
+          id: b.id,
+          title: b.title,
+          author: authorName,
+          year: 'Public Domain',
+          primarySubject: subject,
+          license: 'CC0 / Free',
+          volumeNumber: `Vol. #${b.id}`,
+          quoteExcerpt: 'Preserved in the public domain for all readers.',
+          openingLine: 'Preserved in the public domain for all readers.',
+          rawBook: b,
+        };
+      }
+      const fh = targetCustom as FeaturedHeroBook;
+      return {
+        ...fh,
+        rawBook: {
+          id: fh.id,
+          title: fh.title,
+          authors: [{ name: fh.author }],
+          subjects: [fh.primarySubject],
+          languages: ['en'],
+          formats: {},
+          download_count: 50000,
+        } as GutendexBook,
+      };
+    }
+
+    const idx = hourlyIndex % FEATURED_HERO_BOOKS.length;
+    const b = FEATURED_HERO_BOOKS[idx] || FEATURED_HERO_BOOKS[0];
+    return {
+      ...b,
+      rawBook: {
+        id: b.id,
+        title: b.title,
+        authors: [{ name: b.author }],
+        subjects: [b.primarySubject],
+        languages: ['en'],
+        formats: {},
+        download_count: 50000,
+      } as GutendexBook,
+    };
+  }, [featuredBook, books, hourlyIndex]);
+
+  // On-demand fetch of full text for the active Featured Book to dynamically extract authentic quotes
+  const { data: rawBookText } = useBookContent(undefined, activeFeatured.id);
+
+  const curatedPassages = useMemo(() => {
+    return getBookPassages({
+      id: activeFeatured.id,
+      title: activeFeatured.title,
+      authors: activeFeatured.rawBook?.authors || [{ name: activeFeatured.author }],
+      subjects: activeFeatured.rawBook?.subjects || [activeFeatured.primarySubject],
+    });
+  }, [activeFeatured]);
+
+  const dynamicPassages = useMemo(() => {
+    if (rawBookText) {
+      return extractDynamicBookPassages(rawBookText, {
+        id: activeFeatured.id,
+        title: activeFeatured.title,
+        authors: activeFeatured.rawBook?.authors || [{ name: activeFeatured.author }],
+        subjects: activeFeatured.rawBook?.subjects || [activeFeatured.primarySubject],
+      });
+    }
+    return [];
+  }, [rawBookText, activeFeatured]);
+
+  // Keep index 0 locked to curated incipit so text never jumps unexpectedly,
+  // while supplying dynamic multi-chapter passages for in-book shuffling
+  const passages: BookPassage[] = useMemo(() => {
+    const baseFirst = curatedPassages[0] || dynamicPassages[0];
+    if (!baseFirst) return [];
+    if (dynamicPassages.length > 1) {
+      return [baseFirst, ...dynamicPassages.slice(1)];
+    }
+    return curatedPassages.length > 0 ? curatedPassages : [baseFirst];
+  }, [curatedPassages, dynamicPassages]);
+
+  const currentPassage = passages[activePassageIndex] || {
+    chapterLabel: 'Chapter I',
+    openingLine: 'Preserved in the public domain for all readers.',
+    quoteExcerpt: 'A timeless literary classic.',
+  };
+
+  const prevPassage = passages[prevPassageIndex] || currentPassage;
+
+  // Shuffling rotates through passages and chapters within this specific open book
+  const handleNextPassage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setPrevFeaturedIndex(featuredIndex);
-    setFeaturedIndex((prev) => (prev + 1) % FEATURED_HERO_BOOKS.length);
+    if (isTurningLeaf || passages.length <= 1) return;
+    setPrevPassageIndex(activePassageIndex);
+    setActivePassageIndex((prev) => (prev + 1) % passages.length);
     setIsTurningLeaf(true);
   };
 
@@ -292,17 +418,17 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                 
                 {/* Desktop Open Book Spread Base (Right Page: straight left spine, rounded right outer edge) */}
                 <div className="hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex-col justify-between text-foreground z-0 overflow-hidden">
-                  <div key={`right-page-base-${activeFeatured.id}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
+                  <div key={`right-page-base-${activeFeatured.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
                     <div>
                       <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
-                        <span>Notable Passage</span>
+                        <span>{currentPassage.chapterLabel || 'Notable Passage'}</span>
                         <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{activeFeatured.license}</span>
                       </div>
 
                       <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
                         <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
                         <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8">
-                          &ldquo;{activeFeatured.quoteExcerpt}&rdquo;
+                          &ldquo;{currentPassage.quoteExcerpt}&rdquo;
                         </p>
                       </div>
                     </div>
@@ -313,11 +439,11 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleNextFeatured(e);
+                          handleNextPassage(e);
                         }}
                         className="inline-flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 rounded border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                        title="Shuffle to Next Featured Masterpiece"
-                        aria-label="Shuffle to Next Featured Masterpiece"
+                        title="Shuffle to Next Passage in this Book"
+                        aria-label="Shuffle to Next Passage in this Book"
                       >
                         <RotateCw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-500" />
                         <span>Shuffle</span>
@@ -328,7 +454,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onReadFeaturedBook(activeFeatured);
+                            onReadFeaturedBook(activeFeatured.rawBook || activeFeatured);
                           }}
                           className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-primary-foreground bg-primary hover:opacity-90 px-3.5 py-1.5 rounded shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
                           aria-label="Read Volume"
@@ -344,7 +470,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                 {/* Physical 3D Turning Leaf (Flips Right to Left across the spine on shuffle: 0deg -> -180deg) */}
                 {isTurningLeaf && (
                   <div
-                    key={`turning-leaf-${activeFeatured.id}`}
+                    key={`turning-leaf-${activeFeatured.id}-${activePassageIndex}`}
                     className="hidden lg:block book-turning-leaf"
                     onAnimationEnd={() => setIsTurningLeaf(false)}
                   >
@@ -352,14 +478,14 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                     <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
                       <div>
                         <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
-                          <span>Notable Passage</span>
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{prevFeatured.license}</span>
+                          <span>{prevPassage.chapterLabel || 'Notable Passage'}</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{activeFeatured.license}</span>
                         </div>
 
                         <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
                           <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
                           <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8">
-                            &ldquo;{prevFeatured.quoteExcerpt}&rdquo;
+                            &ldquo;{prevPassage.quoteExcerpt}&rdquo;
                           </p>
                         </div>
                       </div>
@@ -372,7 +498,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                           <span className="flex items-center gap-1">
                             <Sparkles className="w-3 h-3" /> Public Domain
                           </span>
-                          <span>{activeFeatured.volumeNumber}</span>
+                          <span>{currentPassage.chapterLabel || activeFeatured.volumeNumber}</span>
                         </div>
 
                         <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground">
@@ -384,7 +510,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
                         <div className="relative pl-3 border-l-2 border-primary/40 my-2">
                           <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8">
-                            &ldquo;{activeFeatured.openingLine}&rdquo;
+                            &ldquo;{currentPassage.openingLine}&rdquo;
                           </p>
                         </div>
                       </div>
@@ -406,22 +532,22 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                     <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/40 via-black/20 to-transparent rounded-l-sm pointer-events-none" />
                     <div className="absolute right-0 top-1 bottom-1 w-2 bg-gradient-to-l from-white/30 to-transparent pointer-events-none" />
 
-                    <div key={`front-face-content-${activeFeatured.id}`} className="animate-ink-appear flex flex-col justify-between h-full relative z-10">
+                    <div key={`front-face-content-${activeFeatured.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative z-10">
                       {/* Header */}
                       <div>
                         <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary-300 mb-3 pb-2 border-b border-white/10">
                           <span className="flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-primary-400" /> Featured Classic
+                            <Sparkles className="w-3 h-3 text-primary-400" /> Featured Book
                           </span>
                           <button
                             type="button"
-                            onClick={handleNextFeatured}
+                            onClick={handleNextPassage}
                             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                            title="Shuffle to Next Featured Masterpiece"
-                            aria-label="Shuffle to Next Featured Masterpiece"
+                            title="Shuffle Passage"
+                            aria-label="Shuffle Passage"
                           >
                             <RotateCw className="w-2.5 h-2.5" />
-                            <span>{activeFeatured.volumeNumber}</span>
+                            <span>{currentPassage.chapterLabel?.split('•')[0]?.trim() || activeFeatured.volumeNumber}</span>
                           </button>
                         </div>
 
@@ -436,7 +562,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                       {/* Center Quote Excerpt */}
                       <div className="my-3 p-3 rounded bg-stone-900 border border-stone-800">
                         <p className="text-xs font-serif italic text-stone-200 leading-relaxed line-clamp-4">
-                          &ldquo;{activeFeatured.quoteExcerpt}&rdquo;
+                          &ldquo;{currentPassage.quoteExcerpt}&rdquo;
                         </p>
                       </div>
 
@@ -450,7 +576,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onReadFeaturedBook(activeFeatured);
+                              onReadFeaturedBook(activeFeatured.rawBook || activeFeatured);
                             }}
                             className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-primary-foreground bg-primary hover:opacity-90 px-3 py-1 rounded transition-colors"
                             aria-label="Read Volume"
@@ -465,31 +591,31 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
                   {/* BACK FACE: Inside Left Page (Visible when rotated -180deg on desktop hover) */}
                   <div className="absolute inset-0 book-3d-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
-                    <div key={`left-page-content-${isTurningLeaf ? prevFeatured.id : activeFeatured.id}`} className="flex flex-col justify-between h-full relative">
+                    <div key={`left-page-content-${activeFeatured.id}-${isTurningLeaf ? prevPassageIndex : activePassageIndex}`} className="flex flex-col justify-between h-full relative">
                       <div>
                         <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border">
                           <span className="flex items-center gap-1">
                             <Sparkles className="w-3 h-3" /> Public Domain
                           </span>
-                          <span>{(isTurningLeaf ? prevFeatured : activeFeatured).volumeNumber}</span>
+                          <span>{(isTurningLeaf ? prevPassage : currentPassage).chapterLabel || activeFeatured.volumeNumber}</span>
                         </div>
 
                         <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground">
-                          {(isTurningLeaf ? prevFeatured : activeFeatured).title}
+                          {activeFeatured.title}
                         </h3>
                         <p className="text-xs font-mono italic text-muted-foreground mb-2">
-                          by {(isTurningLeaf ? prevFeatured : activeFeatured).author} ({(isTurningLeaf ? prevFeatured : activeFeatured).year})
+                          by {activeFeatured.author} ({activeFeatured.year})
                         </p>
 
                         <div className="relative pl-3 border-l-2 border-primary/40 my-2">
                           <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8">
-                            &ldquo;{(isTurningLeaf ? prevFeatured : activeFeatured).openingLine}&rdquo;
+                            &ldquo;{(isTurningLeaf ? prevPassage : currentPassage).openingLine}&rdquo;
                           </p>
                         </div>
                       </div>
 
                       <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
-                        <span className="truncate max-w-[160px]">{(isTurningLeaf ? prevFeatured : activeFeatured).primarySubject}</span>
+                        <span className="truncate max-w-[160px]">{activeFeatured.primarySubject}</span>
                         <span className="opacity-60">p. 1</span>
                       </div>
                     </div>

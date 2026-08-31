@@ -154,12 +154,12 @@ export default function Home() {
             onLanguageChange={handleLanguageChange}
             onReadFeaturedBook={(featured) => {
               if (featured) {
-                const bookPayload: GutendexBook = {
+                const bookPayload: GutendexBook = (featured as { rawBook?: GutendexBook }).rawBook || {
                   id: featured.id,
                   title: featured.title,
-                  authors: [{ name: featured.author, birth_year: null, death_year: null }],
+                  authors: [{ name: (featured as { author?: string }).author || 'Unknown', birth_year: null, death_year: null }],
                   translators: [],
-                  subjects: [featured.primarySubject],
+                  subjects: [(featured as { primarySubject?: string }).primarySubject || 'Classic Literature'],
                   bookshelves: [],
                   languages: ['en'],
                   copyright: false,
@@ -214,7 +214,7 @@ export default function Home() {
             
             <div className="flex items-center justify-center gap-3">
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground tracking-tight">
-                {activeView === 'catalog' && (search || topic || era ? 'Search Catalog' : 'Featured Public Domain Books')}
+                {activeView === 'catalog' && (search || topic || era ? 'Search Catalog' : 'Public Domain Books')}
                 {activeView === 'bookshelf' && 'Personal Reading Shelf'}
                 {activeView === 'likes' && 'Favorite Works'}
               </h2>

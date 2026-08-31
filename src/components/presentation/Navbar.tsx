@@ -40,7 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-background border-b border-border transition-colors duration-200">
+    <header className="sticky top-0 z-40 w-full bg-background border-b border-border transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Brand */}
         <div

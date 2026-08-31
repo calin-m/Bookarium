@@ -7,7 +7,7 @@
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.19-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Vitest](https://img.shields.io/badge/Vitest-4.1.11-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.3%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.1%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
@@ -30,14 +30,14 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v2.4.0)
+## 🛠️ Latest Improvements (v2.5.0)
 
-- **AST Dynamic Quote Extractor Engine** – `extractDynamicBookPassages` in `src/lib/gutenberg-parser.ts` segments unabridged Gutenberg texts on demand, isolating genuine Chapter I incipits, character dialogues, and memorable passages from live book text.
-- **HeroSearch-Styled Multi-Quote Spreads** – 3D Book Preview Modal renders 3 clean HeroSearch-style quote cards on the Left Page, 3 on the Right Page, and mirrored 1:1 on both faces of the physical 3D turning leaf.
-- **Interactive Multi-Chapter Shuffling** – Shuffling the open book smoothly flips a physical 3D leaf ($0^\circ \to -180^\circ$) across the spine, cycling through up to 5 acts and chapters across the narrative arc of the volume.
-- **Rock-Solid Opening Handoff** – Initial displayed passage is locked to the volume's curated opening to eliminate sudden text popping or mid-open quote changes, with dynamic multi-chapter passages seamlessly populating the shuffle queue.
-- **Desktop 3D Physics & Mobile-Optimized Read Flow** – Full 3D FLIP physics, 2-page spreads, and turning leaves on desktop viewports (`≥ 1024px`), with instant 1-tap direct reader navigation on mobile devices.
-- **Verified by the 7-Gateway Quality Engine** – 42/42 test files passed, 209/209 tests passed with **92.3% line coverage** (`npm run verify`).
+- **Hourly Deterministic "Featured Book" Rotation** – Dynamically features a public domain classic rotated every hour on the clock using zero-cron deterministic synchronization (`useSyncExternalStore` + `Math.floor(Date.now() / 3600000)`), eliminating SSR hydration pop and refresh flash.
+- **In-Book Chapter Passage Shuffling with Optical 3D Realism** – Shuffling cycles through genuine multi-chapter passages of the open volume while preserving the underlying left page content until the turning leaf physically completes its $-180^\circ$ swing.
+- **Flush Top-Left "Click for Preview" Card Affordance** – Repositioned the preview hover affordance to `top-0 left-0` with `rounded-tl-xl rounded-br-md` matching the card's outer radius with zero margin on desktop hover.
+- **Zero-Layout-Shift Background Scroll Freeze** – Non-destructive wheel and touch event interception that freezes background scrolling when 3D book previews are open without modifying body dimensions or scrollbar gutters (0 CLS / 0 horizontal shift).
+- **Refined Catalog Section Title** – Catalog section title streamlined to **"Public Domain Books"** with smooth ambient header transitions.
+- **Verified by the 7-Gateway Quality Engine** – 42/42 test files passed, 212/212 tests passed with **92.1% line coverage** (`npm run verify`).
 
 ## 🌐 Data Sources & API References
 
@@ -66,12 +66,12 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
 * **SSR Hydration Guarding Protocol**:
   * Store reads for liked and saved book collections are guarded with `useHasMounted()` to guarantee zero React hydration mismatches on initial server render.
 * **100% Live Dual-Gateway Data Pipeline**: Next.js Server Route Proxy paired with direct client upstream failover to `https://gutendex.com/` guaranteeing 100% uptime on serverless platforms without reliance on local mock fallbacks.
-* **Dynamic Rotating 3D Featured Masterwork Spotlight & Interactive 3D Open-Book Physics**:
-  * Curated pool of 10 iconic public domain classics (*Pride and Prejudice, Frankenstein, Moby Dick, The Great Gatsby, Alice in Wonderland, Dorian Gray, Sherlock Holmes, Dracula, A Tale of Two Cities, The Time Machine*).
+* **Dynamic Hourly Rotating 3D Featured Book & Interactive 3D Open-Book Physics**:
+  * Curated pool of iconic public domain classics dynamically rotated every UTC hour with zero-cron client/server deterministic synchronization.
   * **Realistic 3D Open-Book Hover & Click-to-Pin State Machine**: On desktop hover, the hardbound volume smoothly elevates and takes a gentle isometric tabletop inclination while the front cover swings open 180° on its left spine hinge—revealing facing **Left Page** (title, author, comprehensive opening chapter reflection) and **Right Page** (notable passage, public domain stamp, and direct read action). Clicking pins the volume open or closed with automatic hover re-engagement.
-  * **Physical 60–120 FPS Right-to-Left 3D Page Turn**: Shuffling masterworks flips a physical 3D leaf ($0^\circ \to -180^\circ$) across the spine with physically synchronized ink reveals and zero-flicker transitions.
+  * **Physical 60–120 FPS Right-to-Left 3D Page Turn**: Shuffling passages flips a physical 3D leaf ($0^\circ \to -180^\circ$) across the spine with physically synchronized ink reveals, preserving the underlying left page until the leaf physically lands.
   * **Comprehensive Literary Typography**: Full-bodied literary excerpts and opening reflections typeset with balanced line-clamping (`line-clamp-8`) to naturally fill the 2-page spreads without UI overlap.
-  * Auto-rotates across sessions with an interactive **`[ ↻ Vol. #X ]`** shuffle button to cycle through classics without page reloads.
+  * In-book passage shuffle button to cycle through narrative acts and chapters of the open volume without page reloads.
   * 1-Click instant reader handoff with 0ms metadata population.
 * **Collapsible Left-Side Catalog Filter Sidebar & Push-Content Desktop Layout**:
   * Slide-out left-docked filter drawer (`slide-in-from-left duration-300`) with zero dark background dimming.
