@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   X,
-  Globe,
   ArrowRight,
   ShieldCheck,
   Zap,
@@ -12,6 +11,7 @@ import {
   Bookmark,
   Sparkles,
   RotateCw,
+  Quote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
@@ -67,6 +67,10 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   const [prevSearch, setPrevSearch] = useState(search);
   const [query, setQuery] = useState(search);
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [prevFeaturedIndex, setPrevFeaturedIndex] = useState(0);
+  const [isTurningLeaf, setIsTurningLeaf] = useState(false);
+  const [pinState, setPinState] = useState<'auto' | 'open' | 'closed'>('auto');
+  const [isHovered, setIsHovered] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   if (search !== prevSearch) {
@@ -83,10 +87,42 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   }, []);
 
   const activeFeatured = FEATURED_HERO_BOOKS[featuredIndex] || FEATURED_HERO_BOOKS[0];
+  const prevFeatured = FEATURED_HERO_BOOKS[prevFeaturedIndex] || FEATURED_HERO_BOOKS[0];
 
   const handleNextFeatured = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setPrevFeaturedIndex(featuredIndex);
     setFeaturedIndex((prev) => (prev + 1) % FEATURED_HERO_BOOKS.length);
+    setIsTurningLeaf(true);
+  };
+
+  const isBookOpen = pinState === 'open' || (pinState === 'auto' && isHovered);
+
+  const handleBookClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('a')) {
+      return;
+    }
+    e.stopPropagation();
+    if (isBookOpen) {
+      setPinState('closed');
+    } else {
+      setPinState('open');
+    }
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (pinState === 'closed') {
+      setPinState('auto');
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (pinState === 'closed') {
+      setPinState('auto');
+    }
   };
 
   const handleInputChange = (val: string) => {
@@ -221,76 +257,247 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Booksaw Standing 3D Book Cover Spotlight */}
+          {/* Right Column: Booksaw Standing 3D Book Spotlight with Realistic 3D Opening Physics */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
-            <div className="relative group cursor-pointer" onClick={() => onReadFeaturedBook?.(activeFeatured)}>
-              
-              {/* 3D Physical Book Spine & Cover Wrapper */}
-              <div className="relative w-64 sm:w-72 md:w-80 aspect-[2/3] rounded-r-lg rounded-l-sm bg-gradient-to-r from-stone-900 via-stone-800 to-stone-950 p-6 flex flex-col justify-between text-white shadow-[25px_25px_50px_rgba(0,0,0,0.18),0_10px_20px_rgba(0,0,0,0.08)] group-hover:-translate-y-2 group-hover:shadow-[30px_35px_60px_rgba(0,0,0,0.22)] transition-all duration-300 border-r-2 border-stone-700">
+            <div
+              className={`relative group cursor-pointer book-3d-stage ${
+                pinState === 'open' ? 'book-open' : pinState === 'closed' ? 'book-closed' : ''
+              }`}
+              onClick={handleBookClick}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (isBookOpen) {
+                    setPinState('closed');
+                  } else {
+                    setPinState('open');
+                  }
+                }
+              }}
+              aria-label={isBookOpen ? "Click to close volume" : "Click to pin open volume"}
+            >
+              <div className="book-3d-rig relative">
                 
-                {/* 3D Left Spine Edge Simulation */}
-                <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/40 via-black/20 to-transparent rounded-l-sm pointer-events-none" />
-                {/* 3D Right Page Edges Simulation */}
-                <div className="absolute right-0 top-1 bottom-1 w-2 bg-gradient-to-l from-white/30 to-transparent pointer-events-none" />
+                {/* Desktop Open Book Spread Base (Right Page: straight left spine, rounded right outer edge) */}
+                <div className="hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border/60 p-6 flex-col justify-between text-foreground z-0 overflow-hidden">
+                  <div key={`right-page-base-${activeFeatured.id}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border/40">
+                        <span>Notable Passage</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{activeFeatured.license}</span>
+                      </div>
 
-                {/* Top Book Header */}
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary-300 mb-4 pb-2 border-b border-white/10">
-                    <span className="flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-primary-400" /> Featured Classic
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleNextFeatured}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                      title="Shuffle to Next Featured Masterpiece"
-                      aria-label="Shuffle to Next Featured Masterpiece"
-                    >
-                      <RotateCw className="w-2.5 h-2.5" />
-                      <span>{activeFeatured.volumeNumber}</span>
-                    </button>
+                      <div className="p-3.5 rounded-lg bg-card/60 border border-border/60 shadow-xs mb-2">
+                        <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
+                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8">
+                          &ldquo;{activeFeatured.quoteExcerpt}&rdquo;
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right Page Footer Actions */}
+                    <div className="pt-2.5 border-t border-border/30 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNextFeatured(e);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 rounded border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        title="Shuffle to Next Featured Masterpiece"
+                        aria-label="Shuffle to Next Featured Masterpiece"
+                      >
+                        <RotateCw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-500" />
+                        <span>Shuffle</span>
+                      </button>
+
+                      {onReadFeaturedBook && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReadFeaturedBook(activeFeatured);
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-white bg-primary-600 hover:bg-primary-700 px-3.5 py-1.5 rounded shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                          aria-label="Read Volume"
+                        >
+                          <span>Read Volume</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Physical 3D Turning Leaf (Flips Right to Left across the spine on shuffle: 0deg -> -180deg) */}
+                {isTurningLeaf && (
+                  <div
+                    key={`turning-leaf-${activeFeatured.id}`}
+                    className="hidden lg:block book-turning-leaf"
+                    onAnimationEnd={() => setIsTurningLeaf(false)}
+                  >
+                    {/* Front Face of Turning Leaf: Outgoing Right Page quote lifting away */}
+                    <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border/60 p-6 flex flex-col justify-between text-foreground overflow-hidden">
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border/40">
+                          <span>Notable Passage</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{prevFeatured.license}</span>
+                        </div>
+
+                        <div className="p-3.5 rounded-lg bg-card/60 border border-border/60 shadow-xs mb-2">
+                          <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
+                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8">
+                            &ldquo;{prevFeatured.quoteExcerpt}&rdquo;
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Back Face of Turning Leaf: Incoming Left Page title & quote landing onto left side */}
+                    <div className="turning-leaf-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border/60 p-6 flex flex-col justify-between text-foreground overflow-hidden">
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border/40">
+                          <span className="flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" /> Public Domain
+                          </span>
+                          <span>{activeFeatured.volumeNumber}</span>
+                        </div>
+
+                        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground">
+                          {activeFeatured.title}
+                        </h3>
+                        <p className="text-xs font-mono italic text-muted-foreground mb-2">
+                          by {activeFeatured.author} ({activeFeatured.year})
+                        </p>
+
+                        <div className="relative pl-3 border-l-2 border-primary/40 my-2">
+                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8">
+                            &ldquo;{activeFeatured.openingLine}&rdquo;
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border/30">
+                        <span className="truncate max-w-[160px]">{activeFeatured.primarySubject}</span>
+                        <span className="opacity-60">p. 1</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3D Flipping Front Cover (Hinged on Left Spine) */}
+                <div className="relative w-64 sm:w-72 md:w-80 aspect-[2/3] book-3d-flipper z-10">
+                  
+                  {/* FRONT FACE: Physical Hardcover Book (Closed State) */}
+                  <div className="absolute inset-0 book-3d-face-front rounded-r-lg rounded-l-sm bg-gradient-to-r from-stone-900 via-stone-800 to-stone-950 p-6 flex flex-col justify-between text-white shadow-[25px_25px_50px_rgba(0,0,0,0.18),0_10px_20px_rgba(0,0,0,0.08)] border-r-2 border-stone-700 overflow-hidden">
+                    {/* 3D Spine & Page Edge Accents */}
+                    <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/40 via-black/20 to-transparent rounded-l-sm pointer-events-none" />
+                    <div className="absolute right-0 top-1 bottom-1 w-2 bg-gradient-to-l from-white/30 to-transparent pointer-events-none" />
+
+                    <div key={`front-face-content-${activeFeatured.id}`} className="animate-ink-appear flex flex-col justify-between h-full relative z-10">
+                      {/* Header */}
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary-300 mb-3 pb-2 border-b border-white/10">
+                          <span className="flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-primary-400" /> Featured Classic
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleNextFeatured}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                            title="Shuffle to Next Featured Masterpiece"
+                            aria-label="Shuffle to Next Featured Masterpiece"
+                          >
+                            <RotateCw className="w-2.5 h-2.5" />
+                            <span>{activeFeatured.volumeNumber}</span>
+                          </button>
+                        </div>
+
+                        <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white leading-tight mb-1.5">
+                          {activeFeatured.title}
+                        </h3>
+                        <p className="text-xs font-mono uppercase tracking-wider text-stone-300">
+                          {activeFeatured.author} • {activeFeatured.year}
+                        </p>
+                      </div>
+
+                      {/* Center Quote Excerpt */}
+                      <div className="my-3 p-3 rounded bg-stone-900 border border-stone-800">
+                        <p className="text-xs font-serif italic text-stone-200 leading-relaxed line-clamp-4">
+                          &ldquo;{activeFeatured.quoteExcerpt}&rdquo;
+                        </p>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
+                          {activeFeatured.license}
+                        </span>
+                        {onReadFeaturedBook && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onReadFeaturedBook(activeFeatured);
+                            }}
+                            className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded transition-colors"
+                            aria-label="Read Volume"
+                          >
+                            <span>Read Volume</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white leading-tight mb-2">
-                    {activeFeatured.title}
-                  </h3>
-                  <p className="text-xs font-mono uppercase tracking-wider text-stone-300">
-                    {activeFeatured.author} • {activeFeatured.year}
-                  </p>
+                  {/* BACK FACE: Inside Left Page (Visible when rotated -180deg on desktop hover) */}
+                  <div className="absolute inset-0 book-3d-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border/60 p-6 flex flex-col justify-between text-foreground overflow-hidden">
+                    <div key={`left-page-content-${isTurningLeaf ? prevFeatured.id : activeFeatured.id}`} className="flex flex-col justify-between h-full relative">
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border/40">
+                          <span className="flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" /> Public Domain
+                          </span>
+                          <span>{(isTurningLeaf ? prevFeatured : activeFeatured).volumeNumber}</span>
+                        </div>
+
+                        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground">
+                          {(isTurningLeaf ? prevFeatured : activeFeatured).title}
+                        </h3>
+                        <p className="text-xs font-mono italic text-muted-foreground mb-2">
+                          by {(isTurningLeaf ? prevFeatured : activeFeatured).author} ({(isTurningLeaf ? prevFeatured : activeFeatured).year})
+                        </p>
+
+                        <div className="relative pl-3 border-l-2 border-primary/40 my-2">
+                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8">
+                            &ldquo;{(isTurningLeaf ? prevFeatured : activeFeatured).openingLine}&rdquo;
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border/30">
+                        <span className="truncate max-w-[160px]">{(isTurningLeaf ? prevFeatured : activeFeatured).primarySubject}</span>
+                        <span className="opacity-60">p. 1</span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
 
-                {/* Center Book Quote Excerpt */}
-                <div className="relative z-10 my-4 p-3 rounded bg-stone-900 border border-stone-800">
-                  <p className="text-xs font-serif italic text-stone-200 leading-relaxed">
-                    &ldquo;{activeFeatured.quoteExcerpt}&rdquo;
-                  </p>
-                </div>
-
-                {/* Bottom Action Pill */}
-                <div className="relative z-10 pt-3 border-t border-white/10 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
-                    {activeFeatured.license}
-                  </span>
-                  {onReadFeaturedBook && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onReadFeaturedBook(activeFeatured);
-                      }}
-                      className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded transition-colors"
-                      aria-label="Read Volume"
-                    >
-                      <span>Read Volume</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
+                {/* Ambient Floor Shadow - Closed State */}
+                <div className={`absolute -bottom-4 left-6 right-6 h-6 bg-black/15 dark:bg-black/40 rounded-full blur-xl pointer-events-none transition-opacity duration-700 ${
+                  pinState === 'open' ? 'opacity-0' : pinState === 'closed' ? 'opacity-100' : 'group-hover:opacity-0'
+                }`} />
+                {/* Ambient Floor Shadow - Open 2-Page Spread State */}
+                <div className={`hidden lg:block absolute -bottom-6 -left-64 -right-8 h-8 bg-black/20 dark:bg-black/50 rounded-full blur-2xl pointer-events-none transition-opacity duration-700 ${
+                  pinState === 'open' ? 'opacity-100' : pinState === 'closed' ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'
+                }`} />
               </div>
-
-              {/* Realistic Soft Ambient Floor Shadow */}
-              <div className="absolute -bottom-4 left-6 right-6 h-6 bg-black/15 dark:bg-black/40 rounded-full blur-xl pointer-events-none" />
             </div>
           </div>
 

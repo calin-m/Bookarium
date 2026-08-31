@@ -57,8 +57,11 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
 * **SSR Hydration Guarding Protocol**:
   * Store reads for liked and saved book collections are guarded with `useHasMounted()` to guarantee zero React hydration mismatches on initial server render.
 * **100% Live Dual-Gateway Data Pipeline**: Next.js Server Route Proxy paired with direct client upstream failover to `https://gutendex.com/` guaranteeing 100% uptime on serverless platforms without reliance on local mock fallbacks.
-* **Dynamic Rotating 3D Featured Masterwork Spotlight**:
+* **Dynamic Rotating 3D Featured Masterwork Spotlight & Interactive 3D Open-Book Physics**:
   * Curated pool of 10 iconic public domain classics (*Pride and Prejudice, Frankenstein, Moby Dick, The Great Gatsby, Alice in Wonderland, Dorian Gray, Sherlock Holmes, Dracula, A Tale of Two Cities, The Time Machine*).
+  * **Realistic 3D Open-Book Hover & Click-to-Pin State Machine**: On desktop hover, the hardbound volume smoothly elevates and takes a gentle isometric tabletop inclination while the front cover swings open 180° on its left spine hinge—revealing facing **Left Page** (title, author, comprehensive opening chapter reflection) and **Right Page** (notable passage, public domain stamp, and direct read action). Clicking pins the volume open or closed with automatic hover re-engagement.
+  * **Physical 60–120 FPS Right-to-Left 3D Page Turn**: Shuffling masterworks flips a physical 3D leaf ($0^\circ \to -180^\circ$) across the spine with physically synchronized ink reveals and zero-flicker transitions.
+  * **Comprehensive Literary Typography**: Full-bodied literary excerpts and opening reflections typeset with balanced line-clamping (`line-clamp-8`) to naturally fill the 2-page spreads without UI overlap.
   * Auto-rotates across sessions with an interactive **`[ ↻ Vol. #X ]`** shuffle button to cycle through classics without page reloads.
   * 1-Click instant reader handoff with 0ms metadata population.
 * **Collapsible Left-Side Catalog Filter Sidebar & Push-Content Desktop Layout**:

@@ -54,9 +54,20 @@ describe('HeroSearch component', () => {
     const handleReadFeatured = vi.fn();
     render(<HeroSearch search="" onReadFeaturedBook={handleReadFeatured} />);
 
-    const readBtn = screen.getByRole('button', { name: /Read Volume/i });
-    fireEvent.click(readBtn);
+    const readBtns = screen.getAllByRole('button', { name: /Read Volume/i });
+    expect(readBtns.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(readBtns[0]);
     expect(handleReadFeatured).toHaveBeenCalled();
+  });
+
+  it('should render open-book spread with left and right page quotes on featured spotlight', () => {
+    render(<HeroSearch search="" />);
+
+    expect(screen.getAllByText(/Pride and Prejudice/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/no enjoyment like reading/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/truth universally acknowledged/i)[0]).toBeInTheDocument();
+    expect(screen.getByText(/Notable Passage/i)).toBeInTheDocument();
+    expect(screen.getByText(/p\. 1/i)).toBeInTheDocument();
   });
 
   it('should clear search input and submit search correctly', () => {
@@ -85,8 +96,37 @@ describe('HeroSearch component', () => {
   it('should shuffle to next featured classic when rotate button is clicked', () => {
     render(<HeroSearch search="" />);
 
-    const shuffleBtn = screen.getByLabelText(/Shuffle to Next Featured Masterpiece/i);
-    expect(shuffleBtn).toBeInTheDocument();
-    fireEvent.click(shuffleBtn);
+    const shuffleBtns = screen.getAllByLabelText(/Shuffle to Next Featured Masterpiece/i);
+    expect(shuffleBtns.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(shuffleBtns[0]);
+  });
+
+  it('should toggle pinned open and closed states on click and keyboard events', () => {
+    render(<HeroSearch search="" />);
+
+    const bookStage = screen.getByRole('button', { name: /Click to pin open volume/i });
+    expect(bookStage).toHaveClass('book-3d-stage');
+    expect(bookStage).not.toHaveClass('book-open');
+
+    // Click to pin open
+    fireEvent.click(bookStage);
+    expect(bookStage).toHaveClass('book-open');
+
+    // Click to pin closed
+    fireEvent.click(bookStage);
+    expect(bookStage).toHaveClass('book-closed');
+
+    // Mouse leave resets pinState so next hover opens
+    fireEvent.mouseLeave(bookStage);
+    expect(bookStage).not.toHaveClass('book-closed');
+
+    // Hover in, click again
+    fireEvent.mouseEnter(bookStage);
+    fireEvent.keyDown(bookStage, { key: 'Enter' });
+    expect(bookStage).toHaveClass('book-closed');
+
+    // Keyboard Space to toggle
+    fireEvent.keyDown(bookStage, { key: ' ' });
+    expect(bookStage).toHaveClass('book-open');
   });
 });

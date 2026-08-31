@@ -82,29 +82,29 @@
   }
 }
 
-/* Booksaw Open Book / Card Shadow */
+/* Booksaw Open Book / Card Shadow & Realistic 3D Paper Spread */
 .open-book-spread {
-  background: #ffffff;
+  background: #fdfbf7;
   box-shadow: 
-    0 20px 40px -15px rgba(0, 0, 0, 0.08),
-    0 1px 3px rgba(0, 0, 0, 0.04),
-    inset 0 0 20px rgba(0, 0, 0, 0.02);
+    0 25px 50px -12px rgba(0, 0, 0, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 0 30px rgba(0, 0, 0, 0.03);
 }
 
 .dark .open-book-spread {
-  background: #12151c;
+  background: #141822;
   box-shadow: 
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    0 1px 3px rgba(0, 0, 0, 0.3),
-    inset 0 0 20px rgba(0, 0, 0, 0.2);
+    0 30px 60px -15px rgba(0, 0, 0, 0.6),
+    0 6px 16px rgba(0, 0, 0, 0.4),
+    inset 0 0 30px rgba(0, 0, 0, 0.25);
 }
 
 .book-center-crease {
   background: linear-gradient(
     90deg,
-    rgba(0, 0, 0, 0.06) 0%,
-    rgba(0, 0, 0, 0.15) 50%,
-    rgba(0, 0, 0, 0.06) 100%
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.18) 50%,
+    rgba(0, 0, 0, 0.04) 100%
   );
 }
 
@@ -112,9 +112,83 @@
   background: linear-gradient(
     90deg,
     rgba(0, 0, 0, 0.3) 0%,
-    rgba(0, 0, 0, 0.6) 50%,
+    rgba(0, 0, 0, 0.7) 50%,
     rgba(0, 0, 0, 0.3) 100%
   );
+}
+
+.open-book-page-left {
+  background: linear-gradient(90deg, #fdfbf7 0%, #fbf8f0 85%, #ede6d4 100%);
+}
+
+.dark .open-book-page-left {
+  background: linear-gradient(90deg, #161b26 0%, #141822 85%, #0b0e14 100%);
+}
+
+.open-book-page-right {
+  background: linear-gradient(90deg, #ede6d4 0%, #fbf8f0 15%, #fdfbf7 100%);
+}
+
+.dark .open-book-page-right {
+  background: linear-gradient(90deg, #0b0e14 0%, #141822 15%, #161b26 100%);
+}
+
+/* 3D Realistic Book Perspective & Opening Physics */
+.book-3d-stage {
+  perspective: 1800px;
+  perspective-origin: center center;
+}
+
+.book-3d-rig {
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.book-3d-flipper {
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.book-3d-face-front {
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.book-3d-face-back {
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+  transform-style: preserve-3d;
+}
+
+@media (min-width: 1024px) {
+  /* On hover (unless pinned closed) OR when explicitly pinned open via .book-open */
+  .book-3d-stage.book-open .book-3d-rig,
+  .book-3d-stage:not(.book-closed):hover .book-3d-rig {
+    transform: translateX(55px) translateY(-14px) scale(0.82) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+  }
+
+  .book-3d-stage.book-open .book-3d-flipper,
+  .book-3d-stage:not(.book-closed):hover .book-3d-flipper {
+    transform: rotateY(-180deg);
+  }
+}
+
+@media (min-width: 1280px) {
+  .book-3d-stage.book-open .book-3d-rig,
+  .book-3d-stage:not(.book-closed):hover .book-3d-rig {
+    transform: translateX(65px) translateY(-14px) scale(0.84) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-3d-rig,
+  .book-3d-flipper {
+    transition: none !important;
+    transform: none !important;
+  }
 }
 
 /* Drop-cap utility for book reader */
@@ -281,9 +355,72 @@
   will-change: opacity, transform;
 }
 
+/* Ink Dissolve & Vanish-to-Appear Transition for Book Content Shuffling */
+@keyframes inkVanishAppear {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+    transform: scale(0.97) translateY(4px);
+  }
+  60% {
+    opacity: 0.85;
+    filter: blur(0.5px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-ink-appear {
+  animation: inkVanishAppear 380ms cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  will-change: opacity, filter, transform;
+}
+
+/* High-FPS Snappy 3D Leaf Page Turn (0deg -> -180deg) */
+@keyframes turnLeafRightToLeft {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(-180deg);
+  }
+}
+
+.book-turning-leaf {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  animation: turnLeafRightToLeft 400ms cubic-bezier(0.22, 0.85, 0.3, 1) forwards;
+  pointer-events: none;
+  z-index: 35;
+  will-change: transform;
+}
+
+.turning-leaf-face-front {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: rotateY(0deg);
+}
+
+.turning-leaf-face-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: rotateY(180deg);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-page-turn {
+  .animate-page-turn,
+  .animate-ink-appear,
+  .book-turning-leaf {
     animation: none !important;
+    transform: none !important;
   }
 }
 

@@ -54,8 +54,11 @@ describe('src/config configuration modules', () => {
       expect(FEATURED_HERO_BOOK.title).toBe('Pride and Prejudice');
       expect(FEATURED_HERO_BOOK.author).toBe('Jane Austen');
       expect(FEATURED_HERO_BOOK.license).toContain('Public Domain');
+      expect(FEATURED_HERO_BOOK.openingLine).toBeDefined();
+      expect(FEATURED_HERO_BOOK.openingLine.length).toBeGreaterThan(10);
 
       expect(FEATURED_HERO_BOOKS.length).toBeGreaterThanOrEqual(10);
+      expect(FEATURED_HERO_BOOKS.every((b) => b.openingLine && b.openingLine.length > 5)).toBe(true);
       expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'Frankenstein')).toBe(true);
       expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'Moby Dick')).toBe(true);
       expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'The Great Gatsby')).toBe(true);
