@@ -107,5 +107,19 @@ describe('useCatalogFilters', () => {
     expect(result.current.activeView).toBe('bookshelf');
     expect(result.current.isFilterDrawerOpen).toBe(true);
   });
+
+  it('hydrates initial filter state from window.location.search', () => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/?search=Plato&topic=philosophy&page=3&sort=ascending&view=catalog');
+
+    const { result } = renderHook(() => useCatalogFilters());
+
+    expect(result.current.search).toBe('Plato');
+    expect(result.current.topic).toBe('philosophy');
+    expect(result.current.page).toBe(3);
+    expect(result.current.sort).toBe('ascending');
+
+    (window as any).location = new URL('http://localhost:3000/');
+  });
 });
 

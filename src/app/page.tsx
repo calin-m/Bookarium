@@ -38,7 +38,8 @@ export default function Home() {
   const missingIdsParam = missingLikedIds.length > 0 ? missingLikedIds.join(',') : undefined;
 
   const { data: missingBooksData, isLoading: isMissingLoading } = useBooks(
-    missingIdsParam ? { ids: missingIdsParam } : undefined
+    missingIdsParam ? { ids: missingIdsParam } : undefined,
+    { enabled: Boolean(missingIdsParam) }
   );
 
   // Sync returned book objects into likedBooks store

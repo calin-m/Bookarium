@@ -6,6 +6,7 @@ import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface BookshelfRackProps {
   books: GutendexBook[];
@@ -31,6 +32,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   onDownloadClick,
 }) => {
   const router = useRouter();
+  const hasMounted = useHasMounted();
   const isSaved = useBookshelfStore((s) => s.isBookSaved);
   const toggleSave = useBookshelfStore((s) => s.toggleSaveBook);
   const isLiked = useBookshelfStore((s) => s.isBookLiked);
@@ -55,7 +57,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   return (
     <div className="w-full space-y-12 py-6" data-testid="bookshelf-rack">
       {shelves.map((shelfBooks, shelfIndex) => (
-        <div key={shelfIndex} className="relative z-10 hover:z-30">
+        <div key={`shelf-${shelfIndex}-${shelfBooks[0]?.id || 0}`} className="relative z-10 hover:z-30">
           {/* Back wall of the shelf niche */}
           <div className="relative bg-card rounded-t-2xl p-4 sm:p-6 pb-0 border-x border-t border-border shadow-inner overflow-hidden sm:overflow-visible">
             
@@ -71,8 +73,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                   ? book.authors[0].name.split(',')[0].trim()
                   : 'Anonymous';
                 const progress = getProgress(book.id);
-                const bookSaved = isSaved(book.id);
-                const bookLiked = isLiked(book.id);
+                const bookSaved = hasMounted && isSaved(book.id);
+                const bookLiked = hasMounted && isLiked(book.id);
 
                 return (
                   <div

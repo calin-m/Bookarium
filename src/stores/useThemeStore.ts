@@ -38,7 +38,7 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'bookarium-theme-preference',
-      storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : null as unknown as Storage)),
+      storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (state?.theme) {
           applyThemeToDocument(state.theme);

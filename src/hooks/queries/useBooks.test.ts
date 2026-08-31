@@ -179,4 +179,33 @@ describe('useBooks hook', () => {
     expect(result.current.error).toBeDefined();
     fetchSpy.mockRestore();
   });
+
+  it('should respect enabled: false and not fetch books', () => {
+    const { TestWrapper } = createWrapper();
+    const fetchSpy = vi.spyOn(global, 'fetch');
+
+    const { result } = renderHook(() => useBooks({ ids: '9999' }, { enabled: false }), {
+      wrapper: TestWrapper,
+    });
+
+    expect(result.current.isFetching).toBe(false);
+    expect(result.current.data).toBeUndefined();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it('should throw when upstream returns invalid non-JSON body', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      if (String(url).includes('/api/books')) {
+        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
+      }
+      return new Response('<html>502 Bad Gateway</html>', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      });
+    });
+
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Invalid JSON response');
+    fetchSpy.mockRestore();
+  });
 });

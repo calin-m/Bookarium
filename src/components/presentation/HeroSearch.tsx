@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   X,
@@ -14,8 +14,9 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { HERO_POPULAR_TOPICS, HERO_LANGUAGES } from '@/config/catalog-filters';
+import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
 import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
+import { LanguageSelector } from './LanguageSelector';
 
 export interface HeroSearchProps {
   search?: string;
@@ -63,8 +64,23 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   onLanguageChange,
   onReadFeaturedBook,
 }) => {
+  const [prevSearch, setPrevSearch] = useState(search);
   const [query, setQuery] = useState(search);
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  if (search !== prevSearch) {
+    setPrevSearch(search);
+    setQuery(search);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   const activeFeatured = FEATURED_HERO_BOOKS[featuredIndex] || FEATURED_HERO_BOOKS[0];
 
@@ -75,17 +91,28 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
   const handleInputChange = (val: string) => {
     setQuery(val);
-    if (onSearchChange) onSearchChange(val);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      if (onSearchChange) onSearchChange(val);
+    }, 300);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     if (onSearch) onSearch(query);
     if (onSearchChange) onSearchChange(query);
   };
 
   const handleClear = () => {
     setQuery('');
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     if (onSearchChange) onSearchChange('');
     if (onSearch) onSearch('');
   };
@@ -185,22 +212,12 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
               </div>
 
               {/* Language Selector */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="font-mono text-[11px] uppercase text-muted-foreground">Language:</span>
-                <select
-                  value={selectedLanguage}
-                  onChange={(e) => onLanguageChange?.(e.target.value)}
-                  data-testid="language-select"
-                  className="bg-card border border-border rounded px-2 py-0.5 text-xs text-foreground focus:outline-hidden focus:border-primary cursor-pointer"
-                >
-                  {HERO_LANGUAGES.map((lang) => (
-                    <option key={lang.value} value={lang.value} className="bg-card text-foreground">
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <LanguageSelector
+                variant="compact"
+                value={selectedLanguage}
+                onChange={onLanguageChange}
+                dataTestId="language-select"
+              />
             </div>
           </div>
 
@@ -281,11 +298,11 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
         {/* Booksaw 4-Pillar Value Proposition Strip */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-8 border-t border-border">
-          {FEATURES.map((feature, idx) => {
+          {FEATURES.map((feature) => {
             const Icon = feature.icon;
             return (
               <div
-                key={idx}
+                key={feature.title}
                 className="flex items-start gap-3.5 p-4 rounded-xl bg-card border border-border shadow-xs"
               >
                 <div className="w-9 h-9 rounded-lg bg-muted text-primary flex items-center justify-center shrink-0 border border-border">

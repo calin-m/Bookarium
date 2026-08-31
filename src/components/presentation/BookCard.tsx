@@ -19,6 +19,7 @@ export interface BookCardProps {
 
 export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => {
   const hasMounted = useHasMounted();
+  const [imageError, setImageError] = React.useState(false);
   const rawIsSaved = useBookshelfStore((s) => s.isBookSaved(book.id));
   const isSaved = hasMounted && rawIsSaved;
   const rawIsLiked = useBookshelfStore((s) => s.isBookLiked(book.id));
@@ -38,13 +39,14 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
     >
       {/* Top Cover Visual with Booksaw Directional Depth */}
       <div className="relative aspect-[3/4] w-full bg-muted overflow-hidden flex items-center justify-center p-3 sm:p-4 border-b border-border">
-        {formats.coverImage ? (
+        {formats.coverImage && !imageError ? (
           <div className="relative w-full h-full rounded-md overflow-hidden shadow-xs group-hover:scale-[1.02] transition-transform duration-300">
             <img
               src={formats.coverImage}
               alt={`Cover of ${book.title}`}
               className="w-full h-full object-cover object-center"
               loading="lazy"
+              onError={() => setImageError(true)}
             />
           </div>
         ) : (
@@ -53,9 +55,9 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
               <div className="flex items-center gap-1 text-[10px] uppercase font-mono tracking-widest text-primary-400 font-semibold mb-2">
                 <Sparkles className="w-3 h-3" /> Public Domain
               </div>
-              <h3 className="font-serif font-bold text-sm sm:text-base line-clamp-4 leading-snug">
+              <h4 className="font-serif font-bold text-sm sm:text-base line-clamp-4 leading-snug">
                 {book.title}
-              </h3>
+              </h4>
             </div>
             <p className="text-xs text-stone-300 font-serif italic line-clamp-2">
               {authorNames}
@@ -109,9 +111,9 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
       {/* Book Metadata Content */}
       <div className="p-4 flex-1 flex flex-col justify-between gap-3">
         <div>
-          <h2 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 mb-1 group-hover:text-primary transition-colors">
+          <h3 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 mb-1 group-hover:text-primary transition-colors">
             {book.title}
-          </h2>
+          </h3>
           <p className="text-xs text-muted-foreground font-sans line-clamp-1">
             {authorNames}
           </p>

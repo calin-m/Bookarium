@@ -51,5 +51,16 @@ describe('BookCard component', () => {
     fireEvent.click(downloadBtn);
     expect(handleDownload).toHaveBeenCalledWith(book);
   });
+
+  it('should fallback to styled gradient cover when image onError fires', () => {
+    const book = mockBooks[0];
+    render(<BookCard book={book} />);
+
+    const img = screen.getByAltText(`Cover of ${book.title}`);
+    fireEvent.error(img);
+
+    expect(screen.queryByAltText(`Cover of ${book.title}`)).not.toBeInTheDocument();
+    expect(screen.getByText('Public Domain')).toBeInTheDocument();
+  });
 });
 

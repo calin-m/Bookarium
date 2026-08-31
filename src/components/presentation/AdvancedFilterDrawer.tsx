@@ -7,16 +7,17 @@ import {
   LITERARY_ERAS,
   SORT_OPTIONS,
   GENRE_FACETS,
-  EXTENDED_LANGUAGES,
+  CATALOG_LANGUAGES,
   FORMAT_FILTERS,
   type EraOption,
 } from '@/config/catalog-filters';
+import { LanguageSelector } from './LanguageSelector';
 
 export {
   LITERARY_ERAS,
   SORT_OPTIONS,
   GENRE_FACETS,
-  EXTENDED_LANGUAGES,
+  CATALOG_LANGUAGES,
   FORMAT_FILTERS,
   type EraOption,
 };
@@ -72,10 +73,10 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
         data-testid="filter-backdrop"
       />
 
-      <div className="relative w-full max-w-sm sm:max-w-md lg:w-96 h-full lg:h-[calc(100vh-4rem)] bg-card text-foreground flex flex-col justify-between shadow-2xl border-r border-border animate-in slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
+      <div className="relative w-full max-w-sm sm:max-w-md lg:w-96 h-full lg:h-[calc(100vh-4rem)] bg-background text-foreground flex flex-col justify-between shadow-2xl border-r border-border animate-in slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
         
         {/* Drawer Header */}
-        <div className="p-6 border-b border-border flex items-center justify-between bg-card">
+        <div className="p-6 border-b border-border flex items-center justify-between bg-background">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
               <Filter className="w-4 h-4" />
@@ -138,7 +139,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
             </h4>
             <select
               value={selectedSort}
-              onChange={(e) => onSortChange(e.target.value as any)}
+              onChange={(e) => onSortChange(e.target.value as 'popular' | 'descending' | 'ascending' | '')}
               className="w-full bg-card border border-border rounded-lg p-2.5 text-xs text-foreground focus:outline-hidden focus:border-primary cursor-pointer"
               data-testid="sort-select"
             >
@@ -178,23 +179,17 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Extended Languages */}
+          {/* Section 4: Catalog Languages */}
           <div className="space-y-3">
             <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
               Language
             </h4>
-            <select
+            <LanguageSelector
+              variant="full"
               value={selectedLanguage}
-              onChange={(e) => onLanguageChange(e.target.value)}
-              className="w-full bg-card border border-border rounded-lg p-2.5 text-xs text-foreground focus:outline-hidden focus:border-primary cursor-pointer"
-              data-testid="language-drawer-select"
-            >
-              {EXTENDED_LANGUAGES.map((lang) => (
-                <option key={lang.value} value={lang.value} className="bg-card text-foreground">
-                  {lang.label}
-                </option>
-              ))}
-            </select>
+              onChange={onLanguageChange}
+              dataTestId="language-drawer-select"
+            />
           </div>
 
           {/* Section 5: Format Availability */}
@@ -219,7 +214,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
         </div>
 
         {/* Drawer Bottom Actions */}
-        <div className="p-5 border-t border-border bg-card flex items-center justify-between gap-3">
+        <div className="p-5 border-t border-border bg-background flex items-center justify-between gap-3">
           <Button
             variant="ghost"
             size="sm"

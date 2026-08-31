@@ -5,8 +5,7 @@ import {
   SORT_OPTIONS,
   GENRE_FACETS,
   HERO_POPULAR_TOPICS,
-  EXTENDED_LANGUAGES,
-  HERO_LANGUAGES,
+  CATALOG_LANGUAGES,
   FORMAT_FILTERS,
 } from './catalog-filters';
 import { FEATURED_HERO_BOOK, FEATURED_HERO_BOOKS } from './featured-books';
@@ -38,9 +37,9 @@ describe('src/config configuration modules', () => {
     });
 
     it('provides language mappings with ISO-639 codes', () => {
-      expect(EXTENDED_LANGUAGES.some((l) => l.value === 'en')).toBe(true);
-      expect(EXTENDED_LANGUAGES.some((l) => l.value === 'la')).toBe(true);
-      expect(HERO_LANGUAGES.some((l) => l.value === 'fr')).toBe(true);
+      expect(CATALOG_LANGUAGES.some((l) => l.value === 'en')).toBe(true);
+      expect(CATALOG_LANGUAGES.some((l) => l.value === 'la')).toBe(true);
+      expect(CATALOG_LANGUAGES.some((l) => l.value === 'ro')).toBe(true);
     });
 
     it('provides valid sort and format options', () => {

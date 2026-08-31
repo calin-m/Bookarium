@@ -7,7 +7,7 @@
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.19-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Vitest](https://img.shields.io/badge/Vitest-4.1.11-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.8%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.2%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
@@ -46,6 +46,16 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
 
 * **Zero API Key Requirement**: Works instantly out of the box with zero third-party developer keys, sign-ups, or credit card walls.
 * **Strict Public Domain Integrity**: All queries programmatically enforce `copyright=false` through Gutendex and Project Gutenberg.
+* **Deep Linking & Bidirectional URL State Synchronization**:
+  * All catalog filters (`search`, `topic`, `language`, `era`, `sort`, `format`, `page`, `view`) automatically synchronize bidirectionally with URL search parameters via shallow `history.replaceState`.
+  * Fully supports direct bookmarking, shareable search URLs, and native browser Back / Forward (`popstate`) navigation with zero page reloads and 0 CLS.
+* **Network Debouncing & Resilient Upstream Querying**:
+  * 300ms keystroke debouncing prevents API spamming while typing, with 0ms instant flush on `Enter` / form submission.
+  * Robust JSON response parsing with graceful 502/504 failover handling for Gutenberg upstream timeouts.
+* **Procedural Cover Art Fallback**:
+  * Automatic `onError` detection replaces missing or dead remote cover images with elegant, dark-academia typographic cover art in pure CSS with zero layout shifts.
+* **SSR Hydration Guarding Protocol**:
+  * Store reads for liked and saved book collections are guarded with `useHasMounted()` to guarantee zero React hydration mismatches on initial server render.
 * **100% Live Dual-Gateway Data Pipeline**: Next.js Server Route Proxy paired with direct client upstream failover to `https://gutendex.com/` guaranteeing 100% uptime on serverless platforms without reliance on local mock fallbacks.
 * **Dynamic Rotating 3D Featured Masterwork Spotlight**:
   * Curated pool of 10 iconic public domain classics (*Pride and Prejudice, Frankenstein, Moby Dick, The Great Gatsby, Alice in Wonderland, Dorian Gray, Sherlock Holmes, Dracula, A Tale of Two Cities, The Time Machine*).
@@ -75,7 +85,7 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
   * **Font Scaler & Dynamic Line Spacing Sliders**: Real-time font sizing (12px–36px) and dynamic line height (1.2–2.6) with 1-click presets (`14px / 18px / 24px` and `1.4 Compact / 1.8 Standard / 2.2 Spacious`) and top bar quick spacing cycler (`↕`).
   * **Pinch‑to‑Zoom Font Scaling (Mobile)**: Two‑finger pinch gestures adjust the font size between 12 px – 36 px, displaying a transient HUD pill with the current size.
   * **Filters Button Hover Contrast Fix**: Updated button variant and hover styling for clear text contrast when the sidebar is opened.
-  * **Typography & Width Modes**: 1-click column width presets (**Narrow** / **Normal** / **Wide**) and reading mode switching (**Page** / **Scroll**).
+  * **Typography & Width Modes**: 1-click column width presets (**Narrow** / **Normal** / **Wide** — defaulting to **Wide** `1024px`) and reading mode switching (**Page** / **Scroll**).
 * **Dynamic Literary Passages & Quotes**: Rotating showcase of iconic classic quotes with classical first-line editorial indentation and interactive shuffle discovery.
 * **Direct Download Hub**: Multi-format downloads including direct EPUB, clean plain text, mobile-friendly HTML, and Kindle formats.
 * **Auto-Healing Personal Bookshelf & Favorites**: Curated collections, reading queue, reading history, and favorited titles with background metadata auto-recovery and 1-click reset actions.
@@ -96,7 +106,7 @@ The catalog can be filtered by the following language options (ISO‑639‑1 cod
 - `zh` – Chinese (中文)
 - `ro` – Romanian (Română)
 
-> **How it works** – Selecting a language adds a `languages=<code>` query parameter that flows through `useBooks` → `/api/books` → Gutendex API, returning only books in the chosen language.
+> **How it works** – Selecting a language via the unified `<LanguageSelector />` component (available on both the main Hero search bar and the sidebar filter drawer) adds a `languages=<code>` query parameter that flows through `useBooks` → `/api/books` → Gutendex API, returning only public domain books in the chosen language.
 
 
 ---

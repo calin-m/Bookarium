@@ -56,4 +56,22 @@ describe('GET /api/books route handler', () => {
     expect(json.results).toHaveLength(0);
     fetchSpy.mockRestore();
   });
+
+  it('should return 502 status code when upstream API returns invalid non-JSON body', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('<html>Error</html>', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/books?search=Test');
+    const res = await GET(req);
+
+    expect(res.status).toBe(502);
+    const json = await res.json();
+    expect(json.error).toContain('Invalid JSON response');
+    expect(json.results).toHaveLength(0);
+    fetchSpy.mockRestore();
+  });
 });

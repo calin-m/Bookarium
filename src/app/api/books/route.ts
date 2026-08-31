@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import type { GutendexBook, GutendexResponse } from '@/mocks/handlers';
 
 // Ensure Vercel runs this as a dynamic serverless function with extended timeout
 export const dynamic = 'force-dynamic';
@@ -83,8 +84,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
-    const filteredResults = data.results.filter((b: any) => b.copyright !== true);
+    let data: GutendexResponse;
+    try {
+      data = await response.json();
+    } catch {
+      return NextResponse.json(
+        {
+          error: 'Invalid JSON response from upstream Gutenberg API',
+          latencyMs,
+          results: [],
+          count: 0,
+          source: 'upstream',
+        },
+        { status: 502 }
+      );
+    }
+
+    const filteredResults = (data.results || []).filter((b: GutendexBook) => b.copyright !== true);
     const filteredCount = filteredResults.length;
     return NextResponse.json(
       { ...data, results: filteredResults, count: filteredCount, source: 'upstream', latencyMs },

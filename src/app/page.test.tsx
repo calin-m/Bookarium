@@ -146,8 +146,8 @@ describe('Home page integration', () => {
 
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
 
-    const formatButtons = screen.getAllByRole('button', { name: /Download options for/i });
-    fireEvent.click(formatButtons[0]);
+    const downloadBtn = screen.getByLabelText(`Download options for ${mockBooks[0].title}`);
+    fireEvent.click(downloadBtn);
 
     expect(screen.getByText('Zero-Copyright Download Hub')).toBeInTheDocument();
     expect(screen.getByText('EPUB E-Reader')).toBeInTheDocument();

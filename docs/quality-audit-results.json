@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-31T09:37:08.044Z",
+  "timestamp": "2026-08-31T11:48:52.022Z",
   "status": "PASSED",
   "gateways": {
     "pass05_secrets": {
@@ -17,10 +17,10 @@
     "pass3_coverage": {
       "status": "PASSED",
       "metrics": {
-        "lines": 93.08,
-        "statements": 91.82,
+        "lines": 92.18,
+        "statements": 90.27,
         "functions": 88.88,
-        "branches": 81.53
+        "branches": 80.81
       }
     },
     "pass4_docs_sync": {

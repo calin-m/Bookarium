@@ -70,7 +70,7 @@ export const HERO_POPULAR_TOPICS: GenreFacet[] = [
   { id: 'adventure', label: 'Sea & Adventure' },
 ];
 
-export const EXTENDED_LANGUAGES: LanguageOption[] = [
+export const CATALOG_LANGUAGES: LanguageOption[] = [
   { value: '', label: 'All Languages' },
   { value: 'en', label: 'English' },
   { value: 'fr', label: 'French (Français)' },
@@ -84,17 +84,6 @@ export const EXTENDED_LANGUAGES: LanguageOption[] = [
   { value: 'ru', label: 'Russian (Русский)' },
   { value: 'zh', label: 'Chinese (中文)' },
   { value: 'ro', label: 'Romanian (Română)' },
-];
-
-export const HERO_LANGUAGES: LanguageOption[] = [
-  { value: '', label: 'All Languages' },
-  { value: 'en', label: 'English' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'it', label: 'Italian' },
-  { value: 'la', label: 'Latin' },
-  { value: 'el', label: 'Greek' },
 ];
 
 export const FORMAT_FILTERS: FormatFilter[] = [

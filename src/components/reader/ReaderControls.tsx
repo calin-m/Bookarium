@@ -69,7 +69,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
       />
 
       <div
-        className={`fixed top-14 sm:top-16 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] max-w-sm sm:w-96 max-h-[calc(100vh-4.5rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 transition-all animate-in fade-in duration-150`}
+        className={`fixed top-14 sm:top-16 right-2 sm:right-6 left-2 sm:left-auto z-[9999] w-[calc(100vw-1rem)] max-w-sm sm:w-96 max-h-[calc(100vh-4.5rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 transition-all animate-in fade-in duration-150`}
         role="region"
         aria-label="Reading Controls"
       >

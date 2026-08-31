@@ -45,7 +45,7 @@ export default function BookReaderPage() {
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [readingMode, setReadingMode] = useState<'paginated' | 'scroll'>('paginated');
-  const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('normal');
+  const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, refetch } = useBookContent(undefined, numericId);

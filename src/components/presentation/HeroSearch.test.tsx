@@ -16,12 +16,17 @@ describe('HeroSearch component', () => {
     expect(screen.getByTestId('topic-chip-philosophy')).toBeInTheDocument();
   });
 
-  it('should handle search input changes', () => {
+  it('should handle search input changes with debounce', () => {
+    vi.useFakeTimers();
     const handleSearchChange = vi.fn();
     render(<HeroSearch search="" onSearchChange={handleSearchChange} />);
 
     fireEvent.change(screen.getByTestId('search-input'), { target: { value: 'Austen' } });
+    expect(handleSearchChange).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(300);
     expect(handleSearchChange).toHaveBeenCalledWith('Austen');
+    vi.useRealTimers();
   });
 
   it('should handle topic chip and language selection', () => {

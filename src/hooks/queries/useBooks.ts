@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import React, { useEffect } from 'react';
-import type { GutendexResponse } from '@/mocks/handlers';
+import type { GutendexBook, GutendexResponse } from '@/mocks/handlers';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 export interface UseBooksParams {
@@ -14,6 +14,10 @@ export interface UseBooksParams {
   authorYearEnd?: number;
   sort?: 'popular' | 'descending' | 'ascending' | '';
   mimeType?: string;
+}
+
+export interface UseBooksOptions {
+  enabled?: boolean;
 }
 
 export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexResponse> {
@@ -81,16 +85,23 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
       directRes = await fetch(directUrl, {
         headers: { Accept: 'application/json' },
       });
-    } catch (netErr: any) {
-      throw new Error(`Failed to fetch books: ${netErr?.message || 'Network error'}`);
+    } catch (netErr: unknown) {
+      const msg = netErr instanceof Error ? netErr.message : 'Network error';
+      throw new Error(`Failed to fetch books: ${msg}`);
     }
 
     if (!directRes.ok) {
       throw new Error(`Failed to fetch books: ${directRes.statusText || directRes.status}`);
     }
 
-    const data = await directRes.json();
-    const filteredResults = (data.results || []).filter((b: any) => b.copyright !== true);
+    let data: GutendexResponse;
+    try {
+      data = await directRes.json();
+    } catch {
+      throw new Error('Failed to fetch books: Invalid JSON response from server');
+    }
+
+    const filteredResults = (data.results || []).filter((b: GutendexBook) => b.copyright !== true);
     return {
       ...data,
       results: filteredResults,
@@ -108,14 +119,20 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
           'User-Agent': 'Bookarium/1.0 (Public Domain Library Reader)',
         },
       });
-    } catch (netErr: any) {
-      throw new Error(`Failed to fetch books: ${netErr?.message || 'Network error'}`);
+    } catch (netErr: unknown) {
+      const msg = netErr instanceof Error ? netErr.message : 'Network error';
+      throw new Error(`Failed to fetch books: ${msg}`);
     }
     if (!res.ok) {
       throw new Error(`Failed to fetch books: ${res.statusText || res.status}`);
     }
-    const data = await res.json();
-    const filteredResults = (data.results || []).filter((b: any) => b.copyright !== true);
+    let data: GutendexResponse;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error('Failed to fetch books: Invalid JSON response from server');
+    }
+    const filteredResults = (data.results || []).filter((b: GutendexBook) => b.copyright !== true);
     return {
       ...data,
       results: filteredResults,
@@ -125,13 +142,14 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
   }
 }
 
-export function useBooks(params: UseBooksParams = {}) {
+export function useBooks(params: UseBooksParams = {}, options: UseBooksOptions = {}) {
   return useQuery({
     queryKey: ['books', params],
     queryFn: () => fetchBooks(params),
     placeholderData: keepPreviousData, // Keep previous page data while new page is loading
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000,
+    enabled: options.enabled ?? true,
   });
 }
 
@@ -160,9 +178,14 @@ export function usePrefetchNextPage(params: UseBooksParams = {}, hasNextPage = t
       });
     };
 
-    if ('requestIdleCallback' in window) {
-      const handle = (window as any).requestIdleCallback(prefetch);
-      return () => (window as any).cancelIdleCallback(handle);
+    const win = window as unknown as {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    if (typeof win.requestIdleCallback === 'function' && typeof win.cancelIdleCallback === 'function') {
+      const handle = win.requestIdleCallback(prefetch);
+      return () => win.cancelIdleCallback?.(handle);
     } else {
       const timer = setTimeout(prefetch, 400);
       return () => clearTimeout(timer);
