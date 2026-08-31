@@ -101,32 +101,65 @@ describe('HeroSearch component', () => {
     fireEvent.click(shuffleBtns[0]);
   });
 
-  it('should toggle pinned open and closed states on click and keyboard events', () => {
-    render(<HeroSearch search="" />);
+  it('should toggle pinned open and closed states on click and keyboard events on desktop', () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1200 });
 
-    const bookStage = screen.getByRole('button', { name: /Click to pin open volume/i });
-    expect(bookStage).toHaveClass('book-3d-stage');
-    expect(bookStage).not.toHaveClass('book-open');
+    try {
+      render(<HeroSearch search="" />);
 
-    // Click to pin open
-    fireEvent.click(bookStage);
-    expect(bookStage).toHaveClass('book-open');
+      const bookStage = screen.getByRole('button', { name: /Click to pin open volume/i });
+      expect(bookStage).toHaveClass('book-3d-stage');
+      expect(bookStage).not.toHaveClass('book-open');
 
-    // Click to pin closed
-    fireEvent.click(bookStage);
-    expect(bookStage).toHaveClass('book-closed');
+      // Click to pin open
+      fireEvent.click(bookStage);
+      expect(bookStage).toHaveClass('book-open');
 
-    // Mouse leave resets pinState so next hover opens
-    fireEvent.mouseLeave(bookStage);
-    expect(bookStage).not.toHaveClass('book-closed');
+      // Click to pin closed
+      fireEvent.click(bookStage);
+      expect(bookStage).toHaveClass('book-closed');
 
-    // Hover in, click again
-    fireEvent.mouseEnter(bookStage);
-    fireEvent.keyDown(bookStage, { key: 'Enter' });
-    expect(bookStage).toHaveClass('book-closed');
+      // Mouse leave resets pinState so next hover opens
+      fireEvent.mouseLeave(bookStage);
+      expect(bookStage).not.toHaveClass('book-closed');
 
-    // Keyboard Space to toggle
-    fireEvent.keyDown(bookStage, { key: ' ' });
-    expect(bookStage).toHaveClass('book-open');
+      // Hover in, click again
+      fireEvent.mouseEnter(bookStage);
+      fireEvent.keyDown(bookStage, { key: 'Enter' });
+      expect(bookStage).toHaveClass('book-closed');
+
+      // Keyboard Space to toggle
+      fireEvent.keyDown(bookStage, { key: ' ' });
+      expect(bookStage).toHaveClass('book-open');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
+    }
+  });
+
+  it('should not toggle pinned open state on mobile viewports (< 1024px)', () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 768 });
+
+    try {
+      render(<HeroSearch search="" />);
+
+      const bookStage = screen.getByRole('button', { name: /Click to pin open volume/i });
+      expect(bookStage).not.toHaveClass('book-open');
+
+      // Click should not pin open on mobile
+      fireEvent.click(bookStage);
+      expect(bookStage).not.toHaveClass('book-open');
+
+      // Hover should not trigger
+      fireEvent.mouseEnter(bookStage);
+      expect(bookStage).not.toHaveClass('book-open');
+
+      // Keyboard should not trigger
+      fireEvent.keyDown(bookStage, { key: 'Enter' });
+      expect(bookStage).not.toHaveClass('book-open');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
+    }
   });
 });

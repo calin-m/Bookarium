@@ -50,7 +50,7 @@ export function formatDownloadCount(count: number): string {
   if (count >= 1_000) {
     return `${(count / 1_000).toFixed(1).replace(/\.0$/, '')}k`;
   }
-  return count.toLocaleString();
+  return count.toString();
 }
 
 /**

@@ -6,8 +6,16 @@ import { mockBooks } from '@/mocks/handlers';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}));
+
 describe('BookCard component', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     useBookshelfStore.getState().clearBookshelf();
     useReaderStore.setState({ isOpen: false, currentBook: null });
   });
@@ -52,14 +60,49 @@ describe('BookCard component', () => {
     expect(handleDownload).toHaveBeenCalledWith(book);
   });
 
-  it('should call onPreviewClick when clicking book cover visual', () => {
+  it('should call onPreviewClick when clicking book cover visual on desktop', () => {
     const handlePreview = vi.fn();
     const book = mockBooks[0];
-    render(<BookCard book={book} onPreviewClick={handlePreview} />);
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1200 });
 
-    const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${book.title}`);
-    fireEvent.click(coverVisual);
-    expect(handlePreview).toHaveBeenCalledWith(book, expect.any(Object));
+    try {
+      render(<BookCard book={book} onPreviewClick={handlePreview} />);
+
+      const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${book.title}`);
+      fireEvent.click(coverVisual);
+      expect(handlePreview).toHaveBeenCalledWith(book, expect.any(Object));
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
+    }
+  });
+
+  it('should navigate to /read/[id] on mobile when clicking book cover visual', () => {
+    const handlePreview = vi.fn();
+    const book = mockBooks[0];
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 768 });
+
+    try {
+      render(<BookCard book={book} onPreviewClick={handlePreview} />);
+
+      const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${book.title}`);
+      fireEvent.click(coverVisual);
+
+      expect(handlePreview).not.toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith(`/read/${book.id}`);
+      expect(useReaderStore.getState().currentBook?.id).toBe(book.id);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
+    }
+  });
+
+  it('applies opacity-0 when isPreviewActive is true', () => {
+    const book = mockBooks[0];
+    render(<BookCard book={book} isPreviewActive={true} />);
+
+    const card = screen.getByTestId(`book-card-${book.id}`);
+    expect(card).toHaveClass('opacity-0');
   });
 });
 

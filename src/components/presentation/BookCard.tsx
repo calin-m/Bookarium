@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { extractBookFormats, formatDownloadCount, truncate } from '@/lib/utils';
@@ -16,10 +17,13 @@ export interface BookCardProps {
   book: GutendexBook;
   onDownloadClick?: (book: GutendexBook) => void;
   onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
+  isPreviewActive?: boolean;
 }
 
-export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPreviewClick }) => {
+export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPreviewClick, isPreviewActive = false }) => {
+  const router = useRouter();
   const hasMounted = useHasMounted();
+  const cardRef = React.useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = React.useState(false);
   const rawIsSaved = useBookshelfStore((s) => s.isBookSaved(book.id));
   const isSaved = hasMounted && rawIsSaved;
@@ -32,35 +36,40 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
   const authorNames = book.authors.map((a) => a.name.split(',').reverse().join(' ').trim()).join(', ') || 'Anonymous';
   const primarySubject = book.subjects[0] ? truncate(book.subjects[0].split('--')[0].trim(), 24) : 'Classic';
 
+  const handleCoverClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      useReaderStore.getState().openReader(book);
+      router.push(`/read/${book.id}`);
+      return;
+    }
+    if (onPreviewClick) {
+      const cardEl = cardRef.current || ((e.currentTarget as HTMLElement).closest('[data-testid^="book-card-"]') as HTMLElement);
+      const rect = cardEl ? cardEl.getBoundingClientRect() : (e.currentTarget as HTMLElement).getBoundingClientRect();
+      onPreviewClick(book, {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+  };
+
   return (
     <Card
+      ref={cardRef}
       variant="default"
-      className="group relative flex flex-col h-full bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1 transition-all duration-300 rounded-xl overflow-hidden"
+      className={`group relative flex flex-col h-full bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1 rounded-xl overflow-hidden ${
+        isPreviewActive ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      }`}
       data-testid={`book-card-${book.id}`}
     >
       {/* Top Cover Visual with Booksaw Directional Depth & Click-to-Open Affordance */}
       <div
-        onClick={(e) => {
-          if (onPreviewClick) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            onPreviewClick(book, {
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-            });
-          }
-        }}
+        onClick={handleCoverClick}
         onKeyDown={(e) => {
-          if ((e.key === 'Enter' || e.key === ' ') && onPreviewClick) {
+          if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            const rect = e.currentTarget.getBoundingClientRect();
-            onPreviewClick(book, {
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-            });
+            handleCoverClick(e);
           }
         }}
         tabIndex={onPreviewClick ? 0 : undefined}
@@ -138,7 +147,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
             {primarySubject}
           </Badge>
           {onPreviewClick && (
-            <span className="hidden sm:inline-flex opacity-0 group-hover:opacity-100 items-center gap-1 text-[9px] font-mono font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded shadow-xs transition-opacity">
+            <span className="hidden lg:inline-flex opacity-0 group-hover:opacity-100 items-center gap-1 text-[9px] font-mono font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded shadow-xs transition-opacity">
               Flip Open 📖
             </span>
           )}

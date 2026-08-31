@@ -19,6 +19,7 @@ export interface BookGridProps {
   hasNextPage?: boolean;
   onDownloadClick?: (book: GutendexBook) => void;
   onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
+  activePreviewBookId?: number | null;
   emptyTitle?: string;
   emptyDescription?: string;
   viewMode?: BookViewMode;
@@ -37,6 +38,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   hasNextPage = true,
   onDownloadClick,
   onPreviewClick,
+  activePreviewBookId = null,
   emptyTitle = 'No public domain books found',
   emptyDescription = 'Try adjusting your search terms, topic filters, or language selection.',
   viewMode: controlledViewMode,
@@ -184,6 +186,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
                 book={book}
                 onDownloadClick={onDownloadClick}
                 onPreviewClick={onPreviewClick}
+                isPreviewActive={activePreviewBookId === book.id}
               />
             ))}
           </div>

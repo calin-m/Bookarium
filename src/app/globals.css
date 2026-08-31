@@ -194,15 +194,17 @@
 
 /* 3D Realistic Book Perspective & Opening Physics */
 
-/* Hero Spotlight: Hover & Open Physics */
-.hero-3d-stage.book-open .book-3d-rig,
-.hero-3d-stage:not(.book-closed):hover .book-3d-rig {
-  transform: translateX(55px) translateY(-14px) scale(0.82) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
-}
+/* Hero Spotlight: Hover & Open Physics (Desktop Wide-Screen Only) */
+@media (min-width: 1024px) {
+  .hero-3d-stage.book-open .book-3d-rig,
+  .hero-3d-stage:not(.book-closed):hover .book-3d-rig {
+    transform: translateX(55px) translateY(-14px) scale(0.82) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+  }
 
-.hero-3d-stage.book-open .book-3d-flipper,
-.hero-3d-stage:not(.book-closed):hover .book-3d-flipper {
-  transform: rotateY(-180deg);
+  .hero-3d-stage.book-open .book-3d-flipper,
+  .hero-3d-stage:not(.book-closed):hover .book-3d-flipper {
+    transform: rotateY(-180deg);
+  }
 }
 
 @media (min-width: 1280px) {
@@ -212,39 +214,34 @@
   }
 }
 
-/* Modal Catalog Preview: 100% Crisp Native Resolution (Zero Texture Blur, Perfect Spine Centering) */
+/* Modal Catalog Preview: 100% Crisp Native Resolution (Desktop Wide-Screen Only) */
 .modal-preview-3d-stage .book-3d-rig {
   transform-origin: center center;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  transition: transform 0.65s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-.modal-preview-3d-stage.book-open .book-3d-rig {
-  transform: translateX(50%) translateY(-12px) scale(1) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
-}
-
-.modal-preview-3d-stage.book-closed .book-3d-rig {
-  transform: translateX(0px) translateY(0px) scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
-}
-
-.modal-preview-3d-stage.book-open .book-3d-flipper {
-  transform: rotateY(-180deg);
-}
-
-.modal-preview-3d-stage.book-closed .book-3d-flipper {
-  transform: rotateY(0deg);
-}
-
-@media (min-width: 640px) {
-  .modal-preview-3d-stage.book-open .book-3d-rig {
-    transform: translateX(50%) translateY(-14px) scale(1) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
-  }
+.modal-preview-3d-stage .book-3d-flipper {
+  transition: transform 0.65s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @media (min-width: 1024px) {
   .modal-preview-3d-stage.book-open .book-3d-rig {
-    transform: translateX(50%) translateY(-16px) scale(1) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+    transform: translateX(120px) translateY(-14px) scale(0.84) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+  }
+
+  .modal-preview-3d-stage.book-closed .book-3d-rig {
+    transform: translateX(0px) translateY(0px) scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+
+  .modal-preview-3d-stage.book-open .book-3d-flipper {
+    transform: rotateY(-180deg);
+  }
+
+  .modal-preview-3d-stage.book-closed .book-3d-flipper {
+    transform: rotateY(0deg);
   }
 }
 

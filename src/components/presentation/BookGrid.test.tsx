@@ -76,5 +76,12 @@ describe('BookGrid component', () => {
     fireEvent.click(coverVisual);
     expect(handlePreview).toHaveBeenCalledWith(mockBooks[0], expect.any(Object));
   });
+
+  it('hides the active preview card when activePreviewBookId matches', () => {
+    render(<BookGrid books={mockBooks} activePreviewBookId={mockBooks[0].id} />);
+
+    const activeCard = screen.getByTestId(`book-card-${mockBooks[0].id}`);
+    expect(activeCard).toHaveClass('opacity-0');
+  });
 });
 

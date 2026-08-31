@@ -16,27 +16,33 @@ import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/mocks/handlers';
 import { Trash2, BookOpen, Quote, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export default function Home() {
   const router = useRouter();
+  const hasMounted = useHasMounted();
   const [selectedDownloadBook, setSelectedDownloadBook] = useState<GutendexBook | null>(null);
   const [selectedPreviewBook, setSelectedPreviewBook] = useState<GutendexBook | null>(null);
   const [previewOriginRect, setPreviewOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
-  // Bookshelf store items
-  const savedBooks = useBookshelfStore((s) => s.savedBooks);
-  const likedBooks = useBookshelfStore((s) => s.likedBooks || []);
-  const likedBookIds = useBookshelfStore((s) => s.likedBookIds);
+  // Bookshelf store items (hydrated safely on mount)
+  const rawSavedBooks = useBookshelfStore((s) => s.savedBooks);
+  const savedBooks = useMemo(() => (hasMounted ? rawSavedBooks : []), [hasMounted, rawSavedBooks]);
+  const rawLikedBooks = useBookshelfStore((s) => s.likedBooks || []);
+  const likedBooks = useMemo(() => (hasMounted ? rawLikedBooks : []), [hasMounted, rawLikedBooks]);
+  const rawLikedBookIds = useBookshelfStore((s) => s.likedBookIds);
+  const likedBookIds = useMemo(() => (hasMounted ? rawLikedBookIds : []), [hasMounted, rawLikedBookIds]);
   const clearSavedBooks = useBookshelfStore((s) => s.clearSavedBooks);
 
   // Auto-healing: detect any liked IDs in localStorage that lack full book metadata
   const missingLikedIds = useMemo(() => {
+    if (!hasMounted) return [];
     const knownIds = new Set((likedBooks || []).map((b) => b.id));
     return likedBookIds.filter((id) => !knownIds.has(id));
-  }, [likedBookIds, likedBooks]);
+  }, [likedBookIds, likedBooks, hasMounted]);
 
   const missingIdsParam = missingLikedIds.length > 0 ? missingLikedIds.join(',') : undefined;
 
@@ -217,7 +223,7 @@ export default function Home() {
             <p className="text-xs sm:text-sm text-muted-foreground font-serif italic">
               {activeView === 'catalog' &&
                 (booksData
-                  ? `Displaying ${displayedBooks.length} of ${booksData.count.toLocaleString()} public domain volumes`
+                  ? `Displaying ${displayedBooks.length} of ${booksData.count.toString()} public domain volumes`
                   : 'Searching Project Gutenberg catalog...')}
               {activeView === 'bookshelf' &&
                 `You have ${savedBooks.length} titles preserved on your personal shelf`}
@@ -269,6 +275,7 @@ export default function Home() {
               setSelectedPreviewBook(book);
               setPreviewOriginRect(rect || null);
             }}
+            activePreviewBookId={selectedPreviewBook?.id ?? null}
             viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}
             onViewModeChange={setViewMode}
             showViewToggle={false} // Managed by StickyToolbar
@@ -359,7 +366,6 @@ export default function Home() {
           useReaderStore.getState().openReader(book);
           router.push(`/read/${book.id}`);
         }}
-        onDownloadBook={(book) => setSelectedDownloadBook(book)}
       />
 
       {/* Download Hub Drawer */}

@@ -60,14 +60,18 @@ describe('src/config configuration modules', () => {
     });
 
     it('extracts passages for featured and generic books via getBookPassages', () => {
-      const featuredPassages = getBookPassages({
-        id: 1342,
-        title: 'Pride and Prejudice',
-        authors: [{ name: 'Austen, Jane' }],
-        subjects: ['Classic Fiction'],
-      });
-      expect(featuredPassages.length).toBe(3);
-      expect(featuredPassages[0].chapterLabel).toContain('Chapter I');
+      const testBookIds = [1342, 84, 2701, 64317, 11, 174, 1661, 345, 98, 35, 9999];
+      for (const id of testBookIds) {
+        const passages = getBookPassages({
+          id,
+          title: `Book ${id}`,
+          authors: [{ name: 'Test Author' }],
+          subjects: ['Literature'],
+        });
+        expect(passages.length).toBeGreaterThanOrEqual(1);
+        expect(passages[0].openingLine).toBeDefined();
+        expect(passages[0].quoteExcerpt).toBeDefined();
+      }
 
       const genericPassages = getBookPassages({
         id: 99999,

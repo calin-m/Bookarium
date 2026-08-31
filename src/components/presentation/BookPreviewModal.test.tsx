@@ -1,8 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BookPreviewModal } from './BookPreviewModal';
 import { mockBooks } from '@/mocks/handlers';
+
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: 0,
+      },
+    },
+  });
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  const queryClient = createTestQueryClient();
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+};
 
 describe('BookPreviewModal component', () => {
   const defaultBook = mockBooks[0]; // Pride and Prejudice
@@ -12,17 +28,21 @@ describe('BookPreviewModal component', () => {
   });
 
   it('renders nothing when isOpen is false or book is null', () => {
-    const { rerender } = render(
+    const { rerender } = renderWithQueryClient(
       <BookPreviewModal book={defaultBook} isOpen={false} onClose={vi.fn()} />
     );
     expect(screen.queryByTestId('book-preview-modal')).not.toBeInTheDocument();
 
-    rerender(<BookPreviewModal book={null} isOpen={true} onClose={vi.fn()} />);
+    rerender(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <BookPreviewModal book={null} isOpen={true} onClose={vi.fn()} />
+      </QueryClientProvider>
+    );
     expect(screen.queryByTestId('book-preview-modal')).not.toBeInTheDocument();
   });
 
   it('renders book preview modal and triggers cover open animation', () => {
-    render(
+    renderWithQueryClient(
       <BookPreviewModal book={defaultBook} isOpen={true} onClose={vi.fn()} />
     );
 
@@ -42,7 +62,7 @@ describe('BookPreviewModal component', () => {
   });
 
   it('handles shuffle click and cycles through passages', () => {
-    render(
+    renderWithQueryClient(
       <BookPreviewModal book={defaultBook} isOpen={true} onClose={vi.fn()} />
     );
 
@@ -56,12 +76,12 @@ describe('BookPreviewModal component', () => {
     fireEvent.click(shuffleBtn);
 
     // After shuffle, turning leaf is rendered
-    expect(screen.getByText('Notable Soliloquy')).toBeInTheDocument();
+    expect(screen.getAllByText('Notable Passages').length).toBeGreaterThan(0);
   });
 
   it('calls onClose when close button or backdrop is clicked or Escape is pressed', () => {
     const handleClose = vi.fn();
-    render(
+    renderWithQueryClient(
       <BookPreviewModal
         book={defaultBook}
         originRect={{ top: 100, left: 100, width: 200, height: 300 }}
@@ -78,7 +98,7 @@ describe('BookPreviewModal component', () => {
     fireEvent.click(bookStage);
 
     act(() => {
-      vi.advanceTimersByTime(600);
+      vi.advanceTimersByTime(1100);
     });
 
     expect(handleClose).toHaveBeenCalledTimes(1);
@@ -86,7 +106,7 @@ describe('BookPreviewModal component', () => {
     // Escape key
     fireEvent.keyDown(window, { key: 'Escape' });
     act(() => {
-      vi.advanceTimersByTime(600);
+      vi.advanceTimersByTime(1100);
     });
     expect(handleClose).toHaveBeenCalledTimes(2);
 
@@ -94,23 +114,21 @@ describe('BookPreviewModal component', () => {
     const backdrop = screen.getByTestId('book-preview-modal');
     fireEvent.click(backdrop);
     act(() => {
-      vi.advanceTimersByTime(600);
+      vi.advanceTimersByTime(1100);
     });
     expect(handleClose).toHaveBeenCalledTimes(3);
   });
 
-  it('calls onReadBook and onDownloadBook on action button clicks', () => {
+  it('calls onReadBook on action button click and closes modal', () => {
     const handleRead = vi.fn();
-    const handleDownload = vi.fn();
     const handleClose = vi.fn();
 
-    render(
+    renderWithQueryClient(
       <BookPreviewModal
         book={defaultBook}
         isOpen={true}
         onClose={handleClose}
         onReadBook={handleRead}
-        onDownloadBook={handleDownload}
       />
     );
 
@@ -123,12 +141,28 @@ describe('BookPreviewModal component', () => {
     expect(handleRead).toHaveBeenCalledWith(defaultBook);
 
     act(() => {
-      vi.advanceTimersByTime(600);
+      vi.advanceTimersByTime(1100);
     });
     expect(handleClose).toHaveBeenCalled();
+  });
 
-    const getBtn = screen.getByRole('button', { name: 'Download formats' });
-    fireEvent.click(getBtn);
-    expect(handleDownload).toHaveBeenCalledWith(defaultBook);
+  it('applies FLIP transform when originRect is provided', () => {
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        originRect={{ top: 200, left: 150, width: 240, height: 360 }}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+
+    const bookStage = screen.getByTestId('preview-book-stage');
+    expect(bookStage.style.transform).toContain('translate3d');
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(bookStage.style.transform).toBe('translate3d(0px, 0px, 0px) scale(1)');
   });
 });

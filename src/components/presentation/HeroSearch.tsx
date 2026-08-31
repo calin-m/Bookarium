@@ -104,6 +104,9 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
       return;
     }
     e.stopPropagation();
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return;
+    }
     if (isBookOpen) {
       setPinState('closed');
     } else {
@@ -112,6 +115,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   };
 
   const handleMouseEnter = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
     setIsHovered(true);
     if (pinState === 'closed') {
       setPinState('auto');
@@ -119,6 +123,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   };
 
   const handleMouseLeave = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
     setIsHovered(false);
     if (pinState === 'closed') {
       setPinState('auto');
@@ -271,6 +276,9 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
+                  if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                    return;
+                  }
                   if (isBookOpen) {
                     setPinState('closed');
                   } else {
