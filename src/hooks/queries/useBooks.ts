@@ -19,8 +19,10 @@ export interface UseBooksParams {
 export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexResponse> {
   const searchParams = new URLSearchParams();
 
-  // Enforce zero-copyright public domain filter
-  searchParams.set('copyright', params.copyright !== undefined ? String(params.copyright) : 'false');
+  // Only forward copyright if explicitly provided (rarely needed)
+  if (params.copyright !== undefined) {
+    searchParams.set('copyright', String(params.copyright));
+  }
 
   if (params.ids) {
     searchParams.set('ids', String(params.ids).trim());

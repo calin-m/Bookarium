@@ -20,6 +20,8 @@ export interface ReaderHeaderProps {
   currentChapterIndex?: number;
   fontSize?: number;
   onFontSizeChange?: (size: number) => void;
+  lineHeight?: number;
+  onLineHeightChange?: (height: number) => void;
   readingMode?: 'paginated' | 'scroll';
   onReadingModeChange?: (mode: 'paginated' | 'scroll') => void;
   onThemeChange?: (theme: ReaderTheme) => void;
@@ -40,6 +42,8 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   currentChapterIndex = 0,
   fontSize,
   onFontSizeChange,
+  lineHeight,
+  onLineHeightChange,
   readingMode,
   onReadingModeChange,
   onThemeChange,
@@ -48,7 +52,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
   return (
     <header
-      className={`sticky top-0 z-30 shrink-0 border-b backdrop-blur-xl transition-colors duration-200 ${activeTheme.header}`}
+      className={`sticky top-0 z-30 shrink-0 border-b transition-colors duration-200 ${activeTheme.header}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-4">
         
@@ -125,7 +129,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               <button
                 type="button"
                 onClick={() => onFontSizeChange(Math.max(fontSize - 2, 12))}
-                className={`px-2 py-1 font-mono text-[11px] hover:opacity-80 transition-opacity`}
+                className={`px-2 py-1 font-mono text-[11px] hover:text-primary-600 transition-colors`}
                 aria-label="Decrease Font Size"
               >
                 A-
@@ -135,11 +139,30 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               </span>
               <button
                 type="button"
-                onClick={() => onFontSizeChange(Math.min(fontSize + 2, 32))}
-                className={`px-2 py-1 font-mono text-[11px] hover:opacity-80 transition-opacity`}
+                onClick={() => onFontSizeChange(Math.min(fontSize + 2, 36))}
+                className={`px-2 py-1 font-mono text-[11px] hover:text-primary-600 transition-colors`}
                 aria-label="Increase Font Size"
               >
                 A+
+              </button>
+            </div>
+          )}
+
+          {/* Quick Line Height Toggle (Desktop) */}
+          {lineHeight !== undefined && onLineHeightChange && (
+            <div className={`hidden lg:flex items-center rounded-lg p-0.5 border text-xs ${activeTheme.pill}`}>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextLh = lineHeight <= 1.4 ? 1.8 : lineHeight <= 1.8 ? 2.2 : 1.4;
+                  onLineHeightChange(nextLh);
+                }}
+                className={`px-2 py-1 font-mono text-[11px] hover:text-primary-600 transition-colors flex items-center gap-1`}
+                aria-label="Toggle Line Spacing Preset"
+                title="Cycle Line Height: Compact (1.4) → Standard (1.8) → Spacious (2.2)"
+              >
+                <span className="text-[10px] uppercase text-muted-foreground">↕</span>
+                <span>{lineHeight}</span>
               </button>
             </div>
           )}

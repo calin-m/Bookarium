@@ -23,7 +23,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const hasMounted = useHasMounted();
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-background/90 border-b border-border transition-colors duration-200">
+    <header className="sticky top-0 z-40 w-full bg-background border-b border-border transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4 py-3">
         {/* Brand */}
         <div
@@ -105,21 +105,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="h-4 w-[1px] bg-border mx-1" />
 
           {/* 3-Way Universal Theme Switcher (Light -> Sepia -> Dark) */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={cycleTheme}
-            aria-label={`Current theme: ${theme}. Click to switch theme.`}
-            className="h-8 w-8 rounded text-muted-foreground hover:text-foreground"
-          >
-            {theme === 'light' ? (
-              <Sun className="w-4 h-4 text-amber-500" />
-            ) : theme === 'sepia' ? (
-              <Coffee className="w-4 h-4 text-amber-700" />
-            ) : (
-              <Moon className="w-4 h-4 text-indigo-400" />
-            )}
-          </Button>
+          {(() => {
+            const currentTheme = hasMounted ? theme : 'light';
+            return (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={cycleTheme}
+                aria-label={`Current theme: ${currentTheme}. Click to switch theme.`}
+                className="h-8 w-8 rounded text-muted-foreground hover:text-foreground"
+              >
+                {currentTheme === 'light' ? (
+                  <Sun className="w-4 h-4 text-amber-500" />
+                ) : currentTheme === 'sepia' ? (
+                  <Coffee className="w-4 h-4 text-amber-700" />
+                ) : (
+                  <Moon className="w-4 h-4 text-indigo-400" />
+                )}
+              </Button>
+            );
+          })()}
         </nav>
       </div>
     </header>

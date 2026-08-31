@@ -180,38 +180,11 @@ export default function BookReaderPage() {
         theme={theme}
         fontSize={fontSize}
         onFontSizeChange={setFontSize}
-        readingMode={readingMode}
-        onReadingModeChange={setReadingMode}
-        onThemeChange={setTheme}
-      />
-
-      {/* Floating Appearance & Typography Controls Popover */}
-      <ReaderControls
-        isOpen={isControlsOpen}
-        onClose={() => setIsControlsOpen(false)}
-        fontSize={fontSize}
-        onFontSizeChange={setFontSize}
         lineHeight={lineHeight}
         onLineHeightChange={setLineHeight}
-        fontFamily={fontFamily}
-        onFontFamilyChange={setFontFamily}
-        theme={theme}
-        onThemeChange={setTheme}
         readingMode={readingMode}
         onReadingModeChange={setReadingMode}
-        columnWidth={columnWidth}
-        onColumnWidthChange={setColumnWidth}
-      />
-
-      {/* Slide-out Table of Contents Drawer */}
-      <ReaderTocDrawer
-        isOpen={isTocOpen}
-        onClose={() => setIsTocOpen(false)}
-        chapters={chaptersWithPagination}
-        activeChapterIndex={activeChapterIndex}
-        onSelectChapter={handleSelectChapter}
-        bookTitle={bookMeta?.title}
-        theme={theme}
+        onThemeChange={setTheme}
       />
 
       {/* Main Editorial Reading Canvas */}
@@ -248,6 +221,35 @@ export default function BookReaderPage() {
         currentChapterIndex={activeChapterIndex}
         totalChapters={chaptersWithPagination.length || 1}
         onSelectChapter={handleSelectChapter}
+      />
+
+      {/* Floating Appearance & Typography Controls Popover */}
+      <ReaderControls
+        isOpen={isControlsOpen}
+        onClose={() => setIsControlsOpen(false)}
+        fontSize={fontSize}
+        onFontSizeChange={setFontSize}
+        lineHeight={lineHeight}
+        onLineHeightChange={setLineHeight}
+        fontFamily={fontFamily}
+        onFontFamilyChange={setFontFamily}
+        theme={theme}
+        onThemeChange={setTheme}
+        readingMode={readingMode}
+        onReadingModeChange={setReadingMode}
+        columnWidth={columnWidth}
+        onColumnWidthChange={setColumnWidth}
+      />
+
+      {/* Slide-out Table of Contents Drawer */}
+      <ReaderTocDrawer
+        isOpen={isTocOpen}
+        onClose={() => setIsTocOpen(false)}
+        chapters={chaptersWithPagination}
+        activeChapterIndex={activeChapterIndex}
+        onSelectChapter={handleSelectChapter}
+        bookTitle={bookMeta?.title}
+        theme={theme}
       />
 
     </div>

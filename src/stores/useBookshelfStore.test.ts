@@ -47,25 +47,37 @@ describe('useBookshelfStore', () => {
     expect(useBookshelfStore.getState().isInQueue(book1.id)).toBe(false);
   });
 
-  it('should toggle like status', () => {
-    const bookId = 1342;
-    expect(useBookshelfStore.getState().isBookLiked(bookId)).toBe(false);
+  it('should toggle like status and store likedBooks', () => {
+    const book = mockBooks[0];
+    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(false);
 
-    useBookshelfStore.getState().toggleLikeBook(bookId);
-    expect(useBookshelfStore.getState().isBookLiked(bookId)).toBe(true);
+    useBookshelfStore.getState().toggleLikeBook(book);
+    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(true);
+    expect(useBookshelfStore.getState().likedBooks).toHaveLength(1);
+    expect(useBookshelfStore.getState().likedBooks[0].id).toBe(book.id);
 
-    useBookshelfStore.getState().toggleLikeBook(bookId);
-    expect(useBookshelfStore.getState().isBookLiked(bookId)).toBe(false);
+    useBookshelfStore.getState().toggleLikeBook(book);
+    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(false);
+    expect(useBookshelfStore.getState().likedBooks).toHaveLength(0);
+
+    // Also support ID-based toggle for backward compatibility
+    useBookshelfStore.getState().toggleLikeBook(book.id);
+    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(true);
+    useBookshelfStore.getState().toggleLikeBook(book.id);
+    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(false);
   });
 
-  it('should track recent books up to 20 items without duplicates', () => {
+  it('should sync and clear liked books', () => {
     const book = mockBooks[0];
-    useBookshelfStore.getState().addRecentBook(book);
-    expect(useBookshelfStore.getState().recentBooks).toHaveLength(1);
+    useBookshelfStore.setState({ likedBookIds: [book.id], likedBooks: [] });
 
-    // Re-adding pushes it to top
-    useBookshelfStore.getState().addRecentBook(book);
-    expect(useBookshelfStore.getState().recentBooks).toHaveLength(1);
+    useBookshelfStore.getState().syncLikedBooks([book]);
+    expect(useBookshelfStore.getState().likedBooks).toHaveLength(1);
+    expect(useBookshelfStore.getState().likedBooks[0].id).toBe(book.id);
+
+    useBookshelfStore.getState().clearLikedBooks();
+    expect(useBookshelfStore.getState().likedBooks).toHaveLength(0);
+    expect(useBookshelfStore.getState().likedBookIds).toHaveLength(0);
   });
 });
 

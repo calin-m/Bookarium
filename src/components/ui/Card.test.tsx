@@ -13,7 +13,7 @@ describe('Card component', () => {
 
     expect(screen.getByTestId('card-element')).toBeInTheDocument();
     expect(screen.getByText('Book Details')).toBeInTheDocument();
-    expect(screen.getByTestId('card-element')).toHaveClass('backdrop-blur-md');
+    expect(screen.getByTestId('card-element')).toHaveClass('shadow-md');
   });
 });
 

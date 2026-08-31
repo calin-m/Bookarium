@@ -6,6 +6,7 @@ import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { extractBookFormats, formatDownloadCount, truncate } from '@/lib/utils';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useHasMounted } from '@/hooks/useHasMounted';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -16,9 +17,12 @@ export interface BookCardProps {
 }
 
 export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => {
-  const isSaved = useBookshelfStore((s) => s.isBookSaved(book.id));
+  const hasMounted = useHasMounted();
+  const rawIsSaved = useBookshelfStore((s) => s.isBookSaved(book.id));
+  const isSaved = hasMounted && rawIsSaved;
+  const rawIsLiked = useBookshelfStore((s) => s.isBookLiked(book.id));
+  const isLiked = hasMounted && rawIsLiked;
   const toggleSave = useBookshelfStore((s) => s.toggleSaveBook);
-  const isLiked = useBookshelfStore((s) => s.isBookLiked(book.id));
   const toggleLike = useBookshelfStore((s) => s.toggleLikeBook);
 
   const formats = extractBookFormats(book.formats);
@@ -32,7 +36,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
       data-testid={`book-card-${book.id}`}
     >
       {/* Top Cover Visual with Booksaw Directional Depth */}
-      <div className="relative aspect-[3/4] w-full bg-muted/60 overflow-hidden flex items-center justify-center p-3 sm:p-4 border-b border-border">
+      <div className="relative aspect-[3/4] w-full bg-muted overflow-hidden flex items-center justify-center p-3 sm:p-4 border-b border-border">
         {formats.coverImage ? (
           <div className="relative w-full h-full rounded-md overflow-hidden shadow-xs group-hover:scale-[1.02] transition-transform duration-300">
             <img
@@ -64,12 +68,12 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              toggleLike(book.id);
+              toggleLike(book);
             }}
-            className={`p-1.5 rounded-full backdrop-blur-md transition-all shadow-xs ${
+            className={`p-1.5 rounded-full transition-all shadow-xs ${
               isLiked
                 ? 'bg-destructive text-destructive-foreground scale-105'
-                : 'bg-card/90 text-muted-foreground hover:text-destructive'
+                : 'bg-card text-muted-foreground hover:text-destructive'
             }`}
             aria-label={isLiked ? 'Unlike book' : 'Like book'}
           >
@@ -82,10 +86,10 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
               e.stopPropagation();
               toggleSave(book);
             }}
-            className={`p-1.5 rounded-full backdrop-blur-md transition-all shadow-xs ${
+            className={`p-1.5 rounded-full transition-all shadow-xs ${
               isSaved
                 ? 'bg-primary text-primary-foreground scale-105'
-                : 'bg-card/90 text-muted-foreground hover:text-primary'
+                : 'bg-card text-muted-foreground hover:text-primary'
             }`}
             aria-label={isSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
           >
@@ -95,7 +99,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick }) => 
 
         {/* Subject Pill */}
         <div className="absolute bottom-2.5 left-2.5 z-20">
-          <Badge variant="outline" size="sm" className="bg-card/95 text-[10px] backdrop-blur-md border-border text-foreground font-mono uppercase">
+          <Badge variant="outline" size="sm" className="bg-card text-[10px] border-border text-foreground font-mono uppercase">
             {primarySubject}
           </Badge>
         </div>

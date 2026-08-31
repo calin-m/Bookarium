@@ -44,7 +44,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
 
   return (
     <footer
-      className={`sticky bottom-0 z-40 shrink-0 border-t backdrop-blur-xl transition-colors duration-200 ${activeTheme.footer}`}
+      className={`sticky bottom-0 z-40 shrink-0 border-t transition-colors duration-200 ${activeTheme.footer}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between gap-4 font-mono text-xs select-none">
         

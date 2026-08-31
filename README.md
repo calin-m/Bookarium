@@ -7,7 +7,7 @@
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.19-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Vitest](https://img.shields.io/badge/Vitest-4.1.11-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.34%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-93.17%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
@@ -22,10 +22,10 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 * **Figma Editorial Concept**: Inspired by the minimalist elegance of curated bookstore layouts (such as the *Booksaw / Classic Editorial Bookstore* design concepts on the Figma Community).
 * **Open-Book Skeuomorphic Details**: Custom open-book card spreads with subtle center spine creases (`.book-center-crease`), realistic paper texture shadows (`shadow-booksaw`), and page depth elevation.
-* **Warm Editorial Palettes**:
-  * **Day / Standard**: Clean cream-paper tones (`#f9f8f6`, `#f5f3ec`) with rich obsidian ink typography.
+* **Warm Editorial Palettes & 100% Solid Surfaces**:
+  * **Day / Standard**: Crisp cream-paper tones (`#fcfbf9`, `#ffffff`) with rich obsidian ink typography and 100% solid, non-transparent surfaces.
   * **Sepia Reading**: Warm amber parchment tones (`#f4ebd9`, `#ede2cc`) for eye comfort during long reading sessions.
-  * **Dark Mode**: High-contrast slate obsidian canvas (`#0c0e12`, `#0e1117`) preserving focus in low-light settings.
+  * **Dark Mode**: High-contrast slate obsidian canvas (`#0e1117`, `#161b26`) preserving focus in low-light settings.
 * **Refined Typography**: Pairings of classic literary serifs, clean sans-serifs, and monospace archival metadata accents.
 
 ---
@@ -55,11 +55,11 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
   * **True Book-Wide Global Pagination**: Calculates virtual pages across the entire volume (e.g. 901 pages for *Moby Dick*, 503 pages for *Pride and Prejudice*) with keyboard (`←`/`→`) and input page jumping.
   * **Sticky Thin Editorial Footer**: Docked pagination bar with zero vertical jumping or layout shift.
   * **Zero Cumulative Layout Shift (0 CLS)**: `scrollbar-gutter: stable` and standardized scrollbar tokens prevent horizontal reflows.
-  * **Table of Contents Drawer**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`) and estimated read times.
-  * **Font Scaler & Dynamic Line Height Controls**: Real-time font sizing (12px–32px), dynamic line height (1.2–2.4), Serif / Sans / Mono families, and compact/comfortable reading widths.
+  * **Table of Contents Drawer**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`), read-time estimates, and solid opaque surfaces with dark dismiss overlays.
+  * **Font Scaler & Dynamic Line Spacing Sliders**: Real-time font sizing (12px–36px) and dynamic line height (1.2–2.6) with 1-click presets (`14px / 18px / 24px` and `1.4 Compact / 1.8 Standard / 2.2 Spacious`) and top bar quick spacing cycler (`↕`).
 * **Dynamic Literary Passages & Quotes**: Rotating showcase of iconic classic quotes linking straight to unabridged volumes with an interactive shuffle trigger.
 * **Direct Download Hub**: Multi-format downloads including direct EPUB, clean plain text, mobile-friendly HTML, and Kindle formats.
-* **Offline Personal Bookshelf**: Curated collections, reading queue, reading history, and liked titles stored locally via Zustand.
+* **Auto-Healing Personal Bookshelf & Favorites**: Curated collections, reading queue, reading history, and favorited titles with background metadata auto-recovery and 1-click reset actions.
 
 ---
 
@@ -137,9 +137,9 @@ flowchart TD
 flowchart LR
     subgraph ReaderState ["Zustand Reader Store (useReaderStore)"]
         ActiveBook["Active Book Metadata"]
-        FontSize["Font Size (12px - 32px)"]
+        FontSize["Font Size (12px - 36px)"]
         FontFamily["Font Family: Serif | Sans | Mono"]
-        LineHeight["Line Height: 1.2 - 2.4"]
+        LineHeight["Line Height: 1.2 - 2.6"]
         Theme["Theme: Light | Dark | Sepia"]
         Progress["Global Page & Book Progress %"]
     end

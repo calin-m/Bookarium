@@ -9,7 +9,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = 'default', children, ...props }, ref) => {
     const variants = {
       default: 'bg-card text-card-foreground border border-border shadow-xs',
-      glass: 'bg-card/80 backdrop-blur-md border border-border/50 shadow-md text-foreground',
+      glass: 'bg-card border border-border shadow-md text-foreground',
       sepia: 'bg-sepia-surface border border-sepia-border text-sepia-text shadow-xs',
       outline: 'bg-transparent border border-border text-foreground',
     };

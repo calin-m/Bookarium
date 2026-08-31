@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 
+// Ensure Vercel runs this as a dynamic serverless function with extended timeout
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30; // seconds
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const { searchParams } = new URL(request.url);
@@ -16,8 +20,7 @@ export async function GET(request: NextRequest) {
 
   const gutendexParams = new URLSearchParams();
 
-  // STRICT ZERO-COPYRIGHT ENFORCEMENT
-  gutendexParams.set('copyright', 'false');
+  // public domain filter will be applied after fetching the data
 
   if (ids.trim()) {
     gutendexParams.set('ids', ids.trim());
@@ -81,8 +84,10 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+    const filteredResults = data.results.filter((b: any) => b.copyright !== true);
+    const filteredCount = filteredResults.length;
     return NextResponse.json(
-      { ...data, source: 'upstream', latencyMs },
+      { ...data, results: filteredResults, count: filteredCount, source: 'upstream', latencyMs },
       {
         status: 200,
         headers: {

@@ -36,23 +36,23 @@ describe('useReaderStore', () => {
     expect(useReaderStore.getState().isOpen).toBe(false);
   });
 
-  it('should clamp font size between 12 and 32', () => {
+  it('should clamp font size between 12 and 36', () => {
     useReaderStore.getState().setFontSize(10);
     expect(useReaderStore.getState().fontSize).toBe(12);
 
     useReaderStore.getState().setFontSize(40);
-    expect(useReaderStore.getState().fontSize).toBe(32);
+    expect(useReaderStore.getState().fontSize).toBe(36);
 
     useReaderStore.getState().setFontSize(22);
     expect(useReaderStore.getState().fontSize).toBe(22);
   });
 
-  it('should clamp line height between 1.2 and 2.4', () => {
+  it('should clamp line height between 1.2 and 2.6', () => {
     useReaderStore.getState().setLineHeight(0.8);
     expect(useReaderStore.getState().lineHeight).toBe(1.2);
 
     useReaderStore.getState().setLineHeight(3.0);
-    expect(useReaderStore.getState().lineHeight).toBe(2.4);
+    expect(useReaderStore.getState().lineHeight).toBe(2.6);
 
     useReaderStore.getState().setLineHeight(1.8);
     expect(useReaderStore.getState().lineHeight).toBe(1.8);

@@ -225,7 +225,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                 </div>
 
                 {/* Center Book Quote Excerpt */}
-                <div className="relative z-10 my-4 p-3 rounded bg-white/5 backdrop-blur-xs border border-white/10">
+                <div className="relative z-10 my-4 p-3 rounded bg-stone-900 border border-stone-800">
                   <p className="text-xs font-serif italic text-stone-200 leading-relaxed">
                     &ldquo;{FEATURED_HERO_BOOK.quoteExcerpt}&rdquo;
                   </p>

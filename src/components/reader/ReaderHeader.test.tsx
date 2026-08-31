@@ -60,15 +60,19 @@ describe('ReaderHeader', () => {
     expect(onToggleControls).toHaveBeenCalledTimes(1);
   });
 
-  it('triggers quick desktop controls for font size, theme, and reading mode', () => {
+  it('triggers quick desktop controls for font size, line height, theme, and reading mode', () => {
     const onFontSizeChange = vi.fn();
+    const onLineHeightChange = vi.fn();
     const onThemeChange = vi.fn();
     const onReadingModeChange = vi.fn();
 
     render(
       <ReaderHeader
         {...defaultProps}
+        fontSize={18}
         onFontSizeChange={onFontSizeChange}
+        lineHeight={1.4}
+        onLineHeightChange={onLineHeightChange}
         onThemeChange={onThemeChange}
         onReadingModeChange={onReadingModeChange}
       />
@@ -79,6 +83,9 @@ describe('ReaderHeader', () => {
 
     fireEvent.click(screen.getByLabelText('Decrease Font Size'));
     expect(onFontSizeChange).toHaveBeenCalledWith(16);
+
+    fireEvent.click(screen.getByLabelText('Toggle Line Spacing Preset'));
+    expect(onLineHeightChange).toHaveBeenCalledWith(1.8);
 
     fireEvent.click(screen.getByLabelText('Dark Theme'));
     expect(onThemeChange).toHaveBeenCalledWith('dark');

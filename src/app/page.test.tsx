@@ -133,6 +133,10 @@ describe('Home page integration', () => {
     fireEvent.click(likedBtn);
 
     expect(screen.getByText('Favorite Works')).toBeInTheDocument();
+
+    const clearFavBtn = screen.getByRole('button', { name: /Clear Favorites/i });
+    fireEvent.click(clearFavBtn);
+    expect(useBookshelfStore.getState().likedBookIds).toHaveLength(0);
   });
 
   it('should open download hub and close it', () => {

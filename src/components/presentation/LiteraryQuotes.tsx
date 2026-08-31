@@ -15,8 +15,8 @@ function getRandomThreeQuotes(excludeIds: number[] = []): LiteraryQuote[] {
 }
 
 export const LiteraryQuotes: React.FC = () => {
-  // Initialize with random 3 quotes directly on initial mount
-  const [displayedQuotes, setDisplayedQuotes] = useState<LiteraryQuote[]>(() => getRandomThreeQuotes());
+  // Initialize deterministically for SSR/Client hydration match
+  const [displayedQuotes, setDisplayedQuotes] = useState<LiteraryQuote[]>(() => LITERARY_QUOTES.slice(0, 3));
   const [isShuffling, setIsShuffling] = useState(false);
 
   const handleShuffle = useCallback(() => {

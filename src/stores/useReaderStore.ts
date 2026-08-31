@@ -46,12 +46,12 @@ export const useReaderStore = create<ReaderState>()(
       },
 
       setFontSize: (size) => {
-        const clamped = Math.min(Math.max(size, 12), 32);
+        const clamped = Math.min(Math.max(size, 12), 36);
         set({ fontSize: clamped });
       },
 
       setLineHeight: (height) => {
-        const clamped = Math.min(Math.max(height, 1.2), 2.4);
+        const clamped = Math.min(Math.max(height, 1.2), 2.6);
         set({ lineHeight: clamped });
       },
 

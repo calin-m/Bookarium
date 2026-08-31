@@ -38,7 +38,7 @@ describe('ReaderControls', () => {
     expect(screen.getByRole('region', { name: 'Reading Controls' })).toHaveClass('bg-[#ede2cc]');
 
     rerender(<ReaderControls {...defaultProps} theme="dark" />);
-    expect(screen.getByRole('region', { name: 'Reading Controls' })).toHaveClass('bg-[#12151c]');
+    expect(screen.getByRole('region', { name: 'Reading Controls' })).toHaveClass('bg-[#161b26]');
   });
 
   it('triggers onThemeChange and onFontFamilyChange', () => {
@@ -98,6 +98,13 @@ describe('ReaderControls', () => {
     const lineSlider = screen.getByLabelText('Line height spacing');
     fireEvent.change(lineSlider, { target: { value: '2.0' } });
     expect(onLineHeightChange).toHaveBeenCalledWith(2.0);
+
+    // Test quick preset buttons
+    fireEvent.click(screen.getByText('24px'));
+    expect(onFontSizeChange).toHaveBeenCalledWith(24);
+
+    fireEvent.click(screen.getByText('1.4'));
+    expect(onLineHeightChange).toHaveBeenCalledWith(1.4);
   });
 
   it('closes controls on Escape key press', () => {

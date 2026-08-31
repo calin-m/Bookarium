@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/presentation/Navbar';
 import { HeroSearch } from '@/components/presentation/HeroSearch';
@@ -23,8 +23,28 @@ export default function Home() {
 
   // Bookshelf store items
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
+  const likedBooks = useBookshelfStore((s) => s.likedBooks || []);
   const likedBookIds = useBookshelfStore((s) => s.likedBookIds);
-  const clearBookshelf = useBookshelfStore((s) => s.clearBookshelf);
+  const clearSavedBooks = useBookshelfStore((s) => s.clearSavedBooks);
+
+  // Auto-healing: detect any liked IDs in localStorage that lack full book metadata
+  const missingLikedIds = useMemo(() => {
+    const knownIds = new Set((likedBooks || []).map((b) => b.id));
+    return likedBookIds.filter((id) => !knownIds.has(id));
+  }, [likedBookIds, likedBooks]);
+
+  const missingIdsParam = missingLikedIds.length > 0 ? missingLikedIds.join(',') : undefined;
+
+  const { data: missingBooksData, isLoading: isMissingLoading } = useBooks(
+    missingIdsParam ? { ids: missingIdsParam } : undefined
+  );
+
+  // Sync returned book objects into likedBooks store
+  useEffect(() => {
+    if (missingLikedIds.length > 0 && missingBooksData?.results && missingBooksData.results.length > 0) {
+      useBookshelfStore.getState().syncLikedBooks(missingBooksData.results);
+    }
+  }, [missingBooksData, missingLikedIds]);
 
   // Centralized Catalog Filters Hook
   const {
@@ -95,10 +115,15 @@ export default function Home() {
     isDisplayLoading = false;
     isDisplayError = false;
   } else if (activeView === 'likes') {
-    const allKnown = [...(booksData?.results || []), ...savedBooks];
+    const allKnown = [
+      ...(likedBooks || []),
+      ...(missingBooksData?.results || []),
+      ...(booksData?.results || []),
+      ...savedBooks,
+    ];
     const uniqueKnown = Array.from(new Map(allKnown.map((b) => [b.id, b])).values());
     displayedBooks = uniqueKnown.filter((b) => likedBookIds.includes(b.id));
-    isDisplayLoading = false;
+    isDisplayLoading = missingLikedIds.length > 0 && isMissingLoading;
     isDisplayError = false;
   }
 
@@ -176,11 +201,25 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={clearBookshelf}
+                  onClick={clearSavedBooks}
                   className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Clear Shelf
+                </Button>
+              </div>
+            )}
+
+            {activeView === 'likes' && likedBookIds.length > 0 && (
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => useBookshelfStore.getState().clearLikedBooks()}
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear Favorites
                 </Button>
               </div>
             )}

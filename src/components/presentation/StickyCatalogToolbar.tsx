@@ -71,7 +71,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
   return (
     <div
-      className="sticky top-16 z-30 w-full backdrop-blur-xl bg-background/95 border-b border-border shadow-xs transition-colors py-2.5 px-4 sm:px-6 lg:px-8"
+      className="sticky top-16 z-30 w-full bg-background border-b border-border shadow-xs transition-colors py-2.5 px-4 sm:px-6 lg:px-8"
       data-testid="sticky-catalog-toolbar"
     >
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">

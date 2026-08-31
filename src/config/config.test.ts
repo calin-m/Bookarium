@@ -76,9 +76,9 @@ describe('src/config configuration modules', () => {
     it('provides complete theme configs for light, sepia, and dark', () => {
       expect(READER_THEMES.light.surface).toContain('bg-[#fcfbf9]');
       expect(READER_THEMES.sepia.surface).toContain('bg-[#f4ebd9]');
-      expect(READER_THEMES.dark.surface).toContain('bg-[#0c0e12]');
+      expect(READER_THEMES.dark.surface).toContain('bg-[#0e1117]');
       expect(READER_THEMES.sepia.header).toContain('bg-[#ede2cc]');
-      expect(READER_THEMES.dark.header).toContain('bg-[#12151c]');
+      expect(READER_THEMES.dark.header).toContain('bg-[#161b26]');
     });
   });
 });

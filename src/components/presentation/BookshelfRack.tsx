@@ -57,7 +57,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       {shelves.map((shelfBooks, shelfIndex) => (
         <div key={shelfIndex} className="relative z-10 hover:z-30">
           {/* Back wall of the shelf niche */}
-          <div className="relative bg-card/60 rounded-t-2xl p-4 sm:p-6 pb-0 border-x border-t border-border shadow-inner overflow-visible">
+          <div className="relative bg-card rounded-t-2xl p-4 sm:p-6 pb-0 border-x border-t border-border shadow-inner overflow-visible">
             
             {/* Shelf Items Row */}
             <div className="flex items-end justify-start sm:justify-center gap-2 sm:gap-3.5 overflow-visible pb-1 pt-12 min-h-[310px] px-2">
@@ -133,7 +133,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     </div>
 
                     {/* Hover Floating Card Preview / Quick Actions */}
-                    <div className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden group-hover:flex flex-col w-56 p-3 bg-card/95 backdrop-blur-xl rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/5">
+                    <div className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/5">
                       <div className="flex items-start justify-between gap-1 mb-1.5">
                         <span className="text-[10px] uppercase font-mono tracking-wider text-primary flex items-center gap-1">
                           <Sparkles className="w-2.5 h-2.5" /> Public Domain
@@ -200,7 +200,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleLike(book.id);
+                            toggleLike(book);
                           }}
                           className={`p-1 rounded-lg border transition-colors ${
                             bookLiked

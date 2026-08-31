@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Type, Sun, Moon, Coffee, AlignLeft, Columns } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import { READER_THEMES } from '@/config/reader-themes';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface ReaderControlsProps {
   isOpen: boolean;
@@ -38,6 +40,8 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
   columnWidth,
   onColumnWidthChange,
 }) => {
+  const hasMounted = useHasMounted();
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -50,24 +54,33 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !hasMounted) return null;
 
   const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
 
-  return (
-    <div
-      className={`absolute top-16 right-4 sm:right-6 z-50 w-80 sm:w-96 rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-5 transition-all animate-in fade-in zoom-in-95 duration-150`}
-      role="region"
-      aria-label="Reading Controls"
-    >
+  return createPortal(
+    <>
+      {/* Click-outside backdrop to dismiss */}
+      <div
+        className="fixed inset-0 z-[9998] bg-black/40"
+        onClick={onClose}
+        aria-hidden="true"
+        data-testid="controls-backdrop"
+      />
+
+      <div
+        className={`fixed top-14 sm:top-16 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] max-w-sm sm:w-96 max-h-[calc(100vh-4.5rem)] overflow-y-auto rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-5 transition-all animate-in fade-in duration-150 ${activeTheme.scrollbarClass}`}
+        role="region"
+        aria-label="Reading Controls"
+      >
       <div className={`flex items-center justify-between pb-3 mb-4 border-b ${activeTheme.border}`}>
         <h3 className="font-serif font-bold text-sm flex items-center gap-2">
-          <Type className="w-4 h-4 text-primary-600" /> Typography & Reading Mode
+          <Type className="w-4 h-4 text-primary-600 dark:text-primary-400" /> Typography & Reading Mode
         </h3>
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded-md opacity-60 hover:opacity-100 transition-opacity"
+          className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
           aria-label="Close Appearance Controls"
         >
           <X className="w-4 h-4" />
@@ -137,7 +150,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   fam === 'serif' ? 'font-serif' : fam === 'mono' ? 'font-mono' : 'font-sans'
                 } ${
                   fontFamily === fam
-                    ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
+                    ? `${activeTheme.activePill} border-primary-600 dark:border-primary-500/70 font-bold shadow-xs`
                     : `${activeTheme.pill} ${activeTheme.inactivePill}`
                 }`}
               >
@@ -150,43 +163,79 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
         {/* Font Size & Line Height Sliders */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="flex justify-between mb-1">
-              <span className={`text-[10px] uppercase ${activeTheme.textMuted}`}>Size</span>
-              <span className="text-[10px] font-bold">{fontSize}px</span>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className={`text-[10px] uppercase font-bold tracking-wider ${activeTheme.textMuted}`}>Size</span>
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${activeTheme.border} ${activeTheme.pill}`}>
+                {fontSize}px
+              </span>
             </div>
             <input
               type="range"
               min="12"
-              max="32"
+              max="36"
               step="1"
               value={fontSize}
               onChange={(e) => onFontSizeChange(Number(e.target.value))}
               aria-label="Font size in pixels"
               aria-valuemin={12}
-              aria-valuemax={32}
+              aria-valuemax={36}
               aria-valuenow={fontSize}
-              className="w-full accent-primary-600 cursor-pointer"
+              className="w-full accent-primary-600 cursor-pointer h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg"
             />
+            <div className="grid grid-cols-3 gap-1 mt-1.5">
+              {[14, 18, 24].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => onFontSizeChange(s)}
+                  className={`py-0.5 rounded text-[9px] font-mono border transition-all ${
+                    fontSize === s
+                      ? `${activeTheme.activePill} border-primary-600 font-bold`
+                      : `${activeTheme.pill} ${activeTheme.inactivePill}`
+                  }`}
+                >
+                  {s}px
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
-            <div className="flex justify-between mb-1">
-              <span className={`text-[10px] uppercase ${activeTheme.textMuted}`}>Line Spacing</span>
-              <span className="text-[10px] font-bold">{lineHeight}</span>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className={`text-[10px] uppercase font-bold tracking-wider ${activeTheme.textMuted}`}>Line Spacing</span>
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${activeTheme.border} ${activeTheme.pill}`}>
+                {lineHeight}
+              </span>
             </div>
             <input
               type="range"
               min="1.2"
-              max="2.4"
+              max="2.6"
               step="0.1"
               value={lineHeight}
               onChange={(e) => onLineHeightChange(Number(e.target.value))}
               aria-label="Line height spacing"
               aria-valuemin={1.2}
-              aria-valuemax={2.4}
+              aria-valuemax={2.6}
               aria-valuenow={lineHeight}
-              className="w-full accent-primary-600 cursor-pointer"
+              className="w-full accent-primary-600 cursor-pointer h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg"
             />
+            <div className="grid grid-cols-3 gap-1 mt-1.5">
+              {[1.4, 1.8, 2.2].map((lh) => (
+                <button
+                  key={lh}
+                  type="button"
+                  onClick={() => onLineHeightChange(lh)}
+                  className={`py-0.5 rounded text-[9px] font-mono border transition-all ${
+                    lineHeight === lh
+                      ? `${activeTheme.activePill} border-primary-600 font-bold`
+                      : `${activeTheme.pill} ${activeTheme.inactivePill}`
+                  }`}
+                >
+                  {lh}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -201,7 +250,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 aria-pressed={readingMode === 'paginated'}
                 className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-all ${
                   readingMode === 'paginated'
-                    ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
+                    ? `${activeTheme.activePill} border-primary-600 dark:border-primary-500/70 font-bold shadow-xs`
                     : `${activeTheme.pill} ${activeTheme.inactivePill}`
                 }`}
               >
@@ -213,7 +262,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 aria-pressed={readingMode === 'scroll'}
                 className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-all ${
                   readingMode === 'scroll'
-                    ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
+                    ? `${activeTheme.activePill} border-primary-600 dark:border-primary-500/70 font-bold shadow-xs`
                     : `${activeTheme.pill} ${activeTheme.inactivePill}`
                 }`}
               >
@@ -233,7 +282,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   aria-pressed={columnWidth === w}
                   className={`p-1.5 rounded text-[10px] border capitalize text-center transition-all ${
                     columnWidth === w
-                      ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
+                      ? `${activeTheme.activePill} border-primary-600 dark:border-primary-500/70 font-bold shadow-xs`
                       : `${activeTheme.pill} ${activeTheme.inactivePill}`
                   }`}
                 >
@@ -246,5 +295,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
 
       </div>
     </div>
-  );
+  </>,
+  document.body
+);
 };
