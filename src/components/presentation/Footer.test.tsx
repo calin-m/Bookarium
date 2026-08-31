@@ -10,5 +10,9 @@ describe('Footer component', () => {
     expect(screen.getByText(/Project Gutenberg Archive/i)).toBeInTheDocument();
     expect(screen.getByText(/Gutendex REST API/i)).toBeInTheDocument();
     expect(screen.getByText(/Zero API Keys Required/i)).toBeInTheDocument();
+
+    const githubLinks = screen.getAllByRole('link', { name: /bookarium/i });
+    expect(githubLinks.length).toBeGreaterThanOrEqual(1);
+    expect(githubLinks[0]).toHaveAttribute('href', 'https://github.com/calin-m');
   });
 });

@@ -9,14 +9,20 @@ export const Footer: React.FC = () => {
           
           {/* Col 1: About Brand */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-primary-foreground">
+            <a
+              href="https://github.com/calin-m"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 group hover:opacity-90 transition-opacity"
+              aria-label="Bookarium GitHub by calin-m"
+            >
+              <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-primary-foreground group-hover:scale-105 transition-transform">
                 <BookOpen className="w-3.5 h-3.5" />
               </div>
-              <span className="text-xl font-serif font-bold text-foreground">
+              <span className="text-xl font-serif font-bold text-foreground group-hover:text-primary transition-colors">
                 BOOKARIUM
               </span>
-            </div>
+            </a>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
               A high-performance, keyless public domain digital library. Dedicated to free, universal
               access to the world’s greatest literature, philosophy, and timeless works.
@@ -93,7 +99,16 @@ export const Footer: React.FC = () => {
         {/* Bottom Copyright Strip */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-muted-foreground">
           <div>
-            © {new Date().getFullYear()} Bookarium. Designed for Literature.
+            © {new Date().getFullYear()}{' '}
+            <a
+              href="https://github.com/calin-m"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-primary underline-offset-4 hover:underline transition-colors font-medium text-foreground"
+            >
+              Bookarium
+            </a>
+            . Designed for Literature.
           </div>
           <div className="flex items-center gap-1">
             <span>Built with precision for the public domain</span>
