@@ -83,6 +83,7 @@ export const EXTENDED_LANGUAGES: LanguageOption[] = [
   { value: 'nl', label: 'Dutch (Nederlands)' },
   { value: 'ru', label: 'Russian (Русский)' },
   { value: 'zh', label: 'Chinese (中文)' },
+  { value: 'ro', label: 'Romanian (Română)' },
 ];
 
 export const HERO_LANGUAGES: LanguageOption[] = [

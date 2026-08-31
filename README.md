@@ -79,6 +79,25 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Third-Par
 * **Dynamic Literary Passages & Quotes**: Rotating showcase of iconic classic quotes with classical first-line editorial indentation and interactive shuffle discovery.
 * **Direct Download Hub**: Multi-format downloads including direct EPUB, clean plain text, mobile-friendly HTML, and Kindle formats.
 * **Auto-Healing Personal Bookshelf & Favorites**: Curated collections, reading queue, reading history, and favorited titles with background metadata auto-recovery and 1-click reset actions.
+### 🌐 Supported Languages
+
+The catalog can be filtered by the following language options (ISO‑639‑1 codes used by the API):
+
+- `en` – English
+- `fr` – French (Français)
+- `de` – German (Deutsch)
+- `es` – Spanish (Español)
+- `it` – Italian (Italiano)
+- `la` – Latin (Lingua Latina)
+- `el` – Greek (Ancient & Modern)
+- `pt` – Portuguese (Português)
+- `nl` – Dutch (Nederlands)
+- `ru` – Russian (Русский)
+- `zh` – Chinese (中文)
+- `ro` – Romanian (Română)
+
+> **How it works** – Selecting a language adds a `languages=<code>` query parameter that flows through `useBooks` → `/api/books` → Gutendex API, returning only books in the chosen language.
+
 
 ---
 
