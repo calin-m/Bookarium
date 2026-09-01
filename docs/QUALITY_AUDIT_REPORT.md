@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 20:27:58 GMT  
+**Last Generated**: Tue, 01 Sep 2026 21:57:38 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 64 passed  
-**Total Verified Tests**: 404 passed  
+**Total Verified Tests**: 410 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **64/64 test suites passed** (404 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **64/64 test suites passed** (410 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 11 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.99%** (2344/2548) — *Target: $ge$ 80%*
-- **Statements**: **90.41%** (2556/2827) — *Target: $ge$ 80%*
-- **Functions**: **88.08%** (606/688) — *Target: $ge$ 80%*
-- **Branches**: **80.73%** (2208/2735) — *Target: $ge$ 80%*
+- **Lines**: **91.93%** (2393/2603) — *Target: $ge$ 80%*
+- **Statements**: **90.38%** (2612/2890) — *Target: $ge$ 80%*
+- **Functions**: **88.08%** (621/705) — *Target: $ge$ 80%*
+- **Branches**: **80.11%** (2277/2842) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (64 Suites / 404 Tests)
+## 🧪 Comprehensive Test Suite Catalog (64 Suites / 410 Tests)
 
 ### 🚀 App Routes & Pages (8 Suites · 41 Tests)
 
@@ -125,7 +125,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (16 Suites · 109 Tests)
+### 🎨 Catalog & Presentation (16 Suites · 112 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (6 tests)</summary>
@@ -140,18 +140,20 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
+- ✔ `should render multiple separate subject tag pills in the card body`
 - ✔ `should render link to /read/[id] when clicking Read button`
 - ✔ `should toggle like and bookmark state on button clicks`
 - ✔ `should call onDownloadClick when clicking Formats button`
 - ✔ `should call onPreviewClick when clicking book cover visual on desktop`
 - ✔ `should navigate to /read/[id] on mobile when clicking book cover visual`
 - ✔ `applies opacity-0 when isPreviewActive is true`
-- ✔ `should render Click for Preview hover badge when onPreviewClick is provided`
+- ✔ `should render cursor tooltip on hover when onPreviewClick is provided`
 - ✔ `renders fallback cover when image error occurs`
 - ✔ `triggers preview on Enter or Space key press on cover`
+- ✔ `updates cursor tooltip to Add to Favorites and Add to Bookshelf when hovering action buttons`
 
 </details>
 
@@ -169,7 +171,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false or book is null`
 - ✔ `renders book preview modal and triggers cover open animation`
@@ -178,6 +180,7 @@
 - ✔ `calls onReadBook on action button click and closes modal`
 - ✔ `applies FLIP transform when originRect is provided`
 - ✔ `invokes onWillClose during the landing flight prior to full onClose`
+- ✔ `renders long book titles and authors in full without truncation`
 
 </details>
 
@@ -496,7 +499,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (5 Suites · 65 Tests)
+### 📚 Gutenberg Parsers & Metadata (5 Suites · 68 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (8 tests)</summary>
@@ -575,7 +578,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/utils.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/lib/utils.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `should merge class names correctly`
 - ✔ `should extract standard Gutenberg format keys`
@@ -590,6 +593,9 @@
 - ✔ `strips LCSH subdivisions separated by double dashes`
 - ✔ `handles truncation when maxLength is specified`
 - ✔ `falls back to Classic Literature for empty or missing inputs`
+- ✔ `extracts and deduplicates clean subject tags up to maxTags`
+- ✔ `deduplicates identical base subjects`
+- ✔ `falls back to Classic Literature when empty or missing`
 
 </details>
 

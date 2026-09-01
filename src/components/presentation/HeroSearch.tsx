@@ -424,7 +424,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                     <div>
                       <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
                         <span>{currentPassage.chapterLabel || 'Notable Passage'}</span>
-                        <span className="text-success font-bold uppercase">{activeFeatured.license}</span>
+                        <span className="opacity-60">p. 2</span>
                       </div>
 
                       <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
@@ -483,7 +483,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                       <div>
                         <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
                           <span>{prevPassage.chapterLabel || 'Notable Passage'}</span>
-                          <span className="text-success font-bold uppercase">{activeFeatured.license}</span>
+                          <span className="opacity-60">p. 2</span>
                         </div>
 
                         <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">

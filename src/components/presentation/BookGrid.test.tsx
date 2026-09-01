@@ -72,7 +72,7 @@ describe('BookGrid component', () => {
     const handlePreview = vi.fn();
     render(<BookGrid books={mockBooks} onPreviewClick={handlePreview} />);
 
-    const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${mockBooks[0].title}`);
+    const coverVisual = screen.getByLabelText(`Click to preview quotes for ${mockBooks[0].title}`);
     fireEvent.click(coverVisual);
     expect(handlePreview).toHaveBeenCalledWith(mockBooks[0], expect.any(Object));
   });

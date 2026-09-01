@@ -16,8 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bookshelf Component Decomposition: Modularized `BookshelfRack.tsx` into single-responsibility sub-components (`BookshelfSpine.tsx`, `BookshelfMobileModal.tsx`, `BookshelfManageModals.tsx`) with 100% co-located tests.
 - Account Settings Modularization & Route Migration: Migrated `/profile` to `/account` with modular sub-components in `src/components/account/` (`AccountIdentityCard.tsx`, `AccountLibraryStats.tsx`, `AccountSecuritySection.tsx`, `AccountPreferencesSection.tsx`, `AccountDeleteModal.tsx`) with 100% co-located tests.
 - Order-Independent Dynamic Smart Search (`/lib/smart-search.ts`, `CollectionSearchBar.tsx`): Real-time, zero-network-latency client search engine for Bookshelf and Favorites supporting order-independent multi-token matching, diacritic insensitivity, instant clear button, keyboard shortcuts (`Esc`), and live counter badges.
+- BookCard Separate Subject Tag Pills & Compact Typography (`BookCard.tsx`, `extractBookTags`): Decomposed single-pill subjects into separate distinct tag badge chips residing in the card body under the author, paired with compact stats and button rows.
+- Dynamic 3D Preview Modal Typography & Overflow Safeguard (`BookPreviewModal.tsx`): Directly composed shared `<BookCard />` on 3D flipper cover with responsive fluid typography, adaptive line-clamping, and scroll containment for long book titles without text truncation.
 - Dynamic Active Icon Fills & Zero-Shift Header Hydration: Clean dynamic SVG fills for Bookshelf (`fill-primary`) and Favorites (`fill-destructive`) when containing saved items, eliminating text clutter and delivering 100% stable layouts (CLS = 0).
-- Test Suite Granularity & Expansion: Expanded test suite to 64 suites and 404 focused, single-responsibility tests with 100% co-located coverage.
+- Test Suite Granularity & Expansion: Expanded test suite to 64 suites and 410 focused, single-responsibility tests with 100% co-located coverage.
 
 ### Changed
 - Codebase Orchestration: Reduced `BookshelfRack.tsx` from 861 to 389 lines (-55%) and `src/app/account/page.tsx` from 787 to 328 lines (-58%).

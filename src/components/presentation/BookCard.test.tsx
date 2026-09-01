@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { BookCard } from './BookCard';
 import { mockBooks } from '@/mocks/handlers';
@@ -27,6 +27,14 @@ describe('BookCard component', () => {
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('Jane Austen')).toBeInTheDocument();
     expect(screen.getByText(/65\.4k reads/i)).toBeInTheDocument();
+  });
+
+  it('should render multiple separate subject tag pills in the card body', () => {
+    const book = mockBooks[0];
+    render(<BookCard book={book} />);
+
+    expect(screen.getByText('Courtship')).toBeInTheDocument();
+    expect(screen.getByText('Domestic fiction')).toBeInTheDocument();
   });
 
   it('should render link to /read/[id] when clicking Read button', () => {
@@ -69,7 +77,7 @@ describe('BookCard component', () => {
     try {
       render(<BookCard book={book} onPreviewClick={handlePreview} />);
 
-      const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${book.title}`);
+      const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
       fireEvent.click(coverVisual);
       expect(handlePreview).toHaveBeenCalledWith(book, expect.any(Object));
     } finally {
@@ -86,7 +94,7 @@ describe('BookCard component', () => {
     try {
       render(<BookCard book={book} onPreviewClick={handlePreview} />);
 
-      const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${book.title}`);
+      const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
       fireEvent.click(coverVisual);
 
       expect(handlePreview).not.toHaveBeenCalled();
@@ -104,11 +112,21 @@ describe('BookCard component', () => {
     expect(card).toHaveClass('opacity-0');
   });
 
-  it('should render Click for Preview hover badge when onPreviewClick is provided', () => {
+  it('should render cursor tooltip on hover when onPreviewClick is provided', () => {
+    vi.useFakeTimers();
     const book = mockBooks[0];
     render(<BookCard book={book} onPreviewClick={vi.fn()} />);
 
-    expect(screen.getByText(/Click for Preview/i)).toBeInTheDocument();
+    const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
+    fireEvent.mouseEnter(coverVisual);
+    fireEvent.mouseMove(coverVisual, { clientX: 100, clientY: 100 });
+
+    act(() => {
+      vi.advanceTimersByTime(450);
+    });
+
+    expect(screen.getByText(/Click to preview quotes/i)).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it('renders fallback cover when image error occurs', () => {
@@ -127,11 +145,32 @@ describe('BookCard component', () => {
     const book = mockBooks[0];
     render(<BookCard book={book} onPreviewClick={handlePreview} />);
 
-    const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${book.title}`);
+    const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
     fireEvent.keyDown(coverVisual, { key: 'Enter' });
     expect(handlePreview).toHaveBeenCalledTimes(1);
 
     fireEvent.keyDown(coverVisual, { key: ' ' });
     expect(handlePreview).toHaveBeenCalledTimes(2);
+  });
+
+  it('updates cursor tooltip to Add to Favorites and Add to Bookshelf when hovering action buttons', () => {
+    vi.useFakeTimers();
+    const book = mockBooks[0];
+    render(<BookCard book={book} onPreviewClick={vi.fn()} />);
+
+    const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
+    fireEvent.mouseEnter(coverVisual);
+    fireEvent.mouseMove(coverVisual, { clientX: 100, clientY: 100 });
+
+    const likeButton = screen.getByRole('button', { name: /Like book/i });
+    fireEvent.mouseEnter(likeButton);
+
+    expect(screen.getByText(/Add to Favorites/i)).toBeInTheDocument();
+
+    const saveButton = screen.getByRole('button', { name: /Save to bookshelf/i });
+    fireEvent.mouseEnter(saveButton);
+
+    expect(screen.getByText(/Add to Bookshelf/i)).toBeInTheDocument();
+    vi.useRealTimers();
   });
 });

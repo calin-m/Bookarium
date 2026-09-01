@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
-import { extractBookFormats, formatAuthorNames, formatPrimarySubject, formatDownloadCount } from '@/lib/utils';
+import { extractBookFormats, formatAuthorNames, formatDownloadCount, extractBookTags } from '@/lib/utils';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { Badge } from '@/components/ui/Badge';
@@ -30,7 +31,58 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
 
   const formats = extractBookFormats(book.formats);
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
-  const primarySubject = formatPrimarySubject(book.subjects, 24);
+  const tags = extractBookTags(book.subjects, 2, 20);
+
+  const [mousePos, setMousePos] = React.useState<{ x: number; y: number } | null>(null);
+  const [showTooltip, setShowTooltip] = React.useState(false);
+  const [hoveredAction, setHoveredAction] = React.useState<'preview' | 'favorite' | 'bookshelf'>('preview');
+  const hoverTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      setShowTooltip(true);
+    }, 400);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    setMousePos({
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setShowTooltip(false);
+    setHoveredAction('preview');
+    setMousePos(null);
+  };
+
+  const tooltipContent = React.useMemo(() => {
+    if (hoveredAction === 'favorite') {
+      return {
+        icon: <Heart className={`w-3 h-3 text-destructive shrink-0 ${isLiked ? 'fill-current' : ''}`} />,
+        text: isLiked ? 'Remove from Favorites' : 'Add to Favorites',
+      };
+    }
+    if (hoveredAction === 'bookshelf') {
+      return {
+        icon: <Bookmark className={`w-3 h-3 text-primary shrink-0 ${isSaved ? 'fill-current' : ''}`} />,
+        text: isSaved ? 'Remove from Bookshelf' : 'Add to Bookshelf',
+      };
+    }
+    return {
+      icon: <BookOpen className="w-3 h-3 text-primary shrink-0" />,
+      text: 'Click to preview quotes',
+    };
+  }, [hoveredAction, isLiked, isSaved]);
 
   const handleCoverClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -70,10 +122,12 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
             handleCoverClick(e);
           }
         }}
+        onMouseEnter={onPreviewClick ? handleMouseEnter : undefined}
+        onMouseMove={onPreviewClick ? handleMouseMove : undefined}
+        onMouseLeave={onPreviewClick ? handleMouseLeave : undefined}
         tabIndex={onPreviewClick ? 0 : undefined}
         role={onPreviewClick ? 'button' : undefined}
-        aria-label={onPreviewClick ? `Flip open 3D preview for ${book.title}` : undefined}
-        title={onPreviewClick ? `Click to flip open 3D spread for ${book.title}` : undefined}
+        aria-label={onPreviewClick ? `Click to preview quotes for ${book.title}` : undefined}
         className={`relative aspect-[3/4] w-full bg-muted/60 overflow-hidden flex items-center justify-center p-2.5 sm:p-3 border-b border-border select-none ${
           onPreviewClick ? 'cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary' : ''
         }`}
@@ -104,13 +158,22 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
           </div>
         )}
 
-        {/* Top-Left Hover Affordance: Click for Preview (Desktop hover only, flush with top-left card corner) */}
-        {onPreviewClick && (
-          <div className="absolute top-0 left-0 z-20 hidden lg:flex opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-            <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold bg-primary text-primary-foreground px-2.5 py-1 rounded-tl-xl rounded-br-md rounded-tr-none rounded-bl-none shadow-xs tracking-wider uppercase">
-              Click for Preview 📖
+        {/* Unconstrained Portal Cursor Tooltip (Follows cursor exactly at 12px offset, free from any card transform or clipping) */}
+        {typeof document !== 'undefined' && onPreviewClick && showTooltip && mousePos && createPortal(
+          <div
+            className="fixed z-[9999] pointer-events-none hidden lg:flex items-center transition-opacity duration-150 animate-in fade-in select-none"
+            style={{
+              left: `${mousePos.x}px`,
+              top: `${mousePos.y}px`,
+              transform: 'translate3d(12px, 14px, 0)',
+            }}
+          >
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-stone-900/90 dark:bg-stone-900/95 text-white text-[10px] font-mono font-medium shadow-xl backdrop-blur-xs border border-white/15 whitespace-nowrap">
+              {tooltipContent.icon}
+              <span>{tooltipContent.text}</span>
             </span>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Quick Action Overlay Badges (Top-Right) */}
@@ -121,6 +184,11 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
               e.stopPropagation();
               toggleLike(book);
             }}
+            onMouseEnter={() => {
+              setHoveredAction('favorite');
+              setShowTooltip(true);
+            }}
+            onMouseLeave={() => setHoveredAction('preview')}
             className={`p-1.5 rounded-full transition-all shadow-xs ${
               isLiked
                 ? 'bg-destructive text-destructive-foreground scale-105'
@@ -137,6 +205,11 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
               e.stopPropagation();
               toggleSave(book);
             }}
+            onMouseEnter={() => {
+              setHoveredAction('bookshelf');
+              setShowTooltip(true);
+            }}
+            onMouseLeave={() => setHoveredAction('preview')}
             className={`p-1.5 rounded-full transition-all shadow-xs ${
               isSaved
                 ? 'bg-primary text-primary-foreground scale-105'
@@ -147,58 +220,69 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
             <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
           </button>
         </div>
-
-        {/* Subject Pill (Bottom-Left) */}
-        <div className="absolute bottom-2.5 left-2.5 z-20 flex items-center gap-1.5">
-          <Badge variant="outline" size="sm" className="bg-card text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors">
-            {primarySubject}
-          </Badge>
-        </div>
       </div>
 
       {/* Book Metadata Content */}
-      <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-        <div>
-          <h3 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 mb-1 group-hover:text-primary transition-colors text-balance">
-            {book.title}
-          </h3>
-          <p className="text-xs text-muted-foreground font-sans line-clamp-1">
-            {authorNames}
-          </p>
+      <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between gap-3">
+        <div className="space-y-1.5">
+          <div>
+            <h3 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors text-balance">
+              {book.title}
+            </h3>
+            <p className="text-xs text-muted-foreground font-sans line-clamp-1 mt-0.5">
+              {authorNames}
+            </p>
+          </div>
+
+          {/* Multiple Subject Tags */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            {tags.map((tag) => (
+              <Badge
+                key={tag}
+                variant="outline"
+                size="sm"
+                className="bg-muted/40 text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors shadow-2xs"
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
-          <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
-          <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
-            CC0 / Free
-          </span>
-        </div>
+        <div className="space-y-2 pt-2 border-t border-border">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
+            <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
+              CC0 / Free
+            </span>
+          </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-2 mt-0.5">
-          <Button
-            as={Link}
-            href={ROUTES.READ(book.id)}
-            onClick={() => useReaderStore.getState().openReader(book)}
-            variant="primary"
-            size="chip"
-            className="w-full"
-            aria-label={`Read ${book.title}`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Read</span>
-          </Button>
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              as={Link}
+              href={ROUTES.READ(book.id)}
+              onClick={() => useReaderStore.getState().openReader(book)}
+              variant="primary"
+              size="chip"
+              className="w-full"
+              aria-label={`Read ${book.title}`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Read</span>
+            </Button>
 
-          <Button
-            variant="outline"
-            size="chip"
-            onClick={() => onDownloadClick?.(book)}
-            className="w-full"
-            aria-label={`Download options for ${book.title}`}
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Get</span>
-          </Button>
+            <Button
+              variant="outline"
+              size="chip"
+              onClick={() => onDownloadClick?.(book)}
+              className="w-full"
+              aria-label={`Download options for ${book.title}`}
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Get</span>
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

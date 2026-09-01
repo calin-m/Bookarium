@@ -8,6 +8,7 @@ import {
   formatAuthorName,
   formatAuthorNames,
   formatPrimarySubject,
+  extractBookTags,
 } from './utils';
 
 describe('lib/utils', () => {
@@ -122,6 +123,35 @@ describe('lib/utils', () => {
       expect(formatPrimarySubject([])).toBe('Classic Literature');
       expect(formatPrimarySubject('')).toBe('Classic Literature');
       expect(formatPrimarySubject([''])).toBe('Classic Literature');
+    });
+  });
+
+  describe('extractBookTags', () => {
+    it('extracts and deduplicates clean subject tags up to maxTags', () => {
+      const subjects = [
+        'Courtship -- Fiction',
+        'Sisters -- Fiction',
+        'Domestic fiction',
+        'Young women -- Fiction',
+      ];
+      const tags = extractBookTags(subjects, 2);
+      expect(tags).toEqual(['Courtship', 'Sisters']);
+    });
+
+    it('deduplicates identical base subjects', () => {
+      const subjects = [
+        'Fiction -- Psychological aspects',
+        'Fiction -- History and criticism',
+        'Romance -- Fiction',
+      ];
+      const tags = extractBookTags(subjects, 2);
+      expect(tags).toEqual(['Fiction', 'Romance']);
+    });
+
+    it('falls back to Classic Literature when empty or missing', () => {
+      expect(extractBookTags(undefined)).toEqual(['Classic Literature']);
+      expect(extractBookTags([])).toEqual(['Classic Literature']);
+      expect(extractBookTags([''])).toEqual(['Classic Literature']);
     });
   });
 });

@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "verify": "node scripts/verify-build.js",
-    "docs:sync": "node scripts/generate-architecture-matrix.js && node scripts/generate-changelog.js",
+    "docs:sync": "node scripts/generate-architecture-matrix.js && node scripts/generate-changelog.js && node scripts/generate-quality-report.js",
     "report": "node scripts/generate-quality-report.js",
     "audit:quality": "node scripts/generate-quality-report.js",
     "matrix:generate": "node scripts/generate-architecture-matrix.js",

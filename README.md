@@ -8,7 +8,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-64%20Suites%20%7C%20404%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-64%20Suites%20%7C%20410%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![Code Coverage](https://img.shields.io/badge/Coverage-92.0%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -35,6 +35,8 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ## 🛠️ Latest Improvements (v1.7.0)
 
+- **Unconstrained Viewport Cursor Tooltips & Contextual Action Feedback (`BookCard.tsx`)** – Direct DOM body portaling (`createPortal`) of cursor-following tooltips tracking mouse coordinates at `+12px, +14px` across card edges without boundary clipping, dynamically swapping between `"Click to preview quotes"`, `"Add to Favorites"` / `"Remove from Favorites"`, and `"Add to Bookshelf"` / `"Remove from Bookshelf"`.
+- **Dynamic 3D Preview Modal Fluid Typography & Intelligent Space-Filling (`BookPreviewModal.tsx`)** – Adaptive title scaling preventing line overflows on long classic titles without truncation, combined with content-aware proportional quote space-filling and clean presentation spreads.
 - **Single-Source Route Registry & Configuration Singletons (`src/config/routes.ts`, `src/config/site-config.ts`)** – Type-safe centralized registries consolidating all internal route paths, view queries, canonical project URLs, and persistent storage keys with 100% co-located unit tests.
 - **Modular Component Decomposition** – Decomposed monolithic components into single-responsibility sub-components in `src/components/presentation/bookshelf/` (`BookshelfSpine`, `BookshelfMobileModal`, `BookshelfManageModals`) and `src/components/account/` (`AccountIdentityCard`, `AccountLibraryStats`, `AccountSecuritySection`, `AccountPreferencesSection`, `AccountDeleteModal`), reducing `BookshelfRack.tsx` by -55% and `AccountPage` by -58%.
 - **Account Route Migration (`/account`) & User Menu Ergonomics** – Migrated user settings from `/profile` to `/account`, updated top bar button to fixed-width `"Account"`, and styled internal menu link as `"Settings"`.
@@ -63,7 +65,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
 - **Strict 0% Page 1 Reading Progress & Verified Accounts** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user accounts (`/account`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 64/64 test files passed, 404/404 tests passed with **92.0% line coverage** and **81.0% branch coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 64/64 test files passed, 410/410 tests passed with **92.0% line coverage** and **81.0% branch coverage** (`npm run verify`).
 
 ---
 
@@ -368,7 +370,8 @@ Bookarium is architected for zero-config deployment on **[Vercel](https://vercel
 | `npm run typecheck` | Validates TypeScript types across all `.ts`/`.tsx` files |
 | `npm run lint` | Runs ESLint 9 rules and Core Web Vitals checks |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
-| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from AST |
+| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`, and compiles Wiki |
+| `npm run wiki:sync` | Compiles repository documentation into native GitHub Wiki format (`.wiki/`) |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 
@@ -401,11 +404,11 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 356 tests across 62 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 410 tests across 64 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 5 validated ADRs governing zero-API keys, public domain integrity, and cloud sync. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 11 validated ADRs (ADR-001 through ADR-011) governing zero-API keys, state architecture, and UI physics. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🛡️ **Master Governance Protocol** | Immutable engineering protocols and agent operational guardrails. | [`.agents/AGENTS.md`](.agents/AGENTS.md) |
 | 🚀 **CI/CD Pipeline Guide** | Developer runbook and pipeline execution workflows. | [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) |
 | 🛠️ **Developer Maintenance Hub** | Local setup, environment configuration, and contributor commands. | [`DEVELOPMENT.md`](DEVELOPMENT.md) |

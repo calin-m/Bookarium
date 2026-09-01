@@ -201,4 +201,19 @@ describe('BookPreviewModal component', () => {
 
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it('renders long book titles and authors in full without truncation', () => {
+    const longBook = {
+      ...defaultBook,
+      title: 'The Strange Case of Dr. Jekyll and Mr. Hyde and Other Classic Stories of Mystery and Terror',
+      authors: [{ name: 'Stevenson, Robert Louis', birth_year: 1850, death_year: 1894 }],
+    };
+
+    renderWithQueryClient(
+      <BookPreviewModal book={longBook} isOpen={true} onClose={vi.fn()} />
+    );
+
+    expect(screen.getAllByText(longBook.title).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Robert Louis Stevenson/i).length).toBeGreaterThan(0);
+  });
 });

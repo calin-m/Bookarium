@@ -195,7 +195,7 @@ describe('Home page integration', () => {
     try {
       renderHome();
 
-      const previewTrigger = screen.getByLabelText(`Flip open 3D preview for ${mockBooks[0].title}`);
+      const previewTrigger = screen.getByLabelText(`Click to preview quotes for ${mockBooks[0].title}`);
       expect(previewTrigger).toBeInTheDocument();
       fireEvent.click(previewTrigger);
 
@@ -254,7 +254,7 @@ describe('Home page integration', () => {
     const card = screen.getByTestId(`book-card-${mockBooks[0].id}`);
     expect(card).toBeInTheDocument();
 
-    const previewTrigger = screen.getByLabelText(`Flip open 3D preview for ${mockBooks[0].title}`);
+    const previewTrigger = screen.getByLabelText(`Click to preview quotes for ${mockBooks[0].title}`);
     fireEvent.click(previewTrigger);
     expect(screen.getByTestId('book-preview-modal')).toBeInTheDocument();
 

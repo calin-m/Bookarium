@@ -137,3 +137,31 @@ export function formatPrimarySubject(
   return maxLength ? truncate(cleaned, maxLength) : cleaned;
 }
 
+/**
+ * Extracts a list of clean, unique subject tags from Library of Congress Subject Headings (LCSH),
+ * stripping sub-divisions (e.g. "Fiction -- Psychological aspects" -> "Fiction") and deduplicating.
+ */
+export function extractBookTags(
+  subjects?: string[] | string | null,
+  maxTags = 2,
+  maxTagLength = 18
+): string[] {
+  if (!subjects) return ['Classic Literature'];
+  const rawList = Array.isArray(subjects) ? subjects : [subjects];
+  const tags: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of rawList) {
+    if (!raw || typeof raw !== 'string') continue;
+    const cleaned = raw.split('--')[0].trim();
+    if (!cleaned) continue;
+    const normalized = cleaned.toLowerCase();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    tags.push(maxTagLength ? truncate(cleaned, maxTagLength) : cleaned);
+    if (tags.length >= maxTags) break;
+  }
+
+  return tags.length > 0 ? tags : ['Classic Literature'];
+}
+

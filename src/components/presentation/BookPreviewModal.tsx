@@ -1,15 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Sparkles, RotateCw, Quote, BookOpen, Bookmark, Heart, Download } from 'lucide-react';
+import { Sparkles, RotateCw, Quote, BookOpen } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { getBookPassages, BookPassage } from '@/config/featured-books';
 import { extractDynamicBookPassages } from '@/lib/gutenberg-parser';
 import { useBookContent } from '@/hooks/queries/useBookContent';
-import { extractBookFormats, formatAuthorNames, formatPrimarySubject, formatDownloadCount } from '@/lib/utils';
-import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
-import { Badge } from '@/components/ui/Badge';
+import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { BookCard } from './BookCard';
 
 export interface ElementRect {
   top: number;
@@ -49,10 +48,6 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
     setActivePassageIndex(0);
     setPrevPassageIndex(0);
   }
-
-  const { isSaved: checkIsSaved, isLiked: checkIsLiked } = useHydratedBookshelf();
-  const isSaved = book ? checkIsSaved(book.id) : false;
-  const isLiked = book ? checkIsLiked(book.id) : false;
 
   // On-demand fetch of authentic book content (strictly enabled ONLY when modal is open and book is clicked)
   const targetBookId = isOpen && book?.id ? book.id : undefined;
@@ -225,7 +220,6 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
   const primarySubject = formatPrimarySubject(book.subjects, 24);
-  const formats = extractBookFormats(book.formats);
 
   // Click on book stage: Close if not clicking interactive buttons
   const handleBookStageClick = (e: React.MouseEvent) => {
@@ -295,47 +289,68 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
           {/* 3D Rig */}
           <div className="book-3d-rig relative">
             {/* Desktop Open Book Spread Base (Right Page: only visible when spread is open to prevent corner bleed on close) */}
-            <div className={`hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex-col justify-between text-foreground z-0 overflow-hidden transition-opacity duration-300 ${
+            <div className={`hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border p-4 sm:p-5 flex-col justify-between text-foreground z-0 overflow-hidden transition-opacity duration-300 ${
               isCoverOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}>
               <div key={`right-page-base-${book.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border">
-                    <span>Notable Passages</span>
-                    <span className="text-success font-bold uppercase">CC0 / Free</span>
-                  </div>
+                {(() => {
+                  const rightQuotesCount = 1 + (currentPassage.rightPageQuote2 ? 1 : 0) + (currentPassage.tertiaryQuote ? 1 : 0);
+                  return (
+                    <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
+                      <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border shrink-0">
+                        <span>Notable Passages</span>
+                        <span className="text-success font-bold uppercase">CC0 / Free</span>
+                      </div>
 
-                  {/* Primary Quote Box (Matches HeroSearch 1:1) */}
-                  <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                    <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                    <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-5 text-pretty">
-                      {currentPassage.quoteExcerpt}
-                    </p>
-                  </div>
+                      <div className="flex-1 min-h-0 flex flex-col justify-around gap-2.5 py-1">
+                        {/* Primary Quote Box */}
+                        <div className={`rounded-lg bg-card/60 border border-border shadow-xs ${
+                          rightQuotesCount === 1 ? 'p-4 sm:p-4.5' : 'p-2.5 sm:p-3'
+                        }`}>
+                          <Quote className={`${rightQuotesCount === 1 ? 'w-4 h-4' : 'w-3.5 h-3.5'} text-primary/60 mb-1.5 shrink-0`} />
+                          <p className={`font-serif italic text-foreground leading-relaxed text-pretty ${
+                            rightQuotesCount === 1
+                              ? 'text-xs sm:text-sm line-clamp-8 sm:line-clamp-9'
+                              : rightQuotesCount === 2
+                              ? 'text-xs sm:text-[13px] line-clamp-5'
+                              : 'text-xs sm:text-[13px] line-clamp-4'
+                          }`}>
+                            {currentPassage.quoteExcerpt}
+                          </p>
+                        </div>
 
-                  {/* Secondary Book Quote Box */}
-                  {currentPassage.rightPageQuote2 && (
-                    <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                      <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-4 text-pretty">
-                        {currentPassage.rightPageQuote2}
-                      </p>
+                        {/* Secondary Book Quote Box */}
+                        {currentPassage.rightPageQuote2 && (
+                          <div className={`rounded-lg bg-card/60 border border-border shadow-xs ${
+                            rightQuotesCount === 2 ? 'p-3 sm:p-3.5' : 'p-2.5 sm:p-3'
+                          }`}>
+                            <Quote className="w-3.5 h-3.5 text-primary/60 mb-1.5 shrink-0" />
+                            <p className={`font-serif italic text-foreground leading-relaxed text-pretty ${
+                              rightQuotesCount === 2
+                                ? 'text-xs sm:text-[13px] line-clamp-5'
+                                : 'text-xs sm:text-[13px] line-clamp-3'
+                            }`}>
+                              {currentPassage.rightPageQuote2}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Tertiary Book Quote Box */}
+                        {currentPassage.tertiaryQuote && (
+                          <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
+                            <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
+                            <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2 text-pretty">
+                              {currentPassage.tertiaryQuote}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-
-                  {/* Tertiary Book Quote Box */}
-                  {currentPassage.tertiaryQuote && (
-                    <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                      <Quote className="w-4 h-4 text-amber-500/70 mb-1.5 shrink-0" />
-                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-3 text-pretty">
-                        {currentPassage.tertiaryQuote}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {/* Right Page Footer Actions */}
-                <div className="pt-2.5 border-t border-border flex items-center justify-between gap-2">
+                <div className="pt-2 border-t border-border flex items-center justify-between gap-2 mt-2 shrink-0">
                   <Button
                     variant="outline"
                     size="chip"
@@ -379,89 +394,142 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                 onAnimationEnd={() => setIsTurningLeaf(false)}
               >
                 {/* Front Face of Turning Leaf: Outgoing Right Page quotes lifting away */}
-                <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border">
-                      <span>Notable Passages</span>
-                      <span className="text-success font-bold uppercase">CC0 / Free</span>
-                    </div>
+                <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
+                  {(() => {
+                    const rightQuotesCount = 1 + (prevPassage.rightPageQuote2 ? 1 : 0) + (prevPassage.tertiaryQuote ? 1 : 0);
+                    return (
+                      <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
+                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border shrink-0">
+                          <span>Notable Passages</span>
+                          <span className="text-success font-bold uppercase">CC0 / Free</span>
+                        </div>
 
-                    <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                      <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-5">
-                        {prevPassage.quoteExcerpt}
-                      </p>
-                    </div>
+                        <div className="flex-1 min-h-0 flex flex-col justify-around gap-2.5 py-1">
+                          <div className={`rounded-lg bg-card/60 border border-border shadow-xs ${
+                            rightQuotesCount === 1 ? 'p-4 sm:p-4.5' : 'p-2.5 sm:p-3'
+                          }`}>
+                            <Quote className={`${rightQuotesCount === 1 ? 'w-4 h-4' : 'w-3.5 h-3.5'} text-primary/60 mb-1.5 shrink-0`} />
+                            <p className={`font-serif italic text-foreground leading-relaxed ${
+                              rightQuotesCount === 1
+                                ? 'text-xs sm:text-sm line-clamp-8 sm:line-clamp-9'
+                                : rightQuotesCount === 2
+                                ? 'text-xs sm:text-[13px] line-clamp-5'
+                                : 'text-xs sm:text-[13px] line-clamp-4'
+                            }`}>
+                              {prevPassage.quoteExcerpt}
+                            </p>
+                          </div>
 
-                    {prevPassage.rightPageQuote2 && (
-                      <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                        <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-4">
-                          {prevPassage.rightPageQuote2}
-                        </p>
+                          {prevPassage.rightPageQuote2 && (
+                            <div className={`rounded-lg bg-card/60 border border-border shadow-xs ${
+                              rightQuotesCount === 2 ? 'p-3 sm:p-3.5' : 'p-2.5 sm:p-3'
+                            }`}>
+                              <Quote className="w-3.5 h-3.5 text-primary/60 mb-1.5 shrink-0" />
+                              <p className={`font-serif italic text-foreground leading-relaxed ${
+                                rightQuotesCount === 2
+                                  ? 'text-xs sm:text-[13px] line-clamp-5'
+                                  : 'text-xs sm:text-[13px] line-clamp-3'
+                              }`}>
+                                {prevPassage.rightPageQuote2}
+                              </p>
+                            </div>
+                          )}
+
+                          {prevPassage.tertiaryQuote && (
+                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
+                              <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
+                              <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2">
+                                {prevPassage.tertiaryQuote}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    );
+                  })()}
 
-                    {prevPassage.tertiaryQuote && (
-                      <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                        <Quote className="w-4 h-4 text-amber-500/70 mb-1.5 shrink-0" />
-                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-3">
-                          {prevPassage.tertiaryQuote}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-2 flex items-center justify-end text-[10px] font-mono text-muted-foreground border-t border-border">
+                  <div className="pt-2 flex items-center justify-end text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
                     <span className="opacity-60">p. 2</span>
                   </div>
                 </div>
 
                 {/* Back Face of Turning Leaf: Incoming Left Page title & quotes landing onto left side */}
-                <div className="turning-leaf-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" /> Public Domain
-                      </span>
-                      <span>ID #{book.id}</span>
-                    </div>
+                <div className="turning-leaf-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
+                  {(() => {
+                    const isVeryLongTitle = book.title.length > 55;
+                    const isLongTitle = book.title.length > 36;
+                    const hasSecondary = Boolean(currentPassage.secondaryQuote);
+                    const hasTertiary = Boolean(currentPassage.leftPageQuote2) && !isLongTitle;
 
-                    <div>
-                      <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
-                        {book.title}
-                      </h3>
-                      <p className="text-xs font-mono italic text-muted-foreground">
-                        by {authorNames}
-                      </p>
-                    </div>
+                    return (
+                      <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
+                        <div className="space-y-1.5 shrink-0">
+                          <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
+                            <span className="flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" /> Public Domain
+                            </span>
+                            <span>ID #{book.id}</span>
+                          </div>
 
-                    <div className="relative pl-3 border-l-2 border-primary/50 my-1">
-                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-5 text-pretty">
-                        &ldquo;{currentPassage.openingLine}&rdquo;
-                      </p>
-                    </div>
+                          <div>
+                            <h3 className={`font-serif font-bold leading-snug mb-0.5 text-foreground text-balance ${
+                              isVeryLongTitle ? 'text-sm sm:text-base' : isLongTitle ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
+                            }`}>
+                              {book.title}
+                            </h3>
+                            <p className="text-xs font-mono italic text-muted-foreground">
+                              by {authorNames}
+                            </p>
+                          </div>
+                        </div>
 
-                    {currentPassage.secondaryQuote && (
-                      <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                        <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-4">
-                          {currentPassage.secondaryQuote}
-                        </p>
+                        <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5">
+                          {/* Lead Opening Line */}
+                          <div className="relative pl-2.5 sm:pl-3 border-l-2 border-primary/50">
+                            <p className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
+                              !hasSecondary && !isLongTitle
+                                ? 'text-xs sm:text-sm line-clamp-6 sm:line-clamp-7'
+                                : isVeryLongTitle
+                                ? 'text-xs line-clamp-3'
+                                : isLongTitle
+                                ? 'text-xs sm:text-[13px] line-clamp-4'
+                                : 'text-xs sm:text-[13px] line-clamp-4'
+                            }`}>
+                              &ldquo;{currentPassage.openingLine}&rdquo;
+                            </p>
+                          </div>
+
+                          {/* Secondary Quote Box */}
+                          {currentPassage.secondaryQuote && (
+                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
+                              <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
+                              <p className={`font-serif italic text-foreground leading-relaxed ${
+                                !hasTertiary && !isLongTitle
+                                  ? 'text-xs sm:text-[13px] line-clamp-4'
+                                  : isLongTitle
+                                  ? 'text-xs line-clamp-2'
+                                  : 'text-xs sm:text-[13px] line-clamp-3'
+                              }`}>
+                                {currentPassage.secondaryQuote}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Tertiary Quote Box */}
+                          {currentPassage.leftPageQuote2 && !isLongTitle && (
+                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
+                              <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
+                              <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2">
+                                {currentPassage.leftPageQuote2}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    );
+                  })()}
 
-                    {currentPassage.leftPageQuote2 && (
-                      <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                        <Quote className="w-4 h-4 text-amber-500/70 mb-1.5 shrink-0" />
-                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-3">
-                          {currentPassage.leftPageQuote2}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
+                  <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
                     <span className="truncate max-w-[160px]">{primarySubject}</span>
                     <span className="opacity-60">p. 1</span>
                   </div>
@@ -479,11 +547,15 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               }}
             >
               
-              {/* FRONT FACE: THE EXACT CARD FROM FEATURED PUBLIC DOMAIN BOOKS (Closed State) */}
+              {/* FRONT FACE: THE EXACT SHARED CARD (Automatic Synchronized Layout) */}
               <div
-                className="absolute inset-0 book-3d-face-front rounded-xl bg-card border border-border shadow-booksaw flex flex-col justify-between text-foreground overflow-hidden cursor-pointer group"
+                className="absolute inset-0 book-3d-face-front rounded-xl overflow-hidden cursor-pointer group"
                 title="Click to flip open or close volume"
               >
+                <div className="w-full h-full pointer-events-none">
+                  <BookCard book={book} />
+                </div>
+
                 {/* 3D Spine & Page Edge Accents: Dissolve smoothly into flat card as it docks into grid */}
                 <div
                   className={`absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/40 via-black/20 to-transparent rounded-l-xl pointer-events-none z-30 transition-opacity duration-400 ${
@@ -495,158 +567,86 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     isGlidedIn ? 'opacity-100' : 'opacity-0'
                   }`}
                 />
-
-                {/* Top Cover Visual with Booksaw Directional Depth */}
-                <div className="relative aspect-[3/4] w-full bg-muted/60 overflow-hidden flex items-center justify-center p-2.5 sm:p-3 border-b border-border select-none">
-                  {formats.coverImage ? (
-                    <div className="relative w-full h-full flex items-center justify-center group-hover:scale-[1.03] transition-transform duration-300">
-                      <img
-                        src={formats.coverImage}
-                        alt={`Cover of ${book.title}`}
-                        className="max-w-full max-h-full w-auto h-auto object-contain rounded-sm shadow-md"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-full rounded-md bg-gradient-to-br from-stone-900 via-stone-800 to-stone-950 text-white p-4 flex flex-col justify-between shadow-xs border border-stone-700">
-                      <div>
-                        <div className="flex items-center gap-1 text-[10px] uppercase font-mono tracking-widest text-primary-400 font-semibold mb-2">
-                          <Sparkles className="w-3 h-3" /> Public Domain
-                        </div>
-                        <h4 className="font-serif font-bold text-sm sm:text-base line-clamp-4 leading-snug">
-                          {book.title}
-                        </h4>
-                      </div>
-                      <p className="text-xs text-stone-300 font-serif italic line-clamp-2">
-                        {authorNames}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Top-Left Hover Affordance: Click for Preview */}
-                  <div className="absolute top-0 left-0 z-20 hidden lg:flex opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                    <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold bg-primary text-primary-foreground px-2.5 py-1 rounded-tl-xl rounded-br-md rounded-tr-none rounded-bl-none shadow-xs tracking-wider uppercase">
-                      Click for Preview 📖
-                    </span>
-                  </div>
-
-                  {/* Quick Action Overlay Badges */}
-                  <div className="absolute top-2.5 right-2.5 flex flex-col gap-1.5 z-20">
-                    <div
-                      className={`p-1.5 rounded-full shadow-xs ${
-                        isLiked ? 'bg-destructive text-destructive-foreground scale-105' : 'bg-card text-muted-foreground'
-                      }`}
-                    >
-                      <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current' : ''}`} />
-                    </div>
-
-                    <div
-                      className={`p-1.5 rounded-full shadow-xs ${
-                        isSaved ? 'bg-primary text-primary-foreground scale-105' : 'bg-card text-muted-foreground'
-                      }`}
-                    >
-                      <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
-                    </div>
-                  </div>
-
-                  {/* Subject Pill */}
-                  <div className="absolute bottom-2.5 left-2.5 z-20 flex items-center gap-1.5">
-                    <Badge variant="outline" size="sm" className="bg-card text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors">
-                      {primarySubject}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Book Metadata Content */}
-                <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-                  <div>
-                    <h3 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 mb-1 group-hover:text-primary transition-colors text-balance">
-                      {book.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground font-sans line-clamp-1">
-                      {authorNames}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
-                    <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
-                    <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
-                      CC0 / Free
-                    </span>
-                  </div>
-
-                  {/* Action Buttons (Matches BookCard layout 1:1 via UI Button) */}
-                  <div className="grid grid-cols-2 gap-2 mt-0.5 pointer-events-none">
-                    <Button
-                      variant="primary"
-                      size="chip"
-                      className="w-full"
-                      tabIndex={-1}
-                      aria-hidden="true"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" />
-                      <span>Read</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="chip"
-                      className="w-full"
-                      tabIndex={-1}
-                      aria-hidden="true"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Get</span>
-                    </Button>
-                  </div>
-                </div>
               </div>
 
               {/* BACK FACE OF FRONT COVER: THE LEFT OPEN PAGE (Inside Spread) */}
-              <div className="absolute inset-0 book-3d-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
+              <div className="absolute inset-0 book-3d-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
                 <div key={`left-page-content-${book.id}-${isTurningLeaf ? prevPassageIndex : activePassageIndex}`} className="flex flex-col justify-between h-full relative">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" /> Public Domain
-                      </span>
-                      <span>ID #{book.id}</span>
-                    </div>
+                  {(() => {
+                    const isVeryLongTitle = book.title.length > 55;
+                    const isLongTitle = book.title.length > 36;
+                    const hasSecondary = Boolean(isTurningLeaf ? prevPassage.secondaryQuote : currentPassage.secondaryQuote);
+                    const hasTertiary = Boolean(isTurningLeaf ? prevPassage.leftPageQuote2 : currentPassage.leftPageQuote2) && !isLongTitle;
 
-                    <div>
-                      <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
-                        {book.title}
-                      </h3>
-                      <p className="text-xs font-mono italic text-muted-foreground">
-                        by {authorNames}
-                      </p>
-                    </div>
+                    return (
+                      <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
+                        <div className="space-y-1.5 shrink-0">
+                          <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
+                            <span className="flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" /> Public Domain
+                            </span>
+                            <span>ID #{book.id}</span>
+                          </div>
 
-                    <div className="relative pl-3 border-l-2 border-primary/50 my-1">
-                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-5 text-pretty">
-                        &ldquo;{isTurningLeaf ? prevPassage.openingLine : currentPassage.openingLine}&rdquo;
-                      </p>
-                    </div>
+                          <div>
+                            <h3 className={`font-serif font-bold leading-snug mb-0.5 text-foreground text-balance ${
+                              isVeryLongTitle ? 'text-sm sm:text-base' : isLongTitle ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
+                            }`}>
+                              {book.title}
+                            </h3>
+                            <p className="text-xs font-mono italic text-muted-foreground">
+                              by {authorNames}
+                            </p>
+                          </div>
+                        </div>
 
-                    {(isTurningLeaf ? prevPassage.secondaryQuote : currentPassage.secondaryQuote) && (
-                      <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                        <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-4">
-                          {isTurningLeaf ? prevPassage.secondaryQuote : currentPassage.secondaryQuote}
-                        </p>
+                        <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5">
+                          {/* Lead Opening Line */}
+                          <div className="relative pl-2.5 sm:pl-3 border-l-2 border-primary/50">
+                            <p className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
+                              !hasSecondary && !isLongTitle
+                                ? 'text-xs sm:text-sm line-clamp-6 sm:line-clamp-7'
+                                : isVeryLongTitle
+                                ? 'text-xs line-clamp-3'
+                                : isLongTitle
+                                ? 'text-xs sm:text-[13px] line-clamp-4'
+                                : 'text-xs sm:text-[13px] line-clamp-4'
+                            }`}>
+                              &ldquo;{isTurningLeaf ? prevPassage.openingLine : currentPassage.openingLine}&rdquo;
+                            </p>
+                          </div>
+
+                          {/* Secondary Quote Box */}
+                          {(isTurningLeaf ? prevPassage.secondaryQuote : currentPassage.secondaryQuote) && (
+                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
+                              <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
+                              <p className={`font-serif italic text-foreground leading-relaxed ${
+                                !hasTertiary && !isLongTitle
+                                  ? 'text-xs sm:text-[13px] line-clamp-4'
+                                  : isLongTitle
+                                  ? 'text-xs line-clamp-2'
+                                  : 'text-xs sm:text-[13px] line-clamp-3'
+                              }`}>
+                                {isTurningLeaf ? prevPassage.secondaryQuote : currentPassage.secondaryQuote}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Tertiary Quote Box */}
+                          {(isTurningLeaf ? prevPassage.leftPageQuote2 : currentPassage.leftPageQuote2) && !isLongTitle && (
+                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
+                              <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
+                              <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2">
+                                {isTurningLeaf ? prevPassage.leftPageQuote2 : currentPassage.leftPageQuote2}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    );
+                  })()}
 
-                    {(isTurningLeaf ? prevPassage.leftPageQuote2 : currentPassage.leftPageQuote2) && (
-                      <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
-                        <Quote className="w-4 h-4 text-amber-500/70 mb-1.5 shrink-0" />
-                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-3">
-                          {isTurningLeaf ? prevPassage.leftPageQuote2 : currentPassage.leftPageQuote2}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
+                  <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
                     <span className="truncate max-w-[160px]">{primarySubject}</span>
                     <span className="opacity-60">p. 1</span>
                   </div>
