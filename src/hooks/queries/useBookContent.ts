@@ -7,22 +7,21 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
     return sampleBookText;
   }
 
-  try {
-    const params = new URLSearchParams();
-    if (bookId) params.set('id', String(bookId));
-    if (url) params.set('url', url);
+  const params = new URLSearchParams();
+  if (bookId) params.set('id', String(bookId));
+  if (url) params.set('url', url);
 
-    const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?${params.toString()}`);
-    if (!res.ok) {
-      return sampleBookText;
-    }
-    const text = await res.text();
-    return text || sampleBookText;
-  } catch {
-    // Gracefully fallback to sample reader text
-    return sampleBookText;
+  const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?${params.toString()}`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch book content from upstream proxy: ${res.statusText || res.status}`);
   }
+  const text = await res.text();
+  if (!text || text.trim().length === 0) {
+    throw new Error('Received empty text content from upstream.');
+  }
+  return text;
 }
+
 
 export function useBookContent(contentUrl?: string, bookId?: number) {
   return useQuery({

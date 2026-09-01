@@ -9,16 +9,17 @@ export interface PerformanceInfo {
   cores: number;
 }
 
-const defaultServerInfo: PerformanceInfo = {
+export const defaultServerInfo: PerformanceInfo = Object.freeze({
   tier: 'high',
   allowHeavyMotion: true,
   enablePrefetching: true,
   cores: 8,
-};
+});
 
-let lastSnapshot: PerformanceInfo = defaultServerInfo;
+// Cache frozen instances by composite key for referential stability without mutable globals
+const snapshotCache = new Map<string, PerformanceInfo>();
 
-function getClientSnapshot(): PerformanceInfo {
+export function getClientSnapshot(): PerformanceInfo {
   if (typeof window === 'undefined') return defaultServerInfo;
 
   const cores = navigator.hardwareConcurrency || 4;
@@ -37,23 +38,19 @@ function getClientSnapshot(): PerformanceInfo {
   const allowHeavyMotion = !prefersReducedMotion && tier !== 'low';
   const enablePrefetching = tier === 'high';
 
-  if (
-    lastSnapshot.tier === tier &&
-    lastSnapshot.allowHeavyMotion === allowHeavyMotion &&
-    lastSnapshot.enablePrefetching === enablePrefetching &&
-    lastSnapshot.cores === cores
-  ) {
-    return lastSnapshot;
+  const cacheKey = `${tier}:${allowHeavyMotion}:${enablePrefetching}:${cores}`;
+  let snapshot = snapshotCache.get(cacheKey);
+  if (!snapshot) {
+    snapshot = Object.freeze({
+      tier,
+      allowHeavyMotion,
+      enablePrefetching,
+      cores,
+    });
+    snapshotCache.set(cacheKey, snapshot);
   }
 
-  lastSnapshot = {
-    tier,
-    allowHeavyMotion,
-    enablePrefetching,
-    cores,
-  };
-
-  return lastSnapshot;
+  return snapshot;
 }
 
 const subscribe = (callback: () => void) => {

@@ -1,5 +1,5 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GET } from './route';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { GET, sanitizeRedirectPath } from './route';
 
 const mockExchangeCodeForSession = vi.fn();
 
@@ -16,7 +16,7 @@ describe('Auth Callback Route Handler', () => {
     vi.clearAllMocks();
   });
 
-  it('exchanges code for session and redirects to destination', async () => {
+  it('exchanges code for session and redirects to valid destination', async () => {
     mockExchangeCodeForSession.mockResolvedValueOnce({ error: null });
 
     const req = new Request('http://localhost:3000/auth/callback?code=valid-code&next=/bookshelf');
@@ -25,6 +25,28 @@ describe('Auth Callback Route Handler', () => {
     expect(mockExchangeCodeForSession).toHaveBeenCalledWith('valid-code');
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toBe('http://localhost:3000/bookshelf');
+  });
+
+  it('sanitizes open redirect attempts to safe root destination', async () => {
+    mockExchangeCodeForSession.mockResolvedValue({ error: null });
+
+    const attackPaths = [
+      '//evil.com',
+      '//attacker.com/steal',
+      '/\\attacker.com',
+      'https://attacker.com',
+      'javascript:alert(1)',
+      '///evil.com',
+    ];
+
+    for (const attack of attackPaths) {
+      expect(sanitizeRedirectPath(attack)).toBe('/');
+    }
+
+    const req = new Request('http://localhost:3000/auth/callback?code=valid-code&next=//evil.com');
+    const res = await GET(req);
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe('http://localhost:3000/');
   });
 
   it('redirects with auth error if exchange fails or code is missing', async () => {

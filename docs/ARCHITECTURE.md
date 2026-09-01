@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST.  
 > **Last Synchronized**: `2026-09-01`  
-> **Topology Health**: `73` Modules Analyzed • `209` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `74` Modules Analyzed • `211` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -150,8 +150,8 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | Module / Component | Upstream Dependencies (Imports) | Downstream Consumers (Consumed By) | Role & Responsibilities |
 | :--- | :--- | :--- | :--- |
 | [`page.tsx`](src/app/account/page.tsx) | `stores/useAuthStore`, `stores/useBookshelfStore`, `stores/useThemeStore`, `stores/usePreferencesStore`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `components/ui/BackToTop`, `components/account/AccountIdentityCard`, `components/account/AccountLibraryStats`, `components/account/AccountSecuritySection`, `components/account/AccountPreferencesSection`, `components/account/AccountDeleteModal`, `config/routes` | _App Route Entry_ | Production Module |
-| [`route.ts`](src/app/api/books/content/route.ts) | `config/api-endpoints`, `config/site-config` | _App Route Entry_ | Production Module |
-| [`route.ts`](src/app/api/books/route.ts) | `config/api-endpoints`, `mocks/handlers` | _App Route Entry_ | Production Module |
+| [`route.ts`](src/app/api/books/content/route.ts) | `config/api-endpoints`, `config/site-config`, `lib/rate-limiter` | _App Route Entry_ | Production Module |
+| [`route.ts`](src/app/api/books/route.ts) | `config/api-endpoints`, `mocks/handlers`, `lib/rate-limiter` | _App Route Entry_ | Production Module |
 | [`route.ts`](src/app/auth/callback/route.ts) | `lib/supabase/server` | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/auth/confirm-deletion/page.tsx) | `stores/useAuthStore`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `config/routes` | _App Route Entry_ | Production Module |
 | [`layout.tsx`](src/app/layout.tsx) | `./providers`, `config/site-config`, `./globals.css` | _App Route Entry_ | Production Module |
@@ -210,6 +210,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`useScrollDirection.ts`](src/hooks/useScrollDirection.ts) | _Root Primitive_ | `page.tsx` | Production Module |
 | [`book-metadata.ts`](src/lib/book-metadata.ts) | `mocks/handlers`, `config/featured-books`, `lib/utils` | `page.tsx`, `ReaderHeader.tsx`, `useBookTranslations.ts` | Production Module |
 | [`gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | _Root Primitive_ | `page.tsx`, `BookPreviewModal.tsx`, `HeroSearch.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx` | Production Module |
+| [`rate-limiter.ts`](src/lib/rate-limiter.ts) | _Root Primitive_ | `route.ts`, `route.ts` | Production Module |
 | [`smart-search.ts`](src/lib/smart-search.ts) | `mocks/handlers` | `page.tsx` | Production Module |
 | [`client.ts`](src/lib/supabase/client.ts) | `types/database.types` | `useAuthStore.ts`, `useBookshelfStore.ts` | Production Module |
 | [`middleware.ts`](src/lib/supabase/middleware.ts) | `types/database.types`, `./client` | `middleware.ts` | Production Module |

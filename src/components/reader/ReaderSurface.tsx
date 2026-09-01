@@ -117,7 +117,9 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       const targetSize = Math.round(pinchStartRef.current.initialFontSize * ratio);
       const clampedSize = Math.min(36, Math.max(12, targetSize));
 
-      onFontSizeChange(clampedSize);
+      if (clampedSize !== fontSize) {
+        onFontSizeChange(clampedSize);
+      }
       setZoomFeedback({ visible: true, size: clampedSize });
 
       if (zoomTimeoutRef.current) {

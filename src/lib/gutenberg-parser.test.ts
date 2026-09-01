@@ -8,6 +8,7 @@ import {
   extractGutenbergHeaderMetadata,
   paginateChapterContent,
   extractDynamicBookPassages,
+  clearPaginationCache,
 } from './gutenberg-parser';
 
 describe('src/lib/gutenberg-parser', () => {
@@ -500,7 +501,37 @@ ${'E'.repeat(1200)}
       const lancelot = chapters.find((c) => c.displayTitle.includes('Lancelot'));
       expect(lancelot).toBeDefined();
     });
+
+    it('parses complex TOC without catastrophic backtracking or thread lock', () => {
+      const complexText = `
+TABLE OF CONTENTS
+Chapter I. The Beginning ................. 1
+Chapter II. The Middle ................... 25
+Chapter III. The Resolution .............. 50
+
+${'A'.repeat(50000)}
+`;
+      const start = Date.now();
+      const chapters = parseGutenbergChapters(complexText);
+      const elapsed = Date.now() - start;
+
+      expect(chapters).toBeDefined();
+      expect(elapsed).toBeLessThan(100); // Must parse in < 100ms
+    });
+
+    it('caches and retrieves paginated chapter content with clearPaginationCache support', () => {
+      const longChapter = 'First paragraph.\n\nSecond paragraph.\n\nThird paragraph.\n\n' + 'Word '.repeat(1000);
+      const pages1 = paginateChapterContent(longChapter, 500);
+      const pages2 = paginateChapterContent(longChapter, 500);
+
+      expect(pages1).toBe(pages2); // Referential equality from LRU cache
+      clearPaginationCache();
+      const pages3 = paginateChapterContent(longChapter, 500);
+      expect(pages3).toEqual(pages1);
+    });
   });
 });
+
+
 
 

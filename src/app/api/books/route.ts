@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import type { GutendexBook, GutendexResponse } from '@/mocks/handlers';
+import { booksApiRateLimiter } from '@/lib/rate-limiter';
 
 // Ensure Vercel runs this as a dynamic serverless function with extended timeout
 export const dynamic = 'force-dynamic';
@@ -8,6 +9,32 @@ export const maxDuration = 30; // seconds
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const clientIp =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    '127.0.0.1';
+
+  const rateLimit = booksApiRateLimiter.check(clientIp);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      {
+        error: 'Too many requests. Please slow down and try again.',
+        results: [],
+        count: 0,
+        source: 'upstream',
+        latencyMs: Date.now() - startTime,
+      },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.max(1, Math.ceil(rateLimit.resetMs / 1000))),
+          'X-RateLimit-Limit': String(rateLimit.limit),
+          'X-RateLimit-Remaining': String(rateLimit.remaining),
+        },
+      }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search') || '';
   const topic = searchParams.get('topic') || '';
@@ -60,10 +87,12 @@ export async function GET(request: NextRequest) {
     const response = await fetch(apiUrl, {
       headers: {
         Accept: 'application/json',
+        'Accept-Encoding': 'gzip, deflate, br',
+        Connection: 'keep-alive',
         'User-Agent': 'Bookarium/1.0 (Public Domain Library Reader)',
       },
       signal: controller.signal,
-      next: { revalidate: 120 }, // Next.js SWR cache for 2 minutes
+      next: { revalidate: 3600 }, // Next.js SWR cache for 1 hour
     });
 
     clearTimeout(timeoutId);
@@ -101,13 +130,18 @@ export async function GET(request: NextRequest) {
     }
 
     const filteredResults = (data.results || []).filter((b: GutendexBook) => b.copyright !== true);
-    const filteredCount = filteredResults.length;
     return NextResponse.json(
-      { ...data, results: filteredResults, count: filteredCount, source: 'upstream', latencyMs },
+      {
+        ...data,
+        results: filteredResults,
+        count: data.count !== undefined ? data.count : filteredResults.length,
+        source: 'upstream',
+        latencyMs,
+      },
       {
         status: 200,
         headers: {
-          'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
         },
       }
     );

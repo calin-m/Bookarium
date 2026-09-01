@@ -23,6 +23,13 @@ export const GUTENBERG_PARSER_CONFIG = {
   ESTIMATED_WORDS_PER_MINUTE: 200,
 } as const;
 
+const paginationCache = new Map<string, string[]>();
+const MAX_PAGINATION_CACHE_ENTRIES = 500;
+
+export function clearPaginationCache(): void {
+  paginationCache.clear();
+}
+
 /**
  * Splits chapter content into clean virtual pages snapped to sentence, paragraph, and word boundaries.
  * Guarantees words are NEVER split across page turns.
@@ -30,6 +37,15 @@ export const GUTENBERG_PARSER_CONFIG = {
 export function paginateChapterContent(content: string, charsPerPage: number): string[] {
   if (!content || !content.trim()) return [''];
   if (content.length <= charsPerPage) return [content];
+
+  const headSample = content.slice(0, 24);
+  const tailSample = content.slice(-24);
+  const cacheKey = `${content.length}:${charsPerPage}:${headSample}:${tailSample}`;
+
+  const cached = paginationCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
   const pages: string[] = [];
   let remaining = content;
@@ -73,8 +89,14 @@ export function paginateChapterContent(content: string, charsPerPage: number): s
     if (pageSlice) {
       pages.push(pageSlice);
     }
-    remaining = remaining.slice(splitIndex).trimStart();
+    remaining = remaining.slice(splitIndex).trim();
   }
+
+  if (paginationCache.size >= MAX_PAGINATION_CACHE_ENTRIES) {
+    const firstKey = paginationCache.keys().next().value;
+    if (firstKey) paginationCache.delete(firstKey);
+  }
+  paginationCache.set(cacheKey, pages);
 
   return pages.length > 0 ? pages : [content];
 }
@@ -259,7 +281,7 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
 
         for (const title of tocItems) {
           const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
-          const regex = new RegExp(`(?:^|\\n\\n)\\s*(${escaped}[.\\s]*)(?:\\n+(?:BY\\s+[^\\n]+|[A-Z\\s]{3,}))?(?=\\n\\n|$)`, 'i');
+          const regex = new RegExp(`(?:^|\\n\\n)\\s*(${escaped})(?:[^\n]{0,80})(?=\\n|$)`, 'i');
           const headingMatch = regex.exec(searchSlice);
           if (headingMatch) {
             tocMatches.push({
@@ -499,7 +521,9 @@ export function extractDynamicBookPassages(
     return [];
   }
 
-  const chapters = parseGutenbergChapters(rawText);
+  // Bound analysis window to the first 120,000 characters to prevent main thread blocking on massive books
+  const sampleText = rawText.length > 120000 ? rawText.slice(0, 120000) : rawText;
+  const chapters = parseGutenbergChapters(sampleText);
   // Filter out pure preamble/license sections to focus on narrative chapters
   const narrativeChapters = chapters.filter(
     (ch) =>

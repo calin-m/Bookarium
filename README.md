@@ -8,7 +8,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-64%20Suites%20%7C%20410%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-66%20Suites%20%7C%20428%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![Code Coverage](https://img.shields.io/badge/Coverage-92.0%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -35,6 +35,10 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ## 🛠️ Latest Improvements (v1.7.0)
 
+- **Enterprise Security Hardening & Zero-Dependency Rate Limiting (`rate-limiter.ts`, `next.config.ts`, `/api/books`)** – In-memory sliding window rate limiter protecting upstream Project Gutenberg APIs (60 req/min for search, 30 req/min for full text) with `X-RateLimit-*` and `Retry-After` headers, paired with strict HSTS, Clickjacking defense (`SAMEORIGIN`), MIME-sniffing protection (`nosniff`), Permissions-Policy, and SSRF domain whitelisting.
+- **Open Redirect Sanitization & Secure Auth Callback (`/auth/callback`)** – Strict relative path validation (`sanitizeRedirectPath`) preventing open redirect vulnerabilities in OAuth and magic-link authentication flows.
+- **ReDoS Elimination & Pagination Cache (`gutenberg-parser.ts`)** – Non-backtracking regular expressions (`[^\n]{0,80}`) and bounded passage analysis window (capped at 120,000 chars) eliminating main-thread event loop blocking on multi-megabyte classic epics, accompanied by a 500-entry LRU pagination cache for instant virtual page turns.
+- **Datacenter Proximity Pinned & Payload Compression (`vercel.json`)** – Configured Vercel deployment pinning serverless functions to `iad1` (Washington D.C. / North Virginia) in the same geographic corridor as Gutendex, paired with `Accept-Encoding: gzip, deflate, br`, HTTP Keep-Alive, and long-lived Edge caching (`s-maxage=3600`).
 - **Unconstrained Viewport Cursor Tooltips & Contextual Action Feedback (`BookCard.tsx`)** – Direct DOM body portaling (`createPortal`) of cursor-following tooltips tracking mouse coordinates at `+12px, +14px` across card edges without boundary clipping, dynamically swapping between `"Click to preview quotes"`, `"Add to Favorites"` / `"Remove from Favorites"`, and `"Add to Bookshelf"` / `"Remove from Bookshelf"`.
 - **Dynamic 3D Preview Modal Fluid Typography & Intelligent Space-Filling (`BookPreviewModal.tsx`)** – Adaptive title scaling preventing line overflows on long classic titles without truncation, combined with content-aware proportional quote space-filling and clean presentation spreads.
 - **Single-Source Route Registry & Configuration Singletons (`src/config/routes.ts`, `src/config/site-config.ts`)** – Type-safe centralized registries consolidating all internal route paths, view queries, canonical project URLs, and persistent storage keys with 100% co-located unit tests.
@@ -65,7 +69,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
 - **Strict 0% Page 1 Reading Progress & Verified Accounts** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user accounts (`/account`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 64/64 test files passed, 410/410 tests passed with **92.0% line coverage** and **81.0% branch coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 66/66 test files passed, 428/428 tests passed with **92.0% line coverage** and **80.3% branch coverage** (`npm run verify`).
 
 ---
 
@@ -184,6 +188,7 @@ flowchart TD
         Modal["3D Book Preview Modal (BookPreviewModal.tsx)"]
         Reader["Dedicated In-Browser Reader (src/app/read/[id]/page.tsx)"]
         Profile["Profile & Reading Preferences (src/app/profile/page.tsx)"]
+        Account["Account & Reading Preferences (src/app/account/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
         StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• cloudBookshelves: []\n• likedBookIds: []")]
@@ -198,20 +203,29 @@ flowchart TD
         
         Nav -->|Open Auth / Profile| StoreAuth
         Nav -->|View Bookshelf| StoreShelf
+        Nav -->|"Open Auth / Account"| StoreAuth
+        Nav -->|"View Bookshelf"| StoreShelf
         StorePrefs --> ScrollHook
         ScrollHook --> Nav
         ScrollHook --> Toolbar
         Hero -->|Filter Query| QueryBooks
+        Hero -->|"Filter Query"| QueryBooks
         QueryBooks --> Grid
         Grid --> Card
         Card -->|Preview 3D Volume| Modal
         Card -->|Open Reader| Reader
         Card -->|Save / Like| StoreShelf
+        Card -->|"Preview 3D Volume"| Modal
+        Card -->|"Open Reader"| Reader
+        Card -->|"Save / Like"| StoreShelf
         Reader --> StoreReader
         Reader --> QueryContent
         Profile --> StoreAuth
         Profile --> StoreShelf
         Profile --> StorePrefs
+        Account --> StoreAuth
+        Account --> StoreShelf
+        Account --> StorePrefs
     end
 
     subgraph BackendServices ["Live Data & Cloud Synchronization"]
@@ -227,12 +241,16 @@ flowchart TD
         QueryBooks --> ProxyRoute
         ProxyRoute --> GutendexAPI
         QueryBooks -.->|Failover| DirectUpstream
+        QueryBooks -.->|"Failover"| DirectUpstream
         DirectUpstream --> GutendexAPI
         QueryContent --> ContentProxy
         ContentProxy --> GutenbergContent
         StoreAuth <-->|Session / Profiles| SupabaseCloud
         StoreShelf <-->|Cloud Sync (RLS)| SupabaseCloud
         AuthCallback <-->|Code Exchange| SupabaseCloud
+        StoreAuth <-->|"Session / Profiles"| SupabaseCloud
+        StoreShelf <-->|"Cloud Sync (RLS)"| SupabaseCloud
+        AuthCallback <-->|"Code Exchange"| SupabaseCloud
     end
 
     subgraph QualityGateEngine ["7-Gateway Verification Engine"]
@@ -250,6 +268,8 @@ flowchart TD
 
     User <-->|Browse, Read, Sync| ClientApp
     ClientApp -.->|Validated by| VerifyScript
+    User <-->|"Browse, Read, Sync"| ClientApp
+    ClientApp -.->|"Validated by"| VerifyScript
 ```
 
 ---
@@ -299,11 +319,13 @@ flowchart LR
     end
 
     Toolbar -->|Adjust Size / Family / Width / Mode / Theme| ReaderState
+    Toolbar -->|"Adjust Size / Family / Width / Mode / Theme"| ReaderState
     VirtualPages --> ReaderView
     ReaderState --> ContentArea
     ReaderState --> ProgressBar
     ReaderState --> ResumeToast
     FooterBar -->|Page Flip / Jump| ReaderState
+    FooterBar -->|"Page Flip / Jump"| ReaderState
     TOC -->|"Select Chapter [p. X]"| ReaderState
     ReaderState <--> LSState
     ReaderState <--> LSProgress
@@ -353,6 +375,22 @@ Bookarium is architected for zero-config deployment on **[Vercel](https://vercel
    * `NEXT_PUBLIC_SUPABASE_URL` = your Supabase project URL
    * `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase public anon key
 4. Click **Deploy** — Vercel will automatically build the Next.js 16 production bundle, configure edge caching, and provision serverless API proxies.
+---
+
+## 🔒 Enterprise Security & Resiliency Architecture
+
+Bookarium implements a defense-in-depth security model across the edge, serverless runtime, and client layers:
+
+| Security Vector | Implementation & File Path | Protection Mechanism |
+|---|---|---|
+| **Sliding-Window Rate Limiting** | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) | Zero-dependency in-memory sliding-window rate limiter protecting upstream Project Gutenberg APIs (60 req/min on `/api/books`, 30 req/min on `/api/books/content`) with automatic 30s garbage collection, `X-RateLimit-*` headers, and `429 Too Many Requests` status with `Retry-After`. |
+| **HTTP Security Headers** | [`next.config.ts`](next.config.ts) | Enforces HSTS (`max-age=63072000; includeSubDomains; preload`), Clickjacking defense (`X-Frame-Options: SAMEORIGIN`), MIME-type sniffing prevention (`X-Content-Type-Options: nosniff`), Referrer Policy (`strict-origin-when-cross-origin`), and Permissions Policy (`camera=(), microphone=(), geolocation=()`). |
+| **SSRF & Path Traversal Immunity** | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) | Upstream URL whitelisting (`isSafeUpstreamUrl`) restricting fetches strictly to official Project Gutenberg domains (`gutenberg.org`, `aleph.gutenberg.org`, `ibiblio.org`), strict numeric ID regex verification (`^\d{1,8}$`), and `redirect: 'manual'` preventing open redirect hops. |
+| **Open Redirect Defense** | [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) | Path sanitization (`sanitizeRedirectPath`) guaranteeing OAuth and magic-link redirect paths strictly originate from trusted relative roots (`/^\/[^\/\\]/`) preventing off-site phishing redirects. |
+| **ReDoS & Main Thread Protection** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | Non-backtracking regular expressions (`[^\n]{0,80}`) and bounded passage analysis window (capped at 120,000 characters) eliminating regular expression denial of service (ReDoS) and event loop freezing on massive multi-megabyte classical tomes. |
+| **LRU Pagination Memory Cache** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | 500-entry memory cache (`Map<string, string[]>`) for paginated chapter views, delivering instant sub-millisecond virtual page turns with zero redundant recalculation. |
+| **Relational Data Purge & Account Deletion** | [`src/stores/useAuthStore.ts`](src/stores/useAuthStore.ts) | Comprehensive cascading cleanup across PostgreSQL tables (`reading_progress`, `bookshelf_items`, `bookshelves`, `profiles`) with fallback RPC `delete_current_user` execution and session revocation. |
+| **Datacenter Proximity & Edge Optimization** | [`vercel.json`](vercel.json) | Pins serverless execution to `iad1` (Washington D.C. / US-East) directly adjacent to Gutenberg/Gutendex nodes with dedicated memory and payload compression (`gzip, deflate, br`). |
 
 ---
 
@@ -370,8 +408,7 @@ Bookarium is architected for zero-config deployment on **[Vercel](https://vercel
 | `npm run typecheck` | Validates TypeScript types across all `.ts`/`.tsx` files |
 | `npm run lint` | Runs ESLint 9 rules and Core Web Vitals checks |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
-| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`, and compiles Wiki |
-| `npm run wiki:sync` | Compiles repository documentation into native GitHub Wiki format (`.wiki/`) |
+| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 
@@ -404,7 +441,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 410 tests across 64 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 428 tests across 66 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |

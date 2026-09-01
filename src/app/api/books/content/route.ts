@@ -1,8 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { SITE_CONFIG } from '@/config/site-config';
+import { bookContentRateLimiter } from '@/lib/rate-limiter';
+
+const ALLOWED_HOSTS = new Set(['www.gutenberg.org', 'gutenberg.org']);
+
+export function isSafeUpstreamUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    if (!ALLOWED_HOSTS.has(parsed.hostname.toLowerCase())) return false;
+    // Reject internal hostnames and IP addresses
+    if (/^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname)) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(request: NextRequest) {
+  const clientIp =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    '127.0.0.1';
+
+  const rateLimit = bookContentRateLimiter.check(clientIp);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please slow down and try again.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.max(1, Math.ceil(rateLimit.resetMs / 1000))),
+          'X-RateLimit-Limit': String(rateLimit.limit),
+          'X-RateLimit-Remaining': String(rateLimit.remaining),
+        },
+      }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const urlParam = searchParams.get('url') || '';
   const idParam = searchParams.get('id') || '';
@@ -14,15 +52,24 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const bookId = idParam || (urlParam.match(/(\d+)/)?.[1] ?? '');
+  // Validate ID format: strictly numeric 1-8 digits
+  const numericId = idParam.match(/^(\d{1,8})$/)?.[1] || urlParam.match(/\/(\d{1,8})\//)?.[1] || (urlParam.match(/pg(\d{1,8})\.txt/)?.[1] ?? '');
 
-  // URLs to try in order
   const targetUrls: string[] = [];
-  if (bookId) {
-    targetUrls.push(`${API_ENDPOINTS.GUTENBERG_CACHE_BASE_URL}/${bookId}/pg${bookId}.txt`);
+  if (numericId) {
+    targetUrls.push(`${API_ENDPOINTS.GUTENBERG_CACHE_BASE_URL}/${numericId}/pg${numericId}.txt`);
   }
-  if (urlParam && !targetUrls.includes(urlParam)) {
-    targetUrls.push(urlParam);
+
+  if (urlParam) {
+    if (!isSafeUpstreamUrl(urlParam)) {
+      return NextResponse.json(
+        { error: 'Invalid or unauthorized upstream content URL.' },
+        { status: 400 }
+      );
+    }
+    if (!targetUrls.includes(urlParam)) {
+      targetUrls.push(urlParam);
+    }
   }
 
   let textContent = '';
@@ -35,10 +82,12 @@ export async function GET(request: NextRequest) {
     try {
       const response = await fetch(targetUrl, {
         signal: controller.signal,
-        redirect: 'follow',
+        redirect: 'manual',
         headers: {
           'User-Agent': `Bookarium-PublicDomain-Reader/1.0 (${SITE_CONFIG.GITHUB_REPO})`,
           Accept: 'text/plain, text/html, */*',
+          'Accept-Encoding': 'gzip, deflate, br',
+          Connection: 'keep-alive',
         },
       });
 
@@ -73,4 +122,5 @@ export async function GET(request: NextRequest) {
     },
   });
 }
+
 

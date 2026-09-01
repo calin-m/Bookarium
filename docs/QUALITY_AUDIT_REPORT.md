@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 21:57:38 GMT  
+**Last Generated**: Tue, 01 Sep 2026 23:09:11 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 64 passed  
-**Total Verified Tests**: 410 passed  
+**Total Test Suites**: 66 passed  
+**Total Verified Tests**: 428 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **64/64 test suites passed** (410 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **66/66 test suites passed** (428 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 11 Architectural Decision Records validated |
@@ -25,29 +25,33 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.93%** (2393/2603) — *Target: $ge$ 80%*
-- **Statements**: **90.38%** (2612/2890) — *Target: $ge$ 80%*
-- **Functions**: **88.08%** (621/705) — *Target: $ge$ 80%*
-- **Branches**: **80.11%** (2277/2842) — *Target: $ge$ 80%*
+- **Lines**: **92.15%** (2467/2677) — *Target: $ge$ 80%*
+- **Statements**: **90.54%** (2692/2973) — *Target: $ge$ 80%*
+- **Functions**: **88.31%** (635/719) — *Target: $ge$ 80%*
+- **Branches**: **80.44%** (2328/2894) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (64 Suites / 410 Tests)
+## 🧪 Comprehensive Test Suite Catalog (66 Suites / 428 Tests)
 
-### 🚀 App Routes & Pages (8 Suites · 41 Tests)
+### 🚀 App Routes & Pages (8 Suites · 46 Tests)
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (6 tests)</summary>
 
+- ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
+- ✔ `should block SSRF attempts targeting cloud metadata or internal network`
+- ✔ `should validate official Gutenberg upstream URLs as safe`
 - ✔ `should fetch and return book text for valid id`
 - ✔ `should return 502 if upstream fails or times out`
 
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (6 tests)</summary>
 
+- ✔ `should return 429 when client exceeds max request rate limit`
 - ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
 - ✔ `should pass topic, language, page, era, sort, and mime_type query parameters`
 - ✔ `should return error response when upstream API returns an error status`
@@ -57,9 +61,10 @@
 </details>
 
 <details>
-<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (3 tests)</summary>
 
-- ✔ `exchanges code for session and redirects to destination`
+- ✔ `exchanges code for session and redirects to valid destination`
+- ✔ `sanitizes open redirect attempts to safe root destination`
 - ✔ `redirects with auth error if exchange fails or code is missing`
 
 </details>
@@ -426,7 +431,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 41 Tests)
+### ⚡ Zustand State Stores (5 Suites · 43 Tests)
 
 <details>
 <summary><b><code>src/stores/useAuthStore.test.ts</code></b> (13 tests)</summary>
@@ -448,7 +453,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -462,6 +467,8 @@
 - ✔ `handles updateCloudBookshelf and deleteCloudBookshelf`
 - ✔ `handles moveBookToShelf properly`
 - ✔ `creates a new bookshelf item if book is not in cloudBookshelfItems yet`
+- ✔ `returns saved books count via useSavedBooksCount`
+- ✔ `returns isSaved status via useIsBookSaved`
 
 </details>
 
@@ -499,7 +506,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (5 Suites · 68 Tests)
+### 📚 Gutenberg Parsers & Metadata (6 Suites · 77 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (8 tests)</summary>
@@ -516,7 +523,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg-parser.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/lib/gutenberg-parser.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `returns empty array on null or undefined input`
 - ✔ `correctly calculates reading time based on 200 WPM`
@@ -538,6 +545,21 @@
 - ✔ `extracts passages from a single-chapter un-segmented text by paragraph chunks`
 - ✔ `parses books formatted with standalone Roman numerals (such as The Great Gatsby)`
 - ✔ `parses multi-work anthologies with standalone titles and footnote brackets (e.g. Book 831 Four Arthurian Romances)`
+- ✔ `parses complex TOC without catastrophic backtracking or thread lock`
+- ✔ `caches and retrieves paginated chapter content with clearPaginationCache support`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/rate-limiter.test.ts</code></b> (7 tests)</summary>
+
+- ✔ `allows requests within the configured max limit`
+- ✔ `blocks requests exceeding the max limit within the sliding window`
+- ✔ `isolates rate limits between different clients`
+- ✔ `resets sliding window after the windowMs expires`
+- ✔ `cleans up stale records during periodic garbage collection and preserves active ones`
+- ✔ `allows manual reset of all records`
+- ✔ `supports default options in constructor and global exports`
 
 </details>
 
@@ -605,8 +627,8 @@
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
-- ✔ `should fallback to sample text when url is empty or failing`
-- ✔ `should fallback when fetch throws network error or non-ok status`
+- ✔ `should return sample text when neither url nor bookId is provided`
+- ✔ `should throw when fetch returns non-ok status or empty content`
 
 </details>
 
@@ -689,7 +711,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (17 Suites · 51 Tests)
+### 🧩 UI Primitives & Motion (18 Suites · 53 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (12 tests)</summary>
@@ -841,6 +863,14 @@
 - ✔ `provides site branding and metadata constants`
 - ✔ `builds canonical Gutenberg ebook URL`
 - ✔ `provides persistent storage keys`
+
+</details>
+
+<details>
+<summary><b><code>src/middleware.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `calls updateSession with the incoming request`
+- ✔ `exports valid matcher config`
 
 </details>
 

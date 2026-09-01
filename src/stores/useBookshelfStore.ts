@@ -532,3 +532,21 @@ export function useHydratedBookshelf() {
     setActiveBookshelfId,
   };
 }
+
+/**
+ * Atomic selector hook returning the count of saved books without oversubscribing to other properties.
+ */
+export function useSavedBooksCount(): number {
+  const hasMounted = useHasMounted();
+  const count = useBookshelfStore((s) => s.savedBooks.length);
+  return hasMounted ? count : 0;
+}
+
+/**
+ * Atomic selector hook checking if a specific book is saved.
+ */
+export function useIsBookSaved(bookId: number): boolean {
+  const hasMounted = useHasMounted();
+  const isSaved = useBookshelfStore((s) => s.isBookSaved(bookId));
+  return hasMounted ? isSaved : false;
+}

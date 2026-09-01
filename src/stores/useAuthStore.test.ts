@@ -12,6 +12,8 @@ const mockResetPasswordForEmail = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockFrom = vi.fn();
 
+const mockRpc = vi.fn().mockResolvedValue({ error: null });
+
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
     auth: {
@@ -26,8 +28,10 @@ vi.mock('@/lib/supabase/client', () => ({
       updateUser: mockUpdateUser,
     },
     from: mockFrom,
+    rpc: mockRpc,
   }),
 }));
+
 
 describe('useAuthStore', () => {
   beforeEach(() => {

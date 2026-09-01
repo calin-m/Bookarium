@@ -285,12 +285,19 @@ export const useAuthStore = create<AuthState>()(
 
     try {
       const supabase = createClient();
-      // 1. Clean up user's cloud data and custom bookshelves
-      await supabase.from('cloud_books').delete().eq('user_id', user.id);
-      await supabase.from('cloud_bookshelves').delete().eq('user_id', user.id);
+      // 1. Clean up user's relational records across valid schema tables
+      await supabase.from('reading_progress').delete().eq('user_id', user.id);
+      await supabase.from('bookshelf_items').delete().eq('user_id', user.id);
+      await supabase.from('bookshelves').delete().eq('user_id', user.id);
       // 2. Clean up profile
       await supabase.from('profiles').delete().eq('id', user.id);
-      // 3. Terminate auth session
+      // 3. Attempt RPC user account deletion if configured on database
+      try {
+        await (supabase as any).rpc('delete_current_user');
+      } catch {
+        // Non-blocking fallback if RPC is not provisioned
+      }
+      // 4. Terminate auth session
       await supabase.auth.signOut();
       set({ user: null, profile: null, isAuthModalOpen: false, error: null });
       return { error: null };

@@ -33,24 +33,23 @@ describe('useBookContent hook', () => {
     expect(result.current.data).toContain('Pride and Prejudice');
   });
 
-  it('should fallback to sample text when url is empty or failing', async () => {
-    const content = await fetchBookContent(undefined, 100);
+  it('should return sample text when neither url nor bookId is provided', async () => {
+    const content = await fetchBookContent(undefined, undefined);
     expect(content).toBe(sampleBookText);
   });
 
-  it('should fallback when fetch throws network error or non-ok status', async () => {
+  it('should throw when fetch returns non-ok status or empty content', async () => {
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response('Error', { status: 404, statusText: 'Not Found' })
+      new Response('Not Found', { status: 404, statusText: 'Not Found' })
     );
 
-    const content = await fetchBookContent('https://example.com/invalid.txt', 999);
-    expect(content).toBe(sampleBookText);
+    await expect(fetchBookContent('https://example.com/invalid.txt', 999)).rejects.toThrow(/Failed to fetch/i);
     fetchSpy.mockRestore();
 
     const fetchThrowSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network error'));
-    const contentThrow = await fetchBookContent('https://example.com/network-error.txt', 999);
-    expect(contentThrow).toBe(sampleBookText);
+    await expect(fetchBookContent('https://example.com/network-error.txt', 999)).rejects.toThrow('Network error');
     fetchThrowSpy.mockRestore();
   });
 });
+
 

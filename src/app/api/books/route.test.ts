@@ -1,8 +1,31 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
+import { booksApiRateLimiter } from '@/lib/rate-limiter';
 
 describe('GET /api/books route handler', () => {
+  beforeEach(() => {
+    booksApiRateLimiter.reset();
+  });
+
+  it('should return 429 when client exceeds max request rate limit', async () => {
+    vi.spyOn(booksApiRateLimiter, 'check').mockReturnValueOnce({
+      success: false,
+      limit: 60,
+      remaining: 0,
+      resetMs: 45000,
+    });
+
+    const blockedReq = new NextRequest('http://localhost:3000/api/books?search=Jane');
+    const blockedRes = await GET(blockedReq);
+    expect(blockedRes.status).toBe(429);
+    const json = await blockedRes.json();
+    expect(json.error).toMatch(/too many requests/i);
+    expect(blockedRes.headers.get('Retry-After')).toBe('45');
+    expect(blockedRes.headers.get('X-RateLimit-Limit')).toBe('60');
+    expect(blockedRes.headers.get('X-RateLimit-Remaining')).toBe('0');
+  });
+
   it('should fetch and return public domain books JSON with zero copyright and latencyMs', async () => {
     const req = new NextRequest('http://localhost:3000/api/books?search=Jane+Austen');
     const res = await GET(req);
@@ -11,6 +34,7 @@ describe('GET /api/books route handler', () => {
     const json = await res.json();
     expect(json.results).toBeDefined();
     expect(Array.isArray(json.results)).toBe(true);
+    expect(json.count).toBeDefined();
     expect(json.source).toBe('upstream');
     expect(json.latencyMs).toBeDefined();
   });

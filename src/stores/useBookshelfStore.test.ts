@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useBookshelfStore, useHydratedBookshelf } from './useBookshelfStore';
+import { useBookshelfStore, useHydratedBookshelf, useSavedBooksCount, useIsBookSaved } from './useBookshelfStore';
 import { mockBooks } from '@/mocks/handlers';
 
 const mockFrom = vi.fn();
@@ -364,5 +364,32 @@ describe('useBookshelfStore', () => {
       expect(useBookshelfStore.getState().cloudBookshelfItems[0].bookshelf_id).toBe('shelf-2');
     });
   });
+
+  describe('Atomic Selector Hooks', () => {
+    it('returns saved books count via useSavedBooksCount', () => {
+      const { result } = renderHook(() => useSavedBooksCount());
+      expect(result.current).toBe(0);
+
+      act(() => {
+        useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
+      });
+
+      const { result: updated } = renderHook(() => useSavedBooksCount());
+      expect(updated.current).toBe(1);
+    });
+
+    it('returns isSaved status via useIsBookSaved', () => {
+      const { result } = renderHook(() => useIsBookSaved(mockBooks[0].id));
+      expect(result.current).toBe(false);
+
+      act(() => {
+        useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
+      });
+
+      const { result: updated } = renderHook(() => useIsBookSaved(mockBooks[0].id));
+      expect(updated.current).toBe(true);
+    });
+  });
 });
+
 
