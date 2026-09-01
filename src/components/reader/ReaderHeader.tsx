@@ -62,10 +62,11 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
       <header
         className={`sticky top-0 z-30 shrink-0 border-b transition-colors duration-200 ${activeTheme.header}`}
       >
-        <div className="w-full px-3 sm:px-6 md:px-8 h-14 sm:h-16 flex items-center justify-between gap-4">
+        {/* Main Header Bar: Title, Author, Navigation & Global Controls */}
+        <div className="w-full px-3 sm:px-6 md:px-8 h-13 sm:h-14 flex items-center justify-between gap-4">
           
-          {/* Left: Back Button & 2-Tier Book Identity Block (Rock-solid, zero shift, zero border clipping) */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          {/* Left: Back Button & Book Title / Author */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
             <button
               type="button"
               onClick={onBack}
@@ -76,62 +77,17 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             </button>
 
             <div className="min-w-0 flex-1 flex flex-col justify-center overflow-hidden">
-              {/* Top Line: Pure Literary Title (Permanent stability) */}
               <h1
-                className="text-sm sm:text-base font-serif font-bold truncate text-foreground"
+                className="text-sm sm:text-base font-serif font-bold truncate text-foreground leading-tight"
                 title={displayTitle}
               >
                 {displayTitle}
               </h1>
-
-              {/* Bottom Line: Author + Archive Info Tag + Section Pill + Progress Pill */}
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 text-[10px] sm:text-xs font-mono">
-                {displayAuthor ? (
-                  <>
-                    <span className={`truncate max-w-[130px] sm:max-w-[200px] md:max-w-[280px] ${activeTheme.textMuted}`} title={displayAuthor}>
-                      {displayAuthor}
-                    </span>
-                    {bookId && (
-                      <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
-                    )}
-                  </>
-                ) : null}
-
-                {bookId && (
-                  <button
-                    type="button"
-                    onClick={() => setIsInfoCardOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border border-primary-500/30 dark:border-primary-500/40 text-primary-600 dark:text-primary-400 bg-primary-500/10 hover:bg-primary-500/20 hover:border-primary-500/60 shadow-xs transition-all cursor-pointer select-none active:scale-95 shrink-0"
-                    title="View Gutenberg Public Domain Archive Information"
-                    aria-label="View Gutenberg Archive Volume Info"
-                  >
-                    <Info className="w-2.5 h-2.5 opacity-80 shrink-0" />
-                    <span>#{bookId}</span>
-                  </button>
-                )}
-
-                <span className={`opacity-40 shrink-0 hidden xs:inline ${activeTheme.textMuted}`}>•</span>
-
-                {/* Section Micro-Pill */}
-                <div
-                  className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
-                  title={`Current Section: Chapter ${currentChapterIndex + 1} of ${totalChapters}`}
-                >
-                  <BookOpen className="w-3 h-3 opacity-75" />
-                  <span>
-                    Section {currentChapterIndex + 1}/{totalChapters}
-                  </span>
-                </div>
-
-                {/* Progress Micro-Pill */}
-                <div
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
-                  title={`Overall Volume Progress: ${Math.round(progress)}%`}
-                >
-                  <Sparkles className="w-3 h-3 text-primary-500" />
-                  <span>{Math.round(progress)}% Progress</span>
-                </div>
-              </div>
+              {displayAuthor && (
+                <span className={`text-xs font-mono truncate ${activeTheme.textMuted}`} title={displayAuthor}>
+                  by {displayAuthor}
+                </span>
+              )}
             </div>
           </div>
 
@@ -171,47 +127,73 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               <span className="hidden sm:inline">Aa</span>
             </button>
 
-            {/* Quick Theme Switchers (Light / Sepia / Dark) Anchored to Outermost Edge */}
+            {/* 3-Way Universal Theme Switcher (Light -> Sepia -> Dark) matching Navbar */}
             {onThemeChange && (
-              <div className={`flex items-center rounded-lg p-0.5 border text-xs ${activeTheme.pill}`}>
-                <button
-                  type="button"
-                  onClick={() => onThemeChange('light')}
-                  className={`p-1.5 rounded transition-all cursor-pointer ${
-                    theme === 'light' ? activeTheme.activePill : activeTheme.inactivePill
-                  }`}
-                  title="Light Paper Theme"
-                  aria-label="Light Theme"
-                >
-                  <Sun className="w-3.5 h-3.5 text-amber-500" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onThemeChange('sepia')}
-                  className={`p-1.5 rounded transition-all cursor-pointer ${
-                    theme === 'sepia' ? activeTheme.activePill : activeTheme.inactivePill
-                  }`}
-                  title="Sepia Warm Amber Theme"
-                  aria-label="Sepia Theme"
-                >
-                  <Coffee className="w-3.5 h-3.5 text-amber-700" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onThemeChange('dark')}
-                  className={`p-1.5 rounded transition-all cursor-pointer ${
-                    theme === 'dark' ? activeTheme.activePill : activeTheme.inactivePill
-                  }`}
-                  title="Dark Obsidian Theme"
-                  aria-label="Dark Theme"
-                >
-                  <Moon className="w-3.5 h-3.5 text-indigo-400" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (theme === 'light') onThemeChange('sepia');
+                  else if (theme === 'sepia') onThemeChange('dark');
+                  else onThemeChange('light');
+                }}
+                aria-label={`Current theme: ${theme}. Click to switch theme.`}
+                title={`Current theme: ${theme === 'light' ? 'Light' : theme === 'sepia' ? 'Sepia' : 'Dark'}. Click to cycle theme.`}
+                className={`p-2 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 shadow-2xs ${activeTheme.button}`}
+              >
+                {theme === 'light' ? (
+                  <Sun className="w-4 h-4 text-amber-500" />
+                ) : theme === 'sepia' ? (
+                  <Coffee className="w-4 h-4 text-amber-500" />
+                ) : (
+                  <Moon className="w-4 h-4 text-indigo-400" />
+                )}
+              </button>
             )}
 
           </div>
 
+        </div>
+
+        {/* Sub-Header Metadata Ribbon: Book ID, Section, and Progress centered beneath the header */}
+        <div className={`w-full px-3 sm:px-6 md:px-8 py-1.5 border-t border-border/40 flex items-center justify-center text-[10px] sm:text-xs font-mono transition-colors duration-200 ${activeTheme.header}`}>
+          <div className="flex items-center justify-center gap-2 sm:gap-2.5 min-w-0 flex-wrap">
+            {bookId && (
+              <button
+                type="button"
+                onClick={() => setIsInfoCardOpen(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border border-primary-500/30 dark:border-primary-500/40 text-primary-600 dark:text-primary-400 bg-primary-500/10 hover:bg-primary-500/20 hover:border-primary-500/60 shadow-xs transition-all cursor-pointer select-none active:scale-95 shrink-0"
+                title="View Gutenberg Public Domain Archive Information"
+                aria-label="View Gutenberg Archive Volume Info"
+              >
+                <Info className="w-2.5 h-2.5 opacity-80 shrink-0" />
+                <span>Gutenberg #{bookId}</span>
+              </button>
+            )}
+
+            <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
+
+            {/* Section Micro-Pill */}
+            <div
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
+              title={`Current Section: Chapter ${currentChapterIndex + 1} of ${totalChapters}`}
+            >
+              <BookOpen className="w-3 h-3 opacity-75" />
+              <span>
+                Section {currentChapterIndex + 1}/{totalChapters}
+              </span>
+            </div>
+
+            <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
+
+            {/* Progress Micro-Pill */}
+            <div
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
+              title={`Overall Volume Progress: ${Math.round(progress)}%`}
+            >
+              <Sparkles className="w-3 h-3 text-primary-500" />
+              <span>{Math.round(progress)}% Progress</span>
+            </div>
+          </div>
         </div>
       </header>
 

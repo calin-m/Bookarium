@@ -6,6 +6,7 @@ import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export interface BookshelfRackProps {
   books: GutendexBook[];
@@ -31,13 +32,36 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   onDownloadClick,
 }) => {
   const router = useRouter();
-  const { isSaved: checkIsSaved, isLiked: checkIsLiked, toggleSaveBook: toggleSave, toggleLikeBook: toggleLike } = useHydratedBookshelf();
+  const {
+    isSaved: checkIsSaved,
+    isLiked: checkIsLiked,
+    toggleSaveBook: toggleSave,
+    toggleLikeBook: toggleLike,
+    cloudBookshelves,
+    activeBookshelfId,
+    setActiveBookshelfId,
+    isSyncing,
+  } = useHydratedBookshelf();
   const getProgress = useReaderStore((s) => s.getProgress);
+  const { user, openAuthModal } = useAuthStore();
 
   if (books.length === 0) {
     return (
-      <div className="py-16 text-center text-slate-400 font-sans">
-        <p className="text-base">No books found on this shelf.</p>
+      <div className="py-16 text-center text-muted-foreground font-sans space-y-3">
+        <p className="text-base font-medium text-foreground">No books found on this shelf.</p>
+        <p className="text-xs font-mono text-muted-foreground">
+          {user ? 'Save books from the catalog to build your collection.' : 'Saved books are stored locally in your browser.'}
+        </p>
+        {!user && (
+          <button
+            type="button"
+            onClick={() => openAuthModal('sign_in')}
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono font-bold text-primary border border-primary/40 rounded hover:bg-primary/10 transition-colors cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Sign In to Sync Across Devices</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -50,7 +74,52 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   }
 
   return (
-    <div className="w-full space-y-12 py-6" data-testid="bookshelf-rack">
+    <div className="w-full space-y-8 py-6" data-testid="bookshelf-rack">
+      {/* Cloud Bookshelf Header & Multi-Shelf Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {user && cloudBookshelves.length > 0 ? (
+            cloudBookshelves.map((shelf) => (
+              <button
+                key={shelf.id}
+                type="button"
+                onClick={() => setActiveBookshelfId(shelf.id)}
+                className={`px-3 py-1 text-xs font-mono rounded border transition-all cursor-pointer ${
+                  activeBookshelfId === shelf.id
+                    ? 'bg-primary text-primary-foreground border-primary font-bold shadow-xs'
+                    : 'bg-card text-foreground border-border hover:border-primary'
+                }`}
+              >
+                {shelf.name}
+              </button>
+            ))
+          ) : (
+            <div className="inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
+              <Bookmark className="w-3.5 h-3.5 text-primary" />
+              <span>Personal Collection ({books.length} volumes)</span>
+            </div>
+          )}
+        </div>
+
+        {/* Sync Status Badge */}
+        <div className="flex items-center gap-2">
+          {user ? (
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+              <Sparkles className="w-3 h-3" />
+              <span>{isSyncing ? 'Syncing...' : 'Cloud Synced'}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openAuthModal('sign_in')}
+              className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+            >
+              <span>Guest Mode (Local)</span>
+              <span className="text-primary font-bold">• Sign in to Sync</span>
+            </button>
+          )}
+        </div>
+      </div>
       {shelves.map((shelfBooks, shelfIndex) => (
         <div key={`shelf-${shelfIndex}-${shelfBooks[0]?.id || 0}`} className="relative z-10 hover:z-30">
           {/* Back wall of the shelf niche */}

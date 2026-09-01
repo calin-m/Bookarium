@@ -58,4 +58,31 @@ describe('Navbar component', () => {
     fireEvent.click(themeBtn);
     expect(useThemeStore.getState().theme).toBe('light');
   });
+
+  it('renders Sign In button for guests and triggers openAuthModal', () => {
+    render(<Navbar activeView="catalog" />);
+    const signInBtn = screen.getByRole('button', { name: /Sign In/i });
+    expect(signInBtn).toBeInTheDocument();
+  });
+
+  it('renders user avatar when authenticated and manages dropdown menu and sign out', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { display_name: 'Test Reader' } as any,
+    });
+
+    render(<Navbar activeView="catalog" />);
+    const userBtn = screen.getByLabelText('User Account Menu');
+    expect(userBtn).toBeInTheDocument();
+    expect(screen.getByText('Test Reader')).toBeInTheDocument();
+
+    // Open dropdown
+    fireEvent.click(userBtn);
+    expect(screen.getByText('Profile & Account')).toBeInTheDocument();
+    expect(screen.getByText('Sign Out')).toBeInTheDocument();
+
+    // Click Sign Out
+    fireEvent.click(screen.getByText('Sign Out'));
+  });
 });

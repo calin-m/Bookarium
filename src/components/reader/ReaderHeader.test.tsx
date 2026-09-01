@@ -24,7 +24,7 @@ describe('ReaderHeader', () => {
     render(<ReaderHeader {...defaultProps} />);
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
-    expect(screen.getByText('Jane Austen')).toBeInTheDocument();
+    expect(screen.getByText('by Jane Austen')).toBeInTheDocument();
     expect(screen.getByText(/Section 6\/61/i)).toBeInTheDocument();
     expect(screen.getByText(/45% Progress/i)).toBeInTheDocument();
   });
@@ -56,24 +56,43 @@ describe('ReaderHeader', () => {
     expect(onToggleControls).toHaveBeenCalledTimes(1);
   });
 
-  it('triggers right-side theme controls for light, sepia, and dark', () => {
+  it('triggers right-side theme cycling for light, sepia, and dark', () => {
     const onThemeChange = vi.fn();
 
-    render(
+    const { rerender } = render(
       <ReaderHeader
         {...defaultProps}
+        theme="light"
         onThemeChange={onThemeChange}
       />
     );
 
-    fireEvent.click(screen.getByLabelText('Dark Theme'));
+    // Light -> Sepia
+    const themeBtn = screen.getByLabelText(/Current theme: light/i);
+    fireEvent.click(themeBtn);
+    expect(onThemeChange).toHaveBeenCalledWith('sepia');
+
+    // Sepia -> Dark
+    rerender(
+      <ReaderHeader
+        {...defaultProps}
+        theme="sepia"
+        onThemeChange={onThemeChange}
+      />
+    );
+    fireEvent.click(screen.getByLabelText(/Current theme: sepia/i));
     expect(onThemeChange).toHaveBeenCalledWith('dark');
 
-    fireEvent.click(screen.getByLabelText('Light Theme'));
+    // Dark -> Light
+    rerender(
+      <ReaderHeader
+        {...defaultProps}
+        theme="dark"
+        onThemeChange={onThemeChange}
+      />
+    );
+    fireEvent.click(screen.getByLabelText(/Current theme: dark/i));
     expect(onThemeChange).toHaveBeenCalledWith('light');
-
-    fireEvent.click(screen.getByLabelText('Sepia Theme'));
-    expect(onThemeChange).toHaveBeenCalledWith('sepia');
   });
 
   it('opens and closes the Gutenberg Archive volume info modal', () => {
@@ -81,7 +100,7 @@ describe('ReaderHeader', () => {
 
     // Default: Literary title and author visible
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
-    expect(screen.getByText('Jane Austen')).toBeInTheDocument();
+    expect(screen.getByText('by Jane Austen')).toBeInTheDocument();
 
     const infoBtn = screen.getByLabelText(/View Gutenberg Archive Volume Info/i);
     fireEvent.click(infoBtn);
@@ -111,7 +130,7 @@ describe('ReaderHeader', () => {
     );
 
     const expectedCleanTitle = 'The German Classics of the Nineteenth and Twentieth Centuries, Masterpieces of German Literature Translated into English. in Twenty Volumes, Volume 01';
-    const expectedCleanAuthor = 'Kuno Francke and William Guild Howard';
+    const expectedCleanAuthor = 'by Kuno Francke and William Guild Howard';
 
     expect(screen.getByText(expectedCleanTitle)).toBeInTheDocument();
     expect(screen.getByText(expectedCleanAuthor)).toBeInTheDocument();
@@ -126,7 +145,21 @@ describe('ReaderHeader', () => {
       />
     );
 
-    expect(screen.getByText('F. Scott Fitzgerald')).toBeInTheDocument();
+    expect(screen.getByText('by F. Scott Fitzgerald')).toBeInTheDocument();
     expect(screen.queryByText('Classic Masterwork')).not.toBeInTheDocument();
+  });
+
+  it('renders the dedicated sub-header metadata ribbon with Book ID, Section, and Progress', () => {
+    render(<ReaderHeader {...defaultProps} bookId={1342} currentChapterIndex={4} totalChapters={20} progress={50} />);
+
+    // Gutenberg Archive ID badge in sub-header
+    expect(screen.getByRole('button', { name: /View Gutenberg Archive Volume Info/i })).toBeInTheDocument();
+    expect(screen.getByText(/Gutenberg #1342/i)).toBeInTheDocument();
+
+    // Section indicator
+    expect(screen.getByText(/Section 5\/20/i)).toBeInTheDocument();
+
+    // Progress indicator
+    expect(screen.getByText(/50% Progress/i)).toBeInTheDocument();
   });
 });

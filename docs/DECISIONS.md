@@ -24,3 +24,10 @@
 - **Decision**: Use TanStack React Query with a default `staleTime` of 5 minutes and optimistic updates where appropriate.
 - **Consequences**: Smooth browsing with minimal load on public API mirrors.
 
+## ADR-005: Supabase Authentication & Cloud Bookshelf Synchronization with Progressive Enhancement
+- **Status**: Accepted
+- **Context**: Users want to optionally register to sync custom bookshelves, reading progress, and preferences across devices without compromising the zero-barrier guest experience.
+- **Decision**: Adopt Supabase (PostgreSQL with Row Level Security and `@supabase/ssr`) via an Offline-First Progressive Enhancement pattern. Guest users read and save books locally via Zustand (`localStorage`). When signed in, local collections auto-migrate into PostgreSQL with bi-directional cloud sync.
+- **Consequences**: Cross-device synchronization, custom named bookshelves, zero friction for guest readers, robust RLS security.
+
+

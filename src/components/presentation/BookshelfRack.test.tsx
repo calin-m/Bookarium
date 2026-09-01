@@ -75,5 +75,11 @@ describe('BookshelfRack Component', () => {
     fireEvent.click(likeBtns[0]);
     expect(useBookshelfStore.getState().isBookLiked(mockBooks[0].id)).toBe(true);
   });
+
+  it('renders guest mode sync prompt and triggers auth modal', () => {
+    render(<BookshelfRack books={mockBooks} />);
+    expect(screen.getByText(/Guest Mode \(Local\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sign in to Sync/i)).toBeInTheDocument();
+  });
 });
 

@@ -73,7 +73,7 @@ describe('HeroSearch component', () => {
     const handleReadFeatured = vi.fn();
     renderWithClient(<HeroSearch search="" onReadFeaturedBook={handleReadFeatured} />);
 
-    const readBtns = screen.getAllByRole('button', { name: /Read Volume/i });
+    const readBtns = screen.getAllByRole('button', { name: /^Read$/i });
     expect(readBtns.length).toBeGreaterThanOrEqual(1);
     fireEvent.click(readBtns[0]);
     expect(handleReadFeatured).toHaveBeenCalled();
@@ -214,17 +214,24 @@ describe('HeroSearch component', () => {
     }
   });
 
-  it('should trigger onReadFeaturedBook from both left and right page action buttons in open state', () => {
+  it('should trigger onReadFeaturedBook from the action button in open state', () => {
     const handleReadFeatured = vi.fn();
     renderWithClient(<HeroSearch search="" onReadFeaturedBook={handleReadFeatured} />);
 
-    const readLinks = screen.getAllByRole('button', { name: /Read Volume/i });
-    expect(readLinks.length).toBeGreaterThanOrEqual(2);
+    const readBtn = screen.getByTestId('hero-book-read-btn');
+    expect(readBtn).toBeInTheDocument();
 
-    fireEvent.click(readLinks[0]);
+    fireEvent.click(readBtn);
     expect(handleReadFeatured).toHaveBeenCalledTimes(1);
+  });
 
-    fireEvent.click(readLinks[1]);
-    expect(handleReadFeatured).toHaveBeenCalledTimes(2);
+  it('renders static volume badge for desktop and responsive shuffle button for mobile on the cover', () => {
+    renderWithClient(<HeroSearch search="" />);
+    // Static volume badge on desktop cover
+    expect(screen.getAllByText(/Vol\./i).length).toBeGreaterThanOrEqual(1);
+
+    // Shuffle button on mobile cover
+    const coverShuffleBtn = screen.getByRole('button', { name: /Shuffle Passage/i });
+    expect(coverShuffleBtn).toHaveClass('lg:hidden');
   });
 });

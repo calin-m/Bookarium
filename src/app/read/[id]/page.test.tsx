@@ -159,16 +159,23 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('handles quick desktop theme switching', () => {
+  it('handles quick theme cycling from the header', () => {
     render(<BookReaderPage />);
 
-    const sepiaBtn = screen.getByLabelText('Sepia Theme');
-    fireEvent.click(sepiaBtn);
+    // Starts at light theme (set in beforeEach)
+    const themeBtn = screen.getByLabelText(/Current theme: light/i);
+    fireEvent.click(themeBtn);
     expect(useReaderStore.getState().theme).toBe('sepia');
 
-    const darkBtn = screen.getByLabelText('Dark Theme');
-    fireEvent.click(darkBtn);
+    // Sepia -> Dark
+    const sepiaThemeBtn = screen.getByLabelText(/Current theme: sepia/i);
+    fireEvent.click(sepiaThemeBtn);
     expect(useReaderStore.getState().theme).toBe('dark');
+
+    // Dark -> Light
+    const darkThemeBtn = screen.getByLabelText(/Current theme: dark/i);
+    fireEvent.click(darkThemeBtn);
+    expect(useReaderStore.getState().theme).toBe('light');
   });
 
   it('handles quick font size adjustments', () => {

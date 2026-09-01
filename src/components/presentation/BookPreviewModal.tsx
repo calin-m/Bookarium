@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Sparkles, ArrowRight, RotateCw, Quote, BookOpen, Bookmark, Heart, Download } from 'lucide-react';
+import { Sparkles, RotateCw, Quote, BookOpen, Bookmark, Heart, Download } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
 import { getBookPassages, BookPassage } from '@/config/featured-books';
 import { extractDynamicBookPassages } from '@/lib/gutenberg-parser';
@@ -9,6 +9,7 @@ import { useBookContent } from '@/hooks/queries/useBookContent';
 import { extractBookFormats, formatAuthorNames, formatPrimarySubject, formatDownloadCount } from '@/lib/utils';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 
 export interface ElementRect {
   top: number;
@@ -320,34 +321,35 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
                 {/* Right Page Footer Actions */}
                 <div className="pt-2.5 border-t border-border flex items-center justify-between gap-2">
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="chip"
                     onClick={handleShuffle}
                     disabled={isTurningLeaf || passages.length <= 1}
-                    className="inline-flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 rounded border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 group/shuf"
                     title="Shuffle through passages from this volume"
                     aria-label="Shuffle passage"
+                    className="group/shuf"
                   >
                     <RotateCw className={`w-3 h-3 transition-transform duration-500 ${isTurningLeaf ? 'animate-spin' : 'group-hover/shuf:rotate-180'}`} />
                     <span>Shuffle</span>
-                  </button>
+                  </Button>
 
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono text-muted-foreground opacity-60">p. 2</span>
                     {onReadBook && (
-                      <button
-                        type="button"
+                      <Button
+                        variant="primary"
+                        size="chip"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleClose();
                           onReadBook(book);
                         }}
-                        className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-primary-foreground bg-primary hover:opacity-90 px-3.5 py-1.5 rounded shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
                         aria-label={`Read ${book.title}`}
                       >
-                        <span>Read Volume</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>Read</span>
+                      </Button>
                     )}
                   </div>
                 </div>

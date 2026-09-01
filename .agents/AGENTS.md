@@ -22,10 +22,12 @@ Never manually craft static component matrices, route catalogs, or architectural
 - All architectural matrices and component inventories must be generated programmatically by `scripts/lib/ast-parser.js`.
 - No mock data or dead prototypes in production code paths.
 
-### Rule 3: Strict Testing & Coverage Co-location
-- Every component (`*.tsx`), hook (`*.ts`), store (`*.ts`), and route handler (`route.ts`) must have a co-located `*.test.ts` or `*.test.tsx` file.
-- Test coverage must never drop below 80% on lines, functions, statements, or branches (target: >= 85%).
-- Component tests must use `@testing-library/react` and MSW network isolation.
+### Rule 3: Strict Testing, Coverage Co-location & Anti-Regression Accuracy
+- **Mandatory Co-Evolution:** Whenever UI copy, component interfaces, DOM hierarchy, state structures, or user flows are modified, the co-located `*.test.ts` or `*.test.tsx` files MUST be updated in the same changeset to reflect the exact new behavioral contract.
+- **Zero Synthetic / Fake Tests (Anti-Tautology Protocol):** Tests must assert genuine user journeys, accessible roles (`getByRole`), state mutations, or router actions. Strictly prohibit tautological tests (e.g. `expect(true).toBe(true)`), shallow snapshot-only tests, or meaningless assertions designed solely to inflate coverage numbers.
+- **No False Positives (Strict Verification):** Never loosen assertions (e.g. replacing a precise element check with an overly generic query or catch-all wildcard) just to force a failing test to pass. Tests must fail if the feature, label, accessibility contract, or state handler is broken.
+- **No False Negatives (Deterministic Isolation):** Ensure component tests use MSW network isolation and `@testing-library/react` without flaky timing or unhandled side-effects.
+- **Coverage Floor:** Test coverage must never drop below 80% on lines, functions, statements, or branches (target: >= 85%). Co-location is strictly enforced for every component, hook, store, and route handler.
 
 ### Rule 4: Zero API Key Requirement & Public Domain Integrity
 - All book metadata and content fetching must strictly enforce `copyright=false` or verify public domain status (Zero-Copyright / CC0 / Gutenberg Public Domain).

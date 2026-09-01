@@ -22,7 +22,6 @@ const getHourlyServerSnapshot = () => {
 import {
   Search,
   X,
-  ArrowRight,
   ShieldCheck,
   Zap,
   Download,
@@ -30,6 +29,7 @@ import {
   Sparkles,
   RotateCw,
   Quote,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
@@ -437,35 +437,35 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
                     {/* Right Page Footer Actions */}
                     <div className="pt-2.5 border-t border-border flex items-center justify-between gap-2">
-                      <button
-                        type="button"
+                      <Button
+                        variant="outline"
+                        size="chip"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleNextPassage(e);
                         }}
-                        className="inline-flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 rounded border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                         title="Shuffle to Next Passage in this Book"
                         aria-label="Shuffle to Next Passage in this Book"
                         data-testid="hero-book-shuffle-btn"
                       >
                         <RotateCw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-500" />
                         <span>Shuffle</span>
-                      </button>
+                      </Button>
 
                       {onReadFeaturedBook && (
-                        <button
-                          type="button"
+                        <Button
+                          variant="primary"
+                          size="chip"
                           onClick={(e) => {
                             e.stopPropagation();
                             onReadFeaturedBook(activeFeatured.rawBook || activeFeatured);
                           }}
-                          className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-primary-foreground bg-primary hover:opacity-90 px-3.5 py-1.5 rounded shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                          aria-label="Read Volume"
+                          aria-label="Read"
                           data-testid="hero-book-read-btn"
                         >
-                          <span>Read Volume</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Read</span>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -543,10 +543,15 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                           <span className="flex items-center gap-1">
                             <Sparkles className="w-3 h-3 text-primary-400" /> Featured Book
                           </span>
+                          {/* Desktop: Clean Volume Label (user shuffles when book opens on hover) */}
+                          <span className="hidden lg:inline-block text-stone-400 font-mono tracking-widest text-[10px]">
+                            {activeFeatured.volumeNumber}
+                          </span>
+                          {/* Mobile: Interactive Shuffle Button on Cover */}
                           <button
                             type="button"
                             onClick={handleNextPassage}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                            className="lg:hidden inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
                             title="Shuffle Passage"
                             aria-label="Shuffle Passage"
                           >
@@ -576,18 +581,19 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                           {activeFeatured.license}
                         </span>
                         {onReadFeaturedBook && (
-                          <button
-                            type="button"
+                          <Button
+                            variant="primary"
+                            size="chip"
+                            className="lg:hidden"
                             onClick={(e) => {
                               e.stopPropagation();
                               onReadFeaturedBook(activeFeatured.rawBook || activeFeatured);
                             }}
-                            className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-primary-foreground bg-primary hover:opacity-90 px-3 py-1 rounded transition-colors"
-                            aria-label="Read Volume"
+                            aria-label="Read"
                           >
-                            <span>Read Volume</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
+                            <BookOpen className="w-3.5 h-3.5" />
+                            <span>Read</span>
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -620,21 +626,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
                       <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
                         <span className="truncate max-w-[140px]">{activeFeatured.primarySubject}</span>
-                        {onReadFeaturedBook ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onReadFeaturedBook(activeFeatured.rawBook || activeFeatured);
-                            }}
-                            className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-primary hover:underline cursor-pointer"
-                            aria-label="Read Volume"
-                          >
-                            <span>Read &rarr;</span>
-                          </button>
-                        ) : (
-                          <span className="opacity-60">p. 1</span>
-                        )}
+                        <span className="opacity-60">p. 1</span>
                       </div>
                     </div>
                   </div>

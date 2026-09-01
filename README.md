@@ -1,18 +1,19 @@
 # Bookarium — 100% Legal Public Domain Library & Reader
 
-> **Pure Literature. Zero Paywalls. Zero API Keys.**
+> **Pure Literature. Zero Paywalls. Zero API Keys Required.**
 
 [![Next.js 16](https://img.shields.io/badge/Next.js-16.3.3-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19.2.8-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.19-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Postgres-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vitest](https://img.shields.io/badge/Vitest-4.1.11-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.3%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.0%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
 
-An ultra-refined, high-performance web application for discovering, reading, and downloading 100% legal, public domain books (Zero-Copyright / CC0 / Gutenberg Public Domain). Built with **Next.js 16 App Router**, **TanStack React Query**, **Zustand offline persistence**, **Framer Motion**, and verified by a deterministic **7-Gateway Quality Engine**.
+An ultra-refined, high-performance web application for discovering, reading, and downloading 100% legal, public domain books (Zero-Copyright / CC0 / Gutenberg Public Domain). Built with **Next.js 16 App Router**, **Supabase Auth & Cloud Synchronization**, **TanStack React Query**, **Zustand offline-first persistence**, **Framer Motion**, and verified by a deterministic **7-Gateway Quality Engine**.
 
 ---
 
@@ -20,7 +21,7 @@ An ultra-refined, high-performance web application for discovering, reading, and
 
 Bookarium's visual identity and tactile layout are deeply inspired by classical editorial typography, archival letterpress printing, and modern Figma bookstore design systems:
 
-* **Figma Editorial Concept**: Inspired by the minimalist elegance of curated bookstore layouts (such as the *Booksaw / Classic Editorial Bookstore* design concepts on the Figma Community).
+* **Figma Editorial Concept**: Inspired by the minimalist elegance of curated bookstore layouts, specifically referencing the [Booksaw — Bookstore E-Commerce Website Design Template](https://www.figma.com/community/file/1521831984874247291/booksaw-bookstore-ecommerce-website-design-template) on the Figma Community.
 * **Open-Book Skeuomorphic Details**: Custom open-book card spreads with subtle center spine creases (`.book-center-crease`), realistic paper texture shadows (`shadow-booksaw`), and page depth elevation.
 * **Warm Editorial Palettes & 100% Solid Surfaces**:
   * **Day / Standard**: Crisp cream-paper tones (`#fcfbf9`, `#ffffff`) with rich obsidian ink typography and 100% solid, non-transparent surfaces.
@@ -30,28 +31,30 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v2.7.0)
+## 🛠️ Latest Improvements (v2.8.0)
 
+- **Supabase Authentication & Multi-Device Cloud Sync (ADR-005)** – Integrated Supabase Authentication (Email/Password, Magic Link OTP, OAuth) with PostgreSQL Row Level Security (RLS) tables (`public.profiles`, `public.bookshelves`, `public.bookshelf_items`, `public.reading_progress`). Supports multi-shelf collections and automated migration of guest bookmarks on first login.
+- **Offline-First Progressive Enhancement Pattern** – Guest readers retain 100% instant, friction-free access to all features, reading tools, and offline `localStorage` bookmarks with zero account creation requirement.
+- **Cryptographically Secure Strong Password Generator** – Built-in 16-character password generator (`[Suggest Strong Password]`) with one-click clipboard copying, a show/hide visibility toggle (`Eye` / `EyeOff`), real-time password strength meter, and `autoComplete="new-password"` native browser integration.
+- **In-Modal Email Verification & `/auth/callback` Route Handler** – User-friendly email verification feedback preventing premature session activation, paired with Next.js edge route handler `/auth/callback` for automated session token exchange upon clicking inbox verification links.
+- **Dedicated Profile & Reading Preferences Page (`/profile`)** – Standalone profile dashboard enabling readers to update display names with instant cloud save, select default reading atmosphere themes (*Light*, *Sepia*, *Dark*), inspect live cloud library statistics (*Saved Volumes*, *Liked Titles*, *Custom Shelves*), and manage account security.
+- **Unified Navigation & User Menu** – Standardized the top Navbar account button to render a unified `<UserIcon />` indicator for both guest "Sign In" and authenticated account dropdown menus with direct navigation to `/profile`.
+- **Polymorphic `<Button />` Component & `chip` Size Token** – Upgraded the core button primitive with type-safe `as` prop support (`as={Link}` or `as="a"`) and introduced the `chip` size token eliminating style duplication across links and buttons.
+- **Centered Editorial Sub-Header Ribbon in Reader (`ReaderHeader`)** – Extracted the clickable Gutenberg `#ID` metadata badge, active `Section X of Y` indicator, and `Z% Progress` metric into a dedicated, centered sub-header ribbon directly beneath the main title bar.
 - **Multi-Work Anthology & Romance Table of Contents Extraction** – Implemented Conditional Two-Phase chapter detection in the Gutenberg parser, self-healing complex anthologies and collections (such as Book 831 *Four Arthurian Romances*, *Dubliners*, etc.) with automatic footnote bracket stripping (`[11]`, `[21]`) and title-cased navigation in the Table of Contents drawer.
-- **Exact 100vh Viewport Fold & Filter Bar Alignment** – Mathematically aligned the Hero section and Sticky Catalog Toolbar so that on initial scroll-to-top ($y = 0$), the filter bar's bottom border sits precisely at the bottom edge of the viewport ($100\text{vh}$), transitioning smoothly to `top-16` sticky pinning during catalog browsing.
-- **Centralized Book Metadata & Author Resolution Service (SSOT)** – Encapsulated multi-tier metadata resolution (Preloaded Fixtures $\to$ Zustand Store $\to$ REST API Results $\to$ Gutenberg Raw Plaintext Header Extraction) into a single domain service ([`src/lib/book-metadata.ts`](src/lib/book-metadata.ts)) adhering to the Single Responsibility Principle and DRY.
-- **Natural Reading Order Author Normalizer (`formatAuthorNames`)** – Automatically formats raw catalog strings and strips catalog aliases/dates (e.g. `"Fitzgerald, F. Scott (Francis Scott)"` $\to$ `"F. Scott Fitzgerald"`, `"Austen, Jane, 1775-1817"` $\to$ `"Jane Austen"`) across all presentation cards, hero spotlights, preview modals, download drawers, and readers.
-- **Normalized Subject Parser (`formatPrimarySubject`)** – Strips Library of Congress Subject Headings (LCSH) sub-divisions and applies word-boundary truncation across catalog cards, preview modals, hero spotlights, and metadata resolvers.
-- **Centralized Reader Theme Resolver (`getReaderTheme`)** – Replaced repetitive manual dictionary fallbacks with a typed, centralized token getter across all reader surface, controls, header, footer, and drawer components.
-- **Hydrated Bookshelf Hook (`useHydratedBookshelf`)** – Encapsulated SSR-safe hydration guards with reactive bookshelf selectors (`isSaved`, `isLiked`, `savedCount`, `likedCount`) into a clean custom hook.
-- **Standalone Roman Numeral Chapter Segmentation** – Enhanced the Gutenberg parser to recognize standalone Roman numeral chapter headings (`I` through `IX` in *The Great Gatsby*, *The Picture of Dorian Gray*, etc.) in the Table of Contents drawer.
-- **Catalog Scroll Position & History-Aware Back Navigation** – Reader Back button navigates through browser history (`router.back()`), seamlessly returning readers to their exact previous catalog scroll coordinates, preserved search parameters, and active page numbers.
-- **Single-Click Brand Refresh & Fresh Homepage Reset** – Clicking/tapping the **Bookarium** brand logo in the header resets the view to catalog, scrolls instantly to the top ($y = 0$), and navigates to the clean root `/`, restoring the initial experience.
-- **Verified by the 7-Gateway Quality Engine** – 43/43 test files passed, 236/236 tests passed with **92.5% line coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 48/48 test files passed, 270/270 tests passed with **91.0% line coverage** and **80.5% branch coverage** (`npm run verify`).
 
-## 🌐 Data Sources & API References
+---
 
-Bookarium runs on an open, decentralized architecture requiring **Zero Third-Party Developer Keys**:
+## 🌐 Data Sources & Infrastructure
+
+Bookarium runs on an open, decentralized architecture requiring **Zero Paid Developer Keys**:
 
 | Service / Source | Endpoint / Provider | Description & Usage |
 |---|---|---|
 | **Gutendex REST API** | [`https://gutendex.com/`](https://gutendex.com/) | Open-source JSON Web API indexing over 70,000+ Project Gutenberg public domain titles. Provides search, topic filters, author timelines, download metrics, and metadata with strict `copyright=false` filtering. |
 | **Project Gutenberg CDN** | [`https://www.gutenberg.org/`](https://www.gutenberg.org/) | Direct content delivery network providing unabridged plain text (`.txt`), official EPUB packages (`.epub.images`, `.epub.noimages`), Kindle/MOBI formats, and web-ready HTML. |
+| **Supabase (Auth & Postgres)** | [`https://supabase.com/`](https://supabase.com/) | Optional cloud authentication and PostgreSQL synchronization for custom bookshelves and reading progress using Row Level Security (RLS). |
 | **Public Domain Archive Proxy** | `/api/books` & `/api/books/content` | Next.js server-side route proxies providing caching, CORS handling, and guaranteed public domain integrity before client delivery. |
 
 ---
@@ -137,50 +140,54 @@ The catalog can be filtered by the following language options (ISO‑639‑1 cod
 flowchart TD
     User["👤 Reader / Literature Enthusiast"]
     
-    subgraph ClientApp ["Bookarium Next.js 16 SPA (src/app/page.tsx)"]
+    subgraph ClientApp ["Bookarium Next.js 16 App"]
         Nav["Navigation & Brand Reset (Navbar.tsx)"]
         Hero["Hero Search & Subject Chips (HeroSearch.tsx)"]
         Grid["Interactive Book Grid & Filtering (BookGrid.tsx)"]
         Card["Book Card Component (BookCard.tsx)"]
-        Quotes["Dynamic Literary Quotes (LiteraryQuotes.tsx)"]
         Reader["Dedicated In-Browser Reader (src/app/read/[id]/page.tsx)"]
-        Drawer["Multi-Format Download Drawer (DownloadDrawer.tsx)"]
-        BackToTopComp["Floating Back to Top Button (BackToTop.tsx)"]
-        FooterComp["Site Footer & Stats (Footer.tsx)"]
+        Profile["Profile & Reading Preferences (src/app/profile/page.tsx)"]
+        AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• queue: []\n• history: []\n• likedBookIds: []")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• fontSize (12-36px)\n• fontFamily (serif/sans/mono)\n• columnWidth (narrow/normal/wide)\n• progress: {}")]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• cloudBookshelves: []\n• likedBookIds: []")]
+        StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• fontSize / spacing\n• progress: {}")]
         
         QueryBooks["🔄 useBooks(query, topic, page)"]
         QueryContent["🔄 useBookContent(textUrl, bookId)"]
         
-        Nav -->|View Bookshelf / Reset| StoreShelf
+        Nav -->|Open Auth / Profile| StoreAuth
+        Nav -->|View Bookshelf| StoreShelf
         Hero -->|Filter Query| QueryBooks
         QueryBooks --> Grid
         Grid --> Card
-        Card -->|Open Reader Route| Reader
-        Card -->|Open Downloads| Drawer
-        Card -->|Bookmark / Like| StoreShelf
-        Quotes -->|Read Volume| Reader
+        Card -->|Open Reader| Reader
+        Card -->|Save / Like| StoreShelf
         Reader --> StoreReader
         Reader --> QueryContent
-        BackToTopComp -->|Smooth Scroll| Nav
-        FooterComp --> Nav
+        Profile --> StoreAuth
+        Profile --> StoreShelf
     end
 
-    subgraph APILayer ["100% Live Dual-Gateway Data Pipeline"]
-        ProxyRoute["Gateway 1: GET /api/books\n(SSR Proxy with 6s Timeout)"]
-        DirectUpstream["Gateway 2: Direct Upstream Fetch\n(Client-Side Failover Bypasses 504s)"]
-        ContentProxy["GET /api/books/content\n(Unabridged Text Stream)"]
-        GutendexAPI["🌐 Gutendex REST API\n(70,000+ Gutenberg Titles)"]
-        GutenbergContent["🌐 Project Gutenberg Content CDN\n(text/plain & EPUB)"]
+    subgraph BackendServices ["Live Data & Cloud Synchronization"]
+        ProxyRoute["Gateway 1: GET /api/books\n(SSR Proxy)"]
+        DirectUpstream["Gateway 2: Direct Upstream Fetch\n(Client Failover)"]
+        ContentProxy["GET /api/books/content\n(Text Stream)"]
+        AuthCallback["GET /auth/callback\n(Session Token Exchange)"]
         
-        QueryBooks -->|Primary| ProxyRoute
+        GutendexAPI["🌐 Gutendex REST API\n(70,000+ Titles)"]
+        GutenbergContent["🌐 Gutenberg Content CDN\n(text/plain & EPUB)"]
+        SupabaseCloud[("⚡ Supabase Cloud\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves & Profiles)")]
+        
+        QueryBooks --> ProxyRoute
         ProxyRoute --> GutendexAPI
-        QueryBooks -.->|Failover on Timeout/504| DirectUpstream
+        QueryBooks -.->|Failover| DirectUpstream
         DirectUpstream --> GutendexAPI
         QueryContent --> ContentProxy
         ContentProxy --> GutenbergContent
+        StoreAuth <-->|Session / Profiles| SupabaseCloud
+        StoreShelf <-->|Cloud Sync (RLS)| SupabaseCloud
+        AuthCallback <-->|Code Exchange| SupabaseCloud
     end
 
     subgraph QualityGateEngine ["7-Gateway Verification Engine"]
@@ -196,7 +203,7 @@ flowchart TD
         VerifyScript --> Changelog
     end
 
-    User <-->|Search, Read, Download| ClientApp
+    User <-->|Browse, Read, Sync| ClientApp
     ClientApp -.->|Validated by| VerifyScript
 ```
 
@@ -260,6 +267,16 @@ flowchart LR
 ### Prerequisites
 - **Node.js**: `>= 20.0.0` (Node 22 LTS recommended)
 - **npm**: `>= 10.0.0`
+
+### Environment Configuration (Optional - for Cloud Bookshelf Sync)
+Create a `.env.local` file in the project root with your public Supabase project credentials:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+*(If no Supabase credentials are provided, Bookarium operates seamlessly in 100% offline-first mode using browser storage).*
 
 ### Installation & Local Development
 

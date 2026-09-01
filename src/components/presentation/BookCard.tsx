@@ -173,21 +173,24 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-2 mt-0.5">
-          <Link
+          <Button
+            as={Link}
             href={`/read/${book.id}`}
             onClick={() => useReaderStore.getState().openReader(book)}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs bg-primary hover:opacity-90 text-primary-foreground rounded font-mono uppercase tracking-wider font-bold transition-opacity shadow-xs active:scale-[0.98]"
+            variant="primary"
+            size="chip"
+            className="w-full"
             aria-label={`Read ${book.title}`}
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Read</span>
-          </Link>
+          </Button>
 
           <Button
             variant="outline"
-            size="sm"
+            size="chip"
             onClick={() => onDownloadClick?.(book)}
-            className="w-full gap-1.5 text-xs rounded border-border hover:bg-muted text-foreground font-mono uppercase tracking-wider font-medium"
+            className="w-full"
             aria-label={`Download options for ${book.title}`}
           >
             <Download className="w-3.5 h-3.5" />

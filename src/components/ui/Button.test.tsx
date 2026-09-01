@@ -31,5 +31,18 @@ describe('Button component', () => {
     expect(button).toHaveClass('border');
     expect(button).toHaveClass('custom-btn');
   });
+
+  it('should render polymorphically with as="a" and apply chip size styling', () => {
+    render(
+      <Button as="a" href="/read/1342" variant="primary" size="chip">
+        Read Book
+      </Button>
+    );
+
+    const link = screen.getByRole('link', { name: /read book/i });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', '/read/1342');
+    expect(link).toHaveClass('px-3', 'py-1', 'text-xs', 'font-sans');
+  });
 });
 

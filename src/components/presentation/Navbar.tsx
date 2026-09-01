@@ -1,10 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee } from 'lucide-react';
+import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon, LogOut } from 'lucide-react';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useThemeStore } from '@/stores/useThemeStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/Button';
 
 export interface NavbarProps {
@@ -17,9 +19,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onViewChange,
 }) => {
   const router = useRouter();
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { savedCount, likedCount, hasMounted } = useHydratedBookshelf();
   const theme = useThemeStore((s) => s.theme);
   const cycleTheme = useThemeStore((s) => s.cycleTheme);
+  const { user, profile, openAuthModal, signOut } = useAuthStore();
 
   const handleBrandClick = () => {
     onViewChange?.('catalog');
@@ -123,6 +127,67 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <div className="h-4 w-[1px] bg-border mx-0.5 sm:mx-1" />
 
+          {/* User Account / Sign In */}
+          {hasMounted && (
+            user ? (
+              <div className="relative flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono border border-border bg-card hover:border-primary text-foreground transition-all cursor-pointer select-none active:scale-95 shadow-2xs"
+                  aria-label="User Account Menu"
+                >
+                  <UserIcon className="w-3.5 h-3.5 text-primary" />
+                  <span className="hidden md:inline max-w-[90px] truncate">
+                    {profile?.display_name || user.email?.split('@')[0]}
+                  </span>
+                </button>
+
+                {isUserMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl p-2 z-50 text-xs font-mono space-y-1 animate-in fade-in duration-150">
+                      <div className="px-3 py-2 border-b border-border/60 text-muted-foreground truncate">
+                        <p className="font-bold text-foreground truncate">{profile?.display_name || 'Reader'}</p>
+                        <p className="text-[10px] opacity-80 truncate">{user.email}</p>
+                      </div>
+                      <Link
+                        href="/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:bg-muted transition-colors cursor-pointer text-left font-bold"
+                      >
+                        <UserIcon className="w-3.5 h-3.5 text-primary" />
+                        <span>Profile & Account</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          signOut();
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer text-left font-bold"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="chip"
+                onClick={() => openAuthModal('sign_in')}
+                aria-label="Sign In"
+                className="font-mono text-xs font-bold"
+              >
+                <UserIcon className="w-3 h-3 text-primary" />
+                <span className="hidden sm:inline">Sign In</span>
+              </Button>
+            )
+          )}
+
           {/* 3-Way Universal Theme Switcher (Light -> Sepia -> Dark) */}
           {(() => {
             const currentTheme = hasMounted ? theme : 'light';
@@ -132,7 +197,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 size="icon"
                 onClick={cycleTheme}
                 aria-label={`Current theme: ${currentTheme}. Click to switch theme.`}
-                className="h-8 w-8 rounded text-muted-foreground hover:text-foreground"
+                className="h-8 w-8 rounded text-muted-foreground hover:text-foreground shrink-0"
               >
                 {currentTheme === 'light' ? (
                   <Sun className="w-4 h-4 text-amber-500" />

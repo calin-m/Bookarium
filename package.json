@@ -28,6 +28,8 @@
     "gate:approve": "node scripts/approval-gate.js"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4",
     "@tanstack/react-query": "^5.62.8",
     "clsx": "^2.1.1",
     "framer-motion": "^11.15.0",

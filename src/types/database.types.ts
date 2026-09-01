@@ -1,0 +1,140 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          display_name: string | null;
+          preferred_theme: string | null;
+          font_size: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          display_name?: string | null;
+          preferred_theme?: string | null;
+          font_size?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          display_name?: string | null;
+          preferred_theme?: string | null;
+          font_size?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      bookshelves: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      bookshelf_items: {
+        Row: {
+          id: string;
+          bookshelf_id: string;
+          user_id: string;
+          book_id: number;
+          book_title: string;
+          book_authors: string[];
+          cover_url: string | null;
+          added_at: string;
+        };
+        Insert: {
+          id?: string;
+          bookshelf_id: string;
+          user_id: string;
+          book_id: number;
+          book_title: string;
+          book_authors?: string[];
+          cover_url?: string | null;
+          added_at?: string;
+        };
+        Update: {
+          id?: string;
+          bookshelf_id?: string;
+          user_id?: string;
+          book_id?: number;
+          book_title?: string;
+          book_authors?: string[];
+          cover_url?: string | null;
+          added_at?: string;
+        };
+        Relationships: [];
+      };
+      reading_progress: {
+        Row: {
+          id: string;
+          user_id: string;
+          book_id: number;
+          current_chapter_index: number;
+          progress_percent: number;
+          scroll_offset: number;
+          last_read_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          book_id: number;
+          current_chapter_index?: number;
+          progress_percent?: number;
+          scroll_offset?: number;
+          last_read_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          book_id?: number;
+          current_chapter_index?: number;
+          progress_percent?: number;
+          scroll_offset?: number;
+          last_read_at?: string;
+        };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+}
+
+export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type Bookshelf = Database['public']['Tables']['bookshelves']['Row'];
+export type BookshelfItem = Database['public']['Tables']['bookshelf_items']['Row'];
+export type ReadingProgress = Database['public']['Tables']['reading_progress']['Row'];
