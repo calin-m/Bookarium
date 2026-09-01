@@ -6,6 +6,13 @@ import { useThemeStore, applyThemeToDocument } from './useThemeStore';
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
 
+export interface BookReadingPosition {
+  chapterIndex: number;
+  chapterPage: number;
+  globalPage: number;
+  lastReadAt: string;
+}
+
 export interface ReaderState {
   currentBook: GutendexBook | null;
   isOpen: boolean;
@@ -14,6 +21,7 @@ export interface ReaderState {
   fontFamily: ReaderFontFamily;
   theme: ReaderTheme;
   readingProgress: Record<number, number>;
+  readingPositions: Record<number, BookReadingPosition>;
 
   // Actions
   openReader: (book: GutendexBook) => void;
@@ -24,6 +32,9 @@ export interface ReaderState {
   setTheme: (theme: ReaderTheme) => void;
   setProgress: (bookId: number, progress: number) => void;
   getProgress: (bookId: number) => number;
+  saveReadingPosition: (bookId: number, position: BookReadingPosition) => void;
+  getReadingPosition: (bookId: number) => BookReadingPosition | null;
+  clearReadingPosition: (bookId: number) => void;
 }
 
 export const useReaderStore = create<ReaderState>()(
@@ -36,6 +47,7 @@ export const useReaderStore = create<ReaderState>()(
       fontFamily: 'serif',
       theme: 'light',
       readingProgress: {},
+      readingPositions: {},
 
       openReader: (book) => {
         set({ currentBook: book, isOpen: true });
@@ -77,6 +89,27 @@ export const useReaderStore = create<ReaderState>()(
 
       getProgress: (bookId) => {
         return get().readingProgress[bookId] ?? 0;
+      },
+
+      saveReadingPosition: (bookId, position) => {
+        set((state) => ({
+          readingPositions: {
+            ...state.readingPositions,
+            [bookId]: position,
+          },
+        }));
+      },
+
+      getReadingPosition: (bookId) => {
+        return get().readingPositions[bookId] ?? null;
+      },
+
+      clearReadingPosition: (bookId) => {
+        set((state) => {
+          const next = { ...state.readingPositions };
+          delete next[bookId];
+          return { readingPositions: next };
+        });
       },
     }),
     {

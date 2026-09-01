@@ -22,6 +22,7 @@ import {
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useThemeStore, type AppTheme } from '@/stores/useThemeStore';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
 import { Button } from '@/components/ui/Button';
@@ -32,6 +33,7 @@ export default function ProfilePage() {
   const { user, profile, isLoading, updateProfile, signOut, openAuthModal } = useAuthStore();
   const { savedCount, likedCount, cloudBookshelves } = useHydratedBookshelf();
   const { theme, setTheme } = useThemeStore();
+  const { stickyScrollEnabled, setStickyScrollEnabled } = usePreferencesStore();
 
   const defaultName = profile?.display_name || user?.user_metadata?.display_name || '';
   const [customName, setCustomName] = useState<string | null>(null);
@@ -233,10 +235,10 @@ export default function ProfilePage() {
               </form>
             </div>
 
-            {/* Reading Preferences Card */}
-            <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-4">
+            {/* Reading & Navigation Preferences Card */}
+            <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
               <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
-                Reading Preferences
+                Reading & Navigation Preferences
               </h2>
 
               <div className="space-y-3">
@@ -281,6 +283,56 @@ export default function ProfilePage() {
                   >
                     <Moon className="w-4 h-4" />
                     <span>Dark</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Catalog Sticky Navigation Mode */}
+              <div className="space-y-3 pt-4 border-t border-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <label className="text-xs font-mono text-foreground font-bold block">
+                    Catalog Navigation & Sticky Scroll
+                  </label>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    {stickyScrollEnabled ? 'Smart Auto-Hide Active' : 'Always Fixed Active'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStickyScrollEnabled(true)}
+                    className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                      stickyScrollEnabled
+                        ? 'bg-primary/10 border-primary text-foreground shadow-xs'
+                        : 'bg-card border-border hover:bg-muted/60 text-muted-foreground'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs font-mono font-bold text-foreground">Smart Auto-Hide</span>
+                      {stickyScrollEnabled && <Check className="w-4 h-4 text-primary" />}
+                    </div>
+                    <p className="text-[11px] font-sans text-muted-foreground leading-relaxed">
+                      Directional scroll auto-hides header and filter bar during browsing to maximize book reading space.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStickyScrollEnabled(false)}
+                    className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                      !stickyScrollEnabled
+                        ? 'bg-primary/10 border-primary text-foreground shadow-xs'
+                        : 'bg-card border-border hover:bg-muted/60 text-muted-foreground'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs font-mono font-bold text-foreground">Always Fixed</span>
+                      {!stickyScrollEnabled && <Check className="w-4 h-4 text-primary" />}
+                    </div>
+                    <p className="text-[11px] font-sans text-muted-foreground leading-relaxed">
+                      Keeps the header and filter toolbar stationary at the top of your screen at all times.
+                    </p>
                   </button>
                 </div>
               </div>

@@ -12,11 +12,13 @@ import { Button } from '@/components/ui/Button';
 export interface NavbarProps {
   activeView?: 'catalog' | 'bookshelf' | 'likes';
   onViewChange?: (view: 'catalog' | 'bookshelf' | 'likes') => void;
+  isVisible?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeView = 'catalog',
   onViewChange,
+  isVisible = true,
 }) => {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -42,7 +44,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-background border-b border-border transition-all duration-300">
+    <header
+      className={`sticky top-0 z-40 w-full bg-background border-b border-border transition-transform duration-300 ease-in-out ${
+        isVisible ? 'translate-y-0' : '-translate-y-full pointer-events-none'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Brand */}
         <div

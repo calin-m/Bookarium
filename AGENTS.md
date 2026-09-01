@@ -14,7 +14,7 @@ Welcome to **Bookarium**. When contributing or generating code for this reposito
 5. **Co-located Testing & Anti-Regression Accuracy**: Every single component (`*.tsx`), hook (`*.ts`), store (`*.ts`), and route handler (`route.ts`) must have an adjacent `*.test.ts` or `*.test.tsx` testing authentic user journeys with `@testing-library/react` and MSW. Zero synthetic/fake tests, no loose assertions, and mandatory co-evolution on every code change.
 6. **Coverage Enforcement**: Never allow test coverage to drop below 80% on lines, functions, statements, or branches (target: >= 85%).
 7. **Git Protocol (Human Execution Only)**: Provide in-depth structured conventional commit commands (`[PHASE]`, `[WHY]`, `[WHAT]`, `[VERIFICATION]`) only when explicitly requested by the user. AI agents must never execute `git commit` or `git push` directly.
-8. **7-Gateway Quality Engine**: Run `npm run verify` prior to proposing commits to guarantee zero errors across all passes.
+8. **7-Gateway Quality Engine**: Run `npm run verify` only when explicitly requested by the user or when actively investigating/debugging an encountered error in code to guarantee zero errors across all passes.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -39,13 +39,15 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
     }
     if (onPreviewClick) {
       const cardEl = cardRef.current || ((e.currentTarget as HTMLElement).closest('[data-testid^="book-card-"]') as HTMLElement);
-      const rect = cardEl ? cardEl.getBoundingClientRect() : (e.currentTarget as HTMLElement).getBoundingClientRect();
-      onPreviewClick(book, {
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-      });
+      if (cardEl) {
+        const rect = cardEl.getBoundingClientRect();
+        onPreviewClick(book, {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
     }
   };
 
@@ -53,7 +55,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
     <Card
       ref={cardRef}
       variant="default"
-      className={`group relative flex flex-col h-full bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1 rounded-xl overflow-hidden ${
+      className={`group relative flex flex-col h-full bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover rounded-xl overflow-hidden transition-[box-shadow,border-color,opacity] duration-300 ease-out ${
         isPreviewActive ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
       data-testid={`book-card-${book.id}`}

@@ -14,8 +14,10 @@ import { Footer } from '@/components/presentation/Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
+import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/mocks/handlers';
 import { Trash2, BookOpen, Quote, ArrowRight } from 'lucide-react';
@@ -24,8 +26,11 @@ import { Button } from '@/components/ui/Button';
 function HomeContent() {
   const router = useRouter();
   const hasMounted = useHasMounted();
+  const stickyScrollEnabled = usePreferencesStore((s) => s.stickyScrollEnabled);
+  const { isHeaderVisible, isToolbarVisible } = useScrollDirection({ enabled: stickyScrollEnabled });
   const [selectedDownloadBook, setSelectedDownloadBook] = useState<GutendexBook | null>(null);
   const [selectedPreviewBook, setSelectedPreviewBook] = useState<GutendexBook | null>(null);
+  const [activePreviewBookId, setActivePreviewBookId] = useState<number | null>(null);
   const [previewOriginRect, setPreviewOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
   // Bookshelf store items (hydrated safely on mount)
@@ -141,7 +146,7 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-200">
-      <Navbar activeView={activeView} onViewChange={setActiveView} />
+      <Navbar activeView={activeView} onViewChange={setActiveView} isVisible={isHeaderVisible} />
 
       <main className={`flex-1 transition-all duration-300 ${isFilterDrawerOpen ? 'lg:pl-96' : 'lg:pl-0'}`}>
         {activeView === 'catalog' && (
@@ -204,6 +209,8 @@ function HomeContent() {
             isError={isError}
             pageSize={pageSize}
             onPageSizeChange={setPageSize}
+            isHeaderVisible={isHeaderVisible}
+            isVisible={isToolbarVisible}
           />
         )}
 
@@ -277,9 +284,10 @@ function HomeContent() {
             onDownloadClick={(book) => setSelectedDownloadBook(book)}
             onPreviewClick={(book, rect) => {
               setSelectedPreviewBook(book);
+              setActivePreviewBookId(book.id);
               setPreviewOriginRect(rect || null);
             }}
-            activePreviewBookId={selectedPreviewBook?.id ?? null}
+            activePreviewBookId={activePreviewBookId}
             viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}
             onViewModeChange={setViewMode}
             showViewToggle={false} // Managed by StickyToolbar
@@ -363,12 +371,17 @@ function HomeContent() {
         book={selectedPreviewBook}
         originRect={previewOriginRect}
         isOpen={Boolean(selectedPreviewBook)}
+        onWillClose={() => {
+          setActivePreviewBookId(null);
+        }}
         onClose={() => {
           setSelectedPreviewBook(null);
+          setActivePreviewBookId(null);
           setPreviewOriginRect(null);
         }}
         onReadBook={(book) => {
           setSelectedPreviewBook(null);
+          setActivePreviewBookId(null);
           setPreviewOriginRect(null);
           useReaderStore.getState().openReader(book);
           router.push(`/read/${book.id}`);

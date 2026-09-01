@@ -207,4 +207,49 @@ describe('Home page integration', () => {
     fireEvent.click(catalogBtn);
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
   });
+
+  // =========================================================================
+  // END-TO-END MULTI-STEP USER JOURNEYS (In-Memory E2E via Vitest)
+  // =========================================================================
+  it('E2E Journey: full catalog search -> preview open -> reader launch -> shelf curation', async () => {
+    renderHome();
+
+    // Step 1: User performs catalog search
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'Pride' } });
+
+    // Step 2: User filters by topic chip
+    const topicChip = screen.getByTestId('topic-chip-fiction');
+    fireEvent.click(topicChip);
+
+    // Step 3: User opens 3D preview on first book
+    const card = screen.getByTestId(`book-card-${mockBooks[0].id}`);
+    expect(card).toBeInTheDocument();
+
+    const previewTrigger = screen.getByLabelText(`Flip open 3D preview for ${mockBooks[0].title}`);
+    fireEvent.click(previewTrigger);
+    expect(screen.getByTestId('book-preview-modal')).toBeInTheDocument();
+
+    // Step 4: User launches reader from book card
+    const readBtns = screen.getAllByLabelText(`Read ${mockBooks[0].title}`);
+    fireEvent.click(readBtns[0]);
+
+    // Verify Reader Store was populated
+    expect(useReaderStore.getState().currentBook?.id).toBe(mockBooks[0].id);
+
+    // Step 5: User saves book to personal shelf
+    useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
+    useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
+
+    expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
+    expect(useBookshelfStore.getState().likedBookIds).toHaveLength(1);
+
+    // Step 6: User switches to Bookshelf view
+    const bookshelfTab = screen.getByRole('button', { name: /^Bookshelf$/i });
+    fireEvent.click(bookshelfTab);
+
+    expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
+    expect(screen.getByText(/General Shelf/i)).toBeInTheDocument();
+  });
 });
+

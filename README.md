@@ -2,13 +2,14 @@
 
 > **Pure Literature. Zero Paywalls. Zero API Keys Required.**
 
-[![Next.js 16](https://img.shields.io/badge/Next.js-16.3.3-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![React 19](https://img.shields.io/badge/React-19.2.8-61DAFB?style=flat-square&logo=react)](https://react.dev/)
-[![TypeScript 5](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.19-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
-[![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Postgres-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-4.1.11-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.0%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Next.js](https://img.shields.io/badge/Next.js-16.3.3-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.0.0-blue?style=flat-square&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
+[![Vitest](https://img.shields.io/badge/Vitest-50%20Suites%20%7C%20304%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.3%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
@@ -33,6 +34,9 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ## 🛠️ Latest Improvements (v1.4.0)
 
+- **User-Configurable Sticky Scroll Preferences (`/profile`)** – Added user preference setting in the Profile dashboard allowing readers to choose between **Smart Auto-Hide** (directional auto-hide to maximize reading space) and **Always Fixed** (stationary header and toolbar pinned at top). Persisted across browser sessions with `usePreferencesStore`.
+- **Directional Scroll-Aware Header & Flush Filter Bar Docking** – Dynamic directional scroll detection with session-isolated stepping. Scrolling down smoothly translates the Header (`Navbar`) upward out of sight while docking the `StickyCatalogToolbar` flush to `top-0`, maximizing screen real estate. Scrolling up immediately slides the Header back down into view while pushing the toolbar smoothly to `top-16`.
+- **Exact-Page Bookmarking & Auto-Resume Engine** – Automatic persistence of exact chapter and page positions (`readingPositions`) in `useReaderStore`. Opening any book instantly restores the reader to the exact paragraph and page left off, accompanied by a non-intrusive "Resumed at Chapter X, Page Y" toast with 1-click Restart.
 - **Tactile Hardwood Bookshelves & Library Aesthetics (ADR-006)** – Unified bookcase architecture with rich multi-stop walnut wood rails, top specular bevel lines, ambient alcove spotlighting (`.shelf-ambient-niche`), and dedicated Dark/Sepia wood gradients. Guarantees 100% flush base contact across mobile touch-scroll and desktop viewports.
 - **3D Convex Book Spine Physics & Hot-Foil Typography** – Cylindrical 3D specular lighting overlay (`.book-spine-convex`) simulating authentic curved hardcover bindings and hinge creases, complemented by `.spine-emboss-gold` and `.spine-emboss-silver` hot-foil gilded serif typography and volume seals.
 - **Grounded Pull-Forward Scale Physics** – Upgraded spine hover interaction to an anchored pull-forward expansion (`scale-105 origin-bottom`) with deep cast contact shadows on the hardwood rail below.
@@ -40,7 +44,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
 - **Strict 0% Page 1 Reading Progress & Verified Profiles** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user profiles (`/profile`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 48/48 test files passed, 284/284 tests passed with **90.7% line coverage** and **80.3% branch coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 50/50 test files passed, 304/304 tests passed with **91.3% line coverage** and **80.9% branch coverage** (`npm run verify`).
 
 ---
 
@@ -79,6 +83,15 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * **Comprehensive Literary Typography**: Full-bodied literary excerpts and opening reflections typeset with balanced line-clamping (`line-clamp-8`) to naturally fill the 2-page spreads without UI overlap.
   * In-book passage shuffle button to cycle through narrative acts and chapters of the open volume without page reloads.
   * 1-Click instant reader handoff with 0ms metadata population.
+* **Interactive 3D Book Preview Modal & FLIP Physical Landing**:
+  * Clicking "Preview Volume" on any catalog book card triggers a seamless 3D hardcover modal with fluid FLIP geometry transitions.
+  * Measures precise viewport-safe bounds (`document.documentElement.clientWidth`) and preserves exact $1.000\times$ typography scales, delivering zero font distortion and seamless subpixel return landing without jumps or pops.
+  * Features live in-modal chapter shuffling, opening act excerpts, and instant reader handoff.
+* **Directional Stepped Scroll Navigation & User Profile Preferences**:
+  * Dynamic scroll detection (`useScrollDirection`) with session-isolated continuous gesture locking (180ms debounce).
+  * Smoothly hides top header on first scroll down, docks filter bar to `top-0`, and hides the filter bar on second scroll for 100% immersive book viewing.
+  * 1-gesture up-scroll immediately reveals the filter bar at `top-0` for instant page jumping and filter tweaking.
+  * User-configurable in the User Profile (`/profile`) between **Smart Auto-Hide** and **Always Fixed**.
 * **Collapsible Left-Side Catalog Filter Sidebar & Push-Content Desktop Layout**:
   * Slide-out left-docked filter drawer (`slide-in-from-left duration-300`) with zero dark background dimming.
   * On desktop, opening filters smoothly pushes the entire webpage content (`<main>`) to the right (`lg:pl-96 duration-300`), allowing non-blocking side-by-side catalog browsing and live filter tweaking.
@@ -95,6 +108,7 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * **Multi-Shelf Categories & General View**: Master "General" view displaying all library volumes alongside custom collections, with a floating "Move to Shelf" selector on spine hover cards.
   * **Grounded Pull-Forward Hover**: Physical scaling (`scale-105 origin-bottom`) pulling the volume forward toward the reader with instant `Read`, `Download`, and `Bookmark` actions.
 * **Dedicated In-Browser Focus Reader (`/read/[id]`)**:
+  * **Exact-Page Bookmarking & Auto-Resume**: Automatic persistence of exact chapter and page coordinates (`readingPositions`) in `useReaderStore`. Opening any volume displays a non-intrusive "Resumed at Chapter X, Page Y" toast with a 1-click Restart option.
   * **Triple-Tier Metadata Resolution & Gutenberg Archive Modal**: Instant reader metadata resolution (Store $\to$ Plain-Text Header Parsing $\to$ API) with an interactive `[ ℹ️ #VolumeID ]` badge that opens a detailed Gutenberg Public Domain Archive modal without causing any header layout shifts.
   * **Edge-to-Edge Symmetrical Reader Toolbars**: Full-width top navigation header and bottom footer with mathematically locked center progress badges and page jumpers, eliminating layout drift across varying book and chapter title lengths.
   * **Tactile Hardware-Accelerated Page-Turn Opacity Transitions**: Smooth 180ms ease-out opacity micro-transitions (`animate-page-turn`) paired with motion-safe scroll-to-top on page flips, Next/Prev actions, and catalog grid browsing with automatic `prefers-reduced-motion` compliance.
@@ -142,30 +156,39 @@ flowchart TD
     subgraph ClientApp ["Bookarium Next.js 16 App"]
         Nav["Navigation & Brand Reset (Navbar.tsx)"]
         Hero["Hero Search & Subject Chips (HeroSearch.tsx)"]
+        Toolbar["Sticky Filter Bar (StickyCatalogToolbar.tsx)"]
         Grid["Interactive Book Grid & Filtering (BookGrid.tsx)"]
         Card["Book Card Component (BookCard.tsx)"]
+        Modal["3D Book Preview Modal (BookPreviewModal.tsx)"]
         Reader["Dedicated In-Browser Reader (src/app/read/[id]/page.tsx)"]
         Profile["Profile & Reading Preferences (src/app/profile/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
         StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• cloudBookshelves: []\n• likedBookIds: []")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• fontSize / spacing\n• progress: {}")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}")]
+        StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
         
+        ScrollHook["📜 useScrollDirection\n(3-State Gesture Stepping)"]
         QueryBooks["🔄 useBooks(query, topic, page)"]
         QueryContent["🔄 useBookContent(textUrl, bookId)"]
         
         Nav -->|Open Auth / Profile| StoreAuth
         Nav -->|View Bookshelf| StoreShelf
+        StorePrefs --> ScrollHook
+        ScrollHook --> Nav
+        ScrollHook --> Toolbar
         Hero -->|Filter Query| QueryBooks
         QueryBooks --> Grid
         Grid --> Card
+        Card -->|Preview 3D Volume| Modal
         Card -->|Open Reader| Reader
         Card -->|Save / Like| StoreShelf
         Reader --> StoreReader
         Reader --> QueryContent
         Profile --> StoreAuth
         Profile --> StoreShelf
+        Profile --> StorePrefs
     end
 
     subgraph BackendServices ["Live Data & Cloud Synchronization"]
@@ -192,7 +215,7 @@ flowchart TD
     subgraph QualityGateEngine ["7-Gateway Verification Engine"]
         VerifyScript["scripts/verify-build.js"]
         ASTParser["scripts/lib/ast-parser.js"]
-        LivingArch["ARCHITECTURE.md"]
+        LivingArch["docs/ARCHITECTURE.md"]
         QualityReport["docs/QUALITY_AUDIT_REPORT.md"]
         Changelog["CHANGELOG.md"]
         
@@ -221,6 +244,7 @@ flowchart LR
         ReadingMode["Reading Mode: Paginated | Scroll"]
         Theme["Theme: Light | Dark | Sepia"]
         Progress["Global Page & Book Progress %"]
+        Positions["Reading Positions Map\n(exact chapter & page restore)"]
     end
 
     subgraph ParsingEngine ["Gutenberg Typography & Segmentation AST"]
@@ -240,6 +264,7 @@ flowchart LR
         Toolbar["Top Editorial Reader Bar"]
         ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap)"]
         ProgressBar["Top Reading Progress Indicator"]
+        ResumeToast["Exact-Page Auto-Resume Toast"]
         FooterBar["Sticky Bottom Pagination & Page Jump"]
         TOC["Table of Contents Slide-Over Drawer"]
     end
@@ -247,16 +272,19 @@ flowchart LR
     subgraph Persistence ["Browser LocalStorage"]
         LSState[("bookarium-reader-preferences")]
         LSProgress[("bookarium-progress-map")]
+        LSPositions[("bookarium-reading-positions")]
     end
 
     Toolbar -->|Adjust Size / Family / Width / Mode / Theme| ReaderState
     VirtualPages --> ReaderView
     ReaderState --> ContentArea
     ReaderState --> ProgressBar
+    ReaderState --> ResumeToast
     FooterBar -->|Page Flip / Jump| ReaderState
     TOC -->|"Select Chapter [p. X]"| ReaderState
     ReaderState <--> LSState
     ReaderState <--> LSProgress
+    ReaderState <--> LSPositions
 ```
 
 ---
@@ -308,7 +336,7 @@ The application will be accessible at [http://localhost:3000](http://localhost:3
 | `npm run typecheck` | Validates TypeScript types across all `.ts`/`.tsx` files |
 | `npm run lint` | Runs ESLint 9 rules and Core Web Vitals checks |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
-| `npm run docs:sync` | Auto-generates `ARCHITECTURE.md` and `CHANGELOG.md` from AST |
+| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from AST |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 
@@ -337,16 +365,18 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 ---
 
-## 📚 Living Documentation Registry
+## 📚 Living Documentation & Quality Assurance Matrix
 
-- **Living System Architecture (C4 Level 1-3)**: [`ARCHITECTURE.md`](ARCHITECTURE.md)
-- **Quality & Coverage Audit Report**: [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md)
-- **Machine-Readable Audit Telemetry**: [`docs/quality-audit-results.json`](docs/quality-audit-results.json)
-- **Architecture Decision Records (ADRs)**: [`docs/DECISIONS.md`](docs/DECISIONS.md)
-- **Master Governance Protocol**: [`.agents/AGENTS.md`](.agents/AGENTS.md)
-- **CI/CD Pipeline Guide**: [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md)
-- **Developer Maintenance Hub**: [`DEVELOPMENT.md`](DEVELOPMENT.md)
-- **Semantic Release Changelog**: [`CHANGELOG.md`](CHANGELOG.md)
+| Document / Artifact | Scope & Verification Status | Live Resource Link |
+|---|---|---|
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 304 tests across 50 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
+| 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 5 validated ADRs governing zero-API keys, public domain integrity, and cloud sync. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| 🛡️ **Master Governance Protocol** | Immutable engineering protocols and agent operational guardrails. | [`.agents/AGENTS.md`](.agents/AGENTS.md) |
+| 🚀 **CI/CD Pipeline Guide** | Developer runbook and pipeline execution workflows. | [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) |
+| 🛠️ **Developer Maintenance Hub** | Local setup, environment configuration, and contributor commands. | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
 
 ---
 

@@ -141,4 +141,56 @@ describe('StickyCatalogToolbar component', () => {
 
     expect(screen.getByTestId('api-status-badge')).toHaveTextContent('Offline');
   });
+
+  it('applies top-16 when isHeaderVisible is true and top-0 when false', () => {
+    const { rerender } = render(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        isHeaderVisible={true}
+      />
+    );
+
+    const toolbar = screen.getByTestId('sticky-catalog-toolbar');
+    expect(toolbar).toHaveClass('top-16');
+
+    rerender(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        isHeaderVisible={false}
+      />
+    );
+
+    expect(toolbar).toHaveClass('top-0');
+  });
+
+  it('applies -translate-y-full and opacity-0 when isVisible is false', () => {
+    render(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        isVisible={false}
+      />
+    );
+
+    const toolbar = screen.getByTestId('sticky-catalog-toolbar');
+    expect(toolbar).toHaveClass('-translate-y-full');
+    expect(toolbar).toHaveClass('opacity-0');
+  });
 });

@@ -163,22 +163,42 @@ describe('BookPreviewModal component', () => {
       vi.advanceTimersByTime(200);
     });
 
-    expect(bookStage.style.transform).toBe('translate3d(0px, 0px, 0px) scale(1)');
+    expect(bookStage.style.transform).toBe('translate3d(0px, 0px, 0px)');
   });
 
-  it('prevents background scroll via event interception when open and restores it when unmounted', () => {
-    const { unmount } = renderWithQueryClient(
-      <BookPreviewModal book={defaultBook} isOpen={true} onClose={vi.fn()} />
+  it('invokes onWillClose during the landing flight prior to full onClose', () => {
+    const handleClose = vi.fn();
+    const handleWillClose = vi.fn();
+
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        onWillClose={handleWillClose}
+        onClose={handleClose}
+      />
     );
 
-    const wheelEvent = new Event('wheel', { cancelable: true });
-    window.dispatchEvent(wheelEvent);
-    expect(wheelEvent.defaultPrevented).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
 
-    unmount();
+    const bookStage = screen.getByTestId('preview-book-stage');
+    fireEvent.click(bookStage);
 
-    const afterUnmountEvent = new Event('wheel', { cancelable: true });
-    window.dispatchEvent(afterUnmountEvent);
-    expect(afterUnmountEvent.defaultPrevented).toBe(false);
+    // Advance to 390ms: onWillClose should fire before onClose (scheduled at 390ms)
+    act(() => {
+      vi.advanceTimersByTime(390);
+    });
+
+    expect(handleWillClose).toHaveBeenCalledTimes(1);
+    expect(handleClose).not.toHaveBeenCalled();
+
+    // Advance remaining duration to 450ms: onClose fires
+    act(() => {
+      vi.advanceTimersByTime(60);
+    });
+
+    expect(handleClose).toHaveBeenCalledTimes(1);
   });
 });

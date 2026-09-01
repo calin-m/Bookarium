@@ -46,6 +46,8 @@ export default function BookReaderPage() {
   const setFontFamily = useReaderStore((s) => s.setFontFamily);
   const setTheme = useReaderStore((s) => s.setTheme);
   const setProgress = useReaderStore((s) => s.setProgress);
+  const saveReadingPosition = useReaderStore((s) => s.saveReadingPosition);
+  const getReadingPosition = useReaderStore((s) => s.getReadingPosition);
 
   // Local Reader State
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
@@ -54,6 +56,8 @@ export default function BookReaderPage() {
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [readingMode, setReadingMode] = useState<'paginated' | 'scroll'>('paginated');
   const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
+  const [resumeNotice, setResumeNotice] = useState<{ chapterTitle: string; page: number } | null>(null);
+  const hasRestoredPositionRef = React.useRef(false);
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, refetch } = useBookContent(undefined, numericId);
@@ -85,6 +89,36 @@ export default function BookReaderPage() {
     return calculateVolumePageSpread(rawChapters, fontSize);
   }, [rawChapters, fontSize]);
 
+  // Exact Page Bookmarking: Auto-Resume Position from Store
+  useEffect(() => {
+    if (hasRestoredPositionRef.current || !hasMounted || numericId <= 0 || chaptersWithPagination.length === 0) {
+      return;
+    }
+    const savedPos = getReadingPosition(numericId);
+    if (savedPos && (savedPos.chapterIndex > 0 || savedPos.chapterPage > 1)) {
+      const clampedChap = Math.min(Math.max(0, savedPos.chapterIndex), chaptersWithPagination.length - 1);
+      const targetChap = chaptersWithPagination[clampedChap];
+      const maxPage = targetChap?.pageCount || 1;
+      const clampedPage = Math.min(Math.max(1, savedPos.chapterPage), maxPage);
+
+      queueMicrotask(() => {
+        setActiveChapterIndex(clampedChap);
+        setCurrentChapterPage(clampedPage);
+        setResumeNotice({
+          chapterTitle: targetChap?.displayTitle || targetChap?.title || `Chapter ${clampedChap + 1}`,
+          page: clampedPage,
+        });
+      });
+
+      // Auto-hide resume notice after 4 seconds
+      const timer = setTimeout(() => {
+        setResumeNotice(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+    hasRestoredPositionRef.current = true;
+  }, [hasMounted, numericId, chaptersWithPagination, getReadingPosition]);
+
   const activeChapter = chaptersWithPagination[activeChapterIndex] || chaptersWithPagination[0];
   const activeChapterPageCount = activeChapter?.pageCount || 1;
 
@@ -104,12 +138,20 @@ export default function BookReaderPage() {
       ? 0
       : Math.min(100, Math.max(0, Math.round(((currentGlobalPage - 1) / (totalVolumePages - 1)) * 100)));
 
-  // Sync Progress to Store
+  // Sync Progress & Exact Position to Store
   useEffect(() => {
     if (numericId > 0 && totalVolumePages > 0) {
       setProgress(numericId, volumeProgress);
+      if (hasRestoredPositionRef.current) {
+        saveReadingPosition(numericId, {
+          chapterIndex: activeChapterIndex,
+          chapterPage: currentChapterPage,
+          globalPage: currentGlobalPage,
+          lastReadAt: new Date().toISOString(),
+        });
+      }
     }
-  }, [numericId, volumeProgress, totalVolumePages, setProgress]);
+  }, [numericId, volumeProgress, totalVolumePages, activeChapterIndex, currentChapterPage, currentGlobalPage, setProgress, saveReadingPosition]);
 
   // Navigation Handlers
   const handlePrevPage = useCallback(() => {
@@ -208,6 +250,40 @@ export default function BookReaderPage() {
         theme={theme}
         onThemeChange={setTheme}
       />
+
+      {/* Resume Notice Toast */}
+      {resumeNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="resume-notice"
+          className="fixed top-16 left-1/2 -translate-x-1/2 z-50 mt-3 px-4 py-2 bg-card border border-primary/40 rounded-full shadow-lg flex items-center gap-3 text-xs font-sans text-foreground animate-in fade-in slide-in-from-top-2 duration-200"
+        >
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            Resumed at {resumeNotice.chapterTitle}, Page {resumeNotice.page}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveChapterIndex(0);
+              setCurrentChapterPage(1);
+              setResumeNotice(null);
+            }}
+            className="text-primary hover:underline font-mono text-[11px] uppercase tracking-wider pl-1 border-l border-border"
+          >
+            Restart
+          </button>
+          <button
+            type="button"
+            onClick={() => setResumeNotice(null)}
+            aria-label="Dismiss resume notice"
+            className="text-muted-foreground hover:text-foreground ml-1 font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Main Editorial Reading Canvas */}
       <ReaderSurface

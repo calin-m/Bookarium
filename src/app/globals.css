@@ -226,11 +226,15 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  transition: transform 0.65s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .modal-preview-3d-stage .book-3d-flipper {
-  transition: transform 0.65s cubic-bezier(0.32, 0.72, 0, 1);
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 @media (min-width: 1024px) {

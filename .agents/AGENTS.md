@@ -13,7 +13,7 @@ This document establishes immutable engineering rules, governance procedures, an
 - **Human Developer Authority:** The human developer retains final authority over all codebase changes, architectural decisions, and terminal command executions.
 
 ### Rule 1: Automated Documentation Synchronization
-All architecture diagrams (`ARCHITECTURE.md`), quality reports (`docs/QUALITY_AUDIT_REPORT.md`), and change logs (`CHANGELOG.md`) must be kept in continuous synchronization with the source code.
+All architecture diagrams (`docs/ARCHITECTURE.md`), quality reports (`docs/QUALITY_AUDIT_REPORT.md`), and change logs (`CHANGELOG.md`) must be kept in continuous synchronization with the source code.
 - **Trigger:** Synchronize docs via `npm run docs:sync` whenever routes, stores, queries, or components are added, modified, or deleted.
 - **Enforcement:** `npm run verify` runs Pass 4 to automatically re-compile living documentation from source AST.
 
@@ -46,14 +46,15 @@ Never manually craft static component matrices, route catalogs, or architectural
     -m "[WHAT]: Comprehensive bulleted list of modifications" `
     -m "[VERIFICATION]: 7-Gateway verification command and test results"
   ```
-- **Living Documentation Auto-Staging:** Ensure auto-generated files (`ARCHITECTURE.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) are staged alongside the implementation.
+- **Living Documentation Auto-Staging:** Ensure auto-generated files (`docs/ARCHITECTURE.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) are staged alongside the implementation.
 
-### Rule 6: Automated Verification Engine Protocol
-Before committing any changes, pushing branches, or opening pull requests, the full 7-Gateway Quality Engine must pass with zero errors:
-```bash
-npm run verify
-```
-Any failure in passes 0.5 through 7 immediately blocks workflow progression and halts the pre-commit hook.
+### Rule 6: Verification Engine & Test Execution Protocol (On-Demand & Error-Gated)
+- **User-Driven Test & Verification Execution:** The AI agent must only execute the test suite and 7-Gateway Quality Engine (`npm run verify`, `npm test`, or test commands) when explicitly requested by the user (e.g. when the user asks "run verify", "run tests", "verify build") or when actively investigating/debugging an encountered runtime, type, or lint error in code. The agent must not autonomously run full test passes on intermediate turns without cause or request.
+- **Pre-Commit Verification:** Before committing changes, pushing branches, or opening pull requests, the full 7-Gateway Quality Engine must pass with zero errors:
+  ```bash
+  npm run verify
+  ```
+- **Blocking Guard:** Any failure in passes 0.5 through 7 immediately blocks workflow progression and halts the pre-commit hook.
 
 ### Rule 7: Approval-First Architectural Governance (ADRs)
 Major architectural modifications, dependency introductions, schema shifts, or design alterations must be proposed via an Architecture Decision Record (ADR) before execution:

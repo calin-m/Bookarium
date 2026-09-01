@@ -80,5 +80,23 @@ describe('useReaderStore', () => {
     useReaderStore.getState().setProgress(bookId, 150);
     expect(useReaderStore.getState().getProgress(bookId)).toBe(100);
   });
+
+  it('should save, retrieve, and clear exact reading positions', () => {
+    const bookId = 1342;
+    expect(useReaderStore.getState().getReadingPosition(bookId)).toBeNull();
+
+    const position = {
+      chapterIndex: 2,
+      chapterPage: 4,
+      globalPage: 12,
+      lastReadAt: new Date().toISOString(),
+    };
+
+    useReaderStore.getState().saveReadingPosition(bookId, position);
+    expect(useReaderStore.getState().getReadingPosition(bookId)).toEqual(position);
+
+    useReaderStore.getState().clearReadingPosition(bookId);
+    expect(useReaderStore.getState().getReadingPosition(bookId)).toBeNull();
+  });
 });
 

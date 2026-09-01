@@ -86,6 +86,38 @@ describe('Navbar component', () => {
     fireEvent.click(screen.getByText('Sign Out'));
   });
 
+  it('handles keyboard Enter and Space on brand logo to navigate back to catalog', () => {
+    const handleViewChange = vi.fn();
+    render(<Navbar activeView="bookshelf" onViewChange={handleViewChange} />);
+
+    const brand = screen.getByLabelText('Bookarium logo, click to refresh catalog');
+    fireEvent.keyDown(brand, { key: 'Enter' });
+    expect(handleViewChange).toHaveBeenCalledWith('catalog');
+
+    fireEvent.keyDown(brand, { key: ' ' });
+    expect(handleViewChange).toHaveBeenCalledWith('catalog');
+  });
+
+  it('opens and dismisses user dropdown when clicking outside or clicking profile link', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { display_name: 'Test Reader' } as any,
+    });
+
+    render(<Navbar activeView="catalog" />);
+    const userBtn = screen.getByLabelText('User Account Menu');
+
+    // Open dropdown
+    fireEvent.click(userBtn);
+    expect(screen.getByText('Profile & Account')).toBeInTheDocument();
+
+    // Click backdrop to dismiss
+    const profileLink = screen.getByText('Profile & Account');
+    fireEvent.click(profileLink);
+    expect(screen.queryByText('Profile & Account')).not.toBeInTheDocument();
+  });
+
   it('falls back to Reader when profile display_name is not set without leaking email', async () => {
     const { useAuthStore } = await import('@/stores/useAuthStore');
     useAuthStore.setState({
@@ -96,5 +128,18 @@ describe('Navbar component', () => {
     render(<Navbar activeView="catalog" />);
     expect(screen.queryByText('secret.user')).not.toBeInTheDocument();
     expect(screen.getByText('Reader')).toBeInTheDocument();
+  });
+
+  it('applies -translate-y-full when isVisible is false', () => {
+    const { container } = render(<Navbar activeView="catalog" isVisible={false} />);
+    const header = container.querySelector('header');
+    expect(header).toHaveClass('-translate-y-full');
+    expect(header).toHaveClass('pointer-events-none');
+  });
+
+  it('applies translate-y-0 when isVisible is true', () => {
+    const { container } = render(<Navbar activeView="catalog" isVisible={true} />);
+    const header = container.querySelector('header');
+    expect(header).toHaveClass('translate-y-0');
   });
 });

@@ -60,6 +60,10 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     useBookshelfStore.getState().clearBookshelf();
     useReaderStore.getState().setFontSize(18);
     useReaderStore.getState().setTheme('light');
+    useReaderStore.setState({
+      readingProgress: {},
+      readingPositions: {},
+    });
   });
 
   it('renders header, reading surface, and sticky footer with metadata', () => {
@@ -208,5 +212,31 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     const nextBtn = screen.getByLabelText('Next Page');
     fireEvent.click(nextBtn);
     expect(useReaderStore.getState().getProgress(1342)).toBeGreaterThan(0);
+  });
+
+  it('automatically resumes at saved chapter and page, renders resume toast, and handles restart', async () => {
+    // Pre-populate saved position at Chapter 2 (index 2), page 1
+    useReaderStore.getState().saveReadingPosition(1342, {
+      chapterIndex: 2,
+      chapterPage: 1,
+      globalPage: 3,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    render(<BookReaderPage />);
+
+    // Should show resume notice
+    const resumeNotice = await screen.findByTestId('resume-notice');
+    expect(resumeNotice).toBeInTheDocument();
+    expect(screen.getByText(/Resumed at/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
+
+    // Click Restart button
+    const restartBtn = screen.getByRole('button', { name: /Restart/i });
+    fireEvent.click(restartBtn);
+
+    // Resets to beginning
+    expect(screen.getAllByText(/Title & Preamble/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByTestId('resume-notice')).not.toBeInTheDocument();
   });
 });

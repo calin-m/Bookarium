@@ -110,4 +110,28 @@ describe('BookCard component', () => {
 
     expect(screen.getByText(/Click for Preview/i)).toBeInTheDocument();
   });
+
+  it('renders fallback cover when image error occurs', () => {
+    const book = mockBooks[0];
+    render(<BookCard book={book} onPreviewClick={vi.fn()} />);
+
+    const coverImg = screen.getByAltText(`Cover of ${book.title}`);
+    fireEvent.error(coverImg);
+
+    expect(screen.getByText(/Public Domain/i)).toBeInTheDocument();
+    expect(screen.getAllByText(book.title).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('triggers preview on Enter or Space key press on cover', () => {
+    const handlePreview = vi.fn();
+    const book = mockBooks[0];
+    render(<BookCard book={book} onPreviewClick={handlePreview} />);
+
+    const coverVisual = screen.getByLabelText(`Flip open 3D preview for ${book.title}`);
+    fireEvent.keyDown(coverVisual, { key: 'Enter' });
+    expect(handlePreview).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(coverVisual, { key: ' ' });
+    expect(handlePreview).toHaveBeenCalledTimes(2);
+  });
 });

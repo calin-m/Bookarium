@@ -298,7 +298,7 @@ function generateMarkdown() {
   return lines.join('\n');
 }
 
-const outputPath = path.join(rootDir, 'ARCHITECTURE.md');
+const outputPath = path.join(rootDir, 'docs', 'ARCHITECTURE.md');
 const content = generateMarkdown();
 fs.writeFileSync(outputPath, content, 'utf-8');
-console.log('✔ [SUCCESS] Comprehensive AST-driven ARCHITECTURE.md generated successfully.');
+console.log('✔ [SUCCESS] Comprehensive AST-driven docs/ARCHITECTURE.md generated successfully.');

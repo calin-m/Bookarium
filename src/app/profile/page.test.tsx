@@ -112,4 +112,26 @@ describe('ProfilePage', () => {
     // Check Footer
     expect(screen.getByLabelText('Bookarium GitHub by calin-m')).toBeInTheDocument();
   });
+
+  it('handles toggling catalog sticky scroll navigation setting', () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+    });
+
+    render(<ProfilePage />);
+
+    expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
+
+    const alwaysFixedBtn = screen.getByRole('button', { name: /Always Fixed/i });
+    fireEvent.click(alwaysFixedBtn);
+
+    expect(screen.getByText('Always Fixed Active')).toBeInTheDocument();
+
+    const smartAutoHideBtn = screen.getByRole('button', { name: /Smart Auto-Hide/i });
+    fireEvent.click(smartAutoHideBtn);
+
+    expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
+  });
 });

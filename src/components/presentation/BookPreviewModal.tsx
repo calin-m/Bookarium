@@ -22,6 +22,7 @@ export interface BookPreviewModalProps {
   book: GutendexBook | null;
   originRect?: ElementRect | null;
   isOpen: boolean;
+  onWillClose?: () => void;
   onClose: () => void;
   onReadBook?: (book: GutendexBook) => void;
 }
@@ -30,6 +31,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   book,
   originRect,
   isOpen,
+  onWillClose,
   onClose,
   onReadBook,
 }) => {
@@ -100,39 +102,40 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
   const prevPassage = passages[prevPassageIndex] || currentPassage;
 
-  // FLIP Origin Rect calculation with distance-scaled duration and Apple-smooth bezier
+  // FLIP Origin Rect calculation with 1:1 Pixel-Perfect Dimensions & Continuous 450ms Fluid Landing Curve
   const flipData = React.useMemo(() => {
     if (!originRect || typeof window === 'undefined') {
       return {
-        initialTransform: 'translate3d(0px, 0px, 0px) scale(1)',
-        targetTransform: 'translate3d(0px, 0px, 0px) scale(1)',
-        durationMs: 650,
-        easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
+        initialTransform: 'translate3d(0px, 0px, 0px)',
+        targetTransform: 'translate3d(0px, 0px, 0px)',
+        durationMs: 450,
+        easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+        targetWidth: 320,
+        targetHeight: 480,
       };
     }
-    const targetWidth = 320;
-    const targetHeight = originRect && originRect.width > 0 ? Math.round(320 * (originRect.height / originRect.width)) : 480;
-    const targetLeft = (window.innerWidth - targetWidth) / 2;
-    const targetTop = (window.innerHeight - targetHeight) / 2;
 
-    const originCenterX = originRect.left + originRect.width / 2;
-    const originCenterY = originRect.top + originRect.height / 2;
-    const targetCenterX = targetLeft + targetWidth / 2;
-    const targetCenterY = targetTop + targetHeight / 2;
+    // Exact unscaled natural dimensions of the origin card in the grid
+    const targetWidth = originRect.width > 0 ? Math.round(originRect.width) : 320;
+    const targetHeight = originRect.height > 0 ? Math.round(originRect.height) : 480;
 
-    const deltaX = originCenterX - targetCenterX;
-    const deltaY = originCenterY - targetCenterY;
-    const distance = Math.hypot(deltaX, deltaY);
-    const scale = originRect.width > 0 ? originRect.width / targetWidth : 1;
+    // Viewport client dimensions (excluding scrollbars to prevent horizontal pop)
+    const clientWidth = document.documentElement.clientWidth || window.innerWidth;
+    const clientHeight = window.innerHeight;
 
-    // Smooth duration based on distance so far-away cards don't rush
-    const durationMs = Math.round(Math.min(Math.max(620 + distance * 0.18, 620), 780));
+    // The modal stage is flex-centered in the viewport
+    const targetLeft = Math.round((clientWidth - targetWidth) / 2);
+    const targetTop = Math.round((clientHeight - targetHeight) / 2);
+
+    // Delta from modal center to exact origin card position in the document viewport
+    const deltaX = Math.round(originRect.left - targetLeft);
+    const deltaY = Math.round(originRect.top - targetTop);
 
     return {
-      initialTransform: `translate3d(${Math.round(deltaX)}px, ${Math.round(deltaY)}px, 0px) scale(${scale.toFixed(4)})`,
-      targetTransform: 'translate3d(0px, 0px, 0px) scale(1)',
-      durationMs,
-      easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
+      initialTransform: `translate3d(${deltaX}px, ${deltaY}px, 0px)`,
+      targetTransform: 'translate3d(0px, 0px, 0px)',
+      durationMs: 450,
+      easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
       targetWidth,
       targetHeight,
     };
@@ -160,14 +163,22 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const handleClose = React.useCallback(() => {
     if (isClosing) return;
     setIsClosing(true);
+    setIsTurningLeaf(false);
     setIsCoverOpen(false); // Cover rotates -180deg -> 0deg
     setIsGlidedIn(false);  // Stage glides & scales back to card slot
+
+    // Pre-reveal underlying card 160ms before touchdown so it's 100% solid upon modal unmount
+    if (onWillClose) {
+      setTimeout(() => {
+        onWillClose();
+      }, Math.max(0, flipData.durationMs - 160));
+    }
 
     setTimeout(() => {
       onClose();
       setIsClosing(false);
     }, flipData.durationMs);
-  }, [isClosing, onClose, flipData.durationMs]);
+  }, [isClosing, onClose, onWillClose, flipData.durationMs]);
 
   const handleShuffle = React.useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -254,6 +265,8 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
             isCoverOpen ? 'book-open' : 'book-closed'
           }`}
           style={{
+            width: flipData.targetWidth ? `${flipData.targetWidth}px` : undefined,
+            height: flipData.targetHeight ? `${flipData.targetHeight}px` : undefined,
             transform: isGlidedIn ? flipData.targetTransform : flipData.initialTransform,
             transition: `transform ${flipData.durationMs}ms ${flipData.easing}`,
           }}
@@ -263,26 +276,28 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
         >
           {/* Standing Perspective Drop Shadows */}
           <div
-            className={`hidden lg:block absolute -bottom-7 -left-72 -right-12 h-10 bg-black/40 dark:bg-black/85 [html.sepia_&]:bg-black/75 rounded-full blur-2xl pointer-events-none transition-opacity duration-700 ${
+            className={`hidden lg:block absolute -bottom-7 -left-72 -right-12 h-10 bg-black/40 dark:bg-black/85 [html.sepia_&]:bg-black/75 rounded-full blur-2xl pointer-events-none transition-opacity duration-500 ${
               isCoverOpen ? 'opacity-100' : 'opacity-0'
             }`}
           />
           <div
-            className={`hidden lg:block absolute -bottom-3 left-2 right-2 h-6 bg-black/50 dark:bg-black/90 [html.sepia_&]:bg-black/80 rounded-full blur-md pointer-events-none transition-opacity duration-700 ${
+            className={`hidden lg:block absolute -bottom-3 left-2 right-2 h-6 bg-black/50 dark:bg-black/90 [html.sepia_&]:bg-black/80 rounded-full blur-md pointer-events-none transition-opacity duration-500 ${
               isCoverOpen ? 'opacity-100' : 'opacity-0'
             }`}
           />
           {/* Closed State Perspective Floor Shadow: Dissolves into flat card resting shadow as it docks into grid */}
           <div
-            className={`absolute -bottom-4 left-6 right-6 h-6 bg-black/35 dark:bg-black/80 [html.sepia_&]:bg-black/70 rounded-full blur-xl pointer-events-none transition-opacity duration-400 ${
+            className={`absolute -bottom-4 left-6 right-6 h-6 bg-black/35 dark:bg-black/80 [html.sepia_&]:bg-black/70 rounded-full blur-xl pointer-events-none transition-opacity duration-300 ${
               isGlidedIn && !isCoverOpen ? 'opacity-100' : 'opacity-0'
             }`}
           />
 
           {/* 3D Rig */}
           <div className="book-3d-rig relative">
-            {/* Desktop Open Book Spread Base (Right Page: straight left spine, rounded right outer edge) */}
-            <div className="hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex-col justify-between text-foreground z-0 overflow-hidden">
+            {/* Desktop Open Book Spread Base (Right Page: only visible when spread is open to prevent corner bleed on close) */}
+            <div className={`hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex-col justify-between text-foreground z-0 overflow-hidden transition-opacity duration-300 ${
+              isCoverOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}>
               <div key={`right-page-base-${book.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border">
@@ -456,8 +471,9 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
             {/* 3D Flipping Front Cover (Hinged on Left Spine: 0deg -> -180deg) */}
             <div
-              className="relative w-64 sm:w-72 md:w-80 book-3d-flipper z-10"
+              className="relative book-3d-flipper z-10"
               style={{
+                width: flipData.targetWidth ? `${flipData.targetWidth}px` : undefined,
                 height: flipData.targetHeight ? `${flipData.targetHeight}px` : undefined,
                 aspectRatio: !flipData.targetHeight ? '2/3' : undefined,
               }}
@@ -483,7 +499,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                 {/* Top Cover Visual with Booksaw Directional Depth */}
                 <div className="relative aspect-[3/4] w-full bg-muted/60 overflow-hidden flex items-center justify-center p-2.5 sm:p-3 border-b border-border select-none">
                   {formats.coverImage ? (
-                    <div className="relative w-full h-full flex items-center justify-center">
+                    <div className="relative w-full h-full flex items-center justify-center group-hover:scale-[1.03] transition-transform duration-300">
                       <img
                         src={formats.coverImage}
                         alt={`Cover of ${book.title}`}
@@ -506,6 +522,13 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     </div>
                   )}
 
+                  {/* Top-Left Hover Affordance: Click for Preview */}
+                  <div className="absolute top-0 left-0 z-20 hidden lg:flex opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                    <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold bg-primary text-primary-foreground px-2.5 py-1 rounded-tl-xl rounded-br-md rounded-tr-none rounded-bl-none shadow-xs tracking-wider uppercase">
+                      Click for Preview 📖
+                    </span>
+                  </div>
+
                   {/* Quick Action Overlay Badges */}
                   <div className="absolute top-2.5 right-2.5 flex flex-col gap-1.5 z-20">
                     <div
@@ -527,7 +550,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
                   {/* Subject Pill */}
                   <div className="absolute bottom-2.5 left-2.5 z-20 flex items-center gap-1.5">
-                    <Badge variant="outline" size="sm" className="bg-card text-[10px] border-border text-foreground font-mono uppercase">
+                    <Badge variant="outline" size="sm" className="bg-card text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors">
                       {primarySubject}
                     </Badge>
                   </div>
@@ -536,7 +559,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                 {/* Book Metadata Content */}
                 <div className="p-4 flex-1 flex flex-col justify-between gap-3">
                   <div>
-                    <h3 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 mb-1">
+                    <h3 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 mb-1 group-hover:text-primary transition-colors text-balance">
                       {book.title}
                     </h3>
                     <p className="text-xs text-muted-foreground font-sans line-clamp-1">
@@ -551,17 +574,29 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     </span>
                   </div>
 
-                  {/* Action Buttons (Matches BookCard layout 1:1) */}
+                  {/* Action Buttons (Matches BookCard layout 1:1 via UI Button) */}
                   <div className="grid grid-cols-2 gap-2 mt-0.5 pointer-events-none">
-                    <div className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded font-mono uppercase tracking-wider font-bold shadow-xs">
+                    <Button
+                      variant="primary"
+                      size="chip"
+                      className="w-full"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                    >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Read</span>
-                    </div>
+                    </Button>
 
-                    <div className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs border border-border bg-card text-foreground rounded font-mono uppercase tracking-wider font-medium">
+                    <Button
+                      variant="outline"
+                      size="chip"
+                      className="w-full"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                    >
                       <Download className="w-3.5 h-3.5" />
                       <span>Get</span>
-                    </div>
+                    </Button>
                   </div>
                 </div>
               </div>
