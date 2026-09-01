@@ -3,6 +3,8 @@
  * Centralized metadata for Hero spotlights and featured book cards.
  */
 
+import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
+
 export interface FeaturedHeroBook {
   id: number;
   volumeNumber: string;
@@ -171,9 +173,8 @@ export function getBookPassages(book: {
     (f) => f.id === book.id || f.title.toLowerCase() === book.title.toLowerCase()
   );
 
-  const author =
-    book.authors?.[0]?.name.split(',').reverse().join(' ').trim() || 'the author';
-  const subject = book.subjects?.[0]?.split('--')[0].trim() || 'timeless literature';
+  const author = formatAuthorNames(book.authors) || 'the author';
+  const subject = formatPrimarySubject(book.subjects);
 
   if (featured) {
     if (featured.id === 1342) {

@@ -154,16 +154,23 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
   const postBody = text.slice(bodyEnd);
 
   // 2. Identify candidate chapter / major headings in mainBody
-  const headingRegex = /(?:^|\n\n)(?:(?:CHAPTER|Chapter|BOOK|Book|ACT|Act|SCENE|Scene|CANTO|Canto|PART|Part)\s+([IVXLCDM\d]+[^\n]*)|(?:ETYMOLOGY|EXTRACTS|PREFACE|PROLOGUE|EPILOGUE|INTRODUCTION)\b[^\n]*)/g;
+  // Matches:
+  // 1. Explicit CHAPTER / BOOK / ACT / SCENE / CANTO / PART / STORY / TALE / SECTION + number/title
+  // 2. Special literary sections (ETYMOLOGY, EXTRACTS, PREFACE, PROLOGUE, EPILOGUE, INTRODUCTION, etc.)
+  // 3. Standalone Roman numerals on their own line preceded by a blank line (e.g. "\n\n  IV  \n\n" as in The Great Gatsby, Dorian Gray, etc.)
+  const headingRegex = /(?:^|\n\s*\n)\s*(?:(?:(?:CHAPTER|Chapter|BOOK|Book|ACT|Act|SCENE|Scene|CANTO|Canto|PART|Part|STORY|Story|TALE|Tale|SECTION|Section)\s+([IVXLCDM\d]+[^\n]*))|(?:(?:ETYMOLOGY|EXTRACTS|PREFACE|PROLOGUE|EPILOGUE|INTRODUCTION)\b[^\n]*)|(?:([IVXLCDM]{1,8})\s*(?=\n\s*\n)))/g;
   const tocMatch = /(?:^|\n\n)(?:CONTENTS|TABLE OF CONTENTS|INDEX)\b/i.exec(mainBody);
 
-  const rawMatches: { index: number; title: string; bodyLength: number }[] = [];
+  const rawMatches: { index: number; title: string; displayTitle?: string; bodyLength: number }[] = [];
   let m: RegExpExecArray | null;
 
   while ((m = headingRegex.exec(mainBody)) !== null) {
+    const rawHeading = m[0].trim();
+    const displayTitle = m[2] ? `Chapter ${m[2]}` : rawHeading;
     rawMatches.push({
       index: m.index,
-      title: m[0].trim(),
+      title: rawHeading,
+      displayTitle,
       bodyLength: 0,
     });
   }
@@ -176,7 +183,7 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
   }
 
   // 3. Filter out Front-Matter Table of Contents lines
-  const validMatches: { index: number; title: string }[] = [];
+  const validMatches: { index: number; title: string; displayTitle?: string }[] = [];
   for (let i = 0; i < rawMatches.length; i++) {
     const item = rawMatches[i];
     const prevItem = rawMatches[i - 1];
@@ -317,7 +324,7 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
     sections.push({
       id: i + 1,
       title: current.title,
-      displayTitle: current.title.replace(/\n+/g, ' — '),
+      displayTitle: (current.displayTitle || current.title).replace(/\n+/g, ' — '),
       content: reflowGutenbergParagraphs(rawContent),
       startPageNumber: 1,
       pageCount: 1,
@@ -380,9 +387,11 @@ export function extractGutenbergHeaderMetadata(rawText: string | undefined | nul
   author?: string;
 } {
   if (!rawText) return {};
-  const headerSlice = rawText.slice(0, 4000);
-  const titleMatch = /^Title:\s*([^\r\n]+)/im.exec(headerSlice);
-  const authorMatch = /^Author:\s*([^\r\n]+)/im.exec(headerSlice);
+  const headerSlice = rawText.slice(0, 5000);
+  const titleMatch = /^\s*Title:\s*([^\r\n]+)/im.exec(headerSlice);
+  const authorMatch =
+    /^\s*Author:\s*([^\r\n]+)/im.exec(headerSlice) ||
+    /^\s*by\s+([^\r\n]+)/im.exec(headerSlice);
 
   return {
     title: titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : undefined,

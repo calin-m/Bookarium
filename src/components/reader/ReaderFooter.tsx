@@ -3,7 +3,7 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, BookMarked, Sparkles } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
-import { READER_THEMES } from '@/config/reader-themes';
+import { getReaderTheme } from '@/config/reader-themes';
 
 export interface ReaderFooterProps {
   globalPage: number;
@@ -40,7 +40,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
   totalChapters = 1,
   onSelectChapter,
 }) => {
-  const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
+  const activeTheme = getReaderTheme(theme);
 
   return (
     <footer

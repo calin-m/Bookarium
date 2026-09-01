@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { BookOpen, RefreshCw, AlertCircle, ZoomIn } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
-import { READER_THEMES } from '@/config/reader-themes';
+import { getReaderTheme } from '@/config/reader-themes';
 
 export interface ReaderSurfaceProps {
   theme: ReaderTheme;
@@ -49,7 +49,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   onNextPage,
   onFontSizeChange,
 }) => {
-  const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
+  const activeTheme = getReaderTheme(theme);
   const mainRef = useRef<HTMLElement>(null);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const pinchStartRef = useRef<{ distance: number; initialFontSize: number } | null>(null);

@@ -9,7 +9,7 @@ import {
 } from './catalog-filters';
 import { FEATURED_HERO_BOOK, FEATURED_HERO_BOOKS, getBookPassages } from './featured-books';
 import { LITERARY_QUOTES } from './literary-quotes';
-import { READER_THEMES } from './reader-themes';
+import { READER_THEMES, getReaderTheme } from './reader-themes';
 
 describe('src/config configuration modules', () => {
   describe('API_ENDPOINTS', () => {
@@ -105,6 +105,15 @@ describe('src/config configuration modules', () => {
       expect(READER_THEMES.dark.surface).toContain('bg-[#0e1117]');
       expect(READER_THEMES.sepia.header).toContain('bg-[#332219]');
       expect(READER_THEMES.dark.header).toContain('bg-[#161b26]');
+    });
+
+    it('getReaderTheme returns exact theme or falls back to light', () => {
+      expect(getReaderTheme('sepia')).toEqual(READER_THEMES.sepia);
+      expect(getReaderTheme('dark')).toEqual(READER_THEMES.dark);
+      expect(getReaderTheme('light')).toEqual(READER_THEMES.light);
+      expect(getReaderTheme(undefined)).toEqual(READER_THEMES.light);
+      expect(getReaderTheme(null)).toEqual(READER_THEMES.light);
+      expect(getReaderTheme('invalid' as any)).toEqual(READER_THEMES.light);
     });
   });
 });

@@ -116,4 +116,17 @@ describe('ReaderHeader', () => {
     expect(screen.getByText(expectedCleanTitle)).toBeInTheDocument();
     expect(screen.getByText(expectedCleanAuthor)).toBeInTheDocument();
   });
+
+  it('filters out placeholder author strings and falls back to featured fixture', () => {
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        author="Classic Masterwork"
+        bookId={64317}
+      />
+    );
+
+    expect(screen.getByText('F. Scott Fitzgerald')).toBeInTheDocument();
+    expect(screen.queryByText('Classic Masterwork')).not.toBeInTheDocument();
+  });
 });

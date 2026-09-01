@@ -4,9 +4,8 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
-import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
-import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface BookshelfRackProps {
   books: GutendexBook[];
@@ -32,11 +31,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   onDownloadClick,
 }) => {
   const router = useRouter();
-  const hasMounted = useHasMounted();
-  const isSaved = useBookshelfStore((s) => s.isBookSaved);
-  const toggleSave = useBookshelfStore((s) => s.toggleSaveBook);
-  const isLiked = useBookshelfStore((s) => s.isBookLiked);
-  const toggleLike = useBookshelfStore((s) => s.toggleLikeBook);
+  const { isSaved: checkIsSaved, isLiked: checkIsLiked, toggleSaveBook: toggleSave, toggleLikeBook: toggleLike } = useHydratedBookshelf();
   const getProgress = useReaderStore((s) => s.getProgress);
 
   if (books.length === 0) {
@@ -73,8 +68,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                   ? book.authors[0].name.split(',')[0].trim()
                   : 'Anonymous';
                 const progress = getProgress(book.id);
-                const bookSaved = hasMounted && isSaved(book.id);
-                const bookLiked = hasMounted && isLiked(book.id);
+                const bookSaved = checkIsSaved(book.id);
+                const bookLiked = checkIsLiked(book.id);
 
                 return (
                   <div

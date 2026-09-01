@@ -37,6 +37,7 @@ import { getBookPassages, type BookPassage, FEATURED_HERO_BOOKS, type FeaturedHe
 import { extractDynamicBookPassages } from '@/lib/gutenberg-parser';
 import { useBookContent } from '@/hooks/queries/useBookContent';
 import type { GutendexBook } from '@/mocks/handlers';
+import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { LanguageSelector } from './LanguageSelector';
 
 export interface HeroSearchProps {
@@ -124,9 +125,8 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
       }
       if ('authors' in targetCustom) {
         const b = targetCustom as GutendexBook;
-        const authorName =
-          b.authors?.map((a) => a.name.split(',').reverse().join(' ').trim()).join(', ') || 'Anonymous';
-        const subject = b.subjects?.[0]?.split('--')[0]?.trim() || 'Classic Literature';
+        const authorName = formatAuthorNames(b.authors) || 'Anonymous';
+        const subject = formatPrimarySubject(b.subjects);
 
         return {
           id: b.id,

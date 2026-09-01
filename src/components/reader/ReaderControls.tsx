@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Type, Sun, Moon, Coffee, AlignLeft, Columns } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
-import { READER_THEMES } from '@/config/reader-themes';
+import { getReaderTheme } from '@/config/reader-themes';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface ReaderControlsProps {
@@ -56,7 +56,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
 
   if (!isOpen || !hasMounted) return null;
 
-  const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
+  const activeTheme = getReaderTheme(theme);
 
   return createPortal(
     <>

@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
-import { extractBookFormats, formatDownloadCount, truncate } from '@/lib/utils';
-import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { extractBookFormats, formatAuthorNames, formatPrimarySubject, formatDownloadCount } from '@/lib/utils';
+import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
-import { useHasMounted } from '@/hooks/useHasMounted';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -22,19 +21,15 @@ export interface BookCardProps {
 
 export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPreviewClick, isPreviewActive = false }) => {
   const router = useRouter();
-  const hasMounted = useHasMounted();
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = React.useState(false);
-  const rawIsSaved = useBookshelfStore((s) => s.isBookSaved(book.id));
-  const isSaved = hasMounted && rawIsSaved;
-  const rawIsLiked = useBookshelfStore((s) => s.isBookLiked(book.id));
-  const isLiked = hasMounted && rawIsLiked;
-  const toggleSave = useBookshelfStore((s) => s.toggleSaveBook);
-  const toggleLike = useBookshelfStore((s) => s.toggleLikeBook);
+  const { isSaved: checkIsSaved, isLiked: checkIsLiked, toggleSaveBook: toggleSave, toggleLikeBook: toggleLike } = useHydratedBookshelf();
+  const isSaved = checkIsSaved(book.id);
+  const isLiked = checkIsLiked(book.id);
 
   const formats = extractBookFormats(book.formats);
-  const authorNames = book.authors.map((a) => a.name.split(',').reverse().join(' ').trim()).join(', ') || 'Anonymous';
-  const primarySubject = book.subjects[0] ? truncate(book.subjects[0].split('--')[0].trim(), 24) : 'Classic';
+  const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
+  const primarySubject = formatPrimarySubject(book.subjects, 24);
 
   const handleCoverClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook } from '@/mocks/handlers';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface BookshelfState {
   savedBooks: GutendexBook[];
@@ -123,4 +124,42 @@ export const useBookshelfStore = create<BookshelfState>()(
     }
   )
 );
+
+/**
+ * SSR-safe, hydration-guarded hook for accessing bookshelf state without hydration mismatches.
+ */
+export function useHydratedBookshelf() {
+  const hasMounted = useHasMounted();
+  const isBookSaved = useBookshelfStore((s) => s.isBookSaved);
+  const isBookLiked = useBookshelfStore((s) => s.isBookLiked);
+  const savedBooks = useBookshelfStore((s) => s.savedBooks);
+  const readingQueue = useBookshelfStore((s) => s.readingQueue);
+  const likedBooks = useBookshelfStore((s) => s.likedBooks);
+  const likedBookIds = useBookshelfStore((s) => s.likedBookIds);
+  const recentBooks = useBookshelfStore((s) => s.recentBooks);
+  const toggleSaveBook = useBookshelfStore((s) => s.toggleSaveBook);
+  const toggleLikeBook = useBookshelfStore((s) => s.toggleLikeBook);
+  const addToQueue = useBookshelfStore((s) => s.addToQueue);
+  const removeFromQueue = useBookshelfStore((s) => s.removeFromQueue);
+  const clearBookshelf = useBookshelfStore((s) => s.clearBookshelf);
+
+  return {
+    hasMounted,
+    isSaved: (id: number) => (hasMounted ? isBookSaved(id) : false),
+    isLiked: (id: number) => (hasMounted ? isBookLiked(id) : false),
+    savedBooks: hasMounted ? savedBooks : [],
+    readingQueue: hasMounted ? readingQueue : [],
+    likedBooks: hasMounted ? likedBooks : [],
+    likedBookIds: hasMounted ? likedBookIds : [],
+    recentBooks: hasMounted ? recentBooks : [],
+    savedCount: hasMounted ? savedBooks.length : 0,
+    queueCount: hasMounted ? readingQueue.length : 0,
+    likedCount: hasMounted ? likedBookIds.length : 0,
+    toggleSaveBook,
+    toggleLikeBook,
+    addToQueue,
+    removeFromQueue,
+    clearBookshelf,
+  };
+}
 

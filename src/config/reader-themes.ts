@@ -64,3 +64,13 @@ export const READER_THEMES: Record<ReaderTheme, ReaderThemeConfig> = {
   },
 };
 
+/**
+ * Returns the resolved ReaderThemeConfig tokens for a given theme with guaranteed fallback to 'light'.
+ */
+export function getReaderTheme(theme?: ReaderTheme | string | null): ReaderThemeConfig {
+  if (!theme || !(theme in READER_THEMES)) {
+    return READER_THEMES.light;
+  }
+  return READER_THEMES[theme as ReaderTheme];
+}
+

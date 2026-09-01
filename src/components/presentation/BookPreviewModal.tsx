@@ -6,9 +6,8 @@ import type { GutendexBook } from '@/mocks/handlers';
 import { getBookPassages, BookPassage } from '@/config/featured-books';
 import { extractDynamicBookPassages } from '@/lib/gutenberg-parser';
 import { useBookContent } from '@/hooks/queries/useBookContent';
-import { extractBookFormats, formatDownloadCount, truncate } from '@/lib/utils';
-import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import { useHasMounted } from '@/hooks/useHasMounted';
+import { extractBookFormats, formatAuthorNames, formatPrimarySubject, formatDownloadCount } from '@/lib/utils';
+import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { Badge } from '@/components/ui/Badge';
 
 export interface ElementRect {
@@ -33,7 +32,6 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   onClose,
   onReadBook,
 }) => {
-  const hasMounted = useHasMounted();
   const [isGlidedIn, setIsGlidedIn] = useState(false);
   const [isCoverOpen, setIsCoverOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -49,10 +47,9 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
     setPrevPassageIndex(0);
   }
 
-  const rawIsSaved = useBookshelfStore((s) => (book ? s.isBookSaved(book.id) : false));
-  const isSaved = hasMounted && rawIsSaved;
-  const rawIsLiked = useBookshelfStore((s) => (book ? s.isBookLiked(book.id) : false));
-  const isLiked = hasMounted && rawIsLiked;
+  const { isSaved: checkIsSaved, isLiked: checkIsLiked } = useHydratedBookshelf();
+  const isSaved = book ? checkIsSaved(book.id) : false;
+  const isLiked = book ? checkIsLiked(book.id) : false;
 
   // On-demand fetch of authentic book content (strictly enabled ONLY when modal is open and book is clicked)
   const targetBookId = isOpen && book?.id ? book.id : undefined;
@@ -214,12 +211,8 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
   if (!isOpen || !book) return null;
 
-  const authorNames =
-    book.authors.map((a: { name: string }) => a.name.split(',').reverse().join(' ').trim()).join(', ') ||
-    'Anonymous';
-  const primarySubject = book.subjects[0]
-    ? truncate(book.subjects[0].split('--')[0].trim(), 24)
-    : 'Classic';
+  const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
+  const primarySubject = formatPrimarySubject(book.subjects, 24);
   const formats = extractBookFormats(book.formats);
 
   // Click on book stage: Close if not clicking interactive buttons

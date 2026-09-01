@@ -14,7 +14,8 @@ import {
   paginateChapterContent,
   type ChapterSection,
 } from '@/lib/gutenberg-parser';
-import { READER_THEMES } from '@/config/reader-themes';
+import { getReaderTheme } from '@/config/reader-themes';
+import { resolveBookMetadata } from '@/lib/book-metadata';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
 import { ReaderFooter } from '@/components/reader/ReaderFooter';
 import { ReaderTocDrawer } from '@/components/reader/ReaderTocDrawer';
@@ -58,14 +59,22 @@ export default function BookReaderPage() {
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, refetch } = useBookContent(undefined, numericId);
   const { data: booksData } = useBooks({ ids: numericId > 0 ? String(numericId) : '', page: 1, copyright: false });
   
-  // Multi-tier metadata resolution: Client Store -> API Result -> Raw Gutenberg Header Extraction
+  // Multi-tier metadata resolution: Client Store -> Fixture -> API Result -> Raw Gutenberg Header Extraction
   const extractedMeta = useMemo(() => {
     return extractGutenbergHeaderMetadata(contentText);
   }, [contentText]);
 
-  const bookMeta = (currentBook?.id === numericId ? currentBook : undefined) || booksData?.results?.find((b) => b.id === numericId);
-  const bookTitle = bookMeta?.title || extractedMeta.title || (numericId > 0 ? `Gutenberg Volume #${numericId}` : 'Public Domain Classic');
-  const bookAuthor = bookMeta?.authors?.[0]?.name || extractedMeta.author || 'Classic Masterwork';
+  const resolvedIdentity = useMemo(() => {
+    return resolveBookMetadata({
+      id: numericId,
+      currentBook,
+      booksData,
+      extractedMeta,
+    });
+  }, [numericId, currentBook, booksData, extractedMeta]);
+
+  const bookTitle = resolvedIdentity.title;
+  const bookAuthor = resolvedIdentity.author;
 
   // Parse Chapters and Volume Spread
   const rawChapters = useMemo<ChapterSection[]>(() => {
@@ -159,7 +168,7 @@ export default function BookReaderPage() {
     activeChapterIndex === chaptersWithPagination.length - 1 &&
     currentChapterPage === activeChapterPageCount;
 
-  const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
+  const activeTheme = getReaderTheme(theme);
 
   return (
     <div className={`h-screen flex flex-col overflow-hidden select-none transition-colors duration-200 ${activeTheme.surface}`}>
@@ -264,7 +273,7 @@ export default function BookReaderPage() {
         chapters={chaptersWithPagination}
         activeChapterIndex={activeChapterIndex}
         onSelectChapter={handleSelectChapter}
-        bookTitle={bookMeta?.title}
+        bookTitle={bookTitle}
         theme={theme}
       />
 

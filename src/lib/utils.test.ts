@@ -5,6 +5,9 @@ import {
   formatDownloadCount,
   calculateReadingTime,
   truncate,
+  formatAuthorName,
+  formatAuthorNames,
+  formatPrimarySubject,
 } from './utils';
 
 describe('lib/utils', () => {
@@ -65,6 +68,60 @@ describe('lib/utils', () => {
       expect(truncate('Short text', 20)).toBe('Short text');
       expect(truncate('The quick brown fox jumps over the lazy dog', 15)).toBe('The quick...');
       expect(truncate('', 10)).toBe('');
+    });
+  });
+
+  describe('formatAuthorName & formatAuthorNames', () => {
+    it('should convert last, first author strings to natural first last', () => {
+      expect(formatAuthorName('Austen, Jane')).toBe('Jane Austen');
+      expect(formatAuthorName('Doyle, Arthur Conan')).toBe('Arthur Conan Doyle');
+      expect(formatAuthorName('Shelley, Mary Wollstonecraft')).toBe('Mary Wollstonecraft Shelley');
+    });
+
+    it('should strip birth and death years and parenthesized expansions from author strings', () => {
+      expect(formatAuthorName('Fitzgerald, F. Scott (Francis Scott)')).toBe('F. Scott Fitzgerald');
+      expect(formatAuthorName('Austen, Jane, 1775-1817')).toBe('Jane Austen');
+      expect(formatAuthorName('Austen, Jane (1775-1817)')).toBe('Jane Austen');
+      expect(formatAuthorName('Shakespeare, William [1564-1616]')).toBe('William Shakespeare');
+    });
+
+    it('should preserve single or clean names without commas', () => {
+      expect(formatAuthorName('Homer')).toBe('Homer');
+      expect(formatAuthorName('Jane Austen')).toBe('Jane Austen');
+      expect(formatAuthorName('')).toBe('');
+      expect(formatAuthorName(undefined)).toBe('');
+    });
+
+    it('should format array of author objects into comma separated string', () => {
+      expect(formatAuthorNames([{ name: 'Marx, Karl' }, { name: 'Engels, Friedrich' }])).toBe(
+        'Karl Marx, Friedrich Engels'
+      );
+      expect(formatAuthorNames([{ name: 'Austen, Jane' }])).toBe('Jane Austen');
+      expect(formatAuthorNames('Austen, Jane')).toBe('Jane Austen');
+      expect(formatAuthorNames([])).toBe('');
+      expect(formatAuthorNames(undefined)).toBe('');
+    });
+  });
+
+  describe('formatPrimarySubject', () => {
+    it('strips LCSH subdivisions separated by double dashes', () => {
+      expect(formatPrimarySubject('Fiction -- Psychological aspects')).toBe('Fiction');
+      expect(formatPrimarySubject(['England -- Social life and customs -- 19th century -- Fiction'])).toBe('England');
+      expect(formatPrimarySubject('Gothic fiction -- History and criticism')).toBe('Gothic fiction');
+    });
+
+    it('handles truncation when maxLength is specified', () => {
+      expect(formatPrimarySubject('Classical Philosophy and Ancient Greek Ethics', 20)).toBe('Classical...');
+      expect(formatPrimarySubject('Classical Philosophy and Ancient Greek Ethics', 21)).toBe('Classical Philosophy...');
+      expect(formatPrimarySubject(['Adventure and Sea Stories'], 30)).toBe('Adventure and Sea Stories');
+    });
+
+    it('falls back to Classic Literature for empty or missing inputs', () => {
+      expect(formatPrimarySubject(undefined)).toBe('Classic Literature');
+      expect(formatPrimarySubject(null)).toBe('Classic Literature');
+      expect(formatPrimarySubject([])).toBe('Classic Literature');
+      expect(formatPrimarySubject('')).toBe('Classic Literature');
+      expect(formatPrimarySubject([''])).toBe('Classic Literature');
     });
   });
 });

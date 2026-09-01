@@ -77,3 +77,63 @@ export function truncate(text: string, maxLength: number): string {
   return (lastSpace > 0 ? sub.slice(0, lastSpace) : sub) + '...';
 }
 
+/**
+ * Formats a raw author name (e.g. "Fitzgerald, F. Scott (Francis Scott)" or "Austen, Jane, 1775-1817")
+ * into natural reading order (e.g. "F. Scott Fitzgerald", "Jane Austen").
+ */
+export function formatAuthorName(rawName?: string): string {
+  if (!rawName || typeof rawName !== 'string') return '';
+  let cleaned = rawName;
+  // Strip parenthesized expansions e.g. "(Francis Scott)", "(Samuel Clemens)"
+  cleaned = cleaned.replace(/\s*\([^)]*\)/g, '').trim();
+  // Strip bracketed expansions e.g. "[1896-1940]"
+  cleaned = cleaned.replace(/\s*\[[^\]]*\]/g, '').trim();
+  // Strip birth-death dates like ", 1775-1817"
+  cleaned = cleaned.replace(/[\(\[\,]\s*\d{3,4}\s*[-–—]\s*\d{3,4}\s*[\)\]]?/g, '').trim();
+  // Strip trailing punctuation
+  cleaned = cleaned.replace(/[,;]+$/, '').trim();
+
+  if (cleaned.includes(',')) {
+    return cleaned
+      .split(',')
+      .map((part) => part.trim())
+      .reverse()
+      .filter(Boolean)
+      .join(' ');
+  }
+  return cleaned;
+}
+
+/**
+ * Formats an array of authors or raw author string into a natural comma-separated string.
+ */
+export function formatAuthorNames(authors?: { name: string }[] | string): string {
+  if (!authors) return '';
+  if (typeof authors === 'string') {
+    return formatAuthorName(authors);
+  }
+  if (Array.isArray(authors) && authors.length > 0) {
+    return authors
+      .map((a) => formatAuthorName(a.name))
+      .filter(Boolean)
+      .join(', ');
+  }
+  return '';
+}
+
+/**
+ * Normalizes Library of Congress Subject Headings (LCSH) by stripping sub-divisions
+ * (e.g. "Fiction -- Psychological aspects" -> "Fiction") and applying optional length truncation.
+ */
+export function formatPrimarySubject(
+  subjects?: string[] | string | null,
+  maxLength?: number
+): string {
+  if (!subjects) return 'Classic Literature';
+  const first = Array.isArray(subjects) ? subjects[0] : subjects;
+  if (!first || typeof first !== 'string') return 'Classic Literature';
+  const cleaned = first.split('--')[0].trim();
+  if (!cleaned) return 'Classic Literature';
+  return maxLength ? truncate(cleaned, maxLength) : cleaned;
+}
+

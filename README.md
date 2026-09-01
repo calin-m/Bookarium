@@ -7,7 +7,7 @@
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.19-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Vitest](https://img.shields.io/badge/Vitest-4.1.11-729B1B?style=flat-square&logo=vitest)](https://vitest.dev/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.1%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.3%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
@@ -30,13 +30,17 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v2.6.0)
+## 🛠️ Latest Improvements (v2.7.0)
 
+- **Centralized Book Metadata & Author Resolution Service (SSOT)** – Encapsulated multi-tier metadata resolution (Preloaded Fixtures $\to$ Zustand Store $\to$ REST API Results $\to$ Gutenberg Raw Plaintext Header Extraction) into a single domain service ([`src/lib/book-metadata.ts`](src/lib/book-metadata.ts)) adhering to the Single Responsibility Principle and DRY.
+- **Natural Reading Order Author Normalizer (`formatAuthorNames`)** – Automatically formats raw catalog strings and strips catalog aliases/dates (e.g. `"Fitzgerald, F. Scott (Francis Scott)"` $\to$ `"F. Scott Fitzgerald"`, `"Austen, Jane, 1775-1817"` $\to$ `"Jane Austen"`) across all presentation cards, hero spotlights, preview modals, download drawers, and readers.
+- **Normalized Subject Parser (`formatPrimarySubject`)** – Strips Library of Congress Subject Headings (LCSH) sub-divisions and applies word-boundary truncation across catalog cards, preview modals, hero spotlights, and metadata resolvers.
+- **Centralized Reader Theme Resolver (`getReaderTheme`)** – Replaced repetitive manual dictionary fallbacks with a typed, centralized token getter across all reader surface, controls, header, footer, and drawer components.
+- **Hydrated Bookshelf Hook (`useHydratedBookshelf`)** – Encapsulated SSR-safe hydration guards with reactive bookshelf selectors (`isSaved`, `isLiked`, `savedCount`, `likedCount`) into a clean custom hook.
+- **Standalone Roman Numeral Chapter Segmentation** – Enhanced the Gutenberg parser to recognize standalone Roman numeral chapter headings (`I` through `IX` in *The Great Gatsby*, *The Picture of Dorian Gray*, etc.) in the Table of Contents drawer.
 - **Catalog Scroll Position & History-Aware Back Navigation** – Reader Back button navigates through browser history (`router.back()`), seamlessly returning readers to their exact previous catalog scroll coordinates, preserved search parameters, and active page numbers.
 - **Single-Click Brand Refresh & Fresh Homepage Reset** – Clicking/tapping the **Bookarium** brand logo in the header resets the view to catalog, scrolls instantly to the top ($y = 0$), and navigates to the clean root `/`, restoring the initial experience.
-- **Rock-Solid SSR Zero-Hydration-Mismatch Guarding** – Guarded `useCatalogFilters` URL query resolution, `HeroSearch` hourly sync, and `useReaderStore` persisted preferences with `useHasMounted()`, eliminating all SSR hydration mismatch errors across direct deep links (e.g. `/?page=5`, direct `/read/[id]` links).
-- **Streamlined 3D Preview to Reader Flow** – Automatically clears preview modal state when opening the reader from 3D spreads, eliminating the redundant "double-back" step.
-- **Verified by the 7-Gateway Quality Engine** – 42/42 test files passed, 213/213 tests passed with **92.1% line coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 43/43 test files passed, 231/231 tests passed with **92.3% line coverage** (`npm run verify`).
 
 ## 🌐 Data Sources & API References
 

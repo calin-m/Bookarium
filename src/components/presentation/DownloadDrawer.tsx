@@ -3,7 +3,7 @@
 import React from 'react';
 import { Download, FileText, Globe, Smartphone, ShieldCheck } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
-import { extractBookFormats } from '@/lib/utils';
+import { extractBookFormats, formatAuthorNames } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -70,7 +70,7 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
             {book.title}
           </h3>
           <p className="text-xs text-muted-foreground font-serif italic">
-            By {book.authors.map((a) => a.name.split(',').reverse().join(' ').trim()).join(', ') || 'Anonymous'}
+            By {formatAuthorNames(book.authors) || 'Anonymous'}
           </p>
         </div>
 

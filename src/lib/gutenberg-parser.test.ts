@@ -395,6 +395,43 @@ Paragraph four brings the narrative towards its final moments.
       expect(passages[1].chapterLabel).toContain('Act II');
       expect(passages[2].chapterLabel).toContain('Act III');
     });
+
+    it('parses books formatted with standalone Roman numerals (such as The Great Gatsby)', () => {
+      const romanNumeralBook = `
+*** START OF THE PROJECT GUTENBERG EBOOK THE GREAT GATSBY ***
+
+Table of Contents
+I
+II
+III
+
+I
+
+In my younger and more vulnerable years my father gave me some advice that I have been turning over in my mind ever since.
+
+II
+
+About half way between West Egg and New York the motorroad hastily joins the railroad.
+
+III
+
+There was music from my neighbor's house through the summer nights.
+
+*** END OF THE PROJECT GUTENBERG EBOOK THE GREAT GATSBY ***
+`;
+      const chapters = parseGutenbergChapters(romanNumeralBook);
+      expect(chapters.length).toBeGreaterThanOrEqual(4); // Preamble + I, II, III
+
+      const ch1 = chapters.find((c) => c.displayTitle === 'Chapter I' || c.title === 'I');
+      expect(ch1).toBeDefined();
+      expect(ch1?.displayTitle).toBe('Chapter I');
+      expect(ch1?.content).toContain('In my younger and more vulnerable years');
+
+      const ch2 = chapters.find((c) => c.displayTitle === 'Chapter II' || c.title === 'II');
+      expect(ch2).toBeDefined();
+      expect(ch2?.displayTitle).toBe('Chapter II');
+      expect(ch2?.content).toContain('West Egg');
+    });
   });
 });
 

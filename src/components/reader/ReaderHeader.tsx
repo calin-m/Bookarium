@@ -3,7 +3,9 @@
 import React, { useState } from 'react';
 import { ArrowLeft, BookOpen, ExternalLink, Info, List, Sliders, Sparkles, Sun, Moon, Coffee, ShieldCheck, X } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
-import { READER_THEMES } from '@/config/reader-themes';
+import { getReaderTheme } from '@/config/reader-themes';
+import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
+import { isPlaceholderAuthor } from '@/lib/book-metadata';
 
 export interface ReaderHeaderProps {
   title: string;
@@ -37,15 +39,23 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   onThemeChange,
 }) => {
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
-  const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
+  const activeTheme = getReaderTheme(theme);
 
-  const displayTitle = (title || (bookId ? `Volume #${bookId}` : 'Public Domain Classic'))
+  const numericId = typeof bookId === 'number' ? bookId : parseInt(String(bookId), 10);
+  const featuredFixture = !isNaN(numericId) && numericId > 0
+    ? FEATURED_HERO_BOOKS.find((f) => f.id === numericId)
+    : undefined;
+
+  const displayTitle = (
+    title ||
+    featuredFixture?.title ||
+    (bookId ? `Volume #${bookId}` : 'Public Domain Classic')
+  )
     .replace(/\s+/g, ' ')
     .trim();
 
-  const displayAuthor = (author || 'Public Domain Classic')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const resolvedAuthor = (!isPlaceholderAuthor(author) ? author : '') || featuredFixture?.author || '';
+  const displayAuthor = resolvedAuthor.replace(/\s+/g, ' ').trim();
 
   return (
     <>
@@ -76,24 +86,28 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
               {/* Bottom Line: Author + Archive Info Tag + Section Pill + Progress Pill */}
               <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 text-[10px] sm:text-xs font-mono">
-                <span className={`truncate max-w-[130px] sm:max-w-[200px] md:max-w-[280px] ${activeTheme.textMuted}`} title={displayAuthor}>
-                  {displayAuthor}
-                </span>
+                {displayAuthor ? (
+                  <>
+                    <span className={`truncate max-w-[130px] sm:max-w-[200px] md:max-w-[280px] ${activeTheme.textMuted}`} title={displayAuthor}>
+                      {displayAuthor}
+                    </span>
+                    {bookId && (
+                      <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
+                    )}
+                  </>
+                ) : null}
 
                 {bookId && (
-                  <>
-                    <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
-                    <button
-                      type="button"
-                      onClick={() => setIsInfoCardOpen(true)}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border border-primary-500/30 dark:border-primary-500/40 text-primary-600 dark:text-primary-400 bg-primary-500/10 hover:bg-primary-500/20 hover:border-primary-500/60 shadow-xs transition-all cursor-pointer select-none active:scale-95 shrink-0"
-                      title="View Gutenberg Public Domain Archive Information"
-                      aria-label="View Gutenberg Archive Volume Info"
-                    >
-                      <Info className="w-2.5 h-2.5 opacity-80 shrink-0" />
-                      <span>#{bookId}</span>
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => setIsInfoCardOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border border-primary-500/30 dark:border-primary-500/40 text-primary-600 dark:text-primary-400 bg-primary-500/10 hover:bg-primary-500/20 hover:border-primary-500/60 shadow-xs transition-all cursor-pointer select-none active:scale-95 shrink-0"
+                    title="View Gutenberg Public Domain Archive Information"
+                    aria-label="View Gutenberg Archive Volume Info"
+                  >
+                    <Info className="w-2.5 h-2.5 opacity-80 shrink-0" />
+                    <span>#{bookId}</span>
+                  </button>
                 )}
 
                 <span className={`opacity-40 shrink-0 hidden xs:inline ${activeTheme.textMuted}`}>•</span>

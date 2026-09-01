@@ -3,9 +3,8 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee } from 'lucide-react';
-import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useThemeStore } from '@/stores/useThemeStore';
-import { useHasMounted } from '@/hooks/useHasMounted';
 import { Button } from '@/components/ui/Button';
 
 export interface NavbarProps {
@@ -18,11 +17,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onViewChange,
 }) => {
   const router = useRouter();
-  const savedBooks = useBookshelfStore((s) => s.savedBooks);
-  const likedBookIds = useBookshelfStore((s) => s.likedBookIds);
+  const { savedCount, likedCount, hasMounted } = useHydratedBookshelf();
   const theme = useThemeStore((s) => s.theme);
   const cycleTheme = useThemeStore((s) => s.cycleTheme);
-  const hasMounted = useHasMounted();
 
   const handleBrandClick = () => {
     onViewChange?.('catalog');
@@ -97,9 +94,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Bookmark className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Bookshelf</span>
-            {hasMounted && savedBooks.length > 0 && (
+            {savedCount > 0 && (
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-primary text-primary-foreground font-bold">
-                {savedBooks.length}
+                {savedCount}
               </span>
             )}
           </button>
@@ -117,9 +114,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Heart className="w-3.5 h-3.5 text-destructive" />
             <span className="hidden sm:inline">Favorites</span>
-            {hasMounted && likedBookIds.length > 0 && (
+            {likedCount > 0 && (
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-destructive text-destructive-foreground font-bold">
-                {likedBookIds.length}
+                {likedCount}
               </span>
             )}
           </button>

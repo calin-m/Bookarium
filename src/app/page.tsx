@@ -154,10 +154,14 @@ export default function Home() {
             onLanguageChange={handleLanguageChange}
             onReadFeaturedBook={(featured) => {
               if (featured) {
+                const authorName =
+                  (featured as { rawBook?: GutendexBook }).rawBook?.authors?.[0]?.name ||
+                  (featured as { author?: string }).author ||
+                  'Classic Masterwork';
                 const bookPayload: GutendexBook = (featured as { rawBook?: GutendexBook }).rawBook || {
                   id: featured.id,
                   title: featured.title,
-                  authors: [{ name: (featured as { author?: string }).author || 'Unknown', birth_year: null, death_year: null }],
+                  authors: [{ name: authorName, birth_year: null, death_year: null }],
                   translators: [],
                   subjects: [(featured as { primarySubject?: string }).primarySubject || 'Classic Literature'],
                   bookshelves: [],

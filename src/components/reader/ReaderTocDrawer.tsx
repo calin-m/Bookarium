@@ -6,7 +6,7 @@ import { X, Search, BookOpen, Check } from 'lucide-react';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 import { calculateReadingTime } from '@/lib/gutenberg-parser';
 import type { ReaderTheme } from '@/stores/useReaderStore';
-import { READER_THEMES } from '@/config/reader-themes';
+import { getReaderTheme } from '@/config/reader-themes';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface ReaderTocDrawerProps {
@@ -30,7 +30,7 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
 }) => {
   const [tocSearch, setTocSearch] = useState('');
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
-  const activeTheme = READER_THEMES[theme] || READER_THEMES.light;
+  const activeTheme = getReaderTheme(theme);
   const hasMounted = useHasMounted();
 
   // Escape key handler

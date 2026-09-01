@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useBookshelfStore } from './useBookshelfStore';
+import { renderHook, act } from '@testing-library/react';
+import { useBookshelfStore, useHydratedBookshelf } from './useBookshelfStore';
 import { mockBooks } from '@/mocks/handlers';
 
 describe('useBookshelfStore', () => {
@@ -78,6 +79,45 @@ describe('useBookshelfStore', () => {
     useBookshelfStore.getState().clearLikedBooks();
     expect(useBookshelfStore.getState().likedBooks).toHaveLength(0);
     expect(useBookshelfStore.getState().likedBookIds).toHaveLength(0);
+  });
+
+  describe('useHydratedBookshelf', () => {
+    it('returns live hydrated state and reactive actions', () => {
+      const book = mockBooks[0];
+      const { result } = renderHook(() => useHydratedBookshelf());
+
+      expect(result.current.hasMounted).toBe(true);
+      expect(result.current.isSaved(book.id)).toBe(false);
+      expect(result.current.isLiked(book.id)).toBe(false);
+      expect(result.current.savedCount).toBe(0);
+
+      act(() => {
+        result.current.toggleSaveBook(book);
+        result.current.toggleLikeBook(book);
+      });
+
+      expect(result.current.isSaved(book.id)).toBe(true);
+      expect(result.current.isLiked(book.id)).toBe(true);
+      expect(result.current.savedCount).toBe(1);
+      expect(result.current.likedCount).toBe(1);
+
+      act(() => {
+        result.current.addToQueue(book);
+      });
+      expect(result.current.queueCount).toBe(1);
+      expect(result.current.readingQueue).toHaveLength(1);
+
+      act(() => {
+        result.current.removeFromQueue(book.id);
+      });
+      expect(result.current.queueCount).toBe(0);
+
+      act(() => {
+        result.current.clearBookshelf();
+      });
+      expect(result.current.savedCount).toBe(0);
+      expect(result.current.likedCount).toBe(0);
+    });
   });
 });
 
