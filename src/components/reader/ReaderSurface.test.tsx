@@ -237,7 +237,7 @@ describe('ReaderSurface', () => {
     expect(screen.getByRole('article')).toHaveClass('max-w-5xl font-sans');
   });
 
-  it('handles two-finger pinch gestures to scale font size and displays floating HUD pill', () => {
+  it('scales up font size and displays HUD pill on pinch-out gesture', () => {
     const onFontSizeChange = vi.fn();
     render(
       <ReaderSurface
@@ -249,7 +249,7 @@ describe('ReaderSurface', () => {
 
     const mainSurface = screen.getByRole('main');
 
-    // 1. Start two-finger pinch with initial distance of 100px
+    // Start two-finger pinch with initial distance of 100px
     fireEvent.touchStart(mainSurface, {
       touches: [
         { clientX: 100, clientY: 100 },
@@ -261,7 +261,7 @@ describe('ReaderSurface', () => {
     expect(screen.getByTestId('font-zoom-hud')).toBeInTheDocument();
     expect(screen.getByText(/Font Size: 18px/i)).toBeInTheDocument();
 
-    // 2. Pinch out / spread fingers to distance of 150px (scale = 1.5 -> target size = 27px)
+    // Spread fingers to distance of 150px (scale = 1.5 -> target size = 27px)
     fireEvent.touchMove(mainSurface, {
       touches: [
         { clientX: 75, clientY: 100 },
@@ -272,29 +272,73 @@ describe('ReaderSurface', () => {
     expect(onFontSizeChange).toHaveBeenCalledWith(27);
     expect(screen.getByText(/Font Size: 27px/i)).toBeInTheDocument();
 
-    // 3. Pinch in beyond minimum (target size < 12px -> clamped to 12px)
+    // Release pinch touch
+    fireEvent.touchEnd(mainSurface, {
+      changedTouches: [{ clientX: 0, clientY: 100 }],
+    });
+  });
+
+  it('clamps font size to minimum (12px) on extreme pinch-in gesture', () => {
+    const onFontSizeChange = vi.fn();
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        fontSize={18}
+        onFontSizeChange={onFontSizeChange}
+      />
+    );
+
+    const mainSurface = screen.getByRole('main');
+
+    // Start pinch with 100px distance
+    fireEvent.touchStart(mainSurface, {
+      touches: [
+        { clientX: 100, clientY: 100 },
+        { clientX: 200, clientY: 100 },
+      ],
+    });
+
+    // Pinch in close (20px distance -> scale = 0.2 -> clamped to 12px min)
     fireEvent.touchMove(mainSurface, {
       touches: [
         { clientX: 140, clientY: 100 },
         { clientX: 160, clientY: 100 },
       ],
     });
+
     expect(onFontSizeChange).toHaveBeenCalledWith(12);
     expect(screen.getByText(/\(Min\)/i)).toBeInTheDocument();
+  });
 
-    // 4. Pinch out beyond maximum (target size > 36px -> clamped to 36px)
+  it('clamps font size to maximum (36px) on extreme pinch-out gesture', () => {
+    const onFontSizeChange = vi.fn();
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        fontSize={18}
+        onFontSizeChange={onFontSizeChange}
+      />
+    );
+
+    const mainSurface = screen.getByRole('main');
+
+    // Start pinch with 100px distance
+    fireEvent.touchStart(mainSurface, {
+      touches: [
+        { clientX: 100, clientY: 100 },
+        { clientX: 200, clientY: 100 },
+      ],
+    });
+
+    // Pinch out wide (400px distance -> scale = 4.0 -> clamped to 36px max)
     fireEvent.touchMove(mainSurface, {
       touches: [
         { clientX: 0, clientY: 100 },
         { clientX: 400, clientY: 100 },
       ],
     });
+
     expect(onFontSizeChange).toHaveBeenCalledWith(36);
     expect(screen.getByText(/\(Max\)/i)).toBeInTheDocument();
-
-    // 5. Release pinch touch
-    fireEvent.touchEnd(mainSurface, {
-      changedTouches: [{ clientX: 0, clientY: 100 }],
-    });
   });
 });

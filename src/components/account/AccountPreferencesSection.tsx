@@ -4,21 +4,21 @@ import React from 'react';
 import { Sun, Coffee, Moon, Check } from 'lucide-react';
 import type { AppTheme } from '@/stores/useThemeStore';
 
-export interface ProfilePreferencesSectionProps {
+export interface AccountPreferencesSectionProps {
   theme: AppTheme;
   onThemeChange: (theme: AppTheme) => void;
   stickyScrollEnabled: boolean;
   onStickyScrollChange: (enabled: boolean) => void;
 }
 
-export const ProfilePreferencesSection: React.FC<ProfilePreferencesSectionProps> = ({
+export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps> = ({
   theme,
   onThemeChange,
   stickyScrollEnabled,
   onStickyScrollChange,
 }) => {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
       <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
         Reading & Navigation Preferences
       </h2>

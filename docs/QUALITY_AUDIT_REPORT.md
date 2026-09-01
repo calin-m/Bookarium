@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 19:16:26 GMT  
+**Last Generated**: Tue, 01 Sep 2026 20:27:58 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 62 passed  
-**Total Verified Tests**: 356 passed  
+**Total Test Suites**: 64 passed  
+**Total Verified Tests**: 404 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **62/62 test suites passed** (356 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **64/64 test suites passed** (404 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 5 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 11 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.04%** (2313/2513) — *Target: $ge$ 80%*
-- **Statements**: **90.48%** (2521/2786) — *Target: $ge$ 80%*
-- **Functions**: **88.22%** (592/671) — *Target: $ge$ 80%*
-- **Branches**: **81.04%** (2168/2675) — *Target: $ge$ 80%*
+- **Lines**: **91.99%** (2344/2548) — *Target: $ge$ 80%*
+- **Statements**: **90.41%** (2556/2827) — *Target: $ge$ 80%*
+- **Functions**: **88.08%** (606/688) — *Target: $ge$ 80%*
+- **Branches**: **80.73%** (2208/2735) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (62 Suites / 356 Tests)
+## 🧪 Comprehensive Test Suite Catalog (64 Suites / 404 Tests)
 
-### 🚀 App Routes & Pages (9 Suites · 49 Tests)
+### 🚀 App Routes & Pages (8 Suites · 41 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.test.ts</code></b> (3 tests)</summary>
@@ -83,7 +83,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -94,22 +94,8 @@
 - ✔ `should open 3D book preview modal when book cover is clicked and close it on desktop`
 - ✔ `renders Bookshelf and Favorites when views are switched via Navbar`
 - ✔ `E2E Journey: full catalog search -> preview open -> reader launch -> shelf curation`
-
-</details>
-
-<details>
-<summary><b><code>src/app/profile/page.test.tsx</code></b> (10 tests)</summary>
-
-- ✔ `renders guest prompt when unauthenticated`
-- ✔ `renders authenticated profile and handles saving display name`
-- ✔ `handles theme change and sign out`
-- ✔ `renders Navbar and Footer with working navigation handlers`
-- ✔ `handles toggling catalog sticky scroll navigation setting`
-- ✔ `accurately calculates and renders custom shelves count excluding default shelf`
-- ✔ `handles password update with validation and success feedback`
-- ✔ `handles Suggest Strong Password in Profile Security card and auto-fills both fields`
-- ✔ `handles delete account flow with email verification dialog and cancellation`
-- ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
+- ✔ `should dynamically filter bookshelf books with smart multi-word search in arbitrary order`
+- ✔ `should dynamically filter favorites books and show empty search feedback`
 
 </details>
 
@@ -139,7 +125,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (15 Suites · 94 Tests)
+### 🎨 Catalog & Presentation (16 Suites · 109 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (6 tests)</summary>
@@ -220,7 +206,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (24 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -231,13 +217,33 @@
 - ✔ `renders guest mode sync prompt and triggers auth modal`
 - ✔ `displays rounded integer percentage for reading progress`
 - ✔ `displays 0% read for opened books on page 1`
-- ✔ `renders cloud shelves and allows creating, renaming, and deleting custom shelves`
+- ✔ `renders cloud shelves and allows switching active shelf`
+- ✔ `opens rename shelf modal and submits new shelf name`
+- ✔ `opens delete shelf modal and confirms custom shelf deletion`
+- ✔ `opens create shelf modal and submits a new custom shelf`
 - ✔ `renders empty shelf state and allows browsing catalog`
 - ✔ `calls onBrowseCatalog callback when clicking Browse Catalog in empty state`
 - ✔ `allows moving a book between shelves when user has multiple shelves`
 - ✔ `triggers quick actions from hover card (download, read, save, like)`
-- ✔ `handles mobile spine tap by opening quick-action bottom sheet instead of immediate navigation`
-- ✔ `handles mobile action sheet close button, download, save, like, and move shelf`
+- ✔ `opens quick-action bottom sheet on mobile spine tap without immediate navigation`
+- ✔ `triggers onBookClick and closes sheet when clicking Read in mobile action sheet`
+- ✔ `dismisses mobile action sheet when clicking backdrop`
+- ✔ `handles mobile action sheet close button and dismiss`
+- ✔ `triggers download callback from mobile action sheet`
+- ✔ `toggles bookmark and like status from mobile action sheet`
+- ✔ `handles moving a book to another shelf and default read routing from mobile action sheet`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CollectionSearchBar.test.tsx</code></b> (6 tests)</summary>
+
+- ✔ `should render search input with placeholder and accessible label`
+- ✔ `should call onQueryChange when user types in the input`
+- ✔ `should display clear button and counter badge when query is present`
+- ✔ `should call onQueryChange with empty string when clicking clear button`
+- ✔ `should clear search query when pressing Escape key`
+- ✔ `should not display clear button or counter when query is blank or whitespace`
 
 </details>
 
@@ -295,10 +301,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `should render brand and navigation items`
-- ✔ `should display saved books count badge when items are saved`
+- ✔ `should fill bookmark icon when books are saved to bookshelf`
+- ✔ `should fill heart icon when books are liked in favorites`
 - ✔ `should trigger onViewChange callback when clicking tabs`
 - ✔ `should cycle through themes when clicking theme button`
 - ✔ `renders Sign In button for guests and triggers openAuthModal`
@@ -325,7 +332,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (5 Suites · 38 Tests)
+### 📖 In-Browser Focus Reader (5 Suites · 40 Tests)
 
 <details>
 <summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (7 tests)</summary>
@@ -369,7 +376,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -380,7 +387,9 @@
 - ✔ `renders correctly in scroll reading mode and handles empty content fallback`
 - ✔ `ignores vertical touch swipes or touches in scroll mode`
 - ✔ `renders narrow, wide, mono, and sans typography and layout modes`
-- ✔ `handles two-finger pinch gestures to scale font size and displays floating HUD pill`
+- ✔ `scales up font size and displays HUD pill on pinch-out gesture`
+- ✔ `clamps font size to minimum (12px) on extreme pinch-in gesture`
+- ✔ `clamps font size to maximum (36px) on extreme pinch-out gesture`
 
 </details>
 
@@ -395,10 +404,10 @@
 
 </details>
 
-### 🔐 Authentication & Security (1 Suites · 9 Tests)
+### 🔐 Authentication & Security (1 Suites · 11 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
@@ -408,11 +417,13 @@
 - ✔ `renders error alert when error exists`
 - ✔ `handles magic link view and submission and email confirmation screen`
 - ✔ `handles Suggest Strong Password generation and visibility toggle`
-- ✔ `handles forgot password navigation from sign in view and submits reset email`
+- ✔ `navigates from sign in view to forgot password view`
+- ✔ `submits password reset request and displays check email confirmation`
+- ✔ `navigates back to sign in from confirmation screen`
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 39 Tests)
+### ⚡ Zustand State Stores (5 Suites · 41 Tests)
 
 <details>
 <summary><b><code>src/stores/useAuthStore.test.ts</code></b> (13 tests)</summary>
@@ -474,16 +485,18 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useThemeStore.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/stores/useThemeStore.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `initializes with default light theme`
-- ✔ `updates theme to sepia and dark and syncs DOM classes`
+- ✔ `sets sepia theme and syncs sepia DOM class`
+- ✔ `sets dark theme and syncs dark DOM class`
+- ✔ `sets light theme and clears dark/sepia DOM classes`
 - ✔ `cycles theme through light -> sepia -> dark -> light`
 - ✔ `applyThemeToDocument handles document manipulation safely`
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (4 Suites · 45 Tests)
+### 📚 Gutenberg Parsers & Metadata (5 Suites · 65 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (8 tests)</summary>
@@ -526,6 +539,32 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/smart-search.test.ts</code></b> (20 tests)</summary>
+
+- ✔ `should return empty string for null, undefined, or empty inputs`
+- ✔ `should lowercase text`
+- ✔ `should strip diacritics and accents`
+- ✔ `should replace punctuation with single spaces and trim`
+- ✔ `should return empty array for empty queries`
+- ✔ `should split multi-word query into normalized tokens`
+- ✔ `should return true for empty or whitespace query`
+- ✔ `should match single exact and partial words`
+- ✔ `should match multi-word query in natural order`
+- ✔ `should match multi-word query in REVERSE / arbitrary word order`
+- ✔ `should return false if any token is missing from haystack`
+- ✔ `should return all books when query is empty or blank`
+- ✔ `should filter by title`
+- ✔ `should filter by author name`
+- ✔ `should filter with title + author in mixed / arbitrary word order`
+- ✔ `should filter by subject / genre`
+- ✔ `should filter by bookshelf tag`
+- ✔ `should filter with diacritics / accent variations`
+- ✔ `should return empty array when query does not match any volume`
+- ✔ `should concatenate title, authors, subjects, bookshelves, and languages into searchable string`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/supabase/supabase.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `creates a browser Supabase client with environment variables`
@@ -554,7 +593,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (7 Suites · 43 Tests)
+### 🔄 Hooks & React Query (7 Suites · 46 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (3 tests)</summary>
@@ -631,17 +670,74 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useScrollDirection.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/useScrollDirection.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `initializes with BOTH header and toolbar visible at top of page`
 - ✔ `preserves BOTH_VISIBLE while scrolling down within Hero section (scrollY <= dockOffset)`
-- ✔ `advances STRICTLY 1 step during a long continuous multi-step scroll until gesture pauses`
+- ✔ `preserves header visibility on initial arrival at catalog dock point`
+- ✔ `transitions to toolbar-only docked at top-0 on subsequent downward scroll gesture`
+- ✔ `transitions to fully hidden on third downward scroll gesture`
+- ✔ `immediately reveals filter toolbar upon upward scroll reversal`
 - ✔ `measures dynamic element offset from DOM when heroDockSelector is provided`
 - ✔ `keeps both header and toolbar unconditionally visible when enabled is false`
 
 </details>
 
-### 🧩 UI Primitives & Motion (16 Suites · 39 Tests)
+### 🧩 UI Primitives & Motion (17 Suites · 51 Tests)
+
+<details>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (12 tests)</summary>
+
+- ✔ `renders guest prompt when unauthenticated`
+- ✔ `renders authenticated profile and handles saving display name`
+- ✔ `updates user reading atmosphere theme in account settings`
+- ✔ `handles sign out action and redirects to home catalog`
+- ✔ `renders Navbar and Footer with working navigation handlers`
+- ✔ `handles toggling catalog sticky scroll navigation setting`
+- ✔ `accurately calculates and renders custom shelves count excluding default shelf`
+- ✔ `handles password update with validation and success feedback`
+- ✔ `handles Suggest Strong Password in Profile Security card and auto-fills both fields`
+- ✔ `opens delete account modal and cancels without deleting`
+- ✔ `submits account deletion request and displays verification email confirmation`
+- ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountDeleteModal.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders confirmation modal and handles cancel and send deletion link`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders user details and handles input change and submit`
+- ✔ `renders error message and success feedback`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders library statistics with links and values`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `handles theme switching and sticky scroll toggle`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders password fields, strength meter, and buttons`
+
+</details>
 
 <details>
 <summary><b><code>src/components/motion/MotionReveal.test.tsx</code></b> (1 tests)</summary>
@@ -654,42 +750,6 @@
 <summary><b><code>src/components/motion/StaggerGroup.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `should render staggered child nodes`
-
-</details>
-
-<details>
-<summary><b><code>src/components/profile/ProfileDeleteModal.test.tsx</code></b> (1 tests)</summary>
-
-- ✔ `renders confirmation prompt and requests deletion link`
-
-</details>
-
-<details>
-<summary><b><code>src/components/profile/ProfileIdentityCard.test.tsx</code></b> (2 tests)</summary>
-
-- ✔ `renders user details and verified badge`
-- ✔ `handles display name editing and form submission`
-
-</details>
-
-<details>
-<summary><b><code>src/components/profile/ProfileLibraryStats.test.tsx</code></b> (1 tests)</summary>
-
-- ✔ `renders library statistics with counts and accessible links`
-
-</details>
-
-<details>
-<summary><b><code>src/components/profile/ProfilePreferencesSection.test.tsx</code></b> (1 tests)</summary>
-
-- ✔ `renders theme switcher and navigation mode preferences`
-
-</details>
-
-<details>
-<summary><b><code>src/components/profile/ProfileSecuritySection.test.tsx</code></b> (1 tests)</summary>
-
-- ✔ `renders password fields, strength meter, and actions`
 
 </details>
 

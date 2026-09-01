@@ -21,10 +21,18 @@ describe('Navbar component', () => {
     expect(screen.getByLabelText('Liked Books')).toBeInTheDocument();
   });
 
-  it('should display saved books count badge when items are saved', () => {
+  it('should fill bookmark icon when books are saved to bookshelf', () => {
     useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
-    render(<Navbar activeView="catalog" />);
-    expect(screen.getByText('1')).toBeInTheDocument();
+    const { container } = render(<Navbar activeView="catalog" />);
+    const bookmarkSvg = container.querySelector('svg.lucide-bookmark');
+    expect(bookmarkSvg).toHaveClass('fill-primary');
+  });
+
+  it('should fill heart icon when books are liked in favorites', () => {
+    useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
+    const { container } = render(<Navbar activeView="catalog" />);
+    const heartSvg = container.querySelector('svg.lucide-heart');
+    expect(heartSvg).toHaveClass('fill-destructive');
   });
 
   it('should trigger onViewChange callback when clicking tabs', () => {
@@ -75,11 +83,12 @@ describe('Navbar component', () => {
     render(<Navbar activeView="catalog" />);
     const userBtn = screen.getByLabelText('User Account Menu');
     expect(userBtn).toBeInTheDocument();
-    expect(screen.getByText('Test Reader')).toBeInTheDocument();
+    expect(screen.getByText('Account')).toBeInTheDocument();
 
     // Open dropdown
     fireEvent.click(userBtn);
-    expect(screen.getByText('Profile & Account')).toBeInTheDocument();
+    expect(screen.getByText('Test Reader')).toBeInTheDocument();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.getByText('Sign Out')).toBeInTheDocument();
 
     // Click Sign Out
@@ -110,12 +119,12 @@ describe('Navbar component', () => {
 
     // Open dropdown
     fireEvent.click(userBtn);
-    expect(screen.getByText('Profile & Account')).toBeInTheDocument();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
 
     // Click backdrop to dismiss
-    const profileLink = screen.getByText('Profile & Account');
+    const profileLink = screen.getByText('Settings');
     fireEvent.click(profileLink);
-    expect(screen.queryByText('Profile & Account')).not.toBeInTheDocument();
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument();
   });
 
   it('falls back to Reader when profile display_name is not set without leaking email', async () => {
@@ -126,6 +135,12 @@ describe('Navbar component', () => {
     });
 
     render(<Navbar activeView="catalog" />);
+    const userBtn = screen.getByLabelText('User Account Menu');
+    expect(userBtn).toBeInTheDocument();
+    expect(screen.getByText('Account')).toBeInTheDocument();
+
+    // In dropdown header
+    fireEvent.click(userBtn);
     expect(screen.queryByText('secret.user')).not.toBeInTheDocument();
     expect(screen.getByText('Reader')).toBeInTheDocument();
   });

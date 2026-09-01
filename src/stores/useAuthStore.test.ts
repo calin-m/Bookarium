@@ -223,7 +223,7 @@ describe('useAuthStore', () => {
     expect(res1.error).toBeNull();
     expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
       'user@bookarium.test',
-      expect.objectContaining({ redirectTo: expect.stringContaining('/profile') })
+      expect.objectContaining({ redirectTo: expect.stringContaining('/account') })
     );
 
     mockResetPasswordForEmail.mockResolvedValueOnce({ error: { message: 'User not found' } });

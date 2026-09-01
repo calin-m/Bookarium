@@ -5,19 +5,19 @@ import Link from 'next/link';
 import { Bookmark, Heart, BookOpen } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 
-export interface ProfileLibraryStatsProps {
+export interface AccountLibraryStatsProps {
   savedCount: number;
   likedCount: number;
   customShelvesCount: number;
 }
 
-export const ProfileLibraryStats: React.FC<ProfileLibraryStatsProps> = ({
+export const AccountLibraryStats: React.FC<AccountLibraryStatsProps> = ({
   savedCount,
   likedCount,
   customShelvesCount,
 }) => {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-4">
+    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xs space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
           Library

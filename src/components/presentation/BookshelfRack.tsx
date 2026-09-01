@@ -18,6 +18,8 @@ export interface BookshelfRackProps {
   onBookClick?: (book: GutendexBook) => void;
   onDownloadClick?: (book: GutendexBook) => void;
   onBrowseCatalog?: () => void;
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
 export const BookshelfRack: React.FC<BookshelfRackProps> = ({
@@ -25,6 +27,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   onBookClick,
   onDownloadClick,
   onBrowseCatalog,
+  searchQuery,
+  onClearSearch,
 }) => {
   const router = useRouter();
   const {
@@ -284,27 +288,41 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
             <BookOpen className="w-6 h-6" />
           </div>
           <h3 className="font-serif font-bold text-lg text-foreground mb-1">
-            No books found on &quot;{activeShelfDisplayName}&quot;
+            {searchQuery?.trim()
+              ? `No books found matching "${searchQuery}" on "${activeShelfDisplayName}"`
+              : `No books found on "${activeShelfDisplayName}"`}
           </h3>
           <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-6">
-            {isViewingGeneral
+            {searchQuery?.trim()
+              ? 'Try searching for different keywords or clear the search query to see all books on this shelf.'
+              : isViewingGeneral
               ? 'Save your favorite books from the catalog to curate your personal classic library.'
               : 'Add books to this shelf using the "Move to Shelf" selector on book spine hover cards.'}
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Button
-              variant="outline"
-              size="chip"
-              onClick={() => {
-                if (onBrowseCatalog) {
-                  onBrowseCatalog();
-                } else {
-                  router.push(ROUTES.HOME);
-                }
-              }}
-            >
-              Browse Catalog
-            </Button>
+            {searchQuery?.trim() && onClearSearch ? (
+              <Button
+                variant="outline"
+                size="chip"
+                onClick={onClearSearch}
+              >
+                Clear Search
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="chip"
+                onClick={() => {
+                  if (onBrowseCatalog) {
+                    onBrowseCatalog();
+                  } else {
+                    router.push(ROUTES.HOME);
+                  }
+                }}
+              >
+                Browse Catalog
+              </Button>
+            )}
             {!user && (
               <Button
                 variant="primary"

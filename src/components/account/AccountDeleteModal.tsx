@@ -5,7 +5,7 @@ import { Mail, AlertTriangle } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 
-export interface ProfileDeleteModalProps {
+export interface AccountDeleteModalProps {
   isOpen: boolean;
   onClose: () => void;
   userEmail: string;
@@ -15,7 +15,7 @@ export interface ProfileDeleteModalProps {
   onRequestDeletion: () => Promise<void>;
 }
 
-export const ProfileDeleteModal: React.FC<ProfileDeleteModalProps> = ({
+export const AccountDeleteModal: React.FC<AccountDeleteModalProps> = ({
   isOpen,
   onClose,
   userEmail,

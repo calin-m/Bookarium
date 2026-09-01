@@ -6,7 +6,8 @@
 export const ROUTES = {
   HOME: '/',
   CATALOG: '/',
-  PROFILE: '/profile',
+  ACCOUNT: '/account',
+  PROFILE: '/account',
   CONFIRM_DELETION: '/auth/confirm-deletion',
   AUTH_CALLBACK: '/auth/callback',
 

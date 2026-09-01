@@ -8,7 +8,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-62%20Suites%20%7C%20356%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-64%20Suites%20%7C%20404%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![Code Coverage](https://img.shields.io/badge/Coverage-92.0%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -33,20 +33,26 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v1.5.0)
+## 🛠️ Latest Improvements (v1.7.0)
 
-- **Comprehensive Account Lifecycle & Security Management (`/profile`, `AuthModal`, `/auth/confirm-deletion`)**:
+- **Single-Source Route Registry & Configuration Singletons (`src/config/routes.ts`, `src/config/site-config.ts`)** – Type-safe centralized registries consolidating all internal route paths, view queries, canonical project URLs, and persistent storage keys with 100% co-located unit tests.
+- **Modular Component Decomposition** – Decomposed monolithic components into single-responsibility sub-components in `src/components/presentation/bookshelf/` (`BookshelfSpine`, `BookshelfMobileModal`, `BookshelfManageModals`) and `src/components/account/` (`AccountIdentityCard`, `AccountLibraryStats`, `AccountSecuritySection`, `AccountPreferencesSection`, `AccountDeleteModal`), reducing `BookshelfRack.tsx` by -55% and `AccountPage` by -58%.
+- **Account Route Migration (`/account`) & User Menu Ergonomics** – Migrated user settings from `/profile` to `/account`, updated top bar button to fixed-width `"Account"`, and styled internal menu link as `"Settings"`.
+- **Order-Independent Dynamic Smart Search (`/lib/smart-search.ts`, `CollectionSearchBar.tsx`)** – Real-time, zero-network-latency client search engine for Bookshelf and Favorites supporting order-independent multi-token matching (`"austen pride"` = `"pride austen"`), diacritic/accent insensitivity, instant clear button, keyboard shortcuts (`Esc`), and live match counter badges.
+- **Dynamic Active Icon Fills & Zero-Shift Header Hydration** – Clean dynamic SVG fills for Bookshelf (`fill-primary`) and Favorites (`fill-destructive`) when containing saved items, eliminating all text clutter and delivering 100% stable layouts (CLS = 0).
+- **Top 1px Dividing Border & Stacking Elevation** – Added `border-y border-border` to `StickyCatalogToolbar` ensuring crisp 1px separation between header and filter bar when docked, while eliminating shadow collision.
+- **Comprehensive Account Lifecycle & Security Management (`/account`, `AuthModal`, `/auth/confirm-deletion`)**:
   - **Forgot Password Flow** – Direct password reset email request interface within the authentication modal, delivering secure one-time password reset links.
-  - **In-App Password Generator & Live Strength Meter** – Cryptographic high-entropy 16-character password generator button with instant clipboard copy feedback, dual auto-fill, and a real-time color-coded complexity meter (Weak / Moderate / Strong) available across both the Sign Up modal and the Profile dashboard.
-  - **Dual-Password Confirmation & Mismatch Guard** – Dedicated *Confirm Password* fields across both Sign Up registration and Profile password changes, eliminating typos and accidental lockout.
+  - **In-App Password Generator & Live Strength Meter** – Cryptographic high-entropy 16-character password generator button with instant clipboard copy feedback, dual auto-fill, and a real-time color-coded complexity meter (Weak / Moderate / Strong) available across both the Sign Up modal and the Account dashboard.
+  - **Dual-Password Confirmation & Mismatch Guard** – Dedicated *Confirm Password* fields across both Sign Up registration and Account password changes, eliminating typos and accidental lockout.
   - **Industry-Standard Email-Verified Account Deletion** – Two-step deletion verification protocol informing the user upfront, dispatching a secure one-time verification link to their email, and requiring final authorization at the dedicated `/auth/confirm-deletion` portal before permanently purging cloud bookshelves and terminating the session.
   - **Accidental Clear Protection Modals** – Tactile modal confirmation dialogs preventing accidental clearing of personal bookshelves or liked favorites.
   - **Literary Tagline Refresh** – Updated footer attribution to *"Crafted with care for book lovers everywhere"*.
 - **Universal Multi-Language Translations & Reader Switcher (`/read/[id]`)** – Interactive `<Globe />` language dropdown in the Reader navigation header powered by `useBookTranslations` and TanStack React Query caching. Discovers and groups all available international translations (Spanish, French, German, Italian, Dutch, Greek, etc.) and bilingual editions across the 70,000+ public domain volume archive with 1-click seamless handoff.
 - **Tactile Book Page-Turn Transitions for View Switching** – Integrated the reader's tactile `animate-page-turn` transition (`180ms cubic-bezier(0.16, 1, 0.3, 1)`) into the main application view container, delivering the physical sensation of turning a book page whenever switching between **Catalog**, **Bookshelf**, and **Favorites**.
 - **Arrival Docking & Pure Physical Slide-Hide Transitions** – Enhanced `useScrollDirection` with an arrival dock guard so the top header remains visible when the catalog filter bar first docks on initial scroll down. Upgraded `StickyCatalogToolbar` to use synchronized transform translations (`transition-transform duration-300 ease-in-out` with `-translate-y-16` / `-translate-y-[calc(100%+4rem)]`), completely eliminating top-margin layout gaps and replacing opacity fades with solid physical slide transitions.
-- **User-Configurable Sticky Scroll Preferences (`/profile`)** – Added user preference setting in the Profile dashboard allowing readers to choose between **Smart Auto-Hide** (directional auto-hide to maximize reading space) and **Always Fixed** (stationary header and toolbar pinned at top). Persisted across browser sessions with `usePreferencesStore`.
-- **Exact Custom Shelves Profile Analytics** – Verified profile stats card (`/profile`) displaying an accurate count of user-created custom bookshelves separate from the master general library.
+- **User-Configurable Sticky Scroll Preferences (`/account`)** – Added user preference setting in the Account dashboard allowing readers to choose between **Smart Auto-Hide** (directional auto-hide to maximize reading space) and **Always Fixed** (stationary header and toolbar pinned at top). Persisted across browser sessions with `usePreferencesStore`.
+- **Exact Custom Shelves Account Analytics** – Verified account stats card (`/account`) displaying an accurate count of user-created custom bookshelves separate from the master general library.
 - **Dynamic Responsive Bookshelf Capacity Engine** – `ResizeObserver`-driven physical book packing automatically scaling from 6-8 books on mobile up to 18-24 books on wide displays, eliminating empty side gaps with balanced horizontal center alignment.
 - **Mobile Tap-to-Activate In-Shelf Quick-Action Modal** – Smooth interactive floating modal rendered directly within the active shelf niche on mobile devices, preventing accidental navigation and displaying full natural author formatting (`formatAuthorNames`).
 - **Reader Direct Link Sharing & Dynamic Viewport Ergonomics** – Integrated header Share button copying canonical book URLs to clipboard with tactile 2-second visual feedback, paired with CSS Dynamic Viewport units (`h-[100dvh]`, `pb-[env(safe-area-inset-bottom)]`) to prevent footer cutoff on collapsing mobile address bars.
@@ -56,8 +62,8 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Multi-Category Cloud Bookshelf Synchronization (ADR-005)** – Supabase PostgreSQL cloud sync with Row Level Security (RLS). Features a master "General" bookshelf aggregating all user books, floating "Move to Shelf" selector dropdowns on book spines, and safe shelf deletion auto-reassigning orphaned volumes to General.
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
-- **Strict 0% Page 1 Reading Progress & Verified Profiles** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user profiles (`/profile`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 62/62 test files passed, 356/356 tests passed with **92.0% line coverage** and **81.0% branch coverage** (`npm run verify`).
+- **Strict 0% Page 1 Reading Progress & Verified Accounts** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user accounts (`/account`) for managing reading statistics and atmosphere settings.
+- **Verified by the 7-Gateway Quality Engine** – 64/64 test files passed, 404/404 tests passed with **92.0% line coverage** and **81.0% branch coverage** (`npm run verify`).
 
 ---
 
@@ -105,7 +111,7 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * Dynamic scroll detection (`useScrollDirection`) with session-isolated continuous gesture locking (180ms debounce).
   * Smoothly hides top header on first scroll down, docks filter bar to `top-0`, and hides the filter bar on second scroll for 100% immersive book viewing.
   * 1-gesture up-scroll immediately reveals the filter bar at `top-0` for instant page jumping and filter tweaking.
-  * User-configurable in the User Profile (`/profile`) between **Smart Auto-Hide** and **Always Fixed**.
+  * User-configurable in User Account Settings (`/account`) between **Smart Auto-Hide** and **Always Fixed**.
 * **Collapsible Left-Side Catalog Filter Sidebar & Push-Content Desktop Layout**:
   * Slide-out left-docked filter drawer (`slide-in-from-left duration-300`) with zero dark background dimming.
   * On desktop, opening filters smoothly pushes the entire webpage content (`<main>`) to the right (`lg:pl-96 duration-300`), allowing non-blocking side-by-side catalog browsing and live filter tweaking.

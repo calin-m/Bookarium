@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Trash2, ArrowLeft, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Trash2, ArrowLeft, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
@@ -81,9 +81,9 @@ export default function ConfirmDeletionPage() {
               </p>
             </div>
             <div className="flex items-center justify-center gap-3 pt-2">
-              <Link href={ROUTES.PROFILE}>
+              <Link href={ROUTES.ACCOUNT}>
                 <Button variant="primary" size="md" className="font-mono text-xs uppercase">
-                  Go to Profile
+                  Go to Account
                 </Button>
               </Link>
               <Link href={ROUTES.HOME}>
@@ -131,7 +131,7 @@ export default function ConfirmDeletionPage() {
             )}
 
             <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
-              <Link href={ROUTES.PROFILE} className="w-full sm:w-auto">
+              <Link href={ROUTES.ACCOUNT} className="w-full sm:w-auto">
                 <Button variant="outline" size="md" className="w-full sm:w-auto font-mono text-xs uppercase">
                   <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
                   <span>Cancel & Keep Account</span>

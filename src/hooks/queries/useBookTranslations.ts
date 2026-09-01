@@ -197,7 +197,7 @@ export function useBookTranslations(
       if (!a.isCurrent && b.isCurrent) return 1;
       return a.languageLabel.localeCompare(b.languageLabel);
     });
-  }, [data, currentBookId, title, currentLangs, authorSurname]);
+  }, [data, currentBookId, title, currentLangs, authorSurname, titleKeywords]);
 
   return {
     translations,

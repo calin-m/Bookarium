@@ -16,13 +16,14 @@ import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
 import { Button } from '@/components/ui/Button';
 import { BackToTop } from '@/components/ui/BackToTop';
-import { ProfileIdentityCard } from '@/components/profile/ProfileIdentityCard';
-import { ProfileLibraryStats } from '@/components/profile/ProfileLibraryStats';
-import { ProfileSecuritySection } from '@/components/profile/ProfileSecuritySection';
-import { ProfilePreferencesSection } from '@/components/profile/ProfilePreferencesSection';
-import { ProfileDeleteModal } from '@/components/profile/ProfileDeleteModal';
+import { AccountIdentityCard } from '@/components/account/AccountIdentityCard';
+import { AccountLibraryStats } from '@/components/account/AccountLibraryStats';
+import { AccountSecuritySection } from '@/components/account/AccountSecuritySection';
+import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
+import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
+import { ROUTES } from '@/config/routes';
 
-export default function ProfilePage() {
+export default function AccountPage() {
   const router = useRouter();
   const { user, profile, isLoading, updateProfile, updatePassword, requestAccountDeletion, signOut, openAuthModal } = useAuthStore();
   const { savedCount, likedCount, cloudBookshelves } = useHydratedBookshelf();
@@ -196,11 +197,7 @@ export default function ProfilePage() {
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-200">
       <Navbar
         onViewChange={(view) => {
-          if (view === 'catalog') {
-            router.push('/');
-          } else {
-            router.push(`/?view=${view}`);
-          }
+          router.push(ROUTES.VIEW(view));
         }}
       />
 
@@ -208,7 +205,7 @@ export default function ProfilePage() {
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">
           <Link
-            href="/"
+            href={ROUTES.HOME}
             className="inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -222,7 +219,7 @@ export default function ProfilePage() {
 
         {/* Guest View Prompt */}
         {!isLoading && !user && (
-          <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4 shadow-sm">
+          <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4 shadow-xs">
             <div className="w-12 h-12 rounded-full bg-primary/10 border border-border text-primary flex items-center justify-center mx-auto">
               <UserIcon className="w-6 h-6" />
             </div>
@@ -241,7 +238,7 @@ export default function ProfilePage() {
               >
                 Sign In / Sign Up
               </Button>
-              <Link href="/">
+              <Link href={ROUTES.HOME}>
                 <Button variant="outline" size="md" className="font-mono text-xs uppercase">
                   Browse Catalog
                 </Button>
@@ -254,7 +251,7 @@ export default function ProfilePage() {
         {user && (
           <div className="space-y-6">
             {/* Account Hero Card */}
-            <ProfileIdentityCard
+            <AccountIdentityCard
               user={user}
               profile={profile}
               formattedDate={formattedDate}
@@ -267,7 +264,7 @@ export default function ProfilePage() {
             />
 
             {/* Reading & Navigation Preferences Card */}
-            <ProfilePreferencesSection
+            <AccountPreferencesSection
               theme={theme}
               onThemeChange={handleThemeChange}
               stickyScrollEnabled={stickyScrollEnabled}
@@ -275,7 +272,7 @@ export default function ProfilePage() {
             />
 
             {/* Security & Password Card */}
-            <ProfileSecuritySection
+            <AccountSecuritySection
               newPassword={newPassword}
               confirmPassword={confirmPassword}
               showPassword={showPassword}
@@ -291,20 +288,20 @@ export default function ProfilePage() {
               onUpdatePassword={handleUpdatePassword}
               onSignOut={async () => {
                 await signOut();
-                router.push('/');
+                router.push(ROUTES.HOME);
               }}
               onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
             />
 
             {/* Library Statistics Card */}
-            <ProfileLibraryStats
+            <AccountLibraryStats
               savedCount={savedCount}
               likedCount={likedCount}
               customShelvesCount={customShelvesCount}
             />
 
             {/* Delete Account Confirmation Modal */}
-            <ProfileDeleteModal
+            <AccountDeleteModal
               isOpen={isDeleteModalOpen}
               onClose={() => {
                 setIsDeleteModalOpen(false);
@@ -326,3 +323,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

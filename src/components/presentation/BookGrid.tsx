@@ -27,6 +27,8 @@ export interface BookGridProps {
   initialViewMode?: BookViewMode;
   showViewToggle?: boolean;
   onBrowseCatalog?: () => void;
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
 export const BookGrid: React.FC<BookGridProps> = ({
@@ -47,6 +49,8 @@ export const BookGrid: React.FC<BookGridProps> = ({
   initialViewMode = 'grid',
   showViewToggle = true,
   onBrowseCatalog,
+  searchQuery,
+  onClearSearch,
 }) => {
   const [internalViewMode, setInternalViewMode] = useState<BookViewMode>(initialViewMode);
   const activeViewMode = controlledViewMode ?? internalViewMode;
@@ -130,6 +134,13 @@ export const BookGrid: React.FC<BookGridProps> = ({
           {emptyTitle}
         </h3>
         <p className="text-xs text-muted-foreground font-sans leading-relaxed">{emptyDescription}</p>
+        {onClearSearch && (
+          <div className="pt-2">
+            <Button variant="outline" size="sm" onClick={onClearSearch} className="font-mono text-xs uppercase">
+              Clear Search
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -183,6 +194,8 @@ export const BookGrid: React.FC<BookGridProps> = ({
             books={books}
             onDownloadClick={onDownloadClick}
             onBrowseCatalog={onBrowseCatalog}
+            searchQuery={searchQuery}
+            onClearSearch={onClearSearch}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

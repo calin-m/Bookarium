@@ -34,7 +34,7 @@ describe('ConfirmDeletionPage', () => {
 
     render(<ConfirmDeletionPage />);
     expect(screen.getByText('Link Expired or Invalid')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Go to Profile/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Go to Account/i })).toBeInTheDocument();
   });
 
   it('renders authenticated confirmation portal and handles successful deletion', async () => {

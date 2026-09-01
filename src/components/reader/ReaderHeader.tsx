@@ -54,7 +54,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   onRestart,
   onDismissResume,
   translations,
-  isTranslationsLoading,
+  isTranslationsLoading: _isTranslationsLoading,
   onSelectTranslation,
 }) => {
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);

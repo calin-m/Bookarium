@@ -106,11 +106,8 @@ describe('BookshelfRack Component', () => {
     expect(screen.getByText('0% read')).toBeInTheDocument();
   });
 
-  it('renders cloud shelves and allows creating, renaming, and deleting custom shelves', async () => {
+  it('renders cloud shelves and allows switching active shelf', () => {
     useAuthStore.setState({ user: { id: 'user-1', email: 'test@example.com' } as any });
-    const createMock = vi.fn().mockResolvedValue({ id: 'shelf-new', name: 'Poetry' });
-    const updateMock = vi.fn().mockResolvedValue(true);
-    const deleteMock = vi.fn().mockResolvedValue(true);
 
     useBookshelfStore.setState({
       cloudBookshelves: [
@@ -118,29 +115,36 @@ describe('BookshelfRack Component', () => {
         { id: 'shelf-2', user_id: 'user-1', name: 'Philosophy', is_default: false, created_at: '', updated_at: '' },
       ],
       activeBookshelfId: 'shelf-2',
-      createCloudBookshelf: createMock,
-      updateCloudBookshelf: updateMock,
-      deleteCloudBookshelf: deleteMock,
     });
 
-    const { rerender } = render(<BookshelfRack books={mockBooks} />);
+    render(<BookshelfRack books={mockBooks} />);
 
     expect(screen.getByRole('button', { name: 'General' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Philosophy' })).toBeInTheDocument();
 
-    // Switch shelf
     fireEvent.click(screen.getByRole('button', { name: 'General' }));
     expect(useBookshelfStore.getState().activeBookshelfId).toBe('shelf-1');
+  });
 
-    // Switch back to custom shelf to see edit/delete buttons
-    useBookshelfStore.setState({ activeBookshelfId: 'shelf-2' });
-    rerender(<BookshelfRack books={mockBooks} />);
+  it('opens rename shelf modal and submits new shelf name', async () => {
+    useAuthStore.setState({ user: { id: 'user-1', email: 'test@example.com' } as any });
+    const updateMock = vi.fn().mockResolvedValue(true);
 
-    // 1. Rename Shelf Modal: open, change, cancel, open, submit
+    useBookshelfStore.setState({
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 'shelf-2', user_id: 'user-1', name: 'Philosophy', is_default: false, created_at: '', updated_at: '' },
+      ],
+      activeBookshelfId: 'shelf-2',
+      updateCloudBookshelf: updateMock,
+    });
+
+    render(<BookshelfRack books={mockBooks} />);
+
     const renameBtn = screen.getByLabelText('Rename Philosophy');
     fireEvent.click(renameBtn);
     expect(screen.getByText('Rename Bookshelf')).toBeInTheDocument();
-    
+
     // Cancel rename modal
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByText('Rename Bookshelf')).not.toBeInTheDocument();
@@ -152,25 +156,58 @@ describe('BookshelfRack Component', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Save'));
     });
+
     expect(updateMock).toHaveBeenCalledWith('shelf-2', 'Greek Philosophy', 'user-1');
     expect(screen.queryByText('Rename Bookshelf')).not.toBeInTheDocument();
+  });
 
-    // 2. Delete Shelf Modal: open, cancel, open, confirm
+  it('opens delete shelf modal and confirms custom shelf deletion', async () => {
+    useAuthStore.setState({ user: { id: 'user-1', email: 'test@example.com' } as any });
+    const deleteMock = vi.fn().mockResolvedValue(true);
+
+    useBookshelfStore.setState({
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 'shelf-2', user_id: 'user-1', name: 'Philosophy', is_default: false, created_at: '', updated_at: '' },
+      ],
+      activeBookshelfId: 'shelf-2',
+      deleteCloudBookshelf: deleteMock,
+    });
+
+    render(<BookshelfRack books={mockBooks} />);
+
     const deleteBtn = screen.getByLabelText('Delete Philosophy');
     fireEvent.click(deleteBtn);
     expect(screen.getByText('Delete Bookshelf')).toBeInTheDocument();
-    
+
+    // Cancel delete modal
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByText('Delete Bookshelf')).not.toBeInTheDocument();
 
+    // Reopen and confirm deletion
     fireEvent.click(deleteBtn);
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Delete Shelf' }));
     });
+
     expect(deleteMock).toHaveBeenCalledWith('shelf-2', 'user-1');
     expect(screen.queryByText('Delete Bookshelf')).not.toBeInTheDocument();
+  });
 
-    // 3. Create Shelf Modal: open, change, submit
+  it('opens create shelf modal and submits a new custom shelf', async () => {
+    useAuthStore.setState({ user: { id: 'user-1', email: 'test@example.com' } as any });
+    const createMock = vi.fn().mockResolvedValue({ id: 'shelf-new', name: 'Poetry' });
+
+    useBookshelfStore.setState({
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+      ],
+      activeBookshelfId: 'shelf-1',
+      createCloudBookshelf: createMock,
+    });
+
+    render(<BookshelfRack books={mockBooks} />);
+
     const newShelfBtn = screen.getByRole('button', { name: 'Create New Shelf' });
     fireEvent.click(newShelfBtn);
     expect(screen.getByText('Create New Bookshelf')).toBeInTheDocument();
@@ -180,6 +217,7 @@ describe('BookshelfRack Component', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Create Shelf'));
     });
+
     expect(createMock).toHaveBeenCalledWith('Poetry', 'user-1');
     expect(screen.queryByText('Create New Bookshelf')).not.toBeInTheDocument();
   });
@@ -277,20 +315,11 @@ describe('BookshelfRack Component', () => {
     fireEvent.click(unlikeBtns[0]);
   });
 
-  it('handles mobile spine tap by opening quick-action bottom sheet instead of immediate navigation', async () => {
-    // Set viewport to mobile (< 640px)
+  it('opens quick-action bottom sheet on mobile spine tap without immediate navigation', () => {
     window.innerWidth = 375;
-
     const handleBookClick = vi.fn();
-    const handleDownload = vi.fn();
 
-    render(
-      <BookshelfRack
-        books={mockBooks}
-        onBookClick={handleBookClick}
-        onDownloadClick={handleDownload}
-      />
-    );
+    render(<BookshelfRack books={mockBooks} onBookClick={handleBookClick} />);
 
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
@@ -298,37 +327,124 @@ describe('BookshelfRack Component', () => {
     // Should NOT immediately trigger onBookClick
     expect(handleBookClick).not.toHaveBeenCalled();
 
-    // Mobile action sheet should be open
+    // Mobile action sheet should be open with accessible dialog
     const sheet = screen.getByTestId('mobile-book-action-sheet');
     expect(sheet).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: `Book actions for ${mockBooks[0].title}` })).toBeInTheDocument();
 
-    // Read action inside sheet opens reader
+    window.innerWidth = 1024;
+  });
+
+  it('triggers onBookClick and closes sheet when clicking Read in mobile action sheet', async () => {
+    window.innerWidth = 375;
+    const handleBookClick = vi.fn();
+
+    render(<BookshelfRack books={mockBooks} onBookClick={handleBookClick} />);
+
+    const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
+    fireEvent.click(bookElem);
+
+    // Read action inside sheet triggers callback and closes modal
     const readBtn = screen.getByRole('button', { name: `Read ${mockBooks[0].title}` });
     fireEvent.click(readBtn);
+
     expect(handleBookClick).toHaveBeenCalledWith(mockBooks[0]);
     await waitFor(() => {
       expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
     });
 
-    // Reopen and test backdrop dismiss
+    window.innerWidth = 1024;
+  });
+
+  it('dismisses mobile action sheet when clicking backdrop', async () => {
+    window.innerWidth = 375;
+    render(<BookshelfRack books={mockBooks} />);
+
+    const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
+
     expect(screen.getByTestId('mobile-book-action-sheet')).toBeInTheDocument();
 
     const backdrop = screen.getByTestId('mobile-sheet-backdrop');
     fireEvent.click(backdrop);
+
     await waitFor(() => {
       expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
     });
 
-    // Reset window.innerWidth to desktop
     window.innerWidth = 1024;
   });
 
-  it('handles mobile action sheet close button, download, save, like, and move shelf', async () => {
+  it('handles mobile action sheet close button and dismiss', async () => {
+    window.innerWidth = 375;
+    render(<BookshelfRack books={mockBooks} />);
+
+    const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
+    fireEvent.click(bookElem);
+
+    const sheet = screen.getByTestId('mobile-book-action-sheet');
+    const closeBtn = within(sheet).getByRole('button', { name: 'Close action sheet' });
+    fireEvent.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+    });
+
+    window.innerWidth = 1024;
+  });
+
+  it('triggers download callback from mobile action sheet', async () => {
+    window.innerWidth = 375;
+    const handleDownload = vi.fn();
+    render(<BookshelfRack books={mockBooks} onDownloadClick={handleDownload} />);
+
+    const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
+    fireEvent.click(bookElem);
+
+    const sheet = screen.getByTestId('mobile-book-action-sheet');
+    const downloadBtn = within(sheet).getByRole('button', { name: `Download ${mockBooks[0].title}` });
+    fireEvent.click(downloadBtn);
+
+    expect(handleDownload).toHaveBeenCalledWith(mockBooks[0]);
+    await waitFor(() => {
+      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+    });
+
+    window.innerWidth = 1024;
+  });
+
+  it('toggles bookmark and like status from mobile action sheet', () => {
+    window.innerWidth = 375;
+    useBookshelfStore.setState({
+      savedBooks: mockBooks,
+      likedBookIds: [],
+    });
+
+    render(<BookshelfRack books={mockBooks} />);
+
+    const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
+    fireEvent.click(bookElem);
+
+    const sheet = screen.getByTestId('mobile-book-action-sheet');
+
+    // Remove from bookshelf
+    const removeBtn = within(sheet).getByRole('button', { name: 'Remove from bookshelf' });
+    fireEvent.click(removeBtn);
+    expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(false);
+
+    // Like book
+    const likeBtn = within(sheet).getByRole('button', { name: 'Like book' });
+    fireEvent.click(likeBtn);
+    expect(useBookshelfStore.getState().isBookLiked(mockBooks[0].id)).toBe(true);
+
+    window.innerWidth = 1024;
+  });
+
+  it('handles moving a book to another shelf and default read routing from mobile action sheet', () => {
     window.innerWidth = 375;
     useAuthStore.setState({ user: { id: 'user-1' } as any });
     const moveMock = vi.fn().mockResolvedValue(undefined);
+
     useBookshelfStore.setState({
       savedBooks: mockBooks,
       cloudBookshelves: [
@@ -351,53 +467,14 @@ describe('BookshelfRack Component', () => {
       moveBookToShelf: moveMock,
     });
 
-    const handleDownload = vi.fn();
-
-    render(
-      <BookshelfRack
-        books={mockBooks}
-        onDownloadClick={handleDownload}
-      />
-    );
+    render(<BookshelfRack books={mockBooks} />);
 
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
 
-    // Test close button
-    let sheet = screen.getByTestId('mobile-book-action-sheet');
-    const closeBtn = within(sheet).getByRole('button', { name: 'Close action sheet' });
-    fireEvent.click(closeBtn);
-    await waitFor(() => {
-      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
-    });
+    const sheet = screen.getByTestId('mobile-book-action-sheet');
 
-    // Reopen sheet
-    fireEvent.click(bookElem);
-    sheet = screen.getByTestId('mobile-book-action-sheet');
-
-    // Test download inside sheet
-    const downloadBtn = within(sheet).getByRole('button', { name: `Download ${mockBooks[0].title}` });
-    fireEvent.click(downloadBtn);
-    expect(handleDownload).toHaveBeenCalledWith(mockBooks[0]);
-    await waitFor(() => {
-      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
-    });
-
-    // Reopen sheet
-    fireEvent.click(bookElem);
-    sheet = screen.getByTestId('mobile-book-action-sheet');
-
-    // Test bookmark toggle inside sheet
-    const removeBtn = within(sheet).getByRole('button', { name: 'Remove from bookshelf' });
-    fireEvent.click(removeBtn);
-    expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(false);
-
-    // Test like toggle inside sheet
-    const likeBtn = within(sheet).getByRole('button', { name: 'Like book' });
-    fireEvent.click(likeBtn);
-    expect(useBookshelfStore.getState().isBookLiked(mockBooks[0].id)).toBe(true);
-
-    // Test move to shelf inside sheet
+    // Move to shelf selector
     const selectElements = screen.getAllByLabelText(`Move ${mockBooks[0].title} to shelf`);
     const sheetSelect = selectElements.find((el) => el.closest('[data-testid="mobile-book-action-sheet"]'));
     expect(sheetSelect).toBeDefined();
@@ -406,7 +483,7 @@ describe('BookshelfRack Component', () => {
       expect(moveMock).toHaveBeenCalledWith(mockBooks[0].id, 'shelf-2', 'user-1');
     }
 
-    // Test read fallback when onBookClick is omitted
+    // Read action default fallback
     const readBtn = within(sheet).getByRole('button', { name: `Read ${mockBooks[0].title}` });
     fireEvent.click(readBtn);
     expect(pushMock).toHaveBeenCalledWith(`/read/${mockBooks[0].id}`);

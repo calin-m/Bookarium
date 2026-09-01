@@ -279,5 +279,51 @@ describe('Home page integration', () => {
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
     expect(screen.getByText('General')).toBeInTheDocument();
   });
+
+  it('should dynamically filter bookshelf books with smart multi-word search in arbitrary order', () => {
+    useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
+    useBookshelfStore.getState().toggleSaveBook(mockBooks[1]);
+
+    renderHome();
+
+    // Switch to Bookshelf view
+    const bookshelfTab = screen.getByRole('button', { name: /^Bookshelf$/i });
+    fireEvent.click(bookshelfTab);
+
+    const searchInput = screen.getByRole('textbox', { name: /search bookshelf/i });
+    expect(searchInput).toBeInTheDocument();
+
+    // Search with reverse word order: "austen pride"
+    fireEvent.change(searchInput, { target: { value: 'austen pride' } });
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+
+    // Clear search
+    const clearBtn = screen.getByRole('button', { name: /clear bookshelf search/i });
+    fireEvent.click(clearBtn);
+    expect(screen.queryByRole('button', { name: /clear bookshelf search/i })).not.toBeInTheDocument();
+  });
+
+  it('should dynamically filter favorites books and show empty search feedback', () => {
+    useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
+    useBookshelfStore.getState().syncLikedBooks([mockBooks[0]]);
+
+    renderHome();
+
+    // Switch to Favorites view
+    const favoritesTab = screen.getByRole('button', { name: /^Liked Books$/i });
+    fireEvent.click(favoritesTab);
+
+    const searchInput = screen.getByRole('textbox', { name: /search favorites/i });
+    expect(searchInput).toBeInTheDocument();
+
+    // Search with non-matching query
+    fireEvent.change(searchInput, { target: { value: 'NonExistentVolumeXYZ' } });
+    expect(screen.getByText(/No volumes found matching/i)).toBeInTheDocument();
+
+    // Click in-card Clear Search button
+    const clearSearchBtn = screen.getByRole('button', { name: /^Clear Search$/i });
+    fireEvent.click(clearSearchBtn);
+    expect(screen.queryByText(/No volumes found matching/i)).not.toBeInTheDocument();
+  });
 });
 

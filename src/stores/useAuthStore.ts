@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User, AuthError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { Profile } from '@/types/database.types';
+import { ROUTES } from '@/config/routes';
 
 export type AuthModalView = 'sign_in' | 'sign_up' | 'magic_link' | 'forgot_password';
 
@@ -233,7 +234,7 @@ export const useAuthStore = create<AuthState>()(
   resetPasswordForEmail: async (email) => {
     set({ error: null });
     const supabase = createClient();
-    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/profile` : undefined;
+    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}${ROUTES.ACCOUNT}` : undefined;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
     });

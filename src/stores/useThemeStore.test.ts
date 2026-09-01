@@ -11,16 +11,23 @@ describe('useThemeStore', () => {
     expect(useThemeStore.getState().theme).toBe('light');
   });
 
-  it('updates theme to sepia and dark and syncs DOM classes', () => {
+  it('sets sepia theme and syncs sepia DOM class', () => {
     useThemeStore.getState().setTheme('sepia');
     expect(useThemeStore.getState().theme).toBe('sepia');
     expect(document.documentElement.classList.contains('sepia')).toBe(true);
     expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
 
+  it('sets dark theme and syncs dark DOM class', () => {
     useThemeStore.getState().setTheme('dark');
     expect(useThemeStore.getState().theme).toBe('dark');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
     expect(document.documentElement.classList.contains('sepia')).toBe(false);
+  });
+
+  it('sets light theme and clears dark/sepia DOM classes', () => {
+    useThemeStore.getState().setTheme('dark');
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
 
     useThemeStore.getState().setTheme('light');
     expect(useThemeStore.getState().theme).toBe('light');

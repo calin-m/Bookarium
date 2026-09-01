@@ -7,7 +7,7 @@ import type { Profile } from '@/types/database.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
-export interface ProfileIdentityCardProps {
+export interface AccountIdentityCardProps {
   user: User;
   profile: Profile | null;
   formattedDate: string;
@@ -19,7 +19,7 @@ export interface ProfileIdentityCardProps {
   saveError: string | null;
 }
 
-export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
+export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
   user,
   profile,
   formattedDate,
@@ -31,7 +31,7 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
   saveError,
 }) => {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-border text-primary flex items-center justify-center shadow-inner">
@@ -65,7 +65,7 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
       {/* Profile Editor Form */}
       <form onSubmit={onSaveProfile} className="space-y-4">
         <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
-          Profile Details
+          Account Details
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -123,3 +123,4 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
     </div>
   );
 };
+

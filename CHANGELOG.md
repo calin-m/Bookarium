@@ -8,20 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [1.7.0] - 2026-09-01
-### *Modular Component Decomposition & Single-Source Configuration Registry*
+### *Modular Component Decomposition, Account Route Migration & Zero-Shift Header*
 
 ### Added
-- Single-Source Route Registry (`src/config/routes.ts`): Type-safe centralized registry providing static paths (`ROUTES.HOME`, `ROUTES.PROFILE`, `ROUTES.CONFIRM_DELETION`, `ROUTES.BOOKSHELF`, `ROUTES.LIKES`) and dynamic builders (`ROUTES.READ(id)`, `ROUTES.VIEW(view)`).
+- Single-Source Route Registry (`src/config/routes.ts`): Type-safe centralized registry providing static paths (`ROUTES.HOME`, `ROUTES.ACCOUNT`, `ROUTES.CONFIRM_DELETION`, `ROUTES.BOOKSHELF`, `ROUTES.LIKES`) and dynamic builders (`ROUTES.READ(id)`, `ROUTES.VIEW(view)`).
 - Site Branding & Storage Registry (`src/config/site-config.ts`): Consolidated canonical project links (`SITE_CONFIG`), upstream Gutenberg mirrors, and persistent storage keys (`STORAGE_KEYS`).
 - Bookshelf Component Decomposition: Modularized `BookshelfRack.tsx` into single-responsibility sub-components (`BookshelfSpine.tsx`, `BookshelfMobileModal.tsx`, `BookshelfManageModals.tsx`) with 100% co-located tests.
-- Profile Component Decomposition: Modularized `src/app/profile/page.tsx` into single-responsibility sub-components (`ProfileIdentityCard.tsx`, `ProfileLibraryStats.tsx`, `ProfileSecuritySection.tsx`, `ProfilePreferencesSection.tsx`, `ProfileDeleteModal.tsx`) with 100% co-located tests.
+- Account Settings Modularization & Route Migration: Migrated `/profile` to `/account` with modular sub-components in `src/components/account/` (`AccountIdentityCard.tsx`, `AccountLibraryStats.tsx`, `AccountSecuritySection.tsx`, `AccountPreferencesSection.tsx`, `AccountDeleteModal.tsx`) with 100% co-located tests.
+- Order-Independent Dynamic Smart Search (`/lib/smart-search.ts`, `CollectionSearchBar.tsx`): Real-time, zero-network-latency client search engine for Bookshelf and Favorites supporting order-independent multi-token matching, diacritic insensitivity, instant clear button, keyboard shortcuts (`Esc`), and live counter badges.
+- Dynamic Active Icon Fills & Zero-Shift Header Hydration: Clean dynamic SVG fills for Bookshelf (`fill-primary`) and Favorites (`fill-destructive`) when containing saved items, eliminating text clutter and delivering 100% stable layouts (CLS = 0).
+- Test Suite Granularity & Expansion: Expanded test suite to 64 suites and 404 focused, single-responsibility tests with 100% co-located coverage.
 
 ### Changed
-- Codebase Orchestration: Reduced `BookshelfRack.tsx` from 861 to 389 lines (-55%) and `src/app/profile/page.tsx` from 787 to 359 lines (-54%).
-- Link & Storage Adoption: Replaced all scattered hardcoded routes and storage key strings across Navbar, Footer, BookCard, Bookshelf, Profile, Reader, and Zustand stores with centralized configuration singletons.
+- Codebase Orchestration: Reduced `BookshelfRack.tsx` from 861 to 389 lines (-55%) and `src/app/account/page.tsx` from 787 to 328 lines (-58%).
+- Link & Storage Adoption: Replaced all scattered hardcoded routes and storage key strings across Navbar, Footer, BookCard, Bookshelf, Account, Reader, and Zustand stores with centralized configuration singletons.
+- Header Ergonomics: Updated user menu button to clean "Account" label and internal link to "Settings" with dedicated icon.
 
 ### Fixed
 - Eliminated hardcoded route duplication and typo vulnerabilities across all presentation components and state stores.
+- Fixed header layout shift and text reflow during client-side hydration.
 
 
 ## [1.6.0] - 2026-09-01
@@ -162,3 +167,9 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-003: Zustand for Offline Bookshelf and Reader State**
 - **ADR-004: TanStack React Query for Server Data Caching**
 - **ADR-005: Supabase Authentication & Cloud Bookshelf Synchronization with Progressive Enhancement**
+- **ADR-006: Tactile Hardwood Bookshelves & 3D Convex Book Spine Physics**
+- **ADR-007: Single-Source Type-Safe Route Registry & Configuration Singletons**
+- **ADR-008: Order-Independent Multi-Token Client Smart Search Engine**
+- **ADR-009: Stepped Directional Scroll with User-Configurable Sticky Preferences**
+- **ADR-010: Universal Multi-Language Translations & Reader Handoff Engine**
+- **ADR-011: Zero-CLS Header Hydration & Dynamic Active Icon Fill Architecture**

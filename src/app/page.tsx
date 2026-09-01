@@ -23,6 +23,8 @@ import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/mocks/handlers';
 import { Trash2, BookOpen, Quote, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { CollectionSearchBar } from '@/components/presentation/CollectionSearchBar';
+import { filterBooksSmart } from '@/lib/smart-search';
 import { ROUTES } from '@/config/routes';
 
 function HomeContent() {
@@ -35,6 +37,7 @@ function HomeContent() {
   const [activePreviewBookId, setActivePreviewBookId] = useState<number | null>(null);
   const [previewOriginRect, setPreviewOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'likes' | null>(null);
+  const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
 
   // Bookshelf store items (hydrated safely on mount)
   const rawSavedBooks = useBookshelfStore((s) => s.savedBooks);
@@ -96,6 +99,13 @@ function HomeContent() {
     removeFilterChip,
   } = useCatalogFilters();
 
+  // Reset collection search query when switching views
+  const [prevActiveView, setPrevActiveView] = useState(activeView);
+  if (prevActiveView !== activeView) {
+    setPrevActiveView(activeView);
+    setCollectionSearchQuery('');
+  }
+
   // Server Query
   const {
     data: booksData,
@@ -125,16 +135,13 @@ function HomeContent() {
     onRemove: () => removeFilterChip(chip.id),
   }));
 
-  // Derive displayed books based on active view
-  let displayedBooks = booksData?.results ? booksData.results.slice(0, pageSize) : [];
-  let isDisplayLoading = isLoading;
-  let isDisplayError = isError;
+  // Smart filtered collection books (order-independent search)
+  const filteredSavedBooks = useMemo(
+    () => filterBooksSmart(savedBooks, collectionSearchQuery),
+    [savedBooks, collectionSearchQuery]
+  );
 
-  if (activeView === 'bookshelf') {
-    displayedBooks = savedBooks;
-    isDisplayLoading = false;
-    isDisplayError = false;
-  } else if (activeView === 'likes') {
+  const uniqueKnownLikedBooks = useMemo(() => {
     const allKnown = [
       ...(likedBooks || []),
       ...(missingBooksData?.results || []),
@@ -142,7 +149,25 @@ function HomeContent() {
       ...savedBooks,
     ];
     const uniqueKnown = Array.from(new Map(allKnown.map((b) => [b.id, b])).values());
-    displayedBooks = uniqueKnown.filter((b) => likedBookIds.includes(b.id));
+    return uniqueKnown.filter((b) => likedBookIds.includes(b.id));
+  }, [likedBooks, missingBooksData?.results, booksData?.results, savedBooks, likedBookIds]);
+
+  const filteredLikedBooks = useMemo(
+    () => filterBooksSmart(uniqueKnownLikedBooks, collectionSearchQuery),
+    [uniqueKnownLikedBooks, collectionSearchQuery]
+  );
+
+  // Derive displayed books based on active view
+  let displayedBooks = booksData?.results ? booksData.results.slice(0, pageSize) : [];
+  let isDisplayLoading = isLoading;
+  let isDisplayError = isError;
+
+  if (activeView === 'bookshelf') {
+    displayedBooks = filteredSavedBooks;
+    isDisplayLoading = false;
+    isDisplayError = false;
+  } else if (activeView === 'likes') {
+    displayedBooks = filteredLikedBooks;
     isDisplayLoading = missingLikedIds.length > 0 && isMissingLoading;
     isDisplayError = false;
   }
@@ -275,6 +300,29 @@ function HomeContent() {
               )}
             </div>
 
+            {/* Smart Collection Search Bar for Bookshelf & Favorites */}
+            {activeView === 'bookshelf' && savedBooks.length > 0 && (
+              <CollectionSearchBar
+                query={collectionSearchQuery}
+                onQueryChange={setCollectionSearchQuery}
+                placeholder="Search your bookshelf by title, author, or subject..."
+                totalCount={savedBooks.length}
+                filteredCount={filteredSavedBooks.length}
+                collectionName="bookshelf"
+              />
+            )}
+
+            {activeView === 'likes' && likedBookIds.length > 0 && (
+              <CollectionSearchBar
+                query={collectionSearchQuery}
+                onQueryChange={setCollectionSearchQuery}
+                placeholder="Search your favorites by title, author, or subject..."
+                totalCount={likedBookIds.length}
+                filteredCount={filteredLikedBooks.length}
+                collectionName="favorites"
+              />
+            )}
+
             {/* Book Catalog / Bookshelf Grid */}
             <BookGrid
               key={activeView}
@@ -296,15 +344,21 @@ function HomeContent() {
               onViewModeChange={setViewMode}
               showViewToggle={false} // Managed by StickyToolbar
               onBrowseCatalog={() => setActiveView('catalog')}
+              searchQuery={collectionSearchQuery}
+              onClearSearch={collectionSearchQuery.trim() ? () => setCollectionSearchQuery('') : undefined}
               emptyTitle={
-                activeView === 'bookshelf'
+                collectionSearchQuery.trim()
+                  ? `No volumes found matching "${collectionSearchQuery}"`
+                  : activeView === 'bookshelf'
                   ? 'Your personal shelf is currently empty'
                   : activeView === 'likes'
                   ? 'No liked books yet'
                   : 'No matching public domain works found'
               }
               emptyDescription={
-                activeView === 'bookshelf'
+                collectionSearchQuery.trim()
+                  ? 'Try adjusting your search terms, author name, or clear the search query.'
+                  : activeView === 'bookshelf'
                   ? 'Click the bookmark ribbon on any volume to place it on your shelf for offline access.'
                   : activeView === 'likes'
                   ? 'Click the heart icon on any work to save it to your favorites.'

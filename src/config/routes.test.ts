@@ -5,7 +5,8 @@ describe('ROUTES Configuration', () => {
   it('provides static canonical routes', () => {
     expect(ROUTES.HOME).toBe('/');
     expect(ROUTES.CATALOG).toBe('/');
-    expect(ROUTES.PROFILE).toBe('/profile');
+    expect(ROUTES.ACCOUNT).toBe('/account');
+    expect(ROUTES.PROFILE).toBe('/account');
     expect(ROUTES.CONFIRM_DELETION).toBe('/auth/confirm-deletion');
     expect(ROUTES.AUTH_CALLBACK).toBe('/auth/callback');
     expect(ROUTES.BOOKSHELF).toBe('/?view=bookshelf');

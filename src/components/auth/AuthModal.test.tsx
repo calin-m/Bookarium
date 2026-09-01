@@ -237,8 +237,7 @@ describe('AuthModal Component', () => {
     expect(screen.getByLabelText('Show password')).toBeInTheDocument();
   });
 
-  it('handles forgot password navigation from sign in view and submits reset email', async () => {
-    mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+  it('navigates from sign in view to forgot password view', () => {
     const setAuthModalView = vi.fn();
 
     (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -253,27 +252,29 @@ describe('AuthModal Component', () => {
       resetPasswordForEmail: mockResetPasswordForEmail,
     });
 
-    const { rerender } = render(<AuthModal />);
+    render(<AuthModal />);
 
-    // Click "Forgot password?" link on sign in
     const forgotBtn = screen.getByRole('button', { name: /Forgot password\?/i });
     expect(forgotBtn).toBeInTheDocument();
     fireEvent.click(forgotBtn);
     expect(setAuthModalView).toHaveBeenCalledWith('forgot_password');
+  });
 
-    // Switch view to forgot_password
+  it('submits password reset request and displays check email confirmation', async () => {
+    mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+
     (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       user: null,
       isAuthModalOpen: true,
       authModalView: 'forgot_password',
       error: null,
       closeAuthModal: vi.fn(),
-      setAuthModalView,
+      setAuthModalView: vi.fn(),
       setError: vi.fn(),
       resetPasswordForEmail: mockResetPasswordForEmail,
     });
 
-    rerender(<AuthModal />);
+    render(<AuthModal />);
 
     expect(screen.getByText('Reset Your Password')).toBeInTheDocument();
     expect(screen.getByText(/Enter your account email and we will send you a secure link/i)).toBeInTheDocument();
@@ -285,11 +286,34 @@ describe('AuthModal Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /Send Password Reset Link/i }));
     expect(mockResetPasswordForEmail).toHaveBeenCalledWith('forgot@bookarium.org');
 
-    // Should render check your email confirmation screen
     const emailSentTitle = await screen.findByText('Check your email');
     expect(emailSentTitle).toBeInTheDocument();
     expect(screen.getByText(/We sent a password reset link to/i)).toBeInTheDocument();
+  });
 
+  it('navigates back to sign in from confirmation screen', async () => {
+    mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+    const setAuthModalView = vi.fn();
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: null,
+      isAuthModalOpen: true,
+      authModalView: 'forgot_password',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView,
+      setError: vi.fn(),
+      resetPasswordForEmail: mockResetPasswordForEmail,
+    });
+
+    render(<AuthModal />);
+
+    fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), {
+      target: { value: 'forgot@bookarium.org' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Send Password Reset Link/i }));
+
+    await screen.findByText('Check your email');
     const backBtn = screen.getByRole('button', { name: /Back to Sign In/i });
     fireEvent.click(backBtn);
     expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
