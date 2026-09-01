@@ -36,6 +36,10 @@ export interface AuthState {
     preferred_theme?: string;
     font_size?: number;
   }) => Promise<{ error: Error | null }>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: AuthError | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
+  requestAccountDeletion: () => Promise<{ error: AuthError | null }>;
+  deleteAccount: () => Promise<{ error: Error | null }>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -220,6 +224,74 @@ export const useAuthStore = create<AuthState>()(
       set((state) => ({
         profile: state.profile ? ({ ...state.profile, ...updates } as Profile) : null,
       }));
+      return { error: null };
+    } catch (err: any) {
+      return { error: err instanceof Error ? err : new Error(String(err)) };
+    }
+  },
+
+  resetPasswordForEmail: async (email) => {
+    set({ error: null });
+    const supabase = createClient();
+    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/profile` : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+    if (error) {
+      set({ error: error.message });
+      return { error };
+    }
+    return { error: null };
+  },
+
+  updatePassword: async (newPassword) => {
+    set({ error: null });
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (error) {
+      set({ error: error.message });
+      return { error };
+    }
+    return { error: null };
+  },
+
+  requestAccountDeletion: async () => {
+    const { user } = get();
+    if (!user?.email) return { error: { message: 'No active user session found' } as AuthError };
+
+    set({ error: null });
+    const supabase = createClient();
+    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/auth/confirm-deletion` : undefined;
+    const { error } = await supabase.auth.signInWithOtp({
+      email: user.email,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
+    });
+
+    if (error) {
+      set({ error: error.message });
+      return { error };
+    }
+    return { error: null };
+  },
+
+  deleteAccount: async () => {
+    const { user } = get();
+    if (!user) return { error: new Error('No active user session') };
+
+    try {
+      const supabase = createClient();
+      // 1. Clean up user's cloud data and custom bookshelves
+      await supabase.from('cloud_books').delete().eq('user_id', user.id);
+      await supabase.from('cloud_bookshelves').delete().eq('user_id', user.id);
+      // 2. Clean up profile
+      await supabase.from('profiles').delete().eq('id', user.id);
+      // 3. Terminate auth session
+      await supabase.auth.signOut();
+      set({ user: null, profile: null, isAuthModalOpen: false, error: null });
       return { error: null };
     } catch (err: any) {
       return { error: err instanceof Error ? err : new Error(String(err)) };

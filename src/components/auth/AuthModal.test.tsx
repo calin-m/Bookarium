@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 const mockSignInWithPassword = vi.fn();
 const mockSignUpWithPassword = vi.fn();
 const mockSignInWithOtp = vi.fn();
+const mockResetPasswordForEmail = vi.fn();
 
 vi.mock('@/stores/useAuthStore', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/stores/useAuthStore')>();
@@ -82,7 +83,11 @@ describe('AuthModal Component', () => {
     expect(screen.getByText('Create Your Bookshelf')).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Jane Austen'), { target: { value: 'Jane Doe' } });
     fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), { target: { value: 'jane@example.com' } });
-    fireEvent.change(screen.getByPlaceholderText('••••••••••••'), { target: { value: 'secret123' } });
+    
+    const pwdInputs = screen.getAllByPlaceholderText('••••••••••••');
+    expect(pwdInputs).toHaveLength(2);
+    fireEvent.change(pwdInputs[0], { target: { value: 'secret123' } });
+    fireEvent.change(pwdInputs[1], { target: { value: 'secret123' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
     expect(mockSignUpWithPassword).toHaveBeenCalledWith('jane@example.com', 'secret123', 'Jane Doe');
@@ -95,6 +100,34 @@ describe('AuthModal Component', () => {
     const goSignInBtn = screen.getByRole('button', { name: /Go to Sign In/i });
     fireEvent.click(goSignInBtn);
     expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
+  });
+
+  it('validates password mismatch on Sign Up', () => {
+    const mockSetError = vi.fn();
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: null,
+      isAuthModalOpen: true,
+      authModalView: 'sign_up',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: mockSetError,
+      signUpWithPassword: mockSignUpWithPassword,
+    });
+
+    render(<AuthModal />);
+
+    fireEvent.change(screen.getByPlaceholderText('Jane Austen'), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), { target: { value: 'jane@example.com' } });
+    
+    const pwdInputs = screen.getAllByPlaceholderText('••••••••••••');
+    fireEvent.change(pwdInputs[0], { target: { value: 'secret123' } });
+    fireEvent.change(pwdInputs[1], { target: { value: 'mismatch456' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+    expect(mockSetError).toHaveBeenCalledWith('Passwords do not match.');
+    expect(mockSignUpWithPassword).not.toHaveBeenCalled();
   });
 
   it('handles form submission in sign in mode', async () => {
@@ -202,5 +235,63 @@ describe('AuthModal Component', () => {
     // Toggle back to hidden
     fireEvent.click(hideBtn);
     expect(screen.getByLabelText('Show password')).toBeInTheDocument();
+  });
+
+  it('handles forgot password navigation from sign in view and submits reset email', async () => {
+    mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+    const setAuthModalView = vi.fn();
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: null,
+      isAuthModalOpen: true,
+      authModalView: 'sign_in',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView,
+      setError: vi.fn(),
+      signInWithPassword: mockSignInWithPassword,
+      resetPasswordForEmail: mockResetPasswordForEmail,
+    });
+
+    const { rerender } = render(<AuthModal />);
+
+    // Click "Forgot password?" link on sign in
+    const forgotBtn = screen.getByRole('button', { name: /Forgot password\?/i });
+    expect(forgotBtn).toBeInTheDocument();
+    fireEvent.click(forgotBtn);
+    expect(setAuthModalView).toHaveBeenCalledWith('forgot_password');
+
+    // Switch view to forgot_password
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: null,
+      isAuthModalOpen: true,
+      authModalView: 'forgot_password',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView,
+      setError: vi.fn(),
+      resetPasswordForEmail: mockResetPasswordForEmail,
+    });
+
+    rerender(<AuthModal />);
+
+    expect(screen.getByText('Reset Your Password')).toBeInTheDocument();
+    expect(screen.getByText(/Enter your account email and we will send you a secure link/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), {
+      target: { value: 'forgot@bookarium.org' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Send Password Reset Link/i }));
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('forgot@bookarium.org');
+
+    // Should render check your email confirmation screen
+    const emailSentTitle = await screen.findByText('Check your email');
+    expect(emailSentTitle).toBeInTheDocument();
+    expect(screen.getByText(/We sent a password reset link to/i)).toBeInTheDocument();
+
+    const backBtn = screen.getByRole('button', { name: /Back to Sign In/i });
+    fireEvent.click(backBtn);
+    expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
   });
 });

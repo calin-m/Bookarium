@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 15:02:24 GMT  
+**Last Generated**: Tue, 01 Sep 2026 15:50:43 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 51 passed  
-**Total Verified Tests**: 321 passed  
+**Total Test Suites**: 52 passed  
+**Total Verified Tests**: 334 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **51/51 test suites passed** (321 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **52/52 test suites passed** (334 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 5 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.44%** (2094/2290) — *Target: $ge$ 80%*
-- **Statements**: **90.01%** (2290/2544) — *Target: $ge$ 80%*
-- **Functions**: **87.31%** (544/623) — *Target: $ge$ 80%*
-- **Branches**: **80.53%** (1978/2456) — *Target: $ge$ 80%*
+- **Lines**: **91.22%** (2235/2450) — *Target: $ge$ 80%*
+- **Statements**: **89.83%** (2440/2716) — *Target: $ge$ 80%*
+- **Functions**: **86.54%** (566/654) — *Target: $ge$ 80%*
+- **Branches**: **80.87%** (2097/2593) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (51 Suites / 321 Tests)
+## 🧪 Comprehensive Test Suite Catalog (52 Suites / 334 Tests)
 
-### 🚀 App Routes & Pages (8 Suites · 41 Tests)
+### 🚀 App Routes & Pages (9 Suites · 48 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.test.ts</code></b> (3 tests)</summary>
@@ -65,6 +65,16 @@
 </details>
 
 <details>
+<summary><b><code>src/app/auth/confirm-deletion/page.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `renders loading state when isLoading is true`
+- ✔ `renders expired/invalid link state when unauthenticated`
+- ✔ `renders authenticated confirmation portal and handles successful deletion`
+- ✔ `renders error message if deleteAccount fails`
+
+</details>
+
+<details>
 <summary><b><code>src/app/layout.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `should expose valid metadata`
@@ -78,8 +88,8 @@
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
 - ✔ `should open advanced filter drawer and apply era and sort filters`
-- ✔ `should switch to bookshelf view and handle clearing shelf`
-- ✔ `should switch to favorites view and handle clearing favorites`
+- ✔ `should switch to bookshelf view and require confirmation to clear shelf`
+- ✔ `should switch to favorites view and require confirmation to clear favorites`
 - ✔ `should open download hub and close it`
 - ✔ `should open 3D book preview modal when book cover is clicked and close it on desktop`
 - ✔ `renders Bookshelf and Favorites when views are switched via Navbar`
@@ -88,7 +98,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/profile/page.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/app/profile/page.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated`
 - ✔ `renders authenticated profile and handles saving display name`
@@ -96,6 +106,9 @@
 - ✔ `renders Navbar and Footer with working navigation handlers`
 - ✔ `handles toggling catalog sticky scroll navigation setting`
 - ✔ `accurately calculates and renders custom shelves count excluding default shelf`
+- ✔ `handles password update with validation and success feedback`
+- ✔ `handles Suggest Strong Password in Profile Security card and auto-fills both fields`
+- ✔ `handles delete account flow with email verification dialog and cancellation`
 
 </details>
 
@@ -354,25 +367,27 @@
 
 </details>
 
-### 🔐 Authentication & Security (1 Suites · 7 Tests)
+### 🔐 Authentication & Security (1 Suites · 9 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
 - ✔ `renders Sign Up view, submits with email confirmation required, and shows confirmation screen`
+- ✔ `validates password mismatch on Sign Up`
 - ✔ `handles form submission in sign in mode`
 - ✔ `renders error alert when error exists`
 - ✔ `handles magic link view and submission and email confirmation screen`
 - ✔ `handles Suggest Strong Password generation and visibility toggle`
+- ✔ `handles forgot password navigation from sign in view and submits reset email`
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 35 Tests)
+### ⚡ Zustand State Stores (5 Suites · 39 Tests)
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `manages modal open, close, and view state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -383,6 +398,10 @@
 - ✔ `handles signInWithOAuth success and error`
 - ✔ `handles initializeAuth subscription and session hydration`
 - ✔ `handles updateProfile when logged in and logged out`
+- ✔ `handles resetPasswordForEmail success and failure`
+- ✔ `handles updatePassword success and failure`
+- ✔ `handles requestAccountDeletion success and failure`
+- ✔ `handles deleteAccount success and failure`
 
 </details>
 

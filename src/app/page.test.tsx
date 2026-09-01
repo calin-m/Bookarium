@@ -114,7 +114,7 @@ describe('Home page integration', () => {
     expect(screen.getByText(/19th Century Victorian & Romantic/i)).toBeInTheDocument();
   });
 
-  it('should switch to bookshelf view and handle clearing shelf', () => {
+  it('should switch to bookshelf view and require confirmation to clear shelf', () => {
     useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
     renderHome();
 
@@ -126,10 +126,24 @@ describe('Home page integration', () => {
 
     const clearBtn = screen.getByRole('button', { name: /Clear Shelf/i });
     fireEvent.click(clearBtn);
+
+    // Confirmation dialog appears
+    expect(screen.getByText('Clear Personal Bookshelf')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to clear your bookshelf/i)).toBeInTheDocument();
+
+    // Cancel preserves shelf
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+    expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
+
+    // Click again and confirm
+    fireEvent.click(clearBtn);
+    const confirmBtn = screen.getByRole('button', { name: /Yes, Clear Shelf/i });
+    fireEvent.click(confirmBtn);
     expect(useBookshelfStore.getState().savedBooks).toHaveLength(0);
   });
 
-  it('should switch to favorites view and handle clearing favorites', () => {
+  it('should switch to favorites view and require confirmation to clear favorites', () => {
     useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
     renderHome();
 
@@ -140,6 +154,20 @@ describe('Home page integration', () => {
 
     const clearFavBtn = screen.getByRole('button', { name: /Clear Favorites/i });
     fireEvent.click(clearFavBtn);
+
+    // Confirmation dialog appears
+    expect(screen.getByText('Clear Favorite Books')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to clear your favorites/i)).toBeInTheDocument();
+
+    // Cancel preserves favorites
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+    expect(useBookshelfStore.getState().likedBookIds).toHaveLength(1);
+
+    // Click again and confirm
+    fireEvent.click(clearFavBtn);
+    const confirmBtn = screen.getByRole('button', { name: /Yes, Clear Favorites/i });
+    fireEvent.click(confirmBtn);
     expect(useBookshelfStore.getState().likedBookIds).toHaveLength(0);
   });
 

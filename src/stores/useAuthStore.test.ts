@@ -8,6 +8,8 @@ const mockSignInWithOAuth = vi.fn();
 const mockSignOut = vi.fn();
 const mockGetUser = vi.fn();
 const mockOnAuthStateChange = vi.fn();
+const mockResetPasswordForEmail = vi.fn();
+const mockUpdateUser = vi.fn();
 const mockFrom = vi.fn();
 
 vi.mock('@/lib/supabase/client', () => ({
@@ -20,6 +22,8 @@ vi.mock('@/lib/supabase/client', () => ({
       signOut: mockSignOut,
       getUser: mockGetUser,
       onAuthStateChange: mockOnAuthStateChange,
+      resetPasswordForEmail: mockResetPasswordForEmail,
+      updateUser: mockUpdateUser,
     },
     from: mockFrom,
   }),
@@ -211,5 +215,80 @@ describe('useAuthStore', () => {
 
     const res3 = await useAuthStore.getState().updateProfile({ display_name: 'Failed Name' });
     expect(res3.error?.message).toBe('Database error');
+  });
+
+  it('handles resetPasswordForEmail success and failure', async () => {
+    mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+    const res1 = await useAuthStore.getState().resetPasswordForEmail('user@bookarium.test');
+    expect(res1.error).toBeNull();
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
+      'user@bookarium.test',
+      expect.objectContaining({ redirectTo: expect.stringContaining('/profile') })
+    );
+
+    mockResetPasswordForEmail.mockResolvedValueOnce({ error: { message: 'User not found' } });
+    const res2 = await useAuthStore.getState().resetPasswordForEmail('unknown@bookarium.test');
+    expect(res2.error?.message).toBe('User not found');
+    expect(useAuthStore.getState().error).toBe('User not found');
+  });
+
+  it('handles updatePassword success and failure', async () => {
+    mockUpdateUser.mockResolvedValueOnce({ error: null });
+    const res1 = await useAuthStore.getState().updatePassword('newPassword123');
+    expect(res1.error).toBeNull();
+    expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'newPassword123' });
+
+    mockUpdateUser.mockResolvedValueOnce({ error: { message: 'Password too weak' } });
+    const res2 = await useAuthStore.getState().updatePassword('123');
+    expect(res2.error?.message).toBe('Password too weak');
+    expect(useAuthStore.getState().error).toBe('Password too weak');
+  });
+
+  it('handles requestAccountDeletion success and failure', async () => {
+    // Logged out
+    useAuthStore.setState({ user: null });
+    const res1 = await useAuthStore.getState().requestAccountDeletion();
+    expect(res1.error?.message).toBe('No active user session found');
+
+    // Logged in success
+    useAuthStore.setState({ user: { id: 'u1', email: 'delete@bookarium.test' } as any });
+    mockSignInWithOtp.mockResolvedValueOnce({ error: null });
+
+    const res2 = await useAuthStore.getState().requestAccountDeletion();
+    expect(res2.error).toBeNull();
+    expect(mockSignInWithOtp).toHaveBeenCalledWith({
+      email: 'delete@bookarium.test',
+      options: {
+        emailRedirectTo: expect.stringContaining('/auth/confirm-deletion'),
+      },
+    });
+
+    // Logged in failure
+    mockSignInWithOtp.mockResolvedValueOnce({ error: { message: 'Auth rate limit' } });
+    const res3 = await useAuthStore.getState().requestAccountDeletion();
+    expect(res3.error?.message).toBe('Auth rate limit');
+    expect(useAuthStore.getState().error).toBe('Auth rate limit');
+  });
+
+  it('handles deleteAccount success and failure', async () => {
+    // Logged out
+    useAuthStore.setState({ user: null });
+    const res1 = await useAuthStore.getState().deleteAccount();
+    expect(res1.error?.message).toBe('No active user session');
+
+    // Logged in success
+    useAuthStore.setState({ user: { id: 'user-delete' } as any, profile: { id: 'user-delete' } as any });
+    const mockDelete = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    });
+    mockFrom.mockReturnValue({
+      delete: mockDelete,
+    });
+    mockSignOut.mockResolvedValueOnce({ error: null });
+
+    const res2 = await useAuthStore.getState().deleteAccount();
+    expect(res2.error).toBeNull();
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(useAuthStore.getState().profile).toBeNull();
   });
 });

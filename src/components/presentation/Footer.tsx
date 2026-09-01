@@ -111,7 +111,7 @@ export const Footer: React.FC = () => {
             . Designed for Literature.
           </div>
           <div className="flex items-center gap-1">
-            <span>Built with precision for the public domain</span>
+            <span>Crafted with care for book lovers everywhere</span>
             <Heart className="w-3 h-3 text-destructive fill-current ml-1" />
           </div>
         </div>

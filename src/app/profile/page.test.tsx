@@ -155,4 +155,107 @@ describe('ProfilePage', () => {
     expect(screen.getByText('Custom Shelves')).toBeInTheDocument();
     expect(screen.getByTestId('custom-shelves-count')).toHaveTextContent('2');
   });
+
+  it('handles password update with validation and success feedback', async () => {
+    const mockUpdatePassword = vi.fn().mockResolvedValue({ error: null });
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+      updatePassword: mockUpdatePassword,
+    });
+
+    render(<ProfilePage />);
+
+    expect(screen.getByText('Security & Password')).toBeInTheDocument();
+
+    const newPwdInput = screen.getByLabelText('New Password');
+    const confirmPwdInput = screen.getByLabelText('Confirm New Password');
+    const updateBtn = screen.getByRole('button', { name: /Update Password/i });
+
+    // Test password mismatch
+    fireEvent.change(newPwdInput, { target: { value: 'password123' } });
+    fireEvent.change(confirmPwdInput, { target: { value: 'different123' } });
+    fireEvent.click(updateBtn);
+
+    expect(screen.getByText('Passwords do not match.')).toBeInTheDocument();
+    expect(mockUpdatePassword).not.toHaveBeenCalled();
+
+    // Test valid matching passwords
+    fireEvent.change(confirmPwdInput, { target: { value: 'password123' } });
+    fireEvent.click(updateBtn);
+
+    await waitFor(() => {
+      expect(mockUpdatePassword).toHaveBeenCalledWith('password123');
+      expect(screen.getByText('Password successfully updated')).toBeInTheDocument();
+    });
+  });
+
+  it('handles Suggest Strong Password in Profile Security card and auto-fills both fields', () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+    });
+
+    render(<ProfilePage />);
+
+    const suggestBtn = screen.getByRole('button', { name: /Suggest Strong Password/i });
+    expect(suggestBtn).toBeInTheDocument();
+
+    fireEvent.click(suggestBtn);
+
+    const newPwdInput = screen.getByLabelText('New Password') as HTMLInputElement;
+    const confirmPwdInput = screen.getByLabelText('Confirm New Password') as HTMLInputElement;
+
+    expect(newPwdInput.value.length).toBeGreaterThanOrEqual(12);
+    expect(newPwdInput.value).toBe(confirmPwdInput.value);
+
+    // Live strength meter renders
+    expect(screen.getByText('Password strength:')).toBeInTheDocument();
+  });
+
+  it('handles delete account flow with email verification dialog and cancellation', async () => {
+    const mockRequestAccountDeletion = vi.fn().mockResolvedValue({ error: null });
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+      requestAccountDeletion: mockRequestAccountDeletion,
+    });
+
+    render(<ProfilePage />);
+
+    expect(screen.getByText(/Danger Zone: Delete Account/i)).toBeInTheDocument();
+
+    const deleteBtn = screen.getByRole('button', { name: /Delete Account/i });
+    fireEvent.click(deleteBtn);
+
+    // Confirmation dialog appears explaining email verification
+    expect(screen.getByText('Request Account Deletion')).toBeInTheDocument();
+    expect(screen.getByText('Security Verification Required')).toBeInTheDocument();
+    expect(screen.getByText(/For your security, deleting your account requires email confirmation/i)).toBeInTheDocument();
+
+    // Cancel preserves account
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+    expect(mockRequestAccountDeletion).not.toHaveBeenCalled();
+
+    // Reopen and send deletion email
+    fireEvent.click(deleteBtn);
+    const sendLinkBtn = screen.getByRole('button', { name: /Send Deletion Link/i });
+    fireEvent.click(sendLinkBtn);
+
+    await waitFor(() => {
+      expect(mockRequestAccountDeletion).toHaveBeenCalled();
+      expect(screen.getByText('Verification Link Sent')).toBeInTheDocument();
+      expect(screen.getByText(/We sent a secure deletion confirmation link to/i)).toBeInTheDocument();
+    });
+
+    const closeBtn = screen.getByRole('button', { name: /^Close$/i });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText('Verification Link Sent')).not.toBeInTheDocument();
+  });
 });

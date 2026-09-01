@@ -7,8 +7,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-51%20Suites%20%7C%20318%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.5%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
+[![Vitest](https://img.shields.io/badge/Vitest-52%20Suites%20%7C%20334%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.2%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -32,8 +33,15 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v1.4.0)
+## 🛠️ Latest Improvements (v1.5.0)
 
+- **Comprehensive Account Lifecycle & Security Management (`/profile`, `AuthModal`, `/auth/confirm-deletion`)**:
+  - **Forgot Password Flow** – Direct password reset email request interface within the authentication modal, delivering secure one-time password reset links.
+  - **In-App Password Generator & Live Strength Meter** – Cryptographic high-entropy 16-character password generator button with instant clipboard copy feedback, dual auto-fill, and a real-time color-coded complexity meter (Weak / Moderate / Strong) available across both the Sign Up modal and the Profile dashboard.
+  - **Dual-Password Confirmation & Mismatch Guard** – Dedicated *Confirm Password* fields across both Sign Up registration and Profile password changes, eliminating typos and accidental lockout.
+  - **Industry-Standard Email-Verified Account Deletion** – Two-step deletion verification protocol informing the user upfront, dispatching a secure one-time verification link to their email, and requiring final authorization at the dedicated `/auth/confirm-deletion` portal before permanently purging cloud bookshelves and terminating the session.
+  - **Accidental Clear Protection Modals** – Tactile modal confirmation dialogs preventing accidental clearing of personal bookshelves or liked favorites.
+  - **Literary Tagline Refresh** – Updated footer attribution to *"Crafted with care for book lovers everywhere"*.
 - **Universal Multi-Language Translations & Reader Switcher (`/read/[id]`)** – Interactive `<Globe />` language dropdown in the Reader navigation header powered by `useBookTranslations` and TanStack React Query caching. Discovers and groups all available international translations (Spanish, French, German, Italian, Dutch, Greek, etc.) and bilingual editions across the 70,000+ public domain volume archive with 1-click seamless handoff.
 - **Tactile Book Page-Turn Transitions for View Switching** – Integrated the reader's tactile `animate-page-turn` transition (`180ms cubic-bezier(0.16, 1, 0.3, 1)`) into the main application view container, delivering the physical sensation of turning a book page whenever switching between **Catalog**, **Bookshelf**, and **Favorites**.
 - **Arrival Docking & Pure Physical Slide-Hide Transitions** – Enhanced `useScrollDirection` with an arrival dock guard so the top header remains visible when the catalog filter bar first docks on initial scroll down. Upgraded `StickyCatalogToolbar` to use synchronized transform translations (`transition-transform duration-300 ease-in-out` with `-translate-y-16` / `-translate-y-[calc(100%+4rem)]`), completely eliminating top-margin layout gaps and replacing opacity fades with solid physical slide transitions.
@@ -46,7 +54,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
 - **Strict 0% Page 1 Reading Progress & Verified Profiles** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user profiles (`/profile`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 51/51 test files passed, 318/318 tests passed with **91.5% line coverage** and **81.0% branch coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 52/52 test files passed, 334/334 tests passed with **91.2% line coverage** and **80.9% branch coverage** (`npm run verify`).
 
 ---
 
@@ -56,9 +64,10 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 
 | Service / Source | Endpoint / Provider | Description & Usage |
 |---|---|---|
-| **Gutendex REST API** | [`https://gutendex.com/`](https://gutendex.com/) | Open-source JSON Web API indexing over 70,000+ Project Gutenberg public domain titles. Provides search, topic filters, author timelines, download metrics, and metadata with strict `copyright=false` filtering. |
-| **Project Gutenberg CDN** | [`https://www.gutenberg.org/`](https://www.gutenberg.org/) | Direct content delivery network providing unabridged plain text (`.txt`), official EPUB packages (`.epub.images`, `.epub.noimages`), Kindle/MOBI formats, and web-ready HTML. |
-| **Supabase (Auth & Postgres)** | [`https://supabase.com/`](https://supabase.com/) | Optional cloud authentication and PostgreSQL synchronization for custom bookshelves and reading progress using Row Level Security (RLS). |
+| **Gutendex REST API** | [`gutendex.com`](https://gutendex.com/) • [`GitHub`](https://github.com/garethbjohnson/gutendex) | Open-source JSON Web API created by [Gareth B. Johnson](https://github.com/garethbjohnson/gutendex) indexing over 70,000+ Project Gutenberg public domain titles. Provides search, topic filters, author timelines, download metrics, and metadata with strict `copyright=false` filtering. |
+| **Project Gutenberg CDN** | [`gutenberg.org`](https://www.gutenberg.org/) | Direct content delivery network providing unabridged plain text (`.txt`), official EPUB packages (`.epub.images`, `.epub.noimages`), Kindle/MOBI formats, and web-ready HTML. |
+| **Supabase (Auth & Postgres)** | [`supabase.com`](https://supabase.com/) | Optional cloud authentication and PostgreSQL synchronization for custom bookshelves and reading progress using Row Level Security (RLS). |
+| **Vercel Edge Platform** | [`vercel.com`](https://vercel.com/) | High-performance edge deployment, dynamic SSR route handlers, zero-config production caching, and global CDN delivery. |
 | **Public Domain Archive Proxy** | `/api/books` & `/api/books/content` | Next.js server-side route proxies providing caching, CORS handling, and guaranteed public domain integrity before client delivery. |
 
 ---
@@ -323,6 +332,17 @@ npm run dev:all
 
 The application will be accessible at [http://localhost:3000](http://localhost:3000).
 
+### 🚀 Production Deployment on Vercel
+
+Bookarium is architected for zero-config deployment on **[Vercel](https://vercel.com/)**:
+
+1. Push your repository branch to GitHub.
+2. Import the project into the [Vercel Dashboard](https://vercel.com/new).
+3. Under **Environment Variables**, optionally set:
+   * `NEXT_PUBLIC_SUPABASE_URL` = your Supabase project URL
+   * `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase public anon key
+4. Click **Deploy** — Vercel will automatically build the Next.js 16 production bundle, configure edge caching, and provision serverless API proxies.
+
 ---
 
 ## 🛠️ CLI Command Matrix
@@ -372,8 +392,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 287 tests. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 304 tests across 50 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 334 tests across 52 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
@@ -381,6 +400,14 @@ The repository enforces a closed-loop quality verification engine before any rel
 | 🛡️ **Master Governance Protocol** | Immutable engineering protocols and agent operational guardrails. | [`.agents/AGENTS.md`](.agents/AGENTS.md) |
 | 🚀 **CI/CD Pipeline Guide** | Developer runbook and pipeline execution workflows. | [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) |
 | 🛠️ **Developer Maintenance Hub** | Local setup, environment configuration, and contributor commands. | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
+
+---
+
+## 🙏 Acknowledgements & Open-Source Credits
+
+* **[Project Gutenberg](https://www.gutenberg.org/)**: For pioneering the public domain digitization movement and preserving thousands of classic literary masterpieces for humanity.
+* **[Gutendex by Gareth B. Johnson](https://github.com/garethbjohnson/gutendex)**: For creating and maintaining the high-performance, open-source RESTful JSON web API for Project Gutenberg metadata.
+* **[Booksaw Design Concept](https://www.figma.com/community/file/1521831984874247291/booksaw-bookstore-ecommerce-website-design-template)**: For inspiring the warm, tactile bookstore aesthetic and skeuomorphic open-book layouts.
 
 ---
 

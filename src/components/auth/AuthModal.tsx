@@ -20,18 +20,21 @@ export const AuthModal: React.FC = () => {
     signUpWithPassword,
     signInWithOtp,
     signInWithOAuth,
+    resetPasswordForEmail,
   } = useAuthStore();
 
   const { migrateLocalBooksToCloud } = useBookshelfStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [verificationEmailSent, setVerificationEmailSent] = useState(false);
+  const [resetPasswordSent, setResetPasswordSent] = useState(false);
 
   if (!isAuthModalOpen) return null;
 
@@ -55,6 +58,7 @@ export const AuthModal: React.FC = () => {
 
     const result = pwd.sort(() => Math.random() - 0.5).join('');
     setPassword(result);
+    setConfirmPassword(result);
     setShowPassword(true);
 
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -90,6 +94,10 @@ export const AuthModal: React.FC = () => {
           await migrateLocalBooksToCloud(user.id);
         }
       } else if (authModalView === 'sign_up') {
+        if (password !== confirmPassword) {
+          setError('Passwords do not match.');
+          return;
+        }
         const { error: err, needsEmailConfirmation } = await signUpWithPassword(email, password, fullName);
         if (!err) {
           if (needsEmailConfirmation) {
@@ -102,6 +110,11 @@ export const AuthModal: React.FC = () => {
         const { error: err } = await signInWithOtp(email);
         if (!err) {
           setMagicLinkSent(true);
+        }
+      } else if (authModalView === 'forgot_password') {
+        const { error: err } = await resetPasswordForEmail(email);
+        if (!err) {
+          setResetPasswordSent(true);
         }
       }
     } finally {
@@ -143,6 +156,8 @@ export const AuthModal: React.FC = () => {
                 ? 'Welcome Back'
                 : authModalView === 'sign_up'
                 ? 'Create Your Bookshelf'
+                : authModalView === 'forgot_password'
+                ? 'Reset Your Password'
                 : 'Sign In via Magic Link'}
             </h2>
             <p className="text-xs text-muted-foreground font-sans">
@@ -150,6 +165,8 @@ export const AuthModal: React.FC = () => {
                 ? 'Sign in to access your custom bookshelves and sync reading progress across devices.'
                 : authModalView === 'sign_up'
                 ? 'Join Bookarium to organize personal reading lists and sync public domain masterworks.'
+                : authModalView === 'forgot_password'
+                ? 'Enter your account email and we will send you a secure link to reset your password.'
                 : 'We will email you a secure login link with zero password required.'}
             </p>
           </div>
@@ -222,6 +239,32 @@ export const AuthModal: React.FC = () => {
               Back to Sign In
             </Button>
           </div>
+        ) : /* Password Reset Email Sent Success */
+        resetPasswordSent && authModalView === 'forgot_password' ? (
+          <div className="space-y-4 text-center py-4">
+            <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 text-primary flex items-center justify-center mx-auto">
+              <Mail className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-serif font-bold text-base">Check your email</h3>
+              <p className="text-xs text-muted-foreground font-mono">
+                We sent a password reset link to <strong className="text-foreground">{email}</strong>.
+              </p>
+              <p className="text-[11px] text-muted-foreground font-sans mt-2">
+                Click the link in your email to set a new password.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setResetPasswordSent(false);
+                setAuthModalView('sign_in');
+              }}
+            >
+              Back to Sign In
+            </Button>
+          </div>
         ) : (
           /* Form */
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -255,12 +298,24 @@ export const AuthModal: React.FC = () => {
               />
             </div>
 
-            {authModalView !== 'magic_link' && (
+            {authModalView !== 'magic_link' && authModalView !== 'forgot_password' && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-mono uppercase text-muted-foreground flex items-center gap-1.5">
                     <Lock className="w-3 h-3" /> Password
                   </label>
+                  {authModalView === 'sign_in' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setAuthModalView('forgot_password');
+                      }}
+                      className="text-[11px] font-mono text-primary hover:underline cursor-pointer transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
                   {authModalView === 'sign_up' && (
                     <button
                       type="button"
@@ -304,6 +359,26 @@ export const AuthModal: React.FC = () => {
                   </button>
                 </div>
 
+                {authModalView === 'sign_up' && (
+                  <div className="space-y-1.5 pt-1.5">
+                    <label className="text-xs font-mono uppercase text-muted-foreground flex items-center gap-1.5">
+                      <Lock className="w-3 h-3" /> Confirm Password
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        autoComplete="new-password"
+                        className="text-xs font-mono pr-9"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Password Strength Meter for Sign Up */}
                 {authModalView === 'sign_up' && password.length > 0 && (
                   <div className="space-y-1 pt-1 animate-in fade-in duration-150">
@@ -333,6 +408,8 @@ export const AuthModal: React.FC = () => {
                   ? 'Sign In to Bookarium'
                   : authModalView === 'sign_up'
                   ? 'Create Account'
+                  : authModalView === 'forgot_password'
+                  ? 'Send Password Reset Link'
                   : 'Send Magic Link'}
               </span>
               <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
@@ -341,45 +418,58 @@ export const AuthModal: React.FC = () => {
         )}
 
         {/* View Switchers */}
-        <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-mono text-muted-foreground">
-          {authModalView === 'sign_in' ? (
-            <>
+        {!verificationEmailSent && !magicLinkSent && !resetPasswordSent && (
+          <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-mono text-muted-foreground">
+            {authModalView === 'sign_in' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setAuthModalView('magic_link')}
+                  className="hover:text-primary transition-colors cursor-pointer"
+                >
+                  Use Magic Link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthModalView('sign_up')}
+                  className="text-primary font-bold hover:underline cursor-pointer"
+                >
+                  Sign Up &rarr;
+                </button>
+              </>
+            ) : authModalView === 'sign_up' ? (
+              <>
+                <span>Already have an account?</span>
+                <button
+                  type="button"
+                  onClick={() => setAuthModalView('sign_in')}
+                  className="text-primary font-bold hover:underline cursor-pointer"
+                >
+                  Sign In &rarr;
+                </button>
+              </>
+            ) : authModalView === 'forgot_password' ? (
               <button
                 type="button"
-                onClick={() => setAuthModalView('magic_link')}
-                className="hover:text-primary transition-colors cursor-pointer"
+                onClick={() => {
+                  setError(null);
+                  setAuthModalView('sign_in');
+                }}
+                className="hover:text-primary transition-colors cursor-pointer mx-auto"
               >
-                Use Magic Link
+                &larr; Back to Sign In
               </button>
-              <button
-                type="button"
-                onClick={() => setAuthModalView('sign_up')}
-                className="text-primary font-bold hover:underline cursor-pointer"
-              >
-                Sign Up &rarr;
-              </button>
-            </>
-          ) : authModalView === 'sign_up' ? (
-            <>
-              <span>Already have an account?</span>
+            ) : (
               <button
                 type="button"
                 onClick={() => setAuthModalView('sign_in')}
-                className="text-primary font-bold hover:underline cursor-pointer"
+                className="hover:text-primary transition-colors cursor-pointer mx-auto"
               >
-                Sign In &rarr;
+                &larr; Back to Email & Password Sign In
               </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setAuthModalView('sign_in')}
-              className="hover:text-primary transition-colors cursor-pointer mx-auto"
-            >
-              &larr; Back to Email & Password Sign In
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

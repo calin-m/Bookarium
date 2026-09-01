@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.0] - 2026-09-01
+### *Account Security Lifecycle, In-App Password Generator & Email-Verified Deletion*
+
+### Added
+- Forgot Password Flow: Direct password reset email request interface within the authentication modal delivering secure one-time reset links via Supabase Auth.
+- In-App Password Generator: Cryptographic high-entropy 16-character password generator button (`KeyRound`) with dual auto-fill and instant clipboard copy feedback.
+- Live Password Strength Meter: Color-coded real-time complexity bar (Weak / Moderate / Strong) calculating entropy score across both Sign Up and Profile dashboard.
+- Dual-Password Confirmation: Dedicated Confirm Password fields in Sign Up registration and Profile password changes with real-time mismatch validation.
+- Email-Verified Account Deletion: Two-step deletion verification protocol with upfront guidance modal, one-time verification link, and final authorization at the `/auth/confirm-deletion` portal.
+- Dedicated Deletion Portal (`/auth/confirm-deletion`): Standalone client portal verifying user identity, displaying destructive warnings, and purging cloud bookshelves, profiles, and active sessions.
+- Accidental Clear Confirmation Modals: Tactile confirmation dialogs preventing accidental clearing of personal bookshelves or liked favorites.
+- Literary Tagline Refresh: Updated footer literary attribution to "Crafted with care for book lovers everywhere".
+
+### Changed
+- `useAuthStore` Architecture: Added `resetPasswordForEmail`, `updatePassword`, `requestAccountDeletion`, and `deleteAccount` state handlers with deterministic session termination.
+
+### Fixed
+- Prevented password mismatch errors during registration and credential updates via simultaneous dual-input auto-fill.
+
+
 ## [1.4.0] - 2026-09-01
 ### *Classic Library Aesthetics, Tactile Hardwood Bookshelves & Cross-Theme Harmonization*
 

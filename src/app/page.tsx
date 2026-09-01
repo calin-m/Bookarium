@@ -10,6 +10,7 @@ import { BookGrid } from '@/components/presentation/BookGrid';
 import { LiteraryQuotes } from '@/components/presentation/LiteraryQuotes';
 import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
 import { BookPreviewModal } from '@/components/presentation/BookPreviewModal';
+import { Modal } from '@/components/ui/Modal';
 import { Footer } from '@/components/presentation/Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
@@ -20,7 +21,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/mocks/handlers';
-import { Trash2, BookOpen, Quote, ArrowRight } from 'lucide-react';
+import { Trash2, BookOpen, Quote, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 function HomeContent() {
@@ -32,6 +33,7 @@ function HomeContent() {
   const [selectedPreviewBook, setSelectedPreviewBook] = useState<GutendexBook | null>(null);
   const [activePreviewBookId, setActivePreviewBookId] = useState<number | null>(null);
   const [previewOriginRect, setPreviewOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'likes' | null>(null);
 
   // Bookshelf store items (hydrated safely on mount)
   const rawSavedBooks = useBookshelfStore((s) => s.savedBooks);
@@ -248,7 +250,7 @@ function HomeContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={clearSavedBooks}
+                    onClick={() => setConfirmClearType('shelf')}
                     className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -262,7 +264,7 @@ function HomeContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => useBookshelfStore.getState().clearLikedBooks()}
+                    onClick={() => setConfirmClearType('likes')}
                     className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -414,6 +416,61 @@ function HomeContent() {
         onResetAll={handleResetAllFilters}
         activeFilterCount={toolbarChips.length}
       />
+
+      {/* Clear Shelf / Favorites Confirmation Modal */}
+      <Modal
+        isOpen={confirmClearType !== null}
+        onClose={() => setConfirmClearType(null)}
+        title={confirmClearType === 'shelf' ? 'Clear Personal Bookshelf' : 'Clear Favorite Books'}
+        maxWidth="md"
+      >
+        <div className="p-6 space-y-5" data-testid="clear-confirmation-dialog">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground text-sm sm:text-base">
+                {confirmClearType === 'shelf'
+                  ? 'Are you sure you want to clear your bookshelf?'
+                  : 'Are you sure you want to clear your favorites?'}
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                {confirmClearType === 'shelf'
+                  ? `This will remove all ${savedBooks.length} titles currently preserved on your personal reading shelf. This action cannot be undone.`
+                  : `This will remove all ${likedBookIds.length} titles from your curated favorites list. This action cannot be undone.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmClearType(null)}
+              className="text-xs font-mono uppercase"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
+              onClick={() => {
+                if (confirmClearType === 'shelf') {
+                  clearSavedBooks();
+                } else if (confirmClearType === 'likes') {
+                  useBookshelfStore.getState().clearLikedBooks();
+                }
+                setConfirmClearType(null);
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {confirmClearType === 'shelf' ? 'Yes, Clear Shelf' : 'Yes, Clear Favorites'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <BackToTop />
       <Footer />
