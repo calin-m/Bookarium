@@ -197,7 +197,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   return (
     <main
       ref={mainRef}
-      className={`relative flex-1 overflow-y-scroll transition-colors duration-200 ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
+      className={`relative flex-1 overflow-y-scroll transition-colors duration-200 select-text ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
       role="main"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -225,7 +225,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       )}
       <article
         key={readingMode === 'paginated' ? `p-${activeChapterIndex}-${chapterPage ?? (contentToDisplay?.slice(0, 30) || '0')}` : `s-${activeChapterIndex}`}
-        className={`mx-auto px-6 sm:px-12 py-10 sm:py-16 ${widthClass} ${fontClass} animate-page-turn`}
+        className={`mx-auto px-6 sm:px-12 py-10 sm:py-16 select-text ${widthClass} ${fontClass} animate-page-turn`}
         style={{
           fontSize: `${fontSize}px`,
           lineHeight: `${lineHeight}`,

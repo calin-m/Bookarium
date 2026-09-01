@@ -225,7 +225,7 @@ export default function BookReaderPage() {
   const activeTheme = getReaderTheme(theme);
 
   return (
-    <div className={`h-screen flex flex-col overflow-hidden select-none transition-colors duration-200 ${activeTheme.surface}`}>
+    <div className={`h-[100dvh] flex flex-col overflow-hidden transition-colors duration-200 ${activeTheme.surface}`}>
       
       {/* Top Navigation & Toolbar */}
       <ReaderHeader

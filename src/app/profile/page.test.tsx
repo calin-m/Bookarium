@@ -143,6 +143,8 @@ describe('ProfilePage', () => {
     });
 
     useBookshelfStore.setState({
+      savedBooks: [{ id: 1, title: 'Pride and Prejudice', authors: [], formats: {} } as any],
+      likedBookIds: [1, 2, 3],
       cloudBookshelves: [
         { id: 's0', user_id: 'u1', name: 'General', is_default: true, created_at: '', updated_at: '' },
         { id: 's1', user_id: 'u1', name: 'Philosophy', is_default: false, created_at: '', updated_at: '' },
@@ -152,6 +154,18 @@ describe('ProfilePage', () => {
 
     render(<ProfilePage />);
 
+    expect(screen.getByRole('heading', { level: 2, name: 'Library' })).toBeInTheDocument();
+    
+    const shelvedLink = screen.getByRole('link', { name: /View Shelved Volumes in Bookshelf/i });
+    expect(shelvedLink).toHaveAttribute('href', '/?view=bookshelf');
+    expect(screen.getByText('Shelved Volumes')).toBeInTheDocument();
+
+    const favoritesLink = screen.getByRole('link', { name: /View Favorite Titles in Favorites/i });
+    expect(favoritesLink).toHaveAttribute('href', '/?view=likes');
+    expect(screen.getByText('Favorite Titles')).toBeInTheDocument();
+
+    const customShelvesLink = screen.getByRole('link', { name: /View Custom Shelves in Bookshelf/i });
+    expect(customShelvesLink).toHaveAttribute('href', '/?view=bookshelf');
     expect(screen.getByText('Custom Shelves')).toBeInTheDocument();
     expect(screen.getByTestId('custom-shelves-count')).toHaveTextContent('2');
   });
@@ -257,5 +271,25 @@ describe('ProfilePage', () => {
     const closeBtn = screen.getByRole('button', { name: /^Close$/i });
     fireEvent.click(closeBtn);
     expect(screen.queryByText('Verification Link Sent')).not.toBeInTheDocument();
+  });
+
+  it('renders BackToTop button on scroll threshold and triggers window scrollTo', () => {
+    const scrollToMock = vi.fn();
+    window.scrollTo = scrollToMock;
+
+    render(<ProfilePage />);
+
+    // Initially hidden (below 300px threshold)
+    expect(screen.queryByRole('button', { name: /Back to top/i })).not.toBeInTheDocument();
+
+    // Scroll past threshold
+    window.scrollY = 400;
+    fireEvent.scroll(window);
+
+    const backToTopBtn = screen.getByRole('button', { name: /Back to top/i });
+    expect(backToTopBtn).toBeInTheDocument();
+
+    fireEvent.click(backToTopBtn);
+    expect(scrollToMock).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
   });
 });

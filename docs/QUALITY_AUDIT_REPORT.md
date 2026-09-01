@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 15:50:43 GMT  
+**Last Generated**: Tue, 01 Sep 2026 18:44:32 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 52 passed  
-**Total Verified Tests**: 334 passed  
+**Total Verified Tests**: 338 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **52/52 test suites passed** (334 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **52/52 test suites passed** (338 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 5 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.22%** (2235/2450) — *Target: $ge$ 80%*
-- **Statements**: **89.83%** (2440/2716) — *Target: $ge$ 80%*
-- **Functions**: **86.54%** (566/654) — *Target: $ge$ 80%*
-- **Branches**: **80.87%** (2097/2593) — *Target: $ge$ 80%*
+- **Lines**: **91.5%** (2285/2497) — *Target: $ge$ 80%*
+- **Statements**: **90.09%** (2493/2767) — *Target: $ge$ 80%*
+- **Functions**: **86.84%** (581/669) — *Target: $ge$ 80%*
+- **Branches**: **81.08%** (2152/2654) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (52 Suites / 334 Tests)
+## 🧪 Comprehensive Test Suite Catalog (52 Suites / 338 Tests)
 
-### 🚀 App Routes & Pages (9 Suites · 48 Tests)
+### 🚀 App Routes & Pages (9 Suites · 49 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.test.ts</code></b> (3 tests)</summary>
@@ -98,7 +98,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/profile/page.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/app/profile/page.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated`
 - ✔ `renders authenticated profile and handles saving display name`
@@ -109,6 +109,7 @@
 - ✔ `handles password update with validation and success feedback`
 - ✔ `handles Suggest Strong Password in Profile Security card and auto-fills both fields`
 - ✔ `handles delete account flow with email verification dialog and cancellation`
+- ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
 
 </details>
 
@@ -138,7 +139,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (12 Suites · 86 Tests)
+### 🎨 Catalog & Presentation (12 Suites · 88 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (6 tests)</summary>
@@ -195,7 +196,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -211,6 +212,8 @@
 - ✔ `calls onBrowseCatalog callback when clicking Browse Catalog in empty state`
 - ✔ `allows moving a book between shelves when user has multiple shelves`
 - ✔ `triggers quick actions from hover card (download, read, save, like)`
+- ✔ `handles mobile spine tap by opening quick-action bottom sheet instead of immediate navigation`
+- ✔ `handles mobile action sheet close button, download, save, like, and move shelf`
 
 </details>
 
@@ -298,7 +301,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (5 Suites · 37 Tests)
+### 📖 In-Browser Focus Reader (5 Suites · 38 Tests)
 
 <details>
 <summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (7 tests)</summary>
@@ -325,7 +328,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -337,6 +340,7 @@
 - ✔ `renders the dedicated sub-header metadata ribbon with Book ID, Section, and Progress`
 - ✔ `renders integrated resume notice ribbon in sub-header and handles restart and dismiss`
 - ✔ `renders language and translation switcher and handles edition selection`
+- ✔ `handles link copying when share button is clicked`
 
 </details>
 

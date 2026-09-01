@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Download, Bookmark, Heart, Sparkles, Plus, Edit2, Trash2, X } from 'lucide-react';
 import type { GutendexBook } from '@/mocks/handlers';
@@ -9,6 +9,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { formatAuthorNames } from '@/lib/utils';
 
 export interface BookshelfRackProps {
   books: GutendexBook[];
@@ -60,6 +61,49 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const [editingShelfName, setEditingShelfName] = useState('');
   const [deletingShelfId, setDeletingShelfId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedMobileBook, setSelectedMobileBook] = useState<GutendexBook | null>(null);
+  const [isClosingMobileSheet, setIsClosingMobileSheet] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [shelfCapacity, setShelfCapacity] = useState<number>(18);
+
+  useEffect(() => {
+    const updateCapacity = () => {
+      if (!containerRef.current) return;
+      const width = containerRef.current.clientWidth;
+      // Subtract shelf side bevel padding (approx 48px)
+      const availableWidth = Math.max(300, width - 48);
+      // Average book spine width (48px) + gap (14px) = 62px
+      const capacity = Math.max(6, Math.floor(availableWidth / 62));
+      setShelfCapacity(capacity);
+    };
+
+    updateCapacity();
+
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      const observer = new ResizeObserver(updateCapacity);
+      observer.observe(containerRef.current);
+      return () => observer.disconnect();
+    }
+  }, []);
+
+  const closeMobileSheet = () => {
+    setIsClosingMobileSheet(true);
+    setTimeout(() => {
+      setSelectedMobileBook(null);
+      setIsClosingMobileSheet(false);
+    }, 200);
+  };
+
+  const handleSpineClick = (book: GutendexBook) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      setIsClosingMobileSheet(false);
+      setSelectedMobileBook(book);
+    } else {
+      if (onBookClick) onBookClick(book);
+      else router.push(`/read/${book.id}`);
+    }
+  };
 
   const handleCreateShelf = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,18 +164,20 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     return books.filter((b) => currentShelfBookIds.has(b.id));
   }, [cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, books]);
 
-  // Chunk books into shelves of up to 8 books
-  const SHELF_SIZE = 8;
-  const shelves: GutendexBook[][] = [];
-  for (let i = 0; i < effectiveShelfBooks.length; i += SHELF_SIZE) {
-    shelves.push(effectiveShelfBooks.slice(i, i + SHELF_SIZE));
-  }
+  // Chunk books dynamically into shelves based on container width
+  const shelves = useMemo(() => {
+    const result: GutendexBook[][] = [];
+    for (let i = 0; i < effectiveShelfBooks.length; i += shelfCapacity) {
+      result.push(effectiveShelfBooks.slice(i, i + shelfCapacity));
+    }
+    return result;
+  }, [effectiveShelfBooks, shelfCapacity]);
 
   const activeShelf = cloudBookshelves.find((s) => s.id === currentActiveShelfId) || defaultShelf;
   const activeShelfDisplayName = activeShelf?.is_default ? 'General' : (activeShelf?.name || 'General');
 
   return (
-    <div className="w-full space-y-8 py-6" data-testid="bookshelf-rack">
+    <div className="w-full space-y-8 py-6" data-testid="bookshelf-rack" ref={containerRef}>
       {/* Cloud Bookshelf Header & Multi-Shelf Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-2">
         <div className="flex items-center gap-2 flex-wrap">
@@ -281,7 +327,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
             <div className="relative w-full rounded-2xl border border-border shelf-ambient-niche shadow-md overflow-hidden sm:overflow-visible">
               
               {/* Shelf Items Row */}
-              <div className="flex items-end justify-start sm:justify-center gap-2 sm:gap-3.5 overflow-x-auto sm:overflow-visible scrollbar-none pt-10 px-3 sm:px-6 touch-pan-x snap-x relative z-10">
+              <div className="flex items-end justify-center gap-2 sm:gap-3.5 overflow-x-auto sm:overflow-visible scrollbar-none pt-10 px-4 sm:px-8 touch-pan-x snap-x relative z-10">
                 {shelfBooks.map((book, bookIndex) => {
                   const palette = SPINE_PALETTES[(book.id + bookIndex) % SPINE_PALETTES.length];
                   
@@ -301,15 +347,11 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                       key={book.id}
                       className="group relative shrink-0 cursor-pointer select-none transition-all duration-300 hover:z-50 focus:outline-hidden origin-bottom mb-0"
                       style={{ height: `${heightVariance}px`, width: `${widthVariance}px` }}
-                      onClick={() => {
-                        if (onBookClick) onBookClick(book);
-                        else router.push(`/read/${book.id}`);
-                      }}
+                      onClick={() => handleSpineClick(book)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          if (onBookClick) onBookClick(book);
-                          else router.push(`/read/${book.id}`);
+                          handleSpineClick(book);
                         }
                       }}
                       tabIndex={0}
@@ -347,8 +389,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                         </div>
                       </div>
 
-                      {/* Hover Floating Card Preview / Quick Actions */}
-                      <div className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10">
+                      {/* Hover Floating Card Preview / Quick Actions (Desktop Hover) */}
+                      <div className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden sm:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10">
                         <div className="flex items-start justify-between gap-1 mb-1.5">
                           <span className="text-[10px] uppercase font-mono tracking-wider text-primary flex items-center gap-1">
                             <Sparkles className="w-2.5 h-2.5" /> Public Domain
@@ -364,7 +406,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                           {book.title}
                         </h4>
                         <p className="text-[11px] text-muted-foreground mb-2 truncate">
-                          {authorName}
+                          {formatAuthorNames(book.authors) || authorName}
                         </p>
 
                         {/* Quick Action Buttons */}
@@ -467,6 +509,152 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
               {/* Hardwood Shelf Plank Base */}
               <div className="shelf-wood-ledge w-full h-5 rounded-b-2xl relative z-20 border-t border-black/30 shadow-md" />
+
+              {/* Mobile In-Shelf Quick-Action Centered Floating Modal */}
+              {selectedMobileBook && shelfBooks.some((b) => b.id === selectedMobileBook.id) && (
+                <>
+                  {/* Transparent Backdrop to capture outside taps */}
+                  <div
+                    className="fixed inset-0 bg-transparent z-40 sm:hidden cursor-pointer"
+                    onClick={closeMobileSheet}
+                    aria-hidden="true"
+                    data-testid="mobile-sheet-backdrop"
+                  />
+
+                  <div
+                    className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:hidden pointer-events-none"
+                    data-testid="mobile-book-action-sheet"
+                  >
+                    {/* Centered Floating Action Card with Smooth Scale In/Out Transition */}
+                    <div
+                      className={`relative w-full max-w-sm bg-card border border-border rounded-2xl p-5 shadow-2xl z-10 space-y-4 pointer-events-auto transition-all duration-200 ease-out transform ${
+                        isClosingMobileSheet
+                          ? 'scale-95 opacity-0 pointer-events-none'
+                          : 'scale-100 opacity-100 animate-in fade-in zoom-in-95'
+                      }`}
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label={`Book actions for ${selectedMobileBook.title}`}
+                    >
+                      {/* Top Grab Handle & Header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1 pr-6">
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-primary">
+                            <Sparkles className="w-3 h-3" />
+                            <span>Public Domain</span>
+                            {readingProgress[selectedMobileBook.id] !== undefined && (
+                              <span className="text-muted-foreground ml-1">
+                                • {Math.round(readingProgress[selectedMobileBook.id])}% read
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="font-serif font-bold text-base text-foreground line-clamp-2 leading-snug">
+                            {selectedMobileBook.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground font-sans truncate">
+                            {formatAuthorNames(selectedMobileBook.authors) || 'Anonymous'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={closeMobileSheet}
+                          className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 cursor-pointer"
+                          aria-label="Close action sheet"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Quick Actions Row */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <Button
+                          variant="primary"
+                          size="md"
+                          className="flex-1 font-mono text-xs uppercase tracking-wider font-bold gap-1.5"
+                          onClick={() => {
+                            const target = selectedMobileBook;
+                            closeMobileSheet();
+                            useReaderStore.getState().openReader(target);
+                            if (onBookClick) onBookClick(target);
+                            else router.push(`/read/${target.id}`);
+                          }}
+                          aria-label={`Read ${selectedMobileBook.title}`}
+                        >
+                          <BookOpen className="w-4 h-4" />
+                          <span>Read Volume</span>
+                        </Button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onDownloadClick) onDownloadClick(selectedMobileBook);
+                            closeMobileSheet();
+                          }}
+                          className="p-2.5 rounded-xl border border-border hover:bg-muted text-foreground transition-colors shrink-0 cursor-pointer"
+                          aria-label={`Download ${selectedMobileBook.title}`}
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleSave(selectedMobileBook)}
+                          className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
+                            checkIsSaved(selectedMobileBook.id)
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border hover:bg-muted text-foreground'
+                          }`}
+                          aria-label={checkIsSaved(selectedMobileBook.id) ? 'Remove from bookshelf' : 'Save to bookshelf'}
+                        >
+                          <Bookmark className={`w-4 h-4 ${checkIsSaved(selectedMobileBook.id) ? 'fill-current' : ''}`} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleLike(selectedMobileBook)}
+                          className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
+                            checkIsLiked(selectedMobileBook.id)
+                              ? 'border-destructive bg-destructive/10 text-destructive'
+                              : 'border-border hover:bg-muted text-foreground'
+                          }`}
+                          aria-label={checkIsLiked(selectedMobileBook.id) ? 'Unlike book' : 'Like book'}
+                        >
+                          <Heart className={`w-4 h-4 ${checkIsLiked(selectedMobileBook.id) ? 'fill-current' : ''}`} />
+                        </button>
+                      </div>
+
+                      {/* Move to Shelf selector for multi-shelf users */}
+                      {cloudBookshelves.length > 1 && (
+                        <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
+                          <span className="text-xs font-mono text-muted-foreground">Shelf:</span>
+                          <select
+                            aria-label={`Move ${selectedMobileBook.title} to shelf`}
+                            value={
+                              cloudBookshelfItems.find((i) => i.book_id === selectedMobileBook.id)?.bookshelf_id ||
+                              defaultShelf?.id ||
+                              currentActiveShelfId ||
+                              ''
+                            }
+                            onChange={async (e) => {
+                              const targetShelfId = e.target.value;
+                              if (targetShelfId) {
+                                await moveBookToShelf(selectedMobileBook.id, targetShelfId, user?.id || '');
+                              }
+                            }}
+                            className="text-xs font-mono bg-card text-foreground border border-border rounded-lg px-2.5 py-1 max-w-[200px] truncate cursor-pointer hover:border-primary transition-colors focus:outline-none"
+                          >
+                            {cloudBookshelves.map((shelf) => (
+                              <option key={shelf.id} value={shelf.id}>
+                                {shelf.is_default ? 'General (All)' : shelf.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )))}

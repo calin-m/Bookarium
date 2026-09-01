@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowLeft, BookOpen, ExternalLink, Globe, Info, List, Sliders, Sparkles, Sun, Moon, Coffee, ShieldCheck, Check, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, ExternalLink, Globe, Info, List, Sliders, Sparkles, Sun, Moon, Coffee, ShieldCheck, Check, X, Share2 } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
@@ -58,7 +58,21 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 }) => {
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const activeTheme = getReaderTheme(theme);
+
+  const handleShare = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      } catch {
+        // Fallback gracefully if clipboard access is denied
+      }
+    }
+  };
 
   const numericId = typeof bookId === 'number' ? bookId : parseInt(String(bookId), 10);
   const featuredFixture = !isNaN(numericId) && numericId > 0
@@ -95,15 +109,15 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <div className="min-w-0 flex-1 flex flex-col justify-center overflow-hidden">
+            <div className="min-w-0 flex-1 flex flex-col justify-center overflow-hidden select-text">
               <h1
-                className="text-sm sm:text-base font-serif font-bold truncate text-foreground leading-tight"
+                className="text-sm sm:text-base font-serif font-bold truncate text-foreground leading-tight select-text"
                 title={displayTitle}
               >
                 {displayTitle}
               </h1>
               {displayAuthor && (
-                <span className={`text-xs font-mono truncate ${activeTheme.textMuted}`} title={displayAuthor}>
+                <span className={`text-xs font-mono truncate select-text ${activeTheme.textMuted}`} title={displayAuthor}>
                   by {displayAuthor}
                 </span>
               )}
@@ -247,6 +261,26 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                 )}
               </button>
             )}
+
+            {/* Share Book Direct Link Button */}
+            <button
+              type="button"
+              onClick={handleShare}
+              className={`p-2 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                isCopied
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
+                  : activeTheme.button
+              }`}
+              aria-label={isCopied ? 'Link Copied to Clipboard' : 'Share Book Link'}
+              title={isCopied ? 'Link Copied!' : 'Share Book Link'}
+              data-testid="reader-share-button"
+            >
+              {isCopied ? (
+                <Check className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <Share2 className="w-4 h-4" />
+              )}
+            </button>
 
           </div>
 

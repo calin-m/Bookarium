@@ -80,7 +80,7 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
       />
 
       <div
-        className={`fixed top-14 sm:top-16 right-2 sm:right-6 left-2 sm:left-auto z-[9999] w-[calc(100vw-1rem)] max-w-sm sm:w-96 max-h-[calc(100vh-4.5rem)] rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 transition-all animate-in fade-in duration-150 flex flex-col`}
+        className={`fixed top-14 sm:top-16 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[9999] w-[calc(100vw-1.5rem)] max-w-sm sm:w-96 max-h-[calc(100dvh-4.5rem)] rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 transition-all animate-in fade-in duration-150 flex flex-col`}
         role="dialog"
         aria-modal="true"
         aria-label="Table of Contents"
@@ -134,7 +134,7 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
       </div>
 
       {/* Chapter List */}
-      <div className={`max-h-[calc(100vh-16rem)] overflow-y-auto space-y-1.5 pr-1 font-mono text-xs ${activeTheme.scrollbarClass}`}>
+      <div className={`max-h-[calc(100dvh-16rem)] overflow-y-auto space-y-1.5 pr-1 font-mono text-xs ${activeTheme.scrollbarClass}`}>
         {filteredChapters.length === 0 ? (
           <div className={`p-6 text-center text-xs font-mono ${activeTheme.textMuted}`}>
             No matching sections found for &quot;{tocSearch}&quot;

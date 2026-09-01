@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BookshelfRack } from './BookshelfRack';
 import { mockBooks } from '@/mocks/handlers';
@@ -275,6 +275,143 @@ describe('BookshelfRack Component', () => {
     // Click Like/Unlike button
     const unlikeBtns = screen.getAllByLabelText('Unlike book');
     fireEvent.click(unlikeBtns[0]);
+  });
+
+  it('handles mobile spine tap by opening quick-action bottom sheet instead of immediate navigation', async () => {
+    // Set viewport to mobile (< 640px)
+    window.innerWidth = 375;
+
+    const handleBookClick = vi.fn();
+    const handleDownload = vi.fn();
+
+    render(
+      <BookshelfRack
+        books={mockBooks}
+        onBookClick={handleBookClick}
+        onDownloadClick={handleDownload}
+      />
+    );
+
+    const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
+    fireEvent.click(bookElem);
+
+    // Should NOT immediately trigger onBookClick
+    expect(handleBookClick).not.toHaveBeenCalled();
+
+    // Mobile action sheet should be open
+    const sheet = screen.getByTestId('mobile-book-action-sheet');
+    expect(sheet).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: `Book actions for ${mockBooks[0].title}` })).toBeInTheDocument();
+
+    // Read action inside sheet opens reader
+    const readBtn = screen.getByRole('button', { name: `Read ${mockBooks[0].title}` });
+    fireEvent.click(readBtn);
+    expect(handleBookClick).toHaveBeenCalledWith(mockBooks[0]);
+    await waitFor(() => {
+      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+    });
+
+    // Reopen and test backdrop dismiss
+    fireEvent.click(bookElem);
+    expect(screen.getByTestId('mobile-book-action-sheet')).toBeInTheDocument();
+
+    const backdrop = screen.getByTestId('mobile-sheet-backdrop');
+    fireEvent.click(backdrop);
+    await waitFor(() => {
+      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+    });
+
+    // Reset window.innerWidth to desktop
+    window.innerWidth = 1024;
+  });
+
+  it('handles mobile action sheet close button, download, save, like, and move shelf', async () => {
+    window.innerWidth = 375;
+    useAuthStore.setState({ user: { id: 'user-1' } as any });
+    const moveMock = vi.fn().mockResolvedValue(undefined);
+    useBookshelfStore.setState({
+      savedBooks: mockBooks,
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 'shelf-2', user_id: 'user-1', name: 'Fiction', is_default: false, created_at: '', updated_at: '' },
+      ],
+      cloudBookshelfItems: [
+        {
+          id: 'item-1',
+          bookshelf_id: 'shelf-1',
+          user_id: 'user-1',
+          book_id: mockBooks[0].id,
+          book_title: mockBooks[0].title,
+          book_authors: [],
+          cover_url: null,
+          added_at: '',
+        },
+      ],
+      activeBookshelfId: 'shelf-1',
+      moveBookToShelf: moveMock,
+    });
+
+    const handleDownload = vi.fn();
+
+    render(
+      <BookshelfRack
+        books={mockBooks}
+        onDownloadClick={handleDownload}
+      />
+    );
+
+    const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
+    fireEvent.click(bookElem);
+
+    // Test close button
+    let sheet = screen.getByTestId('mobile-book-action-sheet');
+    const closeBtn = within(sheet).getByRole('button', { name: 'Close action sheet' });
+    fireEvent.click(closeBtn);
+    await waitFor(() => {
+      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+    });
+
+    // Reopen sheet
+    fireEvent.click(bookElem);
+    sheet = screen.getByTestId('mobile-book-action-sheet');
+
+    // Test download inside sheet
+    const downloadBtn = within(sheet).getByRole('button', { name: `Download ${mockBooks[0].title}` });
+    fireEvent.click(downloadBtn);
+    expect(handleDownload).toHaveBeenCalledWith(mockBooks[0]);
+    await waitFor(() => {
+      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+    });
+
+    // Reopen sheet
+    fireEvent.click(bookElem);
+    sheet = screen.getByTestId('mobile-book-action-sheet');
+
+    // Test bookmark toggle inside sheet
+    const removeBtn = within(sheet).getByRole('button', { name: 'Remove from bookshelf' });
+    fireEvent.click(removeBtn);
+    expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(false);
+
+    // Test like toggle inside sheet
+    const likeBtn = within(sheet).getByRole('button', { name: 'Like book' });
+    fireEvent.click(likeBtn);
+    expect(useBookshelfStore.getState().isBookLiked(mockBooks[0].id)).toBe(true);
+
+    // Test move to shelf inside sheet
+    const selectElements = screen.getAllByLabelText(`Move ${mockBooks[0].title} to shelf`);
+    const sheetSelect = selectElements.find((el) => el.closest('[data-testid="mobile-book-action-sheet"]'));
+    expect(sheetSelect).toBeDefined();
+    if (sheetSelect) {
+      fireEvent.change(sheetSelect, { target: { value: 'shelf-2' } });
+      expect(moveMock).toHaveBeenCalledWith(mockBooks[0].id, 'shelf-2', 'user-1');
+    }
+
+    // Test read fallback when onBookClick is omitted
+    const readBtn = within(sheet).getByRole('button', { name: `Read ${mockBooks[0].title}` });
+    fireEvent.click(readBtn);
+    expect(pushMock).toHaveBeenCalledWith(`/read/${mockBooks[0].id}`);
+
+    window.innerWidth = 1024;
   });
 });
 

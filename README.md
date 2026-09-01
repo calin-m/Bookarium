@@ -8,8 +8,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-52%20Suites%20%7C%20334%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.2%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-52%20Suites%20%7C%20338%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.5%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -47,6 +47,9 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Arrival Docking & Pure Physical Slide-Hide Transitions** – Enhanced `useScrollDirection` with an arrival dock guard so the top header remains visible when the catalog filter bar first docks on initial scroll down. Upgraded `StickyCatalogToolbar` to use synchronized transform translations (`transition-transform duration-300 ease-in-out` with `-translate-y-16` / `-translate-y-[calc(100%+4rem)]`), completely eliminating top-margin layout gaps and replacing opacity fades with solid physical slide transitions.
 - **User-Configurable Sticky Scroll Preferences (`/profile`)** – Added user preference setting in the Profile dashboard allowing readers to choose between **Smart Auto-Hide** (directional auto-hide to maximize reading space) and **Always Fixed** (stationary header and toolbar pinned at top). Persisted across browser sessions with `usePreferencesStore`.
 - **Exact Custom Shelves Profile Analytics** – Verified profile stats card (`/profile`) displaying an accurate count of user-created custom bookshelves separate from the master general library.
+- **Dynamic Responsive Bookshelf Capacity Engine** – `ResizeObserver`-driven physical book packing automatically scaling from 6-8 books on mobile up to 18-24 books on wide displays, eliminating empty side gaps with balanced horizontal center alignment.
+- **Mobile Tap-to-Activate In-Shelf Quick-Action Modal** – Smooth interactive floating modal rendered directly within the active shelf niche on mobile devices, preventing accidental navigation and displaying full natural author formatting (`formatAuthorNames`).
+- **Reader Direct Link Sharing & Dynamic Viewport Ergonomics** – Integrated header Share button copying canonical book URLs to clipboard with tactile 2-second visual feedback, paired with CSS Dynamic Viewport units (`h-[100dvh]`, `pb-[env(safe-area-inset-bottom)]`) to prevent footer cutoff on collapsing mobile address bars.
 - **Exact-Page Bookmarking & Auto-Resume Engine** – Automatic persistence of exact chapter and page positions (`readingPositions`) in `useReaderStore`. Opening any book instantly restores the reader to the exact paragraph and page left off, accompanied by a non-intrusive "Resumed at Chapter X, Page Y" toast with 1-click Restart.
 - **Tactile Hardwood Bookshelves & Library Aesthetics (ADR-006)** – Unified bookcase architecture with rich multi-stop walnut wood rails, top specular bevel lines, ambient alcove spotlighting (`.shelf-ambient-niche`), and dedicated Dark/Sepia wood gradients. Guarantees 100% flush base contact across mobile touch-scroll and desktop viewports.
 - **3D Convex Book Spine Physics & Hot-Foil Typography** – Cylindrical 3D specular lighting overlay (`.book-spine-convex`) simulating authentic curved hardcover bindings and hinge creases, complemented by `.spine-emboss-gold` and `.spine-emboss-silver` hot-foil gilded serif typography and volume seals.
@@ -54,7 +57,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
 - **Strict 0% Page 1 Reading Progress & Verified Profiles** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user profiles (`/profile`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 52/52 test files passed, 334/334 tests passed with **91.2% line coverage** and **80.9% branch coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 52/52 test files passed, 338/338 tests passed with **91.5% line coverage** and **81.1% branch coverage** (`npm run verify`).
 
 ---
 
@@ -392,7 +395,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 334 tests across 52 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 338 tests across 52 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |

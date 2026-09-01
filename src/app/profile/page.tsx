@@ -34,6 +34,7 @@ import { Footer } from '@/components/presentation/Footer';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { BackToTop } from '@/components/ui/BackToTop';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -578,11 +579,11 @@ export default function ProfilePage() {
               </form>
             </div>
 
-            {/* Cloud Library Statistics Card */}
+            {/* Library Statistics Card */}
             <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
-                  Cloud Library Statistics
+                  Library
                 </h2>
                 <Link
                   href="/?view=bookshelf"
@@ -593,29 +594,50 @@ export default function ProfilePage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 rounded-xl border border-border bg-muted/40 space-y-1">
-                  <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono">
-                    <Bookmark className="w-3.5 h-3.5 text-primary" />
-                    <span>Saved Volumes</span>
+                <Link
+                  href="/?view=bookshelf"
+                  className="p-4 rounded-xl border border-border bg-muted/40 hover:bg-muted/70 hover:border-primary/40 transition-all duration-150 space-y-1 group block"
+                  aria-label="View Shelved Volumes in Bookshelf"
+                >
+                  <div className="flex items-center justify-between text-muted-foreground text-xs font-mono">
+                    <div className="flex items-center gap-2">
+                      <Bookmark className="w-3.5 h-3.5 text-primary" />
+                      <span className="group-hover:text-foreground transition-colors">Shelved Volumes</span>
+                    </div>
+                    <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
                   </div>
                   <p className="text-2xl font-mono font-bold text-foreground">{savedCount}</p>
-                </div>
+                </Link>
 
-                <div className="p-4 rounded-xl border border-border bg-muted/40 space-y-1">
-                  <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono">
-                    <Heart className="w-3.5 h-3.5 text-destructive" />
-                    <span>Liked Titles</span>
+                <Link
+                  href="/?view=likes"
+                  className="p-4 rounded-xl border border-border bg-muted/40 hover:bg-muted/70 hover:border-primary/40 transition-all duration-150 space-y-1 group block"
+                  aria-label="View Favorite Titles in Favorites"
+                >
+                  <div className="flex items-center justify-between text-muted-foreground text-xs font-mono">
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-3.5 h-3.5 text-destructive" />
+                      <span className="group-hover:text-foreground transition-colors">Favorite Titles</span>
+                    </div>
+                    <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
                   </div>
                   <p className="text-2xl font-mono font-bold text-foreground">{likedCount}</p>
-                </div>
+                </Link>
 
-                <div className="p-4 rounded-xl border border-border bg-muted/40 space-y-1">
-                  <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono">
-                    <BookOpen className="w-3.5 h-3.5 text-primary" />
-                    <span>Custom Shelves</span>
+                <Link
+                  href="/?view=bookshelf"
+                  className="p-4 rounded-xl border border-border bg-muted/40 hover:bg-muted/70 hover:border-primary/40 transition-all duration-150 space-y-1 group block"
+                  aria-label="View Custom Shelves in Bookshelf"
+                >
+                  <div className="flex items-center justify-between text-muted-foreground text-xs font-mono">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-3.5 h-3.5 text-primary" />
+                      <span className="group-hover:text-foreground transition-colors">Custom Shelves</span>
+                    </div>
+                    <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
                   </div>
                   <p data-testid="custom-shelves-count" className="text-2xl font-mono font-bold text-foreground">{customShelvesCount}</p>
-                </div>
+                </Link>
               </div>
             </div>
 
@@ -758,6 +780,7 @@ export default function ProfilePage() {
         )}
       </main>
 
+      <BackToTop />
       <Footer />
     </div>
   );

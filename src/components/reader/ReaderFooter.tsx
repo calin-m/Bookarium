@@ -44,7 +44,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
 
   return (
     <footer
-      className={`sticky bottom-0 z-40 shrink-0 border-t transition-colors duration-200 ${activeTheme.footer}`}
+      className={`sticky bottom-0 z-40 shrink-0 border-t pb-[env(safe-area-inset-bottom,0px)] transition-colors duration-200 ${activeTheme.footer}`}
     >
       {/* Mobile Top Tier: Centered Slim Chapter Title Ribbon (< md) */}
       <div className={`md:hidden w-full px-4 py-1.5 border-b border-border/40 flex items-center justify-center gap-1.5 text-xs font-mono transition-colors duration-200`}>

@@ -248,4 +248,24 @@ describe('ReaderHeader', () => {
     fireEvent.click(screen.getByTestId('lang-dropdown-backdrop'));
     expect(screen.queryByTestId('lang-dropdown-menu')).not.toBeInTheDocument();
   });
+
+  it('handles link copying when share button is clicked', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    render(<ReaderHeader {...defaultProps} />);
+
+    const shareBtn = screen.getByTestId('reader-share-button');
+    expect(shareBtn).toBeInTheDocument();
+    expect(shareBtn).toHaveAttribute('aria-label', 'Share Book Link');
+
+    fireEvent.click(shareBtn);
+
+    expect(writeTextMock).toHaveBeenCalledWith(window.location.href);
+    expect(await screen.findByLabelText('Link Copied to Clipboard')).toBeInTheDocument();
+  });
 });
