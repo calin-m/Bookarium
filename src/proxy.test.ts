@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
-import { middleware, config } from './middleware';
+import { proxy, config } from './proxy';
 import * as supabaseMiddleware from '@/lib/supabase/middleware';
 
-describe('Root Middleware', () => {
+describe('Root Proxy (Next.js 16)', () => {
   it('calls updateSession with the incoming request', async () => {
     const mockResponse = NextResponse.next();
     const updateSessionSpy = vi
@@ -11,7 +11,7 @@ describe('Root Middleware', () => {
       .mockResolvedValueOnce(mockResponse);
 
     const req = new NextRequest('http://localhost:3000/account');
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(updateSessionSpy).toHaveBeenCalledWith(req);
     expect(res).toBe(mockResponse);

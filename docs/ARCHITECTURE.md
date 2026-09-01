@@ -213,10 +213,10 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`rate-limiter.ts`](src/lib/rate-limiter.ts) | _Root Primitive_ | `route.ts`, `route.ts` | Production Module |
 | [`smart-search.ts`](src/lib/smart-search.ts) | `mocks/handlers` | `page.tsx` | Production Module |
 | [`client.ts`](src/lib/supabase/client.ts) | `types/database.types` | `useAuthStore.ts`, `useBookshelfStore.ts` | Production Module |
-| [`middleware.ts`](src/lib/supabase/middleware.ts) | `types/database.types`, `./client` | `middleware.ts` | Production Module |
+| [`middleware.ts`](src/lib/supabase/middleware.ts) | `types/database.types`, `./client` | `proxy.ts` | Production Module |
 | [`server.ts`](src/lib/supabase/server.ts) | `types/database.types`, `./client` | `route.ts` | Production Module |
 | [`utils.ts`](src/lib/utils.ts) | _Root Primitive_ | `BookCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `DownloadDrawer.tsx`, `HeroSearch.tsx`, `Badge.tsx`, `Button.tsx`, `Card.tsx`, `Input.tsx`, `Modal.tsx`, `featured-books.ts`, `book-metadata.ts` | Production Module |
-| [`middleware.ts`](src/middleware.ts) | `lib/supabase/middleware` | _Direct Root Consumer_ | Production Module |
+| [`proxy.ts`](src/proxy.ts) | `lib/supabase/middleware` | _Direct Root Consumer_ | Production Module |
 | [`useAuthStore.ts`](src/stores/useAuthStore.ts) | `lib/supabase/client`, `types/database.types`, `config/routes` | `page.tsx`, `page.tsx`, `providers.tsx`, `AuthModal.tsx`, `BookshelfRack.tsx`, `Navbar.tsx` | Production Module |
 | [`useBookshelfStore.ts`](src/stores/useBookshelfStore.ts) | `mocks/handlers`, `hooks/useHasMounted`, `lib/supabase/client`, `types/database.types`, `config/site-config` | `page.tsx`, `page.tsx`, `providers.tsx`, `AuthModal.tsx`, `BookCard.tsx`, `BookshelfRack.tsx`, `Navbar.tsx` | Production Module |
 | [`usePreferencesStore.ts`](src/stores/usePreferencesStore.ts) | `config/site-config` | `page.tsx`, `page.tsx` | Production Module |

@@ -21,6 +21,7 @@
     "docs:sync": "node scripts/generate-architecture-matrix.js && node scripts/generate-changelog.js && node scripts/generate-quality-report.js",
     "report": "node scripts/generate-quality-report.js",
     "audit:quality": "node scripts/generate-quality-report.js",
+    "audit:detailed": "eslint . --max-warnings 0 && knip",
     "matrix:generate": "node scripts/generate-architecture-matrix.js",
     "changelog:generate": "node scripts/generate-changelog.js",
     "adr:new": "node scripts/new-adr.js",

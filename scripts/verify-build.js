@@ -206,19 +206,23 @@ function pass5AdrValidation() {
 // -------------------------------------------------------------
 function pass6QualityAudit() {
   logHeader('Pass 6: Quality Suite (ESLint & Knip Audit)');
+  console.log(`${colors.dim}  ↳ Auditing ESLint 9 code quality & Core Web Vitals...${colors.reset}`);
   const lintRes = runCommand(`${npmCmd} run lint`);
   if (!lintRes.success) {
     logFail('ESLint reported warnings or errors:');
     console.error(lintRes.stdout || lintRes.stderr);
     return false;
   }
+  console.log(`  ${colors.green}✔${colors.reset} ESLint: Verified codebase integrity (0 errors, 0 warnings).`);
 
+  console.log(`${colors.dim}  ↳ Auditing Knip dead code, unused exports, and orphan dependencies...${colors.reset}`);
   const knipRes = runCommand(`${npxCmd} knip`);
   if (!knipRes.success) {
     logFail('Knip reported unused code or dependencies:');
     console.error(knipRes.stdout || knipRes.stderr);
     return false;
   }
+  console.log(`  ${colors.green}✔${colors.reset} Knip: 0 unused files, 0 unused dependencies, 0 dead exports.`);
 
   // Update quality report
   try {
@@ -226,7 +230,7 @@ function pass6QualityAudit() {
     execSync(`node "${reportScript}"`, { cwd: rootDir, stdio: 'pipe' });
   } catch (_e) {}
 
-  logPass('0 ESLint errors and 0 unused dependencies/exports detected.');
+  logPass('ESLint and Knip quality checks completed cleanly with 0 defects.');
   return true;
 }
 

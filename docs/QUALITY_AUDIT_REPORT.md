@@ -1,6 +1,6 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 23:09:11 GMT  
+**Last Generated**: Tue, 01 Sep 2026 23:15:13 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 66 passed  
 **Total Verified Tests**: 428 passed  
@@ -28,7 +28,7 @@
 - **Lines**: **92.15%** (2467/2677) — *Target: $ge$ 80%*
 - **Statements**: **90.54%** (2692/2973) — *Target: $ge$ 80%*
 - **Functions**: **88.31%** (635/719) — *Target: $ge$ 80%*
-- **Branches**: **80.44%** (2328/2894) — *Target: $ge$ 80%*
+- **Branches**: **80.47%** (2329/2894) — *Target: $ge$ 80%*
 
 ---
 
@@ -867,7 +867,7 @@
 </details>
 
 <details>
-<summary><b><code>src/middleware.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/proxy.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
 - ✔ `exports valid matcher config`

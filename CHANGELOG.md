@@ -7,27 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.7.0] - 2026-09-01
-### *Modular Component Decomposition, Account Route Migration & Zero-Shift Header*
+## [1.7.0] - 2026-09-02
+### *Enterprise Security Hardening, Next.js 16 Proxy Migration & Performance Optimization*
 
 ### Added
+- Zero-Dependency Sliding-Window Rate Limiter (`src/lib/rate-limiter.ts`): In-memory sliding window rate limiter protecting upstream Project Gutenberg APIs (60 req/min for search, 30 req/min for full-text) with standard `X-RateLimit-*` and `Retry-After` headers and automatic 30s garbage collection.
+- Next.js 16 Edge Proxy Migration (`src/proxy.ts`, `src/proxy.test.ts`): Upgraded from deprecated `middleware.ts` to native Next.js 16 Edge `proxy.ts` convention with 100% co-located unit tests.
+- Enterprise HTTP Security Headers (`next.config.ts`): Enforces HSTS (`max-age=63072000; includeSubDomains; preload`), Clickjacking protection (`X-Frame-Options: SAMEORIGIN`), MIME-sniffing defense (`X-Content-Type-Options: nosniff`), Referrer-Policy, and Permissions-Policy.
+- SSRF & Path Traversal Immunity (`/api/books/content`): Upstream URL whitelisting (`isSafeUpstreamUrl`) restricting fetches strictly to official Project Gutenberg domains, strict numeric ID regex verification (`^\d{1,8}$`), and manual redirect handling.
+- Open Redirect Sanitization (`/auth/callback`): Added `sanitizeRedirectPath` to secure OAuth and magic-link redirect paths against off-site phishing vectors.
+- ReDoS Defense & LRU Pagination Cache (`src/lib/gutenberg-parser.ts`): Non-backtracking regular expressions (`[^\n]{0,80}`), bounded 120,000-character sampling windows, and a 500-entry LRU pagination cache for instant virtual page turns.
+- Datacenter Proximity & Payload Compression (`vercel.json`): Pinned serverless execution to `iad1` (Washington D.C. / US-East) adjacent to Gutenberg/Gutendex nodes with `gzip, deflate, br` payload compression and HTTP Keep-Alive.
 - Single-Source Route Registry (`src/config/routes.ts`): Type-safe centralized registry providing static paths (`ROUTES.HOME`, `ROUTES.ACCOUNT`, `ROUTES.CONFIRM_DELETION`, `ROUTES.BOOKSHELF`, `ROUTES.LIKES`) and dynamic builders (`ROUTES.READ(id)`, `ROUTES.VIEW(view)`).
 - Site Branding & Storage Registry (`src/config/site-config.ts`): Consolidated canonical project links (`SITE_CONFIG`), upstream Gutenberg mirrors, and persistent storage keys (`STORAGE_KEYS`).
 - Bookshelf Component Decomposition: Modularized `BookshelfRack.tsx` into single-responsibility sub-components (`BookshelfSpine.tsx`, `BookshelfMobileModal.tsx`, `BookshelfManageModals.tsx`) with 100% co-located tests.
-- Account Settings Modularization & Route Migration: Migrated `/profile` to `/account` with modular sub-components in `src/components/account/` (`AccountIdentityCard.tsx`, `AccountLibraryStats.tsx`, `AccountSecuritySection.tsx`, `AccountPreferencesSection.tsx`, `AccountDeleteModal.tsx`) with 100% co-located tests.
-- Order-Independent Dynamic Smart Search (`/lib/smart-search.ts`, `CollectionSearchBar.tsx`): Real-time, zero-network-latency client search engine for Bookshelf and Favorites supporting order-independent multi-token matching, diacritic insensitivity, instant clear button, keyboard shortcuts (`Esc`), and live counter badges.
-- BookCard Separate Subject Tag Pills & Compact Typography (`BookCard.tsx`, `extractBookTags`): Decomposed single-pill subjects into separate distinct tag badge chips residing in the card body under the author, paired with compact stats and button rows.
+- Account Settings Modularization & Route Migration: Migrated `/profile` to `/account` with modular sub-components in `src/components/account/` with 100% co-located tests.
+- Order-Independent Dynamic Smart Search (`/lib/smart-search.ts`, `CollectionSearchBar.tsx`): Real-time, zero-network-latency client search engine for Bookshelf and Favorites supporting order-independent multi-token matching, diacritic insensitivity, instant clear button, and live counter badges.
+- Unconstrained Viewport Cursor Tooltips (`BookCard.tsx`): Direct DOM body portaling (`createPortal`) of cursor-following tooltips tracking mouse coordinates at `+12px, +14px` across card edges without boundary clipping, dynamically swapping actions.
 - Dynamic 3D Preview Modal Typography & Overflow Safeguard (`BookPreviewModal.tsx`): Directly composed shared `<BookCard />` on 3D flipper cover with responsive fluid typography, adaptive line-clamping, and scroll containment for long book titles without text truncation.
 - Dynamic Active Icon Fills & Zero-Shift Header Hydration: Clean dynamic SVG fills for Bookshelf (`fill-primary`) and Favorites (`fill-destructive`) when containing saved items, eliminating text clutter and delivering 100% stable layouts (CLS = 0).
-- Test Suite Granularity & Expansion: Expanded test suite to 64 suites and 410 focused, single-responsibility tests with 100% co-located coverage.
+- Test Suite Expansion & 100% Quality Gateway: Expanded test suite to 66 suites and 428 focused, single-responsibility tests with 92.15% line coverage.
 
 ### Changed
 - Codebase Orchestration: Reduced `BookshelfRack.tsx` from 861 to 389 lines (-55%) and `src/app/account/page.tsx` from 787 to 328 lines (-58%).
 - Link & Storage Adoption: Replaced all scattered hardcoded routes and storage key strings across Navbar, Footer, BookCard, Bookshelf, Account, Reader, and Zustand stores with centralized configuration singletons.
-- Header Ergonomics: Updated user menu button to clean "Account" label and internal link to "Settings" with dedicated icon.
+- Audit Telemetry: Enhanced Pass 6 audit reporting in `scripts/verify-build.js` with detailed ESLint and Knip metrics and added `npm run audit:detailed`.
 
 ### Fixed
-- Eliminated hardcoded route duplication and typo vulnerabilities across all presentation components and state stores.
+- Eliminated Next.js 16 middleware deprecation warning by migrating to proxy convention.
+- Eliminated potential ReDoS vulnerabilities and event loop freezing during large text parsing.
 - Fixed header layout shift and text reflow during client-side hydration.
 
 
