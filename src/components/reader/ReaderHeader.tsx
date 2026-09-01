@@ -7,6 +7,11 @@ import { getReaderTheme } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 
+export interface ResumeNoticeData {
+  chapterTitle: string;
+  page: number;
+}
+
 export interface ReaderHeaderProps {
   title: string;
   author: string;
@@ -21,6 +26,9 @@ export interface ReaderHeaderProps {
   totalChapters?: number;
   currentChapterIndex?: number;
   onThemeChange?: (theme: ReaderTheme) => void;
+  resumeNotice?: ResumeNoticeData | null;
+  onRestart?: () => void;
+  onDismissResume?: () => void;
 }
 
 export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
@@ -37,6 +45,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   totalChapters = 1,
   currentChapterIndex = 0,
   onThemeChange,
+  resumeNotice,
+  onRestart,
+  onDismissResume,
 }) => {
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
   const activeTheme = getReaderTheme(theme);
@@ -154,47 +165,84 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
         </div>
 
-        {/* Sub-Header Metadata Ribbon: Book ID, Section, and Progress centered beneath the header */}
-        <div className={`w-full px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 border-t border-border/40 flex items-center justify-center text-[10px] sm:text-xs font-mono transition-colors duration-200 ${activeTheme.header}`}>
-          <div className="flex items-center justify-center gap-2 sm:gap-2.5 min-w-0 flex-wrap">
-            {bookId && (
-              <button
-                type="button"
-                onClick={() => setIsInfoCardOpen(true)}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border border-primary-500/30 dark:border-primary-500/40 text-primary-600 dark:text-primary-400 bg-primary-500/10 hover:bg-primary-500/20 hover:border-primary-500/60 shadow-xs transition-all cursor-pointer select-none active:scale-95 shrink-0"
-                title="View Gutenberg Public Domain Archive Information"
-                aria-label="View Gutenberg Archive Volume Info"
-              >
-                <Info className="w-2.5 h-2.5 opacity-80 shrink-0" />
-                <span>Gutenberg #{bookId}</span>
-              </button>
-            )}
-
-            <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
-
-            {/* Section Micro-Pill */}
-            <div
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
-              title={`Current Section: Chapter ${currentChapterIndex + 1} of ${totalChapters}`}
-            >
-              <BookOpen className="w-3 h-3 opacity-75" />
-              <span>
-                Section {currentChapterIndex + 1}/{totalChapters}
+        {/* Sub-Header Ribbon: Integrated Resume Notice or Default Metadata Ribbon */}
+        {resumeNotice ? (
+          <div
+            role="status"
+            aria-live="polite"
+            data-testid="resume-notice"
+            className="w-full px-4 sm:px-6 md:px-8 py-2 border-t border-primary-500/30 flex items-center justify-between gap-3 text-xs font-mono bg-primary-500/10 text-foreground animate-in fade-in slide-in-from-top-1 duration-200"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse shrink-0" />
+              <span className="truncate font-medium">
+                Resumed at {resumeNotice.chapterTitle}, Page {resumeNotice.page}
               </span>
             </div>
-
-            <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
-
-            {/* Progress Micro-Pill */}
-            <div
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
-              title={`Overall Volume Progress: ${Math.round(progress)}%`}
-            >
-              <Sparkles className="w-3 h-3 text-primary-500" />
-              <span>{Math.round(progress)}% Progress</span>
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+              {onRestart && (
+                <button
+                  type="button"
+                  onClick={onRestart}
+                  className="text-primary-600 dark:text-primary-400 hover:underline font-mono text-[11px] uppercase tracking-wider font-bold cursor-pointer"
+                >
+                  Restart
+                </button>
+              )}
+              {onDismissResume && (
+                <button
+                  type="button"
+                  onClick={onDismissResume}
+                  aria-label="Dismiss resume notice"
+                  className="text-muted-foreground hover:text-foreground font-bold p-1 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
-        </div>
+        ) : (
+          <div className={`w-full px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 border-t border-border/40 flex items-center justify-center text-[10px] sm:text-xs font-mono transition-colors duration-200 ${activeTheme.header}`}>
+            <div className="flex items-center justify-center gap-2 sm:gap-2.5 min-w-0 flex-wrap">
+              {bookId && (
+                <button
+                  type="button"
+                  onClick={() => setIsInfoCardOpen(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border border-primary-500/30 dark:border-primary-500/40 text-primary-600 dark:text-primary-400 bg-primary-500/10 hover:bg-primary-500/20 hover:border-primary-500/60 shadow-xs transition-all cursor-pointer select-none active:scale-95 shrink-0"
+                  title="View Gutenberg Public Domain Archive Information"
+                  aria-label="View Gutenberg Archive Volume Info"
+                >
+                  <Info className="w-2.5 h-2.5 opacity-80 shrink-0" />
+                  <span>Gutenberg #{bookId}</span>
+                </button>
+              )}
+
+              <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
+
+              {/* Section Micro-Pill */}
+              <div
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
+                title={`Current Section: Chapter ${currentChapterIndex + 1} of ${totalChapters}`}
+              >
+                <BookOpen className="w-3 h-3 opacity-75" />
+                <span>
+                  Section {currentChapterIndex + 1}/{totalChapters}
+                </span>
+              </div>
+
+              <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
+
+              {/* Progress Micro-Pill */}
+              <div
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
+                title={`Overall Volume Progress: ${Math.round(progress)}%`}
+              >
+                <Sparkles className="w-3 h-3 text-primary-500" />
+                <span>{Math.round(progress)}% Progress</span>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Gutenberg Archive Metadata Modal */}

@@ -162,4 +162,32 @@ describe('ReaderHeader', () => {
     // Progress indicator
     expect(screen.getByText(/50% Progress/i)).toBeInTheDocument();
   });
+
+  it('renders integrated resume notice ribbon in sub-header and handles restart and dismiss', () => {
+    const onRestart = vi.fn();
+    const onDismissResume = vi.fn();
+
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        resumeNotice={{ chapterTitle: 'Chapter III', page: 4 }}
+        onRestart={onRestart}
+        onDismissResume={onDismissResume}
+      />
+    );
+
+    const notice = screen.getByTestId('resume-notice');
+    expect(notice).toBeInTheDocument();
+    expect(screen.getByText(/Resumed at Chapter III, Page 4/i)).toBeInTheDocument();
+
+    // Click Restart
+    const restartBtn = screen.getByRole('button', { name: /Restart/i });
+    fireEvent.click(restartBtn);
+    expect(onRestart).toHaveBeenCalledTimes(1);
+
+    // Click Dismiss
+    const dismissBtn = screen.getByLabelText('Dismiss resume notice');
+    fireEvent.click(dismissBtn);
+    expect(onDismissResume).toHaveBeenCalledTimes(1);
+  });
 });

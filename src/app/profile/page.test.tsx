@@ -134,4 +134,25 @@ describe('ProfilePage', () => {
 
     expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
   });
+
+  it('accurately calculates and renders custom shelves count excluding default shelf', () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+    });
+
+    useBookshelfStore.setState({
+      cloudBookshelves: [
+        { id: 's0', user_id: 'u1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 's1', user_id: 'u1', name: 'Philosophy', is_default: false, created_at: '', updated_at: '' },
+        { id: 's2', user_id: 'u1', name: 'Gothic Tales', is_default: false, created_at: '', updated_at: '' },
+      ],
+    });
+
+    render(<ProfilePage />);
+
+    expect(screen.getByText('Custom Shelves')).toBeInTheDocument();
+    expect(screen.getByTestId('custom-shelves-count')).toHaveTextContent('2');
+  });
 });

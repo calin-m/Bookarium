@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -32,6 +32,10 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, profile, isLoading, updateProfile, signOut, openAuthModal } = useAuthStore();
   const { savedCount, likedCount, cloudBookshelves } = useHydratedBookshelf();
+  const customShelvesCount = useMemo(
+    () => cloudBookshelves.filter((s) => !s.is_default).length,
+    [cloudBookshelves]
+  );
   const { theme, setTheme } = useThemeStore();
   const { stickyScrollEnabled, setStickyScrollEnabled } = usePreferencesStore();
 
@@ -374,7 +378,7 @@ export default function ProfilePage() {
                     <BookOpen className="w-3.5 h-3.5 text-primary" />
                     <span>Custom Shelves</span>
                   </div>
-                  <p className="text-2xl font-mono font-bold text-foreground">{cloudBookshelves.length}</p>
+                  <p data-testid="custom-shelves-count" className="text-2xl font-mono font-bold text-foreground">{customShelvesCount}</p>
                 </div>
               </div>
             </div>

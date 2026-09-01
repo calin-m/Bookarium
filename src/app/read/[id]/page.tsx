@@ -249,41 +249,14 @@ export default function BookReaderPage() {
         currentChapterIndex={activeChapterIndex}
         theme={theme}
         onThemeChange={setTheme}
+        resumeNotice={resumeNotice}
+        onRestart={() => {
+          setActiveChapterIndex(0);
+          setCurrentChapterPage(1);
+          setResumeNotice(null);
+        }}
+        onDismissResume={() => setResumeNotice(null)}
       />
-
-      {/* Resume Notice Toast */}
-      {resumeNotice && (
-        <div
-          role="status"
-          aria-live="polite"
-          data-testid="resume-notice"
-          className="fixed top-16 left-1/2 -translate-x-1/2 z-50 mt-3 px-4 py-2 bg-card border border-primary/40 rounded-full shadow-lg flex items-center gap-3 text-xs font-sans text-foreground animate-in fade-in slide-in-from-top-2 duration-200"
-        >
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            Resumed at {resumeNotice.chapterTitle}, Page {resumeNotice.page}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveChapterIndex(0);
-              setCurrentChapterPage(1);
-              setResumeNotice(null);
-            }}
-            className="text-primary hover:underline font-mono text-[11px] uppercase tracking-wider pl-1 border-l border-border"
-          >
-            Restart
-          </button>
-          <button
-            type="button"
-            onClick={() => setResumeNotice(null)}
-            aria-label="Dismiss resume notice"
-            className="text-muted-foreground hover:text-foreground ml-1 font-bold"
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* Main Editorial Reading Canvas */}
       <ReaderSurface

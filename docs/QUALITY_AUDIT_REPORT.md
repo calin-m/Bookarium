@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 13:57:24 GMT  
+**Last Generated**: Tue, 01 Sep 2026 14:10:58 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 50 passed  
-**Total Verified Tests**: 304 passed  
+**Total Verified Tests**: 306 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **50/50 test suites passed** (304 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **50/50 test suites passed** (306 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 5 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.27%** (2008/2200) — *Target: $ge$ 80%*
-- **Statements**: **89.96%** (2196/2441) — *Target: $ge$ 80%*
-- **Functions**: **86.93%** (519/597) — *Target: $ge$ 80%*
-- **Branches**: **80.9%** (1894/2341) — *Target: $ge$ 80%*
+- **Lines**: **91.28%** (2010/2202) — *Target: $ge$ 80%*
+- **Statements**: **89.97%** (2199/2444) — *Target: $ge$ 80%*
+- **Functions**: **86.97%** (521/599) — *Target: $ge$ 80%*
+- **Branches**: **80.93%** (1898/2345) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (50 Suites / 304 Tests)
+## 🧪 Comprehensive Test Suite Catalog (50 Suites / 306 Tests)
 
-### 🚀 App Routes & Pages (8 Suites · 39 Tests)
+### 🚀 App Routes & Pages (8 Suites · 40 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.test.ts</code></b> (3 tests)</summary>
@@ -88,13 +88,14 @@
 </details>
 
 <details>
-<summary><b><code>src/app/profile/page.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/app/profile/page.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated`
 - ✔ `renders authenticated profile and handles saving display name`
 - ✔ `handles theme change and sign out`
 - ✔ `renders Navbar and Footer with working navigation handlers`
 - ✔ `handles toggling catalog sticky scroll navigation setting`
+- ✔ `accurately calculates and renders custom shelves count excluding default shelf`
 
 </details>
 
@@ -283,7 +284,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (5 Suites · 35 Tests)
+### 📖 In-Browser Focus Reader (5 Suites · 36 Tests)
 
 <details>
 <summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (7 tests)</summary>
@@ -310,7 +311,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -320,6 +321,7 @@
 - ✔ `sanitizes and renders extra long titles and multiline strings gracefully`
 - ✔ `filters out placeholder author strings and falls back to featured fixture`
 - ✔ `renders the dedicated sub-header metadata ribbon with Book ID, Section, and Progress`
+- ✔ `renders integrated resume notice ribbon in sub-header and handles restart and dismiss`
 
 </details>
 
