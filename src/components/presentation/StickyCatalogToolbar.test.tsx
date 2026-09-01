@@ -142,7 +142,7 @@ describe('StickyCatalogToolbar component', () => {
     expect(screen.getByTestId('api-status-badge')).toHaveTextContent('Offline');
   });
 
-  it('applies top-16 when isHeaderVisible is true and top-0 when false', () => {
+  it('applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false', () => {
     const { rerender } = render(
       <StickyCatalogToolbar
         page={1}
@@ -158,6 +158,7 @@ describe('StickyCatalogToolbar component', () => {
 
     const toolbar = screen.getByTestId('sticky-catalog-toolbar');
     expect(toolbar).toHaveClass('top-16');
+    expect(toolbar).toHaveClass('translate-y-0');
 
     rerender(
       <StickyCatalogToolbar
@@ -172,10 +173,11 @@ describe('StickyCatalogToolbar component', () => {
       />
     );
 
-    expect(toolbar).toHaveClass('top-0');
+    expect(toolbar).toHaveClass('top-16');
+    expect(toolbar).toHaveClass('-translate-y-16');
   });
 
-  it('applies -translate-y-full and opacity-0 when isVisible is false', () => {
+  it('applies -translate-y-[calc(100%+4rem)] and pointer-events-none when isVisible is false', () => {
     render(
       <StickyCatalogToolbar
         page={1}
@@ -190,7 +192,7 @@ describe('StickyCatalogToolbar component', () => {
     );
 
     const toolbar = screen.getByTestId('sticky-catalog-toolbar');
-    expect(toolbar).toHaveClass('-translate-y-full');
-    expect(toolbar).toHaveClass('opacity-0');
+    expect(toolbar).toHaveClass('-translate-y-[calc(100%+4rem)]');
+    expect(toolbar).toHaveClass('pointer-events-none');
   });
 });

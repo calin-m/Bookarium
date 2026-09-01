@@ -215,98 +215,100 @@ function HomeContent() {
         )}
 
         <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Booksaw Centered Section Header */}
-          <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-            <div className="text-[11px] font-mono tracking-widest uppercase text-muted-foreground font-semibold">
-              {activeView === 'catalog' && 'SOME QUALITY BOOKS • ZERO COPYRIGHT'}
-              {activeView === 'bookshelf' && 'PERSONAL ARCHIVE • PRESERVED LOCALLY'}
-              {activeView === 'likes' && 'CURATED FAVORITES'}
-            </div>
-            
-            <div className="flex items-center justify-center gap-3">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground tracking-tight">
-                {activeView === 'catalog' && (search || topic || era ? 'Search Catalog' : 'Public Domain Books')}
-                {activeView === 'bookshelf' && 'Personal Reading Shelf'}
-                {activeView === 'likes' && 'Favorite Works'}
-              </h2>
-            </div>
-
-            <p className="text-xs sm:text-sm text-muted-foreground font-serif italic">
-              {activeView === 'catalog' &&
-                (booksData
-                  ? `Displaying ${displayedBooks.length} of ${booksData.count.toString()} public domain volumes`
-                  : 'Searching Project Gutenberg catalog...')}
-              {activeView === 'bookshelf' &&
-                `You have ${savedBooks.length} titles preserved on your personal shelf`}
-              {activeView === 'likes' &&
-                `You have ${likedBookIds.length} titles in your favorites`}
-            </p>
-
-            {activeView === 'bookshelf' && savedBooks.length > 0 && (
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearSavedBooks}
-                  className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Clear Shelf
-                </Button>
+          <div key={`view-page-turn-${activeView}`} className="animate-page-turn">
+            {/* Booksaw Centered Section Header */}
+            <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
+              <div className="text-[11px] font-mono tracking-widest uppercase text-muted-foreground font-semibold">
+                {activeView === 'catalog' && 'SOME QUALITY BOOKS • ZERO COPYRIGHT'}
+                {activeView === 'bookshelf' && 'PERSONAL ARCHIVE • PRESERVED LOCALLY'}
+                {activeView === 'likes' && 'CURATED FAVORITES'}
               </div>
-            )}
-
-            {activeView === 'likes' && likedBookIds.length > 0 && (
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => useBookshelfStore.getState().clearLikedBooks()}
-                  className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Clear Favorites
-                </Button>
+              
+              <div className="flex items-center justify-center gap-3">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground tracking-tight">
+                  {activeView === 'catalog' && (search || topic || era ? 'Search Catalog' : 'Public Domain Books')}
+                  {activeView === 'bookshelf' && 'Personal Reading Shelf'}
+                  {activeView === 'likes' && 'Favorite Works'}
+                </h2>
               </div>
-            )}
+
+              <p className="text-xs sm:text-sm text-muted-foreground font-serif italic">
+                {activeView === 'catalog' &&
+                  (booksData
+                    ? `Displaying ${displayedBooks.length} of ${booksData.count.toString()} public domain volumes`
+                    : 'Searching Project Gutenberg catalog...')}
+                {activeView === 'bookshelf' &&
+                  `You have ${savedBooks.length} titles preserved on your personal shelf`}
+                {activeView === 'likes' &&
+                  `You have ${likedBookIds.length} titles in your favorites`}
+              </p>
+
+              {activeView === 'bookshelf' && savedBooks.length > 0 && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearSavedBooks}
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Clear Shelf
+                  </Button>
+                </div>
+              )}
+
+              {activeView === 'likes' && likedBookIds.length > 0 && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => useBookshelfStore.getState().clearLikedBooks()}
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Clear Favorites
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Book Catalog / Bookshelf Grid */}
+            <BookGrid
+              key={activeView}
+              books={displayedBooks}
+              isLoading={isDisplayLoading}
+              isError={isDisplayError}
+              onRetry={refetch}
+              page={page}
+              onPageChange={activeView === 'catalog' ? handlePageChange : undefined}
+              hasNextPage={Boolean(booksData?.next)}
+              onDownloadClick={(book) => setSelectedDownloadBook(book)}
+              onPreviewClick={(book, rect) => {
+                setSelectedPreviewBook(book);
+                setActivePreviewBookId(book.id);
+                setPreviewOriginRect(rect || null);
+              }}
+              activePreviewBookId={activePreviewBookId}
+              viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}
+              onViewModeChange={setViewMode}
+              showViewToggle={false} // Managed by StickyToolbar
+              onBrowseCatalog={() => setActiveView('catalog')}
+              emptyTitle={
+                activeView === 'bookshelf'
+                  ? 'Your personal shelf is currently empty'
+                  : activeView === 'likes'
+                  ? 'No liked books yet'
+                  : 'No matching public domain works found'
+              }
+              emptyDescription={
+                activeView === 'bookshelf'
+                  ? 'Click the bookmark ribbon on any volume to place it on your shelf for offline access.'
+                  : activeView === 'likes'
+                  ? 'Click the heart icon on any work to save it to your favorites.'
+                  : 'Try adjusting your search keywords, collection facets, or clearing the language/era filter.'
+              }
+            />
           </div>
-
-          {/* Book Catalog / Bookshelf Grid */}
-          <BookGrid
-            key={activeView}
-            books={displayedBooks}
-            isLoading={isDisplayLoading}
-            isError={isDisplayError}
-            onRetry={refetch}
-            page={page}
-            onPageChange={activeView === 'catalog' ? handlePageChange : undefined}
-            hasNextPage={Boolean(booksData?.next)}
-            onDownloadClick={(book) => setSelectedDownloadBook(book)}
-            onPreviewClick={(book, rect) => {
-              setSelectedPreviewBook(book);
-              setActivePreviewBookId(book.id);
-              setPreviewOriginRect(rect || null);
-            }}
-            activePreviewBookId={activePreviewBookId}
-            viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}
-            onViewModeChange={setViewMode}
-            showViewToggle={false} // Managed by StickyToolbar
-            onBrowseCatalog={() => setActiveView('catalog')}
-            emptyTitle={
-              activeView === 'bookshelf'
-                ? 'Your personal shelf is currently empty'
-                : activeView === 'likes'
-                ? 'No liked books yet'
-                : 'No matching public domain works found'
-            }
-            emptyDescription={
-              activeView === 'bookshelf'
-                ? 'Click the bookmark ribbon on any volume to place it on your shelf for offline access.'
-                : activeView === 'likes'
-                ? 'Click the heart icon on any work to save it to your favorites.'
-                : 'Try adjusting your search keywords, collection facets, or clearing the language/era filter.'
-            }
-          />
         </div>
 
         {/* Booksaw Editorial Quote / Best Classic Section */}

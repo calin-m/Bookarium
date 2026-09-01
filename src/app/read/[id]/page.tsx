@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useBookContent } from '@/hooks/queries/useBookContent';
 import { useBooks } from '@/hooks/queries/useBooks';
+import { useBookTranslations } from '@/hooks/queries/useBookTranslations';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
@@ -79,6 +80,14 @@ export default function BookReaderPage() {
 
   const bookTitle = resolvedIdentity.title;
   const bookAuthor = resolvedIdentity.author;
+
+  // Language & International Translations
+  const { translations, isLoading: isTranslationsLoading } = useBookTranslations(
+    bookTitle,
+    bookAuthor,
+    numericId,
+    currentBook?.languages || booksData?.results?.[0]?.languages
+  );
 
   // Parse Chapters and Volume Spread
   const rawChapters = useMemo<ChapterSection[]>(() => {
@@ -256,6 +265,11 @@ export default function BookReaderPage() {
           setResumeNotice(null);
         }}
         onDismissResume={() => setResumeNotice(null)}
+        translations={translations}
+        isTranslationsLoading={isTranslationsLoading}
+        onSelectTranslation={(targetBookId) => {
+          router.push(`/read/${targetBookId}`);
+        }}
       />
 
       {/* Main Editorial Reading Canvas */}

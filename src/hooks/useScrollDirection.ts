@@ -56,6 +56,7 @@ export function useScrollDirection({
     let hasSteppedInCurrentGesture = false;
     let gestureTimer: ReturnType<typeof setTimeout> | null = null;
     let ticking = false;
+    let wasInHero = true;
 
     const resetGesture = () => {
       hasSteppedInCurrentGesture = false;
@@ -85,6 +86,19 @@ export function useScrollDirection({
         }
         lastScrollY = scrollY;
         resetGesture();
+        wasInHero = true;
+        return;
+      }
+
+      // 2. Initial Dock Transition Guard:
+      // When scrolling down and the filter bar first reaches the header (dockOffset),
+      // the filter bar docks under the header while the header remains visible.
+      // The header does not hide immediately; only when the user scrolls down again does it hide.
+      if (wasInHero) {
+        wasInHero = false;
+        hasSteppedInCurrentGesture = true;
+        accumulatedDelta = 0;
+        lastScrollY = scrollY;
         return;
       }
 

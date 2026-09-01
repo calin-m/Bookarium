@@ -61,15 +61,29 @@ describe('useScrollDirection hook', () => {
     expect(result.current.isHeaderVisible).toBe(true);
     expect(result.current.isToolbarVisible).toBe(true);
 
-    // 2. Start scrolling down: moves 20px -> transitions to State 1 (Toolbar Only)
+    // 2. Initial arrival at catalog dock point (100 -> 120px):
+    // The filter bar docks under the header while the header remains visible (does not hide immediately)
     act(() => {
       Object.defineProperty(window, 'scrollY', { value: 120, configurable: true });
+      window.dispatchEvent(new Event('scroll'));
+    });
+    expect(result.current.isHeaderVisible).toBe(true);
+    expect(result.current.isToolbarVisible).toBe(true);
+
+    // 3. User finishes initial scroll gesture / pauses for 180ms
+    act(() => {
+      vi.advanceTimersByTime(180);
+    });
+
+    // 4. User scrolls DOWN again while in catalog (120 -> 150px) -> Now transitions to State 1 (Toolbar Only @ top-0)
+    act(() => {
+      Object.defineProperty(window, 'scrollY', { value: 150, configurable: true });
       window.dispatchEvent(new Event('scroll'));
     });
     expect(result.current.isHeaderVisible).toBe(false);
     expect(result.current.isToolbarVisible).toBe(true);
 
-    // 3. User continues scrolling continuously in the same gesture (120 -> 500 -> 1500px) without pausing!
+    // 5. User continues scrolling continuously in the same gesture (150 -> 500 -> 1500px) without pausing
     act(() => {
       Object.defineProperty(window, 'scrollY', { value: 500, configurable: true });
       window.dispatchEvent(new Event('scroll'));
@@ -81,12 +95,12 @@ describe('useScrollDirection hook', () => {
     expect(result.current.isHeaderVisible).toBe(false);
     expect(result.current.isToolbarVisible).toBe(true);
 
-    // 4. User pauses / stops scrolling for 180ms
+    // 6. User pauses / stops scrolling for 180ms
     act(() => {
       vi.advanceTimersByTime(180);
     });
 
-    // 5. User performs second scroll down gesture (1500 -> 1530px) -> Now transitions to State 2 (Both Hidden)!
+    // 7. User performs third scroll down gesture (1500 -> 1530px) -> Now transitions to State 2 (Both Hidden)!
     act(() => {
       Object.defineProperty(window, 'scrollY', { value: 1530, configurable: true });
       window.dispatchEvent(new Event('scroll'));
@@ -94,7 +108,7 @@ describe('useScrollDirection hook', () => {
     expect(result.current.isHeaderVisible).toBe(false);
     expect(result.current.isToolbarVisible).toBe(false);
 
-    // 6. User continues scrolling continuously down (1530 -> 2500px) -> stays in State 2
+    // 8. User continues scrolling continuously down (1530 -> 2500px) -> stays in State 2
     act(() => {
       Object.defineProperty(window, 'scrollY', { value: 2500, configurable: true });
       window.dispatchEvent(new Event('scroll'));
@@ -102,7 +116,7 @@ describe('useScrollDirection hook', () => {
     expect(result.current.isHeaderVisible).toBe(false);
     expect(result.current.isToolbarVisible).toBe(false);
 
-    // 7. User immediately reverses and scrolls UP (2500 -> 2450px) -> Instant transition to State 1!
+    // 9. User immediately reverses and scrolls UP (2500 -> 2450px) -> Instant transition to State 1!
     act(() => {
       Object.defineProperty(window, 'scrollY', { value: 2450, configurable: true });
       window.dispatchEvent(new Event('scroll'));
@@ -110,7 +124,7 @@ describe('useScrollDirection hook', () => {
     expect(result.current.isHeaderVisible).toBe(false);
     expect(result.current.isToolbarVisible).toBe(true);
 
-    // 8. User continues scrolling up continuously in same gesture (2450 -> 1800px) -> stays in State 1!
+    // 10. User continues scrolling up continuously in same gesture (2450 -> 1800px) -> stays in State 1!
     act(() => {
       Object.defineProperty(window, 'scrollY', { value: 1800, configurable: true });
       window.dispatchEvent(new Event('scroll'));
@@ -118,12 +132,12 @@ describe('useScrollDirection hook', () => {
     expect(result.current.isHeaderVisible).toBe(false);
     expect(result.current.isToolbarVisible).toBe(true);
 
-    // 9. Pause gesture (180ms)
+    // 11. Pause gesture (180ms)
     act(() => {
       vi.advanceTimersByTime(180);
     });
 
-    // 10. Second scroll UP gesture (1800 -> 1750px) -> Transitions to State 0 (Header visible @ top-0, Toolbar @ top-16)!
+    // 12. Second scroll UP gesture (1800 -> 1750px) -> Transitions to State 0 (Header visible @ top-0, Toolbar @ top-16)!
     act(() => {
       Object.defineProperty(window, 'scrollY', { value: 1750, configurable: true });
       window.dispatchEvent(new Event('scroll'));
@@ -156,9 +170,22 @@ describe('useScrollDirection hook', () => {
         vi.advanceTimersByTime(180);
       });
 
-      // Scroll past dockOffset to 400px + scroll down 1x to 430px -> Header hides, Toolbar stays at top-0
+      // 1. Initial arrival past dockOffset (430px > 380px): docks filter bar under header, header stays visible
       act(() => {
         Object.defineProperty(window, 'scrollY', { value: 430, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+      });
+      expect(result.current.isHeaderVisible).toBe(true);
+      expect(result.current.isToolbarVisible).toBe(true);
+
+      // 2. Pause gesture
+      act(() => {
+        vi.advanceTimersByTime(180);
+      });
+
+      // 3. Second scroll down gesture in catalog (430 -> 470px): now header hides, toolbar moves to top-0
+      act(() => {
+        Object.defineProperty(window, 'scrollY', { value: 470, configurable: true });
         window.dispatchEvent(new Event('scroll'));
       });
       expect(result.current.isHeaderVisible).toBe(false);

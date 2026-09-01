@@ -190,4 +190,62 @@ describe('ReaderHeader', () => {
     fireEvent.click(dismissBtn);
     expect(onDismissResume).toHaveBeenCalledTimes(1);
   });
+
+  it('renders language and translation switcher and handles edition selection', () => {
+    const onSelectTranslation = vi.fn();
+    const mockTranslations = [
+      {
+        bookId: 1342,
+        title: 'Pride and Prejudice',
+        languageCode: 'en',
+        languageLabel: 'English',
+        isCurrent: true,
+      },
+      {
+        bookId: 67890,
+        title: 'Orgueil et Préjugés',
+        languageCode: 'fr',
+        languageLabel: 'French (Français)',
+        isCurrent: false,
+      },
+      {
+        bookId: 54321,
+        title: 'Orgullo y Prejuicio',
+        languageCode: 'es',
+        languageLabel: 'Spanish (Español)',
+        isCurrent: false,
+      },
+    ];
+
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        translations={mockTranslations}
+        onSelectTranslation={onSelectTranslation}
+      />
+    );
+
+    // Button should be visible with badge
+    const langBtn = screen.getByLabelText('Language Editions & Translations');
+    expect(langBtn).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+
+    // Click to open dropdown
+    fireEvent.click(langBtn);
+    expect(screen.getByTestId('lang-dropdown-menu')).toBeInTheDocument();
+    expect(screen.getByText('Language Editions')).toBeInTheDocument();
+    expect(screen.getByText('French (Français)')).toBeInTheDocument();
+    expect(screen.getByText('Spanish (Español)')).toBeInTheDocument();
+
+    // Click Spanish edition
+    const spanishBtn = screen.getByRole('button', { name: /Spanish \(Español\)/i });
+    fireEvent.click(spanishBtn);
+    expect(onSelectTranslation).toHaveBeenCalledWith(54321);
+
+    // Reopen and test backdrop dismiss
+    fireEvent.click(langBtn);
+    expect(screen.getByTestId('lang-dropdown-menu')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('lang-dropdown-backdrop'));
+    expect(screen.queryByTestId('lang-dropdown-menu')).not.toBeInTheDocument();
+  });
 });

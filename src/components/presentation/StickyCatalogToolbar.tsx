@@ -79,10 +79,12 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
   return (
     <div
-      className={`sticky z-30 w-full bg-background border-b border-border shadow-md transition-all duration-300 ease-in-out py-2.5 px-4 sm:px-6 lg:px-8 ${
-        isHeaderVisible ? 'top-16' : 'top-0'
-      } ${
-        isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full pointer-events-none opacity-0'
+      className={`sticky top-16 z-30 w-full bg-background border-b border-border shadow-md transition-transform duration-300 ease-in-out py-2.5 px-4 sm:px-6 lg:px-8 ${
+        !isVisible
+          ? '-translate-y-[calc(100%+4rem)] pointer-events-none'
+          : isHeaderVisible
+            ? 'translate-y-0'
+            : '-translate-y-16'
       }`}
       data-testid="sticky-catalog-toolbar"
     >

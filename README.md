@@ -7,8 +7,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-50%20Suites%20%7C%20306%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.3%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-51%20Suites%20%7C%20318%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.5%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -34,17 +34,19 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ## 🛠️ Latest Improvements (v1.4.0)
 
+- **Universal Multi-Language Translations & Reader Switcher (`/read/[id]`)** – Interactive `<Globe />` language dropdown in the Reader navigation header powered by `useBookTranslations` and TanStack React Query caching. Discovers and groups all available international translations (Spanish, French, German, Italian, Dutch, Greek, etc.) and bilingual editions across the 70,000+ public domain volume archive with 1-click seamless handoff.
+- **Tactile Book Page-Turn Transitions for View Switching** – Integrated the reader's tactile `animate-page-turn` transition (`180ms cubic-bezier(0.16, 1, 0.3, 1)`) into the main application view container, delivering the physical sensation of turning a book page whenever switching between **Catalog**, **Bookshelf**, and **Favorites**.
+- **Arrival Docking & Pure Physical Slide-Hide Transitions** – Enhanced `useScrollDirection` with an arrival dock guard so the top header remains visible when the catalog filter bar first docks on initial scroll down. Upgraded `StickyCatalogToolbar` to use synchronized transform translations (`transition-transform duration-300 ease-in-out` with `-translate-y-16` / `-translate-y-[calc(100%+4rem)]`), completely eliminating top-margin layout gaps and replacing opacity fades with solid physical slide transitions.
 - **User-Configurable Sticky Scroll Preferences (`/profile`)** – Added user preference setting in the Profile dashboard allowing readers to choose between **Smart Auto-Hide** (directional auto-hide to maximize reading space) and **Always Fixed** (stationary header and toolbar pinned at top). Persisted across browser sessions with `usePreferencesStore`.
-- **Directional Scroll-Aware Header & Flush Filter Bar Docking** – Dynamic directional scroll detection with session-isolated stepping. Scrolling down smoothly translates the Header (`Navbar`) upward out of sight while docking the `StickyCatalogToolbar` flush to `top-0`, maximizing screen real estate. Scrolling up immediately slides the Header back down into view while pushing the toolbar smoothly to `top-16`.
+- **Exact Custom Shelves Profile Analytics** – Verified profile stats card (`/profile`) displaying an accurate count of user-created custom bookshelves separate from the master general library.
 - **Exact-Page Bookmarking & Auto-Resume Engine** – Automatic persistence of exact chapter and page positions (`readingPositions`) in `useReaderStore`. Opening any book instantly restores the reader to the exact paragraph and page left off, accompanied by a non-intrusive "Resumed at Chapter X, Page Y" toast with 1-click Restart.
 - **Tactile Hardwood Bookshelves & Library Aesthetics (ADR-006)** – Unified bookcase architecture with rich multi-stop walnut wood rails, top specular bevel lines, ambient alcove spotlighting (`.shelf-ambient-niche`), and dedicated Dark/Sepia wood gradients. Guarantees 100% flush base contact across mobile touch-scroll and desktop viewports.
 - **3D Convex Book Spine Physics & Hot-Foil Typography** – Cylindrical 3D specular lighting overlay (`.book-spine-convex`) simulating authentic curved hardcover bindings and hinge creases, complemented by `.spine-emboss-gold` and `.spine-emboss-silver` hot-foil gilded serif typography and volume seals.
-- **Grounded Pull-Forward Scale Physics** – Upgraded spine hover interaction to an anchored pull-forward expansion (`scale-105 origin-bottom`) with deep cast contact shadows on the hardwood rail below.
 - **Multi-Category Cloud Bookshelf Synchronization (ADR-005)** – Supabase PostgreSQL cloud sync with Row Level Security (RLS). Features a master "General" bookshelf aggregating all user books, floating "Move to Shelf" selector dropdowns on book spines, and safe shelf deletion auto-reassigning orphaned volumes to General.
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
 - **Strict 0% Page 1 Reading Progress & Verified Profiles** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user profiles (`/profile`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 50/50 test files passed, 306/306 tests passed with **91.3% line coverage** and **80.9% branch coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 51/51 test files passed, 318/318 tests passed with **91.5% line coverage** and **81.0% branch coverage** (`npm run verify`).
 
 ---
 
@@ -164,26 +166,27 @@ flowchart TD
         Profile["Profile & Reading Preferences (src/app/profile/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
-        StoreShelf["⚡ Bookshelf Store<br/>• savedBooks: []<br/>• cloudBookshelves: []<br/>• likedBookIds: []"]
-        StoreAuth["🔐 Auth Store<br/>• user: User | null<br/>• profile: Profile | null"]
-        StoreReader["📖 Reader Store<br/>• activeBookId<br/>• theme: light/dark/sepia<br/>• readingPositions: {}<br/>• progress: {}"]
-        StorePrefs["⚙️ Preferences Store<br/>• stickyScrollEnabled: boolean"]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• cloudBookshelves: []\n• likedBookIds: []")]
+        StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• fontSize / spacing\n• progress: {}")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}")]
+        StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
         
-        ScrollHook["📜 useScrollDirection<br/>(3-State Gesture Stepping)"]
+        ScrollHook["📜 useScrollDirection\n(3-State Gesture Stepping)"]
         QueryBooks["🔄 useBooks(query, topic, page)"]
         QueryContent["🔄 useBookContent(textUrl, bookId)"]
         
-        Nav -->|"Open Auth / Profile"| StoreAuth
-        Nav -->|"View Bookshelf"| StoreShelf
+        Nav -->|Open Auth / Profile| StoreAuth
+        Nav -->|View Bookshelf| StoreShelf
         StorePrefs --> ScrollHook
         ScrollHook --> Nav
         ScrollHook --> Toolbar
-        Hero -->|"Filter Query"| QueryBooks
+        Hero -->|Filter Query| QueryBooks
         QueryBooks --> Grid
         Grid --> Card
-        Card -->|"Preview 3D Volume"| Modal
-        Card -->|"Open Reader"| Reader
-        Card -->|"Save / Like"| StoreShelf
+        Card -->|Preview 3D Volume| Modal
+        Card -->|Open Reader| Reader
+        Card -->|Save / Like| StoreShelf
         Reader --> StoreReader
         Reader --> QueryContent
         Profile --> StoreAuth
@@ -192,24 +195,24 @@ flowchart TD
     end
 
     subgraph BackendServices ["Live Data & Cloud Synchronization"]
-        ProxyRoute["Gateway 1: GET /api/books<br/>(SSR Proxy)"]
-        DirectUpstream["Gateway 2: Direct Upstream Fetch<br/>(Client Failover)"]
-        ContentProxy["GET /api/books/content<br/>(Text Stream)"]
-        AuthCallback["GET /auth/callback<br/>(Session Token Exchange)"]
+        ProxyRoute["Gateway 1: GET /api/books\n(SSR Proxy)"]
+        DirectUpstream["Gateway 2: Direct Upstream Fetch\n(Client Failover)"]
+        ContentProxy["GET /api/books/content\n(Text Stream)"]
+        AuthCallback["GET /auth/callback\n(Session Token Exchange)"]
         
-        GutendexAPI["🌐 Gutendex REST API<br/>(70,000+ Titles)"]
-        GutenbergContent["🌐 Gutenberg Content CDN<br/>(text/plain & EPUB)"]
-        SupabaseCloud["⚡ Supabase Cloud<br/>• Auth (Email / Magic Link / OAuth)<br/>• Postgres (RLS Shelves & Profiles)"]
+        GutendexAPI["🌐 Gutendex REST API\n(70,000+ Titles)"]
+        GutenbergContent["🌐 Gutenberg Content CDN\n(text/plain & EPUB)"]
+        SupabaseCloud[("⚡ Supabase Cloud\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves & Profiles)")]
         
         QueryBooks --> ProxyRoute
         ProxyRoute --> GutendexAPI
-        QueryBooks -.->|"Failover"| DirectUpstream
+        QueryBooks -.->|Failover| DirectUpstream
         DirectUpstream --> GutendexAPI
         QueryContent --> ContentProxy
         ContentProxy --> GutenbergContent
-        StoreAuth <-->|"Session & Profiles"| SupabaseCloud
-        StoreShelf <-->|"Cloud Sync with RLS"| SupabaseCloud
-        AuthCallback <-->|"Code Exchange"| SupabaseCloud
+        StoreAuth <-->|Session / Profiles| SupabaseCloud
+        StoreShelf <-->|Cloud Sync (RLS)| SupabaseCloud
+        AuthCallback <-->|Code Exchange| SupabaseCloud
     end
 
     subgraph QualityGateEngine ["7-Gateway Verification Engine"]
@@ -225,8 +228,8 @@ flowchart TD
         VerifyScript --> Changelog
     end
 
-    User <-->|"Browse, Read, Sync"| ClientApp
-    ClientApp -.->|"Validated by"| VerifyScript
+    User <-->|Browse, Read, Sync| ClientApp
+    ClientApp -.->|Validated by| VerifyScript
 ```
 
 ---
@@ -240,16 +243,16 @@ flowchart LR
         FontSize["Font Size: 12px - 36px"]
         FontFamily["Font Family: Serif | Sans | Mono"]
         LineHeight["Line Height: 1.2 - 2.6"]
-        ColumnWidth["Column Width: Narrow | Normal | Wide"]
+        ColumnWidth["Column Width: Narrow (576px) | Normal (768px) | Wide (1024px)"]
         ReadingMode["Reading Mode: Paginated | Scroll"]
         Theme["Theme: Light | Dark | Sepia"]
         Progress["Global Page & Book Progress %"]
-        Positions["Reading Positions Map<br/>(exact chapter & page restore)"]
+        Positions["Reading Positions Map\n(exact chapter & page restore)"]
     end
 
     subgraph ParsingEngine ["Gutenberg Typography & Segmentation AST"]
         RawText["Raw Plain Text Stream"]
-        Reflow["reflowGutenbergParagraphs<br/>(Normalizes 70-col hard wraps)"]
+        Reflow["reflowGutenbergParagraphs\n(Normalizes 70-col hard wraps)"]
         TOCFilter["Front-Matter TOC Suppressor"]
         Segmentation["Chapter Section Segmentation"]
         VirtualPages["Virtual Continuous Page Spread (5600 chars/pg)"]
@@ -264,23 +267,23 @@ flowchart LR
         Toolbar["Top Editorial Reader Bar"]
         ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap)"]
         ProgressBar["Top Reading Progress Indicator"]
-        ResumeRibbon["Header Sub-Ribbon Resume Notice"]
+        ResumeToast["Exact-Page Auto-Resume Toast"]
         FooterBar["Sticky Bottom Pagination & Page Jump"]
         TOC["Table of Contents Slide-Over Drawer"]
     end
 
     subgraph Persistence ["Browser LocalStorage"]
-        LSState["bookarium-reader-preferences"]
-        LSProgress["bookarium-progress-map"]
-        LSPositions["bookarium-reading-positions"]
+        LSState[("bookarium-reader-preferences")]
+        LSProgress[("bookarium-progress-map")]
+        LSPositions[("bookarium-reading-positions")]
     end
 
-    Toolbar -->|"Adjust Size / Family / Width / Mode / Theme"| ReaderState
+    Toolbar -->|Adjust Size / Family / Width / Mode / Theme| ReaderState
     VirtualPages --> ReaderView
     ReaderState --> ContentArea
     ReaderState --> ProgressBar
-    ReaderState --> ResumeRibbon
-    FooterBar -->|"Page Flip / Jump"| ReaderState
+    ReaderState --> ResumeToast
+    FooterBar -->|Page Flip / Jump| ReaderState
     TOC -->|"Select Chapter [p. X]"| ReaderState
     ReaderState <--> LSState
     ReaderState <--> LSProgress
@@ -369,7 +372,8 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 306 tests across 50 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 287 tests. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 304 tests across 50 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |

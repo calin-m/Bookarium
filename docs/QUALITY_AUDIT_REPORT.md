@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 14:10:58 GMT  
+**Last Generated**: Tue, 01 Sep 2026 15:02:24 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 50 passed  
-**Total Verified Tests**: 306 passed  
+**Total Test Suites**: 51 passed  
+**Total Verified Tests**: 321 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **50/50 test suites passed** (306 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **51/51 test suites passed** (321 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 5 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.28%** (2010/2202) — *Target: $ge$ 80%*
-- **Statements**: **89.97%** (2199/2444) — *Target: $ge$ 80%*
-- **Functions**: **86.97%** (521/599) — *Target: $ge$ 80%*
-- **Branches**: **80.93%** (1898/2345) — *Target: $ge$ 80%*
+- **Lines**: **91.44%** (2094/2290) — *Target: $ge$ 80%*
+- **Statements**: **90.01%** (2290/2544) — *Target: $ge$ 80%*
+- **Functions**: **87.31%** (544/623) — *Target: $ge$ 80%*
+- **Branches**: **80.53%** (1978/2456) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (50 Suites / 306 Tests)
+## 🧪 Comprehensive Test Suite Catalog (51 Suites / 321 Tests)
 
-### 🚀 App Routes & Pages (8 Suites · 40 Tests)
+### 🚀 App Routes & Pages (8 Suites · 41 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.test.ts</code></b> (3 tests)</summary>
@@ -107,7 +107,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to previous scroll position when back button is clicked`
@@ -121,6 +121,7 @@
 - ✔ `handles page jump input directly from footer`
 - ✔ `sets reading progress to 0% on page 1 and updates progress as reader advances`
 - ✔ `automatically resumes at saved chapter and page, renders resume toast, and handles restart`
+- ✔ `renders language and translation dropdown in reader and navigates on translation selection`
 
 </details>
 
@@ -279,12 +280,12 @@
 - ✔ `should handle view mode switching between grid and shelf`
 - ✔ `should handle pagination next button and direct page jump form`
 - ✔ `should display error indicator in status badge when isError is true`
-- ✔ `applies top-16 when isHeaderVisible is true and top-0 when false`
-- ✔ `applies -translate-y-full and opacity-0 when isVisible is false`
+- ✔ `applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false`
+- ✔ `applies -translate-y-[calc(100%+4rem)] and pointer-events-none when isVisible is false`
 
 </details>
 
-### 📖 In-Browser Focus Reader (5 Suites · 36 Tests)
+### 📖 In-Browser Focus Reader (5 Suites · 37 Tests)
 
 <details>
 <summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (7 tests)</summary>
@@ -311,7 +312,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -322,6 +323,7 @@
 - ✔ `filters out placeholder author strings and falls back to featured fixture`
 - ✔ `renders the dedicated sub-header metadata ribbon with Book ID, Section, and Progress`
 - ✔ `renders integrated resume notice ribbon in sub-header and handles restart and dismiss`
+- ✔ `renders language and translation switcher and handles edition selection`
 
 </details>
 
@@ -505,7 +507,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (6 Suites · 30 Tests)
+### 🔄 Hooks & React Query (7 Suites · 43 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (3 tests)</summary>
@@ -531,6 +533,25 @@
 - ✔ `should handle simulated offline network drop in useBooks hook`
 - ✔ `should respect enabled: false and not fetch books`
 - ✔ `should throw when upstream returns invalid non-JSON body`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/queries/useBookTranslations.test.ts</code></b> (13 tests)</summary>
+
+- ✔ `strips subtitles after semicolons and colons`
+- ✔ `strips volume and part suffixes`
+- ✔ `returns original string when no subtitles or volumes exist`
+- ✔ `strips leading structural stopwords to yield core search keywords`
+- ✔ `extracts surname when author is formatted as `
+- ✔ `extracts primary name when author has noble prefix or is formatted without comma`
+- ✔ `resolves known ISO codes to human-readable names`
+- ✔ `falls back to uppercase code for unknown languages`
+- ✔ `returns the current book as active translation immediately`
+- ✔ `fetches and groups available international translations from API`
+- ✔ `handles a bilingual or multi-language current volume and includes all constituent languages`
+- ✔ `pulls all available languages when API returns diverse multilingual editions`
+- ✔ `gracefully handles fetch error and retains current edition`
 
 </details>
 

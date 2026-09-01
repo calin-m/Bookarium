@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowLeft, BookOpen, ExternalLink, Info, List, Sliders, Sparkles, Sun, Moon, Coffee, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, ExternalLink, Globe, Info, List, Sliders, Sparkles, Sun, Moon, Coffee, ShieldCheck, Check, X } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
+import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
 
 export interface ResumeNoticeData {
   chapterTitle: string;
@@ -29,6 +30,9 @@ export interface ReaderHeaderProps {
   resumeNotice?: ResumeNoticeData | null;
   onRestart?: () => void;
   onDismissResume?: () => void;
+  translations?: BookTranslationOption[];
+  isTranslationsLoading?: boolean;
+  onSelectTranslation?: (bookId: number) => void;
 }
 
 export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
@@ -48,8 +52,12 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   resumeNotice,
   onRestart,
   onDismissResume,
+  translations,
+  isTranslationsLoading,
+  onSelectTranslation,
 }) => {
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const activeTheme = getReaderTheme(theme);
 
   const numericId = typeof bookId === 'number' ? bookId : parseInt(String(bookId), 10);
@@ -137,6 +145,85 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               <Sliders className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Aa</span>
             </button>
+
+            {/* Language & Translations Dropdown */}
+            {translations && translations.length > 0 && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsLangDropdownOpen((prev) => !prev)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
+                    isLangDropdownOpen ? activeTheme.activePill : activeTheme.button
+                  }`}
+                  aria-label="Language Editions & Translations"
+                  aria-expanded={isLangDropdownOpen}
+                  title="View available language editions and translations"
+                >
+                  <Globe className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="hidden sm:inline">
+                    {translations.find((t) => t.isCurrent)?.languageCode.toUpperCase() || 'EN'}
+                  </span>
+                  {translations.length > 1 && (
+                    <span className="text-[10px] px-1 py-0.2 rounded-full bg-primary/10 text-primary font-bold">
+                      {translations.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Dropdown Menu */}
+                {isLangDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsLangDropdownOpen(false)}
+                      data-testid="lang-dropdown-backdrop"
+                    />
+                    <div
+                      data-testid="lang-dropdown-menu"
+                      className="absolute right-0 top-full mt-2 z-50 w-64 p-2 rounded-xl bg-card border border-border shadow-xl text-card-foreground space-y-1 animate-in fade-in slide-in-from-top-1 duration-150"
+                    >
+                      <div className="px-2.5 py-1.5 border-b border-border/40 text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold flex items-center justify-between">
+                        <span>Language Editions</span>
+                        <span>{translations.length} Available</span>
+                      </div>
+
+                      <div className="max-h-60 overflow-y-auto space-y-1 py-1">
+                        {translations.map((t) => (
+                          <button
+                            key={`${t.languageCode}-${t.bookId}`}
+                            type="button"
+                            onClick={() => {
+                              setIsLangDropdownOpen(false);
+                              if (!t.isCurrent && onSelectTranslation) {
+                                onSelectTranslation(t.bookId);
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left text-xs font-mono transition-colors cursor-pointer ${
+                              t.isCurrent
+                                ? 'bg-primary/10 text-primary font-bold'
+                                : 'hover:bg-muted text-foreground'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="uppercase text-[10px] font-bold px-1 py-0.5 rounded bg-muted text-muted-foreground">
+                                  {t.languageCode}
+                                </span>
+                                <span className="truncate">{t.languageLabel}</span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground truncate block">
+                                {t.title} (#{t.bookId})
+                              </span>
+                            </div>
+                            {t.isCurrent && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* 3-Way Universal Theme Switcher (Light -> Sepia -> Dark) matching Navbar */}
             {onThemeChange && (

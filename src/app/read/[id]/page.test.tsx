@@ -54,6 +54,30 @@ vi.mock('@/hooks/queries/useBookContent', () => ({
   }),
 }));
 
+vi.mock('@/hooks/queries/useBookTranslations', () => ({
+  useBookTranslations: () => ({
+    translations: [
+      {
+        bookId: 1342,
+        title: 'Pride and Prejudice',
+        languageCode: 'en',
+        languageLabel: 'English',
+        isCurrent: true,
+      },
+      {
+        bookId: 67890,
+        title: 'Orgueil et Préjugés',
+        languageCode: 'fr',
+        languageLabel: 'French (Français)',
+        isCurrent: false,
+      },
+    ],
+    currentLanguage: 'English',
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 describe('Dedicated Reader Page (/read/[id])', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -238,5 +262,19 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     // Resets to beginning
     expect(screen.getAllByText(/Title & Preamble/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByTestId('resume-notice')).not.toBeInTheDocument();
+  });
+
+  it('renders language and translation dropdown in reader and navigates on translation selection', () => {
+    render(<BookReaderPage />);
+
+    const langBtn = screen.getByLabelText('Language Editions & Translations');
+    expect(langBtn).toBeInTheDocument();
+    fireEvent.click(langBtn);
+
+    expect(screen.getByText('French (Français)')).toBeInTheDocument();
+    const frenchBtn = screen.getByRole('button', { name: /French \(Français\)/i });
+    fireEvent.click(frenchBtn);
+
+    expect(mockPush).toHaveBeenCalledWith('/read/67890');
   });
 });
