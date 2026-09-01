@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 18:44:32 GMT  
+**Last Generated**: Tue, 01 Sep 2026 19:16:26 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 52 passed  
-**Total Verified Tests**: 338 passed  
+**Total Test Suites**: 62 passed  
+**Total Verified Tests**: 356 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **52/52 test suites passed** (338 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **62/62 test suites passed** (356 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 5 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.5%** (2285/2497) — *Target: $ge$ 80%*
-- **Statements**: **90.09%** (2493/2767) — *Target: $ge$ 80%*
-- **Functions**: **86.84%** (581/669) — *Target: $ge$ 80%*
-- **Branches**: **81.08%** (2152/2654) — *Target: $ge$ 80%*
+- **Lines**: **92.04%** (2313/2513) — *Target: $ge$ 80%*
+- **Statements**: **90.48%** (2521/2786) — *Target: $ge$ 80%*
+- **Functions**: **88.22%** (592/671) — *Target: $ge$ 80%*
+- **Branches**: **81.04%** (2168/2675) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (52 Suites / 338 Tests)
+## 🧪 Comprehensive Test Suite Catalog (62 Suites / 356 Tests)
 
 ### 🚀 App Routes & Pages (9 Suites · 49 Tests)
 
@@ -139,7 +139,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (12 Suites · 88 Tests)
+### 🎨 Catalog & Presentation (15 Suites · 94 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (6 tests)</summary>
@@ -192,6 +192,30 @@
 - ✔ `calls onReadBook on action button click and closes modal`
 - ✔ `applies FLIP transform when originRect is provided`
 - ✔ `invokes onWillClose during the landing flight prior to full onClose`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfManageModals.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders create modal and submits new shelf`
+- ✔ `renders rename and delete modals`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `returns null when selectedMobileBook is null`
+- ✔ `renders modal with formatted author names and triggers actions`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders spine title, author, and handles keyboard interaction`
+- ✔ `triggers quick actions from desktop hover card`
 
 </details>
 
@@ -617,7 +641,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (9 Suites · 27 Tests)
+### 🧩 UI Primitives & Motion (16 Suites · 39 Tests)
 
 <details>
 <summary><b><code>src/components/motion/MotionReveal.test.tsx</code></b> (1 tests)</summary>
@@ -630,6 +654,42 @@
 <summary><b><code>src/components/motion/StaggerGroup.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `should render staggered child nodes`
+
+</details>
+
+<details>
+<summary><b><code>src/components/profile/ProfileDeleteModal.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders confirmation prompt and requests deletion link`
+
+</details>
+
+<details>
+<summary><b><code>src/components/profile/ProfileIdentityCard.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders user details and verified badge`
+- ✔ `handles display name editing and form submission`
+
+</details>
+
+<details>
+<summary><b><code>src/components/profile/ProfileLibraryStats.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders library statistics with counts and accessible links`
+
+</details>
+
+<details>
+<summary><b><code>src/components/profile/ProfilePreferencesSection.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders theme switcher and navigation mode preferences`
+
+</details>
+
+<details>
+<summary><b><code>src/components/profile/ProfileSecuritySection.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders password fields, strength meter, and actions`
 
 </details>
 
@@ -697,6 +757,24 @@
 - ✔ `provides 12 curated quotes with non-empty metadata`
 - ✔ `provides complete theme configs for light, sepia, and dark`
 - ✔ `getReaderTheme returns exact theme or falls back to light`
+
+</details>
+
+<details>
+<summary><b><code>src/config/routes.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `provides static canonical routes`
+- ✔ `builds dynamic reader route with id`
+- ✔ `builds view query route correctly`
+
+</details>
+
+<details>
+<summary><b><code>src/config/site-config.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `provides site branding and metadata constants`
+- ✔ `builds canonical Gutenberg ebook URL`
+- ✔ `provides persistent storage keys`
 
 </details>
 

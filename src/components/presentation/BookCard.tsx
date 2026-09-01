@@ -11,6 +11,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { ROUTES } from '@/config/routes';
 
 export interface BookCardProps {
   book: GutendexBook;
@@ -34,7 +35,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
   const handleCoverClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       useReaderStore.getState().openReader(book);
-      router.push(`/read/${book.id}`);
+      router.push(ROUTES.READ(book.id));
       return;
     }
     if (onPreviewClick) {
@@ -177,7 +178,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
         <div className="grid grid-cols-2 gap-2 mt-0.5">
           <Button
             as={Link}
-            href={`/read/${book.id}`}
+            href={ROUTES.READ(book.id)}
             onClick={() => useReaderStore.getState().openReader(book)}
             variant="primary"
             size="chip"

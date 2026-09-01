@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
 import { Button } from '@/components/ui/Button';
+import { ROUTES } from '@/config/routes';
 
 export default function ConfirmDeletionPage() {
   const router = useRouter();
@@ -39,11 +40,7 @@ export default function ConfirmDeletionPage() {
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-200">
       <Navbar
         onViewChange={(view) => {
-          if (view === 'catalog') {
-            router.push('/');
-          } else {
-            router.push(`/?view=${view}`);
-          }
+          router.push(ROUTES.VIEW(view));
         }}
       />
 
@@ -84,12 +81,12 @@ export default function ConfirmDeletionPage() {
               </p>
             </div>
             <div className="flex items-center justify-center gap-3 pt-2">
-              <Link href="/profile">
+              <Link href={ROUTES.PROFILE}>
                 <Button variant="primary" size="md" className="font-mono text-xs uppercase">
                   Go to Profile
                 </Button>
               </Link>
-              <Link href="/">
+              <Link href={ROUTES.HOME}>
                 <Button variant="outline" size="md" className="font-mono text-xs uppercase">
                   Return Home
                 </Button>
@@ -134,7 +131,7 @@ export default function ConfirmDeletionPage() {
             )}
 
             <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
-              <Link href="/profile" className="w-full sm:w-auto">
+              <Link href={ROUTES.PROFILE} className="w-full sm:w-auto">
                 <Button variant="outline" size="md" className="w-full sm:w-auto font-mono text-xs uppercase">
                   <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
                   <span>Cancel & Keep Account</span>

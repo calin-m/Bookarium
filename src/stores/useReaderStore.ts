@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook } from '@/mocks/handlers';
 import { useThemeStore, applyThemeToDocument } from './useThemeStore';
+import { STORAGE_KEYS } from '@/config/site-config';
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
@@ -113,7 +114,7 @@ export const useReaderStore = create<ReaderState>()(
       },
     }),
     {
-      name: 'bookarium-reader-preferences',
+      name: STORAGE_KEYS.READER_SETTINGS,
       storage: createJSONStorage(() => localStorage),
     }
   )

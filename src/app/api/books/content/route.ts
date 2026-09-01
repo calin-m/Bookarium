@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { SITE_CONFIG } from '@/config/site-config';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
         signal: controller.signal,
         redirect: 'follow',
         headers: {
-          'User-Agent': 'Bookarium-PublicDomain-Reader/1.0 (https://github.com/calin-m/Bookarium)',
+          'User-Agent': `Bookarium-PublicDomain-Reader/1.0 (${SITE_CONFIG.GITHUB_REPO})`,
           Accept: 'text/plain, text/html, */*',
         },
       });

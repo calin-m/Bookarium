@@ -7,6 +7,7 @@ import { getReaderTheme } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
+import { SITE_CONFIG } from '@/config/site-config';
 
 export interface ResumeNoticeData {
   chapterTitle: string;
@@ -417,7 +418,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             <div className="flex items-center justify-between gap-3 pt-1">
               {bookId && (
                 <a
-                  href={`https://www.gutenberg.org/ebooks/${bookId}`}
+                  href={SITE_CONFIG.GUTENBERG_EBOOK(bookId)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline"

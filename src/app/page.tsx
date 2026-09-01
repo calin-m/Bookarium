@@ -23,6 +23,7 @@ import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/mocks/handlers';
 import { Trash2, BookOpen, Quote, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { ROUTES } from '@/config/routes';
 
 function HomeContent() {
   const router = useRouter();
@@ -179,7 +180,7 @@ function HomeContent() {
                   download_count: 50000,
                 };
                 useReaderStore.getState().openReader(bookPayload);
-                router.push(`/read/${featured.id}`);
+                router.push(ROUTES.READ(featured.id));
                 return;
               }
               const targetBook = displayedBooks[0];
@@ -187,7 +188,7 @@ function HomeContent() {
                 useReaderStore.getState().openReader(targetBook);
               }
               const targetId = targetBook?.id || 1342;
-              router.push(`/read/${targetId}`);
+              router.push(ROUTES.READ(targetId));
             }}
           />
         )}
@@ -351,7 +352,7 @@ function HomeContent() {
                       size="sm"
                       onClick={() => {
                         const targetId = displayedBooks[0]?.id || 2701;
-                        router.push(`/read/${targetId}`);
+                        router.push(ROUTES.READ(targetId));
                       }}
                       className="font-mono text-xs uppercase tracking-wider gap-2 px-5 py-2.5 rounded bg-primary-600 hover:bg-primary-700 text-white font-bold"
                     >
@@ -388,7 +389,7 @@ function HomeContent() {
           setActivePreviewBookId(null);
           setPreviewOriginRect(null);
           useReaderStore.getState().openReader(book);
-          router.push(`/read/${book.id}`);
+          router.push(ROUTES.READ(book.id));
         }}
       />
 

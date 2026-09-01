@@ -4,6 +4,7 @@ import type { GutendexBook } from '@/mocks/handlers';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { createClient } from '@/lib/supabase/client';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
+import { STORAGE_KEYS } from '@/config/site-config';
 
 export interface BookshelfState {
   savedBooks: GutendexBook[];
@@ -468,7 +469,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
     }),
     {
-      name: 'bookarium-bookshelf-storage',
+      name: STORAGE_KEYS.BOOKSHELF,
       storage: createJSONStorage(() => localStorage),
     }
   )

@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Quote, Shuffle, Sparkles, BookOpen } from 'lucide-react';
 import { LITERARY_QUOTES, type LiteraryQuote } from '@/config/literary-quotes';
+import { ROUTES } from '@/config/routes';
 
 export { LITERARY_QUOTES, type LiteraryQuote };
 
@@ -76,7 +77,7 @@ export const LiteraryQuotes: React.FC = () => {
           {displayedQuotes.map((item) => (
             <Link
               key={item.id}
-              href={`/read/${item.bookId}`}
+              href={ROUTES.READ(item.bookId)}
               className="group relative flex flex-col justify-between p-7 sm:p-8 rounded-xl bg-card border border-border shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1.5 transition-all duration-300 cursor-pointer h-full"
               data-testid={`quote-card-${item.id}`}
               aria-label={`Read ${item.bookTitle} by ${item.author}`}

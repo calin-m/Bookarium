@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { STORAGE_KEYS } from '@/config/site-config';
 
 export type AppTheme = 'light' | 'sepia' | 'dark';
 
@@ -37,7 +38,7 @@ export const useThemeStore = create<ThemeState>()(
       },
     }),
     {
-      name: 'bookarium-theme-preference',
+      name: STORAGE_KEYS.THEME,
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (state?.theme) {

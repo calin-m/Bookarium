@@ -22,6 +22,7 @@ import { ReaderFooter } from '@/components/reader/ReaderFooter';
 import { ReaderTocDrawer } from '@/components/reader/ReaderTocDrawer';
 import { ReaderControls } from '@/components/reader/ReaderControls';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
+import { ROUTES } from '@/config/routes';
 
 export default function BookReaderPage() {
   const params = useParams();
@@ -237,7 +238,7 @@ export default function BookReaderPage() {
           if (typeof window !== 'undefined' && window.history.length > 1) {
             router.back();
           } else {
-            router.push('/');
+            router.push(ROUTES.HOME);
           }
         }}
         isTocOpen={isTocOpen}
@@ -268,7 +269,7 @@ export default function BookReaderPage() {
         translations={translations}
         isTranslationsLoading={isTranslationsLoading}
         onSelectTranslation={(targetBookId) => {
-          router.push(`/read/${targetBookId}`);
+          router.push(ROUTES.READ(targetBookId));
         }}
       />
 

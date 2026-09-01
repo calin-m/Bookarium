@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { STORAGE_KEYS } from '@/config/site-config';
 
 export interface PreferencesState {
   stickyScrollEnabled: boolean;
@@ -15,7 +16,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       toggleStickyScroll: () => set({ stickyScrollEnabled: !get().stickyScrollEnabled }),
     }),
     {
-      name: 'bookarium-navigation-preferences',
+      name: STORAGE_KEYS.PREFERENCES,
       storage: createJSONStorage(() => localStorage),
     }
   )

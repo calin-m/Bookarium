@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Heart, ExternalLink, BookOpen } from 'lucide-react';
+import { SITE_CONFIG } from '@/config/site-config';
 
 export const Footer: React.FC = () => {
   return (
@@ -10,7 +11,7 @@ export const Footer: React.FC = () => {
           {/* Col 1: About Brand */}
           <div className="space-y-4">
             <a
-              href="https://github.com/calin-m"
+              href={SITE_CONFIG.GITHUB_PROFILE}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 group hover:opacity-90 transition-opacity"
@@ -20,7 +21,7 @@ export const Footer: React.FC = () => {
                 <BookOpen className="w-3.5 h-3.5" />
               </div>
               <span className="text-xl font-serif font-bold text-foreground group-hover:text-primary transition-colors">
-                BOOKARIUM
+                {SITE_CONFIG.LOGO_TEXT}
               </span>
             </a>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
@@ -41,7 +42,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2.5 text-xs text-muted-foreground font-mono">
               <li>
                 <a
-                  href="https://www.gutenberg.org"
+                  href={SITE_CONFIG.PROJECT_GUTENBERG}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-primary transition-colors inline-flex items-center gap-1"
@@ -51,7 +52,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="https://gutendex.com"
+                  href={SITE_CONFIG.GUTENDEX}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-primary transition-colors inline-flex items-center gap-1"
@@ -101,17 +102,17 @@ export const Footer: React.FC = () => {
           <div>
             © {new Date().getFullYear()}{' '}
             <a
-              href="https://github.com/calin-m"
+              href={SITE_CONFIG.GITHUB_PROFILE}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-primary underline-offset-4 hover:underline transition-colors font-medium text-foreground"
             >
-              Bookarium
+              {SITE_CONFIG.NAME}
             </a>
             . Designed for Literature.
           </div>
           <div className="flex items-center gap-1">
-            <span>Crafted with care for book lovers everywhere</span>
+            <span>{SITE_CONFIG.TAGLINE}</span>
             <Heart className="w-3 h-3 text-destructive fill-current ml-1" />
           </div>
         </div>

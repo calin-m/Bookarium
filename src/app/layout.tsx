@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
 import { Providers } from './providers';
+import { SITE_CONFIG } from '@/config/site-config';
 import './globals.css';
 
 const playfair = Playfair_Display({
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
     'Classic Literature',
     'Philosophy',
   ],
-  authors: [{ name: 'Bookarium Team' }],
+  authors: [{ name: `${SITE_CONFIG.NAME} Team` }],
 };
 
 export default function RootLayout({
@@ -49,10 +50,10 @@ export default function RootLayout({
       className={`${playfair.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <head>
-        <link rel="preconnect" href="https://gutendex.com" />
-        <link rel="dns-prefetch" href="https://gutendex.com" />
-        <link rel="preconnect" href="https://www.gutenberg.org" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://www.gutenberg.org" />
+        <link rel="preconnect" href={SITE_CONFIG.GUTENDEX} />
+        <link rel="dns-prefetch" href={SITE_CONFIG.GUTENDEX} />
+        <link rel="preconnect" href={SITE_CONFIG.PROJECT_GUTENBERG} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={SITE_CONFIG.PROJECT_GUTENBERG} />
       </head>
       <body
         suppressHydrationWarning

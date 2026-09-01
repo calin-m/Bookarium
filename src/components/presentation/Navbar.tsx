@@ -8,6 +8,8 @@ import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/Button';
+import { ROUTES } from '@/config/routes';
+import { SITE_CONFIG } from '@/config/site-config';
 
 export interface NavbarProps {
   activeView?: 'catalog' | 'bookshelf' | 'likes';
@@ -32,13 +34,13 @@ export const Navbar: React.FC<NavbarProps> = ({
     if (typeof window !== 'undefined') {
       try {
         window.scrollTo({ top: 0, behavior: 'instant' });
-        if (window.location.pathname === '/' && !window.location.search) {
+        if (window.location.pathname === ROUTES.HOME && !window.location.search) {
           window.location.reload();
         } else {
-          router.push('/');
+          router.push(ROUTES.HOME);
         }
       } catch {
-        router.push('/');
+        router.push(ROUTES.HOME);
       }
     }
   };
@@ -69,14 +71,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           <div>
             <span className="text-xl font-bold tracking-tight text-foreground font-serif">
-              BOOKARIUM
+              {SITE_CONFIG.LOGO_TEXT}
             </span>
           </div>
         </div>
 
-        {/* Booksaw Editorial Navigation Links */}
+        {/* Navigation Tabs */}
         <nav className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Catalog */}
           <button
             type="button"
             onClick={() => onViewChange?.('catalog')}
@@ -91,7 +92,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden sm:inline">Catalog</span>
           </button>
 
-          {/* Bookshelf */}
           <button
             type="button"
             onClick={() => onViewChange?.('bookshelf')}
@@ -104,14 +104,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Bookmark className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Bookshelf</span>
-            {savedCount > 0 && (
+            {hasMounted && savedCount > 0 && (
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-primary text-primary-foreground font-bold">
                 {savedCount}
               </span>
             )}
           </button>
 
-          {/* Favorites */}
           <button
             type="button"
             onClick={() => onViewChange?.('likes')}
@@ -124,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Heart className="w-3.5 h-3.5 text-destructive" />
             <span className="hidden sm:inline">Favorites</span>
-            {likedCount > 0 && (
+            {hasMounted && likedCount > 0 && (
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-destructive text-destructive-foreground font-bold">
                 {likedCount}
               </span>
@@ -132,8 +131,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <div className="h-4 w-[1px] bg-border mx-0.5 sm:mx-1" />
+        </nav>
 
-          {/* User Account / Sign In */}
+        {/* Right Actions: Auth, Theme */}
+        <div className="flex items-center gap-2">
           {hasMounted && (
             user ? (
               <div className="relative flex items-center gap-1.5">
@@ -158,7 +159,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <p className="text-[10px] opacity-80 truncate">{user.email}</p>
                       </div>
                       <Link
-                        href="/profile"
+                        href={ROUTES.PROFILE}
                         onClick={() => setIsUserMenuOpen(false)}
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:bg-muted transition-colors cursor-pointer text-left font-bold"
                       >
@@ -215,7 +216,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </Button>
             );
           })()}
-        </nav>
+        </div>
       </div>
     </header>
   );

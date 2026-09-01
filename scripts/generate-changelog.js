@@ -8,6 +8,26 @@ const adrPath = path.join(rootDir, 'docs', 'DECISIONS.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '1.7.0',
+    date: '2026-09-01',
+    title: 'Modular Component Decomposition & Single-Source Configuration Registry',
+    sections: {
+      Added: [
+        'Single-Source Route Registry (`src/config/routes.ts`): Type-safe centralized registry providing static paths (`ROUTES.HOME`, `ROUTES.PROFILE`, `ROUTES.CONFIRM_DELETION`, `ROUTES.BOOKSHELF`, `ROUTES.LIKES`) and dynamic builders (`ROUTES.READ(id)`, `ROUTES.VIEW(view)`).',
+        'Site Branding & Storage Registry (`src/config/site-config.ts`): Consolidated canonical project links (`SITE_CONFIG`), upstream Gutenberg mirrors, and persistent storage keys (`STORAGE_KEYS`).',
+        'Bookshelf Component Decomposition: Modularized `BookshelfRack.tsx` into single-responsibility sub-components (`BookshelfSpine.tsx`, `BookshelfMobileModal.tsx`, `BookshelfManageModals.tsx`) with 100% co-located tests.',
+        'Profile Component Decomposition: Modularized `src/app/profile/page.tsx` into single-responsibility sub-components (`ProfileIdentityCard.tsx`, `ProfileLibraryStats.tsx`, `ProfileSecuritySection.tsx`, `ProfilePreferencesSection.tsx`, `ProfileDeleteModal.tsx`) with 100% co-located tests.',
+      ],
+      Changed: [
+        'Codebase Orchestration: Reduced `BookshelfRack.tsx` from 861 to 389 lines (-55%) and `src/app/profile/page.tsx` from 787 to 359 lines (-54%).',
+        'Link & Storage Adoption: Replaced all scattered hardcoded routes and storage key strings across Navbar, Footer, BookCard, Bookshelf, Profile, Reader, and Zustand stores with centralized configuration singletons.',
+      ],
+      Fixed: [
+        'Eliminated hardcoded route duplication and typo vulnerabilities across all presentation components and state stores.',
+      ],
+    },
+  },
+  {
     version: '1.6.0',
     date: '2026-09-01',
     title: 'Dynamic Shelf Capacity, Mobile In-Shelf Modals, Reader Share & Dynamic Viewport Ergonomics',

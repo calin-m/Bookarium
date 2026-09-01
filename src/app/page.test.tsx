@@ -277,7 +277,7 @@ describe('Home page integration', () => {
     fireEvent.click(bookshelfTab);
 
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
-    expect(screen.getByText(/General Shelf/i)).toBeInTheDocument();
+    expect(screen.getByText('General')).toBeInTheDocument();
   });
 });
 
