@@ -10,7 +10,9 @@ import { mockBooks } from '@/mocks/handlers';
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
+    replace: vi.fn(),
   }),
+  useSearchParams: () => new URLSearchParams(''),
 }));
 
 vi.mock('@/hooks/queries/useBooks', () => ({
@@ -183,5 +185,26 @@ describe('Home page integration', () => {
       Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
       vi.useRealTimers();
     }
+  });
+
+  it('renders Bookshelf and Favorites when views are switched via Navbar', () => {
+    renderHome();
+
+    // Switch to Bookshelf
+    const bookshelfBtn = screen.getByRole('button', { name: /^Bookshelf$/i });
+    fireEvent.click(bookshelfBtn);
+    expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
+    expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
+
+    // Switch to Favorites
+    const favoritesBtn = screen.getByRole('button', { name: /^Liked Books$/i });
+    fireEvent.click(favoritesBtn);
+    expect(screen.getByText('Favorite Works')).toBeInTheDocument();
+    expect(screen.getByText('No liked books yet')).toBeInTheDocument();
+
+    // Switch back to Catalog
+    const catalogBtn = screen.getByRole('button', { name: /^Catalog$/i });
+    fireEvent.click(catalogBtn);
+    expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
   });
 });

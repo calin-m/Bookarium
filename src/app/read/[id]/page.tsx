@@ -99,7 +99,10 @@ export default function BookReaderPage() {
 
   // Global Page & Progress Calculations
   const currentGlobalPage = (activeChapter?.startPageNumber || 1) + (currentChapterPage - 1);
-  const volumeProgress = Math.min(100, Math.max(0, (currentGlobalPage / totalVolumePages) * 100));
+  const volumeProgress =
+    currentGlobalPage <= 1 || totalVolumePages <= 1
+      ? 0
+      : Math.min(100, Math.max(0, Math.round(((currentGlobalPage - 1) / (totalVolumePages - 1)) * 100)));
 
   // Sync Progress to Store
   useEffect(() => {

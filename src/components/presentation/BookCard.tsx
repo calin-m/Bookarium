@@ -166,7 +166,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
 
         <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
           <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
-          <span className="text-[10px] font-mono font-medium tracking-wider text-emerald-700 dark:text-emerald-400 [html.sepia_&]:text-emerald-400 uppercase">
+          <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
             CC0 / Free
           </span>
         </div>

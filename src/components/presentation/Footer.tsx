@@ -3,7 +3,7 @@ import { ShieldCheck, Heart, ExternalLink, BookOpen } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="w-full border-t border-border bg-muted text-foreground py-16 transition-colors duration-200">
+    <footer className="w-full border-t border-border bg-muted text-foreground pt-12 sm:pt-14 pb-6 sm:pb-8 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           
@@ -27,7 +27,7 @@ export const Footer: React.FC = () => {
               A high-performance, keyless public domain digital library. Dedicated to free, universal
               access to the world’s greatest literature, philosophy, and timeless works.
             </p>
-            <div className="inline-flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 [html.sepia_&]:text-emerald-400 font-mono font-medium">
+            <div className="inline-flex items-center gap-1.5 text-xs text-success font-mono font-medium">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>100% CC0 Public Domain</span>
             </div>
@@ -97,7 +97,7 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Bottom Copyright Strip */}
-        <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-muted-foreground">
+        <div className="mt-8 pt-4 sm:pt-5 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-xs font-mono text-muted-foreground">
           <div>
             © {new Date().getFullYear()}{' '}
             <a

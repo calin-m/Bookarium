@@ -63,7 +63,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
         className={`sticky top-0 z-30 shrink-0 border-b transition-colors duration-200 ${activeTheme.header}`}
       >
         {/* Main Header Bar: Title, Author, Navigation & Global Controls */}
-        <div className="w-full px-3 sm:px-6 md:px-8 h-13 sm:h-14 flex items-center justify-between gap-4">
+        <div className="w-full px-4 sm:px-6 md:px-8 py-3 sm:py-3.5 min-h-[3.75rem] sm:min-h-[4rem] flex items-center justify-between gap-3 sm:gap-4">
           
           {/* Left: Back Button & Book Title / Author */}
           <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
@@ -155,7 +155,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
         </div>
 
         {/* Sub-Header Metadata Ribbon: Book ID, Section, and Progress centered beneath the header */}
-        <div className={`w-full px-3 sm:px-6 md:px-8 py-1.5 border-t border-border/40 flex items-center justify-center text-[10px] sm:text-xs font-mono transition-colors duration-200 ${activeTheme.header}`}>
+        <div className={`w-full px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 border-t border-border/40 flex items-center justify-center text-[10px] sm:text-xs font-mono transition-colors duration-200 ${activeTheme.header}`}>
           <div className="flex items-center justify-center gap-2 sm:gap-2.5 min-w-0 flex-wrap">
             {bookId && (
               <button
@@ -237,7 +237,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               </div>
               <div className="flex justify-between items-center py-1 border-b border-border/30">
                 <span className="text-muted-foreground">License / Status:</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">Public Domain (Zero Copyright)</span>
+                <span className="text-success font-medium">Public Domain (Zero Copyright)</span>
               </div>
               <div className="flex justify-between items-center py-1">
                 <span className="text-muted-foreground">Archive Host:</span>

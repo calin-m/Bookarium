@@ -22,6 +22,8 @@ import {
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useThemeStore, type AppTheme } from '@/stores/useThemeStore';
+import { Navbar } from '@/components/presentation/Navbar';
+import { Footer } from '@/components/presentation/Footer';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -79,8 +81,18 @@ export default function ProfilePage() {
     : 'Member';
 
   return (
-    <div className="min-h-screen bg-background text-foreground py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-200">
+      <Navbar
+        onViewChange={(view) => {
+          if (view === 'catalog') {
+            router.push('/');
+          } else {
+            router.push(`/?view=${view}`);
+          }
+        }}
+      />
+
+      <main className="flex-1 w-full max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">
           <Link
@@ -90,7 +102,7 @@ export default function ProfilePage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Library</span>
           </Link>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/10 text-primary border border-primary/30">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/10 text-primary border border-border">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Bookarium Account</span>
           </div>
@@ -99,7 +111,7 @@ export default function ProfilePage() {
         {/* Guest View Prompt */}
         {!isLoading && !user && (
           <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4 shadow-sm">
-            <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 text-primary flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-full bg-primary/10 border border-border text-primary flex items-center justify-center mx-auto">
               <UserIcon className="w-6 h-6" />
             </div>
             <div className="space-y-1">
@@ -131,9 +143,9 @@ export default function ProfilePage() {
           <div className="space-y-6">
             {/* Account Hero Card */}
             <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/30 text-primary flex items-center justify-center shadow-inner">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-border text-primary flex items-center justify-center shadow-inner">
                     <UserIcon className="w-7 h-7" />
                   </div>
                   <div>
@@ -154,7 +166,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-success/10 text-success border border-border">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>Verified Reader</span>
                   </div>
@@ -204,14 +216,15 @@ export default function ProfilePage() {
                   <Button
                     type="submit"
                     variant="primary"
-                    size="sm"
+                    size="chip"
                     isLoading={isSaving}
-                    className="font-mono text-xs uppercase font-bold"
+                    aria-label="Save Changes"
                   >
+                    <Check className="w-3.5 h-3.5" />
                     <span>Save Changes</span>
                   </Button>
                   {saveSuccess && (
-                    <span className="inline-flex items-center gap-1 text-xs font-mono text-emerald-500 animate-in fade-in duration-150">
+                    <span className="inline-flex items-center gap-1 text-xs font-mono text-success animate-in fade-in duration-150">
                       <Check className="w-3.5 h-3.5" />
                       <span>Changes saved to cloud</span>
                     </span>
@@ -234,10 +247,10 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => handleThemeChange('light')}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer ${
+                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border border-border text-xs font-mono font-bold transition-all cursor-pointer ${
                       theme === 'light'
-                        ? 'border-primary bg-primary/10 text-primary shadow-xs'
-                        : 'border-border bg-card hover:bg-muted text-muted-foreground'
+                        ? 'bg-primary/10 text-primary shadow-xs'
+                        : 'bg-card hover:bg-muted text-muted-foreground'
                     }`}
                   >
                     <Sun className="w-4 h-4" />
@@ -247,10 +260,10 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => handleThemeChange('sepia')}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer ${
+                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border border-border text-xs font-mono font-bold transition-all cursor-pointer ${
                       theme === 'sepia'
-                        ? 'border-primary bg-primary/10 text-primary shadow-xs'
-                        : 'border-border bg-card hover:bg-muted text-muted-foreground'
+                        ? 'bg-primary/10 text-primary shadow-xs'
+                        : 'bg-card hover:bg-muted text-muted-foreground'
                     }`}
                   >
                     <Coffee className="w-4 h-4" />
@@ -260,10 +273,10 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => handleThemeChange('dark')}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer ${
+                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border border-border text-xs font-mono font-bold transition-all cursor-pointer ${
                       theme === 'dark'
-                        ? 'border-primary bg-primary/10 text-primary shadow-xs'
-                        : 'border-border bg-card hover:bg-muted text-muted-foreground'
+                        ? 'bg-primary/10 text-primary shadow-xs'
+                        : 'bg-card hover:bg-muted text-muted-foreground'
                     }`}
                   >
                     <Moon className="w-4 h-4" />
@@ -329,7 +342,7 @@ export default function ProfilePage() {
                   await signOut();
                   router.push('/');
                 }}
-                className="font-mono text-xs uppercase text-destructive hover:bg-destructive/10 hover:border-destructive/40 border-border shrink-0"
+                className="font-mono text-xs uppercase text-destructive hover:bg-destructive/10 border border-border shrink-0"
               >
                 <LogOut className="w-3.5 h-3.5 mr-1.5" />
                 <span>Sign Out</span>
@@ -337,7 +350,9 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

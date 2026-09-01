@@ -76,7 +76,7 @@ export const useReaderStore = create<ReaderState>()(
       },
 
       getProgress: (bookId) => {
-        return get().readingProgress[bookId] || 0;
+        return get().readingProgress[bookId] ?? 0;
       },
     }),
     {

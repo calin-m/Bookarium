@@ -26,6 +26,7 @@ export interface BookGridProps {
   onViewModeChange?: (mode: BookViewMode) => void;
   initialViewMode?: BookViewMode;
   showViewToggle?: boolean;
+  onBrowseCatalog?: () => void;
 }
 
 export const BookGrid: React.FC<BookGridProps> = ({
@@ -45,6 +46,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   onViewModeChange,
   initialViewMode = 'grid',
   showViewToggle = true,
+  onBrowseCatalog,
 }) => {
   const [internalViewMode, setInternalViewMode] = useState<BookViewMode>(initialViewMode);
   const activeViewMode = controlledViewMode ?? internalViewMode;
@@ -118,7 +120,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
     );
   }
 
-  if (books.length === 0) {
+  if (activeViewMode !== 'shelf' && books.length === 0) {
     return (
       <div className="py-20 text-center space-y-3 max-w-md mx-auto">
         <div className="w-12 h-12 rounded-full bg-muted text-muted-foreground flex items-center justify-center mx-auto">
@@ -177,7 +179,11 @@ export const BookGrid: React.FC<BookGridProps> = ({
       {/* Main Content: Grid vs. Shelf with smooth page fade */}
       <div key={`catalog-page-${page}`} className="animate-page-turn">
         {activeViewMode === 'shelf' ? (
-          <BookshelfRack books={books} onDownloadClick={onDownloadClick} />
+          <BookshelfRack
+            books={books}
+            onDownloadClick={onDownloadClick}
+            onBrowseCatalog={onBrowseCatalog}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {books.map((book) => (

@@ -287,7 +287,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border">
                     <span>Notable Passages</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">CC0 / Free</span>
+                    <span className="text-success font-bold uppercase">CC0 / Free</span>
                   </div>
 
                   {/* Primary Quote Box (Matches HeroSearch 1:1) */}
@@ -368,7 +368,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border">
                       <span>Notable Passages</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">CC0 / Free</span>
+                      <span className="text-success font-bold uppercase">CC0 / Free</span>
                     </div>
 
                     <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
@@ -546,7 +546,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
                   <div className="flex items-center justify-between pt-2 border-t border-border text-xs text-muted-foreground">
                     <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
-                    <span className="text-[10px] font-mono font-medium tracking-wider text-emerald-700 dark:text-emerald-400 [html.sepia_&]:text-emerald-400 uppercase">
+                    <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
                       CC0 / Free
                     </span>
                   </div>

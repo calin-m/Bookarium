@@ -22,7 +22,7 @@ describe('ReaderFooter', () => {
   it('renders global volume pagination and chapter title', () => {
     render(<ReaderFooter {...defaultProps} />);
 
-    expect(screen.getByText('Chapter 5')).toBeInTheDocument();
+    expect(screen.getAllByText('Chapter 5').length).toBeGreaterThanOrEqual(1);
     const input = screen.getByLabelText('Current Page Number');
     expect(input).toHaveValue(18);
     expect(input).toHaveAttribute('aria-valuemin', '1');

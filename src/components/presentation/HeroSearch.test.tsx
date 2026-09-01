@@ -225,13 +225,13 @@ describe('HeroSearch component', () => {
     expect(handleReadFeatured).toHaveBeenCalledTimes(1);
   });
 
-  it('renders static volume badge for desktop and responsive shuffle button for mobile on the cover', () => {
+  it('renders static volume badge on the cover across all viewports', () => {
     renderWithClient(<HeroSearch search="" />);
-    // Static volume badge on desktop cover
+    // Static volume badge on cover
     expect(screen.getAllByText(/Vol\./i).length).toBeGreaterThanOrEqual(1);
 
-    // Shuffle button on mobile cover
-    const coverShuffleBtn = screen.getByRole('button', { name: /Shuffle Passage/i });
-    expect(coverShuffleBtn).toHaveClass('lg:hidden');
+    // No shuffle button on cover
+    const coverShuffleBtn = screen.queryByRole('button', { name: /Shuffle Passage/i });
+    expect(coverShuffleBtn).not.toBeInTheDocument();
   });
 });

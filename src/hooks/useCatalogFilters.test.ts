@@ -1,6 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCatalogFilters } from './useCatalogFilters';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''),
+}));
 
 describe('useCatalogFilters', () => {
   it('initializes with default catalog filters and page 1', () => {
@@ -108,9 +116,9 @@ describe('useCatalogFilters', () => {
     expect(result.current.isFilterDrawerOpen).toBe(true);
   });
 
-  it('hydrates initial filter state from window.location.search', () => {
+  it('hydrates initial filter state from window.location.search including view=bookshelf', () => {
     delete (window as any).location;
-    (window as any).location = new URL('http://localhost:3000/?search=Plato&topic=philosophy&page=3&sort=ascending&view=catalog');
+    (window as any).location = new URL('http://localhost:3000/?search=Plato&topic=philosophy&page=3&sort=ascending&view=bookshelf');
 
     const { result } = renderHook(() => useCatalogFilters());
 
@@ -118,6 +126,7 @@ describe('useCatalogFilters', () => {
     expect(result.current.topic).toBe('philosophy');
     expect(result.current.page).toBe(3);
     expect(result.current.sort).toBe('ascending');
+    expect(result.current.activeView).toBe('bookshelf');
 
     (window as any).location = new URL('http://localhost:3000/');
   });

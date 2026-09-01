@@ -20,6 +20,8 @@
     --accent-foreground: #1c1917;
     --destructive: #dc2626;
     --destructive-foreground: #ffffff;
+    --success: #059669;
+    --success-foreground: #ffffff;
     --border: #e7e5e4;
     --input: #e7e5e4;
     --ring: #c05621;
@@ -43,6 +45,8 @@
     --accent-foreground: #f5f5f4;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
+    --success: #34d399;
+    --success-foreground: #0e1117;
     --border: #292524;
     --input: #292524;
     --ring: #ec843f;
@@ -65,8 +69,10 @@
     --accent-foreground: #fef6eb;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --border: #5a3928;
-    --input: #5a3928;
+    --success: #34d399;
+    --success-foreground: #2b1d16;
+    --border: #462e22;
+    --input: #462e22;
     --ring: #f59e0b;
   }
 
@@ -267,36 +273,101 @@
   color: var(--primary);
 }
 
-/* Modern Architectural Spine Rail */
+/* Modern Warm Hardwood Architectural Spine Rail */
 .shelf-wood-ledge {
   background: linear-gradient(
     180deg,
-    #4a5568 0%,
-    #2d3748 60%,
-    #1a202c 100%
+    #5c3a21 0%,
+    #3e2415 40%,
+    #24140b 80%,
+    #150a05 100%
   );
-  box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.45), 0 4px 6px -1px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(0, 0, 0, 0.6);
 }
 
 .dark .shelf-wood-ledge {
   background: linear-gradient(
     180deg,
-    #2d3748 0%,
-    #1a202c 60%,
-    #0f172a 100%
+    #3d2616 0%,
+    #29170d 40%,
+    #180c06 80%,
+    #0c0502 100%
   );
-  box-shadow: 0 10px 20px -2px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.7), 0 6px 10px -1px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.8);
 }
 
-/* Embossed Spine Text */
+.sepia .shelf-wood-ledge {
+  background: linear-gradient(
+    180deg,
+    #4a2c1b 0%,
+    #361f13 40%,
+    #24140b 80%,
+    #140a05 100%
+  );
+  box-shadow: 0 12px 24px -4px rgba(20, 10, 5, 0.6), 0 4px 6px -1px rgba(20, 10, 5, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Shelf Niche Ambient Lighting Vignette */
+.shelf-ambient-niche {
+  background: radial-gradient(ellipse at 50% 25%, rgba(245, 158, 11, 0.05) 0%, rgba(0, 0, 0, 0.02) 55%, rgba(0, 0, 0, 0.07) 100%), var(--card);
+}
+
+.dark .shelf-ambient-niche {
+  background: radial-gradient(ellipse at 50% 25%, rgba(251, 191, 36, 0.04) 0%, rgba(0, 0, 0, 0.15) 55%, rgba(0, 0, 0, 0.32) 100%), var(--card);
+}
+
+.sepia .shelf-ambient-niche {
+  background: radial-gradient(ellipse at 50% 25%, rgba(245, 158, 11, 0.06) 0%, rgba(30, 15, 8, 0.15) 55%, rgba(20, 10, 5, 0.3) 100%), var(--card);
+}
+
+/* 3D Convex Book Spine Specular Highlight & Cylindrical Depth */
+.book-spine-convex {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.38) 0%,
+    rgba(0, 0, 0, 0.06) 12%,
+    rgba(255, 255, 255, 0.2) 32%,
+    rgba(255, 255, 255, 0.08) 55%,
+    rgba(0, 0, 0, 0.06) 82%,
+    rgba(0, 0, 0, 0.42) 100%
+  );
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.18), inset -1px 0 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Vintage Brass Shelf Number Tag */
+.shelf-brass-plate {
+  background: linear-gradient(180deg, #f3d48d 0%, #d4a754 50%, #9e7428 100%);
+  color: #2b1a04;
+  border: 1px solid #78521a;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.dark .shelf-brass-plate {
+  background: linear-gradient(180deg, #d4a754 0%, #b38536 50%, #7d5718 100%);
+  color: #1a0f02;
+  border: 1px solid #5a3c10;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.sepia .shelf-brass-plate {
+  background: linear-gradient(180deg, #e5b869 0%, #c49746 50%, #8c631e 100%);
+  color: #241404;
+  border: 1px solid #633f0e;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Hot-Foil Embossed Spine Text */
 .spine-emboss-gold {
   color: #fef08a;
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7), 0 1px 1px rgba(255, 255, 255, 0.2);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.25), 0 0 2px rgba(254, 240, 138, 0.35);
 }
 
 .spine-emboss-silver {
-  color: #f1f5f9;
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7), 0 1px 1px rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.25), 0 0 2px rgba(248, 250, 252, 0.3);
 }
 
 /* Custom Scrollbar */

@@ -14,6 +14,7 @@ export interface BookshelfState {
 
   // Cloud State
   cloudBookshelves: Bookshelf[];
+  cloudBookshelfItems: BookshelfItem[];
   activeBookshelfId: string | null;
   isSyncing: boolean;
 
@@ -35,6 +36,9 @@ export interface BookshelfState {
   syncWithCloud: (userId: string) => Promise<void>;
   migrateLocalBooksToCloud: (userId: string) => Promise<void>;
   createCloudBookshelf: (name: string, userId: string) => Promise<Bookshelf | null>;
+  updateCloudBookshelf: (shelfId: string, name: string, userId: string) => Promise<boolean>;
+  deleteCloudBookshelf: (shelfId: string, userId: string) => Promise<boolean>;
+  moveBookToShelf: (bookId: number, targetShelfId: string, userId: string) => Promise<boolean>;
   setActiveBookshelfId: (id: string | null) => void;
 }
 
@@ -47,38 +51,58 @@ export const useBookshelfStore = create<BookshelfState>()(
       likedBookIds: [],
       recentBooks: [],
       cloudBookshelves: [],
+      cloudBookshelfItems: [],
       activeBookshelfId: null,
       isSyncing: false,
 
       toggleSaveBook: async (book, userId) => {
-        const { savedBooks, cloudBookshelves, activeBookshelfId } = get();
+        const { savedBooks, cloudBookshelves, activeBookshelfId, cloudBookshelfItems } = get();
         const exists = savedBooks.some((b) => b.id === book.id);
         const nextSaved = exists ? savedBooks.filter((b) => b.id !== book.id) : [book, ...savedBooks];
-        set({ savedBooks: nextSaved });
+        const targetShelfId = activeBookshelfId || cloudBookshelves.find((s) => s.is_default)?.id || cloudBookshelves[0]?.id;
+
+        let nextItems = cloudBookshelfItems;
+        if (targetShelfId) {
+          if (exists) {
+            nextItems = cloudBookshelfItems.filter((i) => !(i.book_id === book.id && i.bookshelf_id === targetShelfId));
+          } else {
+            nextItems = [
+              ...cloudBookshelfItems,
+              {
+                id: `local-${book.id}-${targetShelfId}`,
+                bookshelf_id: targetShelfId,
+                user_id: userId || '',
+                book_id: book.id,
+                book_title: book.title,
+                book_authors: book.authors?.map((a) => a.name) || [],
+                cover_url: book.formats?.['image/jpeg'] || null,
+                added_at: new Date().toISOString(),
+              },
+            ];
+          }
+        }
+
+        set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems });
 
         // Cloud sync if authenticated
-        if (userId) {
+        if (userId && targetShelfId) {
           try {
             const supabase = createClient();
-            const targetShelfId = activeBookshelfId || cloudBookshelves.find((s) => s.is_default)?.id || cloudBookshelves[0]?.id;
-
-            if (targetShelfId) {
-              if (exists) {
-                await supabase
-                  .from('bookshelf_items')
-                  .delete()
-                  .eq('bookshelf_id', targetShelfId)
-                  .eq('book_id', book.id);
-              } else {
-                await supabase.from('bookshelf_items').insert({
-                  bookshelf_id: targetShelfId,
-                  user_id: userId,
-                  book_id: book.id,
-                  book_title: book.title,
-                  book_authors: book.authors?.map((a) => a.name) || [],
-                  cover_url: book.formats?.['image/jpeg'] || null,
-                });
-              }
+            if (exists) {
+              await supabase
+                .from('bookshelf_items')
+                .delete()
+                .eq('bookshelf_id', targetShelfId)
+                .eq('book_id', book.id);
+            } else {
+              await supabase.from('bookshelf_items').insert({
+                bookshelf_id: targetShelfId,
+                user_id: userId,
+                book_id: book.id,
+                book_title: book.title,
+                book_authors: book.authors?.map((a) => a.name) || [],
+                cover_url: book.formats?.['image/jpeg'] || null,
+              });
             }
           } catch {
             // Non-blocking offline fallback
@@ -196,6 +220,11 @@ export const useBookshelfStore = create<BookshelfState>()(
               .select('*')
               .eq('user_id', userId);
 
+            set({
+              cloudBookshelves: shelves as Bookshelf[],
+              cloudBookshelfItems: (items || []) as BookshelfItem[],
+            });
+
             if (items && items.length > 0) {
               const reconstructedBooks: GutendexBook[] = items.map((item: BookshelfItem) => ({
                 id: item.book_id,
@@ -220,6 +249,25 @@ export const useBookshelfStore = create<BookshelfState>()(
                 }
               }
               set({ savedBooks: merged });
+            }
+          } else {
+            // Create default 'General' shelf for user
+            const { data: newDefault } = await supabase
+              .from('bookshelves')
+              .insert({
+                user_id: userId,
+                name: 'General',
+                is_default: true,
+              })
+              .select()
+              .single();
+
+            if (newDefault) {
+              set({
+                cloudBookshelves: [newDefault as Bookshelf],
+                activeBookshelfId: newDefault.id,
+                cloudBookshelfItems: [],
+              });
             }
           }
         } catch {
@@ -285,6 +333,136 @@ export const useBookshelfStore = create<BookshelfState>()(
         return null;
       },
 
+      updateCloudBookshelf: async (shelfId: string, name: string, userId: string) => {
+        if (!shelfId || !name.trim() || !userId) return false;
+
+        try {
+          const supabase = createClient();
+          const { error } = await supabase
+            .from('bookshelves')
+            .update({ name: name.trim() })
+            .eq('id', shelfId)
+            .eq('user_id', userId);
+
+          if (!error) {
+            set({
+              cloudBookshelves: get().cloudBookshelves.map((s) =>
+                s.id === shelfId ? { ...s, name: name.trim() } : s
+              ),
+            });
+            return true;
+          }
+        } catch {
+          // Non-blocking fallback
+        }
+        return false;
+      },
+
+      deleteCloudBookshelf: async (shelfId: string, userId: string) => {
+        if (!shelfId || !userId) return false;
+
+        try {
+          const supabase = createClient();
+          const nextShelves = get().cloudBookshelves.filter((s) => s.id !== shelfId);
+          const defaultShelf = nextShelves.find((s) => s.is_default) || nextShelves[0];
+
+          // 1. Auto-reassign books on deleted shelf to default shelf so books are never lost
+          if (defaultShelf) {
+            await supabase
+              .from('bookshelf_items')
+              .update({ bookshelf_id: defaultShelf.id })
+              .eq('bookshelf_id', shelfId)
+              .eq('user_id', userId);
+          } else {
+            await supabase
+              .from('bookshelf_items')
+              .delete()
+              .eq('bookshelf_id', shelfId)
+              .eq('user_id', userId);
+          }
+
+          // 2. Delete the custom shelf
+          const { error } = await supabase
+            .from('bookshelves')
+            .delete()
+            .eq('id', shelfId)
+            .eq('user_id', userId);
+
+          if (!error) {
+            set({
+              cloudBookshelves: nextShelves,
+              activeBookshelfId: defaultShelf?.id || null,
+              cloudBookshelfItems: get().cloudBookshelfItems.map((item) =>
+                item.bookshelf_id === shelfId && defaultShelf
+                  ? { ...item, bookshelf_id: defaultShelf.id }
+                  : item
+              ),
+            });
+            return true;
+          }
+        } catch {
+          // Non-blocking fallback
+        }
+        return false;
+      },
+
+      moveBookToShelf: async (bookId: number, targetShelfId: string, userId: string) => {
+        if (!bookId || !targetShelfId) return false;
+
+        const { cloudBookshelfItems, savedBooks } = get();
+        const existingItem = cloudBookshelfItems.find((i) => i.book_id === bookId);
+        const bookObj = savedBooks.find((b) => b.id === bookId);
+
+        let nextItems: BookshelfItem[];
+        if (existingItem) {
+          nextItems = cloudBookshelfItems.map((item) =>
+            item.book_id === bookId ? { ...item, bookshelf_id: targetShelfId } : item
+          );
+        } else {
+          nextItems = [
+            ...cloudBookshelfItems,
+            {
+              id: `item-${bookId}-${targetShelfId}`,
+              bookshelf_id: targetShelfId,
+              user_id: userId || '',
+              book_id: bookId,
+              book_title: bookObj?.title || '',
+              book_authors: bookObj?.authors?.map((a) => a.name) || [],
+              cover_url: bookObj?.formats?.['image/jpeg'] || null,
+              added_at: new Date().toISOString(),
+            },
+          ];
+        }
+
+        // Instant local update
+        set({ cloudBookshelfItems: nextItems });
+
+        if (userId) {
+          try {
+            const supabase = createClient();
+            const { error } = await supabase
+              .from('bookshelf_items')
+              .update({ bookshelf_id: targetShelfId })
+              .eq('book_id', bookId)
+              .eq('user_id', userId);
+
+            if (error) {
+              await supabase.from('bookshelf_items').insert({
+                bookshelf_id: targetShelfId,
+                user_id: userId,
+                book_id: bookId,
+                book_title: bookObj?.title || '',
+                book_authors: bookObj?.authors?.map((a) => a.name) || [],
+                cover_url: bookObj?.formats?.['image/jpeg'] || null,
+              });
+            }
+          } catch {
+            // Non-blocking fallback
+          }
+        }
+        return true;
+      },
+
       setActiveBookshelfId: (id) => {
         set({ activeBookshelfId: id });
       },
@@ -309,6 +487,7 @@ export function useHydratedBookshelf() {
   const likedBookIds = useBookshelfStore((s) => s.likedBookIds);
   const recentBooks = useBookshelfStore((s) => s.recentBooks);
   const cloudBookshelves = useBookshelfStore((s) => s.cloudBookshelves);
+  const cloudBookshelfItems = useBookshelfStore((s) => s.cloudBookshelfItems);
   const activeBookshelfId = useBookshelfStore((s) => s.activeBookshelfId);
   const isSyncing = useBookshelfStore((s) => s.isSyncing);
   const toggleSaveBook = useBookshelfStore((s) => s.toggleSaveBook);
@@ -318,6 +497,9 @@ export function useHydratedBookshelf() {
   const clearBookshelf = useBookshelfStore((s) => s.clearBookshelf);
   const syncWithCloud = useBookshelfStore((s) => s.syncWithCloud);
   const createCloudBookshelf = useBookshelfStore((s) => s.createCloudBookshelf);
+  const updateCloudBookshelf = useBookshelfStore((s) => s.updateCloudBookshelf);
+  const deleteCloudBookshelf = useBookshelfStore((s) => s.deleteCloudBookshelf);
+  const moveBookToShelf = useBookshelfStore((s) => s.moveBookToShelf);
   const setActiveBookshelfId = useBookshelfStore((s) => s.setActiveBookshelfId);
 
   return {
@@ -330,6 +512,7 @@ export function useHydratedBookshelf() {
     likedBookIds: hasMounted ? likedBookIds : [],
     recentBooks: hasMounted ? recentBooks : [],
     cloudBookshelves: hasMounted ? cloudBookshelves : [],
+    cloudBookshelfItems: hasMounted ? cloudBookshelfItems : [],
     activeBookshelfId: hasMounted ? activeBookshelfId : null,
     isSyncing: hasMounted ? isSyncing : false,
     savedCount: hasMounted ? savedBooks.length : 0,
@@ -342,6 +525,9 @@ export function useHydratedBookshelf() {
     clearBookshelf,
     syncWithCloud,
     createCloudBookshelf,
+    updateCloudBookshelf,
+    deleteCloudBookshelf,
+    moveBookToShelf,
     setActiveBookshelfId,
   };
 }

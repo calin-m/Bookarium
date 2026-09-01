@@ -31,18 +31,16 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v2.8.0)
+## 🛠️ Latest Improvements (v1.4.0)
 
-- **Supabase Authentication & Multi-Device Cloud Sync (ADR-005)** – Integrated Supabase Authentication (Email/Password, Magic Link OTP, OAuth) with PostgreSQL Row Level Security (RLS) tables (`public.profiles`, `public.bookshelves`, `public.bookshelf_items`, `public.reading_progress`). Supports multi-shelf collections and automated migration of guest bookmarks on first login.
-- **Offline-First Progressive Enhancement Pattern** – Guest readers retain 100% instant, friction-free access to all features, reading tools, and offline `localStorage` bookmarks with zero account creation requirement.
-- **Cryptographically Secure Strong Password Generator** – Built-in 16-character password generator (`[Suggest Strong Password]`) with one-click clipboard copying, a show/hide visibility toggle (`Eye` / `EyeOff`), real-time password strength meter, and `autoComplete="new-password"` native browser integration.
-- **In-Modal Email Verification & `/auth/callback` Route Handler** – User-friendly email verification feedback preventing premature session activation, paired with Next.js edge route handler `/auth/callback` for automated session token exchange upon clicking inbox verification links.
-- **Dedicated Profile & Reading Preferences Page (`/profile`)** – Standalone profile dashboard enabling readers to update display names with instant cloud save, select default reading atmosphere themes (*Light*, *Sepia*, *Dark*), inspect live cloud library statistics (*Saved Volumes*, *Liked Titles*, *Custom Shelves*), and manage account security.
-- **Unified Navigation & User Menu** – Standardized the top Navbar account button to render a unified `<UserIcon />` indicator for both guest "Sign In" and authenticated account dropdown menus with direct navigation to `/profile`.
-- **Polymorphic `<Button />` Component & `chip` Size Token** – Upgraded the core button primitive with type-safe `as` prop support (`as={Link}` or `as="a"`) and introduced the `chip` size token eliminating style duplication across links and buttons.
-- **Centered Editorial Sub-Header Ribbon in Reader (`ReaderHeader`)** – Extracted the clickable Gutenberg `#ID` metadata badge, active `Section X of Y` indicator, and `Z% Progress` metric into a dedicated, centered sub-header ribbon directly beneath the main title bar.
-- **Multi-Work Anthology & Romance Table of Contents Extraction** – Implemented Conditional Two-Phase chapter detection in the Gutenberg parser, self-healing complex anthologies and collections (such as Book 831 *Four Arthurian Romances*, *Dubliners*, etc.) with automatic footnote bracket stripping (`[11]`, `[21]`) and title-cased navigation in the Table of Contents drawer.
-- **Verified by the 7-Gateway Quality Engine** – 48/48 test files passed, 270/270 tests passed with **91.0% line coverage** and **80.5% branch coverage** (`npm run verify`).
+- **Tactile Hardwood Bookshelves & Library Aesthetics (ADR-006)** – Unified bookcase architecture with rich multi-stop walnut wood rails, top specular bevel lines, ambient alcove spotlighting (`.shelf-ambient-niche`), and dedicated Dark/Sepia wood gradients. Guarantees 100% flush base contact across mobile touch-scroll and desktop viewports.
+- **3D Convex Book Spine Physics & Hot-Foil Typography** – Cylindrical 3D specular lighting overlay (`.book-spine-convex`) simulating authentic curved hardcover bindings and hinge creases, complemented by `.spine-emboss-gold` and `.spine-emboss-silver` hot-foil gilded serif typography and volume seals.
+- **Grounded Pull-Forward Scale Physics** – Upgraded spine hover interaction to an anchored pull-forward expansion (`scale-105 origin-bottom`) with deep cast contact shadows on the hardwood rail below.
+- **Multi-Category Cloud Bookshelf Synchronization (ADR-005)** – Supabase PostgreSQL cloud sync with Row Level Security (RLS). Features a master "General" bookshelf aggregating all user books, floating "Move to Shelf" selector dropdowns on book spines, and safe shelf deletion auto-reassigning orphaned volumes to General.
+- **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
+- **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
+- **Strict 0% Page 1 Reading Progress & Verified Profiles** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user profiles (`/profile`) for managing reading statistics and atmosphere settings.
+- **Verified by the 7-Gateway Quality Engine** – 48/48 test files passed, 284/284 tests passed with **90.7% line coverage** and **80.3% branch coverage** (`npm run verify`).
 
 ---
 
@@ -92,9 +90,10 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 * **Header Navigation & Brand Reset**: Clean top bar with unified iconography (**Catalog** `<BookOpen>`, **Bookshelf** `<Bookmark>`, **Favorites** `<Heart>`), live badge counters, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
 * **Floating Back to Top & Quick Navigation**: Motion-animated scroll-to-top button with viewport threshold detection.
 * **Interactive Studio Bookshelf Mode**:
-  * **Skeuomorphic Wooden Ledge**: Tactile shelf presentation with physical depth shadows, spine ledges, linen backdrops, and smooth horizontal touch-panning (`touch-pan-x`) on mobile devices.
-  * **Embossed Vertical Spines**: Distinct palette-styled book spines with dynamic heights, gold/silver embossed lettering, bookmark ribbons, and glowing progress pips.
-  * **Hover Action Cards**: Floating preview cards elevated above the shelf with instant `Read`, `Download`, and `Bookmark` actions.
+  * **Unified Hardwood Bookcase**: Integrated shelf niche alcove and solid timber rail with bevel highlights and ambient spotlight vignettes (`.shelf-ambient-niche`), ensuring books sit directly flush on the wood ledge.
+  * **3D Convex Spines & Gilded Lettering**: Convex specular spine curvature (`.book-spine-convex`) with 8 authentic binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), hot-foil gold/silver typography, and bookmark ribbons.
+  * **Multi-Shelf Categories & General View**: Master "General" view displaying all library volumes alongside custom collections, with a floating "Move to Shelf" selector on spine hover cards.
+  * **Grounded Pull-Forward Hover**: Physical scaling (`scale-105 origin-bottom`) pulling the volume forward toward the reader with instant `Read`, `Download`, and `Bookmark` actions.
 * **Dedicated In-Browser Focus Reader (`/read/[id]`)**:
   * **Triple-Tier Metadata Resolution & Gutenberg Archive Modal**: Instant reader metadata resolution (Store $\to$ Plain-Text Header Parsing $\to$ API) with an interactive `[ ℹ️ #VolumeID ]` badge that opens a detailed Gutenberg Public Domain Archive modal without causing any header layout shifts.
   * **Edge-to-Edge Symmetrical Reader Toolbars**: Full-width top navigation header and bottom footer with mathematically locked center progress badges and page jumpers, eliminating layout drift across varying book and chapter title lengths.

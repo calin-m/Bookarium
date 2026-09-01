@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { LITERARY_ERAS, CATALOG_LANGUAGES, GENRE_FACETS } from '@/config/catalog-filters';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
@@ -44,68 +45,70 @@ function getInitialUrlParams() {
 }
 
 export function useCatalogFilters() {
+  const searchParams = useSearchParams();
   const hasMounted = useHasMounted();
-  const [activeView, setActiveView] = useState<CatalogView>('catalog');
-  const [search, setSearch] = useState('');
-  const [topic, setTopic] = useState('');
-  const [language, setLanguage] = useState('');
-  const [era, setEra] = useState('');
-  const [sort, setSort] = useState<CatalogSortOption>('popular');
-  const [format, setFormat] = useState('');
-  const [page, setPage] = useState(1);
+  const [activeView, setActiveView] = useState<CatalogView>(() => {
+    const init = getInitialUrlParams();
+    return init.view && ['catalog', 'bookshelf', 'likes'].includes(init.view) ? init.view : 'catalog';
+  });
+
+  // Synchronize state with Next.js router URL searchParams during render
+  const currentViewParam = searchParams?.get('view') || null;
+  const [prevViewParam, setPrevViewParam] = useState<string | null>(() => {
+    return typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('view') : null;
+  });
+
+  if (currentViewParam !== prevViewParam) {
+    setPrevViewParam(currentViewParam);
+    if (currentViewParam && ['catalog', 'bookshelf', 'likes'].includes(currentViewParam)) {
+      setActiveView(currentViewParam as CatalogView);
+    }
+  }
+  const [search, setSearch] = useState(() => getInitialUrlParams().search || '');
+  const [topic, setTopic] = useState(() => getInitialUrlParams().topic || '');
+  const [language, setLanguage] = useState(() => getInitialUrlParams().language || '');
+  const [era, setEra] = useState(() => getInitialUrlParams().era || '');
+  const [sort, setSort] = useState<CatalogSortOption>(() => getInitialUrlParams().sort || 'popular');
+  const [format, setFormat] = useState(() => getInitialUrlParams().format || '');
+  const [page, setPage] = useState(() => getInitialUrlParams().page || 1);
   const [pageSize, setPageSize] = useState(32);
   const [viewMode, setViewMode] = useState<CatalogViewMode>('grid');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-
-  const initialParams = useMemo(() => {
-    if (!hasMounted) return {};
-    return getInitialUrlParams();
-  }, [hasMounted]);
-
-  // Derive effective filter values: fallback to URL params once mounted to guarantee 0 SSR mismatch
-  const effectiveActiveView = hasMounted && activeView === 'catalog' && initialParams.view ? initialParams.view : activeView;
-  const effectiveSearch = hasMounted && search === '' && initialParams.search ? initialParams.search : search;
-  const effectiveTopic = hasMounted && topic === '' && initialParams.topic ? initialParams.topic : topic;
-  const effectiveLanguage = hasMounted && language === '' && initialParams.language ? initialParams.language : language;
-  const effectiveEra = hasMounted && era === '' && initialParams.era ? initialParams.era : era;
-  const effectiveSort = hasMounted && sort === 'popular' && initialParams.sort ? initialParams.sort : sort;
-  const effectiveFormat = hasMounted && format === '' && initialParams.format ? initialParams.format : format;
-  const effectivePage = hasMounted && page === 1 && initialParams.page ? initialParams.page : page;
 
   // Sync state to URL search parameters without page reload (after hydration)
   useEffect(() => {
     if (typeof window === 'undefined' || !hasMounted) return;
     try {
       const url = new URL(window.location.href);
-      if (effectiveSearch) url.searchParams.set('search', effectiveSearch);
+      if (search) url.searchParams.set('search', search);
       else url.searchParams.delete('search');
 
-      if (effectiveTopic) url.searchParams.set('topic', effectiveTopic);
+      if (topic) url.searchParams.set('topic', topic);
       else url.searchParams.delete('topic');
 
-      if (effectiveLanguage) url.searchParams.set('language', effectiveLanguage);
+      if (language) url.searchParams.set('language', language);
       else url.searchParams.delete('language');
 
-      if (effectiveEra) url.searchParams.set('era', effectiveEra);
+      if (era) url.searchParams.set('era', era);
       else url.searchParams.delete('era');
 
-      if (effectiveSort && effectiveSort !== 'popular') url.searchParams.set('sort', effectiveSort);
+      if (sort && sort !== 'popular') url.searchParams.set('sort', sort);
       else url.searchParams.delete('sort');
 
-      if (effectiveFormat) url.searchParams.set('format', effectiveFormat);
+      if (format) url.searchParams.set('format', format);
       else url.searchParams.delete('format');
 
-      if (effectivePage > 1) url.searchParams.set('page', String(effectivePage));
+      if (page > 1) url.searchParams.set('page', String(page));
       else url.searchParams.delete('page');
 
-      if (effectiveActiveView !== 'catalog') url.searchParams.set('view', effectiveActiveView);
+      if (activeView !== 'catalog') url.searchParams.set('view', activeView);
       else url.searchParams.delete('view');
 
       window.history.replaceState(null, '', url.pathname + (url.search ? url.search : ''));
     } catch {
       // Safe fallback in test or sandboxed environments
     }
-  }, [effectiveSearch, effectiveTopic, effectiveLanguage, effectiveEra, effectiveSort, effectiveFormat, effectivePage, effectiveActiveView, hasMounted]);
+  }, [search, topic, language, era, sort, format, page, activeView, hasMounted]);
 
   // Support browser Back/Forward navigation popstate
   useEffect(() => {
@@ -127,47 +130,47 @@ export function useCatalogFilters() {
   }, []);
 
   const selectedEraObj = useMemo(() => {
-    return LITERARY_ERAS.find((e) => e.id === effectiveEra);
-  }, [effectiveEra]);
+    return LITERARY_ERAS.find((e) => e.id === era);
+  }, [era]);
 
   const queryParams = useMemo<CatalogQueryParams>(() => {
     return {
-      search: effectiveSearch || undefined,
-      topic: effectiveTopic || undefined,
-      languages: effectiveLanguage || undefined,
+      search: search || undefined,
+      topic: topic || undefined,
+      languages: language || undefined,
       authorYearStart: selectedEraObj?.start,
       authorYearEnd: selectedEraObj?.end,
-      sort: effectiveSort || undefined,
-      mimeType: effectiveFormat || undefined,
-      page: effectivePage,
+      sort: sort || undefined,
+      mimeType: format || undefined,
+      page: page,
       copyright: false as const,
     };
-  }, [effectiveSearch, effectiveTopic, effectiveLanguage, selectedEraObj, effectiveSort, effectiveFormat, effectivePage]);
+  }, [search, topic, language, selectedEraObj, sort, format, page]);
 
   const activeFilterChips = useMemo<ActiveFilterChip[]>(() => {
     const chips: ActiveFilterChip[] = [];
 
-    if (effectiveSearch) {
-      chips.push({ id: 'search', label: `Search: "${effectiveSearch}"`, type: 'search' });
+    if (search) {
+      chips.push({ id: 'search', label: `Search: "${search}"`, type: 'search' });
     }
-    if (effectiveTopic) {
-      const facet = GENRE_FACETS.find((f) => f.id === effectiveTopic);
-      chips.push({ id: 'topic', label: facet ? facet.label : effectiveTopic, type: 'topic' });
+    if (topic) {
+      const facet = GENRE_FACETS.find((f) => f.id === topic);
+      chips.push({ id: 'topic', label: facet ? facet.label : topic, type: 'topic' });
     }
-    if (effectiveLanguage) {
-      const lang = CATALOG_LANGUAGES.find((l) => l.value === effectiveLanguage);
-      chips.push({ id: 'language', label: lang ? lang.label : effectiveLanguage.toUpperCase(), type: 'language' });
+    if (language) {
+      const lang = CATALOG_LANGUAGES.find((l) => l.value === language);
+      chips.push({ id: 'language', label: lang ? lang.label : language.toUpperCase(), type: 'language' });
     }
-    if (effectiveEra) {
-      const eraObj = LITERARY_ERAS.find((e) => e.id === effectiveEra);
-      chips.push({ id: 'era', label: eraObj ? eraObj.label : effectiveEra, type: 'era' });
+    if (era) {
+      const eraObj = LITERARY_ERAS.find((e) => e.id === era);
+      chips.push({ id: 'era', label: eraObj ? eraObj.label : era, type: 'era' });
     }
-    if (effectiveFormat) {
+    if (format) {
       chips.push({ id: 'format', label: 'Format Filter Active', type: 'format' });
     }
 
     return chips;
-  }, [effectiveSearch, effectiveTopic, effectiveLanguage, effectiveEra, effectiveFormat]);
+  }, [search, topic, language, era, format]);
 
   const handleSearchChange = useCallback((val: string) => {
     setSearch(val);
@@ -232,14 +235,14 @@ export function useCatalogFilters() {
 
   return {
     // State
-    activeView: effectiveActiveView,
-    search: effectiveSearch,
-    topic: effectiveTopic,
-    language: effectiveLanguage,
-    era: effectiveEra,
-    sort: effectiveSort,
-    format: effectiveFormat,
-    page: effectivePage,
+    activeView,
+    search,
+    topic,
+    language,
+    era,
+    sort,
+    format,
+    page,
     pageSize,
     viewMode,
     isFilterDrawerOpen,

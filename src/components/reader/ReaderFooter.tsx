@@ -46,23 +46,37 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
     <footer
       className={`sticky bottom-0 z-40 shrink-0 border-t transition-colors duration-200 ${activeTheme.footer}`}
     >
-      <div className="w-full px-3 sm:px-6 md:px-8 h-12 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4 font-mono text-xs select-none">
+      {/* Mobile Top Tier: Centered Slim Chapter Title Ribbon (< md) */}
+      <div className={`md:hidden w-full px-4 py-1.5 border-b border-border/40 flex items-center justify-center gap-1.5 text-xs font-mono transition-colors duration-200`}>
+        <BookMarked className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+        <span className="font-serif font-medium truncate max-w-[85vw] text-center" title={chapterTitle || 'Preamble'}>
+          {chapterTitle || 'Preamble'}
+        </span>
+        {readingMode === 'paginated' && chapterPageCount > 1 && (
+          <span className={`text-[10px] font-mono shrink-0 ${activeTheme.textMuted}`}>
+            ({chapterPage}/{chapterPageCount})
+          </span>
+        )}
+      </div>
+
+      {/* Main Footer Controls Bar */}
+      <div className="w-full px-3 sm:px-6 md:px-8 h-12 flex md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center justify-between md:justify-normal gap-2 sm:gap-4 font-mono text-xs select-none">
         
-        {/* Left Track (1fr): Active Chapter Breadcrumb with Graceful Truncation */}
-        <div className="flex items-center gap-2 min-w-0 justify-self-start">
+        {/* Desktop Left Track (hidden on mobile, visible md:flex) */}
+        <div className="hidden md:flex items-center gap-2 min-w-0 justify-self-start">
           <BookMarked className="w-4 h-4 text-primary-500 shrink-0" />
           <span className="font-serif font-medium truncate" title={chapterTitle || 'Preamble'}>
             {chapterTitle || 'Preamble'}
           </span>
           {readingMode === 'paginated' && chapterPageCount > 1 && (
-            <span className={`hidden md:inline-block text-[11px] font-mono shrink-0 ${activeTheme.textMuted}`}>
+            <span className={`text-[11px] font-mono shrink-0 ${activeTheme.textMuted}`}>
               (Sec. p. {chapterPage}/{chapterPageCount})
             </span>
           )}
         </div>
 
-        {/* Center Track (auto): Mathematically Locked to Screen Dead-Center */}
-        <div className="flex items-center justify-center justify-self-center">
+        {/* Center Track (auto): Page Input */}
+        <div className="flex items-center justify-center md:justify-self-center">
           {readingMode === 'paginated' ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className={`hidden sm:inline ${activeTheme.textMuted}`}>Page</span>
@@ -99,8 +113,8 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
           )}
         </div>
 
-        {/* Right Track (1fr): Prev / Next Navigation Permanently Docked */}
-        <div className="flex items-center gap-1.5 shrink-0 justify-self-end">
+        {/* Right Track (1fr): Prev / Next Navigation */}
+        <div className="flex items-center gap-1.5 shrink-0 md:justify-self-end">
           {readingMode === 'paginated' ? (
             <>
               <button

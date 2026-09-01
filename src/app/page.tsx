@@ -21,7 +21,7 @@ import type { GutendexBook } from '@/mocks/handlers';
 import { Trash2, BookOpen, Quote, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const hasMounted = useHasMounted();
   const [selectedDownloadBook, setSelectedDownloadBook] = useState<GutendexBook | null>(null);
@@ -283,6 +283,7 @@ export default function Home() {
             viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}
             onViewModeChange={setViewMode}
             showViewToggle={false} // Managed by StickyToolbar
+            onBrowseCatalog={() => setActiveView('catalog')}
             emptyTitle={
               activeView === 'bookshelf'
                 ? 'Your personal shelf is currently empty'
@@ -318,7 +319,7 @@ export default function Home() {
                         Herman Melville
                       </p>
                     </div>
-                    <div className="text-[10px] font-mono text-emerald-400">
+                    <div className="text-[10px] font-mono text-success">
                       Public Domain • 1851
                     </div>
                   </div>
@@ -402,5 +403,13 @@ export default function Home() {
       <BackToTop />
       <Footer />
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <HomeContent />
+    </React.Suspense>
   );
 }

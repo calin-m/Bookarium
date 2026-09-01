@@ -219,6 +219,150 @@ describe('useBookshelfStore', () => {
         await useBookshelfStore.getState().migrateLocalBooksToCloud('user-1');
       });
     });
+
+    it('handles updateCloudBookshelf and deleteCloudBookshelf', async () => {
+      useBookshelfStore.setState({
+        cloudBookshelves: [
+          { id: 'shelf-1', user_id: 'user-1', name: 'Main', is_default: true, created_at: '', updated_at: '' },
+          { id: 'shelf-2', user_id: 'user-1', name: 'Philosophy', is_default: false, created_at: '', updated_at: '' },
+        ],
+        activeBookshelfId: 'shelf-2',
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            update: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                eq: vi.fn().mockResolvedValueOnce({ error: null }),
+              }),
+            }),
+            delete: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                eq: vi.fn().mockResolvedValueOnce({ error: null }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+            delete: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      const { result } = renderHook(() => useHydratedBookshelf());
+
+      let updateSuccess = false;
+      await act(async () => {
+        updateSuccess = await result.current.updateCloudBookshelf('shelf-2', 'Greek Philosophy', 'user-1');
+      });
+      expect(updateSuccess).toBe(true);
+      expect(useBookshelfStore.getState().cloudBookshelves.find((s) => s.id === 'shelf-2')?.name).toBe('Greek Philosophy');
+
+      let deleteSuccess = false;
+      await act(async () => {
+        deleteSuccess = await result.current.deleteCloudBookshelf('shelf-2', 'user-1');
+      });
+      expect(deleteSuccess).toBe(true);
+      expect(useBookshelfStore.getState().cloudBookshelves).toHaveLength(1);
+      expect(useBookshelfStore.getState().activeBookshelfId).toBe('shelf-1');
+    });
+
+    it('handles moveBookToShelf properly', async () => {
+      useBookshelfStore.setState({
+        cloudBookshelfItems: [
+          {
+            id: 'item-1',
+            bookshelf_id: 'shelf-1',
+            user_id: 'user-1',
+            book_id: 84,
+            book_title: 'Frankenstein',
+            book_authors: ['Mary Shelley'],
+            cover_url: null,
+            added_at: '',
+          },
+        ],
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelf_items') {
+          return {
+            update: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                eq: vi.fn().mockResolvedValueOnce({ error: null }),
+              }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      const { result } = renderHook(() => useHydratedBookshelf());
+      let moveSuccess = false;
+      await act(async () => {
+        moveSuccess = await result.current.moveBookToShelf(84, 'shelf-2', 'user-1');
+      });
+
+      expect(moveSuccess).toBe(true);
+      expect(useBookshelfStore.getState().cloudBookshelfItems[0].bookshelf_id).toBe('shelf-2');
+    });
+
+    it('creates a new bookshelf item if book is not in cloudBookshelfItems yet', async () => {
+      useBookshelfStore.setState({
+        cloudBookshelfItems: [],
+        savedBooks: [
+          {
+            id: 1342,
+            title: 'Pride and Prejudice',
+            authors: [{ name: 'Jane Austen', birth_year: null, death_year: null }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: { 'image/jpeg': 'https://example.com/cover.jpg' },
+            download_count: 5000,
+          },
+        ],
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelf_items') {
+          return {
+            update: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                eq: vi.fn().mockResolvedValueOnce({ error: { message: 'not found' } }),
+              }),
+            }),
+            insert: vi.fn().mockResolvedValueOnce({ error: null }),
+          };
+        }
+        return {};
+      });
+
+      const { result } = renderHook(() => useHydratedBookshelf());
+      let moveSuccess = false;
+      await act(async () => {
+        moveSuccess = await result.current.moveBookToShelf(1342, 'shelf-2', 'user-1');
+      });
+
+      expect(moveSuccess).toBe(true);
+      expect(useBookshelfStore.getState().cloudBookshelfItems).toHaveLength(1);
+      expect(useBookshelfStore.getState().cloudBookshelfItems[0].book_id).toBe(1342);
+      expect(useBookshelfStore.getState().cloudBookshelfItems[0].bookshelf_id).toBe('shelf-2');
+    });
   });
 });
 

@@ -424,7 +424,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                     <div>
                       <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
                         <span>{currentPassage.chapterLabel || 'Notable Passage'}</span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{activeFeatured.license}</span>
+                        <span className="text-success font-bold uppercase">{activeFeatured.license}</span>
                       </div>
 
                       <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
@@ -483,7 +483,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                       <div>
                         <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
                           <span>{prevPassage.chapterLabel || 'Notable Passage'}</span>
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">{activeFeatured.license}</span>
+                          <span className="text-success font-bold uppercase">{activeFeatured.license}</span>
                         </div>
 
                         <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
@@ -543,21 +543,10 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                           <span className="flex items-center gap-1">
                             <Sparkles className="w-3 h-3 text-primary-400" /> Featured Book
                           </span>
-                          {/* Desktop: Clean Volume Label (user shuffles when book opens on hover) */}
-                          <span className="hidden lg:inline-block text-stone-400 font-mono tracking-widest text-[10px]">
+                          {/* Clean Volume Label */}
+                          <span className="text-stone-400 font-mono tracking-widest text-[10px]">
                             {activeFeatured.volumeNumber}
                           </span>
-                          {/* Mobile: Interactive Shuffle Button on Cover */}
-                          <button
-                            type="button"
-                            onClick={handleNextPassage}
-                            className="lg:hidden inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                            title="Shuffle Passage"
-                            aria-label="Shuffle Passage"
-                          >
-                            <RotateCw className="w-2.5 h-2.5" />
-                            <span>{currentPassage.chapterLabel?.split('•')[0]?.trim() || activeFeatured.volumeNumber}</span>
-                          </button>
                         </div>
 
                         <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white leading-tight mb-1.5 text-balance">

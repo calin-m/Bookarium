@@ -197,4 +197,16 @@ describe('Dedicated Reader Page (/read/[id])', () => {
 
     expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
   });
+
+  it('sets reading progress to 0% on page 1 and updates progress as reader advances', () => {
+    render(<BookReaderPage />);
+
+    // On initial page (page 1)
+    expect(useReaderStore.getState().getProgress(1342)).toBe(0);
+
+    // Advance to next page
+    const nextBtn = screen.getByLabelText('Next Page');
+    fireEvent.click(nextBtn);
+    expect(useReaderStore.getState().getProgress(1342)).toBeGreaterThan(0);
+  });
 });

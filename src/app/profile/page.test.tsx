@@ -50,7 +50,7 @@ describe('ProfilePage', () => {
 
     render(<ProfilePage />);
 
-    expect(screen.getByText('Jane Austen')).toBeInTheDocument();
+    expect(screen.getAllByText('Jane Austen').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('austen@bookarium.test')).toBeInTheDocument();
 
     const input = screen.getByLabelText('Display Name');
@@ -81,11 +81,35 @@ describe('ProfilePage', () => {
     expect(mockUpdateProfile).toHaveBeenCalledWith({ preferred_theme: 'sepia' });
 
     // Click Sign Out
-    const signOutBtn = screen.getByRole('button', { name: /Sign Out/i });
+    const signOutBtn = screen.getAllByRole('button', { name: /Sign Out/i })[0];
     fireEvent.click(signOutBtn);
     await waitFor(() => {
       expect(mockSignOut).toHaveBeenCalled();
       expect(mockPush).toHaveBeenCalledWith('/');
     });
+  });
+
+  it('renders Navbar and Footer with working navigation handlers', () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+    });
+
+    render(<ProfilePage />);
+
+    // Check Navbar & Brand
+    expect(screen.getByLabelText('Bookarium logo, click to refresh catalog')).toBeInTheDocument();
+    const catalogBtn = screen.getByRole('button', { name: 'Catalog' });
+    fireEvent.click(catalogBtn);
+    expect(mockPush).toHaveBeenCalledWith('/');
+
+    // Check Bookshelf Navigation
+    const bookshelfBtn = screen.getByLabelText('Bookshelf');
+    fireEvent.click(bookshelfBtn);
+    expect(mockPush).toHaveBeenCalledWith('/?view=bookshelf');
+
+    // Check Footer
+    expect(screen.getByLabelText('Bookarium GitHub by calin-m')).toBeInTheDocument();
   });
 });

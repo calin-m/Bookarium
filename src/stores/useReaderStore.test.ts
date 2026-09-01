@@ -73,6 +73,9 @@ describe('useReaderStore', () => {
     useReaderStore.getState().setProgress(bookId, 45);
     expect(useReaderStore.getState().getProgress(bookId)).toBe(45);
 
+    useReaderStore.getState().setProgress(bookId, 1);
+    expect(useReaderStore.getState().getProgress(bookId)).toBe(1);
+
     // clamping
     useReaderStore.getState().setProgress(bookId, 150);
     expect(useReaderStore.getState().getProgress(bookId)).toBe(100);

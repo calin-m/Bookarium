@@ -172,7 +172,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border ${
                 isError
                   ? 'bg-destructive/10 text-destructive border-destructive/30'
-                  : 'bg-emerald-50 dark:bg-emerald-950/40 [html.sepia_&]:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 [html.sepia_&]:text-emerald-300 border-emerald-300 dark:border-emerald-800 [html.sepia_&]:border-emerald-800'
+                  : 'bg-success/10 text-success border-success/30'
               }`}
               title="Gutenberg API Status"
               data-testid="api-status-badge"
@@ -184,7 +184,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                 </>
               ) : (
                 <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                   <span className="font-bold">Live</span>
                 </>
               )}
