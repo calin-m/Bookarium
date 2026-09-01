@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User, AuthError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { Profile } from '@/types/database.types';
@@ -37,13 +38,15 @@ export interface AuthState {
   }) => Promise<{ error: Error | null }>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  profile: null,
-  isLoading: true,
-  isAuthModalOpen: false,
-  authModalView: 'sign_in',
-  error: null,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      profile: null,
+      isLoading: true,
+      isAuthModalOpen: false,
+      authModalView: 'sign_in',
+      error: null,
 
   initializeAuth: () => {
     const supabase = createClient();
@@ -222,4 +225,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { error: err instanceof Error ? err : new Error(String(err)) };
     }
   },
-}));
+}),
+    {
+      name: 'bookarium-auth-profile',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        profile: state.profile,
+      }),
+    }
+  )
+);

@@ -139,7 +139,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <UserIcon className="w-3.5 h-3.5 text-primary" />
                   <span className="hidden md:inline max-w-[90px] truncate">
-                    {profile?.display_name || user.email?.split('@')[0]}
+                    {profile?.display_name || user.user_metadata?.display_name || 'Reader'}
                   </span>
                 </button>
 
@@ -148,7 +148,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
                     <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl p-2 z-50 text-xs font-mono space-y-1 animate-in fade-in duration-150">
                       <div className="px-3 py-2 border-b border-border/60 text-muted-foreground truncate">
-                        <p className="font-bold text-foreground truncate">{profile?.display_name || 'Reader'}</p>
+                        <p className="font-bold text-foreground truncate">{profile?.display_name || user.user_metadata?.display_name || 'Reader'}</p>
                         <p className="text-[10px] opacity-80 truncate">{user.email}</p>
                       </div>
                       <Link

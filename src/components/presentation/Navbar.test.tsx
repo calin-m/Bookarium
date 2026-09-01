@@ -85,4 +85,16 @@ describe('Navbar component', () => {
     // Click Sign Out
     fireEvent.click(screen.getByText('Sign Out'));
   });
+
+  it('falls back to Reader when profile display_name is not set without leaking email', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'secret.user@bookarium.test' } as any,
+      profile: null,
+    });
+
+    render(<Navbar activeView="catalog" />);
+    expect(screen.queryByText('secret.user')).not.toBeInTheDocument();
+    expect(screen.getByText('Reader')).toBeInTheDocument();
+  });
 });

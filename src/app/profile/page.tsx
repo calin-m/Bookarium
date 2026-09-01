@@ -31,7 +31,7 @@ export default function ProfilePage() {
   const { savedCount, likedCount, cloudBookshelves } = useHydratedBookshelf();
   const { theme, setTheme } = useThemeStore();
 
-  const defaultName = profile?.display_name || user?.email?.split('@')[0] || '';
+  const defaultName = profile?.display_name || user?.user_metadata?.display_name || '';
   const [customName, setCustomName] = useState<string | null>(null);
   const displayName = customName !== null ? customName : defaultName;
 
@@ -138,7 +138,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <h1 className="text-2xl font-serif font-bold text-foreground">
-                      {profile?.display_name || user.email?.split('@')[0] || 'Reader'}
+                      {profile?.display_name || user?.user_metadata?.display_name || 'Reader'}
                     </h1>
                     <div className="flex items-center gap-3 text-xs font-mono text-muted-foreground mt-0.5">
                       <span className="flex items-center gap-1">
