@@ -48,6 +48,12 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${playfair.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        <link rel="preconnect" href="https://gutendex.com" />
+        <link rel="dns-prefetch" href="https://gutendex.com" />
+        <link rel="preconnect" href="https://www.gutenberg.org" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://www.gutenberg.org" />
+      </head>
       <body
         suppressHydrationWarning
         className="min-h-screen flex flex-col bg-background text-foreground antialiased font-sans"

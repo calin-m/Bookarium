@@ -33,5 +33,12 @@ describe('LiteraryQuotes component', () => {
       expect(link.getAttribute('href')).toMatch(/\/read\/\d+/);
     });
   });
+
+  it('should cleanly unmount without errors during active shuffle', () => {
+    const { unmount } = render(<LiteraryQuotes />);
+    const shuffleBtn = screen.getByLabelText(/Discover more literary quotes/i);
+    fireEvent.click(shuffleBtn);
+    expect(() => unmount()).not.toThrow();
+  });
 });
 

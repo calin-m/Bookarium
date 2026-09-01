@@ -213,4 +213,18 @@ describe('HeroSearch component', () => {
       Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
     }
   });
+
+  it('should trigger onReadFeaturedBook from both left and right page action buttons in open state', () => {
+    const handleReadFeatured = vi.fn();
+    renderWithClient(<HeroSearch search="" onReadFeaturedBook={handleReadFeatured} />);
+
+    const readLinks = screen.getAllByRole('button', { name: /Read Volume/i });
+    expect(readLinks.length).toBeGreaterThanOrEqual(2);
+
+    fireEvent.click(readLinks[0]);
+    expect(handleReadFeatured).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(readLinks[1]);
+    expect(handleReadFeatured).toHaveBeenCalledTimes(2);
+  });
 });

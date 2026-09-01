@@ -293,11 +293,11 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   };
 
   return (
-    <section className="relative overflow-hidden bg-muted pt-12 sm:pt-20 pb-16 border-b border-border transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-16">
+    <section className="relative overflow-hidden bg-muted lg:min-h-[calc(100vh-7.25rem)] flex flex-col justify-between pt-6 sm:pt-8 pb-6 sm:pb-8 border-b border-border transition-colors duration-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex-1 flex flex-col justify-between gap-6 sm:gap-8">
         
         {/* Booksaw Asymmetric Hero Split Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center my-auto">
           
           {/* Left Column (Editorial Typography + Search + Language) */}
           <div className="lg:col-span-7 space-y-6 text-left">
@@ -309,16 +309,16 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
             {/* Classical Serif Headline */}
             <div className="space-y-1">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold text-foreground tracking-tight leading-[1.08]">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold text-foreground tracking-tight leading-[1.08] text-balance">
                 Timeless Literature.
               </h1>
-              <div className="text-4xl sm:text-5xl md:text-6xl font-serif italic text-primary tracking-normal leading-[1.08]">
+              <div className="text-4xl sm:text-5xl md:text-6xl font-serif italic text-primary tracking-normal leading-[1.08] text-balance">
                 Free Forever.
               </div>
             </div>
 
             {/* Description */}
-            <p className="text-muted-foreground text-sm sm:text-base max-w-lg font-sans leading-relaxed">
+            <p className="text-muted-foreground text-sm sm:text-base max-w-lg font-sans leading-relaxed text-pretty">
               Explore humanity&apos;s greatest public domain books. Zero subscriptions, zero DRM restrictions, readable directly in your browser or downloaded in full format.
             </p>
 
@@ -429,7 +429,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
                       <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
                         <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8">
+                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8 text-pretty">
                           &ldquo;{currentPassage.quoteExcerpt}&rdquo;
                         </p>
                       </div>
@@ -446,6 +446,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                         className="inline-flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 rounded border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                         title="Shuffle to Next Passage in this Book"
                         aria-label="Shuffle to Next Passage in this Book"
+                        data-testid="hero-book-shuffle-btn"
                       >
                         <RotateCw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-500" />
                         <span>Shuffle</span>
@@ -460,6 +461,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                           }}
                           className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-primary-foreground bg-primary hover:opacity-90 px-3.5 py-1.5 rounded shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
                           aria-label="Read Volume"
+                          data-testid="hero-book-read-btn"
                         >
                           <span>Read Volume</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -486,7 +488,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
                         <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
                           <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8">
+                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8 text-pretty">
                             &ldquo;{prevPassage.quoteExcerpt}&rdquo;
                           </p>
                         </div>
@@ -503,7 +505,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                           <span>{currentPassage.chapterLabel || activeFeatured.volumeNumber}</span>
                         </div>
 
-                        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground">
+                        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
                           {activeFeatured.title}
                         </h3>
                         <p className="text-xs font-mono italic text-muted-foreground mb-2">
@@ -511,7 +513,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                         </p>
 
                         <div className="relative pl-3 border-l-2 border-primary/40 my-2">
-                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8">
+                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8 text-pretty">
                             &ldquo;{currentPassage.openingLine}&rdquo;
                           </p>
                         </div>
@@ -553,7 +555,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                           </button>
                         </div>
 
-                        <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white leading-tight mb-1.5">
+                        <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white leading-tight mb-1.5 text-balance">
                           {activeFeatured.title}
                         </h3>
                         <p className="text-xs font-mono uppercase tracking-wider text-stone-300">
@@ -563,7 +565,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
                       {/* Center Quote Excerpt */}
                       <div className="my-3 p-3 rounded bg-stone-900 border border-stone-800">
-                        <p className="text-xs font-serif italic text-stone-200 leading-relaxed line-clamp-4">
+                        <p className="text-xs font-serif italic text-stone-200 leading-relaxed line-clamp-4 text-pretty">
                           &ldquo;{currentPassage.quoteExcerpt}&rdquo;
                         </p>
                       </div>
@@ -602,7 +604,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                           <span>{(isTurningLeaf ? prevPassage : currentPassage).chapterLabel || activeFeatured.volumeNumber}</span>
                         </div>
 
-                        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground">
+                        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
                           {activeFeatured.title}
                         </h3>
                         <p className="text-xs font-mono italic text-muted-foreground mb-2">
@@ -610,15 +612,29 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                         </p>
 
                         <div className="relative pl-3 border-l-2 border-primary/40 my-2">
-                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8">
+                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8 text-pretty">
                             &ldquo;{(isTurningLeaf ? prevPassage : currentPassage).openingLine}&rdquo;
                           </p>
                         </div>
                       </div>
 
                       <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
-                        <span className="truncate max-w-[160px]">{activeFeatured.primarySubject}</span>
-                        <span className="opacity-60">p. 1</span>
+                        <span className="truncate max-w-[140px]">{activeFeatured.primarySubject}</span>
+                        {onReadFeaturedBook ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onReadFeaturedBook(activeFeatured.rawBook || activeFeatured);
+                            }}
+                            className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-primary hover:underline cursor-pointer"
+                            aria-label="Read Volume"
+                          >
+                            <span>Read &rarr;</span>
+                          </button>
+                        ) : (
+                          <span className="opacity-60">p. 1</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -640,7 +656,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
         </div>
 
         {/* Booksaw 4-Pillar Value Proposition Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-8 border-t border-border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-4 sm:pt-6 border-t border-border mt-auto">
           {FEATURES.map((feature) => {
             const Icon = feature.icon;
             return (

@@ -145,5 +145,30 @@ describe('AdvancedFilterDrawer component', () => {
 
     expect(container.firstChild).toBeNull();
   });
+
+  it('should close when pressing the Escape key', () => {
+    const handleClose = vi.fn();
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={handleClose}
+        selectedEra=""
+        onEraChange={vi.fn()}
+        selectedSort=""
+        onSortChange={vi.fn()}
+        selectedTopic=""
+        onTopicChange={vi.fn()}
+        selectedLanguage=""
+        onLanguageChange={vi.fn()}
+        selectedFormat=""
+        onFormatChange={vi.fn()}
+        onResetAll={vi.fn()}
+        activeFilterCount={0}
+      />
+    );
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
 });
 

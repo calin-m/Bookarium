@@ -292,7 +292,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                   {/* Primary Quote Box (Matches HeroSearch 1:1) */}
                   <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
                     <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                    <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-5">
+                    <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-5 text-pretty">
                       {currentPassage.quoteExcerpt}
                     </p>
                   </div>
@@ -301,7 +301,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                   {currentPassage.rightPageQuote2 && (
                     <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
                       <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-4">
+                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-4 text-pretty">
                         {currentPassage.rightPageQuote2}
                       </p>
                     </div>
@@ -311,7 +311,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                   {currentPassage.tertiaryQuote && (
                     <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs">
                       <Quote className="w-4 h-4 text-amber-500/70 mb-1.5 shrink-0" />
-                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-3">
+                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-3 text-pretty">
                         {currentPassage.tertiaryQuote}
                       </p>
                     </div>
@@ -411,7 +411,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     </div>
 
                     <div>
-                      <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground">
+                      <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
                         {book.title}
                       </h3>
                       <p className="text-xs font-mono italic text-muted-foreground">
@@ -420,7 +420,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     </div>
 
                     <div className="relative pl-3 border-l-2 border-primary/50 my-1">
-                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-5">
+                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-5 text-pretty">
                         &ldquo;{currentPassage.openingLine}&rdquo;
                       </p>
                     </div>
@@ -576,7 +576,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     </div>
 
                     <div>
-                      <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground">
+                      <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
                         {book.title}
                       </h3>
                       <p className="text-xs font-mono italic text-muted-foreground">
@@ -585,7 +585,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     </div>
 
                     <div className="relative pl-3 border-l-2 border-primary/50 my-1">
-                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-5">
+                      <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-5 text-pretty">
                         &ldquo;{isTurningLeaf ? prevPassage.openingLine : currentPassage.openingLine}&rdquo;
                       </p>
                     </div>

@@ -432,6 +432,74 @@ There was music from my neighbor's house through the summer nights.
       expect(ch2?.displayTitle).toBe('Chapter II');
       expect(ch2?.content).toContain('West Egg');
     });
+
+    it('parses multi-work anthologies with standalone titles and footnote brackets (e.g. Book 831 Four Arthurian Romances)', () => {
+      const anthologyText = `
+*** START OF THE PROJECT GUTENBERG EBOOK FOUR ARTHURIAN ROMANCES ***
+
+FOUR ARTHURIAN ROMANCES:
+"EREC ET ENIDE", "CLIGÉS", "YVAIN", AND "LANCELOT"
+
+by Chrétien de Troyes
+
+SELECTED BIBLIOGRAPHY:
+ORIGINAL TEXT--
+Carroll, Carleton W. (Ed.): "Chrétien DeTroyes"
+
+INTRODUCTION
+
+Chrétien de Troyes has had the peculiar fortune of remaining practically unknown to any one else.
+
+${'A'.repeat(1200)}
+
+EREC ET ENIDE [11]
+
+The rustic's proverb says that many a thing is despised that is worth much more than is supposed.
+
+${'B'.repeat(1200)}
+
+CLIGÉS [21]
+
+He who wrote of Erec and Enide, and translated into French the commands of Ovid.
+
+${'C'.repeat(1200)}
+
+YVAIN
+
+Arthur, the good King of Britain, whose prowess teaches us to be hardy and courteous.
+
+${'D'.repeat(1200)}
+
+LANCELOT
+
+Since my lady of Champagne wishes me to undertake the writing of a romance.
+
+${'E'.repeat(1200)}
+
+*** END OF THE PROJECT GUTENBERG EBOOK FOUR ARTHURIAN ROMANCES ***
+`;
+
+      const chapters = parseGutenbergChapters(anthologyText);
+      expect(chapters.length).toBeGreaterThanOrEqual(5);
+
+      const intro = chapters.find((c) => c.displayTitle.includes('Introduction'));
+      expect(intro).toBeDefined();
+
+      const erec = chapters.find((c) => c.displayTitle.includes('Erec et Enide'));
+      expect(erec).toBeDefined();
+      expect(erec?.title).toBe('EREC ET ENIDE');
+      expect(erec?.displayTitle).toBe('Erec et Enide');
+      expect(erec?.content).toContain("The rustic's proverb");
+
+      const cliges = chapters.find((c) => c.displayTitle.includes('Cligés'));
+      expect(cliges).toBeDefined();
+
+      const yvain = chapters.find((c) => c.displayTitle.includes('Yvain'));
+      expect(yvain).toBeDefined();
+
+      const lancelot = chapters.find((c) => c.displayTitle.includes('Lancelot'));
+      expect(lancelot).toBeDefined();
+    });
   });
 });
 

@@ -156,7 +156,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
       {/* Book Metadata Content */}
       <div className="p-4 flex-1 flex flex-col justify-between gap-3">
         <div>
-          <h3 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 mb-1 group-hover:text-primary transition-colors">
+          <h3 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 mb-1 group-hover:text-primary transition-colors text-balance">
             {book.title}
           </h3>
           <p className="text-xs text-muted-foreground font-sans line-clamp-1">

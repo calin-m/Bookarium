@@ -284,6 +284,84 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
     }
   }
 
+  // Strategy 3: If standard chaptering and front-matter TOC found <= 1 match,
+  // scan for whitespace-isolated major work titles in anthologies/collections (e.g. Book 831, Dubliners)
+  if (validMatches.length <= 1) {
+    const lines = mainBody.split('\n');
+    const anthologyCandidates: { index: number; title: string; displayTitle?: string; bodyLength: number }[] = [];
+    let currentOffset = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      const lineOffset = currentOffset;
+      currentOffset += line.length + 1;
+
+      if (!trimmed) continue;
+
+      const prevBlank = i === 0 || lines[i - 1].trim() === '';
+      const nextBlank = i === lines.length - 1 || lines[i + 1].trim() === '';
+
+      if (!prevBlank || !nextBlank) continue;
+
+      // Clean footnote brackets: [11], [21], [Footnote ...]
+      const cleaned = trimmed.replace(/\[\s*\d+\s*\]|\[\s*Footnote.*?\]/gi, '').trim();
+      if (!cleaned || cleaned.length < 3 || cleaned.length > 60) continue;
+
+      // Ignore lines that start with quotes or have comma-separated lists
+      if (/^["'“‘]/.test(cleaned) || cleaned.includes('", "') || cleaned.includes('", AND')) continue;
+
+      // Exclude Gutenberg front/back legal & bibliographic notices
+      const isExcluded =
+        /^(?:THE\s+PROJECT\s+GUTENBERG|PROJECT\s+GUTENBERG|GUTENBERG|BIBLIOGRAPHY|SELECTED\s+BIBLIOGRAPHY|OTHER\s+TRANSLATIONS|RECOMMENDED\s+READING|ORIGINAL\s+TEXT|TRANSLATED\s+BY|EDITED\s+BY|PUBLISHED\s+BY|ILLUSTRATIONS|CONTENTS|TABLE\s+OF\s+CONTENTS|INDEX|PAGE|PART\s+OF)\b/i.test(
+          cleaned
+        ) ||
+        /^--.*--$/.test(cleaned) ||
+        /^--\s*[A-Z]/.test(cleaned) ||
+        /^[A-Z\s]+:\s*$/.test(cleaned);
+
+      if (isExcluded) continue;
+
+      // Check if line is all-caps or title-cased major heading
+      const isUpper = cleaned === cleaned.toUpperCase() && /[A-Z]/.test(cleaned);
+      const isTitleHeading = isUpper || /^(?:Introduction|Preface|Prologue|Epilogue|Conclusion)\b/i.test(cleaned);
+
+      if (isTitleHeading) {
+        // Format all-caps headings with clean title casing for display
+        const displayTitle = cleaned
+          .toLowerCase()
+          .replace(/(?:^|\s)\S/g, (a) => a.toUpperCase())
+          .replace(/\b(Et|And|Of|The|In|A|An|Or|For|With|To)\b/g, (match, p1, offset) =>
+            offset === 0 ? match : match.toLowerCase()
+          );
+
+        anthologyCandidates.push({
+          index: lineOffset,
+          title: cleaned.replace(/\s+/g, ' '),
+          displayTitle,
+          bodyLength: 0,
+        });
+      }
+    }
+
+    // Filter out candidates that are too close (< 1000 characters)
+    const filteredCandidates: { index: number; title: string; displayTitle?: string; bodyLength: number }[] = [];
+    for (let i = 0; i < anthologyCandidates.length; i++) {
+      const cand = anthologyCandidates[i];
+      const next = anthologyCandidates[i + 1];
+      const dist = next ? next.index - cand.index : mainBody.length - cand.index;
+      if (dist >= 1000) {
+        cand.bodyLength = dist;
+        filteredCandidates.push(cand);
+      }
+    }
+
+    if (filteredCandidates.length >= 2) {
+      validMatches.length = 0;
+      validMatches.push(...filteredCandidates);
+    }
+  }
+
   const sections: ChapterSection[] = [];
 
   if (validMatches.length === 0) {

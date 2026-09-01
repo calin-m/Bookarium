@@ -32,6 +32,8 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ## 🛠️ Latest Improvements (v2.7.0)
 
+- **Multi-Work Anthology & Romance Table of Contents Extraction** – Implemented Conditional Two-Phase chapter detection in the Gutenberg parser, self-healing complex anthologies and collections (such as Book 831 *Four Arthurian Romances*, *Dubliners*, etc.) with automatic footnote bracket stripping (`[11]`, `[21]`) and title-cased navigation in the Table of Contents drawer.
+- **Exact 100vh Viewport Fold & Filter Bar Alignment** – Mathematically aligned the Hero section and Sticky Catalog Toolbar so that on initial scroll-to-top ($y = 0$), the filter bar's bottom border sits precisely at the bottom edge of the viewport ($100\text{vh}$), transitioning smoothly to `top-16` sticky pinning during catalog browsing.
 - **Centralized Book Metadata & Author Resolution Service (SSOT)** – Encapsulated multi-tier metadata resolution (Preloaded Fixtures $\to$ Zustand Store $\to$ REST API Results $\to$ Gutenberg Raw Plaintext Header Extraction) into a single domain service ([`src/lib/book-metadata.ts`](src/lib/book-metadata.ts)) adhering to the Single Responsibility Principle and DRY.
 - **Natural Reading Order Author Normalizer (`formatAuthorNames`)** – Automatically formats raw catalog strings and strips catalog aliases/dates (e.g. `"Fitzgerald, F. Scott (Francis Scott)"` $\to$ `"F. Scott Fitzgerald"`, `"Austen, Jane, 1775-1817"` $\to$ `"Jane Austen"`) across all presentation cards, hero spotlights, preview modals, download drawers, and readers.
 - **Normalized Subject Parser (`formatPrimarySubject`)** – Strips Library of Congress Subject Headings (LCSH) sub-divisions and applies word-boundary truncation across catalog cards, preview modals, hero spotlights, and metadata resolvers.
@@ -40,7 +42,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Standalone Roman Numeral Chapter Segmentation** – Enhanced the Gutenberg parser to recognize standalone Roman numeral chapter headings (`I` through `IX` in *The Great Gatsby*, *The Picture of Dorian Gray*, etc.) in the Table of Contents drawer.
 - **Catalog Scroll Position & History-Aware Back Navigation** – Reader Back button navigates through browser history (`router.back()`), seamlessly returning readers to their exact previous catalog scroll coordinates, preserved search parameters, and active page numbers.
 - **Single-Click Brand Refresh & Fresh Homepage Reset** – Clicking/tapping the **Bookarium** brand logo in the header resets the view to catalog, scrolls instantly to the top ($y = 0$), and navigates to the clean root `/`, restoring the initial experience.
-- **Verified by the 7-Gateway Quality Engine** – 43/43 test files passed, 231/231 tests passed with **92.3% line coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 43/43 test files passed, 236/236 tests passed with **92.5% line coverage** (`npm run verify`).
 
 ## 🌐 Data Sources & API References
 

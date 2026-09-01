@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Quote, Shuffle, Sparkles, BookOpen } from 'lucide-react';
 import { LITERARY_QUOTES, type LiteraryQuote } from '@/config/literary-quotes';
@@ -18,13 +18,26 @@ export const LiteraryQuotes: React.FC = () => {
   // Initialize deterministically for SSR/Client hydration match
   const [displayedQuotes, setDisplayedQuotes] = useState<LiteraryQuote[]>(() => LITERARY_QUOTES.slice(0, 3));
   const [isShuffling, setIsShuffling] = useState(false);
+  const shuffleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (shuffleTimerRef.current) {
+        clearTimeout(shuffleTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleShuffle = useCallback(() => {
     setIsShuffling(true);
     const currentIds = displayedQuotes.map((q) => q.id);
     const nextQuotes = getRandomThreeQuotes(currentIds);
     setDisplayedQuotes(nextQuotes);
-    setTimeout(() => setIsShuffling(false), 300);
+
+    if (shuffleTimerRef.current) {
+      clearTimeout(shuffleTimerRef.current);
+    }
+    shuffleTimerRef.current = setTimeout(() => setIsShuffling(false), 300);
   }, [displayedQuotes]);
 
   return (
@@ -37,10 +50,10 @@ export const LiteraryQuotes: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5" />
               TIMELESS VOICES & PASSAGES
             </div>
-            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-foreground tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-foreground tracking-tight text-balance">
               Words That Shaped Humanity
             </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground font-serif italic">
+            <p className="text-xs sm:text-sm text-muted-foreground font-serif italic text-pretty">
               Iconic quotes and opening lines from public domain masterworks. Click any passage to read the unabridged volume.
             </p>
           </div>
@@ -82,7 +95,7 @@ export const LiteraryQuotes: React.FC = () => {
                 {/* Decorative Quote Icon & Passage */}
                 <div className="relative flex-1">
                   <Quote className="w-8 h-8 text-primary/20 absolute -top-3 -left-2 -z-0" />
-                  <p className="relative z-10 font-serif italic text-base sm:text-lg text-foreground leading-relaxed transition-colors indent-7 sm:indent-8">
+                  <p className="relative z-10 font-serif italic text-base sm:text-lg text-foreground leading-relaxed transition-colors indent-7 sm:indent-8 text-pretty">
                     &ldquo;{item.quote}&rdquo;
                   </p>
                 </div>
