@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Sparkles, Plus, Edit2, Trash2 } from 'lucide-react';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';

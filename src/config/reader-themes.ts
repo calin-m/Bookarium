@@ -14,6 +14,7 @@ export interface ReaderThemeConfig {
   drawerActive: string;
   drawerHover: string;
   scrollbarClass: string;
+  iconAccent: string;
 }
 
 export const READER_THEMES: Record<ReaderTheme, ReaderThemeConfig> = {
@@ -31,6 +32,7 @@ export const READER_THEMES: Record<ReaderTheme, ReaderThemeConfig> = {
     drawerActive: 'bg-primary-50 text-primary-700 border-primary-500',
     drawerHover: 'hover:bg-stone-100 text-stone-700',
     scrollbarClass: 'reader-surface-light',
+    iconAccent: 'text-primary-600 dark:text-primary-400',
   },
   sepia: {
     surface: 'bg-[#2b1d16] text-[#fef6eb]',
@@ -46,6 +48,7 @@ export const READER_THEMES: Record<ReaderTheme, ReaderThemeConfig> = {
     drawerActive: 'bg-[#4a3022] text-[#f59e0b] border-[#f59e0b]',
     drawerHover: 'hover:bg-[#402a1d] text-[#fef6eb]',
     scrollbarClass: 'reader-surface-sepia',
+    iconAccent: 'text-amber-500',
   },
   dark: {
     surface: 'bg-[#0e1117] text-[#f5f5f4]',
@@ -61,6 +64,7 @@ export const READER_THEMES: Record<ReaderTheme, ReaderThemeConfig> = {
     drawerActive: 'bg-[#292524] text-primary-400 border-primary-500',
     drawerHover: 'hover:bg-[#22201e] text-stone-200',
     scrollbarClass: 'reader-surface-dark',
+    iconAccent: 'text-primary-400',
   },
 };
 

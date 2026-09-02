@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Globe, Check } from 'lucide-react';
+import React from 'react';
+import { Globe, Check } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
-import { useHasMounted } from '@/hooks/useHasMounted';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
+import { ReaderDrawerShell } from './ReaderDrawerShell';
 
 export interface ReaderLanguageDrawerProps {
   isOpen: boolean;
@@ -25,80 +23,33 @@ export const ReaderLanguageDrawer: React.FC<ReaderLanguageDrawerProps> = ({
   theme = 'light',
 }) => {
   const activeTheme = getReaderTheme(theme);
-  const hasMounted = useHasMounted();
 
-  // Escape key handler
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
+  const titleContent = (
+    <div>
+      <h3 className="font-serif font-bold text-sm leading-tight truncate">
+        Language Editions
+      </h3>
+      <p className={`text-[10px] font-mono truncate mt-0.5 ${activeTheme.textMuted}`}>
+        {translations.length} {translations.length === 1 ? 'Edition' : 'Editions'} Available
+      </p>
+    </div>
+  );
+
+  return (
+    <ReaderDrawerShell
+      isOpen={isOpen}
+      onClose={onClose}
+      title={titleContent}
+      titleIcon={
+        <Globe className={`w-4 h-4 shrink-0 ${activeTheme.iconAccent}`} />
       }
-    };
-
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
-
-  if (!hasMounted) return null;
-
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Fluid Backdrop Fade */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[9998] bg-transparent"
-            onClick={onClose}
-            aria-hidden="true"
-            data-testid="language-backdrop"
-          />
-
-          {/* Fluid Spring Drawer Panel */}
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className={`fixed top-[5.875rem] inset-x-3 sm:inset-x-auto sm:right-6 md:right-8 w-auto max-w-sm sm:w-80 mx-auto sm:mx-0 z-[9999] max-h-[calc(100dvh-11.5rem)] rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 flex flex-col origin-top sm:origin-top-right`}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Language Editions & Translations"
-          >
-            {/* Header */}
-            <div className={`flex items-center justify-between pb-3 mb-3 border-b ${activeTheme.border}`}>
-              <div className="flex items-center gap-2 min-w-0">
-                <Globe
-                  className={`w-4 h-4 shrink-0 ${
-                    theme === 'sepia' ? 'text-amber-500' : 'text-primary-600 dark:text-primary-400'
-                  }`}
-                />
-                <div className="min-w-0">
-                  <h3 className="font-serif font-bold text-sm leading-tight truncate">
-                    Language Editions
-                  </h3>
-                  <p className={`text-[10px] font-mono truncate mt-0.5 ${activeTheme.textMuted}`}>
-                    {translations.length} {translations.length === 1 ? 'Edition' : 'Editions'} Available
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className={`p-1.5 rounded-lg border transition-colors cursor-pointer active:scale-95 ${activeTheme.button}`}
-                aria-label="Close Language Editions Drawer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      theme={theme}
+      ariaLabel="Language Editions & Translations"
+      closeAriaLabel="Close Language Editions Drawer"
+      backdropTestId="language-backdrop"
+      className="sm:w-80"
+      role="dialog"
+    >
 
             {/* Translation Items List */}
             <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 -mr-1 [scrollbar-width:thin]">
@@ -153,10 +104,6 @@ export const ReaderLanguageDrawer: React.FC<ReaderLanguageDrawerProps> = ({
                 ))
               )}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>,
-    document.body
+    </ReaderDrawerShell>
   );
 };

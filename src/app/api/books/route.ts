@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
-import type { GutendexBook, GutendexResponse } from '@/mocks/handlers';
+import type { GutendexBook, GutendexResponse } from '@/types/book.types';
 import { booksApiRateLimiter } from '@/lib/rate-limiter';
 
 // Ensure Vercel runs this as a dynamic serverless function with extended timeout

@@ -1,10 +1,14 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
-import { BookOpen, RefreshCw, AlertCircle, ZoomIn } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { BookOpen, ZoomIn } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 import { getReaderTheme } from '@/config/reader-themes';
+import { READER_FONT_CONFIG } from '@/config/reader-config';
+import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
+import { ReaderLoadingView } from './ReaderLoadingView';
+import { ReaderErrorView } from './ReaderErrorView';
 
 export interface ReaderSurfaceProps {
   theme: ReaderTheme;
@@ -51,10 +55,14 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
 }) => {
   const activeTheme = getReaderTheme(theme);
   const mainRef = useRef<HTMLElement>(null);
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  const pinchStartRef = useRef<{ distance: number; initialFontSize: number } | null>(null);
-  const [zoomFeedback, setZoomFeedback] = useState<{ visible: boolean; size: number } | null>(null);
-  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { zoomFeedback, handleTouchStart, handleTouchMove, handleTouchEnd } = useReaderGestures({
+    fontSize,
+    readingMode,
+    onFontSizeChange,
+    onNextPage,
+    onPreviousPage,
+  });
 
   // Smooth animated scroll-to-top on page or chapter transition
   useEffect(() => {
@@ -83,115 +91,12 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       ? 'max-w-5xl'
       : 'max-w-3xl';
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && onFontSizeChange) {
-      // 2-finger touch: Initialize pinch-to-zoom font scaler
-      touchStartRef.current = null;
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      pinchStartRef.current = {
-        distance: Math.max(10, dist),
-        initialFontSize: fontSize,
-      };
-      setZoomFeedback({ visible: true, size: fontSize });
-    } else if (e.touches.length === 1 && readingMode === 'paginated') {
-      // 1-finger touch: Initialize page swipe
-      pinchStartRef.current = null;
-      touchStartRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-        time: Date.now(),
-      };
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchStartRef.current && onFontSizeChange) {
-      const currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const ratio = currentDist / pinchStartRef.current.distance;
-      const targetSize = Math.round(pinchStartRef.current.initialFontSize * ratio);
-      const clampedSize = Math.min(36, Math.max(12, targetSize));
-
-      if (clampedSize !== fontSize) {
-        onFontSizeChange(clampedSize);
-      }
-      setZoomFeedback({ visible: true, size: clampedSize });
-
-      if (zoomTimeoutRef.current) {
-        clearTimeout(zoomTimeoutRef.current);
-      }
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (pinchStartRef.current) {
-      pinchStartRef.current = null;
-      if (zoomTimeoutRef.current) clearTimeout(zoomTimeoutRef.current);
-      zoomTimeoutRef.current = setTimeout(() => {
-        setZoomFeedback(null);
-      }, 900);
-      return;
-    }
-
-    if (readingMode !== 'paginated' || !touchStartRef.current) return;
-    if (e.changedTouches.length === 1) {
-      const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
-      const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
-      const deltaTime = Date.now() - touchStartRef.current.time;
-
-      // Minimum swipe threshold of 45px and dominant horizontal axis within 800ms
-      if (deltaTime < 800 && Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
-        if (deltaX < 0) {
-          onNextPage?.();
-        } else {
-          onPreviousPage?.();
-        }
-      }
-    }
-    touchStartRef.current = null;
-  };
-
   if (isLoading) {
-    return (
-      <main className={`flex-1 flex flex-col items-center justify-center p-8 text-center ${activeTheme.surface}`} role="main">
-        <div className="w-12 h-12 rounded-full border-2 border-primary-500 border-t-transparent animate-spin mb-4" />
-        <p className="font-serif text-base font-bold">
-          Fetching Masterwork from Project Gutenberg Mirror...
-        </p>
-        <p className={`text-xs font-mono mt-1 ${activeTheme.textMuted}`}>
-          Parsing typography AST, chapters, and volume pagination
-        </p>
-      </main>
-    );
+    return <ReaderLoadingView activeTheme={activeTheme} />;
   }
 
   if (isError) {
-    return (
-      <main className={`flex-1 flex flex-col items-center justify-center p-8 text-center ${activeTheme.surface}`} role="main">
-        <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
-        <h2 className="font-serif text-lg font-bold mb-2">
-          Unable to Load Masterwork Text
-        </h2>
-        <p className={`text-xs font-mono max-w-md mb-6 ${activeTheme.textMuted}`}>
-          The Project Gutenberg plain-text mirror could not be streamed. Please check your network connection or try again.
-        </p>
-        {onRetry && (
-          <button
-            type="button"
-            onClick={onRetry}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-mono font-bold transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Retry Connection</span>
-          </button>
-        )}
-      </main>
-    );
+    return <ReaderErrorView activeTheme={activeTheme} onRetry={onRetry} />;
   }
 
   const contentToDisplay = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
@@ -217,10 +122,10 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
         >
           <ZoomIn className="w-3.5 h-3.5 text-primary-400 dark:text-primary-600" />
           <span>Font Size: {zoomFeedback.size}px</span>
-          {zoomFeedback.size === 12 && (
+          {zoomFeedback.size === READER_FONT_CONFIG.MIN_SIZE && (
             <span className="text-[10px] text-amber-400 font-bold uppercase">(Min)</span>
           )}
-          {zoomFeedback.size === 36 && (
+          {zoomFeedback.size === READER_FONT_CONFIG.MAX_SIZE && (
             <span className="text-[10px] text-amber-400 font-bold uppercase">(Max)</span>
           )}
         </div>

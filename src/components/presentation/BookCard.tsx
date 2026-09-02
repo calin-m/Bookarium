@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount, extractBookTags } from '@/lib/utils';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';

@@ -1,4 +1,4 @@
-import type { GutendexBook, GutendexResponse } from '@/mocks/handlers';
+import type { GutendexBook, GutendexResponse } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 

@@ -25,6 +25,7 @@ import { ReaderSearchDrawer } from '@/components/reader/ReaderSearchDrawer';
 import { ReaderControls } from '@/components/reader/ReaderControls';
 import { ReaderLanguageDrawer } from '@/components/reader/ReaderLanguageDrawer';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
+import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { ROUTES } from '@/config/routes';
 
 export default function BookReaderPage() {
@@ -57,10 +58,14 @@ export default function BookReaderPage() {
   // Local Reader State
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [currentChapterPage, setCurrentChapterPage] = useState(1);
-  const [isTocOpen, setIsTocOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isControlsOpen, setIsControlsOpen] = useState(false);
-  const [isTranslationsOpen, setIsTranslationsOpen] = useState(false);
+  const {
+    isTocOpen,
+    isSearchOpen,
+    isControlsOpen,
+    isTranslationsOpen,
+    toggleDrawer,
+    closeDrawer,
+  } = useReaderDrawers();
   const [readingMode, setReadingMode] = useState<'paginated' | 'scroll'>('paginated');
   const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
   const [resumeNotice, setResumeNotice] = useState<{ chapterTitle: string; page: number } | null>(null);
@@ -85,20 +90,13 @@ export default function BookReaderPage() {
 
       if ((e.key === 'f' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !isInput)) {
         e.preventDefault();
-        setIsSearchOpen((prev) => {
-          if (!prev) {
-            setIsTocOpen(false);
-            setIsControlsOpen(false);
-            setIsTranslationsOpen(false);
-          }
-          return !prev;
-        });
+        toggleDrawer('search');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [toggleDrawer]);
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, refetch } = useBookContent(undefined, numericId);
@@ -244,8 +242,8 @@ export default function BookReaderPage() {
   const handleSelectSearchMatch = useCallback((chapterIndex: number, page: number) => {
     setActiveChapterIndex(chapterIndex);
     setCurrentChapterPage(page);
-    setIsSearchOpen(false);
-  }, []);
+    closeDrawer();
+  }, [closeDrawer]);
 
   // Keyboard Navigation
   useEffect(() => {
@@ -287,49 +285,13 @@ export default function BookReaderPage() {
           }
         }}
         isTocOpen={isTocOpen}
-        onToggleToc={() => {
-          setIsTocOpen((prev) => {
-            if (!prev) {
-              setIsControlsOpen(false);
-              setIsSearchOpen(false);
-              setIsTranslationsOpen(false);
-            }
-            return !prev;
-          });
-        }}
+        onToggleToc={() => toggleDrawer('toc')}
         isSearchOpen={isSearchOpen}
-        onToggleSearch={() => {
-          setIsSearchOpen((prev) => {
-            if (!prev) {
-              setIsTocOpen(false);
-              setIsControlsOpen(false);
-              setIsTranslationsOpen(false);
-            }
-            return !prev;
-          });
-        }}
+        onToggleSearch={() => toggleDrawer('search')}
         isControlsOpen={isControlsOpen}
-        onToggleControls={() => {
-          setIsControlsOpen((prev) => {
-            if (!prev) {
-              setIsTocOpen(false);
-              setIsSearchOpen(false);
-              setIsTranslationsOpen(false);
-            }
-            return !prev;
-          });
-        }}
+        onToggleControls={() => toggleDrawer('controls')}
         isTranslationsOpen={isTranslationsOpen}
-        onToggleTranslations={() => {
-          setIsTranslationsOpen((prev) => {
-            if (!prev) {
-              setIsTocOpen(false);
-              setIsSearchOpen(false);
-              setIsControlsOpen(false);
-            }
-            return !prev;
-          });
-        }}
+        onToggleTranslations={() => toggleDrawer('translations')}
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
         theme={theme}
@@ -393,7 +355,7 @@ export default function BookReaderPage() {
       {/* Floating Appearance & Typography Controls Popover */}
       <ReaderControls
         isOpen={isControlsOpen}
-        onClose={() => setIsControlsOpen(false)}
+        onClose={closeDrawer}
         fontSize={fontSize}
         onFontSizeChange={setFontSize}
         lineHeight={lineHeight}
@@ -411,7 +373,7 @@ export default function BookReaderPage() {
       {/* Slide-out Table of Contents Drawer */}
       <ReaderTocDrawer
         isOpen={isTocOpen}
-        onClose={() => setIsTocOpen(false)}
+        onClose={closeDrawer}
         chapters={chaptersWithPagination}
         activeChapterIndex={activeChapterIndex}
         onSelectChapter={handleSelectChapter}
@@ -422,7 +384,7 @@ export default function BookReaderPage() {
       {/* Slide-out In-Book Full-Text Search Drawer */}
       <ReaderSearchDrawer
         isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
+        onClose={closeDrawer}
         chapters={chaptersWithPagination}
         fontSize={fontSize}
         onSelectMatch={handleSelectSearchMatch}
@@ -433,7 +395,7 @@ export default function BookReaderPage() {
       {/* Slide-out Language Editions & Translations Drawer */}
       <ReaderLanguageDrawer
         isOpen={isTranslationsOpen}
-        onClose={() => setIsTranslationsOpen(false)}
+        onClose={closeDrawer}
         translations={translations}
         onSelectTranslation={(targetBookId) => {
           router.replace(ROUTES.READ(targetBookId));

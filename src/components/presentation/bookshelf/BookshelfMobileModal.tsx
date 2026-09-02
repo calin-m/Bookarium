@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Download, Bookmark, Heart, Sparkles, X } from 'lucide-react';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { Button } from '@/components/ui/Button';

@@ -45,7 +45,7 @@ export const CollectionSearchBar: React.FC<CollectionSearchBarProps> = ({
           }}
           placeholder={placeholder}
           aria-label={`Search ${collectionName}`}
-          className="w-full h-11 pl-10 pr-24 sm:pr-28 text-sm font-sans rounded-xl bg-card border border-border/80 focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground/70 transition-all outline-none shadow-xs"
+          className="w-full h-11 pl-10 pr-24 sm:pr-28 text-sm font-sans rounded-xl bg-card border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground/70 transition-all outline-none shadow-xs"
         />
 
         <div className="absolute right-3 flex items-center gap-1.5">
@@ -63,7 +63,7 @@ export const CollectionSearchBar: React.FC<CollectionSearchBarProps> = ({
 
           {isFiltering && (
             <span
-              className="text-[10px] sm:text-[11px] font-mono font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/70 select-none animate-in fade-in duration-150"
+              className="text-[10px] sm:text-[11px] font-mono font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border select-none animate-in fade-in duration-150"
               aria-live="polite"
             >
               {filteredCount} / {totalCount}

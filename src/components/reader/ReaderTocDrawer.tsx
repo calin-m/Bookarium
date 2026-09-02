@@ -1,14 +1,12 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, BookOpen, Check } from 'lucide-react';
+import { Search, BookOpen, Check, X } from 'lucide-react';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 import { calculateReadingTime } from '@/lib/gutenberg-parser';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
-import { useHasMounted } from '@/hooks/useHasMounted';
+import { ReaderDrawerShell } from './ReaderDrawerShell';
 
 export interface ReaderTocDrawerProps {
   isOpen: boolean;
@@ -32,24 +30,6 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
   const [tocSearch, setTocSearch] = useState('');
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
   const activeTheme = getReaderTheme(theme);
-  const hasMounted = useHasMounted();
-
-  // Escape key handler
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
 
   // Auto-scroll to active chapter when drawer opens
   useEffect(() => {
@@ -68,59 +48,33 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
     );
   }, [chapters, tocSearch]);
 
-  if (!hasMounted) return null;
+  const titleContent = (
+    <div>
+      <h3 className="font-serif font-bold text-sm leading-tight truncate">
+        Table of Contents
+      </h3>
+      {bookTitle && (
+        <p className={`text-[10px] font-mono truncate max-w-[220px] mt-0.5 ${activeTheme.textMuted}`}>
+          {bookTitle}
+        </p>
+      )}
+    </div>
+  );
 
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Fluid Backdrop Fade */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[9998] bg-transparent"
-            onClick={onClose}
-            aria-hidden="true"
-            data-testid="toc-backdrop"
-          />
-
-          {/* Fluid Spring Drawer Panel */}
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className={`fixed top-[5.875rem] inset-x-3 sm:inset-x-auto sm:right-6 md:right-8 w-auto max-w-sm sm:w-96 mx-auto sm:mx-0 z-[9999] max-h-[calc(100dvh-11.5rem)] rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 flex flex-col origin-top sm:origin-top-right`}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Table of Contents"
-          >
-            {/* Header */}
-            <div className={`flex items-center justify-between pb-3 mb-3 border-b ${activeTheme.border}`}>
-              <div className="flex items-center gap-2 min-w-0">
-                <BookOpen className={`w-4 h-4 shrink-0 ${theme === 'sepia' ? 'text-amber-500' : 'text-primary-600 dark:text-primary-400'}`} />
-                <div className="min-w-0">
-                  <h3 className="font-serif font-bold text-sm leading-tight truncate">
-                    Table of Contents
-                  </h3>
-                  {bookTitle && (
-                    <p className={`text-[10px] font-mono truncate max-w-[220px] mt-0.5 ${activeTheme.textMuted}`}>
-                      {bookTitle}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className={`p-1.5 rounded-lg border transition-colors shrink-0 cursor-pointer active:scale-95 ${activeTheme.button}`}
-                aria-label="Close Table of Contents"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+  return (
+    <ReaderDrawerShell
+      isOpen={isOpen}
+      onClose={onClose}
+      title={titleContent}
+      titleIcon={
+        <BookOpen className={`w-4 h-4 shrink-0 ${activeTheme.iconAccent}`} />
+      }
+      theme={theme}
+      ariaLabel="Table of Contents"
+      closeAriaLabel="Close Table of Contents"
+      backdropTestId="toc-backdrop"
+      role="dialog"
+    >
 
             {/* Search Chapters Bar (Standardized Padding & Alignment) */}
             <div className="relative flex items-center mb-3">
@@ -200,11 +154,7 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
                 })
               )}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>,
-    document.body
+    </ReaderDrawerShell>
   );
 };
 

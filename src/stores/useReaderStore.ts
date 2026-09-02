@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import { useThemeStore, applyThemeToDocument } from './useThemeStore';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { READER_FONT_CONFIG } from '@/config/reader-config';
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
@@ -46,8 +47,8 @@ export const useReaderStore = create<ReaderState>()(
     (set, get) => ({
       currentBook: null,
       isOpen: false,
-      fontSize: 18,
-      lineHeight: 1.75,
+      fontSize: READER_FONT_CONFIG.DEFAULT_SIZE,
+      lineHeight: READER_FONT_CONFIG.DEFAULT_LINE_HEIGHT,
       fontFamily: 'serif',
       theme: 'light',
       readingProgress: {},

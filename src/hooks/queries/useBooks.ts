@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import React, { useEffect } from 'react';
-import type { GutendexBook, GutendexResponse } from '@/mocks/handlers';
+import type { GutendexBook, GutendexResponse } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 export interface UseBooksParams {

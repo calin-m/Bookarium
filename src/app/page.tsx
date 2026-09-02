@@ -20,7 +20,7 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import { Trash2, BookOpen, Quote, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { CollectionSearchBar } from '@/components/presentation/CollectionSearchBar';
@@ -277,7 +277,7 @@ function HomeContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setConfirmClearType('shelf')}
-                    className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
+                    className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Clear Shelf
@@ -291,7 +291,7 @@ function HomeContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setConfirmClearType('likes')}
-                    className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
+                    className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Clear Favorites

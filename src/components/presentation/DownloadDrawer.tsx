@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Download, FileText, Globe, Smartphone, ShieldCheck } from 'lucide-react';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';

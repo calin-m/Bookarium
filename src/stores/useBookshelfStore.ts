@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { createClient } from '@/lib/supabase/client';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';

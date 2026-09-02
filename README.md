@@ -2,21 +2,22 @@
 
 > **Pure Literature. Zero Paywalls. Zero API Keys Required.**
 
+[![Developed with Antigravity](https://img.shields.io/badge/Developed%20with-Google%20AI%20%2F%20Antigravity-4285F4?style=flat-square&logo=google)](https://antigravity.google)
 [![Next.js](https://img.shields.io/badge/Next.js-16.3.3-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.0.0-blue?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-69%20Suites%20%7C%20476%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.4%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-75%20Suites%20%7C%20497%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.2%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
 
-An ultra-refined, high-performance web application for discovering, reading, and downloading 100% legal, public domain books (Zero-Copyright / CC0 / Gutenberg Public Domain). Built with **Next.js 16 App Router**, **Supabase Auth & Cloud Synchronization**, **TanStack React Query**, **Zustand offline-first persistence**, **Framer Motion**, and verified by a deterministic **7-Gateway Quality Engine**.
+An ultra-refined, high-performance web application for discovering, reading, and downloading 100% legal, public domain books (Zero-Copyright / CC0 / Gutenberg Public Domain). Built with **Next.js 16 App Router**, **Supabase Auth & Cloud Synchronization**, **TanStack React Query**, **Zustand offline-first persistence**, **Framer Motion**, developed with **[Google AI / Antigravity](https://antigravity.google)**, and verified by a deterministic **7-Gateway Quality Engine**.
 
 ---
 
@@ -34,8 +35,14 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v1.7.3)
+## 🛠️ Latest Improvements (v1.7.4)
 
+- **Canonical Domain Model Architecture (`src/types/book.types.ts`)** – Normalized single-source-of-truth domain models (`GutendexBook`, `Author`, `GutendexResponse`) across all presentation components, stores, and API handlers.
+- **Reader Drawer Shell Compound Primitive (`ReaderDrawerShell.tsx`)** – Abstracted portaling, backdrop, scale/opacity transitions, header clearance, and Escape key handling across all 4 reader tool drawers (`ReaderTocDrawer`, `ReaderSearchDrawer`, `ReaderControls`, `ReaderLanguageDrawer`).
+- **Headless Reader Gesture & State Isolation (`useReaderGestures.ts`, `useReaderDrawers.ts`)** – Extracted pinch-to-zoom font scaling, horizontal swipe navigation, and 4-way mutual drawer exclusivity into test-isolated headless hooks with 100% co-located coverage.
+- **Gutenberg Parser Subsystem Modularization (`src/lib/gutenberg/`)** – Decomposed the monolithic 700-line parser into single-responsibility modules (`pagination`, `reflow`, `segmentation`, `metadata`, `passages`) backed by a 100% backward-compatible facade barrel.
+- **Centralized Reader & Gesture Config (`reader-config.ts`, `reader-themes.ts`)** – Centralized font bounds (`12`–`36`), typography presets, gesture timing thresholds, and drawer title icon accent tokens.
+- **Bookshelf & Favorites Theme Border Harmonization (`CollectionSearchBar.tsx`, `page.tsx`)** – Upgraded collection search box, count pill, and clear buttons to solid `border-border` (`#462e22` in Sepia / `#292524` in Dark), ensuring pristine consistency with the application design tokens.
 - **Direct 1-Click / 1-Tap Account Navigation (`Navbar.tsx`)** – Replaced popover/hover dropdowns on the top navigation bar with a direct Next.js link to `/account`, delivering instant, zero-friction navigation to the reader dossier with active state indicators (`activeView="account"`).
 - **Fluid Tactile Bookshelf Scrolling on Mobile (`BookshelfRack.tsx`)** – Removed restrictive `touch-pan-x` class from bookshelf item rows, enabling smooth and natural vertical thumb scrolling down the page on touchscreens while preserving horizontal book shelf panning.
 - **Harmonized Canonical Border Theme Style (`border-border`)** – Standardized all cards, danger zones, delete buttons, lock badges, and user pills across `/account` to use `border-border` (`#292524` in dark / `#e7e5e4` in light), eliminating harsh colored borders for visual elegance.
@@ -573,7 +580,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 476 tests across 69 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 497 tests across 75 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
@@ -587,6 +594,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 ## 🙏 Acknowledgements & Open-Source Credits
 
+* **[Google AI / Antigravity](https://antigravity.google)**: For powering the autonomous agentic engineering, architectural refactoring, and deterministic quality verification driving the development of this codebase.
 * **[Project Gutenberg](https://www.gutenberg.org/)**: For pioneering the public domain digitization movement and preserving thousands of classic literary masterpieces for humanity.
 * **[Gutendex by Gareth B. Johnson](https://github.com/garethbjohnson/gutendex)**: For creating and maintaining the high-performance, open-source RESTful JSON web API for Project Gutenberg metadata.
 * **[Booksaw Design Concept](https://www.figma.com/community/file/1521831984874247291/booksaw-bookstore-ecommerce-website-design-template)**: For inspiring the warm, tactile bookstore aesthetic and skeuomorphic open-book layouts.

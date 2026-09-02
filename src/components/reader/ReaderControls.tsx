@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Type, Sun, Moon, Coffee, AlignLeft, Columns } from 'lucide-react';
+import React from 'react';
+import { Type, Sun, Moon, Coffee, AlignLeft, Columns } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
-import { useHasMounted } from '@/hooks/useHasMounted';
+import { READER_FONT_CONFIG } from '@/config/reader-config';
+import { ReaderDrawerShell } from './ReaderDrawerShell';
 
 export interface ReaderControlsProps {
   isOpen: boolean;
@@ -41,62 +40,23 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
   columnWidth,
   onColumnWidthChange,
 }) => {
-  const hasMounted = useHasMounted();
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!hasMounted) return null;
-
   const activeTheme = getReaderTheme(theme);
 
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Click-outside backdrop with transparent background to preserve reading text visibility */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[9998] bg-transparent"
-            onClick={onClose}
-            aria-hidden="true"
-            data-testid="controls-backdrop"
-          />
-
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className={`fixed top-[5.875rem] inset-x-3 sm:inset-x-auto sm:right-6 md:right-8 w-auto max-w-sm sm:w-96 mx-auto sm:mx-0 z-[9999] max-h-[calc(100dvh-11.5rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 origin-top sm:origin-top-right`}
-            role="region"
-            aria-label="Reading Controls"
-          >
-      <div className={`flex items-center justify-between pb-2 mb-3 border-b ${activeTheme.border}`}>
-        <h3 className="font-serif font-bold text-sm flex items-center gap-2">
-          <Type className={`w-4 h-4 ${theme === 'sepia' ? 'text-amber-500' : 'text-primary-600 dark:text-primary-400'}`} /> Typography & Reading Mode
-        </h3>
-        <button
-          type="button"
-          onClick={onClose}
-          className={`p-1.5 rounded-lg border transition-colors cursor-pointer active:scale-95 ${activeTheme.button}`}
-          aria-label="Close Appearance Controls"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+  return (
+    <ReaderDrawerShell
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Typography & Reading Mode"
+      titleIcon={
+        <Type className={`w-4 h-4 ${activeTheme.iconAccent}`} />
+      }
+      theme={theme}
+      ariaLabel="Reading Controls"
+      closeAriaLabel="Close Appearance Controls"
+      backdropTestId="controls-backdrop"
+      className="overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      role="region"
+    >
 
       <div className="space-y-3 text-xs font-mono">
         {/* Surface Theme */}
@@ -182,14 +142,14 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
             </div>
             <input
               type="range"
-              min="12"
-              max="36"
+              min={READER_FONT_CONFIG.MIN_SIZE}
+              max={READER_FONT_CONFIG.MAX_SIZE}
               step="1"
               value={fontSize}
               onChange={(e) => onFontSizeChange(Number(e.target.value))}
               aria-label="Font size in pixels"
-              aria-valuemin={12}
-              aria-valuemax={36}
+              aria-valuemin={READER_FONT_CONFIG.MIN_SIZE}
+              aria-valuemax={READER_FONT_CONFIG.MAX_SIZE}
               aria-valuenow={fontSize}
               className={`w-full cursor-pointer h-1.5 rounded-lg ${
                 theme === 'sepia'
@@ -198,7 +158,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               }`}
             />
             <div className="grid grid-cols-3 gap-1 mt-1.5">
-              {[14, 18, 24].map((s) => (
+              {READER_FONT_CONFIG.PRESET_SIZES.map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -312,10 +272,6 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           </div>
         </div>
       </div>
-    </motion.div>
-  </>
-)}
-</AnimatePresence>,
-  document.body
-);
+    </ReaderDrawerShell>
+  );
 };

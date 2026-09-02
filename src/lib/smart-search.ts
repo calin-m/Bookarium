@@ -1,4 +1,4 @@
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 
 /**
  * Normalizes text for search indexing and matching:

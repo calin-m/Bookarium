@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CATALOG_LANGUAGES } from '@/config/catalog-filters';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 
 export interface BookTranslationOption {
   bookId: number;

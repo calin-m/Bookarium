@@ -36,7 +36,7 @@ import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
 import { getBookPassages, type BookPassage, FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
 import { extractDynamicBookPassages } from '@/lib/gutenberg-parser';
 import { useBookContent } from '@/hooks/queries/useBookContent';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { LanguageSelector } from './LanguageSelector';
 

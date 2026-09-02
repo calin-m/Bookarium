@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Sparkles, RotateCw, Quote, BookOpen } from 'lucide-react';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import { getBookPassages, BookPassage } from '@/config/featured-books';
 import { extractDynamicBookPassages } from '@/lib/gutenberg-parser';
 import { useBookContent } from '@/hooks/queries/useBookContent';

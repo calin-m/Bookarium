@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 import { searchInBook, type BookSearchMatch } from '@/lib/in-book-search';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
-import { useHasMounted } from '@/hooks/useHasMounted';
+import { READER_GESTURE_CONFIG } from '@/config/reader-config';
+import { ReaderDrawerShell } from './ReaderDrawerShell';
 
 export interface ReaderSearchDrawerProps {
   isOpen: boolean;
@@ -32,31 +31,13 @@ export const ReaderSearchDrawer: React.FC<ReaderSearchDrawerProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const activeTheme = getReaderTheme(theme);
-  const hasMounted = useHasMounted();
-
-  // Escape key handler
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
 
   // Auto-focus search input when drawer opens
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 60);
+      }, READER_GESTURE_CONFIG.AUTO_FOCUS_DELAY_MS);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -65,60 +46,33 @@ export const ReaderSearchDrawer: React.FC<ReaderSearchDrawerProps> = ({
     return searchInBook(chapters, searchQuery, fontSize);
   }, [chapters, searchQuery, fontSize]);
 
-  if (!hasMounted) return null;
+  const titleContent = (
+    <div>
+      <h3 className="font-serif font-bold text-sm leading-tight truncate">
+        Search in Volume
+      </h3>
+      {bookTitle && (
+        <p className={`text-[10px] font-mono truncate max-w-[220px] mt-0.5 ${activeTheme.textMuted}`}>
+          {bookTitle}
+        </p>
+      )}
+    </div>
+  );
 
-  return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Fluid Backdrop Fade */}
-          {/* Click-outside backdrop with transparent background to preserve reading text visibility */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-[9998] bg-transparent"
-            onClick={onClose}
-            aria-hidden="true"
-            data-testid="search-backdrop"
-          />
-
-          {/* Fluid Spring Drawer Panel */}
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className={`fixed top-[5.875rem] inset-x-3 sm:inset-x-auto sm:right-6 md:right-8 w-auto max-w-sm sm:w-96 mx-auto sm:mx-0 z-[9999] max-h-[calc(100dvh-11.5rem)] rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 flex flex-col origin-top sm:origin-top-right`}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Search in Volume"
-          >
-            {/* Header */}
-            <div className={`flex items-center justify-between pb-3 mb-3 border-b ${activeTheme.border}`}>
-              <div className="flex items-center gap-2 min-w-0">
-                <Search className={`w-4 h-4 shrink-0 ${theme === 'sepia' ? 'text-amber-500' : 'text-primary-600 dark:text-primary-400'}`} />
-                <div className="min-w-0">
-                  <h3 className="font-serif font-bold text-sm leading-tight truncate">
-                    Search in Volume
-                  </h3>
-                  {bookTitle && (
-                    <p className={`text-[10px] font-mono truncate max-w-[220px] mt-0.5 ${activeTheme.textMuted}`}>
-                      {bookTitle}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className={`p-1.5 rounded-lg border transition-colors cursor-pointer active:scale-95 ${activeTheme.button}`}
-                aria-label="Close search drawer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
+  return (
+    <ReaderDrawerShell
+      isOpen={isOpen}
+      onClose={onClose}
+      title={titleContent}
+      titleIcon={
+        <Search className={`w-4 h-4 shrink-0 ${activeTheme.iconAccent}`} />
+      }
+      theme={theme}
+      ariaLabel="Search in Volume"
+      closeAriaLabel="Close Search"
+      backdropTestId="search-backdrop"
+      role="dialog"
+    >
 
             {/* Search Input Bar (Standardized Padding & Vertical Centering) */}
             <div className="relative flex items-center mb-3">
@@ -217,10 +171,6 @@ export const ReaderSearchDrawer: React.FC<ReaderSearchDrawerProps> = ({
                 ))
               )}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>,
-    document.body
+    </ReaderDrawerShell>
   );
 };

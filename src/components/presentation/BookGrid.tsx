@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 import { BookCard } from './BookCard';
 import { BookshelfRack } from './BookshelfRack';
 import { Button } from '@/components/ui/Button';

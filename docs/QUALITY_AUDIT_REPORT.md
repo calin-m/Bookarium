@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 02 Sep 2026 14:59:36 GMT  
+**Last Generated**: Wed, 02 Sep 2026 16:24:22 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 69 passed  
-**Total Verified Tests**: 477 passed  
+**Total Test Suites**: 75 passed  
+**Total Verified Tests**: 497 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **69/69 test suites passed** (477 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **75/75 test suites passed** (497 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.26%** (2611/2830) — *Target: $ge$ 80%*
-- **Statements**: **90.56%** (2842/3138) — *Target: $ge$ 80%*
-- **Functions**: **88.57%** (667/753) — *Target: $ge$ 80%*
-- **Branches**: **80.43%** (2528/3143) — *Target: $ge$ 80%*
+- **Lines**: **92.16%** (2576/2795) — *Target: $ge$ 80%*
+- **Statements**: **90.54%** (2806/3099) — *Target: $ge$ 80%*
+- **Functions**: **88.44%** (658/744) — *Target: $ge$ 80%*
+- **Branches**: **80.55%** (2502/3106) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (69 Suites / 477 Tests)
+## 🧪 Comprehensive Test Suite Catalog (75 Suites / 497 Tests)
 
 ### 🚀 App Routes & Pages (8 Suites · 49 Tests)
 
@@ -350,7 +350,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (7 Suites · 56 Tests)
+### 📖 In-Browser Focus Reader (10 Suites · 64 Tests)
 
 <details>
 <summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (7 tests)</summary>
@@ -362,6 +362,25 @@
 - ✔ `handles font size and line height slider changes with proper aria attributes`
 - ✔ `closes controls on Escape key press`
 - ✔ `does not render when isOpen is false`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (5 tests)</summary>
+
+- ✔ `renders children when open`
+- ✔ `does not render when isOpen is false`
+- ✔ `calls onClose when close button is clicked`
+- ✔ `calls onClose when clicking the backdrop`
+- ✔ `calls onClose when pressing Escape key`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderErrorView.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders error message and retry button`
+- ✔ `renders without retry button when onRetry is not provided`
 
 </details>
 
@@ -404,6 +423,13 @@
 - ✔ `closes when clicking close button, backdrop, or pressing Escape`
 - ✔ `renders fallback message when translations array is empty`
 - ✔ `renders properly in Sepia theme`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderLoadingView.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders loading indicators and typography text`
 
 </details>
 
@@ -684,7 +710,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (7 Suites · 48 Tests)
+### 🔄 Hooks & React Query (9 Suites · 58 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (3 tests)</summary>
@@ -734,6 +760,28 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/reader/useReaderDrawers.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `initializes with all drawers closed`
+- ✔ `opens a drawer via openDrawer`
+- ✔ `toggles a drawer open and closed`
+- ✔ `switches between drawers maintaining mutual exclusivity`
+- ✔ `closes active drawer via closeDrawer`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `initializes with null zoom feedback`
+- ✔ `triggers onNextPage on leftward swipe with sufficient distance`
+- ✔ `triggers onPreviousPage on rightward swipe with sufficient distance`
+- ✔ `does not trigger swipe if vertical delta exceeds threshold ratio`
+- ✔ `handles 2-finger pinch scaling and clamps font size`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
@@ -776,7 +824,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (18 Suites · 55 Tests)
+### 🧩 UI Primitives & Motion (19 Suites · 57 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (14 tests)</summary>
@@ -912,6 +960,14 @@
 - ✔ `provides 12 curated quotes with non-empty metadata`
 - ✔ `provides complete theme configs for light, sepia, and dark`
 - ✔ `getReaderTheme returns exact theme or falls back to light`
+
+</details>
+
+<details>
+<summary><b><code>src/config/reader-config.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `defines valid font size boundaries and defaults`
+- ✔ `defines valid gesture thresholds`
 
 </details>
 
