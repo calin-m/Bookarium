@@ -13,6 +13,6 @@ describe('Footer component', () => {
 
     const githubLinks = screen.getAllByRole('link', { name: /bookarium/i });
     expect(githubLinks.length).toBeGreaterThanOrEqual(1);
-    expect(githubLinks[0]).toHaveAttribute('href', 'https://github.com/calin-m');
+    expect(githubLinks[0]).toHaveAttribute('href', 'https://github.com/calin-m/Bookarium');
   });
 });

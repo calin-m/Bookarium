@@ -11,11 +11,11 @@ export const Footer: React.FC = () => {
           {/* Col 1: About Brand */}
           <div className="space-y-4">
             <a
-              href={SITE_CONFIG.GITHUB_PROFILE}
+              href={SITE_CONFIG.GITHUB_REPO}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 group hover:opacity-90 transition-opacity"
-              aria-label="Bookarium GitHub by calin-m"
+              aria-label="Bookarium GitHub repository"
             >
               <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-primary-foreground group-hover:scale-105 transition-transform">
                 <BookOpen className="w-3.5 h-3.5" />
@@ -102,7 +102,7 @@ export const Footer: React.FC = () => {
           <div>
             © {new Date().getFullYear()}{' '}
             <a
-              href={SITE_CONFIG.GITHUB_PROFILE}
+              href={SITE_CONFIG.GITHUB_REPO}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-primary underline-offset-4 hover:underline transition-colors font-medium text-foreground"

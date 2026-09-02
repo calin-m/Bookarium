@@ -135,5 +135,14 @@ describe('Navbar component', () => {
     const signInBtn = screen.getByRole('button', { name: /Sign In/i });
     expect(signInBtn).toHaveClass('bg-primary');
   });
+
+  it('renders GitHub repository link with target _blank on the header', () => {
+    render(<Navbar activeView="catalog" />);
+    const githubLink = screen.getByRole('link', { name: /View Bookarium repository on GitHub/i });
+    expect(githubLink).toBeInTheDocument();
+    expect(githubLink).toHaveAttribute('href', 'https://github.com/calin-m/Bookarium');
+    expect(githubLink).toHaveAttribute('target', '_blank');
+    expect(githubLink).toHaveClass('hidden', 'min-[440px]:inline-flex');
+  });
 });
 
