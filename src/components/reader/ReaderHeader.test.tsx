@@ -209,7 +209,6 @@ describe('ReaderHeader', () => {
   });
 
   it('renders language and translation switcher and handles edition selection', () => {
-    const onSelectTranslation = vi.fn();
     const mockTranslations = [
       {
         bookId: 1342,
@@ -326,5 +325,22 @@ describe('ReaderHeader', () => {
     expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('renders Read Aloud button and handles click toggles', () => {
+    const onToggleSpeech = vi.fn();
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        isSpeechOpen={false}
+        onToggleSpeech={onToggleSpeech}
+      />
+    );
+
+    const speechBtns = screen.getAllByLabelText('Read Aloud Narration');
+    expect(speechBtns.length).toBeGreaterThanOrEqual(1);
+
+    fireEvent.click(speechBtns[0]);
+    expect(onToggleSpeech).toHaveBeenCalledTimes(1);
   });
 });

@@ -80,6 +80,17 @@ vi.mock('@/hooks/queries/useBookTranslations', () => ({
   }),
 }));
 
+vi.mock('@/hooks/queries/usePageTranslation', () => ({
+  usePageTranslation: () => ({
+    translatedText: null,
+    segments: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    isCached: false,
+  }),
+}));
+
 describe('Dedicated Reader Page (/read/[id])', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -340,5 +351,24 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     // 5. Re-click Language Drawer -> closes Language Drawer
     fireEvent.click(langBtn);
     expect(screen.queryByRole('dialog', { name: /Language Editions & Translations/i })).not.toBeInTheDocument();
+  });
+
+  it('toggles Read Aloud audio bar and triggers speech controls', () => {
+    render(<BookReaderPage />);
+
+    // Initially closed
+    expect(screen.queryByTestId('reader-speech-bar')).not.toBeInTheDocument();
+
+    // Click Read Aloud button
+    const speechBtn = screen.getAllByLabelText('Read Aloud Narration')[0];
+    fireEvent.click(speechBtn);
+
+    // Speech bar appears
+    expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close Read Aloud' })).toBeInTheDocument();
+
+    // Close speech bar
+    fireEvent.click(screen.getByRole('button', { name: 'Close Read Aloud' }));
+    expect(screen.queryByTestId('reader-speech-bar')).not.toBeInTheDocument();
   });
 });

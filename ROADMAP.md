@@ -2,15 +2,15 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-50%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-7_of_14-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-57%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-8_of_14-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[██████████░░░░░░░░░░]` **7/14 (50%)**
+`[███████████░░░░░░░░░]` **8/14 (57%)**
 
 ---
 
@@ -37,14 +37,14 @@
 ---
 
 ### Milestone 1: Reader Mastery & Accessibility (`Target: v1.8.0`)
-`[███████░░░░░░░░░░░░░]` **1/3 (33%)**
+`[█████████████░░░░░░░]` **2/3 (67%)**
 
 > Elevate the reading experience with instantaneous in-book phrase searching, zero-cost text-to-speech, and native standalone PWA installation.
 
 - [x] **In-Book Full-Text Search Drawer** `✅ VERIFIED`
   Client-side phrase and dialogue search drawer (`ReaderSearchDrawer.tsx`) scanning active book text in memory with live snippet previews, match count, and direct jump to chapter and page.
-- [ ] **Native Web Speech Text-to-Speech (Read-Aloud)** `⏳ PLANNED`
-  Incorporate browser `window.speechSynthesis` into `ReaderControls.tsx` with Play/Pause, speed slider (0.75x–2.0x), voice selector, and auto-scrolling sentence highlights.
+- [x] **Native Web Speech Text-to-Speech (Read-Aloud)** `✅ VERIFIED`
+  Incorporate browser `window.speechSynthesis` with sentence segmentation, natural voice prioritization, Play/Pause, speed tuning (0.85x–2.0x), and synchronized visual sentence highlights (`useReaderSpeech.ts`, `ReaderSpeechBar.tsx`).
 - [ ] **Progressive Web App (PWA) Manifest & Standalone App** `⏳ PLANNED`
   Native `src/app/manifest.ts` metadata, theme colors, and icons enabling 1-click "Add to Home Screen" installation on iOS, Android, and Desktop.
 

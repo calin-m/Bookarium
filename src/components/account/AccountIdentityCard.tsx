@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { User } from '@supabase/supabase-js';
-import { Mail, Calendar, ShieldCheck, Check } from 'lucide-react';
+import { Mail, Calendar, ShieldCheck, Check, AlertTriangle } from 'lucide-react';
 import type { Profile } from '@/types/database.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -17,6 +17,11 @@ export interface AccountIdentityCardProps {
   isSaving: boolean;
   saveSuccess: boolean;
   saveError: string | null;
+  onResendVerification?: () => Promise<void>;
+  isResendingVerification?: boolean;
+  resendSuccess?: boolean;
+  resendError?: string | null;
+  resendCooldown?: number;
 }
 
 export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
@@ -29,7 +34,14 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
   isSaving,
   saveSuccess,
   saveError,
+  onResendVerification,
+  isResendingVerification = false,
+  resendSuccess = false,
+  resendError = null,
+  resendCooldown = 0,
 }) => {
+  const isEmailVerified = Boolean(user.email_confirmed_at || (user as any).confirmed_at);
+
   return (
     <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
@@ -50,12 +62,61 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-border">
-            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-            <span>Verified Reader</span>
-          </div>
+          {isEmailVerified ? (
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-success/30">
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>Verified Reader</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-amber-500/10 text-amber-500 border border-amber-500/30">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span>Email Unverified</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Unverified Email Warning & Resend Banner */}
+      {!isEmailVerified && (
+        <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+          <div className="space-y-1 min-w-0">
+            <p className="font-bold text-foreground flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>Please verify your email address</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
+              Verification links expire in 1 hour. Confirm your email to secure your account.
+            </p>
+            {resendError && (
+              <p className="text-[11px] text-destructive font-mono pt-1">{resendError}</p>
+            )}
+            {resendSuccess && (
+              <p className="text-[11px] text-success font-mono pt-1">
+                Verification link sent! Check your inbox.
+              </p>
+            )}
+          </div>
+
+          {onResendVerification && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onResendVerification}
+              disabled={isResendingVerification || resendCooldown > 0}
+              className="shrink-0 text-xs font-mono cursor-pointer"
+            >
+              {isResendingVerification ? (
+                'Sending...'
+              ) : resendCooldown > 0 ? (
+                `Resend in ${resendCooldown}s`
+              ) : (
+                'Resend Verification Link'
+              )}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Profile Editor Form */}
       <form onSubmit={onSaveProfile} className="space-y-4">
@@ -118,4 +179,3 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
     </div>
   );
 };
-

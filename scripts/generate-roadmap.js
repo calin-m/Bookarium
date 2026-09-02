@@ -89,8 +89,8 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'Native Web Speech Text-to-Speech (Read-Aloud)',
-        description: 'Incorporate browser `window.speechSynthesis` into `ReaderControls.tsx` with Play/Pause, speed slider (0.75x–2.0x), voice selector, and auto-scrolling sentence highlights.',
-        check: () => fileContains('src/components/reader/ReaderControls.tsx', 'speechSynthesis') || fileExists('src/hooks/useTextToSpeech.ts'),
+        description: 'Incorporate browser `window.speechSynthesis` with sentence segmentation, natural voice prioritization, Play/Pause, speed tuning (0.85x–2.0x), and synchronized visual sentence highlights (`useReaderSpeech.ts`, `ReaderSpeechBar.tsx`).',
+        check: () => fileExists('src/hooks/reader/useReaderSpeech.ts') || fileExists('src/components/reader/ReaderSpeechBar.tsx'),
       },
       {
         title: 'Progressive Web App (PWA) Manifest & Standalone App',

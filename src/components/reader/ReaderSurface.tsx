@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { BookOpen, ZoomIn } from 'lucide-react';
+import { BookOpen, ZoomIn, Sparkles } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 import { getReaderTheme } from '@/config/reader-themes';
@@ -30,6 +30,11 @@ export interface ReaderSurfaceProps {
   onPreviousPage?: () => void;
   onNextPage?: () => void;
   onFontSizeChange?: (size: number) => void;
+  highlightedSentence?: string;
+  translationSegments?: Array<{ original: string; translated: string }>;
+  translatedText?: string | null;
+  displayMode?: 'translated' | 'bilingual';
+  isTranslating?: boolean;
 }
 
 export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
@@ -52,6 +57,11 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   onPreviousPage,
   onNextPage,
   onFontSizeChange,
+  highlightedSentence,
+  translationSegments,
+  translatedText,
+  displayMode = 'translated',
+  isTranslating = false,
 }) => {
   const activeTheme = getReaderTheme(theme);
   const mainRef = useRef<HTMLElement>(null);
@@ -99,7 +109,8 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     return <ReaderErrorView activeTheme={activeTheme} onRetry={onRetry} />;
   }
 
-  const contentToDisplay = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
+  const baseContent = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
+  const contentToDisplay = translatedText || baseContent;
 
   return (
     <main
@@ -132,12 +143,24 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       )}
       <article
         key={readingMode === 'paginated' ? `p-${activeChapterIndex}-${chapterPage ?? (contentToDisplay?.slice(0, 30) || '0')}` : `s-${activeChapterIndex}`}
-        className={`mx-auto px-6 sm:px-12 py-10 sm:py-16 select-text ${widthClass} ${fontClass} animate-page-turn`}
+        className={`mx-auto px-6 sm:px-12 pt-10 sm:pt-16 ${
+          highlightedSentence ? 'pb-32 sm:pb-36' : 'pb-10 sm:pb-16'
+        } select-text ${widthClass} ${fontClass} animate-page-turn`}
         style={{
           fontSize: `${fontSize}px`,
           lineHeight: `${lineHeight}`,
         }}
       >
+          {/* Subtle Translating Indicator */}
+          {isTranslating && (
+            <div
+              data-testid="translating-indicator"
+              className="flex items-center justify-center gap-2 py-1.5 px-3 mb-6 mx-auto w-fit rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono animate-pulse"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Translating page content...</span>
+            </div>
+          )}
           
           {/* Archival Opening Frontispiece (Section 1 / Book Opening) */}
           {activeChapterIndex === 0 && (bookTitle || bookAuthor) ? (
@@ -166,22 +189,87 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
             </header>
           ) : null}
 
-          {/* Formatted Book Body with Dynamic Line Height and Clean Word Boundaries */}
-          <div
-            data-testid="reader-content-body"
-            className="space-y-6 select-text whitespace-pre-wrap text-inherit font-normal antialiased [word-break:normal] [overflow-wrap:break-word] [hyphens:none]"
-            style={{
-              fontSize: `${fontSize}px`,
-              lineHeight: `${lineHeight}`,
-            }}
-          >
-            {contentToDisplay || (
-              <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
-                <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                Empty section or end of text volume.
-              </div>
-            )}
-          </div>
+          {/* Bilingual Parallel Mode Body */}
+          {displayMode === 'bilingual' && translationSegments && translationSegments.length > 0 ? (
+            <div
+              data-testid="reader-bilingual-body"
+              className="space-y-4 select-text text-inherit font-normal antialiased"
+              style={{
+                fontSize: `${fontSize}px`,
+                lineHeight: `${lineHeight}`,
+              }}
+            >
+              {translationSegments.map((seg, idx) => {
+                const isHighlighted = highlightedSentence && seg.translated.includes(highlightedSentence);
+                return (
+                  <div key={idx} className="space-y-1 py-1 border-l-2 border-primary/30 pl-3">
+                    <p className="font-normal text-inherit leading-relaxed">
+                      {isHighlighted ? (
+                        <mark
+                          data-testid="speech-highlight"
+                          className={`rounded-xs px-1 transition-colors duration-200 ${
+                            theme === 'sepia'
+                              ? 'bg-amber-500/25 text-[#fef6eb]'
+                              : 'bg-primary-500/20 text-inherit'
+                          }`}
+                        >
+                          {seg.translated}
+                        </mark>
+                      ) : (
+                        seg.translated
+                      )}
+                    </p>
+                    {seg.original && (
+                      <p className={`text-[0.85em] italic ${activeTheme.textMuted} font-serif leading-normal`}>
+                        {seg.original}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Standard / Translated Full Body */
+            <div
+              data-testid="reader-content-body"
+              className="space-y-6 select-text whitespace-pre-wrap text-inherit font-normal antialiased [word-break:normal] [overflow-wrap:break-word] [hyphens:none]"
+              style={{
+                fontSize: `${fontSize}px`,
+                lineHeight: `${lineHeight}`,
+              }}
+            >
+              {contentToDisplay ? (
+                highlightedSentence && contentToDisplay.includes(highlightedSentence) ? (
+                  <>
+                    {contentToDisplay.split(highlightedSentence).map((part, index, arr) => (
+                      <React.Fragment key={index}>
+                        {part}
+                        {index < arr.length - 1 && (
+                          <mark
+                            data-testid="speech-highlight"
+                            className={`rounded-xs px-1 transition-colors duration-200 ${
+                              theme === 'sepia'
+                                ? 'bg-amber-500/25 text-[#fef6eb]'
+                                : 'bg-primary-500/20 text-inherit'
+                            }`}
+                          >
+                            {highlightedSentence}
+                          </mark>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </>
+                ) : (
+                  contentToDisplay
+                )
+              ) : (
+                <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
+                  <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  Empty section or end of text volume.
+                </div>
+              )}
+            </div>
+          )}
       </article>
     </main>
   );

@@ -8,6 +8,7 @@ const mockSignInWithPassword = vi.fn();
 const mockSignUpWithPassword = vi.fn();
 const mockSignInWithOtp = vi.fn();
 const mockResetPasswordForEmail = vi.fn();
+const mockResendVerificationEmail = vi.fn();
 
 vi.mock('@/stores/useAuthStore', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/stores/useAuthStore')>();
@@ -124,6 +125,7 @@ describe('AuthModal Component', () => {
       setAuthModalView,
       setError: vi.fn(),
       signUpWithPassword: mockSignUpWithPassword,
+      resendVerificationEmail: mockResendVerificationEmail,
     });
 
     render(<AuthModal />);
@@ -140,6 +142,11 @@ describe('AuthModal Component', () => {
     const verifyScreenTitle = await screen.findByText('Check your email');
     expect(verifyScreenTitle).toBeInTheDocument();
     expect(screen.getByText(/We sent a verification link to/i)).toBeInTheDocument();
+
+    mockResendVerificationEmail.mockResolvedValueOnce({ error: null });
+    const resendBtn = screen.getByRole('button', { name: /Resend Email/i });
+    fireEvent.click(resendBtn);
+    expect(mockResendVerificationEmail).toHaveBeenCalledWith('jane@example.com');
 
     const goSignInBtn = screen.getByRole('button', { name: /Go to Sign In/i });
     fireEvent.click(goSignInBtn);
@@ -221,6 +228,32 @@ describe('AuthModal Component', () => {
 
     render(<AuthModal />);
     expect(screen.getByText('Invalid email or password')).toBeInTheDocument();
+  });
+
+  it('renders resend link when error indicates email not confirmed and executes resend', async () => {
+    mockResendVerificationEmail.mockResolvedValueOnce({ error: null });
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'sign_in',
+      error: 'Email not confirmed',
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signInWithPassword: mockSignInWithPassword,
+      resendVerificationEmail: mockResendVerificationEmail,
+    });
+
+    render(<AuthModal />);
+    expect(screen.getByText('Email not confirmed')).toBeInTheDocument();
+    expect(screen.getByText(/Didn't receive or link expired\?/i)).toBeInTheDocument();
+
+    const emailInput = screen.getByPlaceholderText('reader@bookarium.org');
+    fireEvent.change(emailInput, { target: { value: 'unconfirmed@bookarium.org' } });
+
+    const resendBtn = screen.getByRole('button', { name: 'Resend Link' });
+    fireEvent.click(resendBtn);
+    expect(mockResendVerificationEmail).toHaveBeenCalledWith('unconfirmed@bookarium.org');
   });
 
   it('submits magic link request on valid email', async () => {

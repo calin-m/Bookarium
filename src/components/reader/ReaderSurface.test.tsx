@@ -341,4 +341,61 @@ describe('ReaderSurface', () => {
     expect(onFontSizeChange).toHaveBeenCalledWith(36);
     expect(screen.getByText(/\(Max\)/i)).toBeInTheDocument();
   });
+
+  it('renders highlighted sentence with mark tag when highlightedSentence matches text', () => {
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        currentPageText="First sentence of chapter. Second sentence being read aloud. Third sentence."
+        highlightedSentence="Second sentence being read aloud."
+        theme="sepia"
+      />
+    );
+
+    const markEl = screen.getByTestId('speech-highlight');
+    expect(markEl).toBeInTheDocument();
+    expect(markEl).toHaveTextContent('Second sentence being read aloud.');
+  });
+
+  it('renders translating indicator when isTranslating is true', () => {
+    render(<ReaderSurface {...defaultProps} isTranslating={true} />);
+    expect(screen.getByTestId('translating-indicator')).toBeInTheDocument();
+    expect(screen.getByText('Translating page content...')).toBeInTheDocument();
+  });
+
+  it('renders translatedText in place of base content when provided in translated mode', () => {
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        translatedText="Texto traducido al español."
+        displayMode="translated"
+      />
+    );
+
+    expect(screen.getByText('Texto traducido al español.')).toBeInTheDocument();
+  });
+
+  it('renders bilingual mode with paired translation segments and speech highlight', () => {
+    const mockSegments = [
+      { original: 'Call me Ishmael.', translated: 'Llamadme Ismael.' },
+      { original: 'Some years ago...', translated: 'Hace algunos años...' },
+    ];
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        displayMode="bilingual"
+        translationSegments={mockSegments}
+        highlightedSentence="Llamadme Ismael."
+      />
+    );
+
+    const bilingualBody = screen.getByTestId('reader-bilingual-body');
+    expect(bilingualBody).toBeInTheDocument();
+    expect(screen.getByText('Call me Ishmael.')).toBeInTheDocument();
+    expect(screen.getByText('Hace algunos años...')).toBeInTheDocument();
+
+    const markEl = screen.getByTestId('speech-highlight');
+    expect(markEl).toHaveTextContent('Llamadme Ismael.');
+  });
 });

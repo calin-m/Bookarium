@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useBookContent } from '@/hooks/queries/useBookContent';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useBookTranslations } from '@/hooks/queries/useBookTranslations';
+import { usePageTranslation } from '@/hooks/queries/usePageTranslation';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
@@ -24,8 +25,11 @@ import { ReaderTocDrawer } from '@/components/reader/ReaderTocDrawer';
 import { ReaderSearchDrawer } from '@/components/reader/ReaderSearchDrawer';
 import { ReaderControls } from '@/components/reader/ReaderControls';
 import { ReaderLanguageDrawer } from '@/components/reader/ReaderLanguageDrawer';
+import { ReaderSpeechBar } from '@/components/reader/ReaderSpeechBar';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
+import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { ROUTES } from '@/config/routes';
 
 export default function BookReaderPage() {
@@ -55,6 +59,16 @@ export default function BookReaderPage() {
   const saveReadingPosition = useReaderStore((s) => s.saveReadingPosition);
   const getReadingPosition = useReaderStore((s) => s.getReadingPosition);
 
+  // Persistent User Preferences
+  const {
+    speechRate,
+    setSpeechRate,
+    speechVoiceURI,
+    setSpeechVoiceURI,
+    speechAutoPageAdvance,
+    speechHighlightEnabled,
+  } = usePreferencesStore();
+
   // Local Reader State
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [currentChapterPage, setCurrentChapterPage] = useState(1);
@@ -69,6 +83,8 @@ export default function BookReaderPage() {
   const [readingMode, setReadingMode] = useState<'paginated' | 'scroll'>('paginated');
   const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
   const [resumeNotice, setResumeNotice] = useState<{ chapterTitle: string; page: number } | null>(null);
+  const [dynamicTargetLanguage, setDynamicTargetLanguage] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<'translated' | 'bilingual'>('translated');
   const hasRestoredPositionRef = React.useRef(false);
 
   // Synchronize global application theme with reader theme on mount
@@ -268,6 +284,48 @@ export default function BookReaderPage() {
 
   const activeTheme = getReaderTheme(theme);
 
+  const [isSpeechOpen, setIsSpeechOpen] = useState(false);
+
+  // Active reading content
+  const rawPageText = readingMode === 'paginated' ? currentPageText : (activeChapter?.content || '');
+
+  // Dynamic On-Demand Page Translation
+  const {
+    translatedText,
+    segments: translationSegments,
+    isLoading: isTranslating,
+  } = usePageTranslation({
+    text: rawPageText,
+    targetLanguage: dynamicTargetLanguage,
+    bookId: numericId,
+    chapterIndex: activeChapterIndex,
+    pageIndex: currentChapterPage,
+  });
+
+  // Derive text to speak: if translated, speak translatedText in the target language!
+  const textToRead = translatedText || rawPageText;
+  const speechLanguage = dynamicTargetLanguage || resolvedIdentity.languages?.[0] || 'en';
+
+  const speech = useReaderSpeech({
+    text: textToRead,
+    bookTitle,
+    bookAuthor,
+    language: speechLanguage,
+    currentPage: currentChapterPage,
+    totalPages: activeChapterPageCount,
+    defaultRate: speechRate,
+    preferredVoiceURI: speechVoiceURI,
+    onRateChange: setSpeechRate,
+    onVoiceChange: setSpeechVoiceURI,
+    onPageComplete: () => {
+      if (speechAutoPageAdvance && readingMode === 'paginated' && !isNextDisabled) {
+        handleNextPage();
+      }
+    },
+    onNextPage: handleNextPage,
+    onPreviousPage: handlePrevPage,
+  });
+
   return (
     <div className={`h-[100dvh] flex flex-col overflow-hidden transition-colors duration-theme ${activeTheme.surface}`}>
       
@@ -292,6 +350,18 @@ export default function BookReaderPage() {
         onToggleControls={() => toggleDrawer('controls')}
         isTranslationsOpen={isTranslationsOpen}
         onToggleTranslations={() => toggleDrawer('translations')}
+        isSpeechOpen={isSpeechOpen}
+        onToggleSpeech={() => {
+          setIsSpeechOpen((prev) => {
+            const next = !prev;
+            if (!next && speech.isPlaying) {
+              speech.stop();
+            } else if (next && !speech.isPlaying) {
+              speech.play(0);
+            }
+            return next;
+          });
+        }}
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
         theme={theme}
@@ -331,6 +401,11 @@ export default function BookReaderPage() {
         onPreviousPage={handlePrevPage}
         onNextPage={handleNextPage}
         onFontSizeChange={setFontSize}
+        highlightedSentence={isSpeechOpen && speech.isPlaying && speechHighlightEnabled ? speech.currentSentence : undefined}
+        translatedText={translatedText}
+        translationSegments={translationSegments}
+        displayMode={displayMode}
+        isTranslating={isTranslating}
       />
 
       {/* Fixed Sticky 0-CLS Bottom Pagination Footer */}
@@ -401,6 +476,42 @@ export default function BookReaderPage() {
           router.replace(ROUTES.READ(targetBookId));
         }}
         theme={theme}
+        dynamicTargetLanguage={dynamicTargetLanguage}
+        onSelectDynamicLanguage={setDynamicTargetLanguage}
+        displayMode={displayMode}
+        onSelectDisplayMode={setDisplayMode}
+        isTranslating={isTranslating}
+      />
+
+      {/* Floating Read Aloud Audio Narration Mini-Bar */}
+      <ReaderSpeechBar
+        isOpen={isSpeechOpen}
+        onClose={() => {
+          speech.stop();
+          setIsSpeechOpen(false);
+        }}
+        isPlaying={speech.isPlaying}
+        isPaused={speech.isPaused}
+        currentSentenceIndex={speech.currentSentenceIndex}
+        totalSentences={speech.totalSentences}
+        rate={speech.rate}
+        availableVoices={speech.availableVoices}
+        naturalVoices={speech.naturalVoices}
+        standardVoices={speech.standardVoices}
+        selectedVoice={speech.selectedVoice}
+        onPlay={() => speech.play()}
+        onPause={() => speech.pause()}
+        onResume={() => speech.resume()}
+        onSkipNext={() => speech.skipNext()}
+        onSkipPrev={() => speech.skipPrev()}
+        onRateChange={speech.setRate}
+        onVoiceChange={speech.setVoice}
+        theme={theme}
+        bookTitle={bookTitle}
+        currentPage={currentChapterPage}
+        totalPages={activeChapterPageCount}
+        isPrevDisabled={isPrevDisabled}
+        isNextDisabled={isNextDisabled}
       />
 
     </div>

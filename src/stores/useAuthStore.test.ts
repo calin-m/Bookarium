@@ -10,6 +10,7 @@ const mockGetUser = vi.fn();
 const mockOnAuthStateChange = vi.fn();
 const mockResetPasswordForEmail = vi.fn();
 const mockUpdateUser = vi.fn();
+const mockResend = vi.fn();
 const mockFrom = vi.fn();
 
 const mockRpc = vi.fn().mockResolvedValue({ error: null });
@@ -19,6 +20,7 @@ vi.mock('@/lib/supabase/client', () => ({
     auth: {
       signInWithPassword: mockSignInWithPassword,
       signUp: mockSignUp,
+      resend: mockResend,
       signInWithOtp: mockSignInWithOtp,
       signInWithOAuth: mockSignInWithOAuth,
       signOut: mockSignOut,
@@ -137,6 +139,23 @@ describe('useAuthStore', () => {
     const res3 = await useAuthStore.getState().signUpWithPassword('new@bookarium.test', 'password123');
     expect(res3.error?.message).toBe('Email already registered');
     expect(useAuthStore.getState().error).toBe('Email already registered');
+  });
+
+  it('handles resendVerificationEmail success and error', async () => {
+    mockResend.mockResolvedValueOnce({ error: null });
+    const res1 = await useAuthStore.getState().resendVerificationEmail('reader@bookarium.org');
+    expect(res1.error).toBeNull();
+    expect(mockResend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'signup',
+        email: 'reader@bookarium.org',
+      })
+    );
+
+    mockResend.mockResolvedValueOnce({ error: { message: 'Too many requests' } });
+    const res2 = await useAuthStore.getState().resendVerificationEmail('reader@bookarium.org');
+    expect(res2.error?.message).toBe('Too many requests');
+    expect(useAuthStore.getState().error).toBe('Too many requests');
   });
 
   it('handles signInWithOtp (magic link) success and error', async () => {

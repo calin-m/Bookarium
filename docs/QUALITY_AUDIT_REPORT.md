@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 02 Sep 2026 16:24:22 GMT  
+**Last Generated**: Wed, 02 Sep 2026 19:05:01 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 75 passed  
-**Total Verified Tests**: 497 passed  
+**Total Test Suites**: 81 passed  
+**Total Verified Tests**: 568 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **75/75 test suites passed** (497 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **81/81 test suites passed** (568 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.16%** (2576/2795) — *Target: $ge$ 80%*
-- **Statements**: **90.54%** (2806/3099) — *Target: $ge$ 80%*
-- **Functions**: **88.44%** (658/744) — *Target: $ge$ 80%*
-- **Branches**: **80.55%** (2502/3106) — *Target: $ge$ 80%*
+- **Lines**: **92.6%** (3032/3274) — *Target: $ge$ 80%*
+- **Statements**: **90.88%** (3310/3642) — *Target: $ge$ 80%*
+- **Functions**: **88.53%** (772/872) — *Target: $ge$ 80%*
+- **Branches**: **81.43%** (2978/3657) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (75 Suites / 497 Tests)
+## 🧪 Comprehensive Test Suite Catalog (81 Suites / 568 Tests)
 
-### 🚀 App Routes & Pages (8 Suites · 49 Tests)
+### 🚀 App Routes & Pages (9 Suites · 59 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.test.ts</code></b> (6 tests)</summary>
@@ -57,6 +57,21 @@
 - ✔ `should return error response when upstream API returns an error status`
 - ✔ `should return 504 status code when upstream API times out or network fails`
 - ✔ `should return 502 status code when upstream API returns invalid non-JSON body`
+
+</details>
+
+<details>
+<summary><b><code>src/app/api/translate/route.test.ts</code></b> (9 tests)</summary>
+
+- ✔ `translates text successfully and returns segments`
+- ✔ `rejects request with invalid JSON payload`
+- ✔ `rejects request with missing or empty text`
+- ✔ `rejects request with invalid target language code`
+- ✔ `handles upstream service failure with 502`
+- ✔ `handles malformed upstream payload with 502`
+- ✔ `handles timeout (AbortError) with 504`
+- ✔ `handles unexpected failure with 500`
+- ✔ `enforces rate limiting and returns 429 when quota exceeded`
 
 </details>
 
@@ -112,7 +127,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -130,6 +145,7 @@
 - ✔ `opens In-Book Search Drawer, finds matching phrase, and jumps to chapter on selection`
 - ✔ `toggles In-Book Search Drawer using Ctrl+F keyboard shortcut`
 - ✔ `enforces mutual exclusivity between all 4 reader modals (TOC, Search, Controls, Language)`
+- ✔ `toggles Read Aloud audio bar and triggers speech controls`
 
 </details>
 
@@ -350,7 +366,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (10 Suites · 64 Tests)
+### 📖 In-Browser Focus Reader (11 Suites · 80 Tests)
 
 <details>
 <summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (7 tests)</summary>
@@ -396,7 +412,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -411,17 +427,19 @@
 - ✔ `renders language and translation switcher and handles edition selection`
 - ✔ `handles link copying when share button is clicked`
 - ✔ `toggles mobile action tray and executes actions`
+- ✔ `renders Read Aloud button and handles click toggles`
 
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `does not render content when isOpen is false`
-- ✔ `renders translations list and handles edition selection`
-- ✔ `does not trigger onSelectTranslation when clicking current edition`
-- ✔ `closes when clicking close button, backdrop, or pressing Escape`
-- ✔ `renders fallback message when translations array is empty`
+- ✔ `renders dual-tier layout with archival editions and instant translation`
+- ✔ `allows selecting popular translation quick-picks and dropdown`
+- ✔ `supports toggling reading display mode and reverting to original`
+- ✔ `unselects dynamic language when clicking the active quick-pick chip`
+- ✔ `renders fallback message when archival translations array is empty`
 - ✔ `renders properly in Sepia theme`
 
 </details>
@@ -448,7 +466,23 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (10 tests)</summary>
+
+- ✔ `renders null when isOpen is false`
+- ✔ `renders narration metadata, page coordinates, and progress percentage`
+- ✔ `handles play, pause, and resume actions accurately`
+- ✔ `navigates previous and next sentences and respects boundary disable flags`
+- ✔ `allows changing voices via dropdown`
+- ✔ `renders categorized optgroups for Natural and Standard voices with quality badge`
+- ✔ `allows selecting speed rates from the popover menu`
+- ✔ `calls onClose when clicking close button`
+- ✔ `adapts properly to sepia and dark themes`
+- ✔ `renders with mobile-responsive positioning and WCAG touch target classes`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -462,6 +496,10 @@
 - ✔ `scales up font size and displays HUD pill on pinch-out gesture`
 - ✔ `clamps font size to minimum (12px) on extreme pinch-in gesture`
 - ✔ `clamps font size to maximum (36px) on extreme pinch-out gesture`
+- ✔ `renders highlighted sentence with mark tag when highlightedSentence matches text`
+- ✔ `renders translating indicator when isTranslating is true`
+- ✔ `renders translatedText in place of base content when provided in translated mode`
+- ✔ `renders bilingual mode with paired translation segments and speech highlight`
 
 </details>
 
@@ -476,10 +514,10 @@
 
 </details>
 
-### 🔐 Authentication & Security (1 Suites · 14 Tests)
+### 🔐 Authentication & Security (1 Suites · 15 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
@@ -489,6 +527,7 @@
 - ✔ `validates password mismatch on Sign Up`
 - ✔ `handles form submission in sign in mode`
 - ✔ `renders error alert when error exists`
+- ✔ `renders resend link when error indicates email not confirmed and executes resend`
 - ✔ `submits magic link request on valid email`
 - ✔ `renders magic link confirmation screen and navigates back to sign in`
 - ✔ `handles Suggest Strong Password generation and visibility toggle`
@@ -498,16 +537,17 @@
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 48 Tests)
+### ⚡ Zustand State Stores (5 Suites · 51 Tests)
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `manages modal open, close, and view state transitions`
 - ✔ `handles signInWithPassword success and error states`
 - ✔ `handles sign in error and sets error message`
 - ✔ `handles signOut`
 - ✔ `handles signUpWithPassword success (with session and unconfirmed)`
+- ✔ `handles resendVerificationEmail success and error`
 - ✔ `handles signInWithOtp (magic link) success and error`
 - ✔ `handles signInWithOAuth success and error`
 - ✔ `hydrates user on initializeAuth when active session exists`
@@ -544,11 +584,13 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/usePreferencesStore.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/stores/usePreferencesStore.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `initializes with stickyScrollEnabled = true by default`
 - ✔ `sets stickyScrollEnabled to specified boolean value`
 - ✔ `toggles stickyScrollEnabled back and forth`
+- ✔ `initializes speech preferences with default values`
+- ✔ `updates speech preferences and resets them correctly`
 
 </details>
 
@@ -578,7 +620,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (7 Suites · 88 Tests)
+### 📚 Gutenberg Parsers & Metadata (8 Suites · 91 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (9 tests)</summary>
@@ -679,6 +721,15 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/speech-utils.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `returns true for high-definition neural and natural voice names`
+- ✔ `returns false for standard mechanical or missing voice names`
+- ✔ `removes vendor brand prefixes and trims whitespace`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/supabase/supabase.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `creates a browser Supabase client with environment variables`
@@ -710,7 +761,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (9 Suites · 58 Tests)
+### 🔄 Hooks & React Query (11 Suites · 87 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (3 tests)</summary>
@@ -760,6 +811,19 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/queries/usePageTranslation.test.ts</code></b> (7 tests)</summary>
+
+- ✔ `generates consistent cache keys`
+- ✔ `handles localStorage read and write safely`
+- ✔ `returns empty result when targetLanguage is null`
+- ✔ `fetches translation and populates result and localStorage`
+- ✔ `uses cached translation directly without calling fetch`
+- ✔ `handles API error gracefully`
+- ✔ `throws error when fetchTranslation fails without JSON body`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/reader/useReaderDrawers.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `initializes with all drawers closed`
@@ -778,6 +842,34 @@
 - ✔ `triggers onPreviousPage on rightward swipe with sufficient distance`
 - ✔ `does not trigger swipe if vertical delta exceeds threshold ratio`
 - ✔ `handles 2-finger pinch scaling and clamps font size`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (22 tests)</summary>
+
+- ✔ `returns true for high-definition neural and natural voice names`
+- ✔ `returns false for standard mechanical or missing voice names`
+- ✔ `splits paragraphs into punctuation-delimited sentences`
+- ✔ `handles quotes and dialogue gracefully`
+- ✔ `returns empty array for empty or whitespace text`
+- ✔ `detects Web Speech API support and prioritizes Natural voices`
+- ✔ `plays sentences and updates playback state`
+- ✔ `pauses and resumes playback correctly`
+- ✔ `progresses to next sentence on utterance onend`
+- ✔ `triggers onPageComplete callback when all sentences finish`
+- ✔ `supports skipNext and skipPrev navigation`
+- ✔ `allows rate adjustment and voice switching`
+- ✔ `handles utterance onerror correctly`
+- ✔ `handles voiceschanged event and diverse voice scoring keywords`
+- ✔ `triggers MediaSession action handlers`
+- ✔ `updates utterance dynamically when setRate or setVoice called while actively playing`
+- ✔ `handles fallback when no voices are available`
+- ✔ `cleans up and cancels speech upon stop() or unmount`
+- ✔ `adapts to text change when user flips page while playing and restarts from sentence 0`
+- ✔ `triggers onNextPage when skipNext called on the final sentence of current page`
+- ✔ `triggers onPreviousPage when skipPrev called on the first sentence of current page`
+- ✔ `respects defaultRate, preferredVoiceURI, and invokes onRateChange and onVoiceChange`
 
 </details>
 
@@ -824,10 +916,10 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (19 Suites · 57 Tests)
+### 🧩 UI Primitives & Motion (20 Suites · 66 Tests)
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated`
 - ✔ `renders authenticated profile and handles saving display name`
@@ -843,6 +935,7 @@
 - ✔ `submits account deletion request and displays verification email confirmation`
 - ✔ `dismisses deletion verification confirmation screen on close button click`
 - ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
+- ✔ `handles resending email verification on unverified account`
 
 </details>
 
@@ -854,9 +947,10 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (3 tests)</summary>
 
-- ✔ `renders user details and handles input change and submit`
+- ✔ `renders verified reader badge when email_confirmed_at is present`
+- ✔ `renders unverified badge and resend banner when email is not confirmed`
 - ✔ `renders error message and success feedback`
 
 </details>
@@ -869,9 +963,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
+- ✔ `renders read-aloud section and handles speed selection`
+- ✔ `handles auto-page advance and sentence highlight toggles`
+- ✔ `handles voice preview audio playback and toggle`
+- ✔ `covers light and dark theme buttons and preview completion callbacks`
 
 </details>
 
@@ -986,6 +1084,15 @@
 - ✔ `provides site branding and metadata constants`
 - ✔ `builds canonical Gutenberg ebook URL`
 - ✔ `provides persistent storage keys`
+
+</details>
+
+<details>
+<summary><b><code>src/config/translation-languages.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `contains curated popular languages with valid codes and flags`
+- ✔ `contains complete alphabetized language catalog`
+- ✔ `resolves languages correctly by full code or prefix`
 
 </details>
 
