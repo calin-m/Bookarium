@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 
 export interface UseScrollDirectionOptions {
   threshold?: number;
+  continuousThreshold?: number;
   gestureEndTimeoutMs?: number;
   topOffset?: number;
   heroDockSelector?: string;
@@ -17,21 +18,19 @@ export interface ScrollNavState {
 
 /**
  * useScrollDirection
- * Implements a strict session-isolated 3-state bidirectional scroll pipeline with Hero section guard:
+ * Implements a calibrated 3-state bidirectional scroll pipeline with Hero section guard:
  * 
  * 1. Hero Guard (scrollY <= dockOffset):
  *    - State 0: BOTH_VISIBLE (Nothing hides while browsing the Hero section)
  * 
  * 2. Past Hero Section:
- *    - 1 Continuous Scroll Session = EXACTLY 1 State Step (regardless of distance or mouse wheel velocity).
- *    - Scroll DOWN gesture 1: State 0 (Both) -> State 1 (Toolbar Only @ top-0)
- *    - Scroll DOWN gesture 2: State 1 (Toolbar Only) -> State 2 (Both Hidden)
- *    - Scroll UP gesture 1:   State 2 (Both Hidden) -> State 1 (Toolbar Only @ top-0)
- *    - Scroll UP gesture 2:   State 1 (Toolbar Only) -> State 0 (Both Visible @ top-16)
- *    - Reversing direction mid-scroll immediately unlocks and executes 1 step in the new direction.
+ *    - Discrete Swipes: Each distinct swipe (after gestureEndTimeoutMs) steps 1 state (threshold: 15px).
+ *    - Continuous Swipes: A long continuous swipe steps State 0 -> State 1 (at 15px), then State 1 -> State 2 (at continuousThreshold: 120px).
+ *    - Reversing direction mid-scroll immediately unlocks and executes instant 15px response in the new direction.
  */
 export function useScrollDirection({
   threshold = 15,
+  continuousThreshold = 120,
   gestureEndTimeoutMs = 180,
   topOffset = 64,
   heroDockSelector = '#catalog-section',
@@ -122,8 +121,10 @@ export function useScrollDirection({
         resetGesture();
       }, gestureEndTimeoutMs);
 
-      // Only allow EXACTLY 1 state transition per continuous scroll gesture
-      if (!hasSteppedInCurrentGesture && accumulatedDelta >= threshold && currentDir) {
+      // Determine required delta: initial step uses threshold, continuous progression uses continuousThreshold
+      const requiredDelta = hasSteppedInCurrentGesture ? continuousThreshold : threshold;
+
+      if (accumulatedDelta >= requiredDelta && currentDir) {
         let changed = false;
         let next = { ...stateRef.current };
 
@@ -176,7 +177,7 @@ export function useScrollDirection({
         clearTimeout(gestureTimer);
       }
     };
-  }, [threshold, gestureEndTimeoutMs, topOffset, heroDockSelector, enabled]);
+  }, [threshold, continuousThreshold, gestureEndTimeoutMs, topOffset, heroDockSelector, enabled]);
 
   if (!enabled) {
     return { isHeaderVisible: true, isToolbarVisible: true };

@@ -65,7 +65,7 @@ describe('useScrollDirection hook', () => {
 
   it('transitions to toolbar-only docked at top-0 on subsequent downward scroll gesture', () => {
     const { result } = renderHook(() =>
-      useScrollDirection({ threshold: 10, gestureEndTimeoutMs: 150, topOffset: 100, heroDockSelector: '' })
+      useScrollDirection({ threshold: 10, continuousThreshold: 100, gestureEndTimeoutMs: 150, topOffset: 100, heroDockSelector: '' })
     );
 
     // Initial dock arrival
@@ -84,11 +84,9 @@ describe('useScrollDirection hook', () => {
     expect(result.current.isHeaderVisible).toBe(false);
     expect(result.current.isToolbarVisible).toBe(true);
 
-    // Continuous scroll within the same gesture maintains State 1 without skipping
+    // Short continuous scroll within the same gesture (< continuousThreshold) maintains State 1
     act(() => {
-      Object.defineProperty(window, 'scrollY', { value: 500, configurable: true });
-      window.dispatchEvent(new Event('scroll'));
-      Object.defineProperty(window, 'scrollY', { value: 1500, configurable: true });
+      Object.defineProperty(window, 'scrollY', { value: 180, configurable: true });
       window.dispatchEvent(new Event('scroll'));
     });
 
@@ -96,9 +94,46 @@ describe('useScrollDirection hook', () => {
     expect(result.current.isToolbarVisible).toBe(true);
   });
 
+  it('transitions to fully hidden during a single long continuous scroll gesture past continuousThreshold', () => {
+    const { result } = renderHook(() =>
+      useScrollDirection({
+        threshold: 10,
+        continuousThreshold: 100,
+        gestureEndTimeoutMs: 150,
+        topOffset: 100,
+        heroDockSelector: '',
+      })
+    );
+
+    // Initial dock arrival
+    act(() => {
+      Object.defineProperty(window, 'scrollY', { value: 120, configurable: true });
+      window.dispatchEvent(new Event('scroll'));
+      vi.advanceTimersByTime(180);
+    });
+
+    // Start downward swipe: 120 -> 140px (delta = 20px >= threshold 10px) -> State 1 (Toolbar Only)
+    act(() => {
+      Object.defineProperty(window, 'scrollY', { value: 140, configurable: true });
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    expect(result.current.isHeaderVisible).toBe(false);
+    expect(result.current.isToolbarVisible).toBe(true);
+
+    // Continue the SAME swipe past continuousThreshold (140 -> 260px, delta = 120px >= 100px) -> State 2 (Both Hidden)
+    act(() => {
+      Object.defineProperty(window, 'scrollY', { value: 260, configurable: true });
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    expect(result.current.isHeaderVisible).toBe(false);
+    expect(result.current.isToolbarVisible).toBe(false);
+  });
+
   it('transitions to fully hidden on third downward scroll gesture', () => {
     const { result } = renderHook(() =>
-      useScrollDirection({ threshold: 10, gestureEndTimeoutMs: 150, topOffset: 100, heroDockSelector: '' })
+      useScrollDirection({ threshold: 10, continuousThreshold: 100, gestureEndTimeoutMs: 150, topOffset: 100, heroDockSelector: '' })
     );
 
     // Sequence through Step 1 and Step 2
@@ -114,7 +149,7 @@ describe('useScrollDirection hook', () => {
 
     // Step 3 downward scroll gesture -> State 2 (Both Hidden)
     act(() => {
-      Object.defineProperty(window, 'scrollY', { value: 1530, configurable: true });
+      Object.defineProperty(window, 'scrollY', { value: 170, configurable: true });
       window.dispatchEvent(new Event('scroll'));
     });
 

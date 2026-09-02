@@ -37,7 +37,7 @@ export default function ConfirmDeletionPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-200">
+    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
       <Navbar
         onViewChange={(view) => {
           router.push(ROUTES.VIEW(view));

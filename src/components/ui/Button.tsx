@@ -21,7 +21,7 @@ export const Button = React.forwardRef(
     const Component = as || 'button';
 
     const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none active:scale-95';
+      'inline-flex items-center justify-center font-medium transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 select-none active:scale-95';
 
     const variants: Record<ButtonVariant, string> = {
       primary: 'border border-primary bg-primary text-primary-foreground hover:opacity-90 shadow-xs',
@@ -29,7 +29,7 @@ export const Button = React.forwardRef(
       outline: 'border border-border bg-card hover:bg-muted hover:border-primary text-foreground shadow-2xs',
       ghost: 'bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground border border-transparent',
       destructive: 'bg-red-600 text-white hover:bg-red-700 border border-transparent',
-      sepia: 'bg-sepia-surface text-sepia-text border border-sepia-border hover:bg-[#ebd9b1]',
+      sepia: 'bg-[#332219] text-[#fef6eb] border border-[#462e22] hover:bg-[#402a1d]',
     };
 
     const sizes: Record<ButtonSize, string> = {

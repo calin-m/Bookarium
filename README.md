@@ -34,8 +34,20 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v1.7.1)
+## 🛠️ Latest Improvements (v1.7.3)
 
+- **Direct 1-Click / 1-Tap Account Navigation (`Navbar.tsx`)** – Replaced popover/hover dropdowns on the top navigation bar with a direct Next.js link to `/account`, delivering instant, zero-friction navigation to the reader dossier with active state indicators (`activeView="account"`).
+- **Fluid Tactile Bookshelf Scrolling on Mobile (`BookshelfRack.tsx`)** – Removed restrictive `touch-pan-x` class from bookshelf item rows, enabling smooth and natural vertical thumb scrolling down the page on touchscreens while preserving horizontal book shelf panning.
+- **Harmonized Canonical Border Theme Style (`border-border`)** – Standardized all cards, danger zones, delete buttons, lock badges, and user pills across `/account` to use `border-border` (`#292524` in dark / `#e7e5e4` in light), eliminating harsh colored borders for visual elegance.
+- **Global Dark Mode Button Ring Offset & Themed Focus Styling (`Button.tsx`, `AccountPreferencesSection.tsx`, `AccountLibraryStats.tsx`)** – Replaced un-themed `#ffffff` white ring offset with `focus-visible:ring-offset-background` and `focus-visible:ring-primary`, eliminating bright white focus halos in dark mode and applying unified themed focus rings across theme buttons, sticky scroll options, and library metric cards.
+- **Zero Cumulative Layout Shift (CLS) on Modals (`Modal.tsx`)** – Removed direct `document.body.style.overflow` manipulation on dialog open/close, anchoring the page scroll track seamlessly with `scrollbar-gutter: stable` for 0 layout shift when triggering modals.
+- **Normalized Reader Sub-Header Metrics & Responsive Collapsing (`ReaderHeader.tsx`)** – Normalized the Gutenberg Archive Info icon to `w-3 h-3` (12px) to match BookOpen and Sparkles icons, preserving clean **Icon + Value** rendering on mobile (`[ ℹ️ #1342 ] • [ 📖 1/24 ] • [ ✨ 45% ]`) without vertical ribbon wrapping.
+- **Continuous Scroll Auto-Hide Sweetspot Calibration (`useScrollDirection.ts`)** – Calibrated continuous swipe threshold (120px) allowing short swipes to dock the filter bar at `top-0` while continuous reading gestures smoothly auto-hide both header and toolbar for full-screen catalog reading.
+- **Compact Responsive Sub-Header Ribbon & Locked 1-Line Height (`ReaderHeader.tsx`)** – Responsive text condensation on mobile viewports preventing vertical ribbon wrapping on narrow screens (< 640px).
+- **Locked Slim Header Toolbar & Zero Layout Shifts (`ReaderHeader.tsx`)** – Fixed book title typography at `text-sm` (14px/20px) and locked toolbar (`min-h-[3.5rem] py-2.5`) + ribbon (`py-1.5 text-[10px]`) dimensions, permanently eliminating responsive thickness shifts and font-size jumps across all viewport widths.
+- **Calibrated Flush Portaled Drawer Docking & Clearance** – Precision geometry (`top-[5.875rem]` and `max-h-[calc(100dvh-11.5rem)]`) across all 4 in-reader tool drawers (`ReaderTocDrawer`, `ReaderSearchDrawer`, `ReaderControls`, `ReaderLanguageDrawer`), providing a clean 3px hairline top separation beneath the header and ~20px bottom clearance above the sticky footer.
+- **Subtle Tactile Header Drop Shadow (`reader-themes.ts`)** – Softened top bar elevation token to `shadow-sm` across Light, Sepia, and Dark reading themes.
+- **Gutenberg Archive Modal Stacking Context Elevation** – Elevated `isInfoCardOpen` container to `z-[10001]`, ensuring pristine dialog and backdrop layering over the `z-[10000]` sticky reader header.
 - **Unified Portaled Reader Drawer Architecture & 4-Way Mutual Exclusivity (ADR-012)** – Standardized all in-reader tool dialogs (`ReaderTocDrawer`, `ReaderSearchDrawer`, `ReaderControls`, `ReaderLanguageDrawer`) as portaled components (`createPortal(..., document.body)`). Centralized visibility at the parent reader page level with strict 4-way mutual exclusivity (opening one closes the others, while re-clicking toggles closed).
 - **Elevated Reader Header Stacking & Non-Blocking Page Flips (`ReaderHeader.tsx`)** – Elevated header stacking context to `z-[10000]` above modal backdrops (`z-[9998]`), ensuring toolbar buttons remain fully clickable and active. Removed broad blocking overlays so page-turn zones and footer navigation remain completely interactive and responsive while tools are open.
 - **Physical Sliding Reader Toolbar with Traveling Pull Handle (`ReaderHeader.tsx`)** – Pin-docked mobile reader drawer to the right margin with physical `translateX` glide animation. Closed state displays only the 44px arrow button `[‹]`; opened state smoothly glides the handle to the left of the 6 tools and rotates into `[›]`.
@@ -74,7 +86,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
 - **Strict 0% Page 1 Reading Progress & Verified Accounts** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user accounts (`/account`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 66/66 test files passed, 444/444 tests passed with **92.0% line coverage** and **80.3% branch coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 69/69 test files passed, 476/476 tests passed with **92.26% line coverage** and **80.40% branch coverage** (`npm run verify`).
 
 ---
 
@@ -344,6 +356,131 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
 *(If no Supabase credentials are provided, Bookarium operates seamlessly in 100% offline-first mode using browser storage).*
 
+---
+
+## 🗄️ Supabase Cloud Database & Authentication Setup
+
+Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-device bookshelf synchronization, and reading progress tracking. Follow these steps to provision your database in under 2 minutes:
+
+### Step 1: Create a Free Supabase Project
+1. Go to [supabase.com](https://supabase.com/) and create a new project.
+2. Note your **Project URL** and **anon public API Key** from **Project Settings $\to$ API**.
+
+### Step 2: Run Database Schema Script
+1. In your Supabase Dashboard, open the **SQL Editor** from the left sidebar.
+2. Click **New Query** and copy the contents of [`supabase/schema.sql`](supabase/schema.sql):
+
+```sql
+-- 1. Profiles Table
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name TEXT,
+  preferred_theme TEXT DEFAULT 'light',
+  font_size INTEGER DEFAULT 18,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can delete their own profile" ON public.profiles FOR DELETE USING (auth.uid() = id);
+
+-- 2. Bookshelves Table (Master 'General' + Custom Shelves)
+CREATE TABLE IF NOT EXISTS public.bookshelves (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  is_default BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.bookshelves ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own bookshelves" ON public.bookshelves FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own bookshelves" ON public.bookshelves FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own bookshelves" ON public.bookshelves FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own bookshelves" ON public.bookshelves FOR DELETE USING (auth.uid() = user_id);
+
+-- 3. Bookshelf Items Table
+CREATE TABLE IF NOT EXISTS public.bookshelf_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bookshelf_id UUID NOT NULL REFERENCES public.bookshelves(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  book_id INTEGER NOT NULL,
+  book_title TEXT NOT NULL,
+  book_authors TEXT[] NOT NULL DEFAULT '{}',
+  cover_url TEXT,
+  added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(bookshelf_id, book_id)
+);
+ALTER TABLE public.bookshelf_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own bookshelf items" ON public.bookshelf_items FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own bookshelf items" ON public.bookshelf_items FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own bookshelf items" ON public.bookshelf_items FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own bookshelf items" ON public.bookshelf_items FOR DELETE USING (auth.uid() = user_id);
+
+-- 4. Reading Progress Table
+CREATE TABLE IF NOT EXISTS public.reading_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  book_id INTEGER NOT NULL,
+  current_chapter_index INTEGER NOT NULL DEFAULT 0,
+  progress_percent NUMERIC NOT NULL DEFAULT 0,
+  scroll_offset NUMERIC NOT NULL DEFAULT 0,
+  last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, book_id)
+);
+ALTER TABLE public.reading_progress ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own reading progress" ON public.reading_progress FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own reading progress" ON public.reading_progress FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own reading progress" ON public.reading_progress FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own reading progress" ON public.reading_progress FOR DELETE USING (auth.uid() = user_id);
+
+-- 5. Auto-Provisioning User Trigger (Profile + Default General Shelf)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, display_name, preferred_theme)
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'display_name', 'Reader'), 'light')
+  ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.bookshelves (user_id, name, is_default)
+  VALUES (NEW.id, 'General', true);
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 6. RPC Function: Delete Current User Account
+CREATE OR REPLACE FUNCTION public.delete_current_user()
+RETURNS VOID AS $$
+BEGIN
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+3. Click **Run** to execute the script. This provisions all tables, enables strict Row Level Security (RLS), registers automatic profile creation triggers, and installs the self-account deletion RPC.
+
+### Step 3: Configure Authentication Redirect URLs
+1. In your Supabase Dashboard, navigate to **Authentication $\to$ URL Configuration**.
+2. Set **Site URL** to:
+   - `http://localhost:3000` (for local development) or `https://your-app.vercel.app` (for production)
+3. Under **Redirect URLs**, add the following allowed callback endpoints:
+   - `http://localhost:3000/auth/callback`
+   - `http://localhost:3000/auth/confirm-deletion`
+   - `http://localhost:3000/account`
+   - `https://your-app.vercel.app/auth/callback`
+   - `https://your-app.vercel.app/auth/confirm-deletion`
+   - `https://your-app.vercel.app/account`
+
+---
+
 ### Installation & Local Development
 
 ```bash
@@ -397,6 +534,7 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 | `npm run dev:all` | Starts dev server, Vitest test watcher, and browser concurrently |
 | `npm run verify` | **Runs the full 7-Gateway Quality Engine** before commits |
 | `npm test` | Runs the full Vitest suite with V8 code coverage report |
+| `npm run test:fast` | Runs Vitest test suites without coverage calculation for rapid developer validation |
 | `npm run test:ui` | Launches Vitest interactive visual testing UI |
 | `npm run test:watch` | Runs Vitest in reactive watch mode for TDD |
 | `npm run typecheck` | Validates TypeScript types across all `.ts`/`.tsx` files |

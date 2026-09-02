@@ -19,7 +19,7 @@ export interface ReaderThemeConfig {
 export const READER_THEMES: Record<ReaderTheme, ReaderThemeConfig> = {
   light: {
     surface: 'bg-[#fcfbf9] text-[#1a1a1a]',
-    header: 'bg-[#fcfbf9] text-[#1a1a1a] border-stone-200 shadow-xs',
+    header: 'bg-[#fcfbf9] text-[#1a1a1a] border-stone-200 shadow-sm',
     footer: 'bg-[#fcfbf9] text-[#1a1a1a] border-stone-200 shadow-xs',
     pill: 'bg-stone-100 border-stone-200 text-stone-700',
     activePill: 'bg-white text-primary-600 shadow-xs font-bold',
@@ -34,7 +34,7 @@ export const READER_THEMES: Record<ReaderTheme, ReaderThemeConfig> = {
   },
   sepia: {
     surface: 'bg-[#2b1d16] text-[#fef6eb]',
-    header: 'bg-[#332219] text-[#fef6eb] border-[#462e22] shadow-xs',
+    header: 'bg-[#332219] text-[#fef6eb] border-[#462e22] shadow-sm',
     footer: 'bg-[#332219] text-[#fef6eb] border-[#462e22] shadow-xs',
     pill: 'bg-[#402a1d] border-[#462e22] text-[#e8d2be]',
     activePill: 'bg-[#f59e0b] text-[#2b1d16] shadow-xs font-bold',
@@ -49,7 +49,7 @@ export const READER_THEMES: Record<ReaderTheme, ReaderThemeConfig> = {
   },
   dark: {
     surface: 'bg-[#0e1117] text-[#f5f5f4]',
-    header: 'bg-[#161b26] text-[#f5f5f4] border-stone-800 shadow-xs',
+    header: 'bg-[#161b26] text-[#f5f5f4] border-stone-800 shadow-sm',
     footer: 'bg-[#161b26] text-[#f5f5f4] border-stone-800 shadow-xs',
     pill: 'bg-[#1c1917] border-stone-800 text-stone-300',
     activePill: 'bg-[#292524] text-primary-400 border-primary-500 shadow-xs font-bold',

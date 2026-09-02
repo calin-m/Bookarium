@@ -293,7 +293,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   };
 
   return (
-    <section className="relative overflow-hidden bg-muted lg:min-h-[calc(100vh-7.25rem)] flex flex-col justify-between pt-6 sm:pt-8 pb-6 sm:pb-8 border-b border-border transition-colors duration-200">
+    <section className="relative overflow-hidden bg-muted lg:min-h-[calc(100vh-7.25rem)] flex flex-col justify-between pt-6 sm:pt-8 pb-6 sm:pb-8 border-b border-border transition-colors duration-theme">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex-1 flex flex-col justify-between gap-6 sm:gap-8">
         
         {/* Booksaw Asymmetric Hero Split Layout */}

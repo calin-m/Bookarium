@@ -4,7 +4,7 @@ import { SITE_CONFIG } from '@/config/site-config';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="w-full border-t border-border bg-muted text-foreground pt-12 sm:pt-14 pb-6 sm:pb-8 transition-colors duration-200">
+    <footer className="w-full border-t border-border bg-muted text-foreground pt-12 sm:pt-14 pb-6 sm:pb-8 transition-colors duration-theme">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           

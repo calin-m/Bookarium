@@ -25,8 +25,8 @@ describe('ReaderHeader', () => {
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('by Jane Austen')).toBeInTheDocument();
-    expect(screen.getByText(/Section 6\/61/i)).toBeInTheDocument();
-    expect(screen.getByText(/45% Progress/i)).toBeInTheDocument();
+    expect(screen.getByText('6/61')).toBeInTheDocument();
+    expect(screen.getByText('45%')).toBeInTheDocument();
   });
 
   it('triggers onBack when back button is clicked', () => {
@@ -171,13 +171,13 @@ describe('ReaderHeader', () => {
 
     // Gutenberg Archive ID badge in sub-header
     expect(screen.getByRole('button', { name: /View Gutenberg Archive Volume Info/i })).toBeInTheDocument();
-    expect(screen.getByText(/Gutenberg #1342/i)).toBeInTheDocument();
+    expect(screen.getByText('#1342')).toBeInTheDocument();
 
     // Section indicator
-    expect(screen.getByText(/Section 5\/20/i)).toBeInTheDocument();
+    expect(screen.getByText('5/20')).toBeInTheDocument();
 
     // Progress indicator
-    expect(screen.getByText(/50% Progress/i)).toBeInTheDocument();
+    expect(screen.getByText('50%')).toBeInTheDocument();
   });
 
   it('renders integrated resume notice ribbon in sub-header and handles restart and dismiss', () => {

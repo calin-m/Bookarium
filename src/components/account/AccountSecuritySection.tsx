@@ -52,9 +52,9 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
   return (
     <>
       {/* Security & Password Card */}
-      <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-primary/10 text-primary border border-border">
+      <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6">
+        <div className="flex items-center gap-3 border-b border-border pb-4">
+          <div className="p-2 rounded-xl bg-primary/10 text-primary border border-border shrink-0">
             <Lock className="w-4 h-4" />
           </div>
           <div>
@@ -70,14 +70,14 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
         <form onSubmit={onUpdatePassword} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between min-h-[1.5rem]">
                 <label htmlFor="new-password" className="text-xs font-mono text-foreground font-bold">
                   New Password
                 </label>
                 <button
                   type="button"
                   onClick={onGeneratePassword}
-                  className="text-[11px] font-mono text-primary hover:underline flex items-center gap-1 cursor-pointer select-none"
+                  className="text-[11px] font-mono text-primary hover:underline flex items-center gap-1 cursor-pointer select-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded"
                 >
                   <KeyRound className="w-3 h-3" />
                   <span>Suggest Strong Password</span>
@@ -96,7 +96,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                 <button
                   type="button"
                   onClick={onToggleShowPassword}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded p-0.5"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -105,9 +105,11 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="confirm-password" className="text-xs font-mono text-foreground font-bold">
-                Confirm New Password
-              </label>
+              <div className="flex items-center justify-between min-h-[1.5rem]">
+                <label htmlFor="confirm-password" className="text-xs font-mono text-foreground font-bold">
+                  Confirm New Password
+                </label>
+              </div>
               <Input
                 id="confirm-password"
                 type={showPassword ? 'text' : 'password'}
@@ -122,7 +124,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
 
           {/* Password Generator Feedback Pill */}
           {copiedPassword && (
-            <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/30 flex items-center gap-2 text-xs font-mono text-primary animate-in fade-in duration-150">
+            <div className="p-2.5 rounded-lg bg-primary/10 border border-border flex items-center gap-2 text-xs font-mono text-primary animate-in fade-in duration-150">
               <Check className="w-3.5 h-3.5 shrink-0" />
               <span>Generated high-entropy password auto-filled and copied to clipboard!</span>
             </div>
@@ -135,7 +137,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                 <span className="text-muted-foreground">Password strength:</span>
                 <span className="font-bold text-foreground">{strength.label}</span>
               </div>
-              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden flex gap-1">
+              <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden flex gap-1">
                 <div className={`h-full flex-1 rounded-full transition-all duration-200 ${strength.score >= 1 ? strength.color : 'bg-transparent'}`} />
                 <div className={`h-full flex-1 rounded-full transition-all duration-200 ${strength.score >= 2 ? strength.color : 'bg-transparent'}`} />
                 <div className={`h-full flex-1 rounded-full transition-all duration-200 ${strength.score >= 3 ? strength.color : 'bg-transparent'}`} />
@@ -173,7 +175,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
       </div>
 
       {/* Account Session Actions Card */}
-      <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xs space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-4">
         <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
           Account Session
         </h2>
@@ -197,7 +199,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
       </div>
 
       {/* Danger Zone Card */}
-      <div className="bg-card border border-destructive/30 rounded-2xl p-6 sm:p-8 shadow-xs space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-4">
         <h2 className="text-sm font-mono uppercase tracking-wider text-destructive font-bold flex items-center gap-2">
           <AlertTriangle className="w-4 h-4" />
           <span>Danger Zone: Delete Account</span>
@@ -213,7 +215,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
             variant="outline"
             size="chip"
             onClick={onOpenDeleteModal}
-            className="border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0 font-mono text-xs"
+            className="border-border text-destructive hover:bg-destructive/10 shrink-0 font-mono text-xs"
             aria-label="Delete Account"
           >
             <Trash2 className="w-3.5 h-3.5" />

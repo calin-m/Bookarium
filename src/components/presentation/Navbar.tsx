@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon, LogOut, Settings } from 'lucide-react';
+import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon } from 'lucide-react';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -12,7 +12,7 @@ import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 
 export interface NavbarProps {
-  activeView?: 'catalog' | 'bookshelf' | 'likes';
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'account';
   onViewChange?: (view: 'catalog' | 'bookshelf' | 'likes') => void;
   isVisible?: boolean;
 }
@@ -23,11 +23,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   isVisible = true,
 }) => {
   const router = useRouter();
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { savedCount, likedCount, hasMounted } = useHydratedBookshelf();
   const theme = useThemeStore((s) => s.theme);
   const cycleTheme = useThemeStore((s) => s.cycleTheme);
-  const { user, profile, openAuthModal, signOut } = useAuthStore();
+  const { user, openAuthModal } = useAuthStore();
 
   const handleBrandClick = () => {
     onViewChange?.('catalog');
@@ -144,56 +143,26 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-hidden="true"
             />
           ) : user ? (
-            <div className="relative flex items-center gap-1.5 animate-in fade-in duration-150">
-              <button
-                type="button"
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="h-8 w-8 sm:w-auto px-0 sm:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border border-border bg-card hover:border-primary text-foreground transition-all cursor-pointer select-none active:scale-95 shadow-2xs"
-                aria-label="User Account Menu"
-              >
-                <UserIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span className="hidden sm:inline font-mono">Account</span>
-              </button>
-
-              {isUserMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl p-2 z-50 text-xs font-mono space-y-1 animate-in fade-in duration-150">
-                    <div className="px-3 py-2 border-b border-border/60 text-muted-foreground truncate">
-                      <p className="font-bold text-foreground truncate">{profile?.display_name || user.user_metadata?.display_name || 'Reader'}</p>
-                      <p className="text-[10px] opacity-80 truncate">{user.email}</p>
-                    </div>
-                    <Link
-                      href={ROUTES.ACCOUNT}
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:bg-muted transition-colors cursor-pointer text-left font-bold"
-                    >
-                      <Settings className="w-3.5 h-3.5 text-primary" />
-                      <span>Settings</span>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        signOut();
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer text-left font-bold"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <Link
+              href={ROUTES.ACCOUNT}
+              className={`h-8 w-8 sm:w-auto px-0 sm:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
+                activeView === 'account'
+                  ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
+                  : 'border-border bg-card hover:border-primary text-foreground'
+              }`}
+              aria-label="User Account"
+            >
+              <UserIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="hidden sm:inline font-mono">Account</span>
+            </Link>
           ) : (
             <Button
-              variant="outline"
+              variant={activeView === 'account' ? 'primary' : 'outline'}
               onClick={() => openAuthModal('sign_in')}
               aria-label="Sign In"
               className="h-8 w-8 sm:w-auto px-0 sm:px-3 inline-flex items-center justify-center gap-1.5 font-mono text-xs font-bold animate-in fade-in duration-150"
             >
-              <UserIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+              <UserIcon className={`w-3.5 h-3.5 shrink-0 ${activeView === 'account' ? 'text-primary-foreground' : 'text-primary'}`} />
               <span className="hidden sm:inline">Sign In</span>
             </Button>
           )}

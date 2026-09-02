@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useThemeStore, type AppTheme } from '@/stores/useThemeStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
 import { Button } from '@/components/ui/Button';
@@ -33,6 +34,7 @@ export default function AccountPage() {
   );
   const { theme, setTheme } = useThemeStore();
   const { stickyScrollEnabled, setStickyScrollEnabled } = usePreferencesStore();
+  const { isHeaderVisible } = useScrollDirection({ enabled: stickyScrollEnabled });
 
   const defaultName = profile?.display_name || user?.user_metadata?.display_name || '';
   const [customName, setCustomName] = useState<string | null>(null);
@@ -194,24 +196,26 @@ export default function AccountPage() {
     : 'Member';
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-200">
+    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
       <Navbar
+        activeView="account"
+        isVisible={isHeaderVisible}
         onViewChange={(view) => {
           router.push(ROUTES.VIEW(view));
         }}
       />
 
-      <main className="flex-1 w-full max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
+      <main className="flex-1 w-full max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">
           <Link
             href={ROUTES.HOME}
-            className="inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Library</span>
           </Link>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/10 text-primary border border-border">
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-primary/10 text-primary border border-border">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Bookarium Account</span>
           </div>
@@ -219,12 +223,12 @@ export default function AccountPage() {
 
         {/* Guest View Prompt */}
         {!isLoading && !user && (
-          <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4 shadow-xs">
-            <div className="w-12 h-12 rounded-full bg-primary/10 border border-border text-primary flex items-center justify-center mx-auto">
-              <UserIcon className="w-6 h-6" />
+          <div className="max-w-xl mx-auto bg-card border border-border rounded-2xl p-8 sm:p-12 text-center space-y-4 shadow-booksaw">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-border text-primary flex items-center justify-center mx-auto shadow-inner">
+              <UserIcon className="w-7 h-7" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-xl font-serif font-bold">Guest Reader</h2>
+              <h2 className="text-2xl font-serif font-bold">Guest Reader</h2>
               <p className="text-xs text-muted-foreground font-sans max-w-sm mx-auto">
                 Sign in or create an account to customize your profile, sync bookshelves to the cloud, and save your reading preferences across devices.
               </p>
@@ -247,58 +251,64 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* Authenticated View */}
+        {/* Authenticated View: 2-Column Responsive Dashboard */}
         {user && (
-          <div className="space-y-6">
-            {/* Account Hero Card */}
-            <AccountIdentityCard
-              user={user}
-              profile={profile}
-              formattedDate={formattedDate}
-              displayName={displayName}
-              onDisplayNameChange={setCustomName}
-              onSaveProfile={handleSaveProfile}
-              isSaving={isSaving}
-              saveSuccess={saveSuccess}
-              saveError={saveError}
-            />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column (Reader Dossier & Library Stats) */}
+            <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
+              {/* Account Hero Card */}
+              <AccountIdentityCard
+                user={user}
+                profile={profile}
+                formattedDate={formattedDate}
+                displayName={displayName}
+                onDisplayNameChange={setCustomName}
+                onSaveProfile={handleSaveProfile}
+                isSaving={isSaving}
+                saveSuccess={saveSuccess}
+                saveError={saveError}
+              />
 
-            {/* Reading & Navigation Preferences Card */}
-            <AccountPreferencesSection
-              theme={theme}
-              onThemeChange={handleThemeChange}
-              stickyScrollEnabled={stickyScrollEnabled}
-              onStickyScrollChange={setStickyScrollEnabled}
-            />
+              {/* Library Statistics Card */}
+              <AccountLibraryStats
+                savedCount={savedCount}
+                likedCount={likedCount}
+                customShelvesCount={customShelvesCount}
+              />
+            </div>
 
-            {/* Security & Password Card */}
-            <AccountSecuritySection
-              newPassword={newPassword}
-              confirmPassword={confirmPassword}
-              showPassword={showPassword}
-              copiedPassword={copiedPassword}
-              isUpdatingPassword={isUpdatingPassword}
-              passwordSuccess={passwordSuccess}
-              passwordError={passwordError}
-              strength={strength}
-              onNewPasswordChange={setNewPassword}
-              onConfirmPasswordChange={setConfirmPassword}
-              onToggleShowPassword={() => setShowPassword(!showPassword)}
-              onGeneratePassword={generateStrongPassword}
-              onUpdatePassword={handleUpdatePassword}
-              onSignOut={async () => {
-                await signOut();
-                router.push(ROUTES.HOME);
-              }}
-              onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
-            />
+            {/* Right Column (Reading Preferences & Security) */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Reading & Navigation Preferences Card */}
+              <AccountPreferencesSection
+                theme={theme}
+                onThemeChange={handleThemeChange}
+                stickyScrollEnabled={stickyScrollEnabled}
+                onStickyScrollChange={setStickyScrollEnabled}
+              />
 
-            {/* Library Statistics Card */}
-            <AccountLibraryStats
-              savedCount={savedCount}
-              likedCount={likedCount}
-              customShelvesCount={customShelvesCount}
-            />
+              {/* Security & Password Card */}
+              <AccountSecuritySection
+                newPassword={newPassword}
+                confirmPassword={confirmPassword}
+                showPassword={showPassword}
+                copiedPassword={copiedPassword}
+                isUpdatingPassword={isUpdatingPassword}
+                passwordSuccess={passwordSuccess}
+                passwordError={passwordError}
+                strength={strength}
+                onNewPasswordChange={setNewPassword}
+                onConfirmPasswordChange={setConfirmPassword}
+                onToggleShowPassword={() => setShowPassword(!showPassword)}
+                onGeneratePassword={generateStrongPassword}
+                onUpdatePassword={handleUpdatePassword}
+                onSignOut={async () => {
+                  await signOut();
+                  router.push(ROUTES.HOME);
+                }}
+                onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
+              />
+            </div>
 
             {/* Delete Account Confirmation Modal */}
             <AccountDeleteModal

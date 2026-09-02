@@ -6,6 +6,7 @@ import { useBookContent } from '@/hooks/queries/useBookContent';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useBookTranslations } from '@/hooks/queries/useBookTranslations';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useThemeStore } from '@/stores/useThemeStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
   parseGutenbergChapters,
@@ -64,6 +65,17 @@ export default function BookReaderPage() {
   const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
   const [resumeNotice, setResumeNotice] = useState<{ chapterTitle: string; page: number } | null>(null);
   const hasRestoredPositionRef = React.useRef(false);
+
+  // Synchronize global application theme with reader theme on mount
+  useEffect(() => {
+    if (hasMounted) {
+      const globalTheme = useThemeStore.getState().theme;
+      const currentReaderTheme = useReaderStore.getState().theme;
+      if (globalTheme && globalTheme !== currentReaderTheme) {
+        useReaderStore.getState().setTheme(globalTheme);
+      }
+    }
+  }, [hasMounted]);
 
   // Keyboard shortcut: Ctrl+F / Cmd+F or '/' to toggle search
   useEffect(() => {
@@ -259,7 +271,7 @@ export default function BookReaderPage() {
   const activeTheme = getReaderTheme(theme);
 
   return (
-    <div className={`h-[100dvh] flex flex-col overflow-hidden transition-colors duration-200 ${activeTheme.surface}`}>
+    <div className={`h-[100dvh] flex flex-col overflow-hidden transition-colors duration-theme ${activeTheme.surface}`}>
       
       {/* Top Navigation & Toolbar */}
       <ReaderHeader

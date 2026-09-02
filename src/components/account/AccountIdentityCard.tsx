@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { User } from '@supabase/supabase-js';
-import { User as UserIcon, Mail, Calendar, ShieldCheck, Check } from 'lucide-react';
+import { Mail, Calendar, ShieldCheck, Check } from 'lucide-react';
 import type { Profile } from '@/types/database.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -31,32 +31,27 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
   saveError,
 }) => {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+    <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-border text-primary flex items-center justify-center shadow-inner">
-            <UserIcon className="w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-serif font-bold text-foreground">
-              {profile?.display_name || user?.user_metadata?.display_name || 'Reader'}
-            </h1>
-            <div className="flex items-center gap-3 text-xs font-mono text-muted-foreground mt-0.5">
-              <span className="flex items-center gap-1">
-                <Mail className="w-3.5 h-3.5" />
-                {user.email}
-              </span>
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                {formattedDate}
-              </span>
-            </div>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-serif font-bold text-foreground truncate">
+            {profile?.display_name || user?.user_metadata?.display_name || 'Reader'}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-muted-foreground mt-1">
+            <span className="flex items-center gap-1 truncate max-w-[200px]" title={user.email}>
+              <Mail className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{user.email}</span>
+            </span>
+            <span className="flex items-center gap-1 shrink-0">
+              <Calendar className="w-3.5 h-3.5 shrink-0" />
+              <span>{formattedDate}</span>
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-success/10 text-success border border-border">
-            <ShieldCheck className="w-3.5 h-3.5" />
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-border">
+            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
             <span>Verified Reader</span>
           </div>
         </div>

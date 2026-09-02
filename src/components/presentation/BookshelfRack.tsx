@@ -336,7 +336,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
             <div className="relative w-full rounded-2xl border border-border shelf-ambient-niche shadow-md overflow-hidden sm:overflow-visible">
               
               {/* Shelf Items Row */}
-              <div className="flex items-end justify-center gap-2 sm:gap-3.5 overflow-x-auto sm:overflow-visible scrollbar-none pt-10 px-4 sm:px-8 touch-pan-x snap-x relative z-10">
+              <div className="flex items-end justify-center gap-2 sm:gap-3.5 overflow-x-auto sm:overflow-visible scrollbar-none pt-10 px-4 sm:px-8 snap-x relative z-10">
                 {shelfBooks.map((book, bookIndex) => (
                   <BookshelfSpine
                     key={book.id}

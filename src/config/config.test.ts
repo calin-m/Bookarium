@@ -103,8 +103,11 @@ describe('src/config configuration modules', () => {
       expect(READER_THEMES.light.surface).toContain('bg-[#fcfbf9]');
       expect(READER_THEMES.sepia.surface).toContain('bg-[#2b1d16]');
       expect(READER_THEMES.dark.surface).toContain('bg-[#0e1117]');
+      expect(READER_THEMES.light.header).toContain('shadow-sm');
       expect(READER_THEMES.sepia.header).toContain('bg-[#332219]');
+      expect(READER_THEMES.sepia.header).toContain('shadow-sm');
       expect(READER_THEMES.dark.header).toContain('bg-[#161b26]');
+      expect(READER_THEMES.dark.header).toContain('shadow-sm');
     });
 
     it('getReaderTheme returns exact theme or falls back to light', () => {

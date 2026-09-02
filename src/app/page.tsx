@@ -173,7 +173,7 @@ function HomeContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-200">
+    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
       <Navbar activeView={activeView} onViewChange={setActiveView} isVisible={isHeaderVisible} />
 
       <main className={`flex-1 transition-all duration-300 ${isFilterDrawerOpen ? 'lg:pl-96' : 'lg:pl-0'}`}>
@@ -370,7 +370,7 @@ function HomeContent() {
 
         {/* Booksaw Editorial Quote / Best Classic Section */}
         {activeView === 'catalog' && (
-          <section className="bg-muted border-t border-border py-16 transition-colors">
+          <section className="bg-muted border-t border-border py-16 transition-colors duration-theme">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-card rounded-2xl p-8 sm:p-12 border border-border shadow-booksaw">
                 <div className="md:col-span-4 flex justify-center">

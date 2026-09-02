@@ -199,7 +199,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   return (
     <main
       ref={mainRef}
-      className={`relative flex-1 overflow-y-scroll transition-colors duration-200 select-text ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
+      className={`relative flex-1 overflow-y-scroll transition-colors duration-theme select-text ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
       role="main"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

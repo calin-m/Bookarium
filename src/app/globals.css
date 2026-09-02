@@ -82,9 +82,15 @@
   }
 
   body {
-    @apply bg-background text-foreground transition-colors duration-200 antialiased selection:bg-orange-100 dark:selection:bg-orange-950;
+    @apply bg-background text-foreground transition-colors duration-theme antialiased selection:bg-amber-200 dark:selection:bg-amber-950/60;
     font-feature-settings: "rlig" 1, "calt" 1;
     scrollbar-gutter: stable;
+  }
+
+  .sepia ::selection,
+  .sepia::selection {
+    background-color: #4a3022;
+    color: #fef6eb;
   }
 }
 
@@ -425,7 +431,7 @@
   overflow-y: scroll;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: #b59e7e #e8dcc4;
+  scrollbar-color: #523625 #2b1d16;
 }
 .reader-surface-sepia::-webkit-scrollbar,
 .reader-surface-sepia *::-webkit-scrollbar {
@@ -434,18 +440,18 @@
 }
 .reader-surface-sepia::-webkit-scrollbar-track,
 .reader-surface-sepia *::-webkit-scrollbar-track {
-  background: #e8dcc4;
+  background: #2b1d16;
   border-radius: 6px;
 }
 .reader-surface-sepia::-webkit-scrollbar-thumb,
 .reader-surface-sepia *::-webkit-scrollbar-thumb {
-  background: #b59e7e;
+  background: #523625;
   border-radius: 6px;
-  border: 2px solid #e8dcc4;
+  border: 2px solid #2b1d16;
 }
 .reader-surface-sepia::-webkit-scrollbar-thumb:hover,
 .reader-surface-sepia *::-webkit-scrollbar-thumb:hover {
-  background: #967f60;
+  background: #664532;
 }
 
 .reader-surface-dark {
@@ -558,6 +564,12 @@
   .book-turning-leaf {
     animation: none !important;
     transform: none !important;
+  }
+}
+
+@layer utilities {
+  .theme-transition {
+    @apply transition-colors duration-theme;
   }
 }
 

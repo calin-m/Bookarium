@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Navbar } from './Navbar';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useThemeStore } from '@/stores/useThemeStore';
@@ -73,7 +72,7 @@ describe('Navbar component', () => {
     expect(signInBtn).toBeInTheDocument();
   });
 
-  it('renders user avatar when authenticated and manages dropdown menu and sign out', async () => {
+  it('renders direct Account Link when user is authenticated', async () => {
     const { useAuthStore } = await import('@/stores/useAuthStore');
     useAuthStore.setState({
       user: { id: 'u1', email: 'reader@bookarium.test' } as any,
@@ -81,18 +80,10 @@ describe('Navbar component', () => {
     });
 
     render(<Navbar activeView="catalog" />);
-    const userBtn = screen.getByLabelText('User Account Menu');
-    expect(userBtn).toBeInTheDocument();
+    const userLink = screen.getByLabelText('User Account');
+    expect(userLink).toBeInTheDocument();
+    expect(userLink).toHaveAttribute('href', '/account');
     expect(screen.getByText('Account')).toBeInTheDocument();
-
-    // Open dropdown
-    fireEvent.click(userBtn);
-    expect(screen.getByText('Test Reader')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
-    expect(screen.getByText('Sign Out')).toBeInTheDocument();
-
-    // Click Sign Out
-    fireEvent.click(screen.getByText('Sign Out'));
   });
 
   it('handles keyboard Enter and Space on brand logo to navigate back to catalog', () => {
@@ -107,44 +98,6 @@ describe('Navbar component', () => {
     expect(handleViewChange).toHaveBeenCalledWith('catalog');
   });
 
-  it('opens and dismisses user dropdown when clicking outside or clicking profile link', async () => {
-    const { useAuthStore } = await import('@/stores/useAuthStore');
-    useAuthStore.setState({
-      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
-      profile: { display_name: 'Test Reader' } as any,
-    });
-
-    render(<Navbar activeView="catalog" />);
-    const userBtn = screen.getByLabelText('User Account Menu');
-
-    // Open dropdown
-    fireEvent.click(userBtn);
-    expect(screen.getByText('Settings')).toBeInTheDocument();
-
-    // Click backdrop to dismiss
-    const profileLink = screen.getByText('Settings');
-    fireEvent.click(profileLink);
-    expect(screen.queryByText('Settings')).not.toBeInTheDocument();
-  });
-
-  it('falls back to Reader when profile display_name is not set without leaking email', async () => {
-    const { useAuthStore } = await import('@/stores/useAuthStore');
-    useAuthStore.setState({
-      user: { id: 'u1', email: 'secret.user@bookarium.test' } as any,
-      profile: null,
-    });
-
-    render(<Navbar activeView="catalog" />);
-    const userBtn = screen.getByLabelText('User Account Menu');
-    expect(userBtn).toBeInTheDocument();
-    expect(screen.getByText('Account')).toBeInTheDocument();
-
-    // In dropdown header
-    fireEvent.click(userBtn);
-    expect(screen.queryByText('secret.user')).not.toBeInTheDocument();
-    expect(screen.getByText('Reader')).toBeInTheDocument();
-  });
-
   it('applies -translate-y-full when isVisible is false', () => {
     const { container } = render(<Navbar activeView="catalog" isVisible={false} />);
     const header = container.querySelector('header');
@@ -157,4 +110,30 @@ describe('Navbar component', () => {
     const header = container.querySelector('header');
     expect(header).toHaveClass('translate-y-0');
   });
+
+  it('renders active account button styling when activeView is account', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { display_name: 'Test Reader' } as any,
+    });
+
+    render(<Navbar activeView="account" />);
+    const userLink = screen.getByLabelText('User Account');
+    expect(userLink).toHaveClass('border-primary');
+    expect(userLink).toHaveClass('text-primary');
+  });
+
+  it('renders active Sign In button styling for guests when activeView is account', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    useAuthStore.setState({
+      user: null,
+      profile: null,
+    });
+
+    render(<Navbar activeView="account" />);
+    const signInBtn = screen.getByRole('button', { name: /Sign In/i });
+    expect(signInBtn).toHaveClass('bg-primary');
+  });
 });
+

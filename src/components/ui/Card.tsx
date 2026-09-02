@@ -10,7 +10,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     const variants = {
       default: 'bg-card text-card-foreground border border-border shadow-xs',
       glass: 'bg-card border border-border shadow-md text-foreground',
-      sepia: 'bg-sepia-surface border border-sepia-border text-sepia-text shadow-xs',
+      sepia: 'bg-[#3c281e] border border-[#462e22] text-[#fef6eb] shadow-xs',
       outline: 'bg-transparent border border-border text-foreground',
     };
 

@@ -126,6 +126,9 @@ const config: Config = {
         'accordion-up': 'accordion-up 0.2s ease-out',
         'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
+      transitionDuration: {
+        theme: '200ms',
+      },
     },
   },
   plugins: [],

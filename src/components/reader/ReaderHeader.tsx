@@ -138,10 +138,10 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   return (
     <>
       <header
-        className={`sticky top-0 z-[10000] shrink-0 border-b transition-colors duration-200 ${activeTheme.header}`}
+        className={`sticky top-0 z-[10000] shrink-0 border-b transition-colors duration-theme ${activeTheme.header}`}
       >
         {/* Main Header Bar: Title, Author, Navigation & Global Controls */}
-        <div className="w-full px-4 sm:px-6 md:px-8 py-3 sm:py-3.5 min-h-[3.75rem] sm:min-h-[4rem] flex items-center justify-between gap-3 sm:gap-4 relative">
+        <div className="w-full px-4 sm:px-6 md:px-8 py-2.5 min-h-[3.5rem] flex items-center justify-between gap-3 sm:gap-4 relative">
           
           {/* Left: Back Button & Book Title / Author with Subtle Trailing Fade */}
           <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
@@ -156,7 +156,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
             <div className="relative min-w-0 flex-1 flex flex-col justify-center overflow-hidden select-text pr-2 [mask-image:linear-gradient(to_right,black_calc(100%-1.25rem),transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,black_calc(100%-1.25rem),transparent_100%)]">
               <h1
-                className="text-sm sm:text-base font-serif font-bold truncate text-foreground leading-tight select-text"
+                className="text-sm font-serif font-bold truncate text-foreground leading-tight select-text"
                 title={displayTitle}
               >
                 {displayTitle}
@@ -453,7 +453,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             role="status"
             aria-live="polite"
             data-testid="resume-notice"
-            className="w-full px-4 sm:px-6 md:px-8 py-2 border-t border-primary-500/30 flex items-center justify-between gap-3 text-xs font-mono bg-primary-500/10 text-foreground animate-in fade-in slide-in-from-top-1 duration-200"
+            className="w-full px-4 sm:px-6 md:px-8 py-1.5 border-t border-primary-500/30 flex items-center justify-between gap-3 text-xs font-mono bg-primary-500/10 text-foreground animate-in fade-in slide-in-from-top-1 duration-200"
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse shrink-0" />
@@ -484,13 +484,13 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             </div>
           </div>
         ) : (
-          <div className={`w-full px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 border-t ${activeTheme.border} flex items-center justify-center text-[10px] sm:text-xs font-mono transition-colors duration-200 ${activeTheme.header}`}>
-            <div className="flex items-center justify-center gap-2 sm:gap-2.5 min-w-0 flex-wrap">
+          <div className={`w-full px-4 sm:px-6 md:px-8 py-1.5 border-t ${activeTheme.border} flex items-center justify-center text-[10px] font-mono transition-colors duration-theme ${activeTheme.header}`}>
+            <div className="flex items-center justify-center gap-2 min-w-0 flex-nowrap whitespace-nowrap">
               {bookId && (
                 <button
                   type="button"
                   onClick={() => setIsInfoCardOpen(true)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold shadow-xs transition-all cursor-pointer select-none active:scale-95 shrink-0 ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold shadow-xs transition-all cursor-pointer select-none active:scale-95 shrink-0 ${
                     theme === 'sepia'
                       ? 'border border-amber-500/30 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50'
                       : 'border border-primary-500/30 dark:border-primary-500/40 text-primary-600 dark:text-primary-400 bg-primary-500/10 hover:bg-primary-500/20 hover:border-primary-500/60'
@@ -498,8 +498,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                   title="View Gutenberg Public Domain Archive Information"
                   aria-label="View Gutenberg Archive Volume Info"
                 >
-                  <Info className="w-2.5 h-2.5 opacity-80 shrink-0" />
-                  <span>Gutenberg #{bookId}</span>
+                  <Info className="w-3 h-3 opacity-80 shrink-0" />
+                  <span className="hidden sm:inline">Gutenberg </span>
+                  <span>#{bookId}</span>
                 </button>
               )}
 
@@ -507,24 +508,24 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
               {/* Section Micro-Pill */}
               <div
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-mono shrink-0 ${activeTheme.pill}`}
                 title={`Current Section: Chapter ${currentChapterIndex + 1} of ${totalChapters}`}
               >
-                <BookOpen className="w-3 h-3 opacity-75" />
-                <span>
-                  Section {currentChapterIndex + 1}/{totalChapters}
-                </span>
+                <BookOpen className="w-3 h-3 opacity-75 shrink-0" />
+                <span className="hidden sm:inline">Section </span>
+                <span>{currentChapterIndex + 1}/{totalChapters}</span>
               </div>
 
               <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
 
               {/* Progress Micro-Pill */}
               <div
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] sm:text-[11px] font-mono shrink-0 ${activeTheme.pill}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-mono shrink-0 ${activeTheme.pill}`}
                 title={`Overall Volume Progress: ${Math.round(progress)}%`}
               >
-                <Sparkles className={`w-3 h-3 ${theme === 'sepia' ? 'text-amber-500' : 'text-primary-500'}`} />
-                <span>{Math.round(progress)}% Progress</span>
+                <Sparkles className={`w-3 h-3 shrink-0 ${theme === 'sepia' ? 'text-amber-500' : 'text-primary-500'}`} />
+                <span>{Math.round(progress)}%</span>
+                <span className="hidden sm:inline"> Progress</span>
               </div>
             </div>
           </div>
@@ -535,7 +536,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
       <AnimatePresence>
         {isInfoCardOpen && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[10001] flex items-center justify-center p-4"
             onClick={() => setIsInfoCardOpen(false)}
           >
             {/* Fluid Backdrop */}

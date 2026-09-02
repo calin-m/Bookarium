@@ -20,7 +20,7 @@ export const Badge: React.FC<BadgeProps> = ({
     secondary: 'bg-muted text-foreground border border-border',
     outline: 'border border-border text-foreground',
     success: 'bg-success/10 text-success border border-success/30',
-    sepia: 'bg-sepia-surface text-sepia-text border border-sepia-border',
+    sepia: 'bg-[#402a1d] text-[#fef6eb] border border-[#462e22]',
   };
 
   const sizes = {

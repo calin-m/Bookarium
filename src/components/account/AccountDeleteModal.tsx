@@ -34,7 +34,7 @@ export const AccountDeleteModal: React.FC<AccountDeleteModalProps> = ({
       <div className="p-6 space-y-5" data-testid="delete-account-dialog">
         {deletionEmailSent ? (
           <div className="space-y-4 text-center py-2">
-            <div className="w-12 h-12 rounded-full bg-destructive/10 border border-destructive/30 text-destructive flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 border border-border text-destructive flex items-center justify-center mx-auto">
               <Mail className="w-6 h-6" />
             </div>
             <div className="space-y-1.5">
