@@ -92,6 +92,9 @@ describe('useReaderStore', () => {
       lastReadAt: new Date().toISOString(),
     };
 
+    useReaderStore.getState().saveReadingPosition(bookId, position);
+    expect(useReaderStore.getState().getReadingPosition(bookId)).toEqual(position);
+
     useReaderStore.getState().clearReadingPosition(bookId);
     expect(useReaderStore.getState().getReadingPosition(bookId)).toBeNull();
   });

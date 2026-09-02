@@ -26,14 +26,26 @@ import { ROUTES } from '@/config/routes';
 
 export default function AccountPage() {
   const router = useRouter();
-  const { user, profile, isLoading, updateProfile, updatePassword, requestAccountDeletion, signOut, openAuthModal } = useAuthStore();
+  const { user, profile, isLoading, updateProfile, updatePassword, requestAccountDeletion, signOut, openAuthModal, resendVerificationEmail } = useAuthStore();
   const { savedCount, likedCount, cloudBookshelves } = useHydratedBookshelf();
   const customShelvesCount = useMemo(
     () => cloudBookshelves.filter((s) => !s.is_default).length,
     [cloudBookshelves]
   );
   const { theme, setTheme } = useThemeStore();
-  const { stickyScrollEnabled, setStickyScrollEnabled } = usePreferencesStore();
+  const {
+    stickyScrollEnabled,
+    setStickyScrollEnabled,
+    speechRate,
+    setSpeechRate,
+    speechVoiceURI,
+    setSpeechVoiceURI,
+    speechAutoPageAdvance,
+    setSpeechAutoPageAdvance,
+    speechHighlightEnabled,
+    setSpeechHighlightEnabled,
+    resetSpeechPreferences,
+  } = usePreferencesStore();
   const { isHeaderVisible } = useScrollDirection({ enabled: stickyScrollEnabled });
 
   const defaultName = profile?.display_name || user?.user_metadata?.display_name || '';
@@ -43,6 +55,43 @@ export default function AccountPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Email verification state
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Verification cooldown effect
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  const handleResendVerification = async () => {
+    if (!user?.email || isResendingVerification || resendCooldown > 0) return;
+    setIsResendingVerification(true);
+    setResendError(null);
+    setResendSuccess(false);
+
+    try {
+      const { error } = await resendVerificationEmail(user.email);
+      if (error) {
+        setResendError(error.message);
+      } else {
+        setResendSuccess(true);
+        setResendCooldown(60);
+        setTimeout(() => setResendSuccess(false), 5000);
+      }
+    } catch {
+      setResendError('Failed to resend verification email. Please try again later.');
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
 
   // Security & Password state
   const [newPassword, setNewPassword] = useState('');
@@ -267,6 +316,11 @@ export default function AccountPage() {
                 isSaving={isSaving}
                 saveSuccess={saveSuccess}
                 saveError={saveError}
+                onResendVerification={handleResendVerification}
+                isResendingVerification={isResendingVerification}
+                resendSuccess={resendSuccess}
+                resendError={resendError}
+                resendCooldown={resendCooldown}
               />
 
               {/* Library Statistics Card */}
@@ -285,6 +339,15 @@ export default function AccountPage() {
                 onThemeChange={handleThemeChange}
                 stickyScrollEnabled={stickyScrollEnabled}
                 onStickyScrollChange={setStickyScrollEnabled}
+                speechRate={speechRate}
+                onSpeechRateChange={setSpeechRate}
+                speechVoiceURI={speechVoiceURI}
+                onSpeechVoiceChange={setSpeechVoiceURI}
+                speechAutoPageAdvance={speechAutoPageAdvance}
+                onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
+                speechHighlightEnabled={speechHighlightEnabled}
+                onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
+                onResetSpeechPreferences={resetSpeechPreferences}
               />
 
               {/* Security & Password Card */}

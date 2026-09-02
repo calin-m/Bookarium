@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   BookOpen,
   ChevronLeft,
-  ChevronRight,
   ExternalLink,
   Globe,
   Info,
@@ -21,6 +20,7 @@ import {
   Check,
   X,
   Share2,
+  Headphones,
 } from 'lucide-react';
 import { useReaderStore, type ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
@@ -49,6 +49,8 @@ export interface ReaderHeaderProps {
   onToggleControls: () => void;
   isTranslationsOpen?: boolean;
   onToggleTranslations?: () => void;
+  isSpeechOpen?: boolean;
+  onToggleSpeech?: () => void;
   theme?: ReaderTheme;
   totalChapters?: number;
   currentChapterIndex?: number;
@@ -75,6 +77,8 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   onToggleControls,
   isTranslationsOpen = false,
   onToggleTranslations,
+  isSpeechOpen = false,
+  onToggleSpeech,
   theme = 'light',
   totalChapters = 1,
   currentChapterIndex = 0,
@@ -205,6 +209,23 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               >
                 <Search className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Search</span>
+              </button>
+            )}
+
+            {/* Read Aloud Narration Trigger */}
+            {onToggleSpeech && (
+              <button
+                type="button"
+                onClick={onToggleSpeech}
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
+                  isSpeechOpen ? activeTheme.activePill : activeTheme.button
+                }`}
+                aria-label="Read Aloud Narration"
+                aria-expanded={isSpeechOpen}
+                title="Listen to book with Read Aloud text-to-speech"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Listen</span>
               </button>
             )}
 
@@ -362,6 +383,22 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                   aria-expanded={isSearchOpen}
                 >
                   <Search className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* 2.5 Read Aloud Narration button */}
+              {onToggleSpeech && (
+                <button
+                  type="button"
+                  onClick={onToggleSpeech}
+                  className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 ${
+                    isSpeechOpen ? activeTheme.activePill : activeTheme.button
+                  }`}
+                  aria-label="Read Aloud Narration"
+                  aria-expanded={isSpeechOpen}
+                  title="Listen to book with Read Aloud text-to-speech"
+                >
+                  <Headphones className="w-4 h-4" />
                 </button>
               )}
 

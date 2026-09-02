@@ -350,5 +350,27 @@ describe('AccountPage', () => {
     fireEvent.click(backToTopBtn);
     expect(scrollToMock).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
   });
+
+  it('handles resending email verification on unverified account', async () => {
+    const mockResendVerificationEmail = vi.fn().mockResolvedValue({ error: null });
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'unverified@bookarium.test', email_confirmed_at: null } as any,
+      profile: { id: 'u1', display_name: 'Unconfirmed Reader' } as any,
+      isLoading: false,
+      resendVerificationEmail: mockResendVerificationEmail,
+    });
+
+    render(<AccountPage />);
+
+    expect(screen.getByText('Email Unverified')).toBeInTheDocument();
+    const resendBtn = screen.getByRole('button', { name: 'Resend Verification Link' });
+    fireEvent.click(resendBtn);
+
+    await waitFor(() => {
+      expect(mockResendVerificationEmail).toHaveBeenCalledWith('unverified@bookarium.test');
+      expect(screen.getByText(/Verification link sent! Check your inbox./i)).toBeInTheDocument();
+    });
+  });
 });
 

@@ -9,8 +9,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-75%20Suites%20%7C%20497%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.2%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-81%20Suites%20%7C%20568%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.7%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -37,6 +37,10 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ## 🛠️ Latest Improvements (v1.7.4)
 
+- **Dynamic On-Demand Translation & Dual-Tier Language Hub (`/api/translate`, `usePageTranslation.ts`, `ReaderLanguageDrawer.tsx`)** – Zero-key Google Neural Machine Translation proxy with offline page-level caching, 18 popular language quick-select chips, 40+ language catalog, Bilingual Parallel reading mode with original sentence subtitles, and dynamic native neural voice narration synchronization with Read-Aloud.
+- **Email Verification & Resend Flow (`AccountIdentityCard.tsx`, `AuthModal.tsx`, `useAuthStore.ts`)** – Dynamic reader status inspecting `user.email_confirmed_at` to render `🛡️ Verified Reader` or `⚠️ Email Unverified` badges, an interactive resend banner on `/account` with 60-second cooldown timer, and post-signup/sign-in resend buttons in `AuthModal`.
+- **Idempotent Supabase Database DDL (`supabase/schema.sql`)** – Added `DROP POLICY IF EXISTS` guards to all Row Level Security policies, allowing the SQL migration script to be safely re-run multiple times in the Supabase SQL editor without error or risk of data loss.
+- **Native Web Speech Text-to-Speech Read-Aloud (`useReaderSpeech.ts`, `ReaderSpeechBar.tsx`)** – Offline-first, zero-cost audio narration engine using standard `window.speechSynthesis`. Features sentence-level segmentation (bypassing Chromium's 15-second speech freeze bug), natural neural voice prioritization, synchronized visual reading highlights on `ReaderSurface`, speed presets (0.85x–2.0x), and Media Session lock screen/Bluetooth headphone controls.
 - **Canonical Domain Model Architecture (`src/types/book.types.ts`)** – Normalized single-source-of-truth domain models (`GutendexBook`, `Author`, `GutendexResponse`) across all presentation components, stores, and API handlers.
 - **Reader Drawer Shell Compound Primitive (`ReaderDrawerShell.tsx`)** – Abstracted portaling, backdrop, scale/opacity transitions, header clearance, and Escape key handling across all 4 reader tool drawers (`ReaderTocDrawer`, `ReaderSearchDrawer`, `ReaderControls`, `ReaderLanguageDrawer`).
 - **Headless Reader Gesture & State Isolation (`useReaderGestures.ts`, `useReaderDrawers.ts`)** – Extracted pinch-to-zoom font scaling, horizontal swipe navigation, and 4-way mutual drawer exclusivity into test-isolated headless hooks with 100% co-located coverage.
@@ -388,9 +392,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can delete their own profile" ON public.profiles;
 CREATE POLICY "Users can delete their own profile" ON public.profiles FOR DELETE USING (auth.uid() = id);
 
 -- 2. Bookshelves Table (Master 'General' + Custom Shelves)
@@ -403,9 +411,13 @@ CREATE TABLE IF NOT EXISTS public.bookshelves (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ALTER TABLE public.bookshelves ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can view their own bookshelves" ON public.bookshelves FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can insert their own bookshelves" ON public.bookshelves FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can update their own bookshelves" ON public.bookshelves FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can delete their own bookshelves" ON public.bookshelves FOR DELETE USING (auth.uid() = user_id);
 
 -- 3. Bookshelf Items Table
@@ -421,9 +433,13 @@ CREATE TABLE IF NOT EXISTS public.bookshelf_items (
   UNIQUE(bookshelf_id, book_id)
 );
 ALTER TABLE public.bookshelf_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can view their own bookshelf items" ON public.bookshelf_items FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can insert their own bookshelf items" ON public.bookshelf_items FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can update their own bookshelf items" ON public.bookshelf_items FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can delete their own bookshelf items" ON public.bookshelf_items FOR DELETE USING (auth.uid() = user_id);
 
 -- 4. Reading Progress Table
@@ -438,9 +454,13 @@ CREATE TABLE IF NOT EXISTS public.reading_progress (
   UNIQUE(user_id, book_id)
 );
 ALTER TABLE public.reading_progress ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can view their own reading progress" ON public.reading_progress FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can insert their own reading progress" ON public.reading_progress FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can update their own reading progress" ON public.reading_progress FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can delete their own reading progress" ON public.reading_progress FOR DELETE USING (auth.uid() = user_id);
 
 -- 5. Auto-Provisioning User Trigger (Profile + Default General Shelf)
@@ -580,7 +600,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 497 tests across 75 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 568 tests across 81 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

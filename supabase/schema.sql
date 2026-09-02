@@ -1,7 +1,8 @@
 -- ============================================================================
--- Bookarium — Supabase PostgreSQL Schema & Security Policies
--- Description: Complete DDL for profiles, custom bookshelves, items,
+-- Bookarium — Supabase PostgreSQL Schema & Security Policies (Idempotent DDL)
+-- Description: Complete idempotent DDL for profiles, custom bookshelves, items,
 --              reading progress, Row Level Security (RLS), and triggers.
+-- Safe to re-run multiple times without data loss or policy collision errors.
 -- ============================================================================
 
 -- Enable required extensions
@@ -21,18 +22,22 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 CREATE POLICY "Users can view their own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can delete their own profile" ON public.profiles;
 CREATE POLICY "Users can delete their own profile"
   ON public.profiles FOR DELETE
   USING (auth.uid() = id);
@@ -51,18 +56,22 @@ CREATE TABLE IF NOT EXISTS public.bookshelves (
 
 ALTER TABLE public.bookshelves ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can view their own bookshelves"
   ON public.bookshelves FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can insert their own bookshelves"
   ON public.bookshelves FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can update their own bookshelves"
   ON public.bookshelves FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can delete their own bookshelves"
   ON public.bookshelves FOR DELETE
   USING (auth.uid() = user_id);
@@ -84,18 +93,22 @@ CREATE TABLE IF NOT EXISTS public.bookshelf_items (
 
 ALTER TABLE public.bookshelf_items ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can view their own bookshelf items"
   ON public.bookshelf_items FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can insert their own bookshelf items"
   ON public.bookshelf_items FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can update their own bookshelf items"
   ON public.bookshelf_items FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can delete their own bookshelf items"
   ON public.bookshelf_items FOR DELETE
   USING (auth.uid() = user_id);
@@ -116,18 +129,22 @@ CREATE TABLE IF NOT EXISTS public.reading_progress (
 
 ALTER TABLE public.reading_progress ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can view their own reading progress"
   ON public.reading_progress FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can insert their own reading progress"
   ON public.reading_progress FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can update their own reading progress"
   ON public.reading_progress FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can delete their own reading progress"
   ON public.reading_progress FOR DELETE
   USING (auth.uid() = user_id);
@@ -173,4 +190,3 @@ BEGIN
   DELETE FROM auth.users WHERE id = auth.uid();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-

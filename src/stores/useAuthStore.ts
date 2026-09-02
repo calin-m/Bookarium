@@ -28,6 +28,7 @@ export interface AuthState {
     needsEmailConfirmation?: boolean;
     error: AuthError | null;
   }>;
+  resendVerificationEmail: (email: string) => Promise<{ error: AuthError | null }>;
   signInWithOtp: (email: string) => Promise<{ error: AuthError | null }>;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
@@ -143,6 +144,24 @@ export const useAuthStore = create<AuthState>()(
       needsEmailConfirmation: !hasSession,
       error: null,
     };
+  },
+
+  resendVerificationEmail: async (email: string) => {
+    set({ error: null });
+    const supabase = createClient();
+    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined;
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
+    });
+    if (error) {
+      set({ error: error.message });
+      return { error };
+    }
+    return { error: null };
   },
 
   signInWithOtp: async (email) => {

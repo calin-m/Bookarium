@@ -41,9 +41,10 @@ describe('ReaderLanguageDrawer Component', () => {
     expect(screen.queryByRole('dialog', { name: 'Language Editions & Translations' })).not.toBeInTheDocument();
   });
 
-  it('renders translations list and handles edition selection', () => {
+  it('renders dual-tier layout with archival editions and instant translation', () => {
     const onClose = vi.fn();
     const onSelectTranslation = vi.fn();
+    const onSelectDynamicLanguage = vi.fn();
 
     render(
       <ReaderLanguageDrawer
@@ -51,78 +52,99 @@ describe('ReaderLanguageDrawer Component', () => {
         onClose={onClose}
         translations={mockTranslations}
         onSelectTranslation={onSelectTranslation}
+        onSelectDynamicLanguage={onSelectDynamicLanguage}
       />
     );
 
     expect(screen.getByRole('dialog', { name: 'Language Editions & Translations' })).toBeInTheDocument();
-    expect(screen.getByText('Language Editions')).toBeInTheDocument();
-    expect(screen.getByText('3 Editions Available')).toBeInTheDocument();
+    expect(screen.getByText('Languages & Translations')).toBeInTheDocument();
+    expect(screen.getByText('Archival Editions (3)')).toBeInTheDocument();
+    expect(screen.getByText('Instant AI Translation')).toBeInTheDocument();
 
-    // Current edition (English)
-    expect(screen.getByText('English')).toBeInTheDocument();
-    expect(screen.getByText('French (Français)')).toBeInTheDocument();
-
-    // Click French edition
+    // Click Archival French edition
     fireEvent.click(screen.getByText('French (Français)'));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onSelectTranslation).toHaveBeenCalledWith(25946);
   });
 
-  it('does not trigger onSelectTranslation when clicking current edition', () => {
-    const onClose = vi.fn();
-    const onSelectTranslation = vi.fn();
+  it('allows selecting popular translation quick-picks and dropdown', () => {
+    const onSelectDynamicLanguage = vi.fn();
 
     render(
       <ReaderLanguageDrawer
         isOpen={true}
-        onClose={onClose}
+        onClose={vi.fn()}
         translations={mockTranslations}
-        onSelectTranslation={onSelectTranslation}
+        onSelectDynamicLanguage={onSelectDynamicLanguage}
       />
     );
 
-    fireEvent.click(screen.getByText('English'));
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(onSelectTranslation).not.toHaveBeenCalled();
+    // Click Spanish quick-pick chip
+    const spanishChip = screen.getByRole('button', { name: /Spanish/i });
+    fireEvent.click(spanishChip);
+    expect(onSelectDynamicLanguage).toHaveBeenCalledWith('es');
+
+    // Select language from dropdown
+    const select = screen.getByRole('combobox', { name: 'Select translation language' });
+    fireEvent.change(select, { target: { value: 'ro' } });
+    expect(onSelectDynamicLanguage).toHaveBeenCalledWith('ro');
   });
 
-  it('closes when clicking close button, backdrop, or pressing Escape', () => {
-    const onClose = vi.fn();
+  it('supports toggling reading display mode and reverting to original', () => {
+    const onSelectDisplayMode = vi.fn();
+    const onSelectDynamicLanguage = vi.fn();
 
-    const { rerender } = render(
+    render(
       <ReaderLanguageDrawer
         isOpen={true}
-        onClose={onClose}
+        onClose={vi.fn()}
         translations={mockTranslations}
+        dynamicTargetLanguage="es"
+        onSelectDynamicLanguage={onSelectDynamicLanguage}
+        displayMode="translated"
+        onSelectDisplayMode={onSelectDisplayMode}
+        isTranslating={true}
       />
     );
 
-    // Close button
-    fireEvent.click(screen.getByLabelText('Close Language Editions Drawer'));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Translating to Spanish/i)).toBeInTheDocument();
+    expect(screen.getByText('Translating page content...')).toBeInTheDocument();
 
-    // Backdrop click
-    const backdrop = screen.getByTestId('language-backdrop');
-    fireEvent.click(backdrop);
-    expect(onClose).toHaveBeenCalledTimes(2);
+    // Click bilingual mode
+    const bilingualBtn = screen.getByRole('button', { name: /Bilingual Parallel/i });
+    fireEvent.click(bilingualBtn);
+    expect(onSelectDisplayMode).toHaveBeenCalledWith('bilingual');
 
-    // Escape key
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(onClose).toHaveBeenCalledTimes(3);
+    // Click translated only
+    const translatedBtn = screen.getByRole('button', { name: /Translated Only/i });
+    fireEvent.click(translatedBtn);
+    expect(onSelectDisplayMode).toHaveBeenCalledWith('translated');
 
-    // Escape key when closed does not trigger onClose
-    rerender(
-      <ReaderLanguageDrawer
-        isOpen={false}
-        onClose={onClose}
-        translations={mockTranslations}
-      />
-    );
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(onClose).toHaveBeenCalledTimes(3);
+    // Click revert to original
+    const revertBtn = screen.getByRole('button', { name: 'Revert to original language' });
+    fireEvent.click(revertBtn);
+    expect(onSelectDynamicLanguage).toHaveBeenCalledWith(null);
   });
 
-  it('renders fallback message when translations array is empty', () => {
+  it('unselects dynamic language when clicking the active quick-pick chip', () => {
+    const onSelectDynamicLanguage = vi.fn();
+
+    render(
+      <ReaderLanguageDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        translations={mockTranslations}
+        dynamicTargetLanguage="es"
+        onSelectDynamicLanguage={onSelectDynamicLanguage}
+      />
+    );
+
+    const spanishChip = screen.getByRole('button', { name: /Spanish/i });
+    fireEvent.click(spanishChip);
+    expect(onSelectDynamicLanguage).toHaveBeenCalledWith(null);
+  });
+
+  it('renders fallback message when archival translations array is empty', () => {
     render(
       <ReaderLanguageDrawer
         isOpen={true}
@@ -132,7 +154,7 @@ describe('ReaderLanguageDrawer Component', () => {
     );
 
     expect(
-      screen.getByText('No other language editions available for this title.')
+      screen.getByText('No other archival editions available in Gutenberg.')
     ).toBeInTheDocument();
   });
 

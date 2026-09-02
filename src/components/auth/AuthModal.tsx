@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, Eye, EyeOff, KeyRound, Check } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -21,6 +21,7 @@ export const AuthModal: React.FC = () => {
     signInWithOtp,
     signInWithOAuth,
     resetPasswordForEmail,
+    resendVerificationEmail,
   } = useAuthStore();
 
   const { migrateLocalBooksToCloud } = useBookshelfStore();
@@ -35,6 +36,40 @@ export const AuthModal: React.FC = () => {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [verificationEmailSent, setVerificationEmailSent] = useState(false);
   const [resetPasswordSent, setResetPasswordSent] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Cooldown countdown effect
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  const handleResendVerification = async () => {
+    if (!email || isResending || resendCooldown > 0) return;
+    setIsResending(true);
+    setError(null);
+    setResendSuccess(false);
+
+    try {
+      const { error: resendErr } = await resendVerificationEmail(email);
+      if (resendErr) {
+        setError(resendErr.message);
+      } else {
+        setResendSuccess(true);
+        setResendCooldown(60);
+        setTimeout(() => setResendSuccess(false), 5000);
+      }
+    } catch {
+      setError('Failed to resend verification email. Please try again.');
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   if (!isAuthModalOpen) return null;
 
@@ -181,11 +216,34 @@ export const AuthModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Error Alert */}
+        {/* Error Alert with Optional Resend Action if Email Not Confirmed */}
         {error && (
-          <div className="flex items-center gap-2.5 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs font-mono">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+          <div className="space-y-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs font-mono">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+            {error.toLowerCase().includes('email not confirmed') && (
+              <div className="pt-1.5 flex items-center justify-between gap-2 border-t border-destructive/20">
+                <span className="text-[11px] text-foreground/80">
+                  Didn&apos;t receive or link expired?
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendVerification}
+                  disabled={isResending || resendCooldown > 0}
+                  className="text-[11px] font-mono shrink-0 cursor-pointer h-7 px-2"
+                >
+                  {isResending
+                    ? 'Sending...'
+                    : resendCooldown > 0
+                    ? `Wait ${resendCooldown}s`
+                    : 'Resend Link'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -201,20 +259,40 @@ export const AuthModal: React.FC = () => {
                 We sent a verification link to <strong className="text-foreground">{email}</strong>.
               </p>
               <p className="text-[11px] text-muted-foreground font-sans">
-                Please click the link in your email to activate your account, then sign in below.
+                Please click the link in your email to activate your account. Verification links expire in 1 hour.
               </p>
+              {resendSuccess && (
+                <p className="text-xs font-mono text-success pt-1">
+                  Fresh verification link sent! Please check your inbox.
+                </p>
+              )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setVerificationEmailSent(false);
-                setAuthModalView('sign_in');
-              }}
-              className="font-mono text-xs"
-            >
-              Go to Sign In
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResendVerification}
+                disabled={isResending || resendCooldown > 0}
+                className="font-mono text-xs cursor-pointer w-full sm:w-auto"
+              >
+                {isResending
+                  ? 'Sending...'
+                  : resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : 'Resend Email'}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setVerificationEmailSent(false);
+                  setAuthModalView('sign_in');
+                }}
+                className="font-mono text-xs cursor-pointer w-full sm:w-auto"
+              >
+                Go to Sign In
+              </Button>
+            </div>
           </div>
         ) : /* Magic Link Sent Success */
         magicLinkSent && authModalView === 'magic_link' ? (
