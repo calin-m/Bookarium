@@ -9,8 +9,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-81%20Suites%20%7C%20568%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.7%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-81%20Suites%20%7C%20569%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.6%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -37,6 +37,8 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ## 🛠️ Latest Improvements (v1.7.4)
 
+- **Responsive Header Ergonomics & GitHub Repository Integration (`Navbar.tsx`, `Footer.tsx`)** – Direct repository links across header and footer, brand anti-truncation protection (`shrink-0`, `whitespace-nowrap`), space-aware responsive GitHub button disclosure (`min-[440px]:inline-flex`), synchronized tablet/desktop text expansion at `md:`, anti-jitter `border-b-2 border-transparent` tabs, and desktop hover tooltips.
+- **SPDX Standard MIT License Provisioning (`LICENSE`, `package.json`)** – Installed official MIT License text with copyright attribution and package manifest metadata for automated GitHub `licensee` badge detection.
 - **Dynamic On-Demand Translation & Dual-Tier Language Hub (`/api/translate`, `usePageTranslation.ts`, `ReaderLanguageDrawer.tsx`)** – Zero-key Google Neural Machine Translation proxy with offline page-level caching, 18 popular language quick-select chips, 40+ language catalog, Bilingual Parallel reading mode with original sentence subtitles, and dynamic native neural voice narration synchronization with Read-Aloud.
 - **Email Verification & Resend Flow (`AccountIdentityCard.tsx`, `AuthModal.tsx`, `useAuthStore.ts`)** – Dynamic reader status inspecting `user.email_confirmed_at` to render `🛡️ Verified Reader` or `⚠️ Email Unverified` badges, an interactive resend banner on `/account` with 60-second cooldown timer, and post-signup/sign-in resend buttons in `AuthModal`.
 - **Idempotent Supabase Database DDL (`supabase/schema.sql`)** – Added `DROP POLICY IF EXISTS` guards to all Row Level Security policies, allowing the SQL migration script to be safely re-run multiple times in the Supabase SQL editor without error or risk of data loss.
@@ -179,25 +181,37 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 * **Dynamic Literary Passages & Quotes ("Words That Shaped Humanity")**: Rotating showcase of iconic classic quotes with classical first-line editorial indentation, interactive shuffle discovery, and bottom-aligned author citations and read prompts across all cards.
 * **Direct Download Hub**: Multi-format downloads including direct EPUB, clean plain text, mobile-friendly HTML, and Kindle formats.
 * **Auto-Healing Personal Bookshelf & Favorites**: Curated collections, reading queue, reading history, and favorited titles with background metadata auto-recovery and 1-click reset actions.
-### 🌐 Supported Languages
+### 🌐 Supported Languages, On-Demand AI Translation & Neural Read-Aloud
 
-The catalog can be filtered by the following language options (ISO‑639‑1 codes used by the API):
+Bookarium provides a comprehensive, multi-tiered language ecosystem designed for both authentic public domain archive discovery and universal accessibility:
 
+#### 1. Catalog & Archive Filtering (12 Primary Languages)
+The catalog can be filtered by the following primary language options (ISO‑639‑1 codes used by the API):
 - `en` – English
 - `fr` – French (Français)
 - `de` – German (Deutsch)
 - `es` – Spanish (Español)
 - `it` – Italian (Italiano)
 - `la` – Latin (Lingua Latina)
-- `el` – Greek (Ancient & Modern)
+- `el` – Greek (Ancient & Modern)
 - `pt` – Portuguese (Português)
 - `nl` – Dutch (Nederlands)
 - `ru` – Russian (Русский)
 - `zh` – Chinese (中文)
 - `ro` – Romanian (Română)
 
-> **How it works** – Selecting a language via the unified `<LanguageSelector />` component (available on both the main Hero search bar and the sidebar filter drawer) adds a `languages=<code>` query parameter that flows through `useBooks` → `/api/books` → Gutendex API, returning only public domain books in the chosen language.
+> **How it works** – Selecting a language via the unified `<LanguageSelector />` component (available on both the main Hero search bar and the sidebar filter drawer) adds a `languages=<code>` query parameter that flows through `useBooks` → `/api/books` → Gutendex API, returning only public domain books in the chosen language. Inside the reader, the **Language Drawer** also discovers all authentic Project Gutenberg foreign editions and translations for the current title.
 
+#### 2. On-Demand Dynamic AI Translation (40+ Languages)
+Inside any public domain volume, readers can translate pages on-the-fly into **40+ world languages** (featuring 18 popular language quick-chips including Spanish, French, German, Italian, Portuguese, Romanian, Dutch, Russian, Japanese, Chinese, Polish, Swedish, and more):
+- **Zero-Key Serverless Architecture**: Powered by a rate-limited Google Neural Machine Translation proxy (`/api/translate`) requiring zero third-party paid API keys or account sign-in.
+- **Offline Page-Level Caching**: Every translated page is automatically cached in `localStorage` per book and page, enabling instant, zero-latency transitions on re-read.
+- **Bilingual Parallel Reading Mode**: Seamlessly toggle between full translation and bilingual parallel view, displaying translated paragraphs alongside authentic original sentence subtitles for comparative study and language learning.
+
+#### 3. Synchronized Neural Voice Read-Aloud (Text-to-Speech)
+- **Automatic Language-Aware Voice Pairing**: The offline-first Web Speech narration engine (`window.speechSynthesis`) automatically detects whether the reader is viewing original text or a translated page, instantly pairing narration with high-definition neural voices native to that language.
+- **Real-Time Visual Sentence Highlighting**: As narration plays, each active sentence is highlighted with an amber glow on `ReaderSurface`, synchronizing visual reading and audio narration.
+- **Full Media Session & Audio Controls**: Offers speed presets (0.85x–2.0x), sentence navigation (Skip Prev / Next), and OS-level MediaSession integration for lock screen and Bluetooth headphone controls.
 
 ---
 
@@ -600,7 +614,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 568 tests across 81 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 569 tests across 81 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

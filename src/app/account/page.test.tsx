@@ -120,7 +120,7 @@ describe('AccountPage', () => {
     expect(mockPush).toHaveBeenCalledWith(ROUTES.BOOKSHELF);
 
     // Check Footer
-    expect(screen.getByLabelText('Bookarium GitHub by calin-m')).toBeInTheDocument();
+    expect(screen.getByLabelText('Bookarium GitHub repository')).toBeInTheDocument();
   });
 
   it('handles toggling catalog sticky scroll navigation setting', () => {

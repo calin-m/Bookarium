@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "High-performance frontend for discovering, reading, and downloading 100% legal, public domain books.",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "dev:open": "concurrently -n next,browser -c blue,green \"next dev\" \"node scripts/open-browser.js http://localhost:3000 2000\"",

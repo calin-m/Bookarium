@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 02 Sep 2026 19:05:01 GMT  
+**Last Generated**: Wed, 02 Sep 2026 19:59:19 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 81 passed  
-**Total Verified Tests**: 568 passed  
+**Total Verified Tests**: 569 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **81/81 test suites passed** (568 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **81/81 test suites passed** (569 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.6%** (3032/3274) — *Target: $ge$ 80%*
-- **Statements**: **90.88%** (3310/3642) — *Target: $ge$ 80%*
-- **Functions**: **88.53%** (772/872) — *Target: $ge$ 80%*
-- **Branches**: **81.43%** (2978/3657) — *Target: $ge$ 80%*
+- **Lines**: **92.61%** (3034/3276) — *Target: $ge$ 80%*
+- **Statements**: **90.88%** (3312/3644) — *Target: $ge$ 80%*
+- **Functions**: **88.54%** (773/873) — *Target: $ge$ 80%*
+- **Branches**: **81.43%** (2979/3658) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (81 Suites / 568 Tests)
+## 🧪 Comprehensive Test Suite Catalog (81 Suites / 569 Tests)
 
 ### 🚀 App Routes & Pages (9 Suites · 59 Tests)
 
@@ -149,7 +149,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (16 Suites · 119 Tests)
+### 🎨 Catalog & Presentation (16 Suites · 120 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -335,7 +335,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `should render brand and navigation items`
 - ✔ `should fill bookmark icon when books are saved to bookshelf`
@@ -349,6 +349,7 @@
 - ✔ `applies translate-y-0 when isVisible is true`
 - ✔ `renders active account button styling when activeView is account`
 - ✔ `renders active Sign In button styling for guests when activeView is account`
+- ✔ `renders GitHub repository link with target _blank on the header`
 
 </details>
 
