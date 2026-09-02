@@ -23,6 +23,7 @@ export interface ReaderState {
   theme: ReaderTheme;
   readingProgress: Record<number, number>;
   readingPositions: Record<number, BookReadingPosition>;
+  isMobileTrayOpen: boolean;
 
   // Actions
   openReader: (book: GutendexBook) => void;
@@ -31,6 +32,8 @@ export interface ReaderState {
   setLineHeight: (height: number) => void;
   setFontFamily: (family: ReaderFontFamily) => void;
   setTheme: (theme: ReaderTheme) => void;
+  setMobileTrayOpen: (open: boolean) => void;
+  toggleMobileTray: () => void;
   setProgress: (bookId: number, progress: number) => void;
   getProgress: (bookId: number) => number;
   saveReadingPosition: (bookId: number, position: BookReadingPosition) => void;
@@ -49,6 +52,7 @@ export const useReaderStore = create<ReaderState>()(
       theme: 'light',
       readingProgress: {},
       readingPositions: {},
+      isMobileTrayOpen: false,
 
       openReader: (book) => {
         set({ currentBook: book, isOpen: true });
@@ -56,6 +60,14 @@ export const useReaderStore = create<ReaderState>()(
 
       closeReader: () => {
         set({ isOpen: false });
+      },
+
+      setMobileTrayOpen: (open) => {
+        set({ isMobileTrayOpen: open });
+      },
+
+      toggleMobileTray: () => {
+        set((state) => ({ isMobileTrayOpen: !state.isMobileTrayOpen }));
       },
 
       setFontSize: (size) => {

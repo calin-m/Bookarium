@@ -332,7 +332,7 @@ export default function BookReaderPage() {
         translations={translations}
         isTranslationsLoading={isTranslationsLoading}
         onSelectTranslation={(targetBookId) => {
-          router.push(ROUTES.READ(targetBookId));
+          router.replace(ROUTES.READ(targetBookId));
         }}
       />
 
@@ -424,7 +424,7 @@ export default function BookReaderPage() {
         onClose={() => setIsTranslationsOpen(false)}
         translations={translations}
         onSelectTranslation={(targetBookId) => {
-          router.push(ROUTES.READ(targetBookId));
+          router.replace(ROUTES.READ(targetBookId));
         }}
         theme={theme}
       />

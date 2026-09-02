@@ -22,12 +22,13 @@ import {
   X,
   Share2,
 } from 'lucide-react';
-import type { ReaderTheme } from '@/stores/useReaderStore';
+import { useReaderStore, type ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
 import { SITE_CONFIG } from '@/config/site-config';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface ResumeNoticeData {
   chapterTitle: string;
@@ -85,8 +86,12 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   isTranslationsLoading: _isTranslationsLoading,
   onSelectTranslation: _onSelectTranslation,
 }) => {
+  const hasMounted = useHasMounted();
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
-  const [isMobileTrayOpen, setIsMobileTrayOpen] = useState(false);
+  const rawIsMobileTrayOpen = useReaderStore((s) => s.isMobileTrayOpen);
+  const isMobileTrayOpen = hasMounted ? rawIsMobileTrayOpen : false;
+  const setMobileTrayOpen = useReaderStore((s) => s.setMobileTrayOpen);
+  const toggleMobileTray = useReaderStore((s) => s.toggleMobileTray);
   const [isCopied, setIsCopied] = useState(false);
   const mobileTrayRef = useRef<HTMLDivElement | null>(null);
   const activeTheme = getReaderTheme(theme);
@@ -94,12 +99,12 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isMobileTrayOpen) {
-        setIsMobileTrayOpen(false);
+        setMobileTrayOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMobileTrayOpen]);
+  }, [isMobileTrayOpen, setMobileTrayOpen]);
 
   const handleShare = async () => {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
@@ -319,9 +324,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               {/* Physical Drawer Pull Handle (Travels with the drawer to the left of the tools) */}
               <button
                 type="button"
-                onClick={() => {
-                  setIsMobileTrayOpen((prev) => !prev);
-                }}
+                onClick={toggleMobileTray}
                 className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 shrink-0 shadow-2xs ${activeTheme.button}`}
                 aria-label={isMobileTrayOpen ? 'Hide Reader Controls' : 'Show Reader Controls'}
                 aria-expanded={isMobileTrayOpen}

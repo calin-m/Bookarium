@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 02 Sep 2026 09:57:16 GMT  
+**Last Generated**: Wed, 02 Sep 2026 11:11:34 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 69 passed  
-**Total Verified Tests**: 475 passed  
+**Total Verified Tests**: 476 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **69/69 test suites passed** (475 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **69/69 test suites passed** (476 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.35%** (2609/2825) — *Target: $ge$ 80%*
-- **Statements**: **90.63%** (2837/3130) — *Target: $ge$ 80%*
-- **Functions**: **88.56%** (666/752) — *Target: $ge$ 80%*
-- **Branches**: **80.61%** (2525/3132) — *Target: $ge$ 80%*
+- **Lines**: **92.26%** (2611/2830) — *Target: $ge$ 80%*
+- **Statements**: **90.56%** (2842/3138) — *Target: $ge$ 80%*
+- **Functions**: **88.49%** (669/756) — *Target: $ge$ 80%*
+- **Branches**: **80.44%** (2521/3134) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (69 Suites / 475 Tests)
+## 🧪 Comprehensive Test Suite Catalog (69 Suites / 476 Tests)
 
 ### 🚀 App Routes & Pages (8 Suites · 49 Tests)
 
@@ -115,7 +115,7 @@
 <summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
-- ✔ `navigates back to previous scroll position when back button is clicked`
+- ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
 - ✔ `falls back to router.push(`
 - ✔ `opens and closes Table of Contents drawer`
 - ✔ `opens and closes appearance controls popover`
@@ -472,7 +472,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 47 Tests)
+### ⚡ Zustand State Stores (5 Suites · 48 Tests)
 
 <details>
 <summary><b><code>src/stores/useAuthStore.test.ts</code></b> (17 tests)</summary>
@@ -527,7 +527,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -536,6 +536,7 @@
 - ✔ `should update theme and font family`
 - ✔ `should record and retrieve reading progress percentage`
 - ✔ `should save, retrieve, and clear exact reading positions`
+- ✔ `should toggle and set isMobileTrayOpen`
 
 </details>
 

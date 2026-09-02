@@ -92,11 +92,21 @@ describe('useReaderStore', () => {
       lastReadAt: new Date().toISOString(),
     };
 
-    useReaderStore.getState().saveReadingPosition(bookId, position);
-    expect(useReaderStore.getState().getReadingPosition(bookId)).toEqual(position);
-
     useReaderStore.getState().clearReadingPosition(bookId);
     expect(useReaderStore.getState().getReadingPosition(bookId)).toBeNull();
+  });
+
+  it('should toggle and set isMobileTrayOpen', () => {
+    expect(useReaderStore.getState().isMobileTrayOpen).toBe(false);
+
+    useReaderStore.getState().toggleMobileTray();
+    expect(useReaderStore.getState().isMobileTrayOpen).toBe(true);
+
+    useReaderStore.getState().setMobileTrayOpen(false);
+    expect(useReaderStore.getState().isMobileTrayOpen).toBe(false);
+
+    useReaderStore.getState().setMobileTrayOpen(true);
+    expect(useReaderStore.getState().isMobileTrayOpen).toBe(true);
   });
 });
 

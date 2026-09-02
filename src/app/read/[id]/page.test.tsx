@@ -7,6 +7,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { mockBooks } from '@/mocks/handlers';
 
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 const mockBack = vi.fn();
 
 // Mock next/navigation
@@ -14,6 +15,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({ id: '1342' }),
   useRouter: () => ({
     push: mockPush,
+    replace: mockReplace,
     back: mockBack,
   }),
 }));
@@ -100,7 +102,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getAllByLabelText('Typography & Theme Controls')[0]).toBeInTheDocument();
   });
 
-  it('navigates back to previous scroll position when back button is clicked', () => {
+  it('navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked', () => {
     Object.defineProperty(window, 'history', {
       writable: true,
       value: { length: 3 },
@@ -275,7 +277,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     const frenchBtn = screen.getAllByRole('button', { name: /French \(Français\)/i })[0];
     fireEvent.click(frenchBtn);
 
-    expect(mockPush).toHaveBeenCalledWith('/read/67890');
+    expect(mockReplace).toHaveBeenCalledWith('/read/67890');
   });
 
   it('opens In-Book Search Drawer, finds matching phrase, and jumps to chapter on selection', () => {
