@@ -49,11 +49,28 @@ describe('ReaderHeader', () => {
       />
     );
 
-    fireEvent.click(screen.getByLabelText('Table of Contents'));
+    fireEvent.click(screen.getAllByLabelText('Table of Contents')[0]);
     expect(onToggleToc).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByLabelText('Typography & Theme Controls'));
+    fireEvent.click(screen.getAllByLabelText('Typography & Theme Controls')[0]);
     expect(onToggleControls).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers onToggleSearch when search button is clicked', () => {
+    const onToggleSearch = vi.fn();
+
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        isSearchOpen={false}
+        onToggleSearch={onToggleSearch}
+      />
+    );
+
+    const searchBtns = screen.getAllByLabelText('Search in Book');
+    expect(searchBtns[0]).toBeInTheDocument();
+    fireEvent.click(searchBtns[0]);
+    expect(onToggleSearch).toHaveBeenCalledTimes(1);
   });
 
   it('triggers right-side theme cycling for light, sepia, and dark', () => {
@@ -68,8 +85,8 @@ describe('ReaderHeader', () => {
     );
 
     // Light -> Sepia
-    const themeBtn = screen.getByLabelText(/Current theme: light/i);
-    fireEvent.click(themeBtn);
+    const themeBtns = screen.getAllByLabelText(/Current theme: light/i);
+    fireEvent.click(themeBtns[0]);
     expect(onThemeChange).toHaveBeenCalledWith('sepia');
 
     // Sepia -> Dark
@@ -80,7 +97,7 @@ describe('ReaderHeader', () => {
         onThemeChange={onThemeChange}
       />
     );
-    fireEvent.click(screen.getByLabelText(/Current theme: sepia/i));
+    fireEvent.click(screen.getAllByLabelText(/Current theme: sepia/i)[0]);
     expect(onThemeChange).toHaveBeenCalledWith('dark');
 
     // Dark -> Light
@@ -91,7 +108,7 @@ describe('ReaderHeader', () => {
         onThemeChange={onThemeChange}
       />
     );
-    fireEvent.click(screen.getByLabelText(/Current theme: dark/i));
+    fireEvent.click(screen.getAllByLabelText(/Current theme: dark/i)[0]);
     expect(onThemeChange).toHaveBeenCalledWith('light');
   });
 
@@ -217,36 +234,26 @@ describe('ReaderHeader', () => {
       },
     ];
 
+    const onToggleTranslations = vi.fn();
+
     render(
       <ReaderHeader
         {...defaultProps}
         translations={mockTranslations}
-        onSelectTranslation={onSelectTranslation}
+        onToggleTranslations={onToggleTranslations}
+        isTranslationsOpen={false}
       />
     );
 
     // Button should be visible with badge
-    const langBtn = screen.getByLabelText('Language Editions & Translations');
+    const langBtn = screen.getAllByLabelText('Language Editions & Translations')[0];
     expect(langBtn).toBeInTheDocument();
+    expect(langBtn).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText('3')).toBeInTheDocument();
 
-    // Click to open dropdown
+    // Click to trigger toggle
     fireEvent.click(langBtn);
-    expect(screen.getByTestId('lang-dropdown-menu')).toBeInTheDocument();
-    expect(screen.getByText('Language Editions')).toBeInTheDocument();
-    expect(screen.getByText('French (Français)')).toBeInTheDocument();
-    expect(screen.getByText('Spanish (Español)')).toBeInTheDocument();
-
-    // Click Spanish edition
-    const spanishBtn = screen.getByRole('button', { name: /Spanish \(Español\)/i });
-    fireEvent.click(spanishBtn);
-    expect(onSelectTranslation).toHaveBeenCalledWith(54321);
-
-    // Reopen and test backdrop dismiss
-    fireEvent.click(langBtn);
-    expect(screen.getByTestId('lang-dropdown-menu')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('lang-dropdown-backdrop'));
-    expect(screen.queryByTestId('lang-dropdown-menu')).not.toBeInTheDocument();
+    expect(onToggleTranslations).toHaveBeenCalledTimes(1);
   });
 
   it('handles link copying when share button is clicked', async () => {
@@ -266,6 +273,58 @@ describe('ReaderHeader', () => {
     fireEvent.click(shareBtn);
 
     expect(writeTextMock).toHaveBeenCalledWith(window.location.href);
-    expect(await screen.findByLabelText('Link Copied to Clipboard')).toBeInTheDocument();
+    const copiedBtns = await screen.findAllByLabelText('Link Copied to Clipboard');
+    expect(copiedBtns[0]).toBeInTheDocument();
+  });
+
+  it('toggles mobile action tray and executes actions', () => {
+    const onToggleToc = vi.fn();
+    const onToggleSearch = vi.fn();
+    const onToggleControls = vi.fn();
+
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        onToggleToc={onToggleToc}
+        onToggleSearch={onToggleSearch}
+        onToggleControls={onToggleControls}
+      />
+    );
+
+    const toggleBtn = screen.getByTestId('mobile-tray-toggle');
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+
+    // Open mobile tray
+    fireEvent.click(toggleBtn);
+    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
+    const tray = screen.getByTestId('mobile-action-tray');
+    expect(tray).toBeInTheDocument();
+
+    // Trigger TOC, Search, and Controls from inside tray - tray remains open for all multi-tool actions
+    const tocBtns = screen.getAllByLabelText('Table of Contents');
+    fireEvent.click(tocBtns[tocBtns.length - 1]);
+    expect(onToggleToc).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
+
+    const searchBtns = screen.getAllByLabelText('Search in Book');
+    fireEvent.click(searchBtns[searchBtns.length - 1]);
+    expect(onToggleSearch).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
+
+    const controlsBtns = screen.getAllByLabelText('Typography & Theme Controls');
+    fireEvent.click(controlsBtns[controlsBtns.length - 1]);
+    expect(onToggleControls).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
+
+    // Retract via traveling handle toggle button
+    fireEvent.click(screen.getByTestId('mobile-tray-toggle'));
+    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'false');
+
+    // Reopen and close via Escape key
+    fireEvent.click(screen.getByTestId('mobile-tray-toggle'));
+    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'false');
   });
 });

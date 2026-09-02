@@ -63,7 +63,55 @@ describe('AuthModal Component', () => {
     expect(closeAuthModal).toHaveBeenCalled();
   });
 
-  it('renders Sign Up view, submits with email confirmation required, and shows confirmation screen', async () => {
+  it('renders Sign Up view with inputs and create button', () => {
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: null,
+      isAuthModalOpen: true,
+      authModalView: 'sign_up',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signUpWithPassword: mockSignUpWithPassword,
+    });
+
+    render(<AuthModal />);
+
+    expect(screen.getByText('Create Your Bookshelf')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Jane Austen')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('reader@bookarium.org')).toBeInTheDocument();
+    expect(screen.getAllByPlaceholderText('••••••••••••')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /Create Account/i })).toBeInTheDocument();
+  });
+
+  it('submits valid Sign Up credentials to auth store', () => {
+    mockSignUpWithPassword.mockResolvedValueOnce({ needsEmailConfirmation: false, error: null });
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: null,
+      isAuthModalOpen: true,
+      authModalView: 'sign_up',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signUpWithPassword: mockSignUpWithPassword,
+    });
+
+    render(<AuthModal />);
+
+    fireEvent.change(screen.getByPlaceholderText('Jane Austen'), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), { target: { value: 'jane@example.com' } });
+    
+    const pwdInputs = screen.getAllByPlaceholderText('••••••••••••');
+    fireEvent.change(pwdInputs[0], { target: { value: 'secret123' } });
+    fireEvent.change(pwdInputs[1], { target: { value: 'secret123' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+    expect(mockSignUpWithPassword).toHaveBeenCalledWith('jane@example.com', 'secret123', 'Jane Doe');
+  });
+
+  it('renders email verification screen and navigates to sign in when email confirmation is required', async () => {
     mockSignUpWithPassword.mockResolvedValueOnce({ needsEmailConfirmation: true, error: null });
     const setAuthModalView = vi.fn();
 
@@ -80,19 +128,15 @@ describe('AuthModal Component', () => {
 
     render(<AuthModal />);
 
-    expect(screen.getByText('Create Your Bookshelf')).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Jane Austen'), { target: { value: 'Jane Doe' } });
     fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), { target: { value: 'jane@example.com' } });
     
     const pwdInputs = screen.getAllByPlaceholderText('••••••••••••');
-    expect(pwdInputs).toHaveLength(2);
     fireEvent.change(pwdInputs[0], { target: { value: 'secret123' } });
     fireEvent.change(pwdInputs[1], { target: { value: 'secret123' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
-    expect(mockSignUpWithPassword).toHaveBeenCalledWith('jane@example.com', 'secret123', 'Jane Doe');
 
-    // Should display verification screen
     const verifyScreenTitle = await screen.findByText('Check your email');
     expect(verifyScreenTitle).toBeInTheDocument();
     expect(screen.getByText(/We sent a verification link to/i)).toBeInTheDocument();
@@ -179,7 +223,30 @@ describe('AuthModal Component', () => {
     expect(screen.getByText('Invalid email or password')).toBeInTheDocument();
   });
 
-  it('handles magic link view and submission and email confirmation screen', async () => {
+  it('submits magic link request on valid email', async () => {
+    mockSignInWithOtp.mockResolvedValueOnce({ error: null });
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'magic_link',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signInWithOtp: mockSignInWithOtp,
+    });
+
+    render(<AuthModal />);
+    expect(screen.getByText('Sign In via Magic Link')).toBeInTheDocument();
+    
+    fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), {
+      target: { value: 'magic@bookarium.org' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Send Magic Link/i }));
+    expect(mockSignInWithOtp).toHaveBeenCalledWith('magic@bookarium.org');
+  });
+
+  it('renders magic link confirmation screen and navigates back to sign in', async () => {
     mockSignInWithOtp.mockResolvedValueOnce({ error: null });
     const setAuthModalView = vi.fn();
 
@@ -194,15 +261,12 @@ describe('AuthModal Component', () => {
     });
 
     render(<AuthModal />);
-    expect(screen.getByText('Sign In via Magic Link')).toBeInTheDocument();
     
     fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), {
       target: { value: 'magic@bookarium.org' },
     });
     fireEvent.click(screen.getByRole('button', { name: /Send Magic Link/i }));
-    expect(mockSignInWithOtp).toHaveBeenCalledWith('magic@bookarium.org');
 
-    // Email sent screen
     const backBtn = await screen.findByRole('button', { name: /Back to Sign In/i });
     expect(backBtn).toBeInTheDocument();
     fireEvent.click(backBtn);

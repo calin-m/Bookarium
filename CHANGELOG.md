@@ -183,3 +183,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-009: Stepped Directional Scroll with User-Configurable Sticky Preferences**
 - **ADR-010: Universal Multi-Language Translations & Reader Handoff Engine**
 - **ADR-011: Zero-CLS Header Hydration & Dynamic Active Icon Fill Architecture**
+- **ADR-012: Unified Portaled Drawer Architecture & Mutual Exclusivity for Reader Modals**

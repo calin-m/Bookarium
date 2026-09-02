@@ -8,6 +8,7 @@ export interface ResolvedBookIdentity {
   author: string;
   displayAuthor: string;
   primarySubject: string;
+  languages: string[];
   isPublicDomain: boolean;
 }
 
@@ -15,7 +16,7 @@ export interface ResolveBookMetadataParams {
   id: number;
   currentBook?: GutendexBook | null;
   booksData?: GutendexResponse | null;
-  extractedMeta?: { title?: string; author?: string } | null;
+  extractedMeta?: { title?: string; author?: string; language?: string } | null;
 }
 
 /**
@@ -51,7 +52,7 @@ export function isPlaceholderTitle(title?: string | null): boolean {
 }
 
 /**
- * Canonical domain resolver: Determines the optimal title, author, and subjects
+ * Canonical domain resolver: Determines the optimal title, author, subjects, and language
  * for a book across all available tiers (Client Store, Static Fixtures, API Results, and Gutenberg Raw Headers).
  */
 export function resolveBookMetadata({
@@ -111,12 +112,20 @@ export function resolveBookMetadata({
     (apiBook?.subjects && formatPrimarySubject(apiBook.subjects)) ||
     'Classic Literature';
 
+  // Languages Resolution Priority: Store (matching ID) -> API Result -> Raw Header Extraction -> Fallback ['en']
+  const resolvedLanguages =
+    (storeBook?.languages && storeBook.languages.length > 0 ? storeBook.languages : undefined) ||
+    (apiBook?.languages && apiBook.languages.length > 0 ? apiBook.languages : undefined) ||
+    (extractedMeta?.language ? [extractedMeta.language] : undefined) ||
+    ['en'];
+
   return {
     id: numericId,
     title: resolvedTitle,
     author: resolvedAuthor,
     displayAuthor: resolvedAuthor || 'Public Domain Classic',
     primarySubject,
+    languages: resolvedLanguages,
     isPublicDomain: true,
   };
 }

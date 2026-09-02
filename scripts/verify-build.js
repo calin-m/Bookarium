@@ -173,7 +173,8 @@ function pass4DocsSync() {
     require('./generate-architecture-matrix.js');
     require('./generate-changelog.js');
     require('./generate-quality-report.js');
-    logPass('docs/ARCHITECTURE.md, CHANGELOG.md, and docs/QUALITY_AUDIT_REPORT.md synced successfully from source AST.');
+    require('./generate-roadmap.js');
+    logPass('docs/ARCHITECTURE.md, CHANGELOG.md, docs/QUALITY_AUDIT_REPORT.md, and ROADMAP.md synced successfully from source AST.');
     return true;
   } catch (err) {
     logFail(`Documentation synchronization failed: ${err.message}`);

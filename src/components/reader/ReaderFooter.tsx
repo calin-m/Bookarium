@@ -47,7 +47,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
       className={`sticky bottom-0 z-40 shrink-0 border-t pb-[env(safe-area-inset-bottom,0px)] transition-colors duration-200 ${activeTheme.footer}`}
     >
       {/* Mobile Top Tier: Centered Slim Chapter Title Ribbon (< md) */}
-      <div className={`md:hidden w-full px-4 py-1.5 border-b border-border/40 flex items-center justify-center gap-1.5 text-xs font-mono transition-colors duration-200`}>
+      <div className={`md:hidden w-full px-4 py-1.5 border-b ${activeTheme.border} flex items-center justify-center gap-1.5 text-xs font-mono transition-colors duration-200`}>
         <BookMarked className="w-3.5 h-3.5 text-primary-500 shrink-0" />
         <span className="font-serif font-medium truncate max-w-[85vw] text-center" title={chapterTitle || 'Preamble'}>
           {chapterTitle || 'Preamble'}

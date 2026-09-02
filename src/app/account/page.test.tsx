@@ -180,7 +180,7 @@ describe('AccountPage', () => {
     expect(screen.getByTestId('custom-shelves-count')).toHaveTextContent('2');
   });
 
-  it('handles password update with validation and success feedback', async () => {
+  it('validates password mismatch before submitting update', () => {
     const mockUpdatePassword = vi.fn().mockResolvedValue({ error: null });
 
     useAuthStore.setState({
@@ -192,21 +192,35 @@ describe('AccountPage', () => {
 
     render(<AccountPage />);
 
-    expect(screen.getByText('Security & Password')).toBeInTheDocument();
-
     const newPwdInput = screen.getByLabelText('New Password');
     const confirmPwdInput = screen.getByLabelText('Confirm New Password');
     const updateBtn = screen.getByRole('button', { name: /Update Password/i });
 
-    // Test password mismatch
     fireEvent.change(newPwdInput, { target: { value: 'password123' } });
     fireEvent.change(confirmPwdInput, { target: { value: 'different123' } });
     fireEvent.click(updateBtn);
 
     expect(screen.getByText('Passwords do not match.')).toBeInTheDocument();
     expect(mockUpdatePassword).not.toHaveBeenCalled();
+  });
 
-    // Test valid matching passwords
+  it('submits updatePassword with valid matching credentials and shows success feedback', async () => {
+    const mockUpdatePassword = vi.fn().mockResolvedValue({ error: null });
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+      updatePassword: mockUpdatePassword,
+    });
+
+    render(<AccountPage />);
+
+    const newPwdInput = screen.getByLabelText('New Password');
+    const confirmPwdInput = screen.getByLabelText('Confirm New Password');
+    const updateBtn = screen.getByRole('button', { name: /Update Password/i });
+
+    fireEvent.change(newPwdInput, { target: { value: 'password123' } });
     fireEvent.change(confirmPwdInput, { target: { value: 'password123' } });
     fireEvent.click(updateBtn);
 
@@ -290,6 +304,27 @@ describe('AccountPage', () => {
       expect(screen.getByText('Verification Link Sent')).toBeInTheDocument();
       expect(screen.getByText(/We sent a secure deletion confirmation link to/i)).toBeInTheDocument();
     });
+  });
+
+  it('dismisses deletion verification confirmation screen on close button click', async () => {
+    const mockRequestAccountDeletion = vi.fn().mockResolvedValue({ error: null });
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+      requestAccountDeletion: mockRequestAccountDeletion,
+    });
+
+    render(<AccountPage />);
+
+    const deleteBtn = screen.getByRole('button', { name: /Delete Account/i });
+    fireEvent.click(deleteBtn);
+
+    const sendLinkBtn = screen.getByRole('button', { name: /Send Deletion Link/i });
+    fireEvent.click(sendLinkBtn);
+
+    await screen.findByText('Verification Link Sent');
 
     const closeBtn = screen.getByRole('button', { name: /^Close$/i });
     fireEvent.click(closeBtn);

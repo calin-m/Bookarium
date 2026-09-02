@@ -280,39 +280,76 @@ describe('BookshelfRack Component', () => {
     expect(moveMock).toHaveBeenCalledWith(mockBooks[0].id, 'shelf-2', 'user-1');
   });
 
-  it('triggers quick actions from hover card (download, read, save, like)', () => {
+  it('triggers onBookClick when Read button is clicked on hover card', () => {
+    useBookshelfStore.setState({
+      savedBooks: mockBooks,
+      likedBooks: mockBooks,
+      likedBookIds: [mockBooks[0].id],
+    });
+    const handleBookClick = vi.fn();
+    render(
+      <BookshelfRack
+        books={mockBooks}
+        onBookClick={handleBookClick}
+      />
+    );
+
+    const readBtns = screen.getAllByLabelText(`Open reader for ${mockBooks[0].title}`);
+    fireEvent.click(readBtns[0]);
+    expect(handleBookClick).toHaveBeenCalledWith(mockBooks[0]);
+  });
+
+  it('triggers onDownloadClick when Download button is clicked on hover card', () => {
     useBookshelfStore.setState({
       savedBooks: mockBooks,
       likedBooks: mockBooks,
       likedBookIds: [mockBooks[0].id],
     });
     const handleDownload = vi.fn();
-    const handleBookClick = vi.fn();
     render(
       <BookshelfRack
         books={mockBooks}
         onDownloadClick={handleDownload}
-        onBookClick={handleBookClick}
       />
     );
 
-    // Click Read button on quick action card
-    const readBtns = screen.getAllByLabelText(`Open reader for ${mockBooks[0].title}`);
-    fireEvent.click(readBtns[0]);
-    expect(handleBookClick).toHaveBeenCalledWith(mockBooks[0]);
-
-    // Click Download button
     const downloadBtns = screen.getAllByLabelText(`Download formats for ${mockBooks[0].title}`);
     fireEvent.click(downloadBtns[0]);
     expect(handleDownload).toHaveBeenCalledWith(mockBooks[0]);
+  });
 
-    // Click Save/Remove button
+  it('toggles saved bookmark state when Save button is clicked on hover card', () => {
+    useBookshelfStore.setState({
+      savedBooks: mockBooks,
+      likedBooks: mockBooks,
+      likedBookIds: [mockBooks[0].id],
+    });
+    render(
+      <BookshelfRack
+        books={mockBooks}
+      />
+    );
+
     const saveBtns = screen.getAllByLabelText('Remove from bookshelf');
     fireEvent.click(saveBtns[0]);
+    expect(useBookshelfStore.getState().savedBooks).toHaveLength(mockBooks.length - 1);
+  });
 
-    // Click Like/Unlike button
+  it('toggles liked state when Like button is clicked on hover card', () => {
+    useBookshelfStore.setState({
+      savedBooks: mockBooks,
+      likedBooks: mockBooks,
+      likedBookIds: [mockBooks[0].id],
+    });
+    render(
+      <BookshelfRack
+        books={mockBooks}
+      />
+    );
+
     const unlikeBtns = screen.getAllByLabelText('Unlike book');
     fireEvent.click(unlikeBtns[0]);
+    expect(useBookshelfStore.getState().likedBookIds).not.toContain(mockBooks[0].id);
   });
 
   it('opens quick-action bottom sheet on mobile spine tap without immediate navigation', () => {

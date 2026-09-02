@@ -57,17 +57,33 @@ global.IntersectionObserver = class IntersectionObserver {
 window.scrollTo = vi.fn();
 Element.prototype.scrollTo = vi.fn();
 
-// Mock window.location.reload for JSDOM
+// Mock window.location for JSDOM
 Object.defineProperty(window, 'location', {
   configurable: true,
+  writable: true,
   value: {
     ...window.location,
     reload: vi.fn(),
+    assign: vi.fn(),
+    replace: vi.fn(),
     href: 'http://localhost:3000/',
     pathname: '/',
     search: '',
   },
 });
+
+// Intercept unhandled link navigation in JSDOM
+window.addEventListener(
+  'click',
+  (e) => {
+    const target = e.target as HTMLElement | null;
+    const anchor = target?.closest('a');
+    if (anchor && anchor.getAttribute('href')) {
+      e.preventDefault();
+    }
+  },
+  true
+);
 
 // Mock next/font/google
 vi.mock('next/font/google', () => ({
@@ -89,26 +105,57 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
-// Mock framer-motion for instantaneous test execution
+// Mock framer-motion for instantaneous synchronous test execution
 vi.mock('framer-motion', async () => {
   const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
+
+  const createMotionComponent = (tag: string) => {
+    const Component = React.forwardRef(
+      (
+        {
+          children,
+          className,
+          whileHover: _whileHover,
+          whileTap: _whileTap,
+          whileFocus: _whileFocus,
+          whileInView: _whileInView,
+          initial: _initial,
+          animate: _animate,
+          exit: _exit,
+          transition: _transition,
+          variants: _variants,
+          layout: _layout,
+          layoutId: _layoutId,
+          onAnimationStart: _onAnimationStart,
+          onAnimationComplete: _onAnimationComplete,
+          ...props
+        }: any,
+        ref: any
+      ) => {
+        return React.createElement(tag, { ...props, ref, className }, children);
+      }
+    );
+    Component.displayName = `motion.${tag}`;
+    return Component;
+  };
+
+  const motionProxy = new Proxy(
+    {},
+    {
+      get: (_target, prop: string) => {
+        return createMotionComponent(prop);
+      },
+    }
+  );
+
   return {
     ...actual,
     AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
-    motion: {
-      div: ({ children, className, ...props }: any) =>
-        React.createElement('div', { className, ...props }, children),
-      section: ({ children, className, ...props }: any) =>
-        React.createElement('section', { className, ...props }, children),
-      article: ({ children, className, ...props }: any) =>
-        React.createElement('article', { className, ...props }, children),
-      span: ({ children, className, ...props }: any) =>
-        React.createElement('span', { className, ...props }, children),
-      button: ({ children, className, ...props }: any) =>
-        React.createElement('button', { className, ...props }, children),
-    },
+    motion: motionProxy,
+    useReducedMotion: () => true,
+    useScroll: () => ({
+      scrollY: { get: () => 0, onChange: () => () => {} },
+      scrollYProgress: { get: () => 0, onChange: () => () => {} },
+    }),
   };
 });
-
-
-

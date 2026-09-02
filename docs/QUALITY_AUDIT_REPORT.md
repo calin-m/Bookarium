@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 01 Sep 2026 23:15:13 GMT  
+**Last Generated**: Wed, 02 Sep 2026 09:57:16 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 66 passed  
-**Total Verified Tests**: 428 passed  
+**Total Test Suites**: 69 passed  
+**Total Verified Tests**: 475 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **66/66 test suites passed** (428 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **69/69 test suites passed** (475 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 11 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.15%** (2467/2677) — *Target: $ge$ 80%*
-- **Statements**: **90.54%** (2692/2973) — *Target: $ge$ 80%*
-- **Functions**: **88.31%** (635/719) — *Target: $ge$ 80%*
-- **Branches**: **80.47%** (2329/2894) — *Target: $ge$ 80%*
+- **Lines**: **92.35%** (2609/2825) — *Target: $ge$ 80%*
+- **Statements**: **90.63%** (2837/3130) — *Target: $ge$ 80%*
+- **Functions**: **88.56%** (666/752) — *Target: $ge$ 80%*
+- **Branches**: **80.61%** (2525/3132) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (66 Suites / 428 Tests)
+## 🧪 Comprehensive Test Suite Catalog (69 Suites / 475 Tests)
 
-### 🚀 App Routes & Pages (8 Suites · 46 Tests)
+### 🚀 App Routes & Pages (8 Suites · 49 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.test.ts</code></b> (6 tests)</summary>
@@ -112,7 +112,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to previous scroll position when back button is clicked`
@@ -127,18 +127,25 @@
 - ✔ `sets reading progress to 0% on page 1 and updates progress as reader advances`
 - ✔ `automatically resumes at saved chapter and page, renders resume toast, and handles restart`
 - ✔ `renders language and translation dropdown in reader and navigates on translation selection`
+- ✔ `opens In-Book Search Drawer, finds matching phrase, and jumps to chapter on selection`
+- ✔ `toggles In-Book Search Drawer using Ctrl+F keyboard shortcut`
+- ✔ `enforces mutual exclusivity between all 4 reader modals (TOC, Search, Controls, Language)`
 
 </details>
 
-### 🎨 Catalog & Presentation (16 Suites · 112 Tests)
+### 🎨 Catalog & Presentation (16 Suites · 119 Tests)
 
 <details>
-<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `should render drawer with all filter sections when open`
-- ✔ `should handle era selection and sort order change`
-- ✔ `should handle genre facet selection and format change`
-- ✔ `should handle language selection, reset filters, and apply filters`
+- ✔ `should handle era selection on click`
+- ✔ `should handle sort order change`
+- ✔ `should handle genre facet selection on chip click`
+- ✔ `should handle format selection change`
+- ✔ `should handle language selection change`
+- ✔ `should reset all filters on reset button click`
+- ✔ `should apply filters and close drawer on apply button click`
 - ✔ `should not render anything when isOpen is false`
 - ✔ `should close when pressing the Escape key`
 
@@ -214,7 +221,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (27 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -232,7 +239,10 @@
 - ✔ `renders empty shelf state and allows browsing catalog`
 - ✔ `calls onBrowseCatalog callback when clicking Browse Catalog in empty state`
 - ✔ `allows moving a book between shelves when user has multiple shelves`
-- ✔ `triggers quick actions from hover card (download, read, save, like)`
+- ✔ `triggers onBookClick when Read button is clicked on hover card`
+- ✔ `triggers onDownloadClick when Download button is clicked on hover card`
+- ✔ `toggles saved bookmark state when Save button is clicked on hover card`
+- ✔ `toggles liked state when Like button is clicked on hover card`
 - ✔ `opens quick-action bottom sheet on mobile spine tap without immediate navigation`
 - ✔ `triggers onBookClick and closes sheet when clicking Read in mobile action sheet`
 - ✔ `dismisses mobile action sheet when clicking backdrop`
@@ -340,7 +350,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (5 Suites · 40 Tests)
+### 📖 In-Browser Focus Reader (7 Suites · 56 Tests)
 
 <details>
 <summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (7 tests)</summary>
@@ -367,11 +377,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
 - ✔ `triggers onToggleToc and onToggleControls when respective buttons are clicked`
+- ✔ `triggers onToggleSearch when search button is clicked`
 - ✔ `triggers right-side theme cycling for light, sepia, and dark`
 - ✔ `opens and closes the Gutenberg Archive volume info modal`
 - ✔ `sanitizes and renders extra long titles and multiline strings gracefully`
@@ -380,6 +391,33 @@
 - ✔ `renders integrated resume notice ribbon in sub-header and handles restart and dismiss`
 - ✔ `renders language and translation switcher and handles edition selection`
 - ✔ `handles link copying when share button is clicked`
+- ✔ `toggles mobile action tray and executes actions`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (6 tests)</summary>
+
+- ✔ `does not render content when isOpen is false`
+- ✔ `renders translations list and handles edition selection`
+- ✔ `does not trigger onSelectTranslation when clicking current edition`
+- ✔ `closes when clicking close button, backdrop, or pressing Escape`
+- ✔ `renders fallback message when translations array is empty`
+- ✔ `renders properly in Sepia theme`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderSearchDrawer.test.tsx</code></b> (8 tests)</summary>
+
+- ✔ `renders search drawer with input when isOpen is true`
+- ✔ `does not render when isOpen is false`
+- ✔ `updates search query, shows match count, and renders result cards`
+- ✔ `clears search query when clear button is clicked`
+- ✔ `calls onSelectMatch and onClose when clicking a search match card`
+- ✔ `shows empty feedback when no matches are found`
+- ✔ `closes drawer on Escape key press`
+- ✔ `closes drawer when clicking the backdrop`
 
 </details>
 
@@ -412,18 +450,21 @@
 
 </details>
 
-### 🔐 Authentication & Security (1 Suites · 11 Tests)
+### 🔐 Authentication & Security (1 Suites · 14 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
-- ✔ `renders Sign Up view, submits with email confirmation required, and shows confirmation screen`
+- ✔ `renders Sign Up view with inputs and create button`
+- ✔ `submits valid Sign Up credentials to auth store`
+- ✔ `renders email verification screen and navigates to sign in when email confirmation is required`
 - ✔ `validates password mismatch on Sign Up`
 - ✔ `handles form submission in sign in mode`
 - ✔ `renders error alert when error exists`
-- ✔ `handles magic link view and submission and email confirmation screen`
+- ✔ `submits magic link request on valid email`
+- ✔ `renders magic link confirmation screen and navigates back to sign in`
 - ✔ `handles Suggest Strong Password generation and visibility toggle`
 - ✔ `navigates from sign in view to forgot password view`
 - ✔ `submits password reset request and displays check email confirmation`
@@ -431,10 +472,10 @@
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 43 Tests)
+### ⚡ Zustand State Stores (5 Suites · 47 Tests)
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `manages modal open, close, and view state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -443,8 +484,12 @@
 - ✔ `handles signUpWithPassword success (with session and unconfirmed)`
 - ✔ `handles signInWithOtp (magic link) success and error`
 - ✔ `handles signInWithOAuth success and error`
-- ✔ `handles initializeAuth subscription and session hydration`
-- ✔ `handles updateProfile when logged in and logged out`
+- ✔ `hydrates user on initializeAuth when active session exists`
+- ✔ `updates auth state when onAuthStateChange triggers SIGNED_OUT`
+- ✔ `unsubscribes cleanly when initializeAuth cleanup function is called`
+- ✔ `returns error when updateProfile is called while logged out`
+- ✔ `updates profile display name in Supabase and local store when logged in`
+- ✔ `handles updateProfile database failure and records error`
 - ✔ `handles resetPasswordForEmail success and failure`
 - ✔ `handles updatePassword success and failure`
 - ✔ `handles requestAccountDeletion success and failure`
@@ -506,10 +551,10 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (6 Suites · 77 Tests)
+### 📚 Gutenberg Parsers & Metadata (7 Suites · 88 Tests)
 
 <details>
-<summary><b><code>src/lib/book-metadata.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/lib/book-metadata.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `identifies placeholder and empty authors correctly`
 - ✔ `identifies placeholder and generic volume titles correctly`
@@ -519,11 +564,12 @@
 - ✔ `falls back to extracted Gutenberg raw text header (Tier 4) when store and API are unavailable or have placeholders`
 - ✔ `bypasses store placeholder authors and uses authentic API/header authors`
 - ✔ `handles fallback defaults when all metadata sources are empty`
+- ✔ `resolves languages correctly with strict ID-guarding from store, API, and header metadata`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg-parser.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/lib/gutenberg-parser.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `returns empty array on null or undefined input`
 - ✔ `correctly calculates reading time based on 200 WPM`
@@ -547,6 +593,22 @@
 - ✔ `parses multi-work anthologies with standalone titles and footnote brackets (e.g. Book 831 Four Arthurian Romances)`
 - ✔ `parses complex TOC without catastrophic backtracking or thread lock`
 - ✔ `caches and retrieves paginated chapter content with clearPaginationCache support`
+- ✔ `parses books formatted with dotted Roman numerals and subtitle lines (such as The Time Machine)`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/in-book-search.test.ts</code></b> (9 tests)</summary>
+
+- ✔ `returns empty result when chapters array is empty or undefined`
+- ✔ `returns empty result when search query is empty, whitespace, or less than 2 chars`
+- ✔ `finds exact case-insensitive matches across chapters`
+- ✔ `finds phrase matches preserving surrounding context and pagination coordinates`
+- ✔ `safely handles regex special characters and punctuation in query`
+- ✔ `handles diacritic normalization fallback`
+- ✔ `caps matches to maxResults limit`
+- ✔ `safely skips chapters with null or empty content`
+- ✔ `caps matches to maxResults when using diacritic fallback`
 
 </details>
 
@@ -621,7 +683,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (7 Suites · 46 Tests)
+### 🔄 Hooks & React Query (7 Suites · 47 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (3 tests)</summary>
@@ -651,7 +713,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBookTranslations.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookTranslations.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `strips subtitles after semicolons and colons`
 - ✔ `strips volume and part suffixes`
@@ -665,6 +727,7 @@
 - ✔ `fetches and groups available international translations from API`
 - ✔ `handles a bilingual or multi-language current volume and includes all constituent languages`
 - ✔ `pulls all available languages when API returns diverse multilingual editions`
+- ✔ `discovers alternative translations bi-directionally when active book is in a non-English edition (e.g. Dutch -> English)`
 - ✔ `gracefully handles fetch error and retains current edition`
 
 </details>
@@ -711,10 +774,10 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (18 Suites · 53 Tests)
+### 🧩 UI Primitives & Motion (18 Suites · 55 Tests)
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated`
 - ✔ `renders authenticated profile and handles saving display name`
@@ -723,10 +786,12 @@
 - ✔ `renders Navbar and Footer with working navigation handlers`
 - ✔ `handles toggling catalog sticky scroll navigation setting`
 - ✔ `accurately calculates and renders custom shelves count excluding default shelf`
-- ✔ `handles password update with validation and success feedback`
+- ✔ `validates password mismatch before submitting update`
+- ✔ `submits updatePassword with valid matching credentials and shows success feedback`
 - ✔ `handles Suggest Strong Password in Profile Security card and auto-fills both fields`
 - ✔ `opens delete account modal and cancels without deleting`
 - ✔ `submits account deletion request and displays verification email confirmation`
+- ✔ `dismisses deletion verification confirmation screen on close button click`
 - ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
 
 </details>

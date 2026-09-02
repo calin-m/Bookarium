@@ -56,7 +56,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const [deletingShelfId, setDeletingShelfId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMobileBook, setSelectedMobileBook] = useState<GutendexBook | null>(null);
-  const [isClosingMobileSheet, setIsClosingMobileSheet] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [shelfCapacity, setShelfCapacity] = useState<number>(18);
@@ -82,16 +81,11 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   }, []);
 
   const closeMobileSheet = () => {
-    setIsClosingMobileSheet(true);
-    setTimeout(() => {
-      setSelectedMobileBook(null);
-      setIsClosingMobileSheet(false);
-    }, 200);
+    setSelectedMobileBook(null);
   };
 
   const handleSpineClick = (book: GutendexBook) => {
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
-      setIsClosingMobileSheet(false);
       setSelectedMobileBook(book);
     } else {
       if (onBookClick) onBookClick(book);
@@ -373,7 +367,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               {selectedMobileBook && shelfBooks.some((b) => b.id === selectedMobileBook.id) && (
                 <BookshelfMobileModal
                   selectedMobileBook={selectedMobileBook}
-                  isClosingMobileSheet={isClosingMobileSheet}
                   onClose={closeMobileSheet}
                   readingProgress={readingProgress[selectedMobileBook.id]}
                   isSaved={checkIsSaved(selectedMobileBook.id)}

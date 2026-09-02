@@ -161,41 +161,62 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().error).toBe('OAuth failed');
   });
 
-  it('handles initializeAuth subscription and session hydration', async () => {
-    const mockUnsubscribe = vi.fn();
-    let authChangeCallback: any;
-
+  it('hydrates user on initializeAuth when active session exists', async () => {
     mockGetUser.mockResolvedValueOnce({
       data: { user: { id: 'init-user', email: 'init@bookarium.test' } },
     });
-
-    mockOnAuthStateChange.mockImplementationOnce((callback: any) => {
-      authChangeCallback = callback;
-      return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
+    mockOnAuthStateChange.mockReturnValueOnce({
+      data: { subscription: { unsubscribe: vi.fn() } },
     });
 
-    const cleanup = useAuthStore.getState().initializeAuth();
-
+    useAuthStore.getState().initializeAuth();
+    expect(mockGetUser).toHaveBeenCalled();
     expect(mockOnAuthStateChange).toHaveBeenCalled();
+  });
 
-    // Trigger auth state change callback
+  it('updates auth state when onAuthStateChange triggers SIGNED_OUT', async () => {
+    let authChangeCallback: any;
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: 'init-user', email: 'init@bookarium.test' } },
+    });
+    mockOnAuthStateChange.mockImplementationOnce((callback: any) => {
+      authChangeCallback = callback;
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
+
+    useAuthStore.getState().initializeAuth();
+
+    useAuthStore.setState({
+      user: { id: 'init-user', email: 'init@bookarium.test' } as any,
+      profile: { id: 'init-user', display_name: 'Init User' } as any,
+    });
+
     if (authChangeCallback) {
       authChangeCallback('SIGNED_OUT', null);
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().profile).toBeNull();
     }
-
-    cleanup();
-    expect(mockUnsubscribe).toHaveBeenCalled();
   });
 
-  it('handles updateProfile when logged in and logged out', async () => {
-    // Logged out
-    useAuthStore.setState({ user: null, profile: null });
-    const res1 = await useAuthStore.getState().updateProfile({ display_name: 'New Name' });
-    expect(res1.error?.message).toBe('User not logged in');
+  it('unsubscribes cleanly when initializeAuth cleanup function is called', () => {
+    const mockUnsubscribe = vi.fn();
+    mockGetUser.mockResolvedValueOnce({ data: { user: null } });
+    mockOnAuthStateChange.mockReturnValueOnce({
+      data: { subscription: { unsubscribe: mockUnsubscribe } },
+    });
 
-    // Logged in success
+    const cleanup = useAuthStore.getState().initializeAuth();
+    cleanup();
+    expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns error when updateProfile is called while logged out', async () => {
+    useAuthStore.setState({ user: null, profile: null });
+    const res = await useAuthStore.getState().updateProfile({ display_name: 'New Name' });
+    expect(res.error?.message).toBe('User not logged in');
+  });
+
+  it('updates profile display name in Supabase and local store when logged in', async () => {
     useAuthStore.setState({
       user: { id: 'user-123' } as any,
       profile: { id: 'user-123', display_name: 'Old Name' } as any,
@@ -206,19 +227,25 @@ describe('useAuthStore', () => {
       }),
     });
 
-    const res2 = await useAuthStore.getState().updateProfile({ display_name: 'Updated Name' });
-    expect(res2.error).toBeNull();
+    const res = await useAuthStore.getState().updateProfile({ display_name: 'Updated Name' });
+    expect(res.error).toBeNull();
     expect(useAuthStore.getState().profile?.display_name).toBe('Updated Name');
+  });
 
-    // Logged in failure
+  it('handles updateProfile database failure and records error', async () => {
+    useAuthStore.setState({
+      user: { id: 'user-123' } as any,
+      profile: { id: 'user-123', display_name: 'Old Name' } as any,
+    });
     mockFrom.mockReturnValueOnce({
       update: vi.fn().mockReturnValueOnce({
         eq: vi.fn().mockResolvedValueOnce({ error: { message: 'Database error' } }),
       }),
     });
 
-    const res3 = await useAuthStore.getState().updateProfile({ display_name: 'Failed Name' });
-    expect(res3.error?.message).toBe('Database error');
+    const res = await useAuthStore.getState().updateProfile({ display_name: 'Failed Name' });
+    expect(res.error?.message).toBe('Database error');
+    expect(useAuthStore.getState().error).toBe('Database error');
   });
 
   it('handles resetPasswordForEmail success and failure', async () => {

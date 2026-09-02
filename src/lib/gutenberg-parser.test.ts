@@ -172,12 +172,36 @@ The Project Gutenberg eBook of Frankenstein; Or, The Modern Prometheus
 Title: Frankenstein
        or, The Modern Prometheus
 Author: Mary Wollstonecraft (Godwin) Shelley
+Language: English
 Release Date: October 31, 1993 [eBook #84]
     `;
 
     const meta = extractGutenbergHeaderMetadata(headerText);
     expect(meta.title).toBe('Frankenstein');
     expect(meta.author).toContain('Mary Wollstonecraft');
+    expect(meta.language).toBe('en');
+
+    // Multilingual Gutenberg headers
+    const dutchHeader = `
+Title: Gevoel en verstand
+Author: Jane Austen
+Language: Dutch
+Translator: Gonne Loman-van Uildriks
+    `;
+    const dutchMeta = extractGutenbergHeaderMetadata(dutchHeader);
+    expect(dutchMeta.title).toBe('Gevoel en verstand');
+    expect(dutchMeta.author).toBe('Jane Austen');
+    expect(dutchMeta.language).toBe('nl');
+
+    const frenchHeader = `
+Titre: Les Misérables
+Auteur: Victor Hugo
+Langue: French
+    `;
+    const frenchMeta = extractGutenbergHeaderMetadata(frenchHeader);
+    expect(frenchMeta.title).toBe('Les Misérables');
+    expect(frenchMeta.author).toBe('Victor Hugo');
+    expect(frenchMeta.language).toBe('fr');
 
     expect(extractGutenbergHeaderMetadata(null)).toEqual({});
   });
@@ -528,6 +552,46 @@ ${'A'.repeat(50000)}
       clearPaginationCache();
       const pages3 = paginateChapterContent(longChapter, 500);
       expect(pages3).toEqual(pages1);
+    });
+
+    it('parses books formatted with dotted Roman numerals and subtitle lines (such as The Time Machine)', () => {
+      const timeMachineText = `
+*** START OF THE PROJECT GUTENBERG EBOOK THE TIME MACHINE ***
+
+THE TIME MACHINE
+By H. G. Wells
+
+ I.
+ Introduction
+
+The Time Traveller (for so it will be convenient to speak of him) was expounding a recondite matter to us.
+
+ II.
+ The Machine
+
+It is simply this. That Space, as our mathematicians have it, is spoken of as having three dimensions.
+
+ III.
+ The Time Traveller Returns
+
+I think that at that time none of us quite believed in the Time Machine.
+
+*** END OF THE PROJECT GUTENBERG EBOOK THE TIME MACHINE ***
+`;
+      const chapters = parseGutenbergChapters(timeMachineText);
+      expect(chapters.length).toBeGreaterThanOrEqual(4); // Preamble + 3 Chapters + Colophon
+
+      const ch1 = chapters.find((c) => c.displayTitle.includes('Chapter I: Introduction'));
+      expect(ch1).toBeDefined();
+      expect(ch1?.content).toContain('The Time Traveller');
+
+      const ch2 = chapters.find((c) => c.displayTitle.includes('Chapter II: The Machine'));
+      expect(ch2).toBeDefined();
+      expect(ch2?.content).toContain('our mathematicians have it');
+
+      const ch3 = chapters.find((c) => c.displayTitle.includes('Chapter III: The Time Traveller Returns'));
+      expect(ch3).toBeDefined();
+      expect(ch3?.content).toContain('none of us quite believed');
     });
   });
 });

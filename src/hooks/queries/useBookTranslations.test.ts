@@ -209,6 +209,66 @@ describe('useBookTranslations and helpers', () => {
       expect(codes).toContain('ru');
     });
 
+    it('discovers alternative translations bi-directionally when active book is in a non-English edition (e.g. Dutch -> English)', async () => {
+      const mockApiResponse = {
+        results: [
+          {
+            id: 1342,
+            title: 'Pride and Prejudice',
+            authors: [{ name: 'Austen, Jane' }],
+            languages: ['en'],
+          },
+          {
+            id: 25946,
+            title: 'Gevoel en verstand',
+            authors: [{ name: 'Austen, Jane' }],
+            languages: ['nl'],
+          },
+          {
+            id: 67890,
+            title: 'Orgueil et Préjugés',
+            authors: [{ name: 'Austen, Jane' }],
+            languages: ['fr'],
+          },
+        ],
+      };
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockApiResponse,
+      } as any);
+
+      // Render hook for the Dutch edition
+      const { result } = renderHook(
+        () => useBookTranslations('Gevoel en verstand', 'Jane Austen', 25946, ['nl']),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        expect(result.current.translations.length).toBe(3);
+      });
+
+      // Dutch edition should be marked current
+      const currentDutch = result.current.translations.find((t) => t.bookId === 25946);
+      expect(currentDutch).toBeDefined();
+      expect(currentDutch?.isCurrent).toBe(true);
+      expect(currentDutch?.languageCode).toBe('nl');
+      expect(currentDutch?.languageLabel).toBe('Dutch (Nederlands)');
+
+      // English edition should be discovered and available
+      const discoveredEnglish = result.current.translations.find((t) => t.bookId === 1342);
+      expect(discoveredEnglish).toBeDefined();
+      expect(discoveredEnglish?.isCurrent).toBe(false);
+      expect(discoveredEnglish?.languageCode).toBe('en');
+      expect(discoveredEnglish?.languageLabel).toBe('English');
+
+      // French edition should be discovered and available
+      const discoveredFrench = result.current.translations.find((t) => t.bookId === 67890);
+      expect(discoveredFrench).toBeDefined();
+      expect(discoveredFrench?.isCurrent).toBe(false);
+      expect(discoveredFrench?.languageCode).toBe('fr');
+    });
+
     it('gracefully handles fetch error and retains current edition', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: false,

@@ -96,8 +96,8 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getAllByText(/Pride and Prejudice/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Austen/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByLabelText('Back to Catalog')).toBeInTheDocument();
-    expect(screen.getByLabelText('Table of Contents')).toBeInTheDocument();
-    expect(screen.getByLabelText('Typography & Theme Controls')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Table of Contents')[0]).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Typography & Theme Controls')[0]).toBeInTheDocument();
   });
 
   it('navigates back to previous scroll position when back button is clicked', () => {
@@ -127,7 +127,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
   it('opens and closes Table of Contents drawer', () => {
     render(<BookReaderPage />);
 
-    const contentsBtn = screen.getByLabelText('Table of Contents');
+    const contentsBtn = screen.getAllByLabelText('Table of Contents')[0];
     fireEvent.click(contentsBtn);
 
     expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
@@ -141,7 +141,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
   it('opens and closes appearance controls popover', () => {
     render(<BookReaderPage />);
 
-    const appearanceBtn = screen.getByLabelText('Typography & Theme Controls');
+    const appearanceBtn = screen.getAllByLabelText('Typography & Theme Controls')[0];
     fireEvent.click(appearanceBtn);
 
     expect(screen.getByRole('region', { name: /Reading Controls/i })).toBeInTheDocument();
@@ -191,17 +191,17 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     render(<BookReaderPage />);
 
     // Starts at light theme (set in beforeEach)
-    const themeBtn = screen.getByLabelText(/Current theme: light/i);
+    const themeBtn = screen.getAllByLabelText(/Current theme: light/i)[0];
     fireEvent.click(themeBtn);
     expect(useReaderStore.getState().theme).toBe('sepia');
 
     // Sepia -> Dark
-    const sepiaThemeBtn = screen.getByLabelText(/Current theme: sepia/i);
+    const sepiaThemeBtn = screen.getAllByLabelText(/Current theme: sepia/i)[0];
     fireEvent.click(sepiaThemeBtn);
     expect(useReaderStore.getState().theme).toBe('dark');
 
     // Dark -> Light
-    const darkThemeBtn = screen.getByLabelText(/Current theme: dark/i);
+    const darkThemeBtn = screen.getAllByLabelText(/Current theme: dark/i)[0];
     fireEvent.click(darkThemeBtn);
     expect(useReaderStore.getState().theme).toBe('light');
   });
@@ -209,7 +209,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
   it('handles quick font size adjustments', () => {
     render(<BookReaderPage />);
 
-    const appearanceBtn = screen.getByLabelText('Typography & Theme Controls');
+    const appearanceBtn = screen.getAllByLabelText('Typography & Theme Controls')[0];
     fireEvent.click(appearanceBtn);
 
     const fontSlider = screen.getByLabelText('Font size in pixels');
@@ -267,14 +267,76 @@ describe('Dedicated Reader Page (/read/[id])', () => {
   it('renders language and translation dropdown in reader and navigates on translation selection', () => {
     render(<BookReaderPage />);
 
-    const langBtn = screen.getByLabelText('Language Editions & Translations');
+    const langBtn = screen.getAllByLabelText('Language Editions & Translations')[0];
     expect(langBtn).toBeInTheDocument();
     fireEvent.click(langBtn);
 
-    expect(screen.getByText('French (Français)')).toBeInTheDocument();
-    const frenchBtn = screen.getByRole('button', { name: /French \(Français\)/i });
+    expect(screen.getAllByText('French (Français)')[0]).toBeInTheDocument();
+    const frenchBtn = screen.getAllByRole('button', { name: /French \(Français\)/i })[0];
     fireEvent.click(frenchBtn);
 
     expect(mockPush).toHaveBeenCalledWith('/read/67890');
+  });
+
+  it('opens In-Book Search Drawer, finds matching phrase, and jumps to chapter on selection', () => {
+    render(<BookReaderPage />);
+
+    const searchBtn = screen.getAllByLabelText('Search in Book')[0];
+    fireEvent.click(searchBtn);
+
+    expect(screen.getByRole('dialog', { name: /Search in Volume/i })).toBeInTheDocument();
+
+    const input = screen.getByRole('textbox', { name: /search book text/i });
+    fireEvent.change(input, { target: { value: 'Darcy' } });
+
+    expect(screen.getByText(/1 match across 1 chapter/i)).toBeInTheDocument();
+    const matchCard = screen.getByText('Darcy').closest('button');
+    expect(matchCard).not.toBeNull();
+    fireEvent.click(matchCard!);
+
+    // Should navigate to Chapter 2 and close search drawer
+    expect(screen.queryByRole('dialog', { name: /Search in Volume/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('toggles In-Book Search Drawer using Ctrl+F keyboard shortcut', () => {
+    render(<BookReaderPage />);
+
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true });
+    expect(screen.getByRole('dialog', { name: /Search in Volume/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: /Search in Volume/i })).not.toBeInTheDocument();
+  });
+
+  it('enforces mutual exclusivity between all 4 reader modals (TOC, Search, Controls, Language)', () => {
+    render(<BookReaderPage />);
+
+    // 1. Open TOC
+    const tocBtn = screen.getAllByLabelText('Table of Contents')[0];
+    fireEvent.click(tocBtn);
+    expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
+
+    // 2. Open Search -> closes TOC
+    const searchBtn = screen.getAllByLabelText('Search in Book')[0];
+    fireEvent.click(searchBtn);
+    expect(screen.queryByRole('dialog', { name: /Table of Contents/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /Search in Volume/i })).toBeInTheDocument();
+
+    // 3. Open Controls -> closes Search
+    const controlsBtn = screen.getAllByLabelText('Typography & Theme Controls')[0];
+    fireEvent.click(controlsBtn);
+    expect(screen.queryByRole('dialog', { name: /Search in Volume/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /Reading Controls/i })).toBeInTheDocument();
+
+    // 4. Open Language Drawer -> closes Controls
+    const langBtn = screen.getAllByLabelText('Language Editions & Translations')[0];
+    fireEvent.click(langBtn);
+    expect(screen.queryByRole('region', { name: /Reading Controls/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /Language Editions & Translations/i })).toBeInTheDocument();
+
+    // 5. Re-click Language Drawer -> closes Language Drawer
+    fireEvent.click(langBtn);
+    expect(screen.queryByRole('dialog', { name: /Language Editions & Translations/i })).not.toBeInTheDocument();
   });
 });

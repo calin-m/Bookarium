@@ -142,10 +142,81 @@ describe('src/lib/book-metadata', () => {
       expect(result.author).toBe('');
       expect(result.displayAuthor).toBe('Public Domain Classic');
       expect(result.primarySubject).toBe('Classic Literature');
+      expect(result.languages).toEqual(['en']);
       expect(result.isPublicDomain).toBe(true);
 
       const numericResult = resolveBookMetadata({ id: 12345 });
       expect(numericResult.title).toBe('Gutenberg Volume #12345');
+    });
+
+    it('resolves languages correctly with strict ID-guarding from store, API, and header metadata', () => {
+      // 1. Store book with matching ID
+      const matchingStoreBook: GutendexBook = {
+        id: 25946,
+        title: 'Gevoel en verstand',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        subjects: ['Classic'],
+        bookshelves: [],
+        languages: ['nl'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 50,
+      };
+      const resultStore = resolveBookMetadata({
+        id: 25946,
+        currentBook: matchingStoreBook,
+      });
+      expect(resultStore.languages).toEqual(['nl']);
+
+      // 2. Store book with mismatched ID (stale previous route)
+      const staleStoreBook: GutendexBook = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        subjects: ['Classic'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 50,
+      };
+      const resultStale = resolveBookMetadata({
+        id: 25946,
+        currentBook: staleStoreBook,
+        extractedMeta: { title: 'Gevoel en verstand', author: 'Jane Austen', language: 'nl' },
+      });
+      // Should ignore stale store languages ('en') and use extractedMeta language ('nl')
+      expect(resultStale.languages).toEqual(['nl']);
+
+      // 3. API result
+      const resultApi = resolveBookMetadata({
+        id: 3333,
+        booksData: {
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: 3333,
+              title: 'Faust',
+              authors: [],
+              translators: [],
+              subjects: [],
+              bookshelves: [],
+              languages: ['de'],
+              copyright: false,
+              media_type: 'Text',
+              formats: {},
+              download_count: 10,
+            },
+          ],
+        },
+      });
+      expect(resultApi.languages).toEqual(['de']);
     });
   });
 });

@@ -179,8 +179,8 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
   // Matches:
   // 1. Explicit CHAPTER / BOOK / ACT / SCENE / CANTO / PART / STORY / TALE / SECTION + number/title
   // 2. Special literary sections (ETYMOLOGY, EXTRACTS, PREFACE, PROLOGUE, EPILOGUE, INTRODUCTION, etc.)
-  // 3. Standalone Roman numerals on their own line preceded by a blank line (e.g. "\n\n  IV  \n\n" as in The Great Gatsby, Dorian Gray, etc.)
-  const headingRegex = /(?:^|\n\s*\n)\s*(?:(?:(?:CHAPTER|Chapter|BOOK|Book|ACT|Act|SCENE|Scene|CANTO|Canto|PART|Part|STORY|Story|TALE|Tale|SECTION|Section)\s+([IVXLCDM\d]+[^\n]*))|(?:(?:ETYMOLOGY|EXTRACTS|PREFACE|PROLOGUE|EPILOGUE|INTRODUCTION)\b[^\n]*)|(?:([IVXLCDM]{1,8})\s*(?=\n\s*\n)))/g;
+  // 3. Standalone or dotted Roman numerals optionally followed by a single-line subtitle (e.g. "\n\n  IV  \n\n" or "\n\n  I.\n  Introduction\n\n" as in The Time Machine, The Great Gatsby, Dorian Gray, etc.)
+  const headingRegex = /(?:^|\n\s*\n)\s*(?:(?:(?:CHAPTER|Chapter|BOOK|Book|ACT|Act|SCENE|Scene|CANTO|Canto|PART|Part|STORY|Story|TALE|Tale|SECTION|Section)\s+([IVXLCDM\d]+[^\n]*))|(?:(?:ETYMOLOGY|EXTRACTS|PREFACE|PROLOGUE|EPILOGUE|INTRODUCTION)\b[^\n]*)|(?:([IVXLCDM]{1,8})\.?(?:(?=\n\s*\n)|\n[ \t]*([A-Za-z][^\n]{1,60})(?=\n\s*\n))))/g;
   const tocMatch = /(?:^|\n\n)(?:CONTENTS|TABLE OF CONTENTS|INDEX)\b/i.exec(mainBody);
 
   const rawMatches: { index: number; title: string; displayTitle?: string; bodyLength: number }[] = [];
@@ -188,7 +188,12 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
 
   while ((m = headingRegex.exec(mainBody)) !== null) {
     const rawHeading = m[0].trim();
-    const displayTitle = m[2] ? `Chapter ${m[2]}` : rawHeading;
+    const romanNumeral = m[2];
+    const subtitle = m[3];
+    let displayTitle = rawHeading;
+    if (romanNumeral) {
+      displayTitle = subtitle ? `Chapter ${romanNumeral}: ${subtitle.trim()}` : `Chapter ${romanNumeral}`;
+    }
     rawMatches.push({
       index: m.index,
       title: rawHeading,
@@ -479,23 +484,69 @@ export function calculateVolumePageSpread(
   };
 }
 
+const LANGUAGE_NAME_TO_CODE_MAP: Record<string, string> = {
+  english: 'en',
+  dutch: 'nl',
+  nederlands: 'nl',
+  french: 'fr',
+  français: 'fr',
+  francais: 'fr',
+  german: 'de',
+  deutsch: 'de',
+  spanish: 'es',
+  español: 'es',
+  espanol: 'es',
+  italian: 'it',
+  italiano: 'it',
+  portuguese: 'pt',
+  português: 'pt',
+  portugues: 'pt',
+  russian: 'ru',
+  latin: 'la',
+  greek: 'el',
+  esperanto: 'eo',
+  swedish: 'sv',
+  danish: 'da',
+  norwegian: 'no',
+  finnish: 'fi',
+  polish: 'pl',
+  hungarian: 'hu',
+  chinese: 'zh',
+  japanese: 'ja',
+};
+
+export function normalizeLanguageToCode(rawLang?: string | null): string | undefined {
+  if (!rawLang) return undefined;
+  const clean = rawLang.trim().toLowerCase();
+  if (/^[a-z]{2,3}$/.test(clean)) {
+    return clean;
+  }
+  return LANGUAGE_NAME_TO_CODE_MAP[clean] || (clean.length >= 2 ? clean.slice(0, 2) : undefined);
+}
+
 /**
- * Extract Title and Author directly from the Project Gutenberg preamble header.
+ * Extract Title, Author, and Language directly from the Project Gutenberg preamble header.
  */
 export function extractGutenbergHeaderMetadata(rawText: string | undefined | null): {
   title?: string;
   author?: string;
+  language?: string;
 } {
   if (!rawText) return {};
   const headerSlice = rawText.slice(0, 5000);
-  const titleMatch = /^\s*Title:\s*([^\r\n]+)/im.exec(headerSlice);
+  const titleMatch = /^\s*(?:Title|Titel|Titre|Título|Titulo):\s*([^\r\n]+)/im.exec(headerSlice);
   const authorMatch =
-    /^\s*Author:\s*([^\r\n]+)/im.exec(headerSlice) ||
+    /^\s*(?:Author|Auteur|Autor|Autore):\s*([^\r\n]+)/im.exec(headerSlice) ||
     /^\s*by\s+([^\r\n]+)/im.exec(headerSlice);
+  const languageMatch = /^\s*(?:Language|Taal|Langue|Idioma|Lingua|Sprache):\s*([^\r\n]+)/im.exec(headerSlice);
+
+  const rawLang = languageMatch ? languageMatch[1].replace(/\s+/g, ' ').trim() : undefined;
+  const normalizedLang = normalizeLanguageToCode(rawLang);
 
   return {
     title: titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : undefined,
     author: authorMatch ? authorMatch[1].replace(/\s+/g, ' ').trim() : undefined,
+    language: normalizedLang,
   };
 }
 

@@ -8,9 +8,10 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-66%20Suites%20%7C%20428%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.0%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-69%20Suites%20%7C%20475%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.4%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
@@ -33,8 +34,12 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v1.7.0)
+## 🛠️ Latest Improvements (v1.7.1)
 
+- **Unified Portaled Reader Drawer Architecture & 4-Way Mutual Exclusivity (ADR-012)** – Standardized all in-reader tool dialogs (`ReaderTocDrawer`, `ReaderSearchDrawer`, `ReaderControls`, `ReaderLanguageDrawer`) as portaled components (`createPortal(..., document.body)`). Centralized visibility at the parent reader page level with strict 4-way mutual exclusivity (opening one closes the others, while re-clicking toggles closed).
+- **Elevated Reader Header Stacking & Non-Blocking Page Flips (`ReaderHeader.tsx`)** – Elevated header stacking context to `z-[10000]` above modal backdrops (`z-[9998]`), ensuring toolbar buttons remain fully clickable and active. Removed broad blocking overlays so page-turn zones and footer navigation remain completely interactive and responsive while tools are open.
+- **Physical Sliding Reader Toolbar with Traveling Pull Handle (`ReaderHeader.tsx`)** – Pin-docked mobile reader drawer to the right margin with physical `translateX` glide animation. Closed state displays only the 44px arrow button `[‹]`; opened state smoothly glides the handle to the left of the 6 tools and rotates into `[›]`.
+- **Complete Sepia, Light & Dark Theme Palette Harmonization** – Unified theme tokens (`${activeTheme.drawerBg}`, `${activeTheme.drawerActive}`, `${activeTheme.drawerHover}`, `${activeTheme.pill}`, `${activeTheme.border}`) across Table of Contents, Search match highlights (`<mark>`), Typography range sliders (`accent-amber-500 bg-[#462e22]`), Language Editions selector, and Gutenberg Archive Metadata Modal.
 - **Enterprise Security Hardening & Zero-Dependency Rate Limiting (`rate-limiter.ts`, `next.config.ts`, `/api/books`)** – In-memory sliding window rate limiter protecting upstream Project Gutenberg APIs (60 req/min for search, 30 req/min for full text) with `X-RateLimit-*` and `Retry-After` headers, paired with strict HSTS, Clickjacking defense (`SAMEORIGIN`), MIME-sniffing protection (`nosniff`), Permissions-Policy, and SSRF domain whitelisting.
 - **Open Redirect Sanitization & Secure Auth Callback (`/auth/callback`)** – Strict relative path validation (`sanitizeRedirectPath`) preventing open redirect vulnerabilities in OAuth and magic-link authentication flows.
 - **ReDoS Elimination & Pagination Cache (`gutenberg-parser.ts`)** – Non-backtracking regular expressions (`[^\n]{0,80}`) and bounded passage analysis window (capped at 120,000 chars) eliminating main-thread event loop blocking on multi-megabyte classic epics, accompanied by a 500-entry LRU pagination cache for instant virtual page turns.
@@ -69,7 +74,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
 - **Strict 0% Page 1 Reading Progress & Verified Accounts** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user accounts (`/account`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 66/66 test files passed, 428/428 tests passed with **92.0% line coverage** and **80.3% branch coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 66/66 test files passed, 444/444 tests passed with **92.0% line coverage** and **80.3% branch coverage** (`npm run verify`).
 
 ---
 
@@ -141,8 +146,10 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * **Dual-Strategy Chapter & Anthology TOC Engine**: Automatically segments both standard numbered chapters (`CHAPTER 1`, `BOOK I`) and short story/tale anthologies (e.g. *"Twenty-Five Ghost Stories"* `read/53419`) via front-matter `CONTENTS` index scanning, listing all individual stories as discrete, jumpable sections in the Table of Contents drawer.
   * **Gutenberg Paragraph Reflow Engine**: Normalizes legacy 70-character hard linebreaks into fluid prose across Narrow (`576px`), Normal (`768px`), and Wide (`1024px`) reading layouts while preserving double-spaced paragraphs, dialogue, and indented poetry/verse.
   * **True Book-Wide Global Pagination**: Calculates virtual pages across the entire volume with keyboard (`←`/`→`) and input page jumping.
-  * **Zero Cumulative Layout Shift (0 CLS)**: `scrollbar-gutter: stable`, fixed aspect ratios, border-safe interactive buttons, and no synthetic body overflow locks ensure 100% layout stability.
-  * **Table of Contents Drawer**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`), read-time estimates, and solid opaque surfaces with transparent backdrops.
+  * **Table of Contents Drawer (`ReaderTocDrawer`)**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`), read-time estimates, and solid opaque surfaces with transparent backdrops.
+  * **In-Book Full-Text Search Drawer (`ReaderSearchDrawer`)**: Real-time client regex search engine scanning the entire volume with highlighted snippet matches (`<mark>`), chapter grouping, live match count badges, 1-click chapter jumps, and keyboard shortcut invocation (`Ctrl+F` / `Cmd+F` / `/`).
+  * **Language Editions & Translations Drawer (`ReaderLanguageDrawer`)**: Portaled modal discovering all international editions (Spanish, French, German, Italian, etc.) and bilingual translations with 1-click reading handoff.
+  * **Physical Sliding Mobile Toolbar Drawer (`ReaderHeader`)**: Pin-docked mobile control drawer with an integrated traveling pull handle (`[‹] / [›]`), keeping the reading canvas and page-turn tap zones 100% unblocked.
   * **Font Scaler & Dynamic Line Spacing Sliders**: Real-time font sizing (12px–36px) and dynamic line height (1.2–2.6) with 1-click presets (`14px / 18px / 24px` and `1.4 Compact / 1.8 Standard / 2.2 Spacious`) and top bar quick spacing cycler (`↕`).
   * **Pinch‑to‑Zoom Font Scaling (Mobile)**: Two‑finger pinch gestures adjust the font size between 12 px – 36 px, displaying a transient HUD pill with the current size.
   * **Typography & Reading Modes**: 1-click column width presets (**Narrow** / **Normal** / **Wide** — defaulting to **Wide** `1024px`) and reading mode switching (**Page** / **Scroll**).
@@ -187,13 +194,11 @@ flowchart TD
         Card["Book Card Component (BookCard.tsx)"]
         Modal["3D Book Preview Modal (BookPreviewModal.tsx)"]
         Reader["Dedicated In-Browser Reader (src/app/read/[id]/page.tsx)"]
-        Profile["Profile & Reading Preferences (src/app/profile/page.tsx)"]
         Account["Account & Reading Preferences (src/app/account/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
         StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• cloudBookshelves: []\n• likedBookIds: []")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• fontSize / spacing\n• progress: {}")]
         StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}")]
         StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
         
@@ -201,28 +206,19 @@ flowchart TD
         QueryBooks["🔄 useBooks(query, topic, page)"]
         QueryContent["🔄 useBookContent(textUrl, bookId)"]
         
-        Nav -->|Open Auth / Profile| StoreAuth
-        Nav -->|View Bookshelf| StoreShelf
         Nav -->|"Open Auth / Account"| StoreAuth
         Nav -->|"View Bookshelf"| StoreShelf
         StorePrefs --> ScrollHook
         ScrollHook --> Nav
         ScrollHook --> Toolbar
-        Hero -->|Filter Query| QueryBooks
         Hero -->|"Filter Query"| QueryBooks
         QueryBooks --> Grid
         Grid --> Card
-        Card -->|Preview 3D Volume| Modal
-        Card -->|Open Reader| Reader
-        Card -->|Save / Like| StoreShelf
         Card -->|"Preview 3D Volume"| Modal
         Card -->|"Open Reader"| Reader
         Card -->|"Save / Like"| StoreShelf
         Reader --> StoreReader
         Reader --> QueryContent
-        Profile --> StoreAuth
-        Profile --> StoreShelf
-        Profile --> StorePrefs
         Account --> StoreAuth
         Account --> StoreShelf
         Account --> StorePrefs
@@ -240,14 +236,10 @@ flowchart TD
         
         QueryBooks --> ProxyRoute
         ProxyRoute --> GutendexAPI
-        QueryBooks -.->|Failover| DirectUpstream
         QueryBooks -.->|"Failover"| DirectUpstream
         DirectUpstream --> GutendexAPI
         QueryContent --> ContentProxy
         ContentProxy --> GutenbergContent
-        StoreAuth <-->|Session / Profiles| SupabaseCloud
-        StoreShelf <-->|Cloud Sync (RLS)| SupabaseCloud
-        AuthCallback <-->|Code Exchange| SupabaseCloud
         StoreAuth <-->|"Session / Profiles"| SupabaseCloud
         StoreShelf <-->|"Cloud Sync (RLS)"| SupabaseCloud
         AuthCallback <-->|"Code Exchange"| SupabaseCloud
@@ -266,8 +258,6 @@ flowchart TD
         VerifyScript --> Changelog
     end
 
-    User <-->|Browse, Read, Sync| ClientApp
-    ClientApp -.->|Validated by| VerifyScript
     User <-->|"Browse, Read, Sync"| ClientApp
     ClientApp -.->|"Validated by"| VerifyScript
 ```
@@ -304,12 +294,15 @@ flowchart LR
     end
 
     subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]
-        Toolbar["Top Editorial Reader Bar"]
+        Toolbar["Top Editorial Reader Bar & Sliding Tray"]
         ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap)"]
         ProgressBar["Top Reading Progress Indicator"]
         ResumeToast["Exact-Page Auto-Resume Toast"]
         FooterBar["Sticky Bottom Pagination & Page Jump"]
-        TOC["Table of Contents Slide-Over Drawer"]
+        TOC["Table of Contents Drawer (ReaderTocDrawer)"]
+        SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]
+        LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]
+        Controls["Appearance & Typography Popover (ReaderControls)"]
     end
 
     subgraph Persistence ["Browser LocalStorage"]
@@ -318,15 +311,16 @@ flowchart LR
         LSPositions[("bookarium-reading-positions")]
     end
 
-    Toolbar -->|Adjust Size / Family / Width / Mode / Theme| ReaderState
     Toolbar -->|"Adjust Size / Family / Width / Mode / Theme"| ReaderState
     VirtualPages --> ReaderView
     ReaderState --> ContentArea
     ReaderState --> ProgressBar
     ReaderState --> ResumeToast
-    FooterBar -->|Page Flip / Jump| ReaderState
     FooterBar -->|"Page Flip / Jump"| ReaderState
-    TOC -->|"Select Chapter [p. X]"| ReaderState
+    TOC -->|"Select Chapter (p. X)"| ReaderState
+    SearchDrawer -->|"Jump to Match (p. X)"| ReaderState
+    LangDrawer -->|"Switch Translation"| ReaderState
+    Controls -->|"Tweak Settings"| ReaderState
     ReaderState <--> LSState
     ReaderState <--> LSProgress
     ReaderState <--> LSPositions
@@ -441,11 +435,12 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 428 tests across 66 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 475 tests across 69 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 11 validated ADRs (ADR-001 through ADR-011) governing zero-API keys, state architecture, and UI physics. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 12 validated ADRs (ADR-001 through ADR-012) governing zero-API keys, state architecture, and UI physics. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🛡️ **Master Governance Protocol** | Immutable engineering protocols and agent operational guardrails. | [`.agents/AGENTS.md`](.agents/AGENTS.md) |
 | 🚀 **CI/CD Pipeline Guide** | Developer runbook and pipeline execution workflows. | [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) |
 | 🛠️ **Developer Maintenance Hub** | Local setup, environment configuration, and contributor commands. | [`DEVELOPMENT.md`](DEVELOPMENT.md) |

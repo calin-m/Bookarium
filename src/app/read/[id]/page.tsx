@@ -20,7 +20,9 @@ import { resolveBookMetadata } from '@/lib/book-metadata';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
 import { ReaderFooter } from '@/components/reader/ReaderFooter';
 import { ReaderTocDrawer } from '@/components/reader/ReaderTocDrawer';
+import { ReaderSearchDrawer } from '@/components/reader/ReaderSearchDrawer';
 import { ReaderControls } from '@/components/reader/ReaderControls';
+import { ReaderLanguageDrawer } from '@/components/reader/ReaderLanguageDrawer';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
 import { ROUTES } from '@/config/routes';
 
@@ -55,11 +57,36 @@ export default function BookReaderPage() {
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [currentChapterPage, setCurrentChapterPage] = useState(1);
   const [isTocOpen, setIsTocOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
+  const [isTranslationsOpen, setIsTranslationsOpen] = useState(false);
   const [readingMode, setReadingMode] = useState<'paginated' | 'scroll'>('paginated');
   const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
   const [resumeNotice, setResumeNotice] = useState<{ chapterTitle: string; page: number } | null>(null);
   const hasRestoredPositionRef = React.useRef(false);
+
+  // Keyboard shortcut: Ctrl+F / Cmd+F or '/' to toggle search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
+
+      if ((e.key === 'f' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !isInput)) {
+        e.preventDefault();
+        setIsSearchOpen((prev) => {
+          if (!prev) {
+            setIsTocOpen(false);
+            setIsControlsOpen(false);
+            setIsTranslationsOpen(false);
+          }
+          return !prev;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, refetch } = useBookContent(undefined, numericId);
@@ -87,7 +114,7 @@ export default function BookReaderPage() {
     bookTitle,
     bookAuthor,
     numericId,
-    currentBook?.languages || booksData?.results?.[0]?.languages
+    resolvedIdentity.languages
   );
 
   // Parse Chapters and Volume Spread
@@ -202,6 +229,12 @@ export default function BookReaderPage() {
     }
   }, [chaptersWithPagination]);
 
+  const handleSelectSearchMatch = useCallback((chapterIndex: number, page: number) => {
+    setActiveChapterIndex(chapterIndex);
+    setCurrentChapterPage(page);
+    setIsSearchOpen(false);
+  }, []);
+
   // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -244,14 +277,44 @@ export default function BookReaderPage() {
         isTocOpen={isTocOpen}
         onToggleToc={() => {
           setIsTocOpen((prev) => {
-            if (!prev) setIsControlsOpen(false);
+            if (!prev) {
+              setIsControlsOpen(false);
+              setIsSearchOpen(false);
+              setIsTranslationsOpen(false);
+            }
+            return !prev;
+          });
+        }}
+        isSearchOpen={isSearchOpen}
+        onToggleSearch={() => {
+          setIsSearchOpen((prev) => {
+            if (!prev) {
+              setIsTocOpen(false);
+              setIsControlsOpen(false);
+              setIsTranslationsOpen(false);
+            }
             return !prev;
           });
         }}
         isControlsOpen={isControlsOpen}
         onToggleControls={() => {
           setIsControlsOpen((prev) => {
-            if (!prev) setIsTocOpen(false);
+            if (!prev) {
+              setIsTocOpen(false);
+              setIsSearchOpen(false);
+              setIsTranslationsOpen(false);
+            }
+            return !prev;
+          });
+        }}
+        isTranslationsOpen={isTranslationsOpen}
+        onToggleTranslations={() => {
+          setIsTranslationsOpen((prev) => {
+            if (!prev) {
+              setIsTocOpen(false);
+              setIsSearchOpen(false);
+              setIsControlsOpen(false);
+            }
             return !prev;
           });
         }}
@@ -341,6 +404,28 @@ export default function BookReaderPage() {
         activeChapterIndex={activeChapterIndex}
         onSelectChapter={handleSelectChapter}
         bookTitle={bookTitle}
+        theme={theme}
+      />
+
+      {/* Slide-out In-Book Full-Text Search Drawer */}
+      <ReaderSearchDrawer
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        chapters={chaptersWithPagination}
+        fontSize={fontSize}
+        onSelectMatch={handleSelectSearchMatch}
+        bookTitle={bookTitle}
+        theme={theme}
+      />
+
+      {/* Slide-out Language Editions & Translations Drawer */}
+      <ReaderLanguageDrawer
+        isOpen={isTranslationsOpen}
+        onClose={() => setIsTranslationsOpen(false)}
+        translations={translations}
+        onSelectTranslation={(targetBookId) => {
+          router.push(ROUTES.READ(targetBookId));
+        }}
         theme={theme}
       />
 

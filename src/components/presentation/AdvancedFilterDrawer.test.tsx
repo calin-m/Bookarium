@@ -29,9 +29,8 @@ describe('AdvancedFilterDrawer component', () => {
     expect(screen.getByText(/19th Century Victorian & Romantic/i)).toBeInTheDocument();
   });
 
-  it('should handle era selection and sort order change', () => {
+  it('should handle era selection on click', () => {
     const handleEraChange = vi.fn();
-    const handleSortChange = vi.fn();
 
     render(
       <AdvancedFilterDrawer
@@ -40,7 +39,7 @@ describe('AdvancedFilterDrawer component', () => {
         selectedEra="victorian"
         onEraChange={handleEraChange}
         selectedSort="popular"
-        onSortChange={handleSortChange}
+        onSortChange={vi.fn()}
         selectedTopic=""
         onTopicChange={vi.fn()}
         selectedLanguage=""
@@ -54,14 +53,36 @@ describe('AdvancedFilterDrawer component', () => {
 
     fireEvent.click(screen.getByTestId('era-option-antiquity'));
     expect(handleEraChange).toHaveBeenCalledWith('antiquity');
+  });
+
+  it('should handle sort order change', () => {
+    const handleSortChange = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra="victorian"
+        onEraChange={vi.fn()}
+        selectedSort="popular"
+        onSortChange={handleSortChange}
+        selectedTopic=""
+        onTopicChange={vi.fn()}
+        selectedLanguage=""
+        onLanguageChange={vi.fn()}
+        selectedFormat=""
+        onFormatChange={vi.fn()}
+        onResetAll={vi.fn()}
+        activeFilterCount={1}
+      />
+    );
 
     fireEvent.change(screen.getByTestId('sort-select'), { target: { value: 'descending' } });
     expect(handleSortChange).toHaveBeenCalledWith('descending');
   });
 
-  it('should handle genre facet selection and format change', () => {
+  it('should handle genre facet selection on chip click', () => {
     const handleTopicChange = vi.fn();
-    const handleFormatChange = vi.fn();
 
     render(
       <AdvancedFilterDrawer
@@ -76,7 +97,7 @@ describe('AdvancedFilterDrawer component', () => {
         selectedLanguage=""
         onLanguageChange={vi.fn()}
         selectedFormat=""
-        onFormatChange={handleFormatChange}
+        onFormatChange={vi.fn()}
         onResetAll={vi.fn()}
         activeFilterCount={1}
       />
@@ -84,14 +105,87 @@ describe('AdvancedFilterDrawer component', () => {
 
     fireEvent.click(screen.getByTestId('genre-facet-gothic'));
     expect(handleTopicChange).toHaveBeenCalledWith('gothic');
+  });
+
+  it('should handle format selection change', () => {
+    const handleFormatChange = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        onEraChange={vi.fn()}
+        selectedSort=""
+        onSortChange={vi.fn()}
+        selectedTopic="philosophy"
+        onTopicChange={vi.fn()}
+        selectedLanguage=""
+        onLanguageChange={vi.fn()}
+        selectedFormat=""
+        onFormatChange={handleFormatChange}
+        onResetAll={vi.fn()}
+        activeFilterCount={1}
+      />
+    );
 
     fireEvent.change(screen.getByTestId('format-drawer-select'), { target: { value: 'text/html' } });
     expect(handleFormatChange).toHaveBeenCalledWith('text/html');
   });
 
-  it('should handle language selection, reset filters, and apply filters', () => {
+  it('should handle language selection change', () => {
     const handleLangChange = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        onEraChange={vi.fn()}
+        selectedSort=""
+        onSortChange={vi.fn()}
+        selectedTopic=""
+        onTopicChange={vi.fn()}
+        selectedLanguage="en"
+        onLanguageChange={handleLangChange}
+        selectedFormat=""
+        onFormatChange={vi.fn()}
+        onResetAll={vi.fn()}
+        activeFilterCount={1}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('language-drawer-select'), { target: { value: 'fr' } });
+    expect(handleLangChange).toHaveBeenCalledWith('fr');
+  });
+
+  it('should reset all filters on reset button click', () => {
     const handleReset = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        onEraChange={vi.fn()}
+        selectedSort=""
+        onSortChange={vi.fn()}
+        selectedTopic=""
+        onTopicChange={vi.fn()}
+        selectedLanguage="en"
+        onLanguageChange={vi.fn()}
+        selectedFormat=""
+        onFormatChange={vi.fn()}
+        onResetAll={handleReset}
+        activeFilterCount={1}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Reset all filters/i }));
+    expect(handleReset).toHaveBeenCalledTimes(1);
+  });
+
+  it('should apply filters and close drawer on apply button click', () => {
     const handleClose = vi.fn();
 
     render(
@@ -105,22 +199,16 @@ describe('AdvancedFilterDrawer component', () => {
         selectedTopic=""
         onTopicChange={vi.fn()}
         selectedLanguage="en"
-        onLanguageChange={handleLangChange}
+        onLanguageChange={vi.fn()}
         selectedFormat=""
         onFormatChange={vi.fn()}
-        onResetAll={handleReset}
+        onResetAll={vi.fn()}
         activeFilterCount={1}
       />
     );
 
-    fireEvent.change(screen.getByTestId('language-drawer-select'), { target: { value: 'fr' } });
-    expect(handleLangChange).toHaveBeenCalledWith('fr');
-
-    fireEvent.click(screen.getByRole('button', { name: /Reset all filters/i }));
-    expect(handleReset).toHaveBeenCalled();
-
     fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
-    expect(handleClose).toHaveBeenCalled();
+    expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
   it('should not render anything when isOpen is false', () => {

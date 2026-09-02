@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Type, Sun, Moon, Coffee, AlignLeft, Columns } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
@@ -54,33 +55,43 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !hasMounted) return null;
+  if (!hasMounted) return null;
 
   const activeTheme = getReaderTheme(theme);
 
   return createPortal(
-    <>
-      {/* Click-outside backdrop to dismiss without dimming the background */}
-      <div
-        className="fixed inset-0 z-[9998] bg-transparent"
-        onClick={onClose}
-        aria-hidden="true"
-        data-testid="controls-backdrop"
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Click-outside backdrop with transparent background to preserve reading text visibility */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[9998] bg-transparent"
+            onClick={onClose}
+            aria-hidden="true"
+            data-testid="controls-backdrop"
+          />
 
-      <div
-        className={`fixed top-14 sm:top-16 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[9999] w-[calc(100vw-1.5rem)] max-w-sm sm:w-96 max-h-[calc(100dvh-4.5rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 transition-all animate-in fade-in duration-150`}
-        role="region"
-        aria-label="Reading Controls"
-      >
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className={`fixed top-[6.25rem] sm:top-20 inset-x-3 sm:inset-x-auto sm:right-6 w-auto max-w-sm sm:w-96 mx-auto sm:mx-0 z-[9999] max-h-[calc(100dvh-7rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-xl ${activeTheme.drawerBg} border ${activeTheme.border} shadow-2xl p-4 sm:p-4.5 origin-top sm:origin-top-right`}
+            role="region"
+            aria-label="Reading Controls"
+          >
       <div className={`flex items-center justify-between pb-2 mb-3 border-b ${activeTheme.border}`}>
         <h3 className="font-serif font-bold text-sm flex items-center gap-2">
-          <Type className="w-4 h-4 text-primary-600 dark:text-primary-400" /> Typography & Reading Mode
+          <Type className={`w-4 h-4 ${theme === 'sepia' ? 'text-amber-500' : 'text-primary-600 dark:text-primary-400'}`} /> Typography & Reading Mode
         </h3>
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+          className={`p-1.5 rounded-lg border transition-colors cursor-pointer active:scale-95 ${activeTheme.button}`}
           aria-label="Close Appearance Controls"
         >
           <X className="w-4 h-4" />
@@ -112,7 +123,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               aria-pressed={theme === 'sepia'}
               className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
                 theme === 'sepia'
-                  ? `${activeTheme.activePill} border-amber-700 font-bold shadow-xs`
+                  ? `${activeTheme.activePill} border-[#f59e0b] font-bold shadow-xs`
                   : `${activeTheme.pill} ${activeTheme.inactivePill}`
               }`}
             >
@@ -150,7 +161,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   fam === 'serif' ? 'font-serif' : fam === 'mono' ? 'font-mono' : 'font-sans'
                 } ${
                   fontFamily === fam
-                    ? `${activeTheme.activePill} border-primary-600 dark:border-primary-500/70 font-bold shadow-xs`
+                    ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
                     : `${activeTheme.pill} ${activeTheme.inactivePill}`
                 }`}
               >
@@ -180,7 +191,11 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               aria-valuemin={12}
               aria-valuemax={36}
               aria-valuenow={fontSize}
-              className="w-full accent-primary-600 cursor-pointer h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg"
+              className={`w-full cursor-pointer h-1.5 rounded-lg ${
+                theme === 'sepia'
+                  ? 'accent-amber-500 bg-[#462e22]'
+                  : 'accent-primary-600 bg-stone-200 dark:bg-stone-700'
+              }`}
             />
             <div className="grid grid-cols-3 gap-1 mt-1.5">
               {[14, 18, 24].map((s) => (
@@ -190,7 +205,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   onClick={() => onFontSizeChange(s)}
                   className={`py-0.5 rounded text-[9px] font-mono border transition-all ${
                     fontSize === s
-                      ? `${activeTheme.activePill} border-primary-600 font-bold`
+                      ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'} font-bold`
                       : `${activeTheme.pill} ${activeTheme.inactivePill}`
                   }`}
                 >
@@ -218,7 +233,11 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               aria-valuemin={1.2}
               aria-valuemax={2.6}
               aria-valuenow={lineHeight}
-              className="w-full accent-primary-600 cursor-pointer h-1.5 bg-stone-200 dark:bg-stone-700 rounded-lg"
+              className={`w-full cursor-pointer h-1.5 rounded-lg ${
+                theme === 'sepia'
+                  ? 'accent-amber-500 bg-[#462e22]'
+                  : 'accent-primary-600 bg-stone-200 dark:bg-stone-700'
+              }`}
             />
             <div className="grid grid-cols-3 gap-1 mt-1.5">
               {[1.4, 1.8, 2.2].map((lh) => (
@@ -228,7 +247,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   onClick={() => onLineHeightChange(lh)}
                   className={`py-0.5 rounded text-[9px] font-mono border transition-all ${
                     lineHeight === lh
-                      ? `${activeTheme.activePill} border-primary-600 font-bold`
+                      ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'} font-bold`
                       : `${activeTheme.pill} ${activeTheme.inactivePill}`
                   }`}
                 >
@@ -250,7 +269,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 aria-pressed={readingMode === 'paginated'}
                 className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-all ${
                   readingMode === 'paginated'
-                    ? `${activeTheme.activePill} border-primary-600 dark:border-primary-500/70 font-bold shadow-xs`
+                    ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
                     : `${activeTheme.pill} ${activeTheme.inactivePill}`
                 }`}
               >
@@ -262,7 +281,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 aria-pressed={readingMode === 'scroll'}
                 className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-all ${
                   readingMode === 'scroll'
-                    ? `${activeTheme.activePill} border-primary-600 dark:border-primary-500/70 font-bold shadow-xs`
+                    ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
                     : `${activeTheme.pill} ${activeTheme.inactivePill}`
                 }`}
               >
@@ -282,7 +301,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   aria-pressed={columnWidth === w}
                   className={`py-1.5 px-1 rounded text-[10px] sm:text-[11px] font-mono border capitalize text-center transition-all ${
                     columnWidth === w
-                      ? `${activeTheme.activePill} border-primary-600 dark:border-primary-500/70 font-bold shadow-xs`
+                      ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
                       : `${activeTheme.pill} ${activeTheme.inactivePill}`
                   }`}
                 >
@@ -292,10 +311,11 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
             </div>
           </div>
         </div>
-
       </div>
-    </div>
-  </>,
+    </motion.div>
+  </>
+)}
+</AnimatePresence>,
   document.body
 );
 };

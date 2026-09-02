@@ -15,13 +15,15 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(''),
 }));
 
+const pageMockBooks = mockBooks.slice(0, 6);
+
 vi.mock('@/hooks/queries/useBooks', () => ({
   useBooks: () => ({
     data: {
-      count: mockBooks.length,
+      count: pageMockBooks.length,
       next: null,
       previous: null,
-      results: mockBooks,
+      results: pageMockBooks,
       source: 'upstream',
       latencyMs: 140,
     },
@@ -69,6 +71,7 @@ function renderHome() {
 
 describe('Home page integration', () => {
   beforeEach(() => {
+    testQueryClient.clear();
     useBookshelfStore.getState().clearBookshelf();
     useReaderStore.setState({ isOpen: false, currentBook: null });
   });
