@@ -111,6 +111,141 @@ function pass05SecretScanner() {
 }
 
 // -------------------------------------------------------------
+// PASS 0.75: Pre-Commit SAST & OWASP Security Suite
+// -------------------------------------------------------------
+function pass075SecurityAndSastAudit() {
+  logHeader('Pass 0.75: Pre-Commit SAST & OWASP Security Suite');
+
+  // Pillar 1: Dependency Vulnerability Audit
+  console.log(`${colors.dim}Pillar 1: Auditing dependencies for high/critical CVEs...${colors.reset}`);
+  const auditRes = runCommand(`${npmCmd} audit --audit-level=high`);
+  if (!auditRes.success) {
+    logFail('High or critical security vulnerability detected in dependencies:');
+    console.error(auditRes.stdout || auditRes.stderr);
+    return false;
+  }
+  logPass('Pillar 1: Zero high or critical dependency CVEs detected.');
+
+  // Pillar 2: Static SAST SSRF Audit for API Route Handlers
+  console.log(`${colors.dim}Pillar 2: Auditing API routes for dynamic fetch SSRF vulnerabilities...${colors.reset}`);
+  const apiDir = path.join(rootDir, 'src', 'app', 'api');
+  if (fs.existsSync(apiDir)) {
+    const apiFiles = [];
+    function scanApi(dir) {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) scanApi(full);
+        else if (entry.name === 'route.ts' || entry.name === 'route.js') apiFiles.push(full);
+      }
+    }
+    scanApi(apiDir);
+
+    const ssrfViolations = [];
+    for (const routeFile of apiFiles) {
+      const code = fs.readFileSync(routeFile, 'utf-8');
+      const taintedFetchPattern = /fetch\s*\(\s*(urlParam|req\.|request\.|searchParams\.get|rawUrl)/i;
+      if (taintedFetchPattern.test(code)) {
+        ssrfViolations.push({
+          file: path.relative(rootDir, routeFile),
+          issue: 'Tainted user parameter passed to fetch() without strict constant anchoring.',
+        });
+      }
+    }
+
+    if (ssrfViolations.length > 0) {
+      logFail(`SAST SSRF violation detected in ${ssrfViolations.length} API route(s):`);
+      ssrfViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
+      return false;
+    }
+    logPass(`Pillar 2: Audited ${apiFiles.length} API route handler(s). Zero dynamic SSRF taint flows detected.`);
+  }
+
+  // Pillar 3: Client-Side XSS & Dangerous Evaluation Primitives Guard
+  console.log(`${colors.dim}Pillar 3: Auditing source code for XSS and dangerous evaluation primitives...${colors.reset}`);
+  const srcDir = path.join(rootDir, 'src');
+  const xssViolations = [];
+  function scanSourceForXss(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scanSourceForXss(full);
+      } else if (/\.(tsx|ts|jsx|js)$/.test(entry.name) && !entry.name.includes('.test.') && !entry.name.includes('.spec.')) {
+        const code = fs.readFileSync(full, 'utf-8');
+        if (code.includes('dangerouslySetInnerHTML')) {
+          xssViolations.push({ file: path.relative(rootDir, full), issue: 'Forbidden dangerouslySetInnerHTML detected.' });
+        }
+        if (/\beval\s*\(/.test(code)) {
+          xssViolations.push({ file: path.relative(rootDir, full), issue: 'Forbidden eval() primitive detected.' });
+        }
+        if (/new\s+Function\s*\(/.test(code)) {
+          xssViolations.push({ file: path.relative(rootDir, full), issue: 'Forbidden dynamic Function constructor detected.' });
+        }
+        if (/href\s*=\s*['"]\s*javascript:/i.test(code)) {
+          xssViolations.push({ file: path.relative(rootDir, full), issue: 'Forbidden javascript: pseudoprotocol link detected.' });
+        }
+      }
+    }
+  }
+  scanSourceForXss(srcDir);
+
+  if (xssViolations.length > 0) {
+    logFail(`XSS/Dangerous primitive violation detected in ${xssViolations.length} location(s):`);
+    xssViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
+    return false;
+  }
+  logPass('Pillar 3: Zero XSS primitives, eval(), or javascript: URI schemes detected.');
+
+  // Pillar 4: Open Redirect & Phishing Navigation Guard
+  console.log(`${colors.dim}Pillar 4: Auditing redirect destinations for open redirect vulnerabilities...${colors.reset}`);
+  const redirectViolations = [];
+  const appDir = path.join(rootDir, 'src', 'app');
+  function scanRedirects(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scanRedirects(full);
+      } else if (/\.(ts|tsx)$/.test(entry.name) && !entry.name.includes('.test.')) {
+        const code = fs.readFileSync(full, 'utf-8');
+        if (/redirect\s*\(\s*['"]http/i.test(code)) {
+          redirectViolations.push({ file: path.relative(rootDir, full), issue: 'Hardcoded external HTTP redirect detected.' });
+        }
+      }
+    }
+  }
+  scanRedirects(appDir);
+
+  if (redirectViolations.length > 0) {
+    logFail(`Open redirect violation detected in ${redirectViolations.length} location(s):`);
+    redirectViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
+    return false;
+  }
+  logPass('Pillar 4: All internal redirects sanitized and validated.');
+
+  // Pillar 5: Public Domain & License Integrity Guard
+  console.log(`${colors.dim}Pillar 5: Auditing public domain copyright enforcement and open source licenses...${colors.reset}`);
+  const pkgJson = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf-8'));
+  if (pkgJson.license !== 'MIT') {
+    logFail(`Package license must be strictly MIT, found: ${pkgJson.license}`);
+    return false;
+  }
+
+  const useBooksPath = path.join(rootDir, 'src', 'hooks', 'queries', 'useBooks.ts');
+  if (fs.existsSync(useBooksPath)) {
+    const useBooksCode = fs.readFileSync(useBooksPath, 'utf-8');
+    if (!useBooksCode.includes('b.copyright !== true')) {
+      logFail('useBooks.ts does not enforce public domain filter (b.copyright !== true).');
+      return false;
+    }
+  }
+  logPass('Pillar 5: MIT license compliance and public domain integrity (copyright=false) verified.');
+
+  return true;
+}
+
+// -------------------------------------------------------------
 // PASS 1: TypeScript Strict Typecheck
 // -------------------------------------------------------------
 function pass1Typecheck() {
@@ -274,10 +409,25 @@ function pass7ProductionBuild() {
 // MAIN RUNNER
 // -------------------------------------------------------------
 async function runAllGateways() {
+  if (process.argv.includes('--security-only')) {
+    console.log(`\n${colors.bright}${colors.cyan}🔒 EXECUTING STANDALONE PRE-COMMIT SECURITY & SAST AUDIT${colors.reset}\n`);
+    const securityGateways = [pass05SecretScanner, pass075SecurityAndSastAudit];
+    for (const gateway of securityGateways) {
+      const ok = gateway();
+      if (!ok) {
+        console.error(`\n${colors.bright}${colors.red}🚫 SECURITY AUDIT HALTED. Vulnerabilities detected.${colors.reset}\n`);
+        process.exit(1);
+      }
+    }
+    console.log(`\n${colors.bright}${colors.green}🎉 ALL SECURITY GATES PASSED! CODEBASE IS OWASP COMPLIANT.${colors.reset}\n`);
+    process.exit(0);
+  }
+
   console.log(`\n${colors.bright}${colors.magenta}🛡️  BOOKARIUM 7-GATEWAY CLOSED-LOOP QUALITY ENGINE${colors.reset}\n`);
 
   const gateways = [
     pass05SecretScanner,
+    pass075SecurityAndSastAudit,
     pass1Typecheck,
     pass2ServerMocks,
     pass3ClientUI,

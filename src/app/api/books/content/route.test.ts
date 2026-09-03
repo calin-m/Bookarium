@@ -98,6 +98,31 @@ describe('GET /api/books/content', () => {
 
     expect(res.status).toBe(502);
   });
+
+  it('guarantees fetch is strictly called with canonical Gutenberg endpoints only', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      text: async () => sampleBookText,
+    } as any);
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?url=https://www.gutenberg.org/cache/epub/1342/pg1342.txt');
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalled();
+    const calledUrl = fetchSpy.mock.calls[0][0] as string;
+    expect(calledUrl).toMatch(/^https:\/\/www\.gutenberg\.org\/(cache\/epub|files)\/\d{1,8}\//);
+  });
+
+  it('never calls fetch when an invalid or SSRF payload is provided', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch');
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?url=http://169.254.169.254/latest/meta-data/');
+    const res = await GET(req);
+
+    expect(res.status).toBe(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
 
 
