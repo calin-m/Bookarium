@@ -33,11 +33,11 @@ export interface NotebookViewProps {
 }
 
 const COLOR_FILTERS: Array<{ id: HighlightColor | 'all'; label: string; badgeClass: string }> = [
-  { id: 'all', label: 'All Colors', badgeClass: 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300' },
-  { id: 'yellow', label: 'Yellow', badgeClass: 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300' },
-  { id: 'amber', label: 'Amber', badgeClass: 'bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950/60 dark:text-orange-300' },
-  { id: 'mint', label: 'Mint', badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300' },
-  { id: 'rose', label: 'Rose', badgeClass: 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300' },
+  { id: 'all', label: 'All Colors', badgeClass: 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-border' },
+  { id: 'yellow', label: 'Yellow', badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60' },
+  { id: 'amber', label: 'Amber', badgeClass: 'bg-orange-100 text-orange-900 border border-orange-300 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800/60' },
+  { id: 'mint', label: 'Mint', badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60' },
+  { id: 'rose', label: 'Rose', badgeClass: 'bg-rose-100 text-rose-900 border border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60' },
 ];
 
 const HIGHLIGHT_CARD_COLORS: Record<HighlightColor, { border: string; bg: string; text: string }> = {
@@ -255,7 +255,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
       {annotations.length === 0 ? (
         /* Empty State */
-        <div className="max-w-md mx-auto my-12 p-8 text-center bg-card border border-border/80 rounded-2xl shadow-sm space-y-5">
+        <div className="max-w-md mx-auto my-12 p-8 text-center bg-card border border-border rounded-2xl shadow-booksaw space-y-5">
           <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
             <Highlighter className="w-8 h-8" />
           </div>
@@ -276,7 +276,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         /* Notebook Content */
         <div className="space-y-6">
           {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-card border border-border/80 rounded-xl shadow-2xs">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-card border border-border rounded-xl shadow-booksaw">
             {/* Search Input */}
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -301,7 +301,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 self-end sm:self-auto bg-muted/60 p-1 rounded-lg border border-border/50">
+            <div className="flex items-center gap-1 self-end sm:self-auto bg-muted/60 p-1 rounded-lg border border-border">
               <button
                 type="button"
                 onClick={() => setGroupMode('volume')}
@@ -353,7 +353,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all shrink-0 border cursor-pointer ${
                     isSelected
                       ? 'border-primary bg-primary text-primary-foreground font-bold shadow-xs'
-                      : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80'
+                      : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50'
                   }`}
                 >
                   <span>{filter.label}</span>
@@ -397,7 +397,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
               {groupedByVolume.map((group) => (
                 <div key={group.bookId} className="space-y-3">
                   {/* Volume Header */}
-                  <div className="flex items-center justify-between border-b border-border/80 pb-2">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
                     <div className="flex items-baseline gap-2.5">
                       <h2 className="text-lg sm:text-xl font-serif font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
                         onClick={() => router.push(`/read/${group.bookId}`)}
@@ -496,12 +496,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                 This will remove the highlight and any attached personal reflections from your commonplace book. This action cannot be undone.
               </p>
               {annotationToDelete && (
-                <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border/50 text-xs">
+                <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border text-xs">
                   <p className="font-serif italic text-foreground/90 line-clamp-3">
                     &ldquo;{annotationToDelete.selectedText}&rdquo;
                   </p>
                   {annotationToDelete.note && (
-                    <p className="mt-1.5 pt-1.5 border-t border-border/40 font-sans text-muted-foreground line-clamp-2">
+                    <p className="mt-1.5 pt-1.5 border-t border-border font-sans text-muted-foreground line-clamp-2">
                       <span className="font-mono text-[10px] uppercase text-primary mr-1">Note:</span>
                       {annotationToDelete.note}
                     </p>
@@ -551,7 +551,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       <article
         key={ann.id}
         data-testid={`notebook-quote-card-${ann.id}`}
-        className={`relative flex flex-col justify-between p-4 sm:p-5 rounded-xl border border-border bg-card shadow-2xs hover:shadow-sm transition-all border-l-4 ${colorStyle.border}`}
+        className={`relative flex flex-col justify-between p-4 sm:p-5 rounded-xl border border-border bg-card shadow-booksaw hover:shadow-booksaw-hover hover:border-primary/40 transition-all border-l-4 ${colorStyle.border}`}
       >
         <div className="space-y-3">
           {/* Metadata Topline */}
@@ -605,7 +605,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
               </div>
             </div>
           ) : ann.note ? (
-            <div className="p-2.5 rounded-lg bg-muted/50 border border-border/60 text-xs font-sans text-foreground/90 space-y-1">
+            <div className="p-2.5 rounded-lg bg-muted/60 border border-border text-xs font-sans text-foreground/90 space-y-1">
               <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <MessageSquare className="w-3 h-3 text-primary" />
@@ -635,7 +635,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         </div>
 
         {/* Card Action Footer */}
-        <div className="flex items-center justify-between gap-2 pt-4 mt-3 border-t border-border/40 text-xs font-mono">
+        <div className="flex items-center justify-between gap-2 pt-4 mt-3 border-t border-border text-xs font-mono">
           <div className="flex items-center gap-1 text-muted-foreground">
             {/* Copy Citation */}
             <button
