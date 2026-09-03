@@ -1,0 +1,64 @@
+name: 💡 Feature Request & Proposal
+description: Suggest an enhancement, new reading tool, or architectural improvement for Bookarium.
+title: "[FEAT]: "
+labels: ["enhancement", "discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature for **Bookarium**!
+        Bookarium is built on zero-bloat principles, strict public-domain integrity, and offline-first client architecture.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem or limitation?
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution or UX Flow
+      description: Describe the solution or new feature you would like to see added.
+      placeholder: "A clear and concise description of what should happen and how the interface should respond..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: architectural_layer
+    attributes:
+      label: Architectural Domain
+      description: Which architectural domain does this feature primarily touch?
+      options:
+        - In-Browser Focus Reader (/read/[id])
+        - Text Highlighting & Annotations Engine
+        - Commonplace Notebook & Reading Journal
+        - 3D Bookcase & Shelf Organization
+        - Audio & Text-to-Speech (Web Speech API)
+        - Offline Storage & PWA Service Worker (IndexedDB)
+        - Cloud Synchronization & Auth (Supabase)
+        - Performance, Accessibility (a11y), or Core Web Vitals
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Approaches Considered
+      description: Describe any alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: compliance
+    attributes:
+      label: Architectural & Compliance Verification
+      options:
+        - label: I confirm this feature upholds 100% public domain integrity (Zero-Copyright / CC0 / Gutenberg) with copyright=false queries.
+          required: true
+        - label: I confirm this feature requires zero paid third-party API keys or mandatory subscription walls for end users.
+          required: true
+

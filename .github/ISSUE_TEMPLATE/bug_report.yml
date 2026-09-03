@@ -1,0 +1,95 @@
+name: 🐛 Bug Report
+description: Report an issue, rendering glitch, or unexpected behavior in Bookarium.
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue in **Bookarium**!
+        Please ensure you are testing against the latest deployment or `master` branch.
+
+  - type: input
+    id: version
+    attributes:
+      label: Bookarium Version / Release
+      description: What version or release of Bookarium are you using?
+      placeholder: "e.g. v1.9.0, commit 9065c48, or bookarium.vercel.app"
+    validations:
+      required: true
+
+  - type: input
+    id: book_id
+    attributes:
+      label: Project Gutenberg Book ID (Optional)
+      description: If the issue occurred while browsing, parsing, or reading a specific book, provide its ID.
+      placeholder: "e.g. 1342 (Pride and Prejudice), 53419 (Twenty-Five Ghost Stories)"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment & Device Form Factor
+      description: Which environment did this issue occur on?
+      options:
+        - Desktop Browser (Chrome / Edge / Brave)
+        - Desktop Browser (Firefox)
+        - Desktop Browser (Safari / macOS)
+        - Mobile Browser (iOS Safari)
+        - Mobile Browser (Android Chrome)
+        - Installed PWA (Desktop macOS / Windows)
+        - Installed PWA (iOS Home Screen)
+        - Installed PWA (Android WebAPK)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the problem is.
+      placeholder: "When opening chapter 3 of book #1342 in Bilingual mode..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed step-by-step instructions to reproduce the behavior.
+      placeholder: |
+        1. Go to '/read/1342'
+        2. Click on '...'
+        3. Highlight the sentence '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs Actual Behavior
+      description: What did you expect to happen versus what actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Error Logs (Optional)
+      description: Paste any browser console errors or Web Worker termination stack traces.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-Submission Verification
+      options:
+        - label: I have verified that this issue is reproducible on the latest version.
+          required: true
+        - label: I have searched existing open and closed issues to ensure this is not a duplicate.
+          required: true
+
