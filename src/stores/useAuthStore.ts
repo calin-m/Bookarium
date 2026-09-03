@@ -21,7 +21,7 @@ export interface AuthState {
   closeAuthModal: () => void;
   setAuthModalView: (view: AuthModalView) => void;
   setError: (error: string | null) => void;
-  signInWithPassword: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ user?: User | null; error: AuthError | null }>;
   signUpWithPassword: (email: string, password: string, fullName?: string) => Promise<{
     user?: User | null;
     session?: any;
@@ -111,7 +111,7 @@ export const useAuthStore = create<AuthState>()(
     }
     set({ user: data.user, isAuthModalOpen: false });
     get().fetchProfile();
-    return { error: null };
+    return { error: null, user: data.user };
   },
 
   signUpWithPassword: async (email, password, fullName) => {
