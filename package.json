@@ -45,7 +45,7 @@
   },
   "devDependencies": {
     "@babel/parser": "^7.26.3",
-    "@babel/traverse": "^7.26.4",
+    "@babel/traverse": "^8.0.4",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
