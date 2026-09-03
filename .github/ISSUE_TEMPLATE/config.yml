@@ -1,0 +1,12 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Architecture & Pipeline Documentation
+    url: https://github.com/calin-m/Bookarium/blob/master/docs/ARCHITECTURE.md
+    about: Review Bookarium's AST-driven architecture, state model, and module dependency graph.
+  - name: 🗺️ Living Product Roadmap
+    url: https://github.com/calin-m/Bookarium/blob/master/ROADMAP.md
+    about: Check upcoming milestones, planned capabilities, and progress metrics.
+  - name: 💬 GitHub Discussions
+    url: https://github.com/calin-m/Bookarium/discussions
+    about: Ask questions, share reading collections, and discuss book ideas with the community.
+

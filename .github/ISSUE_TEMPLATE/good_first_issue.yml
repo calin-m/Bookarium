@@ -1,0 +1,50 @@
+name: 🌟 Good First Issue / Starter Task
+description: Create a beginner-friendly or contributor-ready task with automatic discovery labels.
+title: "[STARTER]: "
+labels: ["good first issue", "help wanted", "documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🌟 Welcome New Contributors!
+        This issue template is designed for isolated, approachable tasks perfect for developers looking to make their first contribution to **Bookarium**.
+        Issues created with this template automatically receive the `good first issue` and `help wanted` tags.
+
+  - type: textarea
+    id: overview
+    attributes:
+      label: Task Summary
+      description: Concise overview of what needs to be implemented, fixed, or documented.
+      placeholder: "Add keyboard navigation shortcut for jumping to next chapter..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: context_files
+    attributes:
+      label: Relevant Files & Pointers
+      description: Provide absolute or relative paths to the relevant code files to help the contributor get oriented quickly.
+      placeholder: |
+        - `src/components/reader/ReaderControls.tsx`
+        - `src/hooks/reader/useReaderSession.ts`
+        - Adjacent co-located test: `src/components/reader/ReaderControls.test.tsx`
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_outcome
+    attributes:
+      label: Expected Outcome & Acceptance Criteria
+      description: Clear checklist of what must be completed for this issue to be closed.
+      placeholder: |
+        - [ ] Feature implemented matching UI design standards
+        - [ ] Co-located unit test added or updated
+        - [ ] `npm test` passes with >= 80% coverage
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        > 💡 **First-time contributor?** See our [Contributing Guide](https://github.com/calin-m/Bookarium/blob/master/CONTRIBUTING.md) for local environment setup, testing steps, and pull request guidelines!
+
