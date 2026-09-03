@@ -15,6 +15,7 @@ import {
   Check,
   Share2,
   Headphones,
+  Highlighter,
 } from 'lucide-react';
 import { useReaderStore, type ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
@@ -46,6 +47,9 @@ export interface ReaderHeaderProps {
   onToggleTranslations?: () => void;
   isSpeechOpen?: boolean;
   onToggleSpeech?: () => void;
+  isAnnotationsOpen?: boolean;
+  onToggleAnnotations?: () => void;
+  annotationsCount?: number;
   theme?: ReaderTheme;
   totalChapters?: number;
   currentChapterIndex?: number;
@@ -74,6 +78,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   onToggleTranslations,
   isSpeechOpen = false,
   onToggleSpeech,
+  isAnnotationsOpen = false,
+  onToggleAnnotations,
+  annotationsCount = 0,
   theme = 'light',
   totalChapters = 1,
   currentChapterIndex = 0,
@@ -221,6 +228,29 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               >
                 <Headphones className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Listen</span>
+              </button>
+            )}
+
+            {/* Notes & Highlights Trigger */}
+            {onToggleAnnotations && (
+              <button
+                type="button"
+                data-testid="reader-annotations-toggle-btn"
+                onClick={onToggleAnnotations}
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
+                  isAnnotationsOpen ? activeTheme.activePill : activeTheme.button
+                }`}
+                aria-label="Notes & Highlights"
+                aria-expanded={isAnnotationsOpen}
+                title="View notes and highlighted passages"
+              >
+                <Highlighter className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Notes</span>
+                {annotationsCount > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-primary/10 text-primary">
+                    {annotationsCount}
+                  </span>
+                )}
               </button>
             )}
 
@@ -394,6 +424,22 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                   title="Listen to book with Read Aloud text-to-speech"
                 >
                   <Headphones className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* 2.6 Notes & Highlights button */}
+              {onToggleAnnotations && (
+                <button
+                  type="button"
+                  data-testid="mobile-annotations-toggle-btn"
+                  onClick={onToggleAnnotations}
+                  className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 ${
+                    isAnnotationsOpen ? activeTheme.activePill : activeTheme.button
+                  }`}
+                  aria-label="Notes & Highlights"
+                  aria-expanded={isAnnotationsOpen}
+                >
+                  <Highlighter className="w-4 h-4" />
                 </button>
               )}
 

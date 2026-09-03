@@ -188,7 +188,53 @@ CREATE POLICY "Users can delete their own reading progress"
   USING (auth.uid() = user_id);
 
 -- ============================================================================
--- 6. Auto-Provisioning User Trigger (Profile + Default General Shelf)
+-- 6. User Annotations Table (Highlights & Scholarly Notes)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.user_annotations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  book_id INTEGER NOT NULL,
+  chapter_index INTEGER NOT NULL,
+  chapter_page INTEGER NOT NULL,
+  selected_text TEXT NOT NULL,
+  color TEXT NOT NULL CHECK (color IN ('yellow', 'amber', 'mint', 'rose')),
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.user_annotations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own annotations" ON public.user_annotations;
+CREATE POLICY "Users can view their own annotations"
+  ON public.user_annotations FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own annotations" ON public.user_annotations;
+CREATE POLICY "Users can insert their own annotations"
+  ON public.user_annotations FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own annotations" ON public.user_annotations;
+CREATE POLICY "Users can update their own annotations"
+  ON public.user_annotations FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own annotations" ON public.user_annotations;
+CREATE POLICY "Users can delete their own annotations"
+  ON public.user_annotations FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_annotations_user_book 
+  ON public.user_annotations(user_id, book_id);
+
+-- ============================================================================
+-- 7. Auto-Provisioning User Trigger (Profile + Default General Shelf)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -221,7 +267,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================================
--- 7. RPC Function: Delete Current User Account
+-- 8. RPC Function: Delete Current User Account
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.delete_current_user()
 RETURNS VOID AS $$

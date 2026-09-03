@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 10:49:22 GMT  
+**Last Generated**: Thu, 03 Sep 2026 13:06:20 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 100 passed  
-**Total Verified Tests**: 646 passed  
+**Total Test Suites**: 105 passed  
+**Total Verified Tests**: 706 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **100/100 test suites passed** (646 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **105/105 test suites passed** (706 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.74%** (3390/3695) — *Target: $ge$ 80%*
-- **Statements**: **89.97%** (3687/4098) — *Target: $ge$ 80%*
-- **Functions**: **87.5%** (861/984) — *Target: $ge$ 80%*
-- **Branches**: **80.32%** (3165/3940) — *Target: $ge$ 80%*
+- **Lines**: **92%** (3796/4126) — *Target: $ge$ 80%*
+- **Statements**: **90.15%** (4138/4590) — *Target: $ge$ 80%*
+- **Functions**: **87.76%** (1004/1144) — *Target: $ge$ 80%*
+- **Branches**: **80.19%** (3446/4297) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (100 Suites / 646 Tests)
+## 🧪 Comprehensive Test Suite Catalog (105 Suites / 706 Tests)
 
-### 🚀 App Routes & Pages (9 Suites · 61 Tests)
+### 🚀 App Routes & Pages (9 Suites · 64 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.test.ts</code></b> (6 tests)</summary>
@@ -105,7 +105,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -118,6 +118,7 @@
 - ✔ `E2E Journey: full catalog search -> preview open -> reader launch -> shelf curation`
 - ✔ `should dynamically filter bookshelf books with smart multi-word search in arbitrary order`
 - ✔ `should dynamically filter favorites books and show empty search feedback`
+- ✔ `should switch to Notebook view when Notebook tab in Navbar is clicked`
 
 </details>
 
@@ -129,7 +130,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -148,10 +149,12 @@
 - ✔ `toggles In-Book Search Drawer using Ctrl+F keyboard shortcut`
 - ✔ `enforces mutual exclusivity between all 4 reader modals (TOC, Search, Controls, Language)`
 - ✔ `toggles Read Aloud audio bar and triggers speech controls`
+- ✔ `toggles Annotations & Notes drawer from reader header`
+- ✔ `allows user to select text, apply highlight color, update note, and delete from drawer`
 
 </details>
 
-### 🎨 Catalog & Presentation (17 Suites · 133 Tests)
+### 🎨 Catalog & Presentation (18 Suites · 152 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -356,9 +359,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `should render brand and navigation items`
+- ✔ `should fill highlighter icon when annotations are saved in notebook`
+- ✔ `triggers onViewChange with notebook when Notebook tab is clicked`
+- ✔ `applies active styling when activeView is notebook`
 - ✔ `should fill bookmark icon when books are saved to bookshelf`
 - ✔ `should fill heart icon when books are liked in favorites`
 - ✔ `should trigger onViewChange callback when clicking tabs`
@@ -371,6 +377,28 @@
 - ✔ `renders active account button styling when activeView is account`
 - ✔ `renders active Sign In button styling for guests when activeView is account`
 - ✔ `renders GitHub repository link with target _blank on the header`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (16 tests)</summary>
+
+- ✔ `renders empty state when there are no annotations`
+- ✔ `renders saved annotations grouped by volume with resolved metadata`
+- ✔ `filters annotations by search query across quote, note, title, and author`
+- ✔ `filters annotations by pastel color tabs`
+- ✔ `allows toggling between By Book grouping and Chronological stream`
+- ✔ `allows user to edit note inline and cancel or save`
+- ✔ `allows copying quote with formatted academic citation`
+- ✔ `navigates directly to the reader when clicking Read Passage`
+- ✔ `deletes an individual quote card when delete button is clicked`
+- ✔ `clears all annotations when confirming clear everything in modal`
+- ✔ `cancels clear everything in modal when clicking cancel button`
+- ✔ `allows adding a personal note when none was initially provided`
+- ✔ `navigates to reader when volume header title is clicked`
+- ✔ `shows reset filters button when search returns 0 results and resets filters`
+- ✔ `resolves metadata from savedBooks and fallback when bookTitle is not stored`
+- ✔ `translates vertical wheel scroll to horizontal scroll on color filter tabs`
 
 </details>
 
@@ -388,7 +416,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (13 Suites · 85 Tests)
+### 📖 In-Browser Focus Reader (15 Suites · 106 Tests)
 
 <details>
 <summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
@@ -396,6 +424,20 @@
 - ✔ `renders null when not open`
 - ✔ `renders volume metadata, title, and handles close action`
 - ✔ `triggers onClose when clicking backdrop`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (8 tests)</summary>
+
+- ✔ `renders annotations list with quotes and section pills`
+- ✔ `renders empty state when there are no annotations`
+- ✔ `filters annotations by color tab`
+- ✔ `filters annotations by search input`
+- ✔ `calls onJumpToAnnotation and closes drawer when jump button is clicked`
+- ✔ `allows editing an annotation note`
+- ✔ `calls onDeleteAnnotation when delete button is clicked`
+- ✔ `translates vertical wheel scroll to horizontal scroll on color filter tags`
 
 </details>
 
@@ -521,7 +563,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -539,6 +581,9 @@
 - ✔ `renders translating indicator when isTranslating is true`
 - ✔ `renders translatedText in place of base content when provided in translated mode`
 - ✔ `renders bilingual mode with paired translation segments and speech highlight`
+- ✔ `renders user annotations with designated highlight color marks and triggers onSelectAnnotation`
+- ✔ `renders multiple annotations with amber, mint, and rose colors alongside speech highlight`
+- ✔ `detects window text selection and triggers onTextSelected on mouseUp`
 
 </details>
 
@@ -550,6 +595,22 @@
 - ✔ `calls onSelectChapter and onClose when a chapter item is clicked`
 - ✔ `closes drawer on Escape key press`
 - ✔ `does not render when isOpen is false`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (10 tests)</summary>
+
+- ✔ `renders all 4 color choices and action buttons`
+- ✔ `calls onSelectColor when a color button is clicked`
+- ✔ `expands note input and calls onSaveNote with entered text`
+- ✔ `calls onCopyQuote when copy button is clicked`
+- ✔ `renders delete button and calls onDelete when existingAnnotationId is present`
+- ✔ `calls onClose when escape key is pressed`
+- ✔ `calls onClose when clicking outside the popover`
+- ✔ `calls onCopyQuote when provided, or copies selected text to clipboard`
+- ✔ `submits note on clicking Save Note button in note textarea`
+- ✔ `renders in sepia and dark themes without crashing`
 
 </details>
 
@@ -576,7 +637,27 @@
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 54 Tests)
+### ⚡ Zustand State Stores (6 Suites · 68 Tests)
+
+<details>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (14 tests)</summary>
+
+- ✔ `initializes with empty annotations and outbox`
+- ✔ `adds an annotation in guest mode (offline/local only)`
+- ✔ `updates an annotation note`
+- ✔ `updates an annotation color without creating duplicates`
+- ✔ `deduplicates addAnnotation on identical text by updating color and note`
+- ✔ `syncs color update to Supabase when userId is provided and queues outbox on error`
+- ✔ `deletes an annotation`
+- ✔ `filters annotations by book and page correctly`
+- ✔ `syncs to Supabase when userId is provided`
+- ✔ `queues outbox mutation on Supabase error and flushes on reconnect`
+- ✔ `syncWithCloud merges remote notes and uploads un-synced guest notes`
+- ✔ `updates annotation note with userId and falls back to outbox on network error`
+- ✔ `deletes annotation with userId and falls back to outbox on network error`
+- ✔ `handles syncWithCloud with empty userId or network error safely`
+
+</details>
 
 <details>
 <summary><b><code>src/stores/useAuthStore.test.ts</code></b> (18 tests)</summary>
@@ -867,7 +948,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (17 Suites · 109 Tests)
+### 🔄 Hooks & React Query (17 Suites · 110 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
@@ -1016,7 +1097,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -1025,6 +1106,7 @@
 - ✔ `resets all filters cleanly`
 - ✔ `toggles view modes and drawer visibility`
 - ✔ `hydrates initial filter state from window.location.search including view=bookshelf`
+- ✔ `hydrates initial filter state with view=notebook`
 
 </details>
 
@@ -1080,7 +1162,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (23 Suites · 76 Tests)
+### 🧩 UI Primitives & Motion (24 Suites · 78 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (15 tests)</summary>
@@ -1100,6 +1182,14 @@
 - ✔ `dismisses deletion verification confirmation screen on close button click`
 - ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
 - ✔ `handles resending email verification on unverified account`
+
+</details>
+
+<details>
+<summary><b><code>src/app/manifest.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `returns valid metadata complying with PWA standards`
+- ✔ `includes required icon sizes and purposes for desktop and mobile installation`
 
 </details>
 

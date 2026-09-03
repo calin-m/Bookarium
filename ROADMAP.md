@@ -2,15 +2,15 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-64%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-9_of_14-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-79%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-11_of_14-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[█████████████░░░░░░░]` **9/14 (64%)**
+`[████████████████░░░░]` **11/14 (79%)**
 
 ---
 
@@ -37,7 +37,7 @@
 ---
 
 ### Milestone 1: Reader Mastery & Accessibility (`Target: v1.8.0`)
-`[█████████████░░░░░░░]` **2/3 (67%)**
+`[████████████████████]` **3/3 (100%)**
 
 > Elevate the reading experience with instantaneous in-book phrase searching, zero-cost text-to-speech, and native standalone PWA installation.
 
@@ -45,17 +45,17 @@
   Client-side phrase and dialogue search drawer (`ReaderSearchDrawer.tsx`) scanning active book text in memory with live snippet previews, match count, and direct jump to chapter and page.
 - [x] **Native Web Speech Text-to-Speech (Read-Aloud)** `✅ VERIFIED`
   Incorporate browser `window.speechSynthesis` with sentence segmentation, natural voice prioritization, Play/Pause, speed tuning (0.85x–2.0x), and synchronized visual sentence highlights (`useReaderSpeech.ts`, `ReaderSpeechBar.tsx`).
-- [ ] **Progressive Web App (PWA) Manifest & Standalone App** `⏳ PLANNED`
+- [x] **Progressive Web App (PWA) Manifest & Standalone App** `✅ VERIFIED`
   Native `src/app/manifest.ts` metadata, theme colors, and icons enabling 1-click "Add to Home Screen" installation on iOS, Android, and Desktop.
 
 ---
 
 ### Milestone 2: Scholar Annotations & Data Portability (`Target: v1.9.0`)
-`[███████░░░░░░░░░░░░░]` **1/3 (33%)**
+`[█████████████░░░░░░░]` **2/3 (67%)**
 
 > Transform Bookarium into a tactile literary notebook with colored quote highlights, personal annotations, and full library export/import.
 
-- [ ] **Text Highlighting & Annotations Drawer** `⏳ PLANNED`
+- [x] **Text Highlighting & Annotations Drawer** `✅ VERIFIED`
   Interactive text selection popover in `ReaderSurface.tsx` supporting 4 editorial pastel colors (Yellow, Amber, Mint, Rose) and personal notes stored in `useAnnotationStore.ts`.
 - [ ] **Library Portability: Export & Import** `⏳ PLANNED`
   Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.

@@ -305,6 +305,7 @@ export const useAuthStore = create<AuthState>()(
     try {
       const supabase = createClient();
       // 1. Clean up user's relational records across valid schema tables
+      await supabase.from('user_annotations').delete().eq('user_id', user.id);
       await supabase.from('reading_progress').delete().eq('user_id', user.id);
       await supabase.from('user_favorites').delete().eq('user_id', user.id);
       await supabase.from('bookshelf_items').delete().eq('user_id', user.id);

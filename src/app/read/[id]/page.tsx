@@ -23,10 +23,14 @@ import { ReaderControls } from '@/components/reader/ReaderControls';
 import { ReaderLanguageDrawer } from '@/components/reader/ReaderLanguageDrawer';
 import { ReaderSpeechBar } from '@/components/reader/ReaderSpeechBar';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
+import { TextHighlightPopover } from '@/components/reader/TextHighlightPopover';
+import { ReaderAnnotationsDrawer } from '@/components/reader/ReaderAnnotationsDrawer';
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
 import { useReaderSession } from '@/hooks/reader/useReaderSession';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { useHydratedAnnotations, type HighlightColor, type Annotation } from '@/stores/useAnnotationStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { ROUTES } from '@/config/routes';
 
 export default function BookReaderPage() {
@@ -76,6 +80,41 @@ export default function BookReaderPage() {
   const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
   const [dynamicTargetLanguage, setDynamicTargetLanguage] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<'translated' | 'bilingual'>('translated');
+
+  // Annotations & Highlights Management
+  const {
+    annotations,
+    addAnnotation,
+    updateAnnotationColor,
+    updateAnnotationNote,
+    deleteAnnotation,
+    syncWithCloud,
+  } = useHydratedAnnotations();
+  const user = useAuthStore((s) => s.user);
+
+  // Sync annotations on load if authenticated
+  useEffect(() => {
+    if (user?.id) {
+      syncWithCloud(user.id);
+    }
+  }, [user?.id, syncWithCloud]);
+
+  const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false);
+  const [selectionPopover, setSelectionPopover] = useState<{
+    isOpen: boolean;
+    selectedText: string;
+    position: { top: number; left: number } | null;
+    activeAnnotation: Annotation | null;
+  }>({
+    isOpen: false,
+    selectedText: '',
+    position: null,
+    activeAnnotation: null,
+  });
+
+  const bookAnnotations = useMemo(() => {
+    return annotations.filter((a) => a.bookId === numericId);
+  }, [numericId, annotations]);
 
   // Synchronize global application theme with reader theme on mount
   useEffect(() => {
@@ -236,6 +275,112 @@ export default function BookReaderPage() {
     onPreviousPage: handlePrevPage,
   });
 
+  const handleTextSelected = useCallback(
+    (selection: { text: string; position: { top: number; left: number } }) => {
+      const existing = bookAnnotations.find((a) => a.selectedText === selection.text);
+      setSelectionPopover({
+        isOpen: true,
+        selectedText: selection.text,
+        position: selection.position,
+        activeAnnotation: existing || null,
+      });
+    },
+    [bookAnnotations]
+  );
+
+  const handleSelectAnnotation = useCallback(
+    (annotation: Annotation, position?: { top: number; left: number }) => {
+      if (typeof window === 'undefined') return;
+      setSelectionPopover({
+        isOpen: true,
+        selectedText: annotation.selectedText,
+        position: position || { top: 140, left: window.innerWidth / 2 },
+        activeAnnotation: annotation,
+      });
+    },
+    []
+  );
+
+  const handleSelectColor = useCallback(
+    async (color: HighlightColor) => {
+      if (selectionPopover.activeAnnotation) {
+        await updateAnnotationColor(
+          selectionPopover.activeAnnotation.id,
+          color,
+          user?.id
+        );
+      } else {
+        await addAnnotation(
+          {
+            bookId: numericId,
+            bookTitle: resolvedIdentity.title,
+            bookAuthor: resolvedIdentity.author,
+            chapterIndex: activeChapterIndex,
+            chapterPage: currentChapterPage,
+            selectedText: selectionPopover.selectedText,
+            color,
+          },
+          user?.id
+        );
+      }
+      setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
+    },
+    [
+      selectionPopover.activeAnnotation,
+      selectionPopover.selectedText,
+      numericId,
+      resolvedIdentity.title,
+      resolvedIdentity.author,
+      activeChapterIndex,
+      currentChapterPage,
+      updateAnnotationColor,
+      addAnnotation,
+      user?.id,
+    ]
+  );
+
+  const handleSaveNote = useCallback(
+    async (note: string) => {
+      if (selectionPopover.activeAnnotation) {
+        await updateAnnotationNote(selectionPopover.activeAnnotation.id, note, user?.id);
+      } else {
+        await addAnnotation(
+          {
+            bookId: numericId,
+            bookTitle: resolvedIdentity.title,
+            bookAuthor: resolvedIdentity.author,
+            chapterIndex: activeChapterIndex,
+            chapterPage: currentChapterPage,
+            selectedText: selectionPopover.selectedText,
+            color: 'yellow',
+            note,
+          },
+          user?.id
+        );
+      }
+      setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
+    },
+    [
+      selectionPopover.activeAnnotation,
+      selectionPopover.selectedText,
+      updateAnnotationNote,
+      addAnnotation,
+      numericId,
+      resolvedIdentity.title,
+      resolvedIdentity.author,
+      activeChapterIndex,
+      currentChapterPage,
+      user?.id,
+    ]
+  );
+
+  const handleDeleteAnnotation = useCallback(async () => {
+    if (selectionPopover.activeAnnotation) {
+      await deleteAnnotation(selectionPopover.activeAnnotation.id, user?.id);
+    }
+    setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
+  }, [selectionPopover, deleteAnnotation, user?.id]);
+
   return (
     <div className={`h-[100dvh] flex flex-col overflow-hidden transition-colors duration-theme ${activeTheme.surface}`}>
       
@@ -272,6 +417,9 @@ export default function BookReaderPage() {
             return next;
           });
         }}
+        isAnnotationsOpen={isAnnotationsOpen}
+        onToggleAnnotations={() => setIsAnnotationsOpen((prev) => !prev)}
+        annotationsCount={bookAnnotations.length}
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
         theme={theme}
@@ -312,6 +460,9 @@ export default function BookReaderPage() {
         translationSegments={translationSegments}
         displayMode={displayMode}
         isTranslating={isTranslating}
+        annotations={bookAnnotations}
+        onSelectAnnotation={handleSelectAnnotation}
+        onTextSelected={handleTextSelected}
       />
 
       {/* Fixed Sticky 0-CLS Bottom Pagination Footer */}
@@ -418,6 +569,36 @@ export default function BookReaderPage() {
         totalPages={activeChapterPageCount}
         isPrevDisabled={isPrevDisabled}
         isNextDisabled={isNextDisabled}
+      />
+
+      {/* Text Highlight & Annotations Floating Contextual Popover */}
+      <TextHighlightPopover
+        isOpen={selectionPopover.isOpen}
+        selectedText={selectionPopover.selectedText}
+        position={selectionPopover.position}
+        activeColor={selectionPopover.activeAnnotation?.color}
+        existingNote={selectionPopover.activeAnnotation?.note}
+        existingAnnotationId={selectionPopover.activeAnnotation?.id}
+        onSelectColor={handleSelectColor}
+        onSaveNote={handleSaveNote}
+        onDelete={handleDeleteAnnotation}
+        onClose={() => setSelectionPopover((prev) => ({ ...prev, isOpen: false }))}
+        theme={theme}
+      />
+
+      {/* Slide-out Annotations & Highlights Drawer */}
+      <ReaderAnnotationsDrawer
+        isOpen={isAnnotationsOpen}
+        onClose={() => setIsAnnotationsOpen(false)}
+        annotations={bookAnnotations}
+        bookTitle={bookTitle}
+        theme={theme}
+        onJumpToAnnotation={(chapterIdx, page) => {
+          setActiveChapterIndex(chapterIdx);
+          setCurrentChapterPage(page);
+        }}
+        onDeleteAnnotation={(id) => deleteAnnotation(id, user?.id)}
+        onUpdateNote={(id, note) => updateAnnotationNote(id, note, user?.id)}
       />
 
     </div>

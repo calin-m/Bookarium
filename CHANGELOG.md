@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.9.0] - 2026-09-03
+### *Literary Notebook, Text Highlighting & Annotations Engine, and PWA Standalone Mode*
+
+### Added
+- Progressive Web App (PWA) Standalone Mode (`src/app/manifest.ts`, `src/app/layout.tsx`, `public/icons/`): Configured Next.js 16 web app manifest, mobile viewport, apple-touch-icon, and a suite of maskable/standard icons for home screen installation.
+- Text Highlighting & Annotations Engine (`public.user_annotations`, `src/stores/useAnnotationStore.ts`): Built local-first persistence with Supabase PostgreSQL cloud sync, Row-Level Security, offline mutation outbox, and automatic guest-to-cloud merge upon login.
+- Contextual Text Highlight Popover (`src/components/reader/TextHighlightPopover.tsx`, `ReaderSurface.tsx`): Real-time text selection popover supporting 4 pastel highlight colors (Yellow, Amber, Mint, Rose), inline reflection editor, academic citation copying, and viewport boundary clamping.
+- In-Place Color Switching & Passage Deduplication (`useAnnotationStore.ts`, `app/read/[id]/page.tsx`): Seamlessly switch highlight colors without creating stacked duplicate annotations, with single-click deletion.
+- Slide-Out Annotations Drawer (`src/components/reader/ReaderAnnotationsDrawer.tsx`): Focus reader drawer with full-text search across quotes and personal notes, 5 color filter tabs, chronological section/page coordinates, and direct 1-click chapter jumps.
+- Literary Notebook Commonplace View (`src/components/presentation/NotebookView.tsx`, `Navbar.tsx`): Dedicated 4th navigation tab (`/?view=notebook`) displaying preserved passages, searchable across text, notes, and authors, with By-Book vs Chronological grouping, academic citation generation, and deep-linking to reader.
+- Horizontal Mouse Wheel Scroll Translation (`ReaderAnnotationsDrawer.tsx`, `NotebookView.tsx`): Translates standard vertical mouse wheel scroll (`deltaY`) into horizontal displacement across color filter tags without jumping the background drawer or page.
+- Refined Clear Confirmation Modals (`NotebookView.tsx`, `app/page.tsx`): Consistent `maxWidth="md"`, `p-6 space-y-5` padding, and warning iconography across all collection wipe dialogs.
+
+### Changed
+- Minimalist Navbar Notebook Tab (`src/components/presentation/Navbar.tsx`): Streamlined notebook navbar button by removing numeric counter badge and using dynamic amber fill state matching Bookshelf and Favorites icons.
+- Co-Located Test Suite Expansion: Expanded unit and integration test coverage across all 105 test suites and 706 tests with 92.0% line coverage.
+
+
 ## [1.8.0] - 2026-09-03
 ### *Architectural Decoupling, Headless Hooks, Bidirectional Cloud Sync & Storage Engine*
 

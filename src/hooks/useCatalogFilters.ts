@@ -9,7 +9,7 @@ export interface ActiveFilterChip {
   type: 'search' | 'topic' | 'language' | 'era' | 'format';
 }
 
-export type CatalogView = 'catalog' | 'bookshelf' | 'likes';
+export type CatalogView = 'catalog' | 'bookshelf' | 'likes' | 'notebook';
 export type CatalogViewMode = 'grid' | 'shelf';
 export type CatalogSortOption = 'popular' | 'descending' | 'ascending' | '';
 
@@ -49,7 +49,7 @@ export function useCatalogFilters() {
   const hasMounted = useHasMounted();
   const [activeView, setActiveView] = useState<CatalogView>(() => {
     const init = getInitialUrlParams();
-    return init.view && ['catalog', 'bookshelf', 'likes'].includes(init.view) ? init.view : 'catalog';
+    return init.view && ['catalog', 'bookshelf', 'likes', 'notebook'].includes(init.view) ? init.view : 'catalog';
   });
 
   // Synchronize state with Next.js router URL searchParams during render
@@ -60,7 +60,7 @@ export function useCatalogFilters() {
 
   if (currentViewParam !== prevViewParam) {
     setPrevViewParam(currentViewParam);
-    if (currentViewParam && ['catalog', 'bookshelf', 'likes'].includes(currentViewParam)) {
+    if (currentViewParam && ['catalog', 'bookshelf', 'likes', 'notebook'].includes(currentViewParam)) {
       setActiveView(currentViewParam as CatalogView);
     }
   }
