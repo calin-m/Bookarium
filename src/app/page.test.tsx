@@ -51,6 +51,10 @@ vi.mock('@/components/presentation/Footer', () => ({
   Footer: () => <footer data-testid="footer-mock">Footer</footer>,
 }));
 
+vi.mock('@/components/presentation/HeroFeaturedBook3D', () => ({
+  HeroFeaturedBook3D: () => <div data-testid="mock-hero-3d-book">Featured 3D Book</div>,
+}));
+
 const testQueryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -62,11 +66,15 @@ const testQueryClient = new QueryClient({
 });
 
 function renderHome() {
-  return render(
-    <QueryClientProvider client={testQueryClient}>
-      <Home />
-    </QueryClientProvider>
-  );
+  let utils: any;
+  act(() => {
+    utils = render(
+      <QueryClientProvider client={testQueryClient}>
+        <Home />
+      </QueryClientProvider>
+    );
+  });
+  return utils;
 }
 
 describe('Home page integration', () => {

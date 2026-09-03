@@ -1,6 +1,8 @@
 import React from 'react';
+import Link from 'next/link';
 import { ShieldCheck, Heart, ExternalLink, BookOpen } from 'lucide-react';
 import { SITE_CONFIG } from '@/config/site-config';
+import { ROUTES } from '@/config/routes';
 
 export const Footer: React.FC = () => {
   return (
@@ -88,7 +90,15 @@ export const Footer: React.FC = () => {
             <p className="text-xs text-muted-foreground leading-relaxed font-sans">
               All books listed in Bookarium are in the public domain worldwide. Zero DRM, no subscriptions, zero user tracking.
             </p>
-            <div className="pt-2">
+            <div className="pt-1">
+              <Link
+                href={ROUTES.PRIVACY}
+                className="text-xs font-mono text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 underline-offset-4 hover:underline"
+              >
+                Privacy & Data Architecture →
+              </Link>
+            </div>
+            <div className="pt-1">
               <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
                 Zero API Keys Required • Public Domain Preservation
               </span>

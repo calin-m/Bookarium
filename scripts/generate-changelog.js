@@ -4,9 +4,45 @@ const path = require('path');
 const rootDir = path.resolve(__dirname, '..');
 const changelogPath = path.join(rootDir, 'CHANGELOG.md');
 const adrPath = path.join(rootDir, 'docs', 'DECISIONS.md');
+const readmePath = path.join(rootDir, 'README.md');
 
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
+  {
+    version: '1.8.0',
+    date: '2026-09-03',
+    title: 'Architectural Decoupling, Headless Hooks, Bidirectional Cloud Sync & Storage Engine',
+    sections: {
+      Added: [
+        'Cryptographic Password Domain Engine (`src/lib/password.ts`, `PasswordStrengthMeter.tsx`): Extracted pure domain password generation (`generateStrongPassword`) and 3-tier entropy scoring (`evaluatePasswordStrength`) paired with a reusable 3-segment progress indicator across Sign Up and Account Security.',
+        'Headless Cursor Tooltip Hook & Zero-Clipping Portal Primitive (`src/hooks/useCursorTooltip.ts`, `src/components/ui/CursorTooltip.tsx`): Encapsulated mouse coordinate tracking and hover timers into a headless hook with a body-portaled tooltip, removing duplicate handlers from `BookCard` and `BookshelfSpine`.',
+        'Decoupled 3D Open-Book Kinematics & Presentation Rig (`src/hooks/useBookPassageShuffle.ts`, `src/components/presentation/HeroFeaturedBook3D.tsx`): Decoupled the standing 3D book rig, turning leaf physics, and passage shuffle engine from search state, reducing `HeroSearch.tsx` by 240+ lines and simplifying `BookPreviewModal.tsx`.',
+        'Modular Reader Header & Archival Info Modal (`src/components/reader/GutenbergInfoModal.tsx`, `src/components/reader/ReaderSubHeaderRibbon.tsx`): Decomposed the monolithic reader header by extracting the Project Gutenberg archival metadata modal and the dual-state sub-header ribbon from `ReaderHeader.tsx`.',
+        'Headless Reader Session Hook (`src/hooks/reader/useReaderSession.ts`): Decoupled reader pagination, chapter transitions, exact page bookmarking auto-resume, progress persistence, and bidirectional page turning from `src/app/read/[id]/page.tsx`.',
+        'Bidirectional Bookshelf & Favorites Cloud Synchronization (`src/stores/useBookshelfStore.ts`, `src/components/auth/AuthModal.tsx`): Upgraded `syncWithCloud` to perform automatic two-way synchronization: on login or app launch, any volumes saved locally in browser storage that are missing from Supabase are automatically upserted to `bookshelf_items` and `user_favorites`, ensuring 100% library parity across mobile and desktop devices.',
+        'Cross-Device Favorites Cloud Sync (`src/stores/useBookshelfStore.ts`, `user_favorites` table): Implemented cloud synchronization of user-liked books and favorites via Supabase PostgreSQL with RLS, merging local guest favorites upon login, and auto-purging on account deletion.',
+        'Native IndexedDB Offline Book Storage Engine (`src/lib/offline-storage.ts`, `src/hooks/useOfflineBooks.ts`, `src/hooks/queries/useBookContent.ts`): Zero-dependency browser IndexedDB storage engine (`BookariumOfflineDB`) bypassing the 5MB `localStorage` limit to store full classic texts offline with instant cache-hit reading.',
+        'Interactive Shelf Offline Lifecycle & Confirmation Modal (`src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/bookshelf/BookshelfManageModals.tsx`): "Download Shelf Offline" with live `Saving X/Y` progress indicator, 1.5s completion flash, seamless transition to "Clear Offline Shelf", and accessible confirmation modal dialog.',
+        'Canonical Project Gutenberg Format Fallback Engine (`src/lib/utils.ts`, `src/components/presentation/DownloadDrawer.tsx`): Automatic generation of official Project Gutenberg permanent URLs for EPUB, Kindle, Clean Plain Text, and Web HTML, guaranteeing active download buttons across all books on the Bookshelf, in Favorites, and in the Catalog.',
+        'Bookshelf Cursor-Following Portal Tooltips (`src/components/presentation/bookshelf/BookshelfSpine.tsx`): Zero-clipping cursor-tracking tooltips portaled to `document.body` across all 5 spine hover preview actions matching `BookCard`.',
+        'Bookshelf Deduplication & Database Unique Constraints Guardrails (`supabase/schema.sql`, `src/stores/useBookshelfStore.ts`): Enforced `unique_user_default_bookshelf` and `unique_user_shelf_name` unique constraints in PostgreSQL, `ON CONFLICT DO NOTHING` on auto-provisioning triggers, and client-side deduplication.',
+        'Responsive Header Ergonomics & GitHub Repository Integration (`src/components/presentation/Navbar.tsx`, `src/components/presentation/Footer.tsx`): Direct repository links across header and footer, brand anti-truncation protection (`shrink-0`, `whitespace-nowrap`), space-aware responsive GitHub button disclosure (`min-[440px]:inline-flex`), synchronized tablet/desktop text expansion at `md:`, anti-jitter `border-b-2 border-transparent` tabs, and desktop hover tooltips.',
+        'SPDX Standard MIT License Provisioning (`LICENSE`, `package.json`): Installed official MIT License text with copyright attribution and package manifest metadata for automated GitHub `licensee` badge detection.',
+        'Dynamic On-Demand Translation & Dual-Tier Language Hub (`/api/translate`, `src/hooks/queries/usePageTranslation.ts`, `src/components/reader/ReaderLanguageDrawer.tsx`): Zero-key Google Neural Machine Translation proxy with offline page-level caching, 18 popular language quick-select chips, 40+ language catalog, Bilingual Parallel reading mode with original sentence subtitles, and dynamic native neural voice narration synchronization with Read-Aloud.',
+        'Co-Located Test Suite Expansion: Expanded unit and integration test coverage to 92 test files and 628 tests with 92.4% line coverage.',
+      ],
+      Changed: [
+        'Bookshelf "All Saved for Offline" Status Notice (`src/components/presentation/BookshelfRack.tsx`): Converted from an interactive button to an accessible, non-clickable status notice (`role="status"`, `select-none`, `cursor-default`) positioned cleanly alongside the actionable "Clear Offline Shelf" button.',
+        'Single Responsibility Refactor: Decomposed `ReaderHeader.tsx`, `HeroSearch.tsx`, `BookshelfRack.tsx`, and `app/read/[id]/page.tsx` into focused presentation components and headless custom hooks.',
+        'Auth Return Contract: `signInWithPassword` in `useAuthStore.ts` returns the authenticated user object directly to eliminate React component closure lag during authentication.',
+      ],
+      Fixed: [
+        'Fixed cross-device bookshelf count disparity by auto-upserting unsynced local volumes into Supabase upon cloud synchronization.',
+        'Fixed stale auth user closure in `AuthModal.tsx` on sign-in and sign-up.',
+        'Eliminated clipping and z-index overlap in book card and spine hover action tooltips via React DOM portal.',
+      ],
+    },
+  },
   {
     version: '1.7.0',
     date: '2026-09-02',
@@ -244,4 +280,63 @@ The following key architectural decisions are recorded in [\`docs/DECISIONS.md\`
   console.log('✔ [SUCCESS] CHANGELOG.md generated successfully.');
 }
 
+function syncReadmeLatestRelease() {
+  if (!fs.existsSync(readmePath)) return;
+  const readmeContent = fs.readFileSync(readmePath, 'utf-8');
+  const startMarker = '<!-- BEGIN:latest-release -->';
+  const endMarker = '<!-- END:latest-release -->';
+
+  const startIndex = readmeContent.indexOf(startMarker);
+  const endIndex = readmeContent.indexOf(endMarker);
+
+  if (startIndex === -1 || endIndex === -1) return;
+
+  const latest = RELEASES[0];
+  if (!latest) return;
+
+  // Pick top 4-5 major highlight bullets
+  const topHighlights = [];
+  if (latest.sections.Added) {
+    const syncItem = latest.sections.Added.find((i) => i.includes('Bidirectional'));
+    if (syncItem) topHighlights.push(syncItem);
+    for (const item of latest.sections.Added) {
+      if (topHighlights.length >= 4) break;
+      if (!topHighlights.includes(item)) topHighlights.push(item);
+    }
+  }
+  if (latest.sections.Fixed && topHighlights.length < 5) {
+    topHighlights.push(latest.sections.Fixed[0]);
+  }
+
+  const bullets = topHighlights
+    .map((item) => {
+      const colonIdx = item.indexOf(': ');
+      if (colonIdx !== -1 && !item.startsWith('**')) {
+        return `- **${item.slice(0, colonIdx)}**: ${item.slice(colonIdx + 2)}`;
+      }
+      if (!item.startsWith('**') && item.startsWith('Fixed ')) {
+        return `- **Fix**: ${item}`;
+      }
+      return `- ${item}`;
+    })
+    .join('\n');
+
+  const replacement = `${startMarker}
+## 🛠️ Latest Improvements (v${latest.version})
+
+${bullets}
+
+> 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**\`CHANGELOG.md\`**](CHANGELOG.md).
+${endMarker}`;
+
+  const updatedReadme =
+    readmeContent.substring(0, startIndex) +
+    replacement +
+    readmeContent.substring(endIndex + endMarker.length);
+
+  fs.writeFileSync(readmePath, updatedReadme, 'utf-8');
+  console.log(`✔ [SUCCESS] README.md latest release section synchronized (v${latest.version}).`);
+}
+
 generateChangelog();
+syncReadmeLatestRelease();
