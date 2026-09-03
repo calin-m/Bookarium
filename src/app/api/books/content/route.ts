@@ -86,26 +86,27 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Validate ID format: strictly numeric 1-8 digits, extracted from idParam or validated urlParam
-  const numericId =
+  // Strictly extract numeric digits, convert to integer primitive to break string taint flow
+  const rawId =
     idParam.match(/^(\d{1,8})$/)?.[1] ||
     urlParam.match(/\/(\d{1,8})(?:[./-]|$)/)?.[1] ||
     urlParam.match(/pg(\d{1,8})\.txt/)?.[1] ||
     '';
 
-  if (!numericId) {
+  const bookId = parseInt(rawId, 10);
+  if (!Number.isInteger(bookId) || bookId <= 0 || bookId > 10000000) {
     return NextResponse.json(
       { error: 'Missing or invalid Project Gutenberg book ID.' },
       { status: 400 }
     );
   }
 
-  // Construct target URLs strictly from literal trusted Gutenberg origin templates and validated numeric ID
-  // Eliminates SSRF by ensuring user input can never dictate origin, hostname, or arbitrary path
+  // Explicitly encode sanitized numeric ID and anchor to hardcoded Gutenberg origin via new URL
+  const safeId = encodeURIComponent(String(Math.trunc(bookId)));
   const targetUrls: string[] = [
-    `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.txt`,
-    `https://www.gutenberg.org/files/${numericId}/${numericId}-0.txt`,
-    `https://www.gutenberg.org/files/${numericId}/${numericId}.txt`,
+    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://www.gutenberg.org').toString(),
+    new URL(`/files/${safeId}/${safeId}-0.txt`, 'https://www.gutenberg.org').toString(),
+    new URL(`/files/${safeId}/${safeId}.txt`, 'https://www.gutenberg.org').toString(),
   ];
 
   let textContent = '';
