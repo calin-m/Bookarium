@@ -65,7 +65,7 @@
     "knip": "^6.33.0",
     "msw": "^2.7.0",
     "postcss": "^8.5.26",
-    "tailwindcss": "^3.4.16",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.7.2",
     "vitest": "^4.1.11"
   }
