@@ -86,7 +86,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
         onClose();
       }
@@ -99,10 +99,12 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
@@ -126,6 +128,11 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
 
   if (!hasMounted || !isOpen || !position) return null;
 
+  const isTouchDevice =
+    typeof window !== 'undefined' &&
+    window.matchMedia &&
+    window.matchMedia('(pointer: coarse)').matches;
+
   // Viewport bounding clamp and centered positioning
   const popoverWidth = isNoteExpanded ? 288 : 256;
   const halfWidth = popoverWidth / 2;
@@ -134,8 +141,9 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
   // Center horizontally over the anchor point while preventing offscreen overflow
   const safeLeft = Math.max(12, Math.min(position.left - halfWidth, windowWidth - popoverWidth - 12));
 
-  // Vertical placement: if near header, place below anchor; otherwise place above anchor
-  const showBelow = isNoteExpanded ? position.top < 160 : position.top < 120;
+  // Vertical placement: on touch devices or when near header, place below anchor to avoid colliding
+  // with iOS / Android native context menus ("Copy", "Share", "Look Up"); otherwise place above anchor
+  const showBelow = isTouchDevice || (isNoteExpanded ? position.top < 160 : position.top < 120);
   const safeTop = showBelow ? position.top + 34 : Math.max(70, position.top - (isNoteExpanded ? 130 : 54));
 
   const themeBg =

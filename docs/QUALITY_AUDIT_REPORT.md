@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 13:58:44 GMT  
+**Last Generated**: Thu, 03 Sep 2026 14:42:03 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 105 passed  
-**Total Verified Tests**: 711 passed  
+**Total Test Suites**: 106 passed  
+**Total Verified Tests**: 720 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **105/105 test suites passed** (711 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **106/106 test suites passed** (720 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.87%** (3813/4150) — *Target: $ge$ 80%*
-- **Statements**: **90.07%** (4156/4614) — *Target: $ge$ 80%*
-- **Functions**: **87.44%** (1010/1155) — *Target: $ge$ 80%*
-- **Branches**: **80.07%** (3464/4326) — *Target: $ge$ 80%*
+- **Lines**: **91.92%** (3847/4185) — *Target: $ge$ 80%*
+- **Statements**: **90.08%** (4190/4651) — *Target: $ge$ 80%*
+- **Functions**: **87.31%** (1019/1167) — *Target: $ge$ 80%*
+- **Branches**: **80.15%** (3489/4353) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (105 Suites / 711 Tests)
+## 🧪 Comprehensive Test Suite Catalog (106 Suites / 720 Tests)
 
 ### 🚀 App Routes & Pages (9 Suites · 64 Tests)
 
@@ -417,7 +417,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (15 Suites · 108 Tests)
+### 📖 In-Browser Focus Reader (15 Suites · 111 Tests)
 
 <details>
 <summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
@@ -565,7 +565,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (20 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -587,6 +587,7 @@
 - ✔ `renders multiple annotations with amber, mint, and rose colors alongside speech highlight`
 - ✔ `detects window text selection and triggers onTextSelected on mouseUp`
 - ✔ `applies color-specific selection styling to highlight marks`
+- ✔ `renders user annotations inside bilingual parallel mode segments`
 
 </details>
 
@@ -602,7 +603,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `renders all 4 color choices and action buttons`
 - ✔ `calls onSelectColor when a color button is clicked`
@@ -614,6 +615,8 @@
 - ✔ `calls onCopyQuote when provided, or copies selected text to clipboard`
 - ✔ `submits note on clicking Save Note button in note textarea`
 - ✔ `renders in sepia and dark themes without crashing`
+- ✔ `calls onClose when touchstart occurs outside the popover`
+- ✔ `positions below anchor on touch devices to avoid native mobile context menu collision`
 
 </details>
 
@@ -640,10 +643,10 @@
 
 </details>
 
-### ⚡ Zustand State Stores (6 Suites · 68 Tests)
+### ⚡ Zustand State Stores (6 Suites · 70 Tests)
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -659,6 +662,8 @@
 - ✔ `updates annotation note with userId and falls back to outbox on network error`
 - ✔ `deletes annotation with userId and falls back to outbox on network error`
 - ✔ `handles syncWithCloud with empty userId or network error safely`
+- ✔ `records tombstones on deleteAnnotation and prevents zombie resurrection during sync`
+- ✔ `clamps oversized text and note payloads to prevent localStorage quota exhaustion`
 
 </details>
 
@@ -951,7 +956,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (17 Suites · 110 Tests)
+### 🔄 Hooks & React Query (17 Suites · 111 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
@@ -1026,12 +1031,13 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useGutenbergParserWorker.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/hooks/reader/useGutenbergParserWorker.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `returns empty result when contentText is empty or undefined`
 - ✔ `parses text synchronously via fallback when workerFactory returns null`
 - ✔ `dispatches worker postMessage and handles worker response when Worker is available`
 - ✔ `falls back gracefully when worker encounters an error`
+- ✔ `cancels in-flight worker and prevents stale data when switching books`
 
 </details>
 
@@ -1165,7 +1171,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (24 Suites · 80 Tests)
+### 🧩 UI Primitives & Motion (25 Suites · 83 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
@@ -1260,6 +1266,15 @@
 <summary><b><code>src/components/motion/StaggerGroup.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `should render staggered child nodes`
+
+</details>
+
+<details>
+<summary><b><code>src/components/pwa/ServiceWorkerRegister.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders null without throwing`
+- ✔ `attempts registration in production when serviceWorker is available`
+- ✔ `does not attempt registration in development mode`
 
 </details>
 

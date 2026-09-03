@@ -36,7 +36,23 @@ export function useGutenbergParserWorker(
   fontSize: number,
   workerFactory: () => Worker | null = createGutenbergWorker
 ): UseGutenbergParserWorkerReturn {
-  // Synchronous baseline for SSR, JSDOM, and zero-flicker initial render
+  // Derive stable content identity to prevent stale book cross-talk
+  const currentContentHash = useMemo(() => {
+    if (!contentText) return '';
+    return `${contentText.length}-${fontSize}-${contentText.slice(0, 32)}`;
+  }, [contentText, fontSize]);
+
+  const [workerResult, setWorkerResult] = useState<{
+    bookHash: string;
+    rawChapters: ChapterSection[];
+    chaptersWithPagination: ChapterSection[];
+    totalVolumePages: number;
+  } | null>(null);
+
+  const [workerFailed, setWorkerFailed] = useState(false);
+  const workerRef = useRef<Worker | null>(null);
+
+  // Synchronous fallback for SSR or when worker fails/is unavailable
   const syncFallback = useMemo(() => {
     if (!contentText) {
       return { rawChapters: [], chaptersWithPagination: [], totalVolumePages: 0 };
@@ -50,22 +66,16 @@ export function useGutenbergParserWorker(
     };
   }, [contentText, fontSize]);
 
-  const [workerResult, setWorkerResult] = useState<{
-    id: string;
-    rawChapters: ChapterSection[];
-    chaptersWithPagination: ChapterSection[];
-    totalVolumePages: number;
-  } | null>(null);
-
-  const workerRef = useRef<Worker | null>(null);
-
   useEffect(() => {
-    if (!contentText) {
+    if (!contentText || !currentContentHash) {
       return;
     }
 
     const worker = workerFactory();
     if (!worker) {
+      queueMicrotask(() => {
+        setWorkerFailed(true);
+      });
       return;
     }
 
@@ -82,16 +92,19 @@ export function useGutenbergParserWorker(
       const data = event.data;
       if (data && data.id === requestId) {
         setWorkerResult({
-          id: data.id,
+          bookHash: currentContentHash,
           rawChapters: data.rawChapters,
           chaptersWithPagination: data.chaptersWithPagination,
           totalVolumePages: data.totalVolumePages,
         });
+        setWorkerFailed(false);
       }
     };
 
     worker.onerror = () => {
-      // Non-blocking worker error
+      if (isSubscribed) {
+        setWorkerFailed(true);
+      }
     };
 
     try {
@@ -101,7 +114,11 @@ export function useGutenbergParserWorker(
         fontSize,
       });
     } catch {
-      // Worker dispatch failed
+      if (isSubscribed) {
+        queueMicrotask(() => {
+          setWorkerFailed(true);
+        });
+      }
     }
 
     return () => {
@@ -111,9 +128,13 @@ export function useGutenbergParserWorker(
         workerRef.current = null;
       }
     };
-  }, [contentText, fontSize, workerFactory]);
+  }, [currentContentHash, contentText, fontSize, workerFactory]);
 
-  if (workerResult) {
+  const hasMatchingResult = workerResult && workerResult.bookHash === currentContentHash;
+  const isProcessing = Boolean(contentText && !hasMatchingResult && !workerFailed);
+
+  // Return worker result if it precisely matches the active book content hash
+  if (hasMatchingResult) {
     return {
       rawChapters: workerResult.rawChapters,
       chaptersWithPagination: workerResult.chaptersWithPagination,
@@ -122,10 +143,11 @@ export function useGutenbergParserWorker(
     };
   }
 
+  // Graceful fallback for SSR, initial async load, or worker error
   return {
     rawChapters: syncFallback.rawChapters,
     chaptersWithPagination: syncFallback.chaptersWithPagination,
     totalVolumePages: syncFallback.totalVolumePages,
-    isProcessing: false,
+    isProcessing,
   };
 }

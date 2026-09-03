@@ -153,5 +153,45 @@ describe('TextHighlightPopover', () => {
     rerender(<TextHighlightPopover {...defaultProps} theme="dark" />);
     expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
   });
+
+  it('calls onClose when touchstart occurs outside the popover', () => {
+    const onClose = vi.fn();
+    render(
+      <div>
+        <div data-testid="outside-touch-area">Outside Mobile Tap</div>
+        <TextHighlightPopover {...defaultProps} onClose={onClose} />
+      </div>
+    );
+
+    fireEvent.touchStart(screen.getByTestId('outside-touch-area'));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('positions below anchor on touch devices to avoid native mobile context menu collision', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === '(pointer: coarse)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    render(
+      <TextHighlightPopover
+        {...defaultProps}
+        position={{ top: 250, left: 300 }}
+      />
+    );
+
+    const popover = screen.getByTestId('text-highlight-popover');
+    // On touch devices (showBelow = true), top should be position.top + 34 = 284px
+    expect(popover.style.top).toBe('284px');
+
+    window.matchMedia = originalMatchMedia;
+  });
 });
 

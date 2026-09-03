@@ -29,13 +29,15 @@ describe('useGutenbergParserWorker', () => {
     expect(result.current.isProcessing).toBe(false);
   });
 
-  it('parses text synchronously via fallback when workerFactory returns null', () => {
+  it('parses text synchronously via fallback when workerFactory returns null', async () => {
     const { result } = renderHook(() => useGutenbergParserWorker(sampleText, 18, () => null));
 
-    expect(result.current.rawChapters.length).toBeGreaterThanOrEqual(2);
-    expect(result.current.chaptersWithPagination.length).toBeGreaterThanOrEqual(2);
-    expect(result.current.totalVolumePages).toBeGreaterThanOrEqual(2);
-    expect(result.current.isProcessing).toBe(false);
+    await waitFor(() => {
+      expect(result.current.rawChapters.length).toBeGreaterThanOrEqual(2);
+      expect(result.current.chaptersWithPagination.length).toBeGreaterThanOrEqual(2);
+      expect(result.current.totalVolumePages).toBeGreaterThanOrEqual(2);
+      expect(result.current.isProcessing).toBe(false);
+    });
   });
 
   it('dispatches worker postMessage and handles worker response when Worker is available', async () => {
@@ -102,5 +104,48 @@ describe('useGutenbergParserWorker', () => {
       expect(result.current.rawChapters.length).toBeGreaterThanOrEqual(2);
       expect(result.current.isProcessing).toBe(false);
     });
+  });
+
+  it('cancels in-flight worker and prevents stale data when switching books', async () => {
+    let workerOneInstance: any = null;
+    let workerTwoInstance: any = null;
+    let factoryCallCount = 0;
+
+    const mockWorkerFactory = () => {
+      factoryCallCount++;
+      const instance = {
+        postMessage: vi.fn(),
+        terminate: vi.fn(),
+        onmessage: null,
+        onerror: null,
+      };
+      if (factoryCallCount === 1) workerOneInstance = instance;
+      else workerTwoInstance = instance;
+      return instance as unknown as Worker;
+    };
+
+    const { rerender } = renderHook(
+      ({ text, size }: { text: string; size: number }) =>
+        useGutenbergParserWorker(text, size, mockWorkerFactory),
+      { initialProps: { text: sampleText, size: 18 } }
+    );
+
+    expect(workerOneInstance).not.toBeNull();
+    expect(workerOneInstance.postMessage).toHaveBeenCalled();
+
+    // Fast switch to a different book text before worker 1 finishes
+    const newBookText = `
+*** START OF THE PROJECT GUTENBERG EBOOK BOOK TWO ***
+CHAPTER I. BRAND NEW CHAPTER
+Something completely different.
+*** END OF THE PROJECT GUTENBERG EBOOK BOOK TWO ***
+    `;
+
+    rerender({ text: newBookText, size: 18 });
+
+    // Worker 1 must be terminated
+    expect(workerOneInstance.terminate).toHaveBeenCalled();
+    expect(workerTwoInstance).not.toBeNull();
+    expect(workerTwoInstance.postMessage).toHaveBeenCalled();
   });
 });

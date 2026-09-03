@@ -377,5 +377,72 @@ describe('useAnnotationStore', () => {
     await useAnnotationStore.getState().syncWithCloud('user-123');
     expect(useAnnotationStore.getState().isSyncing).toBe(false);
   });
+
+  it('records tombstones on deleteAnnotation and prevents zombie resurrection during sync', async () => {
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 84,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Passage to be permanently removed',
+      color: 'yellow',
+    });
+
+    expect(useAnnotationStore.getState().annotations).toHaveLength(1);
+    expect(useAnnotationStore.getState().tombstones).not.toContain(ann.id);
+
+    // Delete annotation
+    await useAnnotationStore.getState().deleteAnnotation(ann.id, 'user-123');
+    expect(useAnnotationStore.getState().annotations).toHaveLength(0);
+    expect(useAnnotationStore.getState().tombstones).toContain(ann.id);
+
+    // Simulate remote sync where remote returned this annotation or stale data
+    mockSelect.mockReturnValueOnce({
+      eq: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValueOnce({
+          data: [
+            {
+              id: ann.id,
+              user_id: 'user-123',
+              book_id: 84,
+              chapter_index: 0,
+              chapter_page: 1,
+              selected_text: 'Passage to be permanently removed',
+              color: 'yellow',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+
+    await useAnnotationStore.getState().syncWithCloud('user-123');
+
+    // Must NOT resurrect the tombstoned annotation
+    expect(useAnnotationStore.getState().annotations).toHaveLength(0);
+  });
+
+  it('clamps oversized text and note payloads to prevent localStorage quota exhaustion', async () => {
+    const hugeText = 'a'.repeat(8000);
+    const hugeNote = 'b'.repeat(3000);
+
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 84,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: hugeText,
+      color: 'amber',
+      note: hugeNote,
+    });
+
+    expect(ann.selectedText.length).toBe(5000);
+    expect(ann.note?.length).toBe(2000);
+
+    // Updating note with oversized payload also clamps
+    await useAnnotationStore.getState().updateAnnotationNote(ann.id, 'c'.repeat(4000));
+    const updated = useAnnotationStore.getState().annotations.find((a) => a.id === ann.id);
+    expect(updated?.note?.length).toBe(2000);
+  });
 });
 

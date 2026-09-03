@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -59,6 +60,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ServiceWorkerRegister />
       {children}
       <AuthModal />
     </QueryClientProvider>
