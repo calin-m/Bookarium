@@ -19,6 +19,9 @@ export interface BookshelfManageModalsProps {
   deletingShelfId: string | null;
   onCloseDeleteShelf: () => void;
   onDeleteShelf: () => void;
+  isClearingOfflineShelf?: boolean;
+  onCloseClearOfflineShelf?: () => void;
+  onConfirmClearOfflineShelf?: () => void;
   isSubmitting: boolean;
 }
 
@@ -36,6 +39,9 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
   deletingShelfId,
   onCloseDeleteShelf,
   onDeleteShelf,
+  isClearingOfflineShelf = false,
+  onCloseClearOfflineShelf,
+  onConfirmClearOfflineShelf,
   isSubmitting,
 }) => {
   return (
@@ -213,6 +219,60 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 Delete Shelf
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Offline Shelf Modal */}
+      {isClearingOfflineShelf && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-transparent animate-in fade-in"
+          data-testid="clear-offline-shelf-modal"
+        >
+          <div
+            className="fixed inset-0 bg-transparent cursor-default"
+            onClick={onCloseClearOfflineShelf}
+          />
+          <div className="relative w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-4 ring-1 ring-black/10 dark:ring-white/10 z-10 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2 text-sm font-mono font-bold text-destructive">
+                <Trash2 className="w-4 h-4 text-destructive" />
+                <span>Clear Offline Shelf</span>
+              </div>
+              <button
+                type="button"
+                onClick={onCloseClearOfflineShelf}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+              Are you sure you want to remove all offline downloads for this shelf? You can always download them again whenever you are online.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="chip"
+                onClick={onCloseClearOfflineShelf}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="chip"
+                isLoading={isSubmitting}
+                onClick={onConfirmClearOfflineShelf}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Clear Offline Downloads
               </Button>
             </div>
           </div>

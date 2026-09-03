@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Download, Bookmark, Heart, Sparkles, X } from 'lucide-react';
+import { BookOpen, Download, Bookmark, Heart, Sparkles, X, CheckCircle2, HardDriveDownload } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -18,8 +18,10 @@ export interface BookshelfMobileModalProps {
   readingProgress?: number;
   isSaved: boolean;
   isLiked: boolean;
+  isOffline?: boolean;
   onToggleSave: (book: GutendexBook) => void;
   onToggleLike: (book: GutendexBook) => void;
+  onToggleOffline?: (book: GutendexBook) => void;
   onBookClick?: (book: GutendexBook) => void;
   onDownloadClick?: (book: GutendexBook) => void;
   cloudBookshelves?: Bookshelf[];
@@ -36,8 +38,10 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
   readingProgress,
   isSaved,
   isLiked,
+  isOffline = false,
   onToggleSave,
   onToggleLike,
+  onToggleOffline,
   onBookClick,
   onDownloadClick,
   cloudBookshelves = [],
@@ -86,6 +90,11 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                   <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-primary">
                     <Sparkles className="w-3 h-3" />
                     <span>Public Domain</span>
+                    {isOffline && (
+                      <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-semibold flex items-center gap-0.5">
+                        <CheckCircle2 className="w-2.5 h-2.5" /> Offline
+                      </span>
+                    )}
                     {readingProgress !== undefined && (
                       <span className="text-muted-foreground ml-1">
                         • {Math.round(readingProgress)}% read
@@ -127,6 +136,20 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                   <BookOpen className="w-4 h-4" />
                   <span>Read Volume</span>
                 </Button>
+
+                <button
+                  type="button"
+                  onClick={() => onToggleOffline?.(selectedMobileBook)}
+                  className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
+                    isOffline
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
+                      : 'border-border hover:bg-muted text-foreground'
+                  }`}
+                  aria-label={isOffline ? 'Remove offline copy' : 'Save for offline reading'}
+                  title={isOffline ? 'Offline copy ready (Click to remove)' : 'Save for offline reading'}
+                >
+                  {isOffline ? <CheckCircle2 className="w-4 h-4" /> : <HardDriveDownload className="w-4 h-4" />}
+                </button>
 
                 <button
                   type="button"

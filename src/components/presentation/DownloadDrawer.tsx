@@ -17,7 +17,7 @@ export interface DownloadDrawerProps {
 export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, onClose }) => {
   if (!book) return null;
 
-  const formats = extractBookFormats(book.formats);
+  const formats = extractBookFormats(book.formats, book.id);
 
   const downloadOptions = [
     {

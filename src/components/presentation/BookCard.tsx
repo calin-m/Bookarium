@@ -29,7 +29,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
   const isSaved = checkIsSaved(book.id);
   const isLiked = checkIsLiked(book.id);
 
-  const formats = extractBookFormats(book.formats);
+  const formats = extractBookFormats(book.formats, book.id);
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
   const tags = extractBookTags(book.subjects, 2, 20);
 

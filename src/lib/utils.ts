@@ -17,15 +17,18 @@ export interface BookFormatInfo {
 /**
  * Normalizes Gutendex format dictionaries to canonical format URLs.
  */
-export function extractBookFormats(formats: Record<string, string> = {}): BookFormatInfo {
+export function extractBookFormats(
+  formats: Record<string, string> = {},
+  bookId?: number
+): BookFormatInfo {
   const result: BookFormatInfo = {};
 
   for (const [key, url] of Object.entries(formats)) {
     if (key.includes('epub')) {
       result.epub = url;
-    } else if (key.includes('text/html') || key.includes('text/html; charset=utf-8')) {
+    } else if (key.includes('text/html')) {
       result.html = url;
-    } else if (key.includes('text/plain') || key.includes('text/plain; charset=utf-8')) {
+    } else if (key.includes('text/plain')) {
       result.txt = url;
     } else if (key.includes('x-mobipocket-ebook') || key.includes('mobi')) {
       result.mobi = url;
@@ -33,6 +36,25 @@ export function extractBookFormats(formats: Record<string, string> = {}): BookFo
       result.coverImage = url;
     } else if (key.includes('pdf')) {
       result.pdf = url;
+    }
+  }
+
+  // Canonical Project Gutenberg fallback URLs for standard public domain books
+  if (bookId && bookId > 0) {
+    if (!result.epub) {
+      result.epub = `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`;
+    }
+    if (!result.html) {
+      result.html = `https://www.gutenberg.org/ebooks/${bookId}.html.images`;
+    }
+    if (!result.txt) {
+      result.txt = `https://www.gutenberg.org/ebooks/${bookId}.txt.utf-8`;
+    }
+    if (!result.mobi) {
+      result.mobi = `https://www.gutenberg.org/ebooks/${bookId}.kindle.images`;
+    }
+    if (!result.coverImage) {
+      result.coverImage = `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`;
     }
   }
 

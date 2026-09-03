@@ -76,4 +76,26 @@ describe('BookshelfMobileModal Component', () => {
     fireEvent.click(likeBtn);
     expect(handleLike).toHaveBeenCalledWith(mockBook);
   });
+
+  it('renders offline indicator and fires onToggleOffline', () => {
+    const handleToggleOffline = vi.fn();
+    render(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        isClosingMobileSheet={false}
+        onClose={vi.fn()}
+        isSaved={false}
+        isLiked={false}
+        isOffline={true}
+        onToggleSave={vi.fn()}
+        onToggleLike={vi.fn()}
+        onToggleOffline={handleToggleOffline}
+      />
+    );
+
+    expect(screen.getByText('Offline')).toBeInTheDocument();
+    const offlineBtn = screen.getByLabelText('Remove offline copy');
+    fireEvent.click(offlineBtn);
+    expect(handleToggleOffline).toHaveBeenCalledWith(mockBook);
+  });
 });

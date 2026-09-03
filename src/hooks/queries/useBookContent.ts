@@ -1,8 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { sampleBookText } from '@/mocks/handlers';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { getOfflineBook } from '@/lib/offline-storage';
 
 export async function fetchBookContent(url?: string, bookId?: number): Promise<string> {
+  // 1. Check local offline storage (IndexedDB) first if bookId is provided
+  if (bookId) {
+    try {
+      const offlineText = await getOfflineBook(bookId);
+      if (offlineText && offlineText.trim().length > 0) {
+        return offlineText;
+      }
+    } catch {
+      // Non-blocking fallback to network proxy
+    }
+  }
+
   if (!url && !bookId) {
     return sampleBookText;
   }

@@ -88,6 +88,42 @@ describe('useBookshelfStore', () => {
     expect(useBookshelfStore.getState().likedBookIds).toHaveLength(0);
   });
 
+  it('should call Supabase upsert and delete on toggleLikeBook with userId', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+    const mockEqBook = vi.fn().mockResolvedValue({ error: null });
+    const mockEqUser = vi.fn().mockReturnValue({ eq: mockEqBook });
+    const mockDelete = vi.fn().mockReturnValue({ eq: mockEqUser });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'user_favorites') {
+        return {
+          upsert: mockUpsert,
+          delete: mockDelete,
+        };
+      }
+      return {};
+    });
+
+    const book = mockBooks[0];
+    // Like with userId
+    await act(async () => {
+      await useBookshelfStore.getState().toggleLikeBook(book, 'user-1');
+    });
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: 'user-1',
+        book_id: book.id,
+        book_title: book.title,
+      })
+    );
+
+    // Unlike with userId
+    await act(async () => {
+      await useBookshelfStore.getState().toggleLikeBook(book, 'user-1');
+    });
+    expect(mockDelete).toHaveBeenCalled();
+  });
+
   describe('useHydratedBookshelf', () => {
     it('returns live hydrated state and reactive actions', () => {
       const book = mockBooks[0];
@@ -170,6 +206,26 @@ describe('useBookshelfStore', () => {
             }),
           };
         }
+        if (table === 'user_favorites') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({
+                  data: [
+                    {
+                      user_id: 'user-1',
+                      book_id: 84,
+                      book_title: 'Frankenstein',
+                      book_authors: ['Mary Wollstonecraft Shelley'],
+                      cover_url: 'https://example.com/frankenstein.jpg',
+                      created_at: '',
+                    },
+                  ],
+                }),
+              }),
+            }),
+          };
+        }
         return {};
       });
 
@@ -181,6 +237,9 @@ describe('useBookshelfStore', () => {
       expect(useBookshelfStore.getState().cloudBookshelves).toHaveLength(1);
       expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
       expect(useBookshelfStore.getState().savedBooks[0].title).toBe('Alice in Wonderland');
+      expect(useBookshelfStore.getState().likedBooks).toHaveLength(1);
+      expect(useBookshelfStore.getState().likedBooks[0].title).toBe('Frankenstein');
+      expect(useBookshelfStore.getState().likedBookIds).toContain(84);
     });
 
     it('handles createCloudBookshelf and migrateLocalBooksToCloud', async () => {

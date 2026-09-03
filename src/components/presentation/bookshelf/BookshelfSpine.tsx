@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
+import { BookOpen, Download, Bookmark, Heart, Sparkles, CheckCircle2, HardDriveDownload } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -26,8 +27,10 @@ export interface BookshelfSpineProps {
   readingProgress?: number;
   isSaved: boolean;
   isLiked: boolean;
+  isOffline?: boolean;
   onToggleSave: (book: GutendexBook) => void;
   onToggleLike: (book: GutendexBook) => void;
+  onToggleOffline?: (book: GutendexBook) => void;
   onSpineClick: (book: GutendexBook) => void;
   onBookClick?: (book: GutendexBook) => void;
   onDownloadClick?: (book: GutendexBook) => void;
@@ -45,8 +48,10 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   readingProgress,
   isSaved,
   isLiked,
+  isOffline = false,
   onToggleSave,
   onToggleLike,
+  onToggleOffline,
   onSpineClick,
   onBookClick,
   onDownloadClick,
@@ -67,6 +72,53 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
     ? book.authors[0].name.split(',')[0].trim()
     : 'Anonymous';
   const progressPercent = readingProgress !== undefined ? Math.round(readingProgress) : null;
+
+  const [mousePos, setMousePos] = React.useState<{ x: number; y: number } | null>(null);
+  const [showTooltip, setShowTooltip] = React.useState(false);
+  const [hoveredAction, setHoveredAction] = React.useState<'read' | 'offline' | 'download' | 'bookshelf' | 'favorite' | null>(null);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePos({
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
+  const tooltipContent = React.useMemo(() => {
+    switch (hoveredAction) {
+      case 'read':
+        return {
+          icon: <BookOpen className="w-3 h-3 text-primary shrink-0" />,
+          text: 'Open Reader',
+        };
+      case 'offline':
+        return {
+          icon: isOffline ? (
+            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+          ) : (
+            <HardDriveDownload className="w-3 h-3 text-primary shrink-0" />
+          ),
+          text: isOffline ? 'Remove Offline Copy' : 'Save for Offline Reading',
+        };
+      case 'download':
+        return {
+          icon: <Download className="w-3 h-3 text-primary shrink-0" />,
+          text: 'Download Formats (EPUB, TXT)',
+        };
+      case 'bookshelf':
+        return {
+          icon: <Bookmark className={`w-3 h-3 text-primary shrink-0 ${isSaved ? 'fill-current' : ''}`} />,
+          text: isSaved ? 'Remove from Bookshelf' : 'Save to Bookshelf',
+        };
+      case 'favorite':
+        return {
+          icon: <Heart className={`w-3 h-3 text-destructive shrink-0 ${isLiked ? 'fill-current' : ''}`} />,
+          text: isLiked ? 'Remove from Favorites' : 'Add to Favorites',
+        };
+      default:
+        return null;
+    }
+  }, [hoveredAction, isOffline, isSaved, isLiked]);
 
   return (
     <div
@@ -116,16 +168,31 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       </div>
 
       {/* Hover Floating Card Preview / Quick Actions (Desktop Hover) */}
-      <div className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden sm:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10">
+      <div
+        className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden sm:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => {
+          setShowTooltip(false);
+          setHoveredAction(null);
+          setMousePos(null);
+        }}
+      >
         <div className="flex items-start justify-between gap-1 mb-1.5">
           <span className="text-[10px] uppercase font-mono tracking-wider text-primary flex items-center gap-1">
             <Sparkles className="w-2.5 h-2.5" /> Public Domain
           </span>
-          {progressPercent !== null && (
-            <span className="text-[10px] font-medium text-muted-foreground">
-              {progressPercent}% read
-            </span>
-          )}
+          <div className="flex items-center gap-1.5">
+            {isOffline && (
+              <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-semibold flex items-center gap-0.5" title="Saved offline">
+                <CheckCircle2 className="w-2.5 h-2.5" /> Offline
+              </span>
+            )}
+            {progressPercent !== null && (
+              <span className="text-[10px] font-medium text-muted-foreground">
+                {progressPercent}% read
+              </span>
+            )}
+          </div>
         </div>
 
         <h4 className="font-serif font-bold text-foreground text-xs line-clamp-2 leading-tight mb-1">
@@ -145,6 +212,14 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               if (onBookClick) onBookClick(book);
               else router.push(ROUTES.READ(book.id));
             }}
+            onMouseEnter={() => {
+              setHoveredAction('read');
+              setShowTooltip(true);
+            }}
+            onMouseLeave={() => {
+              setShowTooltip(false);
+              setHoveredAction(null);
+            }}
             className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-[11px] font-medium transition-opacity"
             aria-label={`Open reader for ${book.title}`}
           >
@@ -156,7 +231,39 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              onToggleOffline?.(book);
+            }}
+            onMouseEnter={() => {
+              setHoveredAction('offline');
+              setShowTooltip(true);
+            }}
+            onMouseLeave={() => {
+              setShowTooltip(false);
+              setHoveredAction(null);
+            }}
+            className={`p-1 rounded-lg border transition-colors ${
+              isOffline
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
+                : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+            aria-label={isOffline ? `Remove offline copy of ${book.title}` : `Download ${book.title} for offline reading`}
+          >
+            {isOffline ? <CheckCircle2 className="w-3 h-3" /> : <HardDriveDownload className="w-3 h-3" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
               if (onDownloadClick) onDownloadClick(book);
+            }}
+            onMouseEnter={() => {
+              setHoveredAction('download');
+              setShowTooltip(true);
+            }}
+            onMouseLeave={() => {
+              setShowTooltip(false);
+              setHoveredAction(null);
             }}
             className="p-1 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             aria-label={`Download formats for ${book.title}`}
@@ -169,6 +276,14 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               onToggleSave(book);
+            }}
+            onMouseEnter={() => {
+              setHoveredAction('bookshelf');
+              setShowTooltip(true);
+            }}
+            onMouseLeave={() => {
+              setShowTooltip(false);
+              setHoveredAction(null);
             }}
             className={`p-1 rounded-lg border transition-colors ${
               isSaved
@@ -185,6 +300,14 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               onToggleLike(book);
+            }}
+            onMouseEnter={() => {
+              setHoveredAction('favorite');
+              setShowTooltip(true);
+            }}
+            onMouseLeave={() => {
+              setShowTooltip(false);
+              setHoveredAction(null);
             }}
             className={`p-1 rounded-lg border transition-colors ${
               isLiked
@@ -226,6 +349,25 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           </div>
         )}
       </div>
+
+      {/* Unconstrained Portal Cursor Tooltip (Follows cursor at 12px offset, identical to BookCard) */}
+      {typeof document !== 'undefined' && showTooltip && mousePos && tooltipContent && createPortal(
+        <div
+          className="fixed z-[9999] pointer-events-none hidden sm:flex items-center transition-opacity duration-150 animate-in fade-in select-none"
+          style={{
+            left: `${mousePos.x}px`,
+            top: `${mousePos.y}px`,
+            transform: 'translate3d(12px, 14px, 0)',
+          }}
+          data-testid={`spine-tooltip-${book.id}`}
+        >
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-stone-900/90 dark:bg-stone-900/95 text-white text-[10px] font-mono font-medium shadow-xl backdrop-blur-xs border border-white/15 whitespace-nowrap">
+            {tooltipContent.icon}
+            <span>{tooltipContent.text}</span>
+          </span>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

@@ -43,6 +43,15 @@ describe('lib/utils', () => {
       expect(extractBookFormats(undefined)).toEqual({});
       expect(extractBookFormats({})).toEqual({});
     });
+
+    it('should generate canonical Project Gutenberg fallback URLs when bookId is provided', () => {
+      const extracted = extractBookFormats({}, 1342);
+      expect(extracted.epub).toBe('https://www.gutenberg.org/ebooks/1342.epub3.images');
+      expect(extracted.html).toBe('https://www.gutenberg.org/ebooks/1342.html.images');
+      expect(extracted.txt).toBe('https://www.gutenberg.org/ebooks/1342.txt.utf-8');
+      expect(extracted.mobi).toBe('https://www.gutenberg.org/ebooks/1342.kindle.images');
+      expect(extracted.coverImage).toBe('https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg');
+    });
   });
 
   describe('formatDownloadCount', () => {
