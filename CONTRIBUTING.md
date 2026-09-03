@@ -15,6 +15,12 @@ All participants, contributors, and maintainers are expected to uphold our [Code
 
 ---
 
+## Security & Vulnerability Disclosure
+
+If you discover a potential security vulnerability or sensitive data leak, please do **not** open a public issue. Follow our [Security Policy](SECURITY.md) to report it confidentially via GitHub's Private Vulnerability Advisories.
+
+---
+
 ## Architecture at a Glance
 
 Before opening a PR, familiarize yourself with Bookarium's state and rendering paradigms:
