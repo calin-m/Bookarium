@@ -6,6 +6,8 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
+import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrength } from '@/lib/password';
 
 export const AuthModal: React.FC = () => {
   const {
@@ -74,24 +76,7 @@ export const AuthModal: React.FC = () => {
   if (!isAuthModalOpen) return null;
 
   const generateStrongPassword = () => {
-    const lowercase = 'abcdefghijkmnopqrstuvwxyz';
-    const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const numbers = '23456789';
-    const symbols = '!@#$%^&*-_+=';
-    const all = lowercase + uppercase + numbers + symbols;
-
-    const pwd = [
-      lowercase[Math.floor(Math.random() * lowercase.length)],
-      uppercase[Math.floor(Math.random() * uppercase.length)],
-      numbers[Math.floor(Math.random() * numbers.length)],
-      symbols[Math.floor(Math.random() * symbols.length)],
-    ];
-
-    for (let i = 0; i < 12; i++) {
-      pwd.push(all[Math.floor(Math.random() * all.length)]);
-    }
-
-    const result = pwd.sort(() => Math.random() - 0.5).join('');
+    const result = generatePasswordUtil();
     setPassword(result);
     setConfirmPassword(result);
     setShowPassword(true);
@@ -103,19 +88,7 @@ export const AuthModal: React.FC = () => {
     }
   };
 
-  const getPasswordStrength = (pwd: string) => {
-    if (!pwd || pwd.length < 6) return { score: 0, label: 'Too short', color: 'bg-muted' };
-    let score = 1;
-    if (pwd.length >= 10) score++;
-    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd) && /[0-9]/.test(pwd)) score++;
-    if (/[^A-Za-z0-9]/.test(pwd) && pwd.length >= 12) score++;
-
-    if (score === 1) return { score: 1, label: 'Weak', color: 'bg-destructive' };
-    if (score === 2) return { score: 2, label: 'Moderate', color: 'bg-amber-500' };
-    return { score: 3, label: 'Strong', color: 'bg-emerald-500' };
-  };
-
-  const strength = getPasswordStrength(password);
+  const strength = evaluatePasswordStrength(password);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -459,16 +432,8 @@ export const AuthModal: React.FC = () => {
 
                 {/* Password Strength Meter for Sign Up */}
                 {authModalView === 'sign_up' && password.length > 0 && (
-                  <div className="space-y-1 pt-1 animate-in fade-in duration-150">
-                    <div className="flex items-center gap-1.5 h-1">
-                      <div className={`h-full flex-1 rounded-full transition-all duration-300 ${strength.score >= 1 ? strength.color : 'bg-muted'}`} />
-                      <div className={`h-full flex-1 rounded-full transition-all duration-300 ${strength.score >= 2 ? strength.color : 'bg-muted'}`} />
-                      <div className={`h-full flex-1 rounded-full transition-all duration-300 ${strength.score >= 3 ? strength.color : 'bg-muted'}`} />
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
-                      <span>Password strength:</span>
-                      <span className="font-bold text-foreground">{strength.label}</span>
-                    </div>
+                  <div className="pt-1 animate-in fade-in duration-150">
+                    <PasswordStrengthMeter strength={strength} />
                   </div>
                 )}
               </div>

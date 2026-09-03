@@ -27,18 +27,14 @@ import {
   Download,
   Bookmark,
   Sparkles,
-  RotateCw,
-  Quote,
-  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
-import { getBookPassages, type BookPassage, FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
-import { extractDynamicBookPassages } from '@/lib/gutenberg-parser';
-import { useBookContent } from '@/hooks/queries/useBookContent';
+import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
 import type { GutendexBook } from '@/types/book.types';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { LanguageSelector } from './LanguageSelector';
+import { HeroFeaturedBook3D } from './HeroFeaturedBook3D';
 
 export interface HeroSearchProps {
   search?: string;
@@ -92,12 +88,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 }) => {
   const [prevSearch, setPrevSearch] = useState(search);
   const [query, setQuery] = useState(search);
-  const [activePassageIndex, setActivePassageIndex] = useState(0);
-  const [prevPassageIndex, setPrevPassageIndex] = useState(0);
-  const [isTurningLeaf, setIsTurningLeaf] = useState(false);
-  const [pinState, setPinState] = useState<'auto' | 'open' | 'closed'>('auto');
   const hasMounted = useHasMounted();
-  const [isHovered, setIsHovered] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   if (search !== prevSearch) {
@@ -172,91 +163,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
     };
   }, [featuredBook, books, hourlyIndex, hasMounted]);
 
-  // On-demand fetch of full text for the active Featured Book to dynamically extract authentic quotes
-  const { data: rawBookText } = useBookContent(undefined, activeFeatured.id);
 
-  const curatedPassages = useMemo(() => {
-    return getBookPassages({
-      id: activeFeatured.id,
-      title: activeFeatured.title,
-      authors: activeFeatured.rawBook?.authors || [{ name: activeFeatured.author }],
-      subjects: activeFeatured.rawBook?.subjects || [activeFeatured.primarySubject],
-    });
-  }, [activeFeatured]);
-
-  const dynamicPassages = useMemo(() => {
-    if (rawBookText) {
-      return extractDynamicBookPassages(rawBookText, {
-        id: activeFeatured.id,
-        title: activeFeatured.title,
-        authors: activeFeatured.rawBook?.authors || [{ name: activeFeatured.author }],
-        subjects: activeFeatured.rawBook?.subjects || [activeFeatured.primarySubject],
-      });
-    }
-    return [];
-  }, [rawBookText, activeFeatured]);
-
-  // Keep index 0 locked to curated incipit so text never jumps unexpectedly,
-  // while supplying dynamic multi-chapter passages for in-book shuffling
-  const passages: BookPassage[] = useMemo(() => {
-    const baseFirst = curatedPassages[0] || dynamicPassages[0];
-    if (!baseFirst) return [];
-    if (dynamicPassages.length > 1) {
-      return [baseFirst, ...dynamicPassages.slice(1)];
-    }
-    return curatedPassages.length > 0 ? curatedPassages : [baseFirst];
-  }, [curatedPassages, dynamicPassages]);
-
-  const currentPassage = passages[activePassageIndex] || {
-    chapterLabel: 'Chapter I',
-    openingLine: 'Preserved in the public domain for all readers.',
-    quoteExcerpt: 'A timeless literary classic.',
-  };
-
-  const prevPassage = passages[prevPassageIndex] || currentPassage;
-
-  // Shuffling rotates through passages and chapters within this specific open book
-  const handleNextPassage = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isTurningLeaf || passages.length <= 1) return;
-    setPrevPassageIndex(activePassageIndex);
-    setActivePassageIndex((prev) => (prev + 1) % passages.length);
-    setIsTurningLeaf(true);
-  };
-
-  const isBookOpen = pinState === 'open' || (pinState === 'auto' && isHovered);
-
-  const handleBookClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('a')) {
-      return;
-    }
-    e.stopPropagation();
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      return;
-    }
-    if (isBookOpen) {
-      setPinState('closed');
-    } else {
-      setPinState('open');
-    }
-  };
-
-  const handleMouseEnter = () => {
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
-    setIsHovered(true);
-    if (pinState === 'closed') {
-      setPinState('auto');
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
-    setIsHovered(false);
-    if (pinState === 'closed') {
-      setPinState('auto');
-    }
-  };
 
   const handleInputChange = (val: string) => {
     setQuery(val);
@@ -391,247 +298,12 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
           </div>
 
           {/* Right Column: Booksaw Standing 3D Book Spotlight with Realistic 3D Opening Physics */}
+          {/* Right Column: Booksaw Standing 3D Book Spotlight with Realistic 3D Opening Physics */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
-            <div
-              className={`relative group cursor-pointer book-3d-stage hero-3d-stage ${
-                pinState === 'open' ? 'book-open' : pinState === 'closed' ? 'book-closed' : ''
-              }`}
-              onClick={handleBookClick}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                    return;
-                  }
-                  if (isBookOpen) {
-                    setPinState('closed');
-                  } else {
-                    setPinState('open');
-                  }
-                }
-              }}
-              aria-label={isBookOpen ? "Click to close volume" : "Click to pin open volume"}
-            >
-              <div className="book-3d-rig relative">
-                
-                {/* Desktop Open Book Spread Base (Right Page: straight left spine, rounded right outer edge) */}
-                <div className="hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex-col justify-between text-foreground z-0 overflow-hidden">
-                  <div key={`right-page-base-${activeFeatured.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
-                    <div>
-                      <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
-                        <span>{currentPassage.chapterLabel || 'Notable Passage'}</span>
-                        <span className="opacity-60">p. 2</span>
-                      </div>
-
-                      <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
-                        <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                        <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8 text-pretty">
-                          &ldquo;{currentPassage.quoteExcerpt}&rdquo;
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Right Page Footer Actions */}
-                    <div className="pt-2.5 border-t border-border flex items-center justify-between gap-2">
-                      <Button
-                        variant="outline"
-                        size="chip"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNextPassage(e);
-                        }}
-                        title="Shuffle to Next Passage in this Book"
-                        aria-label="Shuffle to Next Passage in this Book"
-                        data-testid="hero-book-shuffle-btn"
-                      >
-                        <RotateCw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-500" />
-                        <span>Shuffle</span>
-                      </Button>
-
-                      {onReadFeaturedBook && (
-                        <Button
-                          variant="primary"
-                          size="chip"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onReadFeaturedBook(activeFeatured.rawBook || activeFeatured);
-                          }}
-                          aria-label="Read"
-                          data-testid="hero-book-read-btn"
-                        >
-                          <BookOpen className="w-3.5 h-3.5" />
-                          <span>Read</span>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Physical 3D Turning Leaf (Flips Right to Left across the spine on shuffle: 0deg -> -180deg) */}
-                {isTurningLeaf && (
-                  <div
-                    key={`turning-leaf-${activeFeatured.id}-${activePassageIndex}`}
-                    className="hidden lg:block book-turning-leaf"
-                    onAnimationEnd={() => setIsTurningLeaf(false)}
-                  >
-                    {/* Front Face of Turning Leaf: Outgoing Right Page quote lifting away */}
-                    <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
-                      <div>
-                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
-                          <span>{prevPassage.chapterLabel || 'Notable Passage'}</span>
-                          <span className="opacity-60">p. 2</span>
-                        </div>
-
-                        <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
-                          <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8 text-pretty">
-                            &ldquo;{prevPassage.quoteExcerpt}&rdquo;
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Back Face of Turning Leaf: Incoming Left Page title & quote landing onto left side */}
-                    <div className="turning-leaf-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
-                      <div>
-                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border">
-                          <span className="flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" /> Public Domain
-                          </span>
-                          <span>{currentPassage.chapterLabel || activeFeatured.volumeNumber}</span>
-                        </div>
-
-                        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
-                          {activeFeatured.title}
-                        </h3>
-                        <p className="text-xs font-mono italic text-muted-foreground mb-2">
-                          by {activeFeatured.author} ({activeFeatured.year})
-                        </p>
-
-                        <div className="relative pl-3 border-l-2 border-primary/40 my-2">
-                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8 text-pretty">
-                            &ldquo;{currentPassage.openingLine}&rdquo;
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
-                        <span className="truncate max-w-[160px]">{activeFeatured.primarySubject}</span>
-                        <span className="opacity-60">p. 1</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3D Flipping Front Cover (Hinged on Left Spine) */}
-                <div className="relative w-64 sm:w-72 md:w-80 aspect-[2/3] book-3d-flipper z-10">
-                  
-                  {/* FRONT FACE: Physical Hardcover Book (Closed State) */}
-                  <div className="absolute inset-0 book-3d-face-front rounded-r-lg rounded-l-sm bg-gradient-to-r from-stone-900 via-stone-800 to-stone-950 p-6 flex flex-col justify-between text-white shadow-[25px_25px_50px_rgba(0,0,0,0.18),0_10px_20px_rgba(0,0,0,0.08)] border-r-2 border-stone-700 overflow-hidden">
-                    {/* 3D Spine & Page Edge Accents */}
-                    <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/40 via-black/20 to-transparent rounded-l-sm pointer-events-none" />
-                    <div className="absolute right-0 top-1 bottom-1 w-2 bg-gradient-to-l from-white/30 to-transparent pointer-events-none" />
-
-                    <div key={`front-face-content-${activeFeatured.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative z-10">
-                      {/* Header */}
-                      <div>
-                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary-300 mb-3 pb-2 border-b border-white/10">
-                          <span className="flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-primary-400" /> Featured Book
-                          </span>
-                          {/* Clean Volume Label */}
-                          <span className="text-stone-400 font-mono tracking-widest text-[10px]">
-                            {activeFeatured.volumeNumber}
-                          </span>
-                        </div>
-
-                        <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white leading-tight mb-1.5 text-balance">
-                          {activeFeatured.title}
-                        </h3>
-                        <p className="text-xs font-mono uppercase tracking-wider text-stone-300">
-                          {activeFeatured.author} • {activeFeatured.year}
-                        </p>
-                      </div>
-
-                      {/* Center Quote Excerpt */}
-                      <div className="my-3 p-3 rounded bg-stone-900 border border-stone-800">
-                        <p className="text-xs font-serif italic text-stone-200 leading-relaxed line-clamp-4 text-pretty">
-                          &ldquo;{currentPassage.quoteExcerpt}&rdquo;
-                        </p>
-                      </div>
-
-                      {/* Footer */}
-                      <div className="pt-3 border-t border-white/10 flex items-center justify-between">
-                        <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
-                          {activeFeatured.license}
-                        </span>
-                        {onReadFeaturedBook && (
-                          <Button
-                            variant="primary"
-                            size="chip"
-                            className="lg:hidden"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onReadFeaturedBook(activeFeatured.rawBook || activeFeatured);
-                            }}
-                            aria-label="Read"
-                          >
-                            <BookOpen className="w-3.5 h-3.5" />
-                            <span>Read</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* BACK FACE: Inside Left Page (Visible when rotated -180deg on desktop hover) */}
-                  <div className="absolute inset-0 book-3d-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
-                    <div key={`left-page-content-${activeFeatured.id}-${isTurningLeaf ? prevPassageIndex : activePassageIndex}`} className="flex flex-col justify-between h-full relative">
-                      <div>
-                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border">
-                          <span className="flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" /> Public Domain
-                          </span>
-                          <span>{(isTurningLeaf ? prevPassage : currentPassage).chapterLabel || activeFeatured.volumeNumber}</span>
-                        </div>
-
-                        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
-                          {activeFeatured.title}
-                        </h3>
-                        <p className="text-xs font-mono italic text-muted-foreground mb-2">
-                          by {activeFeatured.author} ({activeFeatured.year})
-                        </p>
-
-                        <div className="relative pl-3 border-l-2 border-primary/40 my-2">
-                          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8 text-pretty">
-                            &ldquo;{(isTurningLeaf ? prevPassage : currentPassage).openingLine}&rdquo;
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
-                        <span className="truncate max-w-[140px]">{activeFeatured.primarySubject}</span>
-                        <span className="opacity-60">p. 1</span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Ambient Floor Shadow - Closed State */}
-                <div className={`absolute -bottom-4 left-6 right-6 h-6 bg-black/15 dark:bg-black/40 rounded-full blur-xl pointer-events-none transition-opacity duration-700 ${
-                  pinState === 'open' ? 'opacity-0' : pinState === 'closed' ? 'opacity-100' : 'group-hover:opacity-0'
-                }`} />
-                {/* Ambient Floor Shadow - Open 2-Page Spread State */}
-                <div className={`hidden lg:block absolute -bottom-6 -left-64 -right-8 h-8 bg-black/20 dark:bg-black/50 rounded-full blur-2xl pointer-events-none transition-opacity duration-700 ${
-                  pinState === 'open' ? 'opacity-100' : pinState === 'closed' ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'
-                }`} />
-              </div>
-            </div>
+            <HeroFeaturedBook3D
+              featuredBook={activeFeatured}
+              onReadFeaturedBook={onReadFeaturedBook}
+            />
           </div>
 
         </div>

@@ -9,8 +9,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-81%20Suites%20%7C%20569%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.6%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-92%20Suites%20%7C%20627%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.5%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -35,8 +35,15 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v1.7.5)
+## 🛠️ Latest Improvements (v1.8.0)
 
+- **Comprehensive 5-Phase Architectural Decoupling & Modularization**:
+  - **Cryptographic Password Domain Engine & Atomic Strength Indicator (`password.ts`, `PasswordStrengthMeter.tsx`)** – Extracted pure domain password generation (`generateStrongPassword`) and 3-tier entropy scoring (`evaluatePasswordStrength`) paired with a reusable 3-segment progress indicator across Sign Up and Account Security.
+  - **Headless Cursor Tooltip Hook & Zero-Clipping Portal Primitive (`useCursorTooltip.ts`, `CursorTooltip.tsx`)** – Encapsulated mouse coordinate tracking and hover timers into a headless hook with a body-portaled tooltip, removing duplicate handlers from `BookCard` and `BookshelfSpine`.
+  - **Decoupled 3D Open-Book Kinematics & Presentation Rig (`useBookPassageShuffle.ts`, `HeroFeaturedBook3D.tsx`)** – Decoupled the standing 3D book rig, turning leaf physics, and passage shuffle engine from search state, reducing `HeroSearch.tsx` by 240+ lines and simplifying `BookPreviewModal.tsx`.
+  - **Modular Reader Header & Archival Info Modal (`GutenbergInfoModal.tsx`, `ReaderSubHeaderRibbon.tsx`)** – Decomposed the monolithic reader header by extracting the Project Gutenberg archival metadata modal and the dual-state sub-header ribbon (session resume notice $\leftrightarrow$ volume info, section counter, and progress pill) from `ReaderHeader.tsx`.
+  - **Headless Reader Session Hook (`useReaderSession.ts`)** – Decoupled reader pagination, chapter transitions, exact page bookmarking auto-resume, progress persistence, and bidirectional page turning from `src/app/read/[id]/page.tsx`.
+- **Bookshelf "All Saved for Offline" Dedicated Status Notice (`BookshelfRack.tsx`)** – Converted the "All Saved for Offline" indicator from an interactive button into an accessible, non-clickable status notice (`role="status"`, `select-none`, `cursor-default`) positioned cleanly alongside the actionable "Clear Offline Shelf" button.
 - **Cross-Device Favorites Cloud Sync (`useBookshelfStore.ts`, `user_favorites` table)** – Implemented cloud synchronization of user-liked books and favorites via Supabase PostgreSQL with RLS, merging local guest favorites upon login, and auto-purging on account deletion.
 - **Native IndexedDB Offline Book Storage Engine (`offline-storage.ts`, `useOfflineBooks.ts`, `useBookContent.ts`)** – Zero-dependency browser IndexedDB storage engine (`BookariumOfflineDB`) bypassing the 5MB `localStorage` limit to store full classic texts offline with instant cache-hit reading.
 - **Interactive Shelf Offline Lifecycle & Confirmation Modal (`BookshelfRack.tsx`, `BookshelfManageModals.tsx`)** – "Download Shelf Offline" with live `Saving X/Y` progress indicator, 1.5s completion flash, seamless transition to "Clear Offline Shelf", and accessible confirmation modal dialog.
@@ -338,7 +345,8 @@ flowchart LR
     end
 
     subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]
-        Toolbar["Top Editorial Reader Bar & Sliding Tray"]
+        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader)"]
+        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]
         ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap)"]
         ProgressBar["Top Reading Progress Indicator"]
         ResumeToast["Exact-Page Auto-Resume Toast"]
@@ -347,6 +355,7 @@ flowchart LR
         SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]
         LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]
         Controls["Appearance & Typography Popover (ReaderControls)"]
+        InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
     end
 
     subgraph Persistence ["Browser LocalStorage"]
@@ -642,7 +651,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 569 tests across 81 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 627 tests across 92 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

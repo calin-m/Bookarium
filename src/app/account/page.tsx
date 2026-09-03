@@ -22,6 +22,7 @@ import { AccountLibraryStats } from '@/components/account/AccountLibraryStats';
 import { AccountSecuritySection } from '@/components/account/AccountSecuritySection';
 import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
+import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrength } from '@/lib/password';
 import { ROUTES } from '@/config/routes';
 
 export default function AccountPage() {
@@ -135,19 +136,7 @@ export default function AccountPage() {
   };
 
   const generateStrongPassword = () => {
-    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*';
-    let generated = '';
-    const array = new Uint32Array(16);
-    if (typeof window !== 'undefined' && window.crypto) {
-      window.crypto.getRandomValues(array);
-      for (let i = 0; i < 16; i++) {
-        generated += chars[array[i] % chars.length];
-      }
-    } else {
-      for (let i = 0; i < 16; i++) {
-        generated += chars[Math.floor(Math.random() * chars.length)];
-      }
-    }
+    const generated = generatePasswordUtil();
     setNewPassword(generated);
     setConfirmPassword(generated);
     setPasswordError(null);
@@ -159,19 +148,7 @@ export default function AccountPage() {
     }
   };
 
-  const getPasswordStrength = (pass: string) => {
-    if (!pass) return { score: 0, label: '', color: '' };
-    let score = 0;
-    if (pass.length >= 8) score++;
-    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score++;
-    if (/\d/.test(pass) || /[^A-Za-z0-9]/.test(pass)) score++;
-
-    if (score === 1) return { score: 1, label: 'Weak', color: 'bg-destructive' };
-    if (score === 2) return { score: 2, label: 'Moderate', color: 'bg-amber-500' };
-    return { score: 3, label: 'Strong', color: 'bg-emerald-500' };
-  };
-
-  const strength = getPasswordStrength(newPassword);
+  const strength = evaluatePasswordStrength(newPassword);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();

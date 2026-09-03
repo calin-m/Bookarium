@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useCursorTooltip } from '@/hooks/useCursorTooltip';
+import { CursorTooltip } from '@/components/ui/CursorTooltip';
 import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount, extractBookTags } from '@/lib/utils';
@@ -33,37 +34,16 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
   const tags = extractBookTags(book.subjects, 2, 20);
 
-  const [mousePos, setMousePos] = React.useState<{ x: number; y: number } | null>(null);
-  const [showTooltip, setShowTooltip] = React.useState(false);
-  const [hoveredAction, setHoveredAction] = React.useState<'preview' | 'favorite' | 'bookshelf'>('preview');
-  const hoverTimerRef = React.useRef<NodeJS.Timeout | null>(null);
-
-  React.useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    };
-  }, []);
-
-  const handleMouseEnter = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = setTimeout(() => {
-      setShowTooltip(true);
-    }, 400);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    setMousePos({
-      x: e.clientX,
-      y: e.clientY,
-    });
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    setShowTooltip(false);
-    setHoveredAction('preview');
-    setMousePos(null);
-  };
+  const {
+    mousePos,
+    showTooltip,
+    hoveredAction,
+    setHoveredAction,
+    setShowTooltip,
+    handleMouseEnter,
+    handleMouseMove,
+    handleMouseLeave,
+  } = useCursorTooltip<'preview' | 'favorite' | 'bookshelf'>({ initialAction: 'preview' });
 
   const tooltipContent = React.useMemo(() => {
     if (hoveredAction === 'favorite') {
@@ -159,21 +139,15 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
         )}
 
         {/* Unconstrained Portal Cursor Tooltip (Follows cursor exactly at 12px offset, free from any card transform or clipping) */}
-        {typeof document !== 'undefined' && onPreviewClick && showTooltip && mousePos && createPortal(
-          <div
-            className="fixed z-[9999] pointer-events-none hidden lg:flex items-center transition-opacity duration-150 animate-in fade-in select-none"
-            style={{
-              left: `${mousePos.x}px`,
-              top: `${mousePos.y}px`,
-              transform: 'translate3d(12px, 14px, 0)',
-            }}
+        {Boolean(onPreviewClick) && (
+          <CursorTooltip
+            isVisible={showTooltip}
+            mousePos={mousePos}
+            className="hidden lg:flex"
           >
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-stone-900/90 dark:bg-stone-900/95 text-white text-[10px] font-mono font-medium shadow-xl backdrop-blur-xs border border-white/15 whitespace-nowrap">
-              {tooltipContent.icon}
-              <span>{tooltipContent.text}</span>
-            </span>
-          </div>,
-          document.body
+            {tooltipContent.icon}
+            <span>{tooltipContent.text}</span>
+          </CursorTooltip>
         )}
 
         {/* Quick Action Overlay Badges (Top-Right) */}
