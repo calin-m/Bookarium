@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, isSafeUpstreamUrl } from './route';
+import { GET, isSafeUpstreamUrl, sanitizeUpstreamUrl } from './route';
 import { sampleBookText } from '@/mocks/handlers';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
 
@@ -57,9 +57,22 @@ describe('GET /api/books/content', () => {
     expect(json.error).toMatch(/unauthorized/i);
   });
 
-  it('should validate official Gutenberg upstream URLs as safe', () => {
+  it('should validate official Gutenberg upstream URLs as safe and sanitize them', () => {
     expect(isSafeUpstreamUrl('https://www.gutenberg.org/cache/epub/1342/pg1342.txt')).toBe(true);
     expect(isSafeUpstreamUrl('https://gutenberg.org/files/1342/1342-0.txt')).toBe(true);
+
+    expect(sanitizeUpstreamUrl('https://www.gutenberg.org/cache/epub/1342/pg1342.txt')).toBe(
+      'https://www.gutenberg.org/cache/epub/1342/pg1342.txt'
+    );
+    expect(sanitizeUpstreamUrl('https://gutenberg.org/files/1342/1342-0.txt')).toBe(
+      'https://gutenberg.org/files/1342/1342-0.txt'
+    );
+  });
+
+  it('should reject path traversal attempts in upstream URLs', () => {
+    expect(isSafeUpstreamUrl('https://www.gutenberg.org/../../etc/passwd')).toBe(false);
+    expect(isSafeUpstreamUrl('https://gutenberg.org/cache/epub/1342/../../../secret')).toBe(false);
+    expect(sanitizeUpstreamUrl('https://www.gutenberg.org/../../etc/passwd')).toBeNull();
   });
 
   it('should fetch and return book text for valid id', async () => {

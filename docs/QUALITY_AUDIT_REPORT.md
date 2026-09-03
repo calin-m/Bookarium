@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 15:57:58 GMT  
+**Last Generated**: Thu, 03 Sep 2026 16:03:14 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 106 passed  
-**Total Verified Tests**: 720 passed  
+**Total Verified Tests**: 721 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **106/106 test suites passed** (720 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **106/106 test suites passed** (721 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,24 +25,25 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.92%** (3847/4185) — *Target: $ge$ 80%*
-- **Statements**: **90.08%** (4190/4651) — *Target: $ge$ 80%*
-- **Functions**: **87.31%** (1019/1167) — *Target: $ge$ 80%*
-- **Branches**: **80.15%** (3489/4353) — *Target: $ge$ 80%*
+- **Lines**: **91.89%** (3856/4196) — *Target: $ge$ 80%*
+- **Statements**: **90.09%** (4202/4664) — *Target: $ge$ 80%*
+- **Functions**: **87.41%** (1021/1168) — *Target: $ge$ 80%*
+- **Branches**: **80.16%** (3496/4361) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (106 Suites / 720 Tests)
+## 🧪 Comprehensive Test Suite Catalog (106 Suites / 721 Tests)
 
-### 🚀 App Routes & Pages (9 Suites · 64 Tests)
+### 🚀 App Routes & Pages (9 Suites · 65 Tests)
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
 - ✔ `should block SSRF attempts targeting cloud metadata or internal network`
-- ✔ `should validate official Gutenberg upstream URLs as safe`
+- ✔ `should validate official Gutenberg upstream URLs as safe and sanitize them`
+- ✔ `should reject path traversal attempts in upstream URLs`
 - ✔ `should fetch and return book text for valid id`
 - ✔ `should return 502 if upstream fails or times out`
 
