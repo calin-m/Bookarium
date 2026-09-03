@@ -44,11 +44,15 @@ GitHub provides a secure, private advisory workflow for public repositories:
 Bookarium incorporates multi-layered security controls designed into its architecture:
 
 1. **Zero Secret Footprint (Pass 0.5 Scanner)**:
-   - Automated pre-commit scanning (`scripts/lib/secret-scanner.js`) strictly prevents accidental commits of API keys, private keys, database connection strings, or credentials.
-2. **PostgreSQL Row Level Security (RLS)**:
+   - Automated pre-commit scanning (`scripts/verify-build.js`) strictly prevents accidental commits of API keys, private keys, database connection strings, or credentials.
+2. **OWASP Pre-Commit SAST & Dependency Security Suite (Pass 0.75)**:
+   - Automated pre-commit gates block high/critical dependency CVEs (`npm audit`), statically prevent SSRF taint flows in API routes, guarantee zero XSS evaluation primitives (`eval`, `new Function`, `dangerouslySetInnerHTML`), enforce internal redirect sanitization, and verify MIT license compliance. Run standalone via `npm run security:audit`.
+3. **Continuous Cloud Code Scanning (GitHub CodeQL)**:
+   - GitHub Actions automated analysis continuously inspects all commits to `master` for semantic code flaws, security regressions, and tainted data flows.
+4. **PostgreSQL Row Level Security (RLS)**:
    - Cloud synchronization utilizes Supabase PostgreSQL with strict RLS policies (`auth.uid() = user_id`) on `public.user_bookshelves` and `public.user_annotations`. Users cannot read, mutate, or delete records belonging to other accounts.
-3. **Public Domain Integrity & Safe Ingestion**:
+5. **Public Domain Integrity & Safe Ingestion**:
    - All catalog queries strictly enforce `copyright=false`. Ingested Gutenberg texts are parsed through isolated Web Workers and sanitized reflow algorithms to guard against script injection (XSS).
-4. **Offline-First Data Isolation**:
+6. **Offline-First Data Isolation**:
    - Stored books, notes, and reading positions reside in client-side browser storage (`localStorage` and `IndexedDB`) and are never exposed to untrusted third-party trackers or ad networks.
 

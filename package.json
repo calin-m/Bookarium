@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "verify": "node scripts/verify-build.js",
+    "security:audit": "node scripts/verify-build.js --security-only",
     "docs:sync": "node scripts/generate-architecture-matrix.js && node scripts/generate-changelog.js && node scripts/generate-quality-report.js && node scripts/generate-roadmap.js",
     "report": "node scripts/generate-quality-report.js",
     "audit:quality": "node scripts/generate-quality-report.js",
