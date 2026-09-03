@@ -7,16 +7,37 @@ const ALLOWED_HOSTS = new Set(['www.gutenberg.org', 'gutenberg.org']);
 
 export function isSafeUpstreamUrl(rawUrl: string): boolean {
   try {
+    if (rawUrl.includes('..')) return false;
     const parsed = new URL(rawUrl);
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
-    if (!ALLOWED_HOSTS.has(parsed.hostname.toLowerCase())) return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (!ALLOWED_HOSTS.has(hostname)) return false;
     // Reject internal hostnames and IP addresses
-    if (/^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname)) {
+    if (/^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname)) {
+      return false;
+    }
+    // Reject paths containing invalid characters
+    if (!/^\/[a-zA-Z0-9/_\-\.]+$/.test(parsed.pathname)) {
       return false;
     }
     return true;
   } catch {
     return false;
+  }
+}
+
+export function sanitizeUpstreamUrl(rawUrl: string): string | null {
+  if (!isSafeUpstreamUrl(rawUrl)) return null;
+  try {
+    const parsed = new URL(rawUrl);
+    // Reconstruct URL anchored strictly to verified literal Gutenberg origins
+    const trustedOrigin =
+      parsed.hostname.toLowerCase() === 'gutenberg.org'
+        ? 'https://gutenberg.org'
+        : 'https://www.gutenberg.org';
+    return `${trustedOrigin}${parsed.pathname}`;
+  } catch {
+    return null;
   }
 }
 
@@ -61,14 +82,15 @@ export async function GET(request: NextRequest) {
   }
 
   if (urlParam) {
-    if (!isSafeUpstreamUrl(urlParam)) {
+    const safeUrl = sanitizeUpstreamUrl(urlParam);
+    if (!safeUrl) {
       return NextResponse.json(
         { error: 'Invalid or unauthorized upstream content URL.' },
         { status: 400 }
       );
     }
-    if (!targetUrls.includes(urlParam)) {
-      targetUrls.push(urlParam);
+    if (!targetUrls.includes(safeUrl)) {
+      targetUrls.push(safeUrl);
     }
   }
 
