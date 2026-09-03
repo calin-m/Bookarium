@@ -11,7 +11,6 @@ import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrengt
 
 export const AuthModal: React.FC = () => {
   const {
-    user,
     isAuthModalOpen,
     authModalView,
     error,
@@ -26,7 +25,7 @@ export const AuthModal: React.FC = () => {
     resendVerificationEmail,
   } = useAuthStore();
 
-  const { migrateLocalBooksToCloud } = useBookshelfStore();
+  const { syncWithCloud } = useBookshelfStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -97,21 +96,21 @@ export const AuthModal: React.FC = () => {
 
     try {
       if (authModalView === 'sign_in') {
-        const { error: err } = await signInWithPassword(email, password);
-        if (!err && user?.id) {
-          await migrateLocalBooksToCloud(user.id);
+        const { error: err, user: signedInUser } = await signInWithPassword(email, password);
+        if (!err && signedInUser?.id) {
+          await syncWithCloud(signedInUser.id);
         }
       } else if (authModalView === 'sign_up') {
         if (password !== confirmPassword) {
           setError('Passwords do not match.');
           return;
         }
-        const { error: err, needsEmailConfirmation } = await signUpWithPassword(email, password, fullName);
+        const { error: err, needsEmailConfirmation, user: signedUpUser } = await signUpWithPassword(email, password, fullName);
         if (!err) {
           if (needsEmailConfirmation) {
             setVerificationEmailSent(true);
-          } else if (user?.id) {
-            await migrateLocalBooksToCloud(user.id);
+          } else if (signedUpUser?.id) {
+            await syncWithCloud(signedUpUser.id);
           }
         }
       } else if (authModalView === 'magic_link') {

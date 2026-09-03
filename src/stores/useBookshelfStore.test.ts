@@ -242,6 +242,84 @@ describe('useBookshelfStore', () => {
       expect(useBookshelfStore.getState().likedBookIds).toContain(84);
     });
 
+    it('bidirectionally pushes unsynced local books and favorites to Supabase during syncWithCloud', async () => {
+      const itemsUpsertMock = vi.fn().mockResolvedValue({ error: null });
+      const favsUpsertMock = vi.fn().mockResolvedValue({ error: null });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({
+                  data: [{ id: 'shelf-gen', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' }],
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockResolvedValueOnce({
+                data: [], // cloud is currently empty
+              }),
+            }),
+            upsert: itemsUpsertMock,
+          };
+        }
+        if (table === 'user_favorites') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({
+                  data: [], // cloud is currently empty
+                }),
+              }),
+            }),
+            upsert: favsUpsertMock,
+          };
+        }
+        return {};
+      });
+
+      // Populate local store with books from guest session
+      useBookshelfStore.setState({
+        savedBooks: [mockBooks[0]],
+        likedBooks: [mockBooks[1]],
+        likedBookIds: [mockBooks[1].id],
+      });
+
+      await act(async () => {
+        await useBookshelfStore.getState().syncWithCloud('user-1');
+      });
+
+      // Verify books were uploaded to Supabase
+      expect(itemsUpsertMock).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            bookshelf_id: 'shelf-gen',
+            user_id: 'user-1',
+            book_id: mockBooks[0].id,
+            book_title: mockBooks[0].title,
+          }),
+        ]),
+        { onConflict: 'bookshelf_id,book_id' }
+      );
+
+      // Verify favorites were uploaded to Supabase
+      expect(favsUpsertMock).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            user_id: 'user-1',
+            book_id: mockBooks[1].id,
+            book_title: mockBooks[1].title,
+          }),
+        ]),
+        { onConflict: 'user_id,book_id' }
+      );
+    });
+
     it('handles createCloudBookshelf and migrateLocalBooksToCloud', async () => {
       mockFrom.mockImplementation((table: string) => {
         if (table === 'bookshelves') {

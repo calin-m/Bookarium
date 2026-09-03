@@ -20,6 +20,7 @@ vi.mock('@/stores/useAuthStore', async (importOriginal) => {
 
 vi.mock('@/stores/useBookshelfStore', () => ({
   useBookshelfStore: () => ({
+    syncWithCloud: vi.fn(),
     migrateLocalBooksToCloud: vi.fn(),
   }),
 }));

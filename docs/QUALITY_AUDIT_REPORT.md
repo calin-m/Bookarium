@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 08:30:32 GMT  
+**Last Generated**: Thu, 03 Sep 2026 09:15:54 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 92 passed  
-**Total Verified Tests**: 627 passed  
+**Total Verified Tests**: 628 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **92/92 test suites passed** (627 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **92/92 test suites passed** (628 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.54%** (3254/3516) — *Target: $ge$ 80%*
-- **Statements**: **90.79%** (3542/3901) — *Target: $ge$ 80%*
-- **Functions**: **87.88%** (834/949) — *Target: $ge$ 80%*
-- **Branches**: **81.27%** (3082/3792) — *Target: $ge$ 80%*
+- **Lines**: **92.39%** (3269/3538) — *Target: $ge$ 80%*
+- **Statements**: **90.65%** (3559/3926) — *Target: $ge$ 80%*
+- **Functions**: **87.64%** (837/955) — *Target: $ge$ 80%*
+- **Branches**: **81.03%** (3089/3812) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (92 Suites / 627 Tests)
+## 🧪 Comprehensive Test Suite Catalog (92 Suites / 628 Tests)
 
 ### 🚀 App Routes & Pages (9 Suites · 59 Tests)
 
@@ -572,7 +572,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 52 Tests)
+### ⚡ Zustand State Stores (5 Suites · 53 Tests)
 
 <details>
 <summary><b><code>src/stores/useAuthStore.test.ts</code></b> (18 tests)</summary>
@@ -599,7 +599,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -610,6 +610,7 @@
 - ✔ `returns live hydrated state and reactive actions`
 - ✔ `handles activeBookshelfId selection and cloud bookshelf list`
 - ✔ `handles syncWithCloud fetching bookshelves and items`
+- ✔ `bidirectionally pushes unsynced local books and favorites to Supabase during syncWithCloud`
 - ✔ `handles createCloudBookshelf and migrateLocalBooksToCloud`
 - ✔ `handles updateCloudBookshelf and deleteCloudBookshelf`
 - ✔ `handles moveBookToShelf properly`
