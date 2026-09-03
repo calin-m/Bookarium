@@ -87,5 +87,41 @@ describe('BookshelfManageModals Component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete Shelf' }));
     expect(handleDelete).toHaveBeenCalled();
   });
+
+  it('renders clear offline shelf confirmation modal and handles cancel and confirm', () => {
+    const handleClose = vi.fn();
+    const handleConfirm = vi.fn();
+
+    render(
+      <BookshelfManageModals
+        isCreatingShelf={false}
+        newShelfName=""
+        onNewShelfNameChange={vi.fn()}
+        onCloseCreateShelf={vi.fn()}
+        onCreateShelf={vi.fn()}
+        editingShelfId={null}
+        editingShelfName=""
+        onEditingShelfNameChange={vi.fn()}
+        onCloseRenameShelf={vi.fn()}
+        onRenameShelf={vi.fn()}
+        deletingShelfId={null}
+        onCloseDeleteShelf={vi.fn()}
+        onDeleteShelf={vi.fn()}
+        isClearingOfflineShelf={true}
+        onCloseClearOfflineShelf={handleClose}
+        onConfirmClearOfflineShelf={handleConfirm}
+        isSubmitting={false}
+      />
+    );
+
+    expect(screen.getByText('Clear Offline Shelf')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to remove all offline downloads for this shelf/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(handleClose).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Offline Downloads' }));
+    expect(handleConfirm).toHaveBeenCalled();
+  });
 });
 

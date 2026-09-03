@@ -54,6 +54,14 @@ CREATE TABLE IF NOT EXISTS public.bookshelves (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Unique constraints per user
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_default_bookshelf 
+  ON public.bookshelves(user_id) 
+  WHERE is_default = true;
+
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_shelf_name 
+  ON public.bookshelves(user_id, lower(trim(name)));
+
 ALTER TABLE public.bookshelves ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own bookshelves" ON public.bookshelves;
@@ -114,7 +122,37 @@ CREATE POLICY "Users can delete their own bookshelf items"
   USING (auth.uid() = user_id);
 
 -- ============================================================================
--- 4. Reading Progress Table
+-- 4. User Favorites Table (Cross-Device Liked Books Sync)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.user_favorites (
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  book_id INTEGER NOT NULL,
+  book_title TEXT NOT NULL,
+  book_authors TEXT[] NOT NULL DEFAULT '{}',
+  cover_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, book_id)
+);
+
+ALTER TABLE public.user_favorites ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own favorites" ON public.user_favorites;
+CREATE POLICY "Users can view their own favorites"
+  ON public.user_favorites FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own favorites" ON public.user_favorites;
+CREATE POLICY "Users can insert their own favorites"
+  ON public.user_favorites FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own favorites" ON public.user_favorites;
+CREATE POLICY "Users can delete their own favorites"
+  ON public.user_favorites FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- 5. Reading Progress Table
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.reading_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -150,7 +188,7 @@ CREATE POLICY "Users can delete their own reading progress"
   USING (auth.uid() = user_id);
 
 -- ============================================================================
--- 5. Auto-Provisioning User Trigger (Profile + Default General Shelf)
+-- 6. Auto-Provisioning User Trigger (Profile + Default General Shelf)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -170,7 +208,8 @@ BEGIN
     NEW.id,
     'General',
     true
-  );
+  )
+  ON CONFLICT DO NOTHING;
 
   RETURN NEW;
 END;
@@ -182,7 +221,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================================
--- 6. RPC Function: Delete Current User Account
+-- 7. RPC Function: Delete Current User Account
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.delete_current_user()
 RETURNS VOID AS $$

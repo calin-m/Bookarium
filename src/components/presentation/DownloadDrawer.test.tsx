@@ -28,5 +28,24 @@ describe('DownloadDrawer component', () => {
     );
     expect(container.firstChild).toBeNull();
   });
+
+  it('should provide canonical Gutenberg download links even if book.formats is empty', () => {
+    const minimalBook = {
+      ...mockBooks[0],
+      formats: {},
+    };
+
+    render(
+      <DownloadDrawer
+        book={minimalBook}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    const downloadButtons = screen.getAllByText('Download');
+    expect(downloadButtons.length).toBe(4);
+    expect(screen.queryByText('Unavailable')).not.toBeInTheDocument();
+  });
 });
 

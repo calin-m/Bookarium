@@ -2,11 +2,12 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Sparkles, Plus, Edit2, Trash2 } from 'lucide-react';
+import { BookOpen, Sparkles, Plus, Edit2, Trash2, CheckCircle2, HardDriveDownload } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { Button } from '@/components/ui/Button';
 import { BookshelfSpine } from './bookshelf/BookshelfSpine';
 import { BookshelfMobileModal } from './bookshelf/BookshelfMobileModal';
@@ -48,12 +49,44 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   } = useHydratedBookshelf();
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const { user, openAuthModal } = useAuthStore();
+  const {
+    isBookOffline,
+    downloadBook,
+    removeBook,
+    downloadAll,
+    removeAll,
+    isDownloading: isDownloadingOffline,
+    downloadAllProgress: offlineProgress,
+  } = useOfflineBooks();
+
+  const [showDownloadSuccess, setShowDownloadSuccess] = useState(false);
+  const prevDownloadingRef = useRef(false);
+
+  useEffect(() => {
+    if (prevDownloadingRef.current && !isDownloadingOffline) {
+      setShowDownloadSuccess(true);
+      const timer = setTimeout(() => {
+        setShowDownloadSuccess(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+    prevDownloadingRef.current = isDownloadingOffline;
+  }, [isDownloadingOffline]);
+
+  const handleToggleOffline = async (book: GutendexBook) => {
+    if (isBookOffline(book.id)) {
+      await removeBook(book.id);
+    } else {
+      await downloadBook(book);
+    }
+  };
 
   const [isCreatingShelf, setIsCreatingShelf] = useState(false);
   const [newShelfName, setNewShelfName] = useState('');
   const [editingShelfId, setEditingShelfId] = useState<string | null>(null);
   const [editingShelfName, setEditingShelfName] = useState('');
   const [deletingShelfId, setDeletingShelfId] = useState<string | null>(null);
+  const [isClearingOfflineShelf, setIsClearingOfflineShelf] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMobileBook, setSelectedMobileBook] = useState<GutendexBook | null>(null);
 
@@ -167,6 +200,16 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const activeShelf = cloudBookshelves.find((s) => s.id === currentActiveShelfId) || defaultShelf;
   const activeShelfDisplayName = activeShelf?.is_default ? 'General' : (activeShelf?.name || 'General');
 
+  const handleConfirmClearOfflineShelf = async () => {
+    try {
+      setIsSubmitting(true);
+      await removeAll(effectiveShelfBooks);
+      setIsClearingOfflineShelf(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="w-full space-y-8 py-6" data-testid="bookshelf-rack" ref={containerRef}>
       {/* Cloud Bookshelf Header & Multi-Shelf Switcher */}
@@ -236,6 +279,68 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               <Sparkles className="w-3.5 h-3.5" />
               <span>Sign in to Sync</span>
             </Button>
+          </div>
+        )}
+
+        {/* Offline Download All / Clear Shelf Button */}
+        {effectiveShelfBooks.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            {isDownloadingOffline ? (
+              <Button
+                variant="outline"
+                size="chip"
+                disabled
+                className="text-xs font-mono gap-1.5"
+                title="Downloading shelf offline"
+                aria-label="Downloading shelf offline"
+              >
+                <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+                <span>
+                  {offlineProgress
+                    ? `Saving ${offlineProgress.current}/${offlineProgress.total}`
+                    : 'Downloading...'}
+                </span>
+              </Button>
+            ) : showDownloadSuccess ? (
+              <Button
+                variant="outline"
+                size="chip"
+                onClick={() => setIsClearingOfflineShelf(true)}
+                className="text-xs font-mono gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                title="All books saved offline. Click to clear offline shelf."
+                aria-label="All Saved Offline"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="hidden sm:inline font-medium">All Saved Offline</span>
+                <span className="sm:hidden font-medium">Saved</span>
+              </Button>
+            ) : effectiveShelfBooks.every((b) => isBookOffline(b.id)) ? (
+              <Button
+                variant="outline"
+                size="chip"
+                onClick={() => setIsClearingOfflineShelf(true)}
+                className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
+                title="Clear all downloaded offline books on this shelf"
+                aria-label="Clear Offline Shelf"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span className="hidden sm:inline">Clear Offline Shelf</span>
+                <span className="sm:hidden">Clear Offline</span>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="chip"
+                onClick={() => downloadAll(effectiveShelfBooks)}
+                className="text-xs font-mono gap-1.5"
+                title="Download all books on this shelf for offline reading"
+                aria-label="Download all books on this shelf for offline reading"
+              >
+                <HardDriveDownload className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="hidden sm:inline">Download Shelf Offline</span>
+                <span className="sm:hidden">Download All</span>
+              </Button>
+            )}
           </div>
         )}
 
@@ -345,8 +450,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     readingProgress={readingProgress[book.id]}
                     isSaved={checkIsSaved(book.id)}
                     isLiked={checkIsLiked(book.id)}
+                    isOffline={isBookOffline(book.id)}
                     onToggleSave={toggleSave}
                     onToggleLike={toggleLike}
+                    onToggleOffline={handleToggleOffline}
                     onSpineClick={handleSpineClick}
                     onBookClick={onBookClick}
                     onDownloadClick={onDownloadClick}
@@ -371,8 +478,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                   readingProgress={readingProgress[selectedMobileBook.id]}
                   isSaved={checkIsSaved(selectedMobileBook.id)}
                   isLiked={checkIsLiked(selectedMobileBook.id)}
+                  isOffline={isBookOffline(selectedMobileBook.id)}
                   onToggleSave={toggleSave}
                   onToggleLike={toggleLike}
+                  onToggleOffline={handleToggleOffline}
                   onBookClick={onBookClick}
                   onDownloadClick={onDownloadClick}
                   cloudBookshelves={cloudBookshelves}
@@ -409,6 +518,9 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
         deletingShelfId={deletingShelfId}
         onCloseDeleteShelf={() => setDeletingShelfId(null)}
         onDeleteShelf={handleDeleteShelf}
+        isClearingOfflineShelf={isClearingOfflineShelf}
+        onCloseClearOfflineShelf={() => setIsClearingOfflineShelf(false)}
+        onConfirmClearOfflineShelf={handleConfirmClearOfflineShelf}
         isSubmitting={isSubmitting}
       />
     </div>

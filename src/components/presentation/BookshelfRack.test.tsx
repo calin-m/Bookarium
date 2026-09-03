@@ -14,6 +14,12 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+vi.mock('@/lib/offline-storage', () => ({
+  getOfflineBookIds: vi.fn().mockResolvedValue([]),
+  saveOfflineBook: vi.fn().mockResolvedValue(undefined),
+  removeOfflineBook: vi.fn().mockResolvedValue(undefined),
+}));
+
 describe('BookshelfRack Component', () => {
   beforeEach(() => {
     pushMock.mockClear();
@@ -526,6 +532,78 @@ describe('BookshelfRack Component', () => {
     expect(pushMock).toHaveBeenCalledWith(`/read/${mockBooks[0].id}`);
 
     window.innerWidth = 1024;
+  });
+
+  it('renders offline download button and triggers download all', async () => {
+    const { saveOfflineBook } = await import('@/lib/offline-storage');
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve(new Response('Book text offline', { status: 200 }))
+    );
+
+    render(<BookshelfRack books={mockBooks.slice(0, 1)} />);
+
+    const downloadAllBtn = screen.getByRole('button', { name: /Download all books on this shelf for offline reading/i });
+    expect(downloadAllBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(downloadAllBtn);
+    });
+
+    await waitFor(() => {
+      expect(saveOfflineBook).toHaveBeenCalled();
+    });
+
+    fetchSpy.mockRestore();
+  });
+
+  it('renders individual offline download button on book spine and triggers toggle', async () => {
+    const { saveOfflineBook } = await import('@/lib/offline-storage');
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve(new Response('Single book offline text', { status: 200 }))
+    );
+
+    render(<BookshelfRack books={mockBooks.slice(0, 1)} />);
+
+    const book = mockBooks[0];
+    const offlineToggleBtn = screen.getByRole('button', { name: `Download ${book.title} for offline reading` });
+    expect(offlineToggleBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(offlineToggleBtn);
+    });
+
+    await waitFor(() => {
+      expect(saveOfflineBook).toHaveBeenCalledWith(book.id, book.title, 'Single book offline text');
+    });
+
+    fetchSpy.mockRestore();
+  });
+
+  it('renders Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll', async () => {
+    const { getOfflineBookIds, removeOfflineBook } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
+
+    render(<BookshelfRack books={mockBooks.slice(0, 1)} />);
+
+    const clearShelfBtn = await screen.findByRole('button', { name: /Clear Offline Shelf/i });
+    expect(clearShelfBtn).toBeInTheDocument();
+    expect(screen.getByText('Clear Offline Shelf')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(clearShelfBtn);
+    });
+
+    const modal = screen.getByTestId('clear-offline-shelf-modal');
+    expect(modal).toBeInTheDocument();
+
+    const confirmBtn = within(modal).getByRole('button', { name: 'Clear Offline Downloads' });
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    await waitFor(() => {
+      expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
+    });
   });
 });
 

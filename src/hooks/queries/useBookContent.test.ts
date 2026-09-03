@@ -5,6 +5,10 @@ import React from 'react';
 import { useBookContent, fetchBookContent } from './useBookContent';
 import { sampleBookText } from '@/mocks/handlers';
 
+vi.mock('@/lib/offline-storage', () => ({
+  getOfflineBook: vi.fn().mockResolvedValue(null),
+}));
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -49,6 +53,18 @@ describe('useBookContent hook', () => {
     const fetchThrowSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network error'));
     await expect(fetchBookContent('https://example.com/network-error.txt', 999)).rejects.toThrow('Network error');
     fetchThrowSpy.mockRestore();
+  });
+
+  it('should return offline cached content without calling fetch when available', async () => {
+    const { getOfflineBook } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBook).mockResolvedValueOnce('Offline Chapter 1: The Beginning');
+
+    const fetchSpy = vi.spyOn(global, 'fetch');
+    const content = await fetchBookContent('https://example.com/some-url.txt', 12345);
+
+    expect(content).toBe('Offline Chapter 1: The Beginning');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 });
 

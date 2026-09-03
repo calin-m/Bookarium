@@ -88,4 +88,62 @@ describe('BookshelfSpine Component', () => {
     fireEvent.click(likeBtn);
     expect(handleToggleLike).toHaveBeenCalledWith(mockBook);
   });
+
+  it('renders offline indicator and fires onToggleOffline when clicked', () => {
+    const handleToggleOffline = vi.fn();
+    render(
+      <BookshelfSpine
+        book={mockBook}
+        bookIndex={0}
+        isSaved={true}
+        isLiked={false}
+        isOffline={true}
+        onToggleSave={vi.fn()}
+        onToggleLike={vi.fn()}
+        onToggleOffline={handleToggleOffline}
+        onSpineClick={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Offline')).toBeInTheDocument();
+    const offlineBtn = screen.getByLabelText(`Remove offline copy of ${mockBook.title}`);
+    fireEvent.click(offlineBtn);
+    expect(handleToggleOffline).toHaveBeenCalledWith(mockBook);
+  });
+
+  it('renders cursor-following portal tooltip on hover card button hover', () => {
+    render(
+      <BookshelfSpine
+        book={mockBook}
+        bookIndex={0}
+        isSaved={false}
+        isLiked={false}
+        isOffline={false}
+        onToggleSave={vi.fn()}
+        onToggleLike={vi.fn()}
+        onSpineClick={vi.fn()}
+      />
+    );
+
+    const saveBtn = screen.getByLabelText('Save to bookshelf');
+    const hoverCard = saveBtn.closest('div.absolute') as HTMLElement;
+
+    // Simulate mouse move to establish cursor position
+    fireEvent.mouseMove(hoverCard, { clientX: 200, clientY: 300 });
+
+    // Hover save button
+    fireEvent.mouseEnter(saveBtn);
+
+    expect(screen.getByTestId(`spine-tooltip-${mockBook.id}`)).toBeInTheDocument();
+    expect(screen.getByText('Save to Bookshelf')).toBeInTheDocument();
+
+    // Hover offline button
+    const offlineBtn = screen.getByLabelText(`Download ${mockBook.title} for offline reading`);
+    fireEvent.mouseEnter(offlineBtn);
+    expect(screen.getByText('Save for Offline Reading')).toBeInTheDocument();
+
+    // Leave button
+    fireEvent.mouseLeave(offlineBtn);
+    expect(screen.queryByTestId(`spine-tooltip-${mockBook.id}`)).not.toBeInTheDocument();
+  });
 });

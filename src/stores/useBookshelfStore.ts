@@ -5,6 +5,7 @@ import { useHasMounted } from '@/hooks/useHasMounted';
 import { createClient } from '@/lib/supabase/client';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { useAuthStore } from './useAuthStore';
 
 export interface BookshelfState {
   savedBooks: GutendexBook[];
@@ -57,6 +58,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       isSyncing: false,
 
       toggleSaveBook: async (book, userId) => {
+        const currentUserId = userId || useAuthStore.getState().user?.id;
         const { savedBooks, cloudBookshelves, activeBookshelfId, cloudBookshelfItems } = get();
         const exists = savedBooks.some((b) => b.id === book.id);
         const nextSaved = exists ? savedBooks.filter((b) => b.id !== book.id) : [book, ...savedBooks];
@@ -72,7 +74,7 @@ export const useBookshelfStore = create<BookshelfState>()(
               {
                 id: `local-${book.id}-${targetShelfId}`,
                 bookshelf_id: targetShelfId,
-                user_id: userId || '',
+                user_id: currentUserId || '',
                 book_id: book.id,
                 book_title: book.title,
                 book_authors: book.authors?.map((a) => a.name) || [],
@@ -86,7 +88,7 @@ export const useBookshelfStore = create<BookshelfState>()(
         set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems });
 
         // Cloud sync if authenticated
-        if (userId && targetShelfId) {
+        if (currentUserId && targetShelfId) {
           try {
             const supabase = createClient();
             if (exists) {
@@ -98,7 +100,7 @@ export const useBookshelfStore = create<BookshelfState>()(
             } else {
               await supabase.from('bookshelf_items').insert({
                 bookshelf_id: targetShelfId,
-                user_id: userId,
+                user_id: currentUserId,
                 book_id: book.id,
                 book_title: book.title,
                 book_authors: book.authors?.map((a) => a.name) || [],
@@ -135,6 +137,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       toggleLikeBook: async (bookOrId, userId) => {
+        const currentUserId = userId || useAuthStore.getState().user?.id;
         const { likedBookIds, likedBooks = [] } = get();
         const isNumeric = typeof bookOrId === 'number';
         const id = isNumeric ? bookOrId : bookOrId.id;
@@ -153,10 +156,29 @@ export const useBookshelfStore = create<BookshelfState>()(
           });
         }
 
-        // If user is authenticated, we could mirror to default  Favorites shelf
-        if (userId && !isNumeric) {
-          const book = bookOrId as GutendexBook;
-          get().toggleSaveBook(book, userId);
+        // Cloud sync if authenticated
+        if (currentUserId) {
+          try {
+            const supabase = createClient();
+            if (exists) {
+              await supabase
+                .from('user_favorites')
+                .delete()
+                .eq('user_id', currentUserId)
+                .eq('book_id', id);
+            } else if (!isNumeric) {
+              const book = bookOrId as GutendexBook;
+              await supabase.from('user_favorites').upsert({
+                user_id: currentUserId,
+                book_id: book.id,
+                book_title: book.title,
+                book_authors: book.authors?.map((a) => a.name) || [],
+                cover_url: book.formats?.['image/jpeg'] || null,
+              });
+            }
+          } catch {
+            // Non-blocking offline fallback
+          }
         }
       },
 
@@ -211,8 +233,15 @@ export const useBookshelfStore = create<BookshelfState>()(
             .order('created_at', { ascending: true });
 
           if (shelves && shelves.length > 0) {
-            set({ cloudBookshelves: shelves as Bookshelf[] });
-            const defaultShelf = shelves.find((s) => s.is_default) || shelves[0];
+            const uniqueMap = new Map<string, Bookshelf>();
+            for (const s of shelves as Bookshelf[]) {
+              if (!uniqueMap.has(s.id)) {
+                uniqueMap.set(s.id, s);
+              }
+            }
+            const dedupedShelves = Array.from(uniqueMap.values());
+            set({ cloudBookshelves: dedupedShelves });
+            const defaultShelf = dedupedShelves.find((s) => s.is_default) || dedupedShelves[0];
             set({ activeBookshelfId: defaultShelf.id });
 
             // 2. Fetch items for shelves
@@ -237,7 +266,13 @@ export const useBookshelfStore = create<BookshelfState>()(
                 languages: ['en'],
                 copyright: false,
                 media_type: 'Text',
-                formats: (item.cover_url ? { 'image/jpeg': item.cover_url } : {}) as Record<string, string>,
+                formats: {
+                  ...(item.cover_url ? { 'image/jpeg': item.cover_url } : {}),
+                  'application/epub+zip': `https://www.gutenberg.org/ebooks/${item.book_id}.epub3.images`,
+                  'text/html': `https://www.gutenberg.org/ebooks/${item.book_id}.html.images`,
+                  'text/plain; charset=utf-8': `https://www.gutenberg.org/ebooks/${item.book_id}.txt.utf-8`,
+                  'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${item.book_id}.kindle.images`,
+                } as Record<string, string>,
                 download_count: 1000,
               }));
 
@@ -271,6 +306,46 @@ export const useBookshelfStore = create<BookshelfState>()(
               });
             }
           }
+
+          // 3. Fetch user favorites
+          const { data: favorites } = await supabase
+            .from('user_favorites')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+          if (favorites && favorites.length > 0) {
+            const reconstructedFavorites: GutendexBook[] = favorites.map((item) => ({
+              id: item.book_id,
+              title: item.book_title,
+              authors: (item.book_authors || []).map((name: string) => ({ name, birth_year: null, death_year: null })),
+              translators: [],
+              subjects: [],
+              bookshelves: [],
+              languages: ['en'],
+              copyright: false,
+              media_type: 'Text',
+              formats: {
+                ...(item.cover_url ? { 'image/jpeg': item.cover_url } : {}),
+                'application/epub+zip': `https://www.gutenberg.org/ebooks/${item.book_id}.epub3.images`,
+                'text/html': `https://www.gutenberg.org/ebooks/${item.book_id}.html.images`,
+                'text/plain; charset=utf-8': `https://www.gutenberg.org/ebooks/${item.book_id}.txt.utf-8`,
+                'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${item.book_id}.kindle.images`,
+              } as Record<string, string>,
+              download_count: 1000,
+            }));
+
+            // Merge unique favorites
+            const localLiked = get().likedBooks || [];
+            const mergedLiked = [...reconstructedFavorites];
+            for (const lb of localLiked) {
+              if (!mergedLiked.some((b) => b.id === lb.id)) {
+                mergedLiked.push(lb);
+              }
+            }
+            const mergedLikedIds = Array.from(new Set([...mergedLiked.map((b) => b.id), ...get().likedBookIds]));
+            set({ likedBooks: mergedLiked, likedBookIds: mergedLikedIds });
+          }
         } catch {
           // Graceful offline fallback
         } finally {
@@ -279,16 +354,34 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       migrateLocalBooksToCloud: async (userId: string) => {
-        const { savedBooks, cloudBookshelves } = get();
-        if (!userId || savedBooks.length === 0) return;
+        const { savedBooks, likedBooks = [], cloudBookshelves } = get();
+        if (!userId) return;
 
         try {
           const supabase = createClient();
-          const targetShelfId = cloudBookshelves.find((s) => s.is_default)?.id || cloudBookshelves[0]?.id;
 
-          if (targetShelfId) {
-            const inserts = savedBooks.map((b) => ({
-              bookshelf_id: targetShelfId,
+          // 1. Migrate saved books
+          if (savedBooks.length > 0) {
+            const targetShelfId = cloudBookshelves.find((s) => s.is_default)?.id || cloudBookshelves[0]?.id;
+            if (targetShelfId) {
+              const inserts = savedBooks.map((b) => ({
+                bookshelf_id: targetShelfId,
+                user_id: userId,
+                book_id: b.id,
+                book_title: b.title,
+                book_authors: b.authors?.map((a) => a.name) || [],
+                cover_url: b.formats?.['image/jpeg'] || null,
+              }));
+
+              await supabase.from('bookshelf_items').upsert(inserts, {
+                onConflict: 'bookshelf_id,book_id',
+              });
+            }
+          }
+
+          // 2. Migrate liked books / favorites
+          if (likedBooks.length > 0) {
+            const favoriteInserts = likedBooks.map((b) => ({
               user_id: userId,
               book_id: b.id,
               book_title: b.title,
@@ -296,8 +389,8 @@ export const useBookshelfStore = create<BookshelfState>()(
               cover_url: b.formats?.['image/jpeg'] || null,
             }));
 
-            await supabase.from('bookshelf_items').upsert(inserts, {
-              onConflict: 'bookshelf_id,book_id',
+            await supabase.from('user_favorites').upsert(favoriteInserts, {
+              onConflict: 'user_id,book_id',
             });
           }
         } catch {
@@ -306,7 +399,8 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       createCloudBookshelf: async (name: string, userId: string) => {
-        if (!name.trim() || !userId) return null;
+        const trimmed = name.trim();
+        if (!trimmed || !userId || trimmed.toLowerCase() === 'general') return null;
 
         try {
           const supabase = createClient();

@@ -2,15 +2,15 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-57%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-8_of_14-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-64%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-9_of_14-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[███████████░░░░░░░░░]` **8/14 (57%)**
+`[█████████████░░░░░░░]` **9/14 (64%)**
 
 ---
 
@@ -51,7 +51,7 @@
 ---
 
 ### Milestone 2: Scholar Annotations & Data Portability (`Target: v1.9.0`)
-`[░░░░░░░░░░░░░░░░░░░░]` **0/3 (0%)**
+`[███████░░░░░░░░░░░░░]` **1/3 (33%)**
 
 > Transform Bookarium into a tactile literary notebook with colored quote highlights, personal annotations, and full library export/import.
 
@@ -59,7 +59,7 @@
   Interactive text selection popover in `ReaderSurface.tsx` supporting 4 editorial pastel colors (Yellow, Amber, Mint, Rose) and personal notes stored in `useAnnotationStore.ts`.
 - [ ] **Library Portability: Export & Import** `⏳ PLANNED`
   Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.
-- [ ] **IndexedDB Offline Book Storage** `⏳ PLANNED`
+- [x] **IndexedDB Offline Book Storage** `✅ VERIFIED`
   Ultra-lightweight local caching of downloaded and saved book texts using IndexedDB (`idb-keyval`), enabling unabridged reading on airplanes or offline.
 
 ---

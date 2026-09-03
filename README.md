@@ -35,8 +35,14 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
-## 🛠️ Latest Improvements (v1.7.4)
+## 🛠️ Latest Improvements (v1.7.5)
 
+- **Cross-Device Favorites Cloud Sync (`useBookshelfStore.ts`, `user_favorites` table)** – Implemented cloud synchronization of user-liked books and favorites via Supabase PostgreSQL with RLS, merging local guest favorites upon login, and auto-purging on account deletion.
+- **Native IndexedDB Offline Book Storage Engine (`offline-storage.ts`, `useOfflineBooks.ts`, `useBookContent.ts`)** – Zero-dependency browser IndexedDB storage engine (`BookariumOfflineDB`) bypassing the 5MB `localStorage` limit to store full classic texts offline with instant cache-hit reading.
+- **Interactive Shelf Offline Lifecycle & Confirmation Modal (`BookshelfRack.tsx`, `BookshelfManageModals.tsx`)** – "Download Shelf Offline" with live `Saving X/Y` progress indicator, 1.5s completion flash, seamless transition to "Clear Offline Shelf", and accessible confirmation modal dialog.
+- **Canonical Project Gutenberg Format Fallback Engine (`utils.ts`, `DownloadDrawer.tsx`)** – Automatic generation of official Project Gutenberg permanent URLs for EPUB, Kindle, Clean Plain Text, and Web HTML, guaranteeing active download buttons across all books on the Bookshelf, in Favorites, and in the Catalog.
+- **Bookshelf Cursor-Following Portal Tooltips (`BookshelfSpine.tsx`)** – Zero-clipping cursor-tracking tooltips portaled to `document.body` across all 5 spine hover preview actions matching `BookCard`.
+- **Bookshelf Deduplication & Database Unique Constraints Guardrails (`schema.sql`, `useBookshelfStore.ts`)** – Enforced `unique_user_default_bookshelf` and `unique_user_shelf_name` unique constraints in PostgreSQL, `ON CONFLICT DO NOTHING` on auto-provisioning triggers, and client-side deduplication.
 - **Responsive Header Ergonomics & GitHub Repository Integration (`Navbar.tsx`, `Footer.tsx`)** – Direct repository links across header and footer, brand anti-truncation protection (`shrink-0`, `whitespace-nowrap`), space-aware responsive GitHub button disclosure (`min-[440px]:inline-flex`), synchronized tablet/desktop text expansion at `md:`, anti-jitter `border-b-2 border-transparent` tabs, and desktop hover tooltips.
 - **SPDX Standard MIT License Provisioning (`LICENSE`, `package.json`)** – Installed official MIT License text with copyright attribution and package manifest metadata for automated GitHub `licensee` badge detection.
 - **Dynamic On-Demand Translation & Dual-Tier Language Hub (`/api/translate`, `usePageTranslation.ts`, `ReaderLanguageDrawer.tsx`)** – Zero-key Google Neural Machine Translation proxy with offline page-level caching, 18 popular language quick-select chips, 40+ language catalog, Bilingual Parallel reading mode with original sentence subtitles, and dynamic native neural voice narration synchronization with Read-Aloud.
@@ -99,7 +105,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Multi-Volume Segmentation Engine & Volume Drawer** – Comprehensive multi-part and multi-volume detection for Project Gutenberg works (Volumes I-III, Books 1-12, Cantos, Acts, Tomes) with an interactive Volume Selector Drawer.
 - **Smart Chapter Heading Detector & Table of Contents (`ReaderTocDrawer`)** – Automatic hierarchy detection for Roman numeral and titled chapters with direct slide-out navigation.
 - **Strict 0% Page 1 Reading Progress & Verified Accounts** – Recalibrated progress percentage engine ensuring exact 0% on page 1, paired with standalone user accounts (`/account`) for managing reading statistics and atmosphere settings.
-- **Verified by the 7-Gateway Quality Engine** – 69/69 test files passed, 476/476 tests passed with **92.26% line coverage** and **80.40% branch coverage** (`npm run verify`).
+- **Verified by the 7-Gateway Quality Engine** – 83/83 test files passed, 594/594 tests passed with **92.23% line coverage** and **80.75% branch coverage** (`npm run verify`).
 
 ---
 
@@ -179,8 +185,9 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * **Pinch‑to‑Zoom Font Scaling (Mobile)**: Two‑finger pinch gestures adjust the font size between 12 px – 36 px, displaying a transient HUD pill with the current size.
   * **Typography & Reading Modes**: 1-click column width presets (**Narrow** / **Normal** / **Wide** — defaulting to **Wide** `1024px`) and reading mode switching (**Page** / **Scroll**).
 * **Dynamic Literary Passages & Quotes ("Words That Shaped Humanity")**: Rotating showcase of iconic classic quotes with classical first-line editorial indentation, interactive shuffle discovery, and bottom-aligned author citations and read prompts across all cards.
-* **Direct Download Hub**: Multi-format downloads including direct EPUB, clean plain text, mobile-friendly HTML, and Kindle formats.
-* **Auto-Healing Personal Bookshelf & Favorites**: Curated collections, reading queue, reading history, and favorited titles with background metadata auto-recovery and 1-click reset actions.
+* **Zero-Copyright Download Hub & Canonical Fallback Engine**: Multi-format downloads (direct EPUB, Kindle/MOBI, clean UTF-8 plain text, and web-ready HTML) backed by Project Gutenberg permanent canonical URLs, guaranteeing 100% download availability across the Catalog, Bookshelf, and Favorites.
+* **Native IndexedDB Offline Book Storage Engine**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download individual books or entire bookshelf collections for instant offline reading with a single click and clear with confirmation safety.
+* **Auto-Healing Personal Bookshelf & Cross-Device Favorites Sync**: Curated collections, reading queue, reading history, and favorited titles synchronized across devices via Supabase PostgreSQL and Row Level Security (RLS), with automatic local-to-cloud migration on login and database uniqueness guards.
 ### 🌐 Supported Languages, On-Demand AI Translation & Neural Read-Aloud
 
 Bookarium provides a comprehensive, multi-tiered language ecosystem designed for both authentic public domain archive discovery and universal accessibility:
@@ -385,7 +392,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
 ## 🗄️ Supabase Cloud Database & Authentication Setup
 
-Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-device bookshelf synchronization, and reading progress tracking. Follow these steps to provision your database in under 2 minutes:
+Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-device bookshelf & favorites synchronization, and reading progress tracking. Follow these steps to provision your database in under 2 minutes:
 
 ### Step 1: Create a Free Supabase Project
 1. Go to [supabase.com](https://supabase.com/) and create a new project.
@@ -424,6 +431,8 @@ CREATE TABLE IF NOT EXISTS public.bookshelves (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_default_bookshelf ON public.bookshelves(user_id) WHERE is_default = true;
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_shelf_name ON public.bookshelves(user_id, lower(trim(name)));
 ALTER TABLE public.bookshelves ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can view their own bookshelves" ON public.bookshelves FOR SELECT USING (auth.uid() = user_id);
@@ -456,7 +465,25 @@ CREATE POLICY "Users can update their own bookshelf items" ON public.bookshelf_i
 DROP POLICY IF EXISTS "Users can delete their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can delete their own bookshelf items" ON public.bookshelf_items FOR DELETE USING (auth.uid() = user_id);
 
--- 4. Reading Progress Table
+-- 4. User Favorites Table (Cross-Device Favorites Sync)
+CREATE TABLE IF NOT EXISTS public.user_favorites (
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  book_id INTEGER NOT NULL,
+  book_title TEXT NOT NULL,
+  book_authors TEXT[] NOT NULL DEFAULT '{}',
+  cover_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, book_id)
+);
+ALTER TABLE public.user_favorites ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own favorites" ON public.user_favorites;
+CREATE POLICY "Users can view their own favorites" ON public.user_favorites FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own favorites" ON public.user_favorites;
+CREATE POLICY "Users can insert their own favorites" ON public.user_favorites FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own favorites" ON public.user_favorites;
+CREATE POLICY "Users can delete their own favorites" ON public.user_favorites FOR DELETE USING (auth.uid() = user_id);
+
+-- 5. Reading Progress Table
 CREATE TABLE IF NOT EXISTS public.reading_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -477,7 +504,7 @@ CREATE POLICY "Users can update their own reading progress" ON public.reading_pr
 DROP POLICY IF EXISTS "Users can delete their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can delete their own reading progress" ON public.reading_progress FOR DELETE USING (auth.uid() = user_id);
 
--- 5. Auto-Provisioning User Trigger (Profile + Default General Shelf)
+-- 6. Auto-Provisioning User Trigger (Profile + Default General Shelf)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -486,7 +513,8 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO public.bookshelves (user_id, name, is_default)
-  VALUES (NEW.id, 'General', true);
+  VALUES (NEW.id, 'General', true)
+  ON CONFLICT DO NOTHING;
 
   RETURN NEW;
 END;
@@ -497,7 +525,7 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 6. RPC Function: Delete Current User Account
+-- 7. RPC Function: Delete Current User Account
 CREATE OR REPLACE FUNCTION public.delete_current_user()
 RETURNS VOID AS $$
 BEGIN

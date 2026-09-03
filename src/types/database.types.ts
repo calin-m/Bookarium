@@ -126,6 +126,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      user_favorites: {
+        Row: {
+          user_id: string;
+          book_id: number;
+          book_title: string;
+          book_authors: string[];
+          cover_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          book_id: number;
+          book_title: string;
+          book_authors?: string[];
+          cover_url?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          book_id?: number;
+          book_title?: string;
+          book_authors?: string[];
+          cover_url?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -137,4 +164,5 @@ export interface Database {
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type Bookshelf = Database['public']['Tables']['bookshelves']['Row'];
 export type BookshelfItem = Database['public']['Tables']['bookshelf_items']['Row'];
+export type UserFavorite = Database['public']['Tables']['user_favorites']['Row'];
 export type ReadingProgress = Database['public']['Tables']['reading_progress']['Row'];

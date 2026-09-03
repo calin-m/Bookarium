@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 02 Sep 2026 19:59:19 GMT  
+**Last Generated**: Thu, 03 Sep 2026 07:35:13 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 81 passed  
-**Total Verified Tests**: 569 passed  
+**Total Test Suites**: 83 passed  
+**Total Verified Tests**: 594 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **81/81 test suites passed** (569 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **83/83 test suites passed** (594 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.61%** (3034/3276) — *Target: $ge$ 80%*
-- **Statements**: **90.88%** (3312/3644) — *Target: $ge$ 80%*
-- **Functions**: **88.54%** (773/873) — *Target: $ge$ 80%*
-- **Branches**: **81.43%** (2979/3658) — *Target: $ge$ 80%*
+- **Lines**: **92.23%** (3253/3527) — *Target: $ge$ 80%*
+- **Statements**: **90.38%** (3544/3921) — *Target: $ge$ 80%*
+- **Functions**: **87.07%** (829/952) — *Target: $ge$ 80%*
+- **Branches**: **80.75%** (3080/3814) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (81 Suites / 569 Tests)
+## 🧪 Comprehensive Test Suite Catalog (83 Suites / 594 Tests)
 
 ### 🚀 App Routes & Pages (9 Suites · 59 Tests)
 
@@ -149,7 +149,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (16 Suites · 120 Tests)
+### 🎨 Catalog & Presentation (16 Suites · 128 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -213,31 +213,35 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfManageModals.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfManageModals.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `renders create modal and submits new shelf`
 - ✔ `renders rename and delete modals`
+- ✔ `renders clear offline shelf confirmation modal and handles cancel and confirm`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `returns null when selectedMobileBook is null`
 - ✔ `renders modal with formatted author names and triggers actions`
+- ✔ `renders offline indicator and fires onToggleOffline`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders spine title, author, and handles keyboard interaction`
 - ✔ `triggers quick actions from desktop hover card`
+- ✔ `renders offline indicator and fires onToggleOffline when clicked`
+- ✔ `renders cursor-following portal tooltip on hover card button hover`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (27 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (30 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -266,6 +270,9 @@
 - ✔ `triggers download callback from mobile action sheet`
 - ✔ `toggles bookmark and like status from mobile action sheet`
 - ✔ `handles moving a book to another shelf and default read routing from mobile action sheet`
+- ✔ `renders offline download button and triggers download all`
+- ✔ `renders individual offline download button on book spine and triggers toggle`
+- ✔ `renders Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll`
 
 </details>
 
@@ -282,10 +289,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `should render download formats when opened with a book`
 - ✔ `should return null when book is null`
+- ✔ `should provide canonical Gutenberg download links even if book.formats is empty`
 
 </details>
 
@@ -538,7 +546,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 51 Tests)
+### ⚡ Zustand State Stores (5 Suites · 52 Tests)
 
 <details>
 <summary><b><code>src/stores/useAuthStore.test.ts</code></b> (18 tests)</summary>
@@ -565,13 +573,14 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
 - ✔ `should manage reading queue`
 - ✔ `should toggle like status and store likedBooks`
 - ✔ `should sync and clear liked books`
+- ✔ `should call Supabase upsert and delete on toggleLikeBook with userId`
 - ✔ `returns live hydrated state and reactive actions`
 - ✔ `handles activeBookshelfId selection and cloud bookshelf list`
 - ✔ `handles syncWithCloud fetching bookshelves and items`
@@ -621,7 +630,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (8 Suites · 91 Tests)
+### 📚 Gutenberg Parsers & Metadata (9 Suites · 100 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (9 tests)</summary>
@@ -679,6 +688,20 @@
 - ✔ `caps matches to maxResults limit`
 - ✔ `safely skips chapters with null or empty content`
 - ✔ `caps matches to maxResults when using diacritic fallback`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/offline-storage.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `saves book text to offline storage`
+- ✔ `retrieves offline book text correctly`
+- ✔ `returns null when book is not offline`
+- ✔ `checks if a book is offline`
+- ✔ `removes offline book`
+- ✔ `fetches all offline book IDs`
+- ✔ `retrieves all offline books metadata without returning full text payloads`
+- ✔ `clears all offline books`
 
 </details>
 
@@ -741,11 +764,12 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/utils.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/lib/utils.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `should merge class names correctly`
 - ✔ `should extract standard Gutenberg format keys`
 - ✔ `should handle empty or undefined formats gracefully`
+- ✔ `should generate canonical Project Gutenberg fallback URLs when bookId is provided`
 - ✔ `should format numbers with k and M suffix`
 - ✔ `should estimate reading time based on word counts`
 - ✔ `should truncate strings with ellipsis`
@@ -762,14 +786,15 @@
 
 </details>
 
-### 🔄 Hooks & React Query (11 Suites · 87 Tests)
+### 🔄 Hooks & React Query (12 Suites · 94 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
 - ✔ `should throw when fetch returns non-ok status or empty content`
+- ✔ `should return offline cached content without calling fetch when available`
 
 </details>
 
@@ -891,6 +916,18 @@
 <summary><b><code>src/hooks/useHasMounted.test.ts</code></b> (1 tests)</summary>
 
 - ✔ `returns true after mounting on client`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (6 tests)</summary>
+
+- ✔ `initializes and fetches offline book IDs on mount`
+- ✔ `downloads a single book and updates offline status`
+- ✔ `handles download failure gracefully`
+- ✔ `removes an offline book and refreshes ids`
+- ✔ `downloads all missing books in batch with progress updates`
+- ✔ `removes all books in batch`
 
 </details>
 
