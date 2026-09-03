@@ -112,14 +112,19 @@ const ROADMAP_MILESTONES = [
         check: () => fileExists('src/stores/useAnnotationStore.ts') || fileExists('src/components/reader/ReaderAnnotationsDrawer.tsx'),
       },
       {
-        title: 'Library Portability: Export & Import',
-        description: 'Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.',
-        check: () => fileContains('src/components/account/AccountPreferencesSection.tsx', 'exportLibraryData') || fileExists('src/lib/library-backup.ts'),
+        title: 'Literary Commonplace Notebook & Reading Journal',
+        description: 'Dedicated commonplace journal (`/?view=notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, academic citation generation, and deletion protection.',
+        check: () => fileExists('src/components/presentation/NotebookView.tsx'),
       },
       {
         title: 'IndexedDB Offline Book Storage',
         description: 'Ultra-lightweight local caching of downloaded and saved book texts using IndexedDB (`idb-keyval`), enabling unabridged reading on airplanes or offline.',
         check: () => fileContains('src/hooks/queries/useBookContent.ts', 'idb') || fileExists('src/lib/offline-storage.ts'),
+      },
+      {
+        title: 'Library Portability: Export & Import',
+        description: 'Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.',
+        check: () => fileContains('src/components/account/AccountPreferencesSection.tsx', 'exportLibraryData') || fileExists('src/lib/library-backup.ts'),
       },
     ],
   },

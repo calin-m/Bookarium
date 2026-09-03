@@ -31,6 +31,9 @@ import { useReaderSession } from '@/hooks/reader/useReaderSession';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useHydratedAnnotations, type HighlightColor, type Annotation } from '@/stores/useAnnotationStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { AlertTriangle, Trash2 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 
 export default function BookReaderPage() {
@@ -100,6 +103,7 @@ export default function BookReaderPage() {
   }, [user?.id, syncWithCloud]);
 
   const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false);
+  const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [selectionPopover, setSelectionPopover] = useState<{
     isOpen: boolean;
     selectedText: string;
@@ -277,7 +281,14 @@ export default function BookReaderPage() {
 
   const handleTextSelected = useCallback(
     (selection: { text: string; position: { top: number; left: number } }) => {
-      const existing = bookAnnotations.find((a) => a.selectedText === selection.text);
+      const trimmed = selection.text.trim();
+      const existing = bookAnnotations.find(
+        (a) =>
+          a.selectedText.trim() === trimmed ||
+          a.selectedText === selection.text ||
+          a.selectedText.trim().includes(trimmed) ||
+          trimmed.includes(a.selectedText.trim())
+      );
       setSelectionPopover({
         isOpen: true,
         selectedText: selection.text,
@@ -374,12 +385,12 @@ export default function BookReaderPage() {
     ]
   );
 
-  const handleDeleteAnnotation = useCallback(async () => {
+  const handleDeleteAnnotation = useCallback(() => {
     if (selectionPopover.activeAnnotation) {
-      await deleteAnnotation(selectionPopover.activeAnnotation.id, user?.id);
+      setAnnotationToDelete(selectionPopover.activeAnnotation);
     }
     setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
-  }, [selectionPopover, deleteAnnotation, user?.id]);
+  }, [selectionPopover]);
 
   return (
     <div className={`h-[100dvh] flex flex-col overflow-hidden transition-colors duration-theme ${activeTheme.surface}`}>
@@ -600,6 +611,68 @@ export default function BookReaderPage() {
         onDeleteAnnotation={(id) => deleteAnnotation(id, user?.id)}
         onUpdateNote={(id, note) => updateAnnotationNote(id, note, user?.id)}
       />
+
+      {/* Delete Single Annotation Confirmation Modal */}
+      <Modal
+        isOpen={annotationToDelete !== null}
+        onClose={() => setAnnotationToDelete(null)}
+        title="Delete Saved Note & Highlight?"
+        maxWidth="md"
+      >
+        <div className="p-6 space-y-5" data-testid="delete-single-note-dialog">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="space-y-2">
+              <p className="font-semibold text-foreground text-sm sm:text-base">
+                Are you sure you want to delete this saved quote?
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                This will remove this highlight and any attached personal reflection from your library. This action cannot be undone.
+              </p>
+              {annotationToDelete && (
+                <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border/50 text-xs">
+                  <p className="font-serif italic text-foreground/90 line-clamp-3">
+                    &ldquo;{annotationToDelete.selectedText}&rdquo;
+                  </p>
+                  {annotationToDelete.note && (
+                    <p className="mt-1.5 pt-1.5 border-t border-border/40 font-sans text-muted-foreground line-clamp-2">
+                      <span className="font-mono text-[10px] uppercase text-primary mr-1">Note:</span>
+                      {annotationToDelete.note}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAnnotationToDelete(null)}
+              className="text-xs font-mono uppercase"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={async () => {
+                if (annotationToDelete) {
+                  await deleteAnnotation(annotationToDelete.id, user?.id);
+                  setAnnotationToDelete(null);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Note
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );

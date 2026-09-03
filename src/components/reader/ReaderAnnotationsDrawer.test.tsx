@@ -111,12 +111,34 @@ describe('ReaderAnnotationsDrawer', () => {
     expect(onUpdateNote).toHaveBeenCalledWith('ann-1', 'Updated analysis note');
   });
 
-  it('calls onDeleteAnnotation when delete button is clicked', () => {
+  it('shows confirmation modal and calls onDeleteAnnotation when confirmed', () => {
     const onDeleteAnnotation = vi.fn();
     render(<ReaderAnnotationsDrawer {...defaultProps} onDeleteAnnotation={onDeleteAnnotation} />);
 
     fireEvent.click(screen.getByTestId('annotation-delete-btn-ann-1'));
+
+    expect(screen.getByTestId('delete-single-note-dialog')).toBeInTheDocument();
+    expect(screen.getByText('Delete Saved Highlight & Note?')).toBeInTheDocument();
+
+    const confirmBtn = screen.getByRole('button', { name: /Delete Note/i });
+    fireEvent.click(confirmBtn);
+
     expect(onDeleteAnnotation).toHaveBeenCalledWith('ann-1');
+  });
+
+  it('cancels deletion when clicking cancel in modal', () => {
+    const onDeleteAnnotation = vi.fn();
+    render(<ReaderAnnotationsDrawer {...defaultProps} onDeleteAnnotation={onDeleteAnnotation} />);
+
+    fireEvent.click(screen.getByTestId('annotation-delete-btn-ann-1'));
+
+    expect(screen.getByTestId('delete-single-note-dialog')).toBeInTheDocument();
+
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+
+    expect(screen.queryByTestId('delete-single-note-dialog')).not.toBeInTheDocument();
+    expect(onDeleteAnnotation).not.toHaveBeenCalled();
   });
 
   it('translates vertical wheel scroll to horizontal scroll on color filter tags', () => {

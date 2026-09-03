@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
+import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useThemeStore, type AppTheme } from '@/stores/useThemeStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
@@ -29,6 +30,8 @@ export default function AccountPage() {
   const router = useRouter();
   const { user, profile, isLoading, updateProfile, updatePassword, requestAccountDeletion, signOut, openAuthModal, resendVerificationEmail } = useAuthStore();
   const { savedCount, likedCount, cloudBookshelves } = useHydratedBookshelf();
+  const { annotations } = useHydratedAnnotations();
+  const annotationCount = annotations.length;
   const customShelvesCount = useMemo(
     () => cloudBookshelves.filter((s) => !s.is_default).length,
     [cloudBookshelves]
@@ -305,6 +308,7 @@ export default function AccountPage() {
                 savedCount={savedCount}
                 likedCount={likedCount}
                 customShelvesCount={customShelvesCount}
+                annotationCount={annotationCount}
               />
             </div>
 

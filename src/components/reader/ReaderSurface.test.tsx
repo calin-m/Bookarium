@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { ReaderSurface } from './ReaderSurface';
+import type { Annotation } from '@/stores/useAnnotationStore';
 
 describe('ReaderSurface', () => {
   const sampleChapter = {
@@ -530,5 +531,43 @@ describe('ReaderSurface', () => {
     });
 
     window.getSelection = originalGetSelection;
+  });
+
+  it('applies color-specific selection styling to highlight marks', () => {
+    const annotations: Annotation[] = [
+      {
+        id: 'ann-mint',
+        bookId: 1,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'mint quote',
+        color: 'mint',
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'ann-rose',
+        bookId: 1,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'rose quote',
+        color: 'rose',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ];
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        currentPageText="Here is a mint quote and here is a rose quote."
+        annotations={annotations}
+      />
+    );
+
+    const marks = screen.getAllByTestId('user-annotation-highlight');
+    expect(marks).toHaveLength(2);
+    expect(marks[0]).toHaveClass('selection:bg-emerald-300/70');
+    expect(marks[1]).toHaveClass('selection:bg-rose-300/70');
   });
 });

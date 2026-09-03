@@ -78,6 +78,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const [selectedColor, setSelectedColor] = useState<HighlightColor | 'all'>('all');
   const [groupMode, setGroupMode] = useState<'volume' | 'chronological'>('volume');
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
+  const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [editNoteText, setEditNoteText] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -217,38 +218,40 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   };
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12" aria-label="Literary Commonplace Notebook">
-      {/* Header Banner */}
-      <div className="text-center space-y-3 sm:space-y-4 mb-8">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium tracking-wider uppercase bg-primary/10 text-primary border border-primary/20">
-          <Highlighter className="w-3.5 h-3.5 text-amber-500" />
-          <span>Personal Commonplace Notebook • Marginalia & Reflections</span>
-        </div>
-
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground tracking-tight">
-          Literary Notebook
-        </h1>
-
-        <p className="text-xs sm:text-sm text-muted-foreground font-serif italic max-w-xl mx-auto">
-          {annotations.length > 0
-            ? `You have preserved ${annotations.length} passage${annotations.length === 1 ? '' : 's'} across ${uniqueBookCount} literary volume${uniqueBookCount === 1 ? '' : 's'}.`
-            : 'Capture, organize, and revisit prose excerpts, colorful thematic highlights, and personal reflections.'}
-        </p>
-
-        {annotations.length > 0 && (
-          <div className="pt-2 flex items-center justify-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsConfirmClearOpen(true)}
-              className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear All Notes
-            </Button>
+    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" aria-label="Literary Commonplace Notebook">
+      <div key="view-page-turn-notebook" className="animate-page-turn">
+        {/* Booksaw Centered Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
+          <div className="text-[11px] font-mono tracking-widest uppercase text-muted-foreground font-semibold">
+            PERSONAL COMMONPLACE NOTEBOOK • MARGINALIA & REFLECTIONS
           </div>
-        )}
-      </div>
+
+          <div className="flex items-center justify-center gap-3">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground tracking-tight">
+              Literary Notebook
+            </h2>
+          </div>
+
+          <p className="text-xs sm:text-sm text-muted-foreground font-serif italic">
+            {annotations.length > 0
+              ? `You have preserved ${annotations.length} passage${annotations.length === 1 ? '' : 's'} across ${uniqueBookCount} literary volume${uniqueBookCount === 1 ? '' : 's'}.`
+              : 'Capture, organize, and revisit prose excerpts, colorful thematic highlights, and personal reflections.'}
+          </p>
+
+          {annotations.length > 0 && (
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsConfirmClearOpen(true)}
+                className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear All Notes
+              </Button>
+            </div>
+          )}
+        </div>
 
       {annotations.length === 0 ? (
         /* Empty State */
@@ -427,6 +430,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           )}
         </div>
       )}
+      </div>
 
       {/* Clear All Confirmation Modal */}
       <Modal
@@ -467,6 +471,68 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             >
               <Trash2 className="w-3.5 h-3.5" />
               Clear Everything
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Single Annotation Confirmation Modal */}
+      <Modal
+        isOpen={annotationToDelete !== null}
+        onClose={() => setAnnotationToDelete(null)}
+        title="Delete Saved Note & Highlight?"
+        maxWidth="md"
+      >
+        <div className="p-6 space-y-5" data-testid="delete-single-note-dialog">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="space-y-2">
+              <p className="font-semibold text-foreground text-sm sm:text-base">
+                Are you sure you want to delete this saved passage?
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                This will remove the highlight and any attached personal reflections from your commonplace book. This action cannot be undone.
+              </p>
+              {annotationToDelete && (
+                <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border/50 text-xs">
+                  <p className="font-serif italic text-foreground/90 line-clamp-3">
+                    &ldquo;{annotationToDelete.selectedText}&rdquo;
+                  </p>
+                  {annotationToDelete.note && (
+                    <p className="mt-1.5 pt-1.5 border-t border-border/40 font-sans text-muted-foreground line-clamp-2">
+                      <span className="font-mono text-[10px] uppercase text-primary mr-1">Note:</span>
+                      {annotationToDelete.note}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAnnotationToDelete(null)}
+              className="text-xs font-mono uppercase"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={async () => {
+                if (annotationToDelete) {
+                  await handleDelete(annotationToDelete.id);
+                  setAnnotationToDelete(null);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Note
             </Button>
           </div>
         </div>
@@ -595,7 +661,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             {/* Delete Annotation */}
             <button
               type="button"
-              onClick={() => handleDelete(ann.id)}
+              onClick={() => setAnnotationToDelete(ann)}
               data-testid={`delete-quote-btn-${ann.id}`}
               className="p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
               title="Delete passage"
