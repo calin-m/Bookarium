@@ -7,6 +7,12 @@ vi.mock('@/lib/offline-storage', () => ({
   getOfflineBookIds: vi.fn().mockResolvedValue([11]),
   saveOfflineBook: vi.fn().mockResolvedValue(undefined),
   removeOfflineBook: vi.fn().mockResolvedValue(undefined),
+  getStorageQuota: vi.fn().mockResolvedValue({
+    usageBytes: 1024,
+    quotaBytes: 10240,
+    percentUsed: 10,
+    isNearQuota: false,
+  }),
 }));
 
 describe('useOfflineBooks hook', () => {

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { InMemoryRateLimiter } from '@/lib/rate-limiter';
 import { SITE_CONFIG } from '@/config/site-config';
@@ -7,6 +8,41 @@ export const translateRateLimiter = new InMemoryRateLimiter({
   windowMs: 60_000,
   maxRequests: 60,
 });
+
+export class SimpleLRUCache<K, V> {
+  private cache = new Map<K, V>();
+  constructor(private readonly maxEntries: number = 1000) {}
+
+  get(key: K): V | undefined {
+    if (!this.cache.has(key)) return undefined;
+    const val = this.cache.get(key)!;
+    this.cache.delete(key);
+    this.cache.set(key, val);
+    return val;
+  }
+
+  set(key: K, val: V): void {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    } else if (this.cache.size >= this.maxEntries) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.cache.delete(oldestKey);
+      }
+    }
+    this.cache.set(key, val);
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  size(): number {
+    return this.cache.size;
+  }
+}
+
+export const serverTranslationCache = new SimpleLRUCache<string, TranslationResponse>(1000);
 
 export interface TranslationSegment {
   original: string;
@@ -68,14 +104,36 @@ export async function POST(request: NextRequest) {
   }
 
   // Guard against excessively large translation requests (15,000 characters limit per page)
-  const trimmedText = text.slice(0, 15000);
+  if (text.length > 15000) {
+    return NextResponse.json(
+      { error: 'Text payload exceeds maximum allowed size of 15,000 characters.' },
+      { status: 400 }
+    );
+  }
+
   const targetLang = to.trim();
   const sourceLang = typeof from === 'string' && from.trim() ? from.trim() : 'auto';
+
+  const cacheKey = crypto
+    .createHash('sha256')
+    .update(`${sourceLang}:${targetLang}:${text}`)
+    .digest('hex');
+
+  const cached = serverTranslationCache.get(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
+        'X-Cache-Lookup': 'HIT',
+      },
+    });
+  }
 
   try {
     const upstreamUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(
       sourceLang
-    )}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(trimmedText)}`;
+    )}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(text)}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -130,10 +188,13 @@ export async function POST(request: NextRequest) {
       segments,
     };
 
+    serverTranslationCache.set(cacheKey, result);
+
     return NextResponse.json(result, {
       status: 200,
       headers: {
         'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
+        'X-Cache-Lookup': 'MISS',
       },
     });
   } catch (error: any) {

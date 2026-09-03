@@ -149,5 +149,58 @@ describe('offline-storage (IndexedDB engine)', () => {
     await clearAllOfflineBooks();
     expect(store.size).toBe(0);
   });
+
+  describe('Storage Quotas & LRU Eviction', () => {
+    it('returns storage quota metrics from navigator.storage.estimate', async () => {
+      const originalStorage = navigator.storage;
+      Object.defineProperty(navigator, 'storage', {
+        value: {
+          estimate: vi.fn().mockResolvedValue({
+            usage: 25 * 1024 * 1024,
+            quota: 100 * 1024 * 1024,
+          }),
+        },
+        configurable: true,
+      });
+
+      const { getStorageQuota } = await import('./offline-storage');
+      const quota = await getStorageQuota();
+      expect(quota).not.toBeNull();
+      expect(quota?.usageBytes).toBe(25 * 1024 * 1024);
+      expect(quota?.quotaBytes).toBe(100 * 1024 * 1024);
+      expect(quota?.percentUsed).toBe(25);
+      expect(quota?.isNearQuota).toBe(false);
+
+      Object.defineProperty(navigator, 'storage', {
+        value: originalStorage,
+        configurable: true,
+      });
+    });
+
+    it('evicts oldest downloaded books first to free requested space', async () => {
+      const { evictOldestBooksToFreeSpace } = await import('./offline-storage');
+
+      store.set(1, {
+        bookId: 1,
+        title: 'Old Book',
+        text: 'Old Text',
+        downloadedAt: '2025-01-01T00:00:00.000Z',
+        byteSize: 5000,
+      });
+
+      store.set(2, {
+        bookId: 2,
+        title: 'New Book',
+        text: 'New Text',
+        downloadedAt: '2026-01-01T00:00:00.000Z',
+        byteSize: 5000,
+      });
+
+      const freed = await evictOldestBooksToFreeSpace(4000);
+      expect(freed).toBeGreaterThanOrEqual(4000);
+      expect(store.has(1)).toBe(false); // Old Book was evicted
+      expect(store.has(2)).toBe(true);  // New Book remains
+    });
+  });
 });
 

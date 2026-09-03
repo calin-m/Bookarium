@@ -500,6 +500,79 @@ describe('useBookshelfStore', () => {
       expect(useBookshelfStore.getState().cloudBookshelfItems[0].book_id).toBe(1342);
       expect(useBookshelfStore.getState().cloudBookshelfItems[0].bookshelf_id).toBe('shelf-2');
     });
+
+    it('queues offline actions to outbox when Supabase network rejects and flushes them on syncWithCloud', async () => {
+      // 1. Setup store with a saved book and default shelf
+      useBookshelfStore.setState({
+        cloudBookshelves: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' }],
+        activeBookshelfId: 'shelf-1',
+        savedBooks: [mockBooks[0]],
+        cloudBookshelfItems: [{
+          id: 'item-1',
+          bookshelf_id: 'shelf-1',
+          user_id: 'user-1',
+          book_id: mockBooks[0].id,
+          book_title: mockBooks[0].title,
+          book_authors: [],
+          cover_url: null,
+          added_at: '',
+        }],
+      });
+
+      // 2. Simulate offline network failure on deletion
+      const deleteEqMock = vi.fn().mockReturnValue({
+        eq: vi.fn().mockRejectedValueOnce(new Error('Network Offline')),
+      });
+      mockFrom.mockReturnValue({
+        delete: vi.fn().mockReturnValue({ eq: deleteEqMock }),
+      });
+
+      // Toggle to delete while offline
+      await useBookshelfStore.getState().toggleSaveBook(mockBooks[0], 'user-1');
+
+      // Assert it was queued to the outbox
+      const outbox = useBookshelfStore.getState().outbox;
+      expect(outbox).toHaveLength(1);
+      expect(outbox[0].type).toBe('DELETE_BOOK');
+      expect(outbox[0].payload.book_id).toBe(mockBooks[0].id);
+
+      // 3. Now simulate reconnection and flush
+      const successfulDeleteEq = vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      });
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelf_items') {
+          return {
+            delete: vi.fn().mockReturnValue({ eq: successfulDeleteEq }),
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ data: [] }),
+            }),
+          };
+        }
+        if (table === 'bookshelves') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true }] }),
+              }),
+            }),
+          };
+        }
+        if (table === 'user_favorites') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [] }),
+              }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      await useBookshelfStore.getState().flushOutbox('user-1');
+      expect(useBookshelfStore.getState().outbox).toHaveLength(0);
+    });
   });
 
   describe('Atomic Selector Hooks', () => {

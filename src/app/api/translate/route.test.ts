@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { POST, translateRateLimiter } from './route';
+import { POST, translateRateLimiter, serverTranslationCache } from './route';
 
 describe('/api/translate route', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    serverTranslationCache.clear();
   });
 
   it('translates text successfully and returns segments', async () => {
@@ -154,5 +155,56 @@ describe('/api/translate route', () => {
     const response = await POST(request);
     expect(response.status).toBe(429);
     expect(response.headers.get('Retry-After')).toBe('30');
+  });
+
+  it('rejects request exceeding 15,000 character maximum payload', async () => {
+    const oversizedText = 'A'.repeat(15001);
+    const request = new NextRequest('http://localhost:3000/api/translate', {
+      method: 'POST',
+      body: JSON.stringify({ text: oversizedText, to: 'es' }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toContain('15,000 characters');
+  });
+
+  it('serves identical translation from in-memory LRU cache on second call with X-Cache-Lookup HIT', async () => {
+    const mockGoogleResponse = [
+      [['Bonjour le monde.', 'Hello world.', null, null, 1]],
+      null,
+      'en',
+    ];
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(mockGoogleResponse),
+    } as any);
+    global.fetch = fetchMock;
+
+    const request1 = new NextRequest('http://localhost:3000/api/translate', {
+      method: 'POST',
+      body: JSON.stringify({ text: 'Hello world.', to: 'fr', from: 'en' }),
+    });
+
+    const res1 = await POST(request1);
+    expect(res1.status).toBe(200);
+    expect(res1.headers.get('X-Cache-Lookup')).toBe('MISS');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Second identical call
+    const request2 = new NextRequest('http://localhost:3000/api/translate', {
+      method: 'POST',
+      body: JSON.stringify({ text: 'Hello world.', to: 'fr', from: 'en' }),
+    });
+
+    const res2 = await POST(request2);
+    expect(res2.status).toBe(200);
+    expect(res2.headers.get('X-Cache-Lookup')).toBe('HIT');
+    const data2 = await res2.json();
+    expect(data2.translatedText).toBe('Bonjour le monde.');
+    // Upstream fetch was NOT called again!
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

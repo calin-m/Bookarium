@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HeroFeaturedBook3D } from './HeroFeaturedBook3D';
+import * as perfTier from '@/hooks/usePerformanceTier';
 
 vi.mock('@/lib/offline-storage', () => ({
   getOfflineBook: vi.fn().mockResolvedValue(null),
@@ -49,6 +50,43 @@ describe('HeroFeaturedBook3D', () => {
   });
 
   it('triggers read callback when Read button is clicked', () => {
+    const handleRead = vi.fn();
+    renderWithClient(
+      <HeroFeaturedBook3D
+        featuredBook={mockFeaturedBook}
+        onReadFeaturedBook={handleRead}
+      />
+    );
+
+    const readBtn = screen.getByTestId('hero-book-read-btn');
+    fireEvent.click(readBtn);
+    expect(handleRead).toHaveBeenCalled();
+  });
+
+  it('renders static 2D presentation when hardware tier is low or heavy motion is disallowed', () => {
+    vi.spyOn(perfTier, 'usePerformanceTier').mockReturnValue({
+      tier: 'low',
+      allowHeavyMotion: false,
+      enablePrefetching: false,
+      cores: 2,
+    });
+
+    renderWithClient(<HeroFeaturedBook3D featuredBook={mockFeaturedBook} />);
+
+    expect(screen.getByTestId('hero-featured-book-2d')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Click to close volume|Click to pin open volume/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Featured Classic/i)).toBeInTheDocument();
+    expect(screen.getByTestId('hero-book-read-btn')).toBeInTheDocument();
+  });
+
+  it('triggers read callback from 2D presentation mode', () => {
+    vi.spyOn(perfTier, 'usePerformanceTier').mockReturnValue({
+      tier: 'low',
+      allowHeavyMotion: false,
+      enablePrefetching: false,
+      cores: 2,
+    });
+
     const handleRead = vi.fn();
     renderWithClient(
       <HeroFeaturedBook3D

@@ -7,6 +7,13 @@ import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { useAuthStore } from './useAuthStore';
 
+export interface OutboxAction {
+  id: string;
+  type: 'DELETE_BOOK' | 'INSERT_BOOK' | 'DELETE_FAVORITE' | 'UPSERT_FAVORITE';
+  payload: any;
+  timestamp: string;
+}
+
 export interface BookshelfState {
   savedBooks: GutendexBook[];
   readingQueue: GutendexBook[];
@@ -19,6 +26,11 @@ export interface BookshelfState {
   cloudBookshelfItems: BookshelfItem[];
   activeBookshelfId: string | null;
   isSyncing: boolean;
+  outbox: OutboxAction[];
+
+  // Outbox Actions
+  queueOutboxAction: (action: Omit<OutboxAction, 'id' | 'timestamp'>) => void;
+  flushOutbox: (userId: string) => Promise<void>;
 
   // Actions
   toggleSaveBook: (book: GutendexBook, userId?: string) => Promise<void>;
@@ -56,6 +68,57 @@ export const useBookshelfStore = create<BookshelfState>()(
       cloudBookshelfItems: [],
       activeBookshelfId: null,
       isSyncing: false,
+      outbox: [],
+
+      queueOutboxAction: (action) => {
+        const item: OutboxAction = {
+          ...action,
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          timestamp: new Date().toISOString(),
+        };
+        set((state) => ({ outbox: [...state.outbox, item] }));
+      },
+
+      flushOutbox: async (userId: string) => {
+        const { outbox } = get();
+        if (outbox.length === 0 || !userId) return;
+
+        const supabase = createClient();
+        const remaining: OutboxAction[] = [];
+
+        for (const action of outbox) {
+          try {
+            if (action.type === 'DELETE_BOOK') {
+              const { error } = await supabase
+                .from('bookshelf_items')
+                .delete()
+                .eq('bookshelf_id', action.payload.bookshelf_id)
+                .eq('book_id', action.payload.book_id);
+              if (error) throw error;
+            } else if (action.type === 'DELETE_FAVORITE') {
+              const { error } = await supabase
+                .from('user_favorites')
+                .delete()
+                .eq('user_id', action.payload.user_id)
+                .eq('book_id', action.payload.book_id);
+              if (error) throw error;
+            } else if (action.type === 'INSERT_BOOK') {
+              const { error } = await supabase
+                .from('bookshelf_items')
+                .upsert(action.payload, { onConflict: 'bookshelf_id,book_id' });
+              if (error) throw error;
+            } else if (action.type === 'UPSERT_FAVORITE') {
+              const { error } = await supabase
+                .from('user_favorites')
+                .upsert(action.payload, { onConflict: 'user_id,book_id' });
+              if (error) throw error;
+            }
+          } catch {
+            remaining.push(action);
+          }
+        }
+        set({ outbox: remaining });
+      },
 
       toggleSaveBook: async (book, userId) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
@@ -92,13 +155,14 @@ export const useBookshelfStore = create<BookshelfState>()(
           try {
             const supabase = createClient();
             if (exists) {
-              await supabase
+              const { error } = await supabase
                 .from('bookshelf_items')
                 .delete()
                 .eq('bookshelf_id', targetShelfId)
                 .eq('book_id', book.id);
+              if (error) throw error;
             } else {
-              await supabase.from('bookshelf_items').insert({
+              const { error } = await supabase.from('bookshelf_items').insert({
                 bookshelf_id: targetShelfId,
                 user_id: currentUserId,
                 book_id: book.id,
@@ -106,9 +170,28 @@ export const useBookshelfStore = create<BookshelfState>()(
                 book_authors: book.authors?.map((a) => a.name) || [],
                 cover_url: book.formats?.['image/jpeg'] || null,
               });
+              if (error) throw error;
             }
           } catch {
-            // Non-blocking offline fallback
+            // Queue to outbox for offline sync retry
+            if (exists) {
+              get().queueOutboxAction({
+                type: 'DELETE_BOOK',
+                payload: { bookshelf_id: targetShelfId, book_id: book.id },
+              });
+            } else {
+              get().queueOutboxAction({
+                type: 'INSERT_BOOK',
+                payload: {
+                  bookshelf_id: targetShelfId,
+                  user_id: currentUserId,
+                  book_id: book.id,
+                  book_title: book.title,
+                  book_authors: book.authors?.map((a) => a.name) || [],
+                  cover_url: book.formats?.['image/jpeg'] || null,
+                },
+              });
+            }
           }
         }
       },
@@ -161,23 +244,43 @@ export const useBookshelfStore = create<BookshelfState>()(
           try {
             const supabase = createClient();
             if (exists) {
-              await supabase
+              const { error } = await supabase
                 .from('user_favorites')
                 .delete()
                 .eq('user_id', currentUserId)
                 .eq('book_id', id);
+              if (error) throw error;
             } else if (!isNumeric) {
               const book = bookOrId as GutendexBook;
-              await supabase.from('user_favorites').upsert({
+              const { error } = await supabase.from('user_favorites').upsert({
                 user_id: currentUserId,
                 book_id: book.id,
                 book_title: book.title,
                 book_authors: book.authors?.map((a) => a.name) || [],
                 cover_url: book.formats?.['image/jpeg'] || null,
               });
+              if (error) throw error;
             }
           } catch {
-            // Non-blocking offline fallback
+            // Queue to outbox for offline sync retry
+            if (exists) {
+              get().queueOutboxAction({
+                type: 'DELETE_FAVORITE',
+                payload: { user_id: currentUserId, book_id: id },
+              });
+            } else if (!isNumeric) {
+              const book = bookOrId as GutendexBook;
+              get().queueOutboxAction({
+                type: 'UPSERT_FAVORITE',
+                payload: {
+                  user_id: currentUserId,
+                  book_id: book.id,
+                  book_title: book.title,
+                  book_authors: book.authors?.map((a) => a.name) || [],
+                  cover_url: book.formats?.['image/jpeg'] || null,
+                },
+              });
+            }
           }
         }
       },
@@ -221,6 +324,9 @@ export const useBookshelfStore = create<BookshelfState>()(
       syncWithCloud: async (userId: string) => {
         if (!userId) return;
         set({ isSyncing: true });
+
+        // Flush any pending offline mutations first
+        await get().flushOutbox(userId);
 
         try {
           const supabase = createClient();

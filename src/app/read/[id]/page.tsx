@@ -10,11 +10,9 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
-  parseGutenbergChapters,
-  calculateVolumePageSpread,
   extractGutenbergHeaderMetadata,
-  type ChapterSection,
 } from '@/lib/gutenberg-parser';
+import { useGutenbergParserWorker } from '@/hooks/reader/useGutenbergParserWorker';
 import { getReaderTheme } from '@/config/reader-themes';
 import { resolveBookMetadata } from '@/lib/book-metadata';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
@@ -135,14 +133,11 @@ export default function BookReaderPage() {
     resolvedIdentity.languages
   );
 
-  // Parse Chapters and Volume Spread
-  const rawChapters = useMemo<ChapterSection[]>(() => {
-    return parseGutenbergChapters(contentText);
-  }, [contentText]);
-
-  const { chaptersWithPagination, totalVolumePages } = useMemo(() => {
-    return calculateVolumePageSpread(rawChapters, fontSize);
-  }, [rawChapters, fontSize]);
+  // Parse Chapters and Volume Spread via Web Worker
+  const { chaptersWithPagination, totalVolumePages } = useGutenbergParserWorker(
+    contentText,
+    fontSize
+  );
 
   const {
     activeChapterIndex,

@@ -18,6 +18,7 @@ vi.mock('@/lib/offline-storage', () => ({
   getOfflineBookIds: vi.fn().mockResolvedValue([]),
   saveOfflineBook: vi.fn().mockResolvedValue(undefined),
   removeOfflineBook: vi.fn().mockResolvedValue(undefined),
+  getStorageQuota: vi.fn().mockResolvedValue(null),
 }));
 
 describe('BookshelfRack Component', () => {

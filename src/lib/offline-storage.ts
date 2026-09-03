@@ -14,8 +14,59 @@ export interface OfflineBookMetadata {
   byteSize: number;
 }
 
+export interface StorageQuotaInfo {
+  usageBytes: number;
+  quotaBytes: number;
+  percentUsed: number;
+  isNearQuota: boolean;
+}
+
 export interface OfflineBookRecord extends OfflineBookMetadata {
   text: string;
+}
+
+/**
+ * Discovers current disk storage usage and limits using navigator.storage.estimate().
+ */
+export async function getStorageQuota(): Promise<StorageQuotaInfo | null> {
+  if (typeof navigator === 'undefined' || !navigator.storage?.estimate) {
+    return null;
+  }
+  try {
+    const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+    const percentUsed = quota > 0 ? (usage / quota) * 100 : 0;
+    return {
+      usageBytes: usage,
+      quotaBytes: quota,
+      percentUsed: Math.round(percentUsed * 10) / 10,
+      isNearQuota: percentUsed > 85,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Evicts least-recently downloaded books until targetBytesNeeded are freed.
+ */
+export async function evictOldestBooksToFreeSpace(targetBytesNeeded: number): Promise<number> {
+  try {
+    const books = await getAllOfflineBooks();
+    if (books.length === 0) return 0;
+
+    // Sort by downloadedAt ascending (oldest first)
+    books.sort((a, b) => new Date(a.downloadedAt).getTime() - new Date(b.downloadedAt).getTime());
+
+    let freedBytes = 0;
+    for (const book of books) {
+      if (freedBytes >= targetBytesNeeded) break;
+      await removeOfflineBook(book.bookId);
+      freedBytes += book.byteSize;
+    }
+    return freedBytes;
+  } catch {
+    return 0;
+  }
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -40,25 +91,61 @@ function openDB(): Promise<IDBDatabase> {
 
 /**
  * Saves a book's full text to IndexedDB for offline reading.
+ * Includes pre-emptive quota checks, LRU auto-eviction, and QuotaExceededError recovery.
  */
 export async function saveOfflineBook(bookId: number, title: string, text: string): Promise<void> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
+  const byteSize = new Blob([text]).size;
 
-    const record: OfflineBookRecord = {
-      bookId,
-      title,
-      text,
-      downloadedAt: new Date().toISOString(),
-      byteSize: new Blob([text]).size,
-    };
+  // Pre-emptive check: if storage estimate reports less than 10MB free buffer, evict oldest
+  const quota = await getStorageQuota();
+  if (quota && quota.quotaBytes > 0 && quota.quotaBytes - quota.usageBytes < byteSize + 10 * 1024 * 1024) {
+    await evictOldestBooksToFreeSpace(byteSize + 15 * 1024 * 1024);
+  }
 
-    const request = store.put(record);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error || new Error(`Failed to save book ${bookId} offline.`));
-  });
+  const putRecord = (database: IDBDatabase): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+
+      const record: OfflineBookRecord = {
+        bookId,
+        title,
+        text,
+        downloadedAt: new Date().toISOString(),
+        byteSize,
+      };
+
+      const request = store.put(record);
+      request.onsuccess = () => resolve();
+      request.onerror = (e) => {
+        reject(request.error || (e.target as any)?.error || new Error(`Failed to save book ${bookId} offline.`));
+      };
+      transaction.onerror = (e) => {
+        reject(transaction.error || (e.target as any)?.error || new Error(`Transaction error saving book ${bookId}.`));
+      };
+    });
+  };
+
+  try {
+    await putRecord(db);
+  } catch (error: any) {
+    // If QuotaExceededError, try emergency eviction of 20MB and retry once
+    const isQuotaError =
+      error?.name === 'QuotaExceededError' ||
+      error?.code === 22 ||
+      error?.message?.includes('quota');
+
+    if (isQuotaError) {
+      const freed = await evictOldestBooksToFreeSpace(20 * 1024 * 1024);
+      if (freed > 0) {
+        await putRecord(db);
+        return;
+      }
+      throw new Error('Storage quota exceeded. Please clear some offline books.');
+    }
+    throw error;
+  }
 }
 
 /**

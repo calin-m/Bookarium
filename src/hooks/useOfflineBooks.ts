@@ -6,6 +6,8 @@ import {
   getOfflineBookIds,
   saveOfflineBook,
   removeOfflineBook,
+  getStorageQuota,
+  type StorageQuotaInfo,
 } from '@/lib/offline-storage';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 
@@ -16,18 +18,29 @@ export interface OfflineProgress {
 
 export function useOfflineBooks() {
   const [offlineBookIds, setOfflineBookIds] = useState<number[]>([]);
+  const [storageQuota, setStorageQuota] = useState<StorageQuotaInfo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadingBookId, setDownloadingBookId] = useState<number | null>(null);
   const [downloadAllProgress, setDownloadAllProgress] = useState<OfflineProgress | null>(null);
+
+  const refreshStorageQuota = useCallback(async () => {
+    try {
+      const quota = await getStorageQuota();
+      setStorageQuota(quota);
+    } catch {
+      // Non-blocking fallback
+    }
+  }, []);
 
   const refreshOfflineIds = useCallback(async () => {
     try {
       const ids = await getOfflineBookIds();
       setOfflineBookIds(ids);
+      await refreshStorageQuota();
     } catch {
       // Non-blocking fallback
     }
-  }, []);
+  }, [refreshStorageQuota]);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,6 +48,14 @@ export function useOfflineBooks() {
       .then((ids) => {
         if (isMounted) {
           setOfflineBookIds(ids);
+        }
+      })
+      .catch(() => {});
+
+    getStorageQuota()
+      .then((quota) => {
+        if (isMounted) {
+          setStorageQuota(quota);
         }
       })
       .catch(() => {});
@@ -133,6 +154,8 @@ export function useOfflineBooks() {
     isDownloading,
     downloadingBookId,
     downloadAllProgress,
+    storageQuota,
+    refreshStorageQuota,
     refreshOfflineIds,
   };
 }

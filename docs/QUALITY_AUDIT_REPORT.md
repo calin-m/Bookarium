@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 10:15:02 GMT  
+**Last Generated**: Thu, 03 Sep 2026 10:49:22 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 99 passed  
-**Total Verified Tests**: 635 passed  
+**Total Test Suites**: 100 passed  
+**Total Verified Tests**: 646 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **99/99 test suites passed** (635 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **100/100 test suites passed** (646 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.43%** (3274/3542) — *Target: $ge$ 80%*
-- **Statements**: **90.68%** (3564/3930) — *Target: $ge$ 80%*
-- **Functions**: **87.66%** (839/957) — *Target: $ge$ 80%*
-- **Branches**: **81.13%** (3093/3812) — *Target: $ge$ 80%*
+- **Lines**: **91.74%** (3390/3695) — *Target: $ge$ 80%*
+- **Statements**: **89.97%** (3687/4098) — *Target: $ge$ 80%*
+- **Functions**: **87.5%** (861/984) — *Target: $ge$ 80%*
+- **Branches**: **80.32%** (3165/3940) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (99 Suites / 635 Tests)
+## 🧪 Comprehensive Test Suite Catalog (100 Suites / 646 Tests)
 
-### 🚀 App Routes & Pages (9 Suites · 59 Tests)
+### 🚀 App Routes & Pages (9 Suites · 61 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.test.ts</code></b> (6 tests)</summary>
@@ -61,7 +61,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/translate/route.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/app/api/translate/route.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `translates text successfully and returns segments`
 - ✔ `rejects request with invalid JSON payload`
@@ -72,6 +72,8 @@
 - ✔ `handles timeout (AbortError) with 504`
 - ✔ `handles unexpected failure with 500`
 - ✔ `enforces rate limiting and returns 429 when quota exceeded`
+- ✔ `rejects request exceeding 15,000 character maximum payload`
+- ✔ `serves identical translation from in-memory LRU cache on second call with X-Cache-Lookup HIT`
 
 </details>
 
@@ -149,7 +151,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (17 Suites · 131 Tests)
+### 🎨 Catalog & Presentation (17 Suites · 133 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -305,11 +307,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders book title, author, and public domain badges`
 - ✔ `triggers shuffle when shuffle button is clicked`
 - ✔ `triggers read callback when Read button is clicked`
+- ✔ `renders static 2D presentation when hardware tier is low or heavy motion is disallowed`
+- ✔ `triggers read callback from 2D presentation mode`
 
 </details>
 
@@ -572,7 +576,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (5 Suites · 53 Tests)
+### ⚡ Zustand State Stores (5 Suites · 54 Tests)
 
 <details>
 <summary><b><code>src/stores/useAuthStore.test.ts</code></b> (18 tests)</summary>
@@ -599,7 +603,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -615,6 +619,7 @@
 - ✔ `handles updateCloudBookshelf and deleteCloudBookshelf`
 - ✔ `handles moveBookToShelf properly`
 - ✔ `creates a new bookshelf item if book is not in cloudBookshelfItems yet`
+- ✔ `queues offline actions to outbox when Supabase network rejects and flushes them on syncWithCloud`
 - ✔ `returns saved books count via useSavedBooksCount`
 - ✔ `returns isSaved status via useIsBookSaved`
 
@@ -657,7 +662,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (15 Suites · 111 Tests)
+### 📚 Gutenberg Parsers & Metadata (15 Suites · 113 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (9 tests)</summary>
@@ -752,7 +757,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/offline-storage.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/lib/offline-storage.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `saves book text to offline storage`
 - ✔ `retrieves offline book text correctly`
@@ -762,6 +767,8 @@
 - ✔ `fetches all offline book IDs`
 - ✔ `retrieves all offline books metadata without returning full text payloads`
 - ✔ `clears all offline books`
+- ✔ `returns storage quota metrics from navigator.storage.estimate`
+- ✔ `evicts oldest downloaded books first to free requested space`
 
 </details>
 
@@ -860,7 +867,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (16 Suites · 105 Tests)
+### 🔄 Hooks & React Query (17 Suites · 109 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
@@ -931,6 +938,16 @@
 - ✔ `splits paragraphs into punctuation-delimited sentences`
 - ✔ `handles quotes and dialogue gracefully`
 - ✔ `returns empty array for empty or whitespace text`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/reader/useGutenbergParserWorker.test.ts</code></b> (4 tests)</summary>
+
+- ✔ `returns empty result when contentText is empty or undefined`
+- ✔ `parses text synchronously via fallback when workerFactory returns null`
+- ✔ `dispatches worker postMessage and handles worker response when Worker is available`
+- ✔ `falls back gracefully when worker encounters an error`
 
 </details>
 

@@ -6,6 +6,7 @@ import type { GutendexBook } from '@/types/book.types';
 import type { FeaturedHeroBook } from '@/config/featured-books';
 import { Button } from '@/components/ui/Button';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
+import { usePerformanceTier } from '@/hooks/usePerformanceTier';
 
 export interface HeroFeaturedBook3DProps {
   featuredBook: FeaturedHeroBook & { rawBook?: GutendexBook };
@@ -71,6 +72,69 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
       setPinState('auto');
     }
   };
+
+  const { allowHeavyMotion, tier } = usePerformanceTier();
+
+  // Static 2D Presentation for Low-Tier Hardware or Reduced-Motion Preference
+  if (!allowHeavyMotion || tier === 'low') {
+    return (
+      <div
+        data-testid="hero-featured-book-2d"
+        className="w-full max-w-sm sm:max-w-md mx-auto p-5 sm:p-6 rounded-2xl bg-card border border-border shadow-md space-y-4 text-foreground transition-colors duration-theme"
+      >
+        <div className="flex items-center justify-between border-b border-border pb-2.5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-primary">
+              Featured Classic
+            </span>
+          </div>
+          <span className="text-[10px] font-mono text-muted-foreground uppercase">
+            {featuredBook.volumeNumber}
+          </span>
+        </div>
+
+        <div className="space-y-1.5">
+          <h3 className="text-xl sm:text-2xl font-serif font-bold text-foreground tracking-tight line-clamp-2">
+            {featuredBook.title}
+          </h3>
+          <p className="text-xs sm:text-sm font-sans text-muted-foreground">
+            {featuredBook.author} {featuredBook.year ? `• ${featuredBook.year}` : ''}
+          </p>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-muted/50 border border-border/80 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground uppercase">
+            <Quote className="w-3 h-3 text-primary/70 shrink-0" />
+            <span>Opening Line</span>
+          </div>
+          <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-4">
+            &ldquo;{currentPassage.quoteExcerpt || featuredBook.openingLine}&rdquo;
+          </p>
+        </div>
+
+        <div className="pt-1 flex items-center justify-between gap-3">
+          <Button
+            data-testid="hero-book-read-btn"
+            onClick={() => onReadFeaturedBook?.(featuredBook.rawBook || featuredBook)}
+            className="flex-1 flex items-center justify-center gap-2 h-10 text-xs font-mono tracking-wider uppercase font-bold"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Read Volume</span>
+          </Button>
+          <Button
+            data-testid="hero-book-shuffle-btn"
+            variant="outline"
+            onClick={shuffleNextPassage}
+            title="Next Passage"
+            className="h-10 px-3 shrink-0"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

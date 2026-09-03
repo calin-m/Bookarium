@@ -38,6 +38,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, syncWithCloud]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleOnline = () => {
+      if (user?.id) {
+        syncWithCloud(user.id);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [user?.id, syncWithCloud]);
+
   return (
     <QueryClientProvider client={queryClient}>
       {children}
