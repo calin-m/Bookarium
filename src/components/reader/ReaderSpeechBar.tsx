@@ -120,7 +120,11 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
             <div className="flex items-center gap-2 min-w-0">
               <div
                 className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                  isPlaying ? 'bg-primary/15 animate-pulse' : 'bg-stone-100 dark:bg-stone-800'
+                  isPlaying
+                    ? 'bg-primary/15 animate-pulse'
+                    : theme === 'sepia'
+                    ? 'bg-[#402a1d]'
+                    : 'bg-stone-100 dark:bg-stone-800'
                 }`}
               >
                 <Headphones className={`w-3.5 h-3.5 ${activeTheme.iconAccent}`} />
@@ -159,7 +163,9 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
           </div>
 
           {/* Linear Progress Bar */}
-          <div className="w-full bg-stone-200 dark:bg-stone-800 h-1 rounded-full overflow-hidden">
+          <div className={`w-full h-1 rounded-full overflow-hidden ${
+            theme === 'sepia' ? 'bg-[#462e22]' : 'bg-stone-200 dark:bg-stone-800'
+          }`}>
             <div
               className={`h-full transition-all duration-300 ${
                 theme === 'sepia' ? 'bg-amber-500' : 'bg-primary-600 dark:bg-primary-500'
@@ -188,7 +194,13 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                 onClick={handleTogglePlay}
                 className={`px-4 py-2 min-h-[40px] rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer ${
                   isPlaying
-                    ? `${activeTheme.activePill} border ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-500'}`
+                    ? `${activeTheme.activePill} border ${
+                        theme === 'sepia'
+                          ? 'border-[#f59e0b]'
+                          : theme === 'dark'
+                          ? 'border-primary-400 bg-primary-950/50 text-primary-300 shadow-xs'
+                          : 'border-primary-500'
+                      }`
                     : `${activeTheme.button} border ${activeTheme.border}`
                 }`}
                 aria-label={isPlaying ? 'Pause narration' : 'Play narration'}
@@ -227,6 +239,7 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                     value={selectedVoice?.voiceURI || ''}
                     onChange={(e) => onVoiceChange(e.target.value)}
                     aria-label="Narrator voice"
+                    style={{ colorScheme: theme === 'light' ? 'light' : 'dark' }}
                     className={`w-full min-h-[40px] py-1.5 pl-2 pr-5 text-[11px] font-mono truncate rounded-lg border ${activeTheme.border} ${activeTheme.pill} focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer`}
                   >
                     {naturalVoices.length > 0 && (
@@ -290,6 +303,8 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                         className={`px-2.5 py-1 text-[11px] font-mono rounded-md text-left transition-colors cursor-pointer ${
                           rate === speed
                             ? `${activeTheme.activePill} font-bold`
+                            : theme === 'sepia'
+                            ? 'hover:bg-[#402a1d]'
                             : 'hover:bg-stone-100 dark:hover:bg-stone-800'
                         }`}
                       >

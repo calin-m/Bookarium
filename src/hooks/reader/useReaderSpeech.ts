@@ -201,6 +201,7 @@ export function useReaderSpeech({
         ? sorted.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI)
         : null;
       const best = preferred || natural[0] || sorted[0] || null;
+      selectedVoiceRef.current = best;
       setSelectedVoice(best);
     }
   }, [language, preferredVoiceURI]);
@@ -211,7 +212,15 @@ export function useReaderSpeech({
 
     window.speechSynthesis.onvoiceschanged = populateVoices;
 
+    // Asynchronously hydrate voices on mount and fallback polling for Chromium lazy voice loading
+    const t0 = setTimeout(populateVoices, 0);
+    const t1 = setTimeout(populateVoices, 100);
+    const t2 = setTimeout(populateVoices, 350);
+
     return () => {
+      clearTimeout(t0);
+      clearTimeout(t1);
+      clearTimeout(t2);
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.onvoiceschanged = null;
       }
@@ -261,9 +270,15 @@ export function useReaderSpeech({
     utterance.rate = rateRef.current;
     utterance.pitch = 1.0;
 
-    if (selectedVoiceRef.current) {
-      utterance.voice = selectedVoiceRef.current;
-      utterance.lang = selectedVoiceRef.current.lang;
+    // JIT voice resolution: if selectedVoiceRef is missing, populate immediately before speaking
+    if (!selectedVoiceRef.current) {
+      populateVoices();
+    }
+
+    const voiceToUse = selectedVoiceRef.current;
+    if (voiceToUse) {
+      utterance.voice = voiceToUse;
+      utterance.lang = voiceToUse.lang;
     } else {
       utterance.lang = language || 'en-US';
     }
@@ -292,7 +307,7 @@ export function useReaderSpeech({
     };
 
     window.speechSynthesis.speak(utterance);
-  }, [language]);
+  }, [language, populateVoices]);
 
   useEffect(() => {
     speakSentenceRef.current = speakSentence;
@@ -321,11 +336,14 @@ export function useReaderSpeech({
 
   // Public controls
   const play = useCallback((startIndex?: number) => {
+    if (!selectedVoiceRef.current) {
+      populateVoices();
+    }
     const target = startIndex !== undefined ? startIndex : currentIndexRef.current;
     setIsPlaying(true);
     setIsPaused(false);
     speakSentence(target);
-  }, [speakSentence]);
+  }, [speakSentence, populateVoices]);
 
   const pause = useCallback(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {

@@ -245,8 +245,10 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
                           data-testid="speech-highlight"
                           className={`rounded-xs px-1 transition-colors duration-200 ${
                             theme === 'sepia'
-                              ? 'bg-amber-500/25 text-[#fef6eb]'
-                              : 'bg-primary-500/20 text-inherit'
+                              ? 'bg-amber-500/30 text-[#fef6eb]'
+                              : theme === 'dark'
+                              ? 'bg-amber-400/30 text-amber-200'
+                              : 'bg-primary-500/25 text-inherit'
                           }`}
                         >
                           {seg.translated}
@@ -345,8 +347,10 @@ function renderContentWithAnnotations(
                   data-testid="speech-highlight"
                   className={`rounded-xs px-1 transition-colors duration-200 ${
                     theme === 'sepia'
-                      ? 'bg-amber-500/25 text-[#fef6eb]'
-                      : 'bg-primary-500/20 text-inherit'
+                      ? 'bg-amber-500/30 text-[#fef6eb]'
+                      : theme === 'dark'
+                      ? 'bg-amber-400/30 text-amber-200'
+                      : 'bg-primary-500/25 text-inherit'
                   }`}
                 >
                   {highlightedSentence}
@@ -404,8 +408,10 @@ function renderContentWithAnnotations(
                     data-testid="speech-highlight"
                     className={`rounded-xs px-1 transition-colors duration-200 ${
                       theme === 'sepia'
-                        ? 'bg-amber-500/25 text-[#fef6eb]'
-                        : 'bg-primary-500/20 text-inherit'
+                        ? 'bg-amber-500/30 text-[#fef6eb]'
+                        : theme === 'dark'
+                        ? 'bg-amber-400/30 text-amber-200'
+                        : 'bg-primary-500/25 text-inherit'
                     }`}
                   >
                     {highlightedSentence}
@@ -456,8 +462,10 @@ function renderContentWithAnnotations(
                   data-testid="speech-highlight"
                   className={`rounded-xs px-1 transition-colors duration-200 ${
                     theme === 'sepia'
-                      ? 'bg-amber-500/25 text-[#fef6eb]'
-                      : 'bg-primary-500/20 text-inherit'
+                      ? 'bg-amber-500/30 text-[#fef6eb]'
+                      : theme === 'dark'
+                      ? 'bg-amber-400/30 text-amber-200'
+                      : 'bg-primary-500/25 text-inherit'
                   }`}
                 >
                   {highlightedSentence}

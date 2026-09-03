@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 17:14:28 GMT  
+**Last Generated**: Thu, 03 Sep 2026 17:36:03 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 107 passed  
-**Total Verified Tests**: 731 passed  
+**Total Verified Tests**: 735 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **107/107 test suites passed** (731 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **107/107 test suites passed** (735 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.92%** (3861/4200) — *Target: $ge$ 80%*
-- **Statements**: **90.12%** (4209/4670) — *Target: $ge$ 80%*
+- **Lines**: **92.11%** (3880/4212) — *Target: $ge$ 80%*
+- **Statements**: **90.34%** (4230/4682) — *Target: $ge$ 80%*
 - **Functions**: **87.32%** (1020/1168) — *Target: $ge$ 80%*
-- **Branches**: **80.2%** (3509/4375) — *Target: $ge$ 80%*
+- **Branches**: **80.3%** (3531/4397) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (107 Suites / 731 Tests)
+## 🧪 Comprehensive Test Suite Catalog (107 Suites / 735 Tests)
 
 ### 🚀 App Routes & Pages (10 Suites · 75 Tests)
 
@@ -973,7 +973,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (17 Suites · 111 Tests)
+### 🔄 Hooks & React Query (17 Suites · 115 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
@@ -1091,7 +1091,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `detects Web Speech API support and prioritizes Natural voices`
 - ✔ `plays sentences and updates playback state`
@@ -1110,6 +1110,10 @@
 - ✔ `triggers onNextPage when skipNext called on the final sentence of current page`
 - ✔ `triggers onPreviousPage when skipPrev called on the first sentence of current page`
 - ✔ `respects defaultRate, preferredVoiceURI, and invokes onRateChange and onVoiceChange`
+- ✔ `skips empty whitespace sentences when narrating`
+- ✔ `clears active inter-sentence delay timeout on stop()`
+- ✔ `handles Chromium fallback polling timers on mount and text flip during active sentence delay`
+- ✔ `hydrates voices when voices load asynchronously after initial mount (Chromium cold start)`
 
 </details>
 
