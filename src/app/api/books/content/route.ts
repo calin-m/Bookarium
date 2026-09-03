@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { SITE_CONFIG } from '@/config/site-config';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
 
@@ -30,12 +29,18 @@ export function sanitizeUpstreamUrl(rawUrl: string): string | null {
   if (!isSafeUpstreamUrl(rawUrl)) return null;
   try {
     const parsed = new URL(rawUrl);
-    // Reconstruct URL anchored strictly to verified literal Gutenberg origins
-    const trustedOrigin =
-      parsed.hostname.toLowerCase() === 'gutenberg.org'
-        ? 'https://gutenberg.org'
-        : 'https://www.gutenberg.org';
-    return `${trustedOrigin}${parsed.pathname}`;
+    const numericId =
+      parsed.pathname.match(/\/(\d{1,8})(?:[./-]|$)/)?.[1] ||
+      parsed.pathname.match(/pg(\d{1,8})\.txt/)?.[1];
+    if (!numericId) return null;
+
+    if (parsed.pathname.includes(`/files/${numericId}/${numericId}-0.txt`)) {
+      return `https://gutenberg.org/files/${numericId}/${numericId}-0.txt`;
+    }
+    if (parsed.pathname.includes(`/files/${numericId}/${numericId}.txt`)) {
+      return `https://gutenberg.org/files/${numericId}/${numericId}.txt`;
+    }
+    return `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.txt`;
   } catch {
     return null;
   }
@@ -73,26 +78,34 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Validate ID format: strictly numeric 1-8 digits
-  const numericId = idParam.match(/^(\d{1,8})$/)?.[1] || urlParam.match(/\/(\d{1,8})\//)?.[1] || (urlParam.match(/pg(\d{1,8})\.txt/)?.[1] ?? '');
-
-  const targetUrls: string[] = [];
-  if (numericId) {
-    targetUrls.push(`${API_ENDPOINTS.GUTENBERG_CACHE_BASE_URL}/${numericId}/pg${numericId}.txt`);
+  if (urlParam && !isSafeUpstreamUrl(urlParam)) {
+    return NextResponse.json(
+      { error: 'Invalid or unauthorized upstream content URL.' },
+      { status: 400 }
+    );
   }
 
-  if (urlParam) {
-    const safeUrl = sanitizeUpstreamUrl(urlParam);
-    if (!safeUrl) {
-      return NextResponse.json(
-        { error: 'Invalid or unauthorized upstream content URL.' },
-        { status: 400 }
-      );
-    }
-    if (!targetUrls.includes(safeUrl)) {
-      targetUrls.push(safeUrl);
-    }
+  // Validate ID format: strictly numeric 1-8 digits, extracted from idParam or validated urlParam
+  const numericId =
+    idParam.match(/^(\d{1,8})$/)?.[1] ||
+    urlParam.match(/\/(\d{1,8})(?:[./-]|$)/)?.[1] ||
+    urlParam.match(/pg(\d{1,8})\.txt/)?.[1] ||
+    '';
+
+  if (!numericId) {
+    return NextResponse.json(
+      { error: 'Missing or invalid Project Gutenberg book ID.' },
+      { status: 400 }
+    );
   }
+
+  // Construct target URLs strictly from literal trusted Gutenberg origin templates and validated numeric ID
+  // Eliminates SSRF by ensuring user input can never dictate origin, hostname, or arbitrary path
+  const targetUrls: string[] = [
+    `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.txt`,
+    `https://www.gutenberg.org/files/${numericId}/${numericId}-0.txt`,
+    `https://www.gutenberg.org/files/${numericId}/${numericId}.txt`,
+  ];
 
   let textContent = '';
   let fetchSuccess = false;

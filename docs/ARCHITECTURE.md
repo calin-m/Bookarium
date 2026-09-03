@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST.  
 > **Last Synchronized**: `2026-09-03`  
-> **Topology Health**: `117` Modules Analyzed • `330` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `117` Modules Analyzed • `329` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -150,7 +150,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | Module / Component | Upstream Dependencies (Imports) | Downstream Consumers (Consumed By) | Role & Responsibilities |
 | :--- | :--- | :--- | :--- |
 | [`page.tsx`](src/app/account/page.tsx) | `stores/useAuthStore`, `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useThemeStore`, `stores/usePreferencesStore`, `hooks/useScrollDirection`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `components/ui/BackToTop`, `components/account/AccountIdentityCard`, `components/account/AccountLibraryStats`, `components/account/AccountSecuritySection`, `components/account/AccountPreferencesSection`, `components/account/AccountDeleteModal`, `lib/password`, `config/routes` | _App Route Entry_ | Production Module |
-| [`route.ts`](src/app/api/books/content/route.ts) | `config/api-endpoints`, `config/site-config`, `lib/rate-limiter` | _App Route Entry_ | Production Module |
+| [`route.ts`](src/app/api/books/content/route.ts) | `config/site-config`, `lib/rate-limiter` | _App Route Entry_ | Production Module |
 | [`route.ts`](src/app/api/books/route.ts) | `config/api-endpoints`, `types/book.types`, `lib/rate-limiter` | _App Route Entry_ | Production Module |
 | [`route.ts`](src/app/api/translate/route.ts) | `lib/rate-limiter`, `config/site-config` | `usePageTranslation.ts` | Production Module |
 | [`route.ts`](src/app/auth/callback/route.ts) | `lib/supabase/server` | _App Route Entry_ | Production Module |
@@ -212,7 +212,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`Input.tsx`](src/components/ui/Input.tsx) | `lib/utils` | `AccountIdentityCard.tsx`, `AccountSecuritySection.tsx`, `AuthModal.tsx`, `BookshelfManageModals.tsx` | Production Module |
 | [`Modal.tsx`](src/components/ui/Modal.tsx) | `lib/utils` | `page.tsx`, `page.tsx`, `AccountDeleteModal.tsx`, `DownloadDrawer.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx` | Production Module |
 | [`PasswordStrengthMeter.tsx`](src/components/ui/PasswordStrengthMeter.tsx) | `lib/password` | `AccountSecuritySection.tsx`, `AuthModal.tsx` | Production Module |
-| [`api-endpoints.ts`](src/config/api-endpoints.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `useBookContent.ts`, `useBooks.ts`, `useOfflineBooks.ts` | Production Module |
+| [`api-endpoints.ts`](src/config/api-endpoints.ts) | _Root Primitive_ | `route.ts`, `useBookContent.ts`, `useBooks.ts`, `useOfflineBooks.ts` | Production Module |
 | [`catalog-filters.ts`](src/config/catalog-filters.ts) | _Root Primitive_ | `AdvancedFilterDrawer.tsx`, `HeroSearch.tsx`, `LanguageSelector.tsx`, `useBookTranslations.ts`, `useCatalogFilters.ts` | Production Module |
 | [`featured-books.ts`](src/config/featured-books.ts) | `lib/utils` | `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `ReaderHeader.tsx`, `useBookPassageShuffle.ts`, `book-metadata.ts` | Production Module |
 | [`literary-quotes.ts`](src/config/literary-quotes.ts) | _Root Primitive_ | `LiteraryQuotes.tsx` | Production Module |
