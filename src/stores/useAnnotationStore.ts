@@ -29,9 +29,13 @@ export interface AnnotationOutboxAction {
   timestamp: string;
 }
 
+export const MAX_ANNOTATION_TEXT_LENGTH = 5000;
+export const MAX_ANNOTATION_NOTE_LENGTH = 2000;
+
 export interface AnnotationState {
   annotations: Annotation[];
   outbox: AnnotationOutboxAction[];
+  tombstones: string[];
   isSyncing: boolean;
 
   queueOutboxAction: (action: Omit<AnnotationOutboxAction, 'id' | 'timestamp'>) => void;
@@ -75,6 +79,7 @@ export const useAnnotationStore = create<AnnotationState>()(
     (set, get) => ({
       annotations: [],
       outbox: [],
+      tombstones: [],
       isSyncing: false,
 
       queueOutboxAction: (action) => {
@@ -123,7 +128,8 @@ export const useAnnotationStore = create<AnnotationState>()(
       },
 
       addAnnotation: async (data, userId) => {
-        const trimmedText = data.selectedText.trim();
+        const trimmedText = data.selectedText.trim().slice(0, MAX_ANNOTATION_TEXT_LENGTH);
+        const trimmedNote = data.note ? data.note.trim().slice(0, MAX_ANNOTATION_NOTE_LENGTH) : undefined;
         // Check if an annotation for the same or overlapping passage already exists in this book
         const existing = get().annotations.find(
           (a) =>
@@ -136,8 +142,8 @@ export const useAnnotationStore = create<AnnotationState>()(
           if (data.color !== existing.color) {
             await get().updateAnnotationColor(existing.id, data.color, userId);
           }
-          if (data.note !== undefined && data.note.trim() !== (existing.note || '')) {
-            await get().updateAnnotationNote(existing.id, data.note, userId);
+          if (trimmedNote !== undefined && trimmedNote !== (existing.note || '')) {
+            await get().updateAnnotationNote(existing.id, trimmedNote, userId);
           }
           if (trimmedText.length > existing.selectedText.length) {
             set((state) => ({
@@ -161,7 +167,7 @@ export const useAnnotationStore = create<AnnotationState>()(
           chapterPage: data.chapterPage,
           selectedText: trimmedText,
           color: data.color,
-          note: data.note?.trim() || undefined,
+          note: trimmedNote,
           createdAt: now,
           updatedAt: now,
         };
@@ -250,7 +256,7 @@ export const useAnnotationStore = create<AnnotationState>()(
 
       updateAnnotationNote: async (id, note, userId) => {
         const now = new Date().toISOString();
-        const trimmedNote = note.trim();
+        const trimmedNote = note.trim().slice(0, MAX_ANNOTATION_NOTE_LENGTH);
 
         // 1. Optimistic local update
         set((state) => ({
@@ -296,9 +302,10 @@ export const useAnnotationStore = create<AnnotationState>()(
       },
 
       deleteAnnotation: async (id, userId) => {
-        // 1. Optimistic local update
+        // 1. Optimistic local update & tombstone record to prevent zombie resurrection
         set((state) => ({
           annotations: state.annotations.filter((a) => a.id !== id),
+          tombstones: state.tombstones.includes(id) ? state.tombstones : [...state.tombstones, id],
         }));
 
         // 2. Cloud synchronization if logged in
@@ -344,6 +351,7 @@ export const useAnnotationStore = create<AnnotationState>()(
 
         try {
           const supabase = createClient();
+          const currentTombstones = get().tombstones || [];
 
           // Fetch cloud annotations
           const { data, error } = await supabase
@@ -354,21 +362,23 @@ export const useAnnotationStore = create<AnnotationState>()(
 
           if (error) throw error;
 
-          const remoteAnnotations: Annotation[] = (data || []).map((row: any) => ({
-            id: row.id,
-            userId: row.user_id,
-            bookId: row.book_id,
-            chapterIndex: row.chapter_index,
-            chapterPage: row.chapter_page,
-            selectedText: row.selected_text,
-            color: row.color as HighlightColor,
-            note: row.note || undefined,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-          }));
+          const remoteAnnotations: Annotation[] = (data || [])
+            .map((row: any) => ({
+              id: row.id,
+              userId: row.user_id,
+              bookId: row.book_id,
+              chapterIndex: row.chapter_index,
+              chapterPage: row.chapter_page,
+              selectedText: row.selected_text,
+              color: row.color as HighlightColor,
+              note: row.note || undefined,
+              createdAt: row.created_at,
+              updatedAt: row.updated_at,
+            }))
+            .filter((r) => !currentTombstones.includes(r.id));
 
-          // Merge: Preserve any local guest annotations that don't exist remotely
-          const localAnnotations = get().annotations;
+          // Merge: Preserve any local guest annotations that don't exist remotely and are not tombstoned
+          const localAnnotations = get().annotations.filter((la) => !currentTombstones.includes(la.id));
           const merged = [...remoteAnnotations];
           const unSyncedGuestAnnotations: Annotation[] = [];
 
@@ -406,7 +416,7 @@ export const useAnnotationStore = create<AnnotationState>()(
       },
 
       clearAllAnnotations: () => {
-        set({ annotations: [], outbox: [] });
+        set({ annotations: [], outbox: [], tombstones: [] });
       },
     }),
     {

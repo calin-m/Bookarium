@@ -5,6 +5,8 @@ describe('Web App Manifest (PWA)', () => {
   it('returns valid metadata complying with PWA standards', () => {
     const data = manifest();
 
+    expect(data.id).toBe('/?source=pwa');
+    expect(data.scope).toBe('/');
     expect(data.name).toBe('Bookarium — Universal Public Domain Library & Reader');
     expect(data.short_name).toBe('Bookarium');
     expect(data.start_url).toBe('/');

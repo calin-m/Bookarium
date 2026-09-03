@@ -570,4 +570,39 @@ describe('ReaderSurface', () => {
     expect(marks[0]).toHaveClass('selection:bg-emerald-300/70');
     expect(marks[1]).toHaveClass('selection:bg-rose-300/70');
   });
+
+  it('renders user annotations inside bilingual parallel mode segments', () => {
+    const annotations: any[] = [
+      {
+        id: 'ann-bilingual-trans',
+        bookId: 1,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'importante cita',
+        color: 'amber',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ];
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        displayMode="bilingual"
+        translationSegments={[
+          {
+            original: 'This is an important quote from classic literature.',
+            translated: 'Esta es una importante cita de la literatura clásica.',
+          },
+        ]}
+        annotations={annotations}
+      />
+    );
+
+    expect(screen.getByTestId('reader-bilingual-body')).toBeInTheDocument();
+    const mark = screen.getByTestId('user-annotation-highlight');
+    expect(mark).toBeInTheDocument();
+    expect(mark).toHaveTextContent('importante cita');
+    expect(mark).toHaveAttribute('data-annotation-color', 'amber');
+  });
 });

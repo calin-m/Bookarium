@@ -9,8 +9,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-105%20Suites%20%7C%20711%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.87%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-106%20Suites%20%7C%20720%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.92%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -39,9 +39,9 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ## 🛠️ Latest Improvements (v1.9.0)
 
 - **Progressive Web App (PWA) Standalone Mode (`src/app/manifest.ts`, `src/app/layout.tsx`, `public/icons/`)**: Configured Next.js 16 web app manifest, mobile viewport, apple-touch-icon, and a suite of maskable/standard icons for home screen installation.
+- **Native Service Worker Offline App Shell (`public/sw.js`, `ServiceWorkerRegister.tsx`)**: Built App Shell caching and offline navigation fallback enabling unabridged reading of saved IndexedDB books in airplane mode.
 - **Text Highlighting & Annotations Engine (`public.user_annotations`, `src/stores/useAnnotationStore.ts`)**: Built local-first persistence with Supabase PostgreSQL cloud sync, Row-Level Security, offline mutation outbox, and automatic guest-to-cloud merge upon login.
-- **Contextual Text Highlight Popover (`src/components/reader/TextHighlightPopover.tsx`, `ReaderSurface.tsx`)**: Real-time text selection popover supporting 4 pastel highlight colors (Yellow, Amber, Mint, Rose), inline reflection editor, academic citation copying, and viewport boundary clamping.
-- **Single Note/Quote Deletion Confirmation Modals (`NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`, `read/[id]/page.tsx`)**: Guarded against accidental loss of quotes and marginalia reflections with accessible confirmation modals featuring formatted quote excerpt previews.
+- **Cloud Sync Deletion Tombstones & Quota Safety (`useAnnotationStore.ts`)**: Implemented persistent deletion tombstones eliminating cross-device zombie note resurrection, and store-level character clamping protecting localStorage quotas.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -102,14 +102,16 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * Horizontally scrollable active filter chips strip (`overflow-x-auto scrollbar-none`) preventing vertical height shifts (0 CLS).
 * **Deep Archive Query UX & Live Telemetry**: Sticky catalog toolbar equipped with real-time roundtrip latency telemetry, direct page jumping, animated `Info` indicators, responsive mobile two-tier wrapping, and informative tooltips explaining relational SQL offsets across 70,000+ public domain volumes.
 * **Header Navigation & Brand Reset**: Clean top bar with unified iconography (**Catalog** `<BookOpen>`, **Bookshelf** `<Bookmark>`, **Favorites** `<Heart>`, **Notebook** `<Highlighter>`), dynamic solid fill states, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
-* **Progressive Web App (PWA) & Standalone Desktop/Mobile Installation**:
-  * Native Next.js 16 Web App Manifest (`manifest.ts`) declaring standalone display mode, brand obsidian/cream theme colors, and a full suite of standard and maskable PWA icons (`public/icons/`).
+* **Progressive Web App (PWA), Offline App Shell & Standalone Installation**:
+  * Native Next.js 16 Web App Manifest (`manifest.ts`) declaring standalone display mode, `id: '/?source=pwa'`, explicit `scope: '/'`, brand obsidian/cream theme colors, and a full suite of standard and maskable PWA icons (`public/icons/`).
+  * **Native Service Worker Offline Cache Engine (`public/sw.js`, `ServiceWorkerRegister.tsx`)**: Precaches the application shell and static assets, serving cached app shell navigation on offline requests so stored IndexedDB books can be read in airplane mode with zero network access.
   * Seamless 1-click home screen installation on iOS, Android, macOS, and Windows with zero browser address bar chrome.
 * **In-Reader Text Highlighting & Annotations Engine**:
-  * Direct prose text selection triggers a floating contextual toolbar (`TextHighlightPopover`) offering 4 editorial pastel highlighters (Canary Yellow, Vintage Amber, Calm Mint, Soft Rose).
-  * In-place color switching, single-quote deletion confirmation modals with quote previews, passage deduplication, and color-matched selection styling (`::selection`) across Light, Dark, and Sepia themes to eliminate default browser selection clashing.
+  * Direct prose text selection triggers a floating contextual toolbar (`TextHighlightPopover`) offering 4 editorial pastel highlighters (Canary Yellow, Vintage Amber, Calm Mint, Soft Rose) with coarse-pointer context menu clearance and touch dismissal.
+  * Chapter-scoped annotation filtering, in-place color switching, single-quote deletion confirmation modals with quote previews, passage deduplication, and color-matched selection styling (`::selection`) across Light, Dark, and Sepia themes to eliminate default browser selection clashing.
+  * Bilingual Parallel mode annotation integration rendering highlights and notes on both translated and original sentences.
   * Full-text searchable drawer (`ReaderAnnotationsDrawer`) with chapter/page coordinates, color filter tabs, and 1-click jumps.
-  * Dual-tier persistence: 100% offline-first in browser storage with Supabase PostgreSQL cloud sync, Row-Level Security (`public.user_annotations`), and an offline mutation outbox queue.
+  * Dual-tier persistence: 100% offline-first in browser storage with Supabase PostgreSQL cloud sync, Row-Level Security (`public.user_annotations`), persistent deletion tombstones preventing zombie note resurrection, and an offline mutation outbox queue.
 * **Literary Commonplace Notebook & Reading Journal (`/?view=notebook`)**:
   * Dedicated 4th navigation tab in the top header with active amber fill state, clean Booksaw editorial typography, and zero badge clutter.
   * Comprehensive reading journal view organizing all highlighted excerpts and personal marginalia across your entire library.
@@ -602,7 +604,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 711 tests across 105 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 720 tests across 106 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

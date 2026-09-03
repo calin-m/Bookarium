@@ -8,6 +8,8 @@ import { SITE_CONFIG } from '@/config/site-config';
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: '/?source=pwa',
+    scope: '/',
     name: 'Bookarium — Universal Public Domain Library & Reader',
     short_name: 'Bookarium',
     description: SITE_CONFIG.DESCRIPTION,

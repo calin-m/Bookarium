@@ -15,10 +15,13 @@ const RELEASES = [
     sections: {
       Added: [
         'Progressive Web App (PWA) Standalone Mode (`src/app/manifest.ts`, `src/app/layout.tsx`, `public/icons/`): Configured Next.js 16 web app manifest, mobile viewport, apple-touch-icon, and a suite of maskable/standard icons for home screen installation.',
+        'Native Service Worker Offline App Shell (`public/sw.js`, `ServiceWorkerRegister.tsx`): Built App Shell caching and offline navigation fallback enabling unabridged reading of saved IndexedDB books in airplane mode.',
         'Text Highlighting & Annotations Engine (`public.user_annotations`, `src/stores/useAnnotationStore.ts`): Built local-first persistence with Supabase PostgreSQL cloud sync, Row-Level Security, offline mutation outbox, and automatic guest-to-cloud merge upon login.',
-        'Contextual Text Highlight Popover (`src/components/reader/TextHighlightPopover.tsx`, `ReaderSurface.tsx`): Real-time text selection popover supporting 4 pastel highlight colors (Yellow, Amber, Mint, Rose), inline reflection editor, academic citation copying, and viewport boundary clamping.',
+        'Cloud Sync Deletion Tombstones & Quota Safety (`useAnnotationStore.ts`): Implemented persistent deletion tombstones eliminating cross-device zombie note resurrection, and store-level character clamping protecting localStorage quotas.',
+        'Contextual Text Highlight Popover (`src/components/reader/TextHighlightPopover.tsx`, `ReaderSurface.tsx`): Real-time text selection popover supporting 4 pastel highlight colors (Yellow, Amber, Mint, Rose), coarse-pointer context menu clearance, touchstart dismissal, and inline reflection editor.',
         'Single Note/Quote Deletion Confirmation Modals (`NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`, `read/[id]/page.tsx`): Guarded against accidental loss of quotes and marginalia reflections with accessible confirmation modals featuring formatted quote excerpt previews.',
         'Highlight-Specific Selection Styling (`globals.css`, `ReaderSurface.tsx`): Color-matched `::selection` styling for Canary Yellow, Vintage Amber, Calm Mint, and Soft Rose across Light, Dark, and Sepia themes, eliminating default browser/theme selection background clashing.',
+        'Bilingual Mode Annotation Integration (`ReaderSurface.tsx`): Enabled full highlight rendering and marginalia interaction inside Bilingual Parallel reading mode segments.',
         'Slide-Out Annotations Drawer (`src/components/reader/ReaderAnnotationsDrawer.tsx`): Focus reader drawer with full-text search across quotes and personal notes, 5 color filter tabs, chronological section/page coordinates, and direct 1-click chapter jumps.',
         'Literary Notebook Commonplace View (`src/components/presentation/NotebookView.tsx`, `Navbar.tsx`): Dedicated 4th navigation tab (`/?view=notebook`) displaying preserved passages, searchable across text, notes, and authors, with By-Book vs Chronological grouping, academic citation generation, and deep-linking to reader.',
         'Account Page Reading Journal Metric (`AccountLibraryStats.tsx`, `account/page.tsx`): Added a 4th metric card for "Notes & Quotes" in a responsive 2x2 grid with live reflection counts and direct deep-linking to the Commonplace Notebook.',
@@ -26,9 +29,11 @@ const RELEASES = [
         'Refined Clear & Delete Confirmation Modals (`NotebookView.tsx`, `app/page.tsx`, `ReaderAnnotationsDrawer.tsx`): Consistent `maxWidth="md"`, `p-6 space-y-5` padding, and warning iconography across all collection wipe and item deletion dialogs.',
       ],
       Changed: [
+        'Web Worker Async Unblocking & Stale-Data Hash Guard (`useGutenbergParserWorker.ts`): Eliminated main-thread CPU freeze by calculating synchronously only in fallback environments, and attached content hashes to isolate book switches and prevent stale TOC cross-talk.',
+        'Chapter-Scoped Annotation Anchoring (`app/read/[id]/page.tsx`): Scoped annotations to the active chapter to prevent duplicate text from falsely highlighting across different chapters.',
         'Booksaw Editorial Header Alignment (`src/components/presentation/NotebookView.tsx`): Aligned section eyebrow typography (`text-[11px] font-mono tracking-widest uppercase font-semibold`) and tactile page-turn animation to match Bookshelf and Favorites.',
         'Minimalist Navbar Notebook Tab (`src/components/presentation/Navbar.tsx`): Streamlined notebook navbar button by removing numeric counter badge and using dynamic amber fill state matching Bookshelf and Favorites icons.',
-        'Co-Located Test Suite Expansion: Expanded unit and integration test coverage across all 105 test suites and 711 tests with 91.87% line coverage.',
+        'Co-Located Test Suite Expansion: Expanded unit and integration test coverage across all 106 test suites and 720 tests with 91.92% line coverage.',
       ],
     },
   },

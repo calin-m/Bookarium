@@ -208,6 +208,10 @@ export default function BookReaderPage() {
     readingMode,
   });
 
+  const activeChapterAnnotations = useMemo(() => {
+    return bookAnnotations.filter((a) => a.chapterIndex === activeChapterIndex);
+  }, [bookAnnotations, activeChapterIndex]);
+
   const handleSelectSearchMatch = useCallback((chapterIndex: number, page: number) => {
     setActiveChapterIndex(chapterIndex);
     setCurrentChapterPage(page);
@@ -471,7 +475,7 @@ export default function BookReaderPage() {
         translationSegments={translationSegments}
         displayMode={displayMode}
         isTranslating={isTranslating}
-        annotations={bookAnnotations}
+        annotations={activeChapterAnnotations}
         onSelectAnnotation={handleSelectAnnotation}
         onTextSelected={handleTextSelected}
       />

@@ -252,12 +252,24 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
                           {seg.translated}
                         </mark>
                       ) : (
-                        seg.translated
+                        renderContentWithAnnotations(
+                          seg.translated,
+                          annotations,
+                          highlightedSentence,
+                          theme,
+                          onSelectAnnotation
+                        )
                       )}
                     </p>
                     {seg.original && (
                       <p className={`text-[0.85em] italic ${activeTheme.textMuted} font-serif leading-normal`}>
-                        {seg.original}
+                        {renderContentWithAnnotations(
+                          seg.original,
+                          annotations,
+                          undefined,
+                          theme,
+                          onSelectAnnotation
+                        )}
                       </p>
                     )}
                   </div>
