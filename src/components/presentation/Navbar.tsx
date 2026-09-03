@@ -3,8 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon } from 'lucide-react';
+import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon, Highlighter } from 'lucide-react';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
+import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/Button';
@@ -12,8 +13,8 @@ import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 
 export interface NavbarProps {
-  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'account';
-  onViewChange?: (view: 'catalog' | 'bookshelf' | 'likes') => void;
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'account';
+  onViewChange?: (view: 'catalog' | 'bookshelf' | 'likes' | 'notebook') => void;
   isVisible?: boolean;
 }
 
@@ -24,6 +25,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const router = useRouter();
   const { savedCount, likedCount, hasMounted } = useHydratedBookshelf();
+  const { annotations } = useHydratedAnnotations();
+  const annotationCount = annotations.length;
   const theme = useThemeStore((s) => s.theme);
   const cycleTheme = useThemeStore((s) => s.cycleTheme);
   const { user, openAuthModal } = useAuthStore();
@@ -134,6 +137,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               />
               <span className="hidden md:inline">Favorites</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onViewChange?.('notebook')}
+              title="Notebook"
+              className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+                activeView === 'notebook'
+                  ? 'text-amber-600 dark:text-amber-400 font-bold border-amber-500'
+                  : 'text-muted-foreground hover:text-foreground border-transparent'
+              }`}
+              aria-label="Notebook"
+            >
+              <Highlighter
+                className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                  hasMounted && annotationCount > 0
+                    ? 'fill-amber-500 text-amber-500'
+                    : 'fill-transparent'
+                }`}
+              />
+              <span className="hidden md:inline">Notebook</span>
             </button>
           </nav>
 

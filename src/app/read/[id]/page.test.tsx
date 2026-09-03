@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import BookReaderPage from './page';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { mockBooks } from '@/mocks/handlers';
 
 const mockPush = vi.fn();
@@ -95,6 +96,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useBookshelfStore.getState().clearBookshelf();
+    useAnnotationStore.getState().clearAllAnnotations();
     useReaderStore.getState().setFontSize(18);
     useReaderStore.getState().setTheme('light');
     useReaderStore.setState({
@@ -370,5 +372,122 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     // Close speech bar
     fireEvent.click(screen.getByRole('button', { name: 'Close Read Aloud' }));
     expect(screen.queryByTestId('reader-speech-bar')).not.toBeInTheDocument();
+  });
+
+  it('toggles Annotations & Notes drawer from reader header', () => {
+    render(<BookReaderPage />);
+
+    // Initially closed
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+
+    // Click notes button
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    fireEvent.click(notesBtn);
+
+    // Notes drawer appears
+    expect(screen.getByTestId('annotations-drawer-panel')).toBeInTheDocument();
+
+    // Close notes drawer
+    const closeBtn = screen.getByRole('button', { name: /Close Notes & Highlights/i });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+  });
+
+  it('allows user to select text, apply highlight color, update note, and delete from drawer', async () => {
+    const originalGetSelection = window.getSelection;
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'Pride and Prejudice',
+      getRangeAt: () => ({
+        getBoundingClientRect: () => ({ top: 200, left: 300, width: 150, height: 24 }),
+      }),
+    });
+
+    render(<BookReaderPage />);
+
+    // Trigger text selection via mouseUp on article
+    const article = screen.getByRole('article');
+    fireEvent.mouseUp(article);
+
+    // Popover appears
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+
+    // Click 'mint' color
+    const mintBtn = screen.getByTestId('highlight-color-mint');
+    await act(async () => {
+      fireEvent.click(mintBtn);
+    });
+
+    // Popover closes, highlight is rendered on the page!
+    await waitFor(() => {
+      expect(screen.queryByTestId('text-highlight-popover')).not.toBeInTheDocument();
+    });
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    expect(highlightMark).toHaveTextContent('Pride and Prejudice');
+    expect(highlightMark).toHaveAttribute('data-annotation-color', 'mint');
+
+    // Click highlight to re-open popover and add a note
+    await act(async () => {
+      fireEvent.click(highlightMark);
+    });
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+
+    // Expand note input and save note
+    const addNoteBtn = screen.getByTestId('highlight-add-note-btn');
+    fireEvent.click(addNoteBtn);
+    const textarea = screen.getByTestId('highlight-note-textarea');
+    fireEvent.change(textarea, { target: { value: 'Famous opening quote' } });
+    const saveNoteBtn = screen.getByTestId('highlight-save-note-btn');
+    await act(async () => {
+      fireEvent.click(saveNoteBtn);
+    });
+
+    // Verify in store
+    const stored = useAnnotationStore.getState().annotations;
+    expect(stored).toHaveLength(1);
+    expect(stored[0].note).toBe('Famous opening quote');
+
+    // Open Notes drawer and verify it appears with note
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    fireEvent.click(notesBtn);
+    expect(screen.getByText('Famous opening quote')).toBeInTheDocument();
+
+    // Jump to passage from drawer
+    const jumpBtn = screen.getByRole('button', { name: /Jump to passage/i });
+    fireEvent.click(jumpBtn);
+
+    // Drawer closes after jump
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+
+    // 6. Click highlight again, change color to rose, and verify in-place update without duplicates
+    const existingMark = screen.getByTestId('user-annotation-highlight');
+    await act(async () => {
+      fireEvent.click(existingMark);
+    });
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+
+    const roseBtn = screen.getByTestId('highlight-color-rose');
+    await act(async () => {
+      fireEvent.click(roseBtn);
+    });
+
+    // Annotations count remains 1 (never duplicate or stacked)
+    expect(useAnnotationStore.getState().annotations).toHaveLength(1);
+    expect(useAnnotationStore.getState().annotations[0].color).toBe('rose');
+    expect(screen.getByTestId('user-annotation-highlight')).toHaveAttribute('data-annotation-color', 'rose');
+
+    // 7. Click highlight again and delete it in a single click
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('user-annotation-highlight'));
+    });
+    const deleteBtn = screen.getByTestId('highlight-delete-btn');
+    await act(async () => {
+      fireEvent.click(deleteBtn);
+    });
+
+    expect(useAnnotationStore.getState().annotations).toHaveLength(0);
+    expect(screen.queryByTestId('user-annotation-highlight')).not.toBeInTheDocument();
+
+    window.getSelection = originalGetSelection;
   });
 });

@@ -28,4 +28,5 @@ export const STORAGE_KEYS = {
   READER_SETTINGS: 'bookarium-reader-preferences',
   PREFERENCES: 'bookarium-navigation-preferences',
   THEME: 'bookarium-theme-preference',
+  ANNOTATIONS: 'bookarium-annotations-storage',
 } as const;

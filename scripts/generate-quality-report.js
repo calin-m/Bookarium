@@ -209,4 +209,24 @@ All 7 Closed-Loop Quality Gateways passed with zero blockers. The application is
 `;
 
 fs.writeFileSync(reportMdPath, mdContent.trim() + '\n', 'utf-8');
+
+// Synchronize README.md test metrics and badges
+const readmePath = path.join(rootDir, 'README.md');
+if (fs.existsSync(readmePath)) {
+  let readme = fs.readFileSync(readmePath, 'utf-8');
+  readme = readme.replace(
+    /\[!\[Vitest\]\(https:\/\/img\.shields\.io\/badge\/Vitest-[^)]+\)\]\(docs\/QUALITY_AUDIT_REPORT\.md\)/,
+    `[![Vitest](https://img.shields.io/badge/Vitest-${totalSuitesCount}%20Suites%20%7C%20${totalTestCount}%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)`
+  );
+  readme = readme.replace(
+    /\[!\[Code Coverage\]\(https:\/\/img\.shields\.io\/badge\/Coverage-[^)]+\)\]\(docs\/QUALITY_AUDIT_REPORT\.md\)/,
+    `[![Code Coverage](https://img.shields.io/badge/Coverage-${coverage.lines.pct}%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)`
+  );
+  readme = readme.replace(
+    /complete index of all \d+ tests across \d+ test suites\./,
+    `complete index of all ${totalTestCount} tests across ${totalSuitesCount} test suites.`
+  );
+  fs.writeFileSync(readmePath, readme, 'utf-8');
+}
+
 console.log(`✔ [SUCCESS] Enriched Quality Audit Report and Test Catalog generated (${totalSuitesCount} suites / ${totalTestCount} tests).`);

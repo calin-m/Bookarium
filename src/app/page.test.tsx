@@ -336,5 +336,33 @@ describe('Home page integration', () => {
     fireEvent.click(clearSearchBtn);
     expect(screen.queryByText(/No volumes found matching/i)).not.toBeInTheDocument();
   });
+
+  it('should switch to Notebook view when Notebook tab in Navbar is clicked', async () => {
+    const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Integration test notebook passage',
+      color: 'yellow',
+      note: 'My favorite quote',
+    });
+
+    renderHome();
+
+    // Click Notebook tab in Navbar
+    const notebookTab = screen.getByRole('button', { name: /^Notebook/i });
+    expect(notebookTab).toBeInTheDocument();
+    fireEvent.click(notebookTab);
+
+    // Verify NotebookView rendered
+    expect(screen.getByText('Literary Notebook')).toBeInTheDocument();
+    expect(screen.getByText(/Integration test notebook passage/i)).toBeInTheDocument();
+    expect(screen.getByText('My favorite quote')).toBeInTheDocument();
+
+    useAnnotationStore.getState().clearAllAnnotations();
+  });
 });
 

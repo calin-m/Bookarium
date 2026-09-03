@@ -130,5 +130,15 @@ describe('useCatalogFilters', () => {
 
     (window as any).location = new URL('http://localhost:3000/');
   });
+
+  it('hydrates initial filter state with view=notebook', () => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/?view=notebook');
+
+    const { result } = renderHook(() => useCatalogFilters());
+    expect(result.current.activeView).toBe('notebook');
+
+    (window as any).location = new URL('http://localhost:3000/');
+  });
 });
 

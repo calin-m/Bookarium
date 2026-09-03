@@ -18,6 +18,41 @@ describe('Navbar component', () => {
     expect(screen.getByRole('button', { name: 'Catalog' })).toBeInTheDocument();
     expect(screen.getByLabelText('Bookshelf')).toBeInTheDocument();
     expect(screen.getByLabelText('Liked Books')).toBeInTheDocument();
+    expect(screen.getByLabelText('Notebook')).toBeInTheDocument();
+  });
+
+  it('should fill highlighter icon when annotations are saved in notebook', async () => {
+    const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Test quote',
+      color: 'yellow',
+    });
+
+    const { container } = render(<Navbar activeView="catalog" />);
+    const highlighterSvg = container.querySelector('svg.lucide-highlighter');
+    expect(highlighterSvg).toHaveClass('fill-amber-500');
+    expect(highlighterSvg).toHaveClass('text-amber-500');
+    expect(screen.queryByTestId('navbar-notebook-badge')).not.toBeInTheDocument();
+    useAnnotationStore.getState().clearAllAnnotations();
+  });
+
+  it('triggers onViewChange with notebook when Notebook tab is clicked', () => {
+    const handleViewChange = vi.fn();
+    render(<Navbar activeView="catalog" onViewChange={handleViewChange} />);
+
+    const notebookBtn = screen.getByLabelText('Notebook');
+    fireEvent.click(notebookBtn);
+    expect(handleViewChange).toHaveBeenCalledWith('notebook');
+  });
+
+  it('applies active styling when activeView is notebook', () => {
+    render(<Navbar activeView="notebook" />);
+    const notebookBtn = screen.getByLabelText('Notebook');
+    expect(notebookBtn).toHaveClass('font-bold');
+    expect(notebookBtn).toHaveClass('border-amber-500');
   });
 
   it('should fill bookmark icon when books are saved to bookshelf', () => {

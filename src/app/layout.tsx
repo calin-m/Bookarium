@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
 import { Providers } from './providers';
 import { SITE_CONFIG } from '@/config/site-config';
@@ -22,6 +22,15 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 });
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fcfbf9' },
+    { media: '(prefers-color-scheme: dark)', color: '#0e1117' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   title: 'Bookarium | Zero-Copyright Public Domain Library',
   description:
@@ -36,6 +45,16 @@ export const metadata: Metadata = {
     'Philosophy',
   ],
   authors: [{ name: `${SITE_CONFIG.NAME} Team` }],
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Bookarium',
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icons/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({

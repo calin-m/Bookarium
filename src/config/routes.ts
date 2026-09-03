@@ -15,10 +15,11 @@ export const ROUTES = {
   // View Query Targets
   BOOKSHELF: '/?view=bookshelf',
   LIKES: '/?view=likes',
+  NOTEBOOK: '/?view=notebook',
 
   // Dynamic Route Builders
   READ: (id: number | string) => `/read/${id}` as const,
-  VIEW: (view: 'catalog' | 'bookshelf' | 'likes') =>
+  VIEW: (view: 'catalog' | 'bookshelf' | 'likes' | 'notebook') =>
     (view === 'catalog' ? '/' : `/?view=${view}` as const),
 
   // API Proxy Routes

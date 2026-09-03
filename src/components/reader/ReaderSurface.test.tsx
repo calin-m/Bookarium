@@ -398,4 +398,137 @@ describe('ReaderSurface', () => {
     const markEl = screen.getByTestId('speech-highlight');
     expect(markEl).toHaveTextContent('Llamadme Ismael.');
   });
+
+  it('renders user annotations with designated highlight color marks and triggers onSelectAnnotation', () => {
+    const onSelectAnnotation = vi.fn();
+    const mockAnnotations = [
+      {
+        id: 'ann-1',
+        bookId: 1,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Alice was beginning to get very tired',
+        color: 'yellow' as const,
+        note: 'Classic opening',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        currentPageText="Alice was beginning to get very tired of sitting by her sister on the bank."
+        annotations={mockAnnotations}
+        onSelectAnnotation={onSelectAnnotation}
+      />
+    );
+
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    expect(highlightMark).toBeInTheDocument();
+    expect(highlightMark).toHaveTextContent('Alice was beginning to get very tired');
+    expect(highlightMark).toHaveAttribute('data-annotation-color', 'yellow');
+
+    fireEvent.click(highlightMark);
+    expect(onSelectAnnotation).toHaveBeenCalledWith(
+      mockAnnotations[0],
+      expect.objectContaining({
+        top: expect.any(Number),
+        left: expect.any(Number),
+      })
+    );
+  });
+
+  it('renders multiple annotations with amber, mint, and rose colors alongside speech highlight', () => {
+    const mockAnnotations = [
+      {
+        id: 'ann-1',
+        bookId: 1,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'First segment',
+        color: 'amber' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'ann-2',
+        bookId: 1,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Second segment',
+        color: 'mint' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'ann-3',
+        bookId: 1,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Third segment',
+        color: 'rose' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        currentPageText="Intro: First segment, then Middle with Second segment, and finally Third segment ending."
+        annotations={mockAnnotations}
+        highlightedSentence="Middle"
+      />
+    );
+
+    const highlights = screen.getAllByTestId('user-annotation-highlight');
+    expect(highlights).toHaveLength(3);
+    expect(highlights[0]).toHaveAttribute('data-annotation-color', 'amber');
+    expect(highlights[1]).toHaveAttribute('data-annotation-color', 'mint');
+    expect(highlights[2]).toHaveAttribute('data-annotation-color', 'rose');
+
+    const speechMark = screen.getByTestId('speech-highlight');
+    expect(speechMark).toHaveTextContent('Middle');
+  });
+
+  it('detects window text selection and triggers onTextSelected on mouseUp', () => {
+    const onTextSelected = vi.fn();
+    const mockRange = {
+      getBoundingClientRect: () => ({
+        top: 150,
+        left: 200,
+        width: 100,
+        height: 20,
+      }),
+    };
+
+    const originalGetSelection = window.getSelection;
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'selected quote from book',
+      getRangeAt: () => mockRange,
+    });
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        currentPageText="A fascinating selected quote from book here."
+        onTextSelected={onTextSelected}
+      />
+    );
+
+    const article = screen.getByRole('article');
+    fireEvent.mouseUp(article);
+
+    expect(onTextSelected).toHaveBeenCalledWith({
+      text: 'selected quote from book',
+      position: {
+        top: 150,
+        left: 250, // left + width / 2
+      },
+    });
+
+    window.getSelection = originalGetSelection;
+  });
 });
