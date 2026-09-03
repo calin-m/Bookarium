@@ -14,6 +14,14 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+vi.mock('@/components/presentation/Footer', () => ({
+  Footer: () => (
+    <footer data-testid="footer-mock">
+      <a aria-label="Bookarium GitHub repository" href="https://github.com">GitHub</a>
+    </footer>
+  ),
+}));
+
 describe('AccountPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -324,7 +332,9 @@ describe('AccountPage', () => {
     const sendLinkBtn = screen.getByRole('button', { name: /Send Deletion Link/i });
     fireEvent.click(sendLinkBtn);
 
-    await screen.findByText('Verification Link Sent');
+    await waitFor(() => {
+      expect(screen.getByText('Verification Link Sent')).toBeInTheDocument();
+    });
 
     const closeBtn = screen.getByRole('button', { name: /^Close$/i });
     fireEvent.click(closeBtn);

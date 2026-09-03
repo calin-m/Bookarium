@@ -10,6 +10,7 @@ export const ROUTES = {
   PROFILE: '/account',
   CONFIRM_DELETION: '/auth/confirm-deletion',
   AUTH_CALLBACK: '/auth/callback',
+  PRIVACY: '/privacy',
 
   // View Query Targets
   BOOKSHELF: '/?view=bookshelf',

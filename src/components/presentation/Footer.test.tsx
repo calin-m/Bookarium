@@ -14,5 +14,8 @@ describe('Footer component', () => {
     const githubLinks = screen.getAllByRole('link', { name: /bookarium/i });
     expect(githubLinks.length).toBeGreaterThanOrEqual(1);
     expect(githubLinks[0]).toHaveAttribute('href', 'https://github.com/calin-m/Bookarium');
+
+    const privacyLink = screen.getByRole('link', { name: /Privacy & Data Architecture/i });
+    expect(privacyLink).toHaveAttribute('href', '/privacy');
   });
 });

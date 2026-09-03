@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 09:15:54 GMT  
+**Last Generated**: Thu, 03 Sep 2026 10:15:02 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 92 passed  
-**Total Verified Tests**: 628 passed  
+**Total Test Suites**: 99 passed  
+**Total Verified Tests**: 635 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **92/92 test suites passed** (628 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **99/99 test suites passed** (635 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.39%** (3269/3538) — *Target: $ge$ 80%*
-- **Statements**: **90.65%** (3559/3926) — *Target: $ge$ 80%*
-- **Functions**: **87.64%** (837/955) — *Target: $ge$ 80%*
-- **Branches**: **81.03%** (3089/3812) — *Target: $ge$ 80%*
+- **Lines**: **92.43%** (3274/3542) — *Target: $ge$ 80%*
+- **Statements**: **90.68%** (3564/3930) — *Target: $ge$ 80%*
+- **Functions**: **87.66%** (839/957) — *Target: $ge$ 80%*
+- **Branches**: **81.13%** (3093/3812) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (92 Suites / 628 Tests)
+## 🧪 Comprehensive Test Suite Catalog (99 Suites / 635 Tests)
 
 ### 🚀 App Routes & Pages (9 Suites · 59 Tests)
 
@@ -657,7 +657,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (10 Suites · 108 Tests)
+### 📚 Gutenberg Parsers & Metadata (15 Suites · 111 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (9 tests)</summary>
@@ -675,31 +675,64 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg-parser.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/lib/gutenberg/metadata.test.ts</code></b> (2 tests)</summary>
 
-- ✔ `returns empty array on null or undefined input`
-- ✔ `correctly calculates reading time based on 200 WPM`
-- ✔ `reflows single-newline Gutenberg hard wraps while preserving double newlines`
-- ✔ `reflows standard Gutenberg paragraphs that have 4-space first-line indentation`
-- ✔ `preserves indented verse and poetry lines during reflow`
-- ✔ `calculates dynamic characters per page scaled by font size`
-- ✔ `parses structured Project Gutenberg eBook into preamble, chapters, and license colophon`
-- ✔ `suppresses front-matter Table of Contents cluster lines from becoming empty duplicate chapters`
-- ✔ `calculates true continuous volume page spreads`
-- ✔ `falls back cleanly to Complete Volume for unformatted single-block text`
 - ✔ `extracts Title and Author directly from Gutenberg header preamble`
+- ✔ `normalizes language names to standard codes`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/gutenberg/pagination.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `correctly calculates reading time based on 200 WPM`
+- ✔ `calculates dynamic characters per page scaled by font size`
+- ✔ `calculates true continuous volume page spreads`
 - ✔ `paginates chapter content snapping cleanly to sentence and word boundaries without splitting words`
-- ✔ `parses short story anthologies with front-matter CONTENTS lists into individual story sections`
+- ✔ `caches and retrieves paginated chapter content with clearPaginationCache support`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/gutenberg/passages.test.ts</code></b> (5 tests)</summary>
+
 - ✔ `returns empty array on empty or invalid text`
 - ✔ `extracts opening lines and authentic quote passages from full book text`
 - ✔ `extracts passages from a 5-chapter book across narrative arc`
 - ✔ `extracts passages from a 3-chapter and 2-chapter book`
 - ✔ `extracts passages from a single-chapter un-segmented text by paragraph chunks`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/gutenberg/reflow.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `reflows single-newline Gutenberg hard wraps while preserving double newlines`
+- ✔ `reflows standard Gutenberg paragraphs that have 4-space first-line indentation`
+- ✔ `preserves indented verse and poetry lines during reflow`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (9 tests)</summary>
+
+- ✔ `returns empty array on null or undefined input`
+- ✔ `falls back cleanly to Complete Volume for unformatted single-block text`
+- ✔ `parses structured Project Gutenberg eBook into preamble, chapters, and license colophon`
+- ✔ `suppresses front-matter Table of Contents cluster lines from becoming empty duplicate chapters`
+- ✔ `parses short story anthologies with front-matter CONTENTS lists into individual story sections`
 - ✔ `parses books formatted with standalone Roman numerals (such as The Great Gatsby)`
 - ✔ `parses multi-work anthologies with standalone titles and footnote brackets (e.g. Book 831 Four Arthurian Romances)`
 - ✔ `parses complex TOC without catastrophic backtracking or thread lock`
-- ✔ `caches and retrieves paginated chapter content with clearPaginationCache support`
 - ✔ `parses books formatted with dotted Roman numerals and subtitle lines (such as The Time Machine)`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/gutenberg-parser.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `re-exports all core Gutenberg subsystems and functions without regression`
+- ✔ `delegates parsing correctly through the facade`
 
 </details>
 
@@ -827,7 +860,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (15 Suites · 105 Tests)
+### 🔄 Hooks & React Query (16 Suites · 105 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
@@ -891,6 +924,17 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/reader/speech-utils.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `returns true for high-definition neural and natural voice names`
+- ✔ `returns false for standard mechanical or missing voice names`
+- ✔ `splits paragraphs into punctuation-delimited sentences`
+- ✔ `handles quotes and dialogue gracefully`
+- ✔ `returns empty array for empty or whitespace text`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/reader/useReaderDrawers.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `initializes with all drawers closed`
@@ -923,13 +967,8 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (17 tests)</summary>
 
-- ✔ `returns true for high-definition neural and natural voice names`
-- ✔ `returns false for standard mechanical or missing voice names`
-- ✔ `splits paragraphs into punctuation-delimited sentences`
-- ✔ `handles quotes and dialogue gracefully`
-- ✔ `returns empty array for empty or whitespace text`
 - ✔ `detects Web Speech API support and prioritizes Natural voices`
 - ✔ `plays sentences and updates playback state`
 - ✔ `pauses and resumes playback correctly`
@@ -1024,7 +1063,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (22 Suites · 72 Tests)
+### 🧩 UI Primitives & Motion (23 Suites · 76 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (15 tests)</summary>
@@ -1044,6 +1083,16 @@
 - ✔ `dismisses deletion verification confirmation screen on close button click`
 - ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
 - ✔ `handles resending email verification on unverified account`
+
+</details>
+
+<details>
+<summary><b><code>src/app/privacy/page.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `renders page header and architectural manifesto`
+- ✔ `renders all core GDPR and ePrivacy disclosure sections`
+- ✔ `provides working navigation links to catalog and account settings`
+- ✔ `handles Navbar view change callback by navigating via router`
 
 </details>
 
