@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+import { useCursorTooltip } from '@/hooks/useCursorTooltip';
+import { CursorTooltip } from '@/components/ui/CursorTooltip';
 import { BookOpen, Download, Bookmark, Heart, Sparkles, CheckCircle2, HardDriveDownload } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
@@ -73,16 +74,15 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
     : 'Anonymous';
   const progressPercent = readingProgress !== undefined ? Math.round(readingProgress) : null;
 
-  const [mousePos, setMousePos] = React.useState<{ x: number; y: number } | null>(null);
-  const [showTooltip, setShowTooltip] = React.useState(false);
-  const [hoveredAction, setHoveredAction] = React.useState<'read' | 'offline' | 'download' | 'bookshelf' | 'favorite' | null>(null);
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    setMousePos({
-      x: e.clientX,
-      y: e.clientY,
-    });
-  };
+  const {
+    mousePos,
+    showTooltip,
+    hoveredAction,
+    setHoveredAction,
+    setShowTooltip,
+    handleMouseMove,
+    handleMouseLeave,
+  } = useCursorTooltip<'read' | 'offline' | 'download' | 'bookshelf' | 'favorite'>({ initialAction: null });
 
   const tooltipContent = React.useMemo(() => {
     switch (hoveredAction) {
@@ -171,11 +171,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       <div
         className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden sm:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10"
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => {
-          setShowTooltip(false);
-          setHoveredAction(null);
-          setMousePos(null);
-        }}
+        onMouseLeave={handleMouseLeave}
       >
         <div className="flex items-start justify-between gap-1 mb-1.5">
           <span className="text-[10px] uppercase font-mono tracking-wider text-primary flex items-center gap-1">
@@ -351,23 +347,15 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       </div>
 
       {/* Unconstrained Portal Cursor Tooltip (Follows cursor at 12px offset, identical to BookCard) */}
-      {typeof document !== 'undefined' && showTooltip && mousePos && tooltipContent && createPortal(
-        <div
-          className="fixed z-[9999] pointer-events-none hidden sm:flex items-center transition-opacity duration-150 animate-in fade-in select-none"
-          style={{
-            left: `${mousePos.x}px`,
-            top: `${mousePos.y}px`,
-            transform: 'translate3d(12px, 14px, 0)',
-          }}
-          data-testid={`spine-tooltip-${book.id}`}
-        >
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-stone-900/90 dark:bg-stone-900/95 text-white text-[10px] font-mono font-medium shadow-xl backdrop-blur-xs border border-white/15 whitespace-nowrap">
-            {tooltipContent.icon}
-            <span>{tooltipContent.text}</span>
-          </span>
-        </div>,
-        document.body
-      )}
+      <CursorTooltip
+        isVisible={showTooltip && Boolean(tooltipContent)}
+        mousePos={mousePos}
+        className="hidden sm:flex"
+        testId={`spine-tooltip-${book.id}`}
+      >
+        {tooltipContent?.icon}
+        <span>{tooltipContent?.text}</span>
+      </CursorTooltip>
     </div>
   );
 };

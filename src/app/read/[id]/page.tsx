@@ -11,10 +11,8 @@ import { useThemeStore } from '@/stores/useThemeStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
   parseGutenbergChapters,
-  getCharsPerPage,
   calculateVolumePageSpread,
   extractGutenbergHeaderMetadata,
-  paginateChapterContent,
   type ChapterSection,
 } from '@/lib/gutenberg-parser';
 import { getReaderTheme } from '@/config/reader-themes';
@@ -29,6 +27,7 @@ import { ReaderSpeechBar } from '@/components/reader/ReaderSpeechBar';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
+import { useReaderSession } from '@/hooks/reader/useReaderSession';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { ROUTES } from '@/config/routes';
 
@@ -55,9 +54,6 @@ export default function BookReaderPage() {
   const setLineHeight = useReaderStore((s) => s.setLineHeight);
   const setFontFamily = useReaderStore((s) => s.setFontFamily);
   const setTheme = useReaderStore((s) => s.setTheme);
-  const setProgress = useReaderStore((s) => s.setProgress);
-  const saveReadingPosition = useReaderStore((s) => s.saveReadingPosition);
-  const getReadingPosition = useReaderStore((s) => s.getReadingPosition);
 
   // Persistent User Preferences
   const {
@@ -70,8 +66,6 @@ export default function BookReaderPage() {
   } = usePreferencesStore();
 
   // Local Reader State
-  const [activeChapterIndex, setActiveChapterIndex] = useState(0);
-  const [currentChapterPage, setCurrentChapterPage] = useState(1);
   const {
     isTocOpen,
     isSearchOpen,
@@ -82,10 +76,8 @@ export default function BookReaderPage() {
   } = useReaderDrawers();
   const [readingMode, setReadingMode] = useState<'paginated' | 'scroll'>('paginated');
   const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
-  const [resumeNotice, setResumeNotice] = useState<{ chapterTitle: string; page: number } | null>(null);
   const [dynamicTargetLanguage, setDynamicTargetLanguage] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<'translated' | 'bilingual'>('translated');
-  const hasRestoredPositionRef = React.useRef(false);
 
   // Synchronize global application theme with reader theme on mount
   useEffect(() => {
@@ -152,114 +144,37 @@ export default function BookReaderPage() {
     return calculateVolumePageSpread(rawChapters, fontSize);
   }, [rawChapters, fontSize]);
 
-  // Exact Page Bookmarking: Auto-Resume Position from Store
-  useEffect(() => {
-    if (hasRestoredPositionRef.current || !hasMounted || numericId <= 0 || chaptersWithPagination.length === 0) {
-      return;
-    }
-    const savedPos = getReadingPosition(numericId);
-    if (savedPos && (savedPos.chapterIndex > 0 || savedPos.chapterPage > 1)) {
-      const clampedChap = Math.min(Math.max(0, savedPos.chapterIndex), chaptersWithPagination.length - 1);
-      const targetChap = chaptersWithPagination[clampedChap];
-      const maxPage = targetChap?.pageCount || 1;
-      const clampedPage = Math.min(Math.max(1, savedPos.chapterPage), maxPage);
-
-      queueMicrotask(() => {
-        setActiveChapterIndex(clampedChap);
-        setCurrentChapterPage(clampedPage);
-        setResumeNotice({
-          chapterTitle: targetChap?.displayTitle || targetChap?.title || `Chapter ${clampedChap + 1}`,
-          page: clampedPage,
-        });
-      });
-
-      // Auto-hide resume notice after 4 seconds
-      const timer = setTimeout(() => {
-        setResumeNotice(null);
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
-    hasRestoredPositionRef.current = true;
-  }, [hasMounted, numericId, chaptersWithPagination, getReadingPosition]);
-
-  const activeChapter = chaptersWithPagination[activeChapterIndex] || chaptersWithPagination[0];
-  const activeChapterPageCount = activeChapter?.pageCount || 1;
-
-  // Retrieve Current Page Text for Paginated Mode
-  const currentPageText = useMemo(() => {
-    if (!activeChapter?.content) return '';
-    if (readingMode === 'scroll') return activeChapter.content;
-
-    const pages = activeChapter.pages || paginateChapterContent(activeChapter.content, getCharsPerPage(fontSize));
-    return pages[currentChapterPage - 1] || pages[0] || '';
-  }, [activeChapter, currentChapterPage, fontSize, readingMode]);
-
-  // Global Page & Progress Calculations
-  const currentGlobalPage = (activeChapter?.startPageNumber || 1) + (currentChapterPage - 1);
-  const volumeProgress =
-    currentGlobalPage <= 1 || totalVolumePages <= 1
-      ? 0
-      : Math.min(100, Math.max(0, Math.round(((currentGlobalPage - 1) / (totalVolumePages - 1)) * 100)));
-
-  // Sync Progress & Exact Position to Store
-  useEffect(() => {
-    if (numericId > 0 && totalVolumePages > 0) {
-      setProgress(numericId, volumeProgress);
-      if (hasRestoredPositionRef.current) {
-        saveReadingPosition(numericId, {
-          chapterIndex: activeChapterIndex,
-          chapterPage: currentChapterPage,
-          globalPage: currentGlobalPage,
-          lastReadAt: new Date().toISOString(),
-        });
-      }
-    }
-  }, [numericId, volumeProgress, totalVolumePages, activeChapterIndex, currentChapterPage, currentGlobalPage, setProgress, saveReadingPosition]);
-
-  // Navigation Handlers
-  const handlePrevPage = useCallback(() => {
-    if (currentChapterPage > 1) {
-      setCurrentChapterPage((p) => p - 1);
-    } else if (activeChapterIndex > 0) {
-      const prevChapterIndex = activeChapterIndex - 1;
-      const prevChapter = chaptersWithPagination[prevChapterIndex];
-      setActiveChapterIndex(prevChapterIndex);
-      setCurrentChapterPage(prevChapter ? prevChapter.pageCount : 1);
-    }
-  }, [currentChapterPage, activeChapterIndex, chaptersWithPagination]);
-
-  const handleNextPage = useCallback(() => {
-    if (currentChapterPage < activeChapterPageCount) {
-      setCurrentChapterPage((p) => p + 1);
-    } else if (activeChapterIndex < chaptersWithPagination.length - 1) {
-      setActiveChapterIndex((idx) => idx + 1);
-      setCurrentChapterPage(1);
-    }
-  }, [currentChapterPage, activeChapterPageCount, activeChapterIndex, chaptersWithPagination.length]);
-
-  const handleSelectChapter = useCallback((index: number) => {
-    setActiveChapterIndex(index);
-    setCurrentChapterPage(1);
-  }, []);
-
-  const handlePageJump = useCallback((targetPage: number) => {
-    let accumulatedPages = 0;
-    for (let i = 0; i < chaptersWithPagination.length; i++) {
-      const chap = chaptersWithPagination[i];
-      if (targetPage <= accumulatedPages + chap.pageCount) {
-        setActiveChapterIndex(i);
-        setCurrentChapterPage(Math.max(1, targetPage - accumulatedPages));
-        return;
-      }
-      accumulatedPages += chap.pageCount;
-    }
-  }, [chaptersWithPagination]);
+  const {
+    activeChapterIndex,
+    setActiveChapterIndex,
+    currentChapterPage,
+    setCurrentChapterPage,
+    activeChapter,
+    activeChapterPageCount,
+    currentPageText,
+    currentGlobalPage,
+    volumeProgress,
+    resumeNotice,
+    dismissResumeNotice,
+    handlePrevPage,
+    handleNextPage,
+    handleSelectChapter,
+    handlePageJump,
+    handleRestart,
+  } = useReaderSession({
+    numericId,
+    hasMounted,
+    chaptersWithPagination,
+    totalVolumePages,
+    fontSize,
+    readingMode,
+  });
 
   const handleSelectSearchMatch = useCallback((chapterIndex: number, page: number) => {
     setActiveChapterIndex(chapterIndex);
     setCurrentChapterPage(page);
     closeDrawer();
-  }, [closeDrawer]);
+  }, [closeDrawer, setActiveChapterIndex, setCurrentChapterPage]);
 
   // Keyboard Navigation
   useEffect(() => {
@@ -367,12 +282,8 @@ export default function BookReaderPage() {
         theme={theme}
         onThemeChange={setTheme}
         resumeNotice={resumeNotice}
-        onRestart={() => {
-          setActiveChapterIndex(0);
-          setCurrentChapterPage(1);
-          setResumeNotice(null);
-        }}
-        onDismissResume={() => setResumeNotice(null)}
+        onRestart={handleRestart}
+        onDismissResume={dismissResumeNotice}
         translations={translations}
         isTranslationsLoading={isTranslationsLoading}
         onSelectTranslation={(targetBookId) => {

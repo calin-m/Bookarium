@@ -59,20 +59,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     downloadAllProgress: offlineProgress,
   } = useOfflineBooks();
 
-  const [showDownloadSuccess, setShowDownloadSuccess] = useState(false);
-  const prevDownloadingRef = useRef(false);
-
-  useEffect(() => {
-    if (prevDownloadingRef.current && !isDownloadingOffline) {
-      setShowDownloadSuccess(true);
-      const timer = setTimeout(() => {
-        setShowDownloadSuccess(false);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-    prevDownloadingRef.current = isDownloadingOffline;
-  }, [isDownloadingOffline]);
-
   const handleToggleOffline = async (book: GutendexBook) => {
     if (isBookOffline(book.id)) {
       await removeBook(book.id);
@@ -301,32 +287,32 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     : 'Downloading...'}
                 </span>
               </Button>
-            ) : showDownloadSuccess ? (
-              <Button
-                variant="outline"
-                size="chip"
-                onClick={() => setIsClearingOfflineShelf(true)}
-                className="text-xs font-mono gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                title="All books saved offline. Click to clear offline shelf."
-                aria-label="All Saved Offline"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="hidden sm:inline font-medium">All Saved Offline</span>
-                <span className="sm:hidden font-medium">Saved</span>
-              </Button>
             ) : effectiveShelfBooks.every((b) => isBookOffline(b.id)) ? (
-              <Button
-                variant="outline"
-                size="chip"
-                onClick={() => setIsClearingOfflineShelf(true)}
-                className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
-                title="Clear all downloaded offline books on this shelf"
-                aria-label="Clear Offline Shelf"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                <span className="hidden sm:inline">Clear Offline Shelf</span>
-                <span className="sm:hidden">Clear Offline</span>
-              </Button>
+              <div className="flex items-center gap-1.5">
+                <div
+                  role="status"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 select-none cursor-default"
+                  title="All books on this shelf are saved for offline reading"
+                  aria-label="All Saved for Offline"
+                  data-testid="all-saved-offline-notice"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="hidden sm:inline font-medium">All Saved for Offline</span>
+                  <span className="sm:hidden font-medium">Saved</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="chip"
+                  onClick={() => setIsClearingOfflineShelf(true)}
+                  className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
+                  title="Clear all downloaded offline books on this shelf"
+                  aria-label="Clear Offline Shelf"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  <span className="hidden sm:inline">Clear Offline Shelf</span>
+                  <span className="sm:hidden">Clear</span>
+                </Button>
+              </div>
             ) : (
               <Button
                 variant="outline"

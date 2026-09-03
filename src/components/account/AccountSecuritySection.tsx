@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
+import type { PasswordStrength } from '@/lib/password';
 
 export interface AccountSecuritySectionProps {
   newPassword: string;
@@ -132,16 +134,8 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
 
           {/* Live Password Strength Meter */}
           {newPassword.length > 0 && (
-            <div className="space-y-1 pt-1">
-              <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-muted-foreground">Password strength:</span>
-                <span className="font-bold text-foreground">{strength.label}</span>
-              </div>
-              <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden flex gap-1">
-                <div className={`h-full flex-1 rounded-full transition-all duration-200 ${strength.score >= 1 ? strength.color : 'bg-transparent'}`} />
-                <div className={`h-full flex-1 rounded-full transition-all duration-200 ${strength.score >= 2 ? strength.color : 'bg-transparent'}`} />
-                <div className={`h-full flex-1 rounded-full transition-all duration-200 ${strength.score >= 3 ? strength.color : 'bg-transparent'}`} />
-              </div>
+            <div className="pt-1">
+              <PasswordStrengthMeter strength={strength as PasswordStrength} />
             </div>
           )}
 

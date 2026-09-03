@@ -579,11 +579,18 @@ describe('BookshelfRack Component', () => {
     fetchSpy.mockRestore();
   });
 
-  it('renders Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll', async () => {
+  it('renders All Saved for Offline notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll', async () => {
     const { getOfflineBookIds, removeOfflineBook } = await import('@/lib/offline-storage');
     vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
 
     render(<BookshelfRack books={mockBooks.slice(0, 1)} />);
+
+    // Verify "All Saved for Offline" is rendered as a status notice, NOT as a button
+    const notice = await screen.findByTestId('all-saved-offline-notice');
+    expect(notice).toBeInTheDocument();
+    expect(notice).toHaveAttribute('role', 'status');
+    expect(within(notice).getByText('All Saved for Offline')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /All Saved/i })).toBeNull();
 
     const clearShelfBtn = await screen.findByRole('button', { name: /Clear Offline Shelf/i });
     expect(clearShelfBtn).toBeInTheDocument();

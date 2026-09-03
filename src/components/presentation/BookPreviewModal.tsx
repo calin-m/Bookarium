@@ -1,11 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, RotateCw, Quote, BookOpen } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
-import { getBookPassages, BookPassage } from '@/config/featured-books';
-import { extractDynamicBookPassages } from '@/lib/gutenberg-parser';
-import { useBookContent } from '@/hooks/queries/useBookContent';
+import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { BookCard } from './BookCard';
@@ -37,65 +35,24 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const [isGlidedIn, setIsGlidedIn] = useState(false);
   const [isCoverOpen, setIsCoverOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [activePassageIndex, setActivePassageIndex] = useState(0);
-  const [prevPassageIndex, setPrevPassageIndex] = useState(0);
-  const [prevBookId, setPrevBookId] = useState<number | null>(book?.id ?? null);
-  const [isTurningLeaf, setIsTurningLeaf] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  if (book && book.id !== prevBookId) {
-    setPrevBookId(book.id);
-    setActivePassageIndex(0);
-    setPrevPassageIndex(0);
-  }
-
-  // On-demand fetch of authentic book content (strictly enabled ONLY when modal is open and book is clicked)
-  const targetBookId = isOpen && book?.id ? book.id : undefined;
-  const { data: rawBookText } = useBookContent(undefined, targetBookId);
-
-  const curatedPassages = useMemo(() => {
-    return book
-      ? getBookPassages({
-          id: book.id,
-          title: book.title,
-          authors: book.authors,
-          subjects: book.subjects,
-        })
-      : [];
-  }, [book]);
-
-  const dynamicPassages = useMemo(() => {
-    if (book && rawBookText) {
-      return extractDynamicBookPassages(rawBookText, {
-        id: book.id,
-        title: book.title,
-        authors: book.authors,
-        subjects: book.subjects,
-      });
-    }
-    return [];
-  }, [book, rawBookText]);
-
-  // Keep index 0 rock-solid on curated opening quote so text never pops/changes mid-open,
-  // while seamlessly supplying live extracted multi-chapter passages for the shuffle queue
-  const passages: BookPassage[] = useMemo(() => {
-    const baseFirstPassage = curatedPassages[0] || dynamicPassages[0];
-    if (!baseFirstPassage) return [];
-
-    if (dynamicPassages.length > 1) {
-      return [baseFirstPassage, ...dynamicPassages.slice(1)];
-    }
-
-    return curatedPassages.length > 0 ? curatedPassages : [baseFirstPassage];
-  }, [curatedPassages, dynamicPassages]);
-
-  const currentPassage = passages[activePassageIndex] || {
-    chapterLabel: 'Chapter I',
-    openingLine: 'Preserved in the public domain for all readers.',
-    quoteExcerpt: 'A timeless literary classic.',
-  };
-
-  const prevPassage = passages[prevPassageIndex] || currentPassage;
+  const {
+    passages,
+    currentPassage,
+    prevPassage,
+    activePassageIndex,
+    prevPassageIndex,
+    isTurningLeaf,
+    setIsTurningLeaf,
+    shuffleNextPassage: handleShuffle,
+  } = useBookPassageShuffle({
+    id: book?.id ?? 0,
+    title: book?.title ?? '',
+    authors: book?.authors ?? [],
+    subjects: book?.subjects ?? [],
+    enabled: isOpen,
+  });
 
   // FLIP Origin Rect calculation with 1:1 Pixel-Perfect Dimensions & Continuous 450ms Fluid Landing Curve
   const flipData = React.useMemo(() => {
@@ -173,15 +130,8 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
       onClose();
       setIsClosing(false);
     }, flipData.durationMs);
-  }, [isClosing, onClose, onWillClose, flipData.durationMs]);
+  }, [isClosing, onClose, onWillClose, flipData.durationMs, setIsTurningLeaf]);
 
-  const handleShuffle = React.useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (isTurningLeaf || passages.length <= 1) return;
-    setPrevPassageIndex(activePassageIndex);
-    setActivePassageIndex((prev) => (prev + 1) % passages.length);
-    setIsTurningLeaf(true);
-  }, [isTurningLeaf, passages.length, activePassageIndex]);
 
   // Freeze background scrolling without modifying body dimensions or scrollbars (zero layout shift)
   useEffect(() => {

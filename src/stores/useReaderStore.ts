@@ -26,8 +26,14 @@ export interface ReaderState {
   readingPositions: Record<number, BookReadingPosition>;
   isMobileTrayOpen: boolean;
 
-  // Actions
+  /**
+   * Sets the active book identity in memory prior to navigating to /read/[id].
+   * Also sets isOpen: true for compatibility.
+   */
   openReader: (book: GutendexBook) => void;
+  /**
+   * Resets active reading state flag.
+   */
   closeReader: () => void;
   setFontSize: (size: number) => void;
   setLineHeight: (height: number) => void;

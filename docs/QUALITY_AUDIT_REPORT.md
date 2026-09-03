@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 07:35:13 GMT  
+**Last Generated**: Thu, 03 Sep 2026 08:30:32 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 83 passed  
-**Total Verified Tests**: 594 passed  
+**Total Test Suites**: 92 passed  
+**Total Verified Tests**: 627 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **83/83 test suites passed** (594 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **92/92 test suites passed** (627 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.23%** (3253/3527) — *Target: $ge$ 80%*
-- **Statements**: **90.38%** (3544/3921) — *Target: $ge$ 80%*
-- **Functions**: **87.07%** (829/952) — *Target: $ge$ 80%*
-- **Branches**: **80.75%** (3080/3814) — *Target: $ge$ 80%*
+- **Lines**: **92.54%** (3254/3516) — *Target: $ge$ 80%*
+- **Statements**: **90.79%** (3542/3901) — *Target: $ge$ 80%*
+- **Functions**: **87.88%** (834/949) — *Target: $ge$ 80%*
+- **Branches**: **81.27%** (3082/3792) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (83 Suites / 594 Tests)
+## 🧪 Comprehensive Test Suite Catalog (92 Suites / 627 Tests)
 
 ### 🚀 App Routes & Pages (9 Suites · 59 Tests)
 
@@ -149,7 +149,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (16 Suites · 128 Tests)
+### 🎨 Catalog & Presentation (17 Suites · 131 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -272,7 +272,7 @@
 - ✔ `handles moving a book to another shelf and default read routing from mobile action sheet`
 - ✔ `renders offline download button and triggers download all`
 - ✔ `renders individual offline download button on book spine and triggers toggle`
-- ✔ `renders Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll`
+- ✔ `renders All Saved for Offline notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll`
 
 </details>
 
@@ -301,6 +301,15 @@
 <summary><b><code>src/components/presentation/Footer.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `should render legal manifesto, links, and attribution`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders book title, author, and public domain badges`
+- ✔ `triggers shuffle when shuffle button is clicked`
+- ✔ `triggers read callback when Read button is clicked`
 
 </details>
 
@@ -375,7 +384,16 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (11 Suites · 80 Tests)
+### 📖 In-Browser Focus Reader (13 Suites · 85 Tests)
+
+<details>
+<summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders null when not open`
+- ✔ `renders volume metadata, title, and handles close action`
+- ✔ `triggers onClose when clicking backdrop`
+
+</details>
 
 <details>
 <summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (7 tests)</summary>
@@ -487,6 +505,14 @@
 - ✔ `calls onClose when clicking close button`
 - ✔ `adapts properly to sepia and dark themes`
 - ✔ `renders with mobile-responsive positioning and WCAG touch target classes`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderSubHeaderRibbon.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders default archival metadata, section counter, and progress pill`
+- ✔ `renders resume notice when resumeNotice data is provided`
 
 </details>
 
@@ -630,7 +656,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (9 Suites · 100 Tests)
+### 📚 Gutenberg Parsers & Metadata (10 Suites · 108 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (9 tests)</summary>
@@ -702,6 +728,20 @@
 - ✔ `fetches all offline book IDs`
 - ✔ `retrieves all offline books metadata without returning full text payloads`
 - ✔ `clears all offline books`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/password.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `generates a password of default length 16`
+- ✔ `generates a password of custom length`
+- ✔ `produces distinct passwords on successive calls (entropy check)`
+- ✔ `handles empty or null string`
+- ✔ `handles passwords shorter than 6 characters as Too short`
+- ✔ `rates standard 6-character passwords as Weak`
+- ✔ `rates mixed-case alphanumeric passwords as Moderate`
+- ✔ `rates long complex passwords with symbols as Strong`
 
 </details>
 
@@ -786,7 +826,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (12 Suites · 94 Tests)
+### 🔄 Hooks & React Query (15 Suites · 105 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
@@ -872,6 +912,16 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (4 tests)</summary>
+
+- ✔ `initializes on chapter 0 and page 1`
+- ✔ `handles next and previous page transitions across chapters`
+- ✔ `allows chapter selection and restart to chapter 0 page 1`
+- ✔ `jumps to target page accurately across chapters`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `returns true for high-definition neural and natural voice names`
@@ -900,6 +950,15 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/useBookPassageShuffle.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `initializes with curated fallback passages for known books`
+- ✔ `cycles to the next passage on shuffleNextPassage`
+- ✔ `resets passages to index 0 on resetPassages`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
@@ -909,6 +968,16 @@
 - ✔ `resets all filters cleanly`
 - ✔ `toggles view modes and drawer visibility`
 - ✔ `hydrates initial filter state from window.location.search including view=bookshelf`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useCursorTooltip.test.ts</code></b> (4 tests)</summary>
+
+- ✔ `initializes with default state`
+- ✔ `updates mouse coordinates on handleMouseMove`
+- ✔ `activates tooltip after specified delay on mouseEnter`
+- ✔ `cleans up state and resets action on mouseLeave`
 
 </details>
 
@@ -954,7 +1023,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (20 Suites · 66 Tests)
+### 🧩 UI Primitives & Motion (22 Suites · 72 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (15 tests)</summary>
@@ -1067,6 +1136,15 @@
 </details>
 
 <details>
+<summary><b><code>src/components/ui/CursorTooltip.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders null when not visible`
+- ✔ `renders null when mousePos is null`
+- ✔ `renders in document.body with applied coordinate offsets`
+
+</details>
+
+<details>
 <summary><b><code>src/components/ui/Input.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `should render input and handle text changes`
@@ -1080,6 +1158,15 @@
 - ✔ `should not render anything when isOpen is false`
 - ✔ `should render modal content when isOpen is true`
 - ✔ `should trigger onClose when clicking backdrop or pressing Escape`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/PasswordStrengthMeter.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders nothing when strength is empty or score is 0 without label`
+- ✔ `renders score segments and label for Moderate password`
+- ✔ `renders all 3 segments filled for Strong password`
 
 </details>
 
