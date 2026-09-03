@@ -513,4 +513,103 @@ describe('useReaderSpeech', () => {
     });
     expect(onVoiceChange).toHaveBeenCalledWith('Jenny');
   });
+
+  it('skips empty whitespace sentences when narrating', () => {
+    const { result } = renderHook(() =>
+      useReaderSpeech({
+        text: 'Valid sentence one.    . Valid sentence two.',
+      })
+    );
+
+    act(() => {
+      result.current.play(1);
+    });
+
+    expect(result.current.isPlaying).toBe(true);
+  });
+
+  it('clears active inter-sentence delay timeout on stop()', () => {
+    const { result } = renderHook(() =>
+      useReaderSpeech({
+        text: 'Sentence one. Sentence two.',
+      })
+    );
+
+    act(() => {
+      result.current.play(0);
+    });
+
+    // trigger onend which schedules inter-sentence timeout
+    act(() => {
+      if (lastUtterance?.onend) {
+        lastUtterance.onend();
+      }
+    });
+
+    act(() => {
+      result.current.stop();
+    });
+
+    expect(result.current.isPlaying).toBe(false);
+    expect(result.current.currentSentenceIndex).toBe(0);
+  });
+
+  it('handles Chromium fallback polling timers on mount and text flip during active sentence delay', () => {
+    const { result, rerender } = renderHook(
+      ({ text }) =>
+        useReaderSpeech({
+          text,
+        }),
+      { initialProps: { text: 'Initial sentence one. Initial sentence two.' } }
+    );
+
+    // Advance fake timers to execute Chromium fallback mount timers (100ms & 350ms)
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    act(() => {
+      result.current.play(0);
+    });
+
+    // trigger onend to set timeoutRef
+    act(() => {
+      if (lastUtterance?.onend) {
+        lastUtterance.onend();
+      }
+    });
+
+    // Flip text while inter-sentence delay is active to verify branch 324-325
+    rerender({ text: 'Brand new page sentence.' });
+
+    expect(result.current.currentSentenceIndex).toBe(0);
+  });
+
+  it('hydrates voices when voices load asynchronously after initial mount (Chromium cold start)', () => {
+    const originalGetVoices = window.speechSynthesis.getVoices;
+    (window.speechSynthesis as any).getVoices = vi
+      .fn()
+      .mockReturnValueOnce([]) // useState empty
+      .mockReturnValueOnce([]) // useState empty
+      .mockReturnValueOnce([]) // useState empty
+      .mockReturnValueOnce([]) // useState empty
+      .mockReturnValue(mockVoices);
+
+    const { result } = renderHook(() =>
+      useReaderSpeech({
+        text: 'Async hydration test.',
+      })
+    );
+
+    act(() => {
+      if (window.speechSynthesis.onvoiceschanged) {
+        (window.speechSynthesis.onvoiceschanged as any)();
+      }
+    });
+
+    expect(result.current.availableVoices.length).toBeGreaterThan(0);
+    expect(result.current.selectedVoice).not.toBeNull();
+
+    (window.speechSynthesis as any).getVoices = originalGetVoices;
+  });
 });
