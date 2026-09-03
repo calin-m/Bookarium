@@ -92,6 +92,70 @@
     background-color: #4a3022;
     color: #fef6eb;
   }
+
+  /* Annotation Highlight Specific Selection Styles */
+  mark[data-annotation-color="yellow"]::selection,
+  mark[data-annotation-color="yellow"] *::selection {
+    background-color: rgba(252, 211, 77, 0.65) !important;
+    color: inherit !important;
+  }
+  mark[data-annotation-color="amber"]::selection,
+  mark[data-annotation-color="amber"] *::selection {
+    background-color: rgba(253, 186, 116, 0.65) !important;
+    color: inherit !important;
+  }
+  mark[data-annotation-color="mint"]::selection,
+  mark[data-annotation-color="mint"] *::selection {
+    background-color: rgba(110, 231, 183, 0.65) !important;
+    color: inherit !important;
+  }
+  mark[data-annotation-color="rose"]::selection,
+  mark[data-annotation-color="rose"] *::selection {
+    background-color: rgba(253, 164, 175, 0.65) !important;
+    color: inherit !important;
+  }
+
+  .dark mark[data-annotation-color="yellow"]::selection,
+  .dark mark[data-annotation-color="yellow"] *::selection {
+    background-color: rgba(245, 158, 11, 0.5) !important;
+    color: inherit !important;
+  }
+  .dark mark[data-annotation-color="amber"]::selection,
+  .dark mark[data-annotation-color="amber"] *::selection {
+    background-color: rgba(249, 115, 22, 0.5) !important;
+    color: inherit !important;
+  }
+  .dark mark[data-annotation-color="mint"]::selection,
+  .dark mark[data-annotation-color="mint"] *::selection {
+    background-color: rgba(16, 185, 129, 0.5) !important;
+    color: inherit !important;
+  }
+  .dark mark[data-annotation-color="rose"]::selection,
+  .dark mark[data-annotation-color="rose"] *::selection {
+    background-color: rgba(244, 63, 94, 0.5) !important;
+    color: inherit !important;
+  }
+
+  .sepia mark[data-annotation-color="yellow"]::selection,
+  .sepia mark[data-annotation-color="yellow"] *::selection {
+    background-color: rgba(217, 119, 6, 0.5) !important;
+    color: #fef6eb !important;
+  }
+  .sepia mark[data-annotation-color="amber"]::selection,
+  .sepia mark[data-annotation-color="amber"] *::selection {
+    background-color: rgba(194, 65, 12, 0.5) !important;
+    color: #fef6eb !important;
+  }
+  .sepia mark[data-annotation-color="mint"]::selection,
+  .sepia mark[data-annotation-color="mint"] *::selection {
+    background-color: rgba(5, 150, 105, 0.5) !important;
+    color: #fef6eb !important;
+  }
+  .sepia mark[data-annotation-color="rose"]::selection,
+  .sepia mark[data-annotation-color="rose"] *::selection {
+    background-color: rgba(225, 29, 72, 0.5) !important;
+    color: #fef6eb !important;
+  }
 }
 
 /* Booksaw Open Book / Card Shadow & Realistic 3D Paper Spread */

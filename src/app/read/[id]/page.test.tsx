@@ -476,13 +476,19 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(useAnnotationStore.getState().annotations[0].color).toBe('rose');
     expect(screen.getByTestId('user-annotation-highlight')).toHaveAttribute('data-annotation-color', 'rose');
 
-    // 7. Click highlight again and delete it in a single click
+    // 7. Click highlight again, open confirmation modal, and delete it
     await act(async () => {
       fireEvent.click(screen.getByTestId('user-annotation-highlight'));
     });
     const deleteBtn = screen.getByTestId('highlight-delete-btn');
     await act(async () => {
       fireEvent.click(deleteBtn);
+    });
+
+    expect(screen.getByTestId('delete-single-note-dialog')).toBeInTheDocument();
+    const confirmBtn = screen.getByRole('button', { name: /Delete Note/i });
+    await act(async () => {
+      fireEvent.click(confirmBtn);
     });
 
     expect(useAnnotationStore.getState().annotations).toHaveLength(0);

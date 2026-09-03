@@ -2,15 +2,15 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-79%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-11_of_14-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-80%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-12_of_15-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[████████████████░░░░]` **11/14 (79%)**
+`[████████████████░░░░]` **12/15 (80%)**
 
 ---
 
@@ -51,16 +51,18 @@
 ---
 
 ### Milestone 2: Scholar Annotations & Data Portability (`Target: v1.9.0`)
-`[█████████████░░░░░░░]` **2/3 (67%)**
+`[███████████████░░░░░]` **3/4 (75%)**
 
 > Transform Bookarium into a tactile literary notebook with colored quote highlights, personal annotations, and full library export/import.
 
 - [x] **Text Highlighting & Annotations Drawer** `✅ VERIFIED`
   Interactive text selection popover in `ReaderSurface.tsx` supporting 4 editorial pastel colors (Yellow, Amber, Mint, Rose) and personal notes stored in `useAnnotationStore.ts`.
-- [ ] **Library Portability: Export & Import** `⏳ PLANNED`
-  Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.
+- [x] **Literary Commonplace Notebook & Reading Journal** `✅ VERIFIED`
+  Dedicated commonplace journal (`/?view=notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, academic citation generation, and deletion protection.
 - [x] **IndexedDB Offline Book Storage** `✅ VERIFIED`
   Ultra-lightweight local caching of downloaded and saved book texts using IndexedDB (`idb-keyval`), enabling unabridged reading on airplanes or offline.
+- [ ] **Library Portability: Export & Import** `⏳ PLANNED`
+  Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.
 
 ---
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { NotebookView } from './NotebookView';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
@@ -241,7 +241,7 @@ describe('NotebookView component', () => {
     expect(mockPush).toHaveBeenCalledWith('/read/1342?chapter=2&page=5');
   });
 
-  it('deletes an individual quote card when delete button is clicked', async () => {
+  it('shows confirmation modal and deletes an individual quote card when confirmed', async () => {
     const ann = await useAnnotationStore.getState().addAnnotation({
       bookId: 1342,
       bookTitle: 'Pride and Prejudice',
@@ -258,8 +258,41 @@ describe('NotebookView component', () => {
     const deleteBtn = screen.getByTestId(`delete-quote-btn-${ann.id}`);
     fireEvent.click(deleteBtn);
 
+    expect(screen.getByTestId('delete-single-note-dialog')).toBeInTheDocument();
+    expect(screen.getByText('Delete Saved Note & Highlight?')).toBeInTheDocument();
+
+    const confirmBtn = screen.getByRole('button', { name: /Delete Note/i });
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
     expect(useAnnotationStore.getState().annotations).toHaveLength(0);
     expect(screen.queryByText(/To be deleted quote/i)).not.toBeInTheDocument();
+  });
+
+  it('cancels individual quote deletion when clicking cancel in modal', async () => {
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Kept quote',
+      color: 'mint',
+    });
+
+    render(<NotebookView />);
+    const deleteBtn = screen.getByTestId(`delete-quote-btn-${ann.id}`);
+    fireEvent.click(deleteBtn);
+
+    expect(screen.getByTestId('delete-single-note-dialog')).toBeInTheDocument();
+
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+
+    expect(screen.queryByTestId('delete-single-note-dialog')).not.toBeInTheDocument();
+    expect(useAnnotationStore.getState().annotations).toHaveLength(1);
+    expect(screen.getByText(/Kept quote/i)).toBeInTheDocument();
   });
 
   it('clears all annotations when confirming clear everything in modal', async () => {

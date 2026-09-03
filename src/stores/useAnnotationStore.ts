@@ -124,9 +124,13 @@ export const useAnnotationStore = create<AnnotationState>()(
 
       addAnnotation: async (data, userId) => {
         const trimmedText = data.selectedText.trim();
-        // Check if an annotation for the exact same passage already exists in this book
+        // Check if an annotation for the same or overlapping passage already exists in this book
         const existing = get().annotations.find(
-          (a) => a.bookId === data.bookId && a.selectedText.trim() === trimmedText
+          (a) =>
+            a.bookId === data.bookId &&
+            (a.selectedText.trim() === trimmedText ||
+              a.selectedText.trim().includes(trimmedText) ||
+              trimmedText.includes(a.selectedText.trim()))
         );
         if (existing) {
           if (data.color !== existing.color) {
@@ -134,6 +138,13 @@ export const useAnnotationStore = create<AnnotationState>()(
           }
           if (data.note !== undefined && data.note.trim() !== (existing.note || '')) {
             await get().updateAnnotationNote(existing.id, data.note, userId);
+          }
+          if (trimmedText.length > existing.selectedText.length) {
+            set((state) => ({
+              annotations: state.annotations.map((a) =>
+                a.id === existing.id ? { ...a, selectedText: trimmedText } : a
+              ),
+            }));
           }
           return get().annotations.find((a) => a.id === existing.id) || existing;
         }

@@ -382,5 +382,27 @@ describe('AccountPage', () => {
       expect(screen.getByText(/Verification link sent! Check your inbox./i)).toBeInTheDocument();
     });
   });
+
+  it('renders notes & quotes count in library statistics', async () => {
+    const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Passage in account test',
+      color: 'yellow',
+    });
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Avid Reader' } as any,
+      isLoading: false,
+    });
+
+    render(<AccountPage />);
+
+    expect(screen.getByTestId('notes-quotes-count')).toHaveTextContent('1');
+    useAnnotationStore.getState().clearAllAnnotations();
+  });
 });
 

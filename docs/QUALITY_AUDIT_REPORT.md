@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 13:06:20 GMT  
+**Last Generated**: Thu, 03 Sep 2026 13:58:44 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 105 passed  
-**Total Verified Tests**: 706 passed  
+**Total Verified Tests**: 711 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **105/105 test suites passed** (706 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **105/105 test suites passed** (711 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92%** (3796/4126) — *Target: $ge$ 80%*
-- **Statements**: **90.15%** (4138/4590) — *Target: $ge$ 80%*
-- **Functions**: **87.76%** (1004/1144) — *Target: $ge$ 80%*
-- **Branches**: **80.19%** (3446/4297) — *Target: $ge$ 80%*
+- **Lines**: **91.87%** (3813/4150) — *Target: $ge$ 80%*
+- **Statements**: **90.07%** (4156/4614) — *Target: $ge$ 80%*
+- **Functions**: **87.44%** (1010/1155) — *Target: $ge$ 80%*
+- **Branches**: **80.07%** (3464/4326) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (105 Suites / 706 Tests)
+## 🧪 Comprehensive Test Suite Catalog (105 Suites / 711 Tests)
 
 ### 🚀 App Routes & Pages (9 Suites · 64 Tests)
 
@@ -154,7 +154,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (18 Suites · 152 Tests)
+### 🎨 Catalog & Presentation (18 Suites · 153 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -381,7 +381,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -391,7 +391,8 @@
 - ✔ `allows user to edit note inline and cancel or save`
 - ✔ `allows copying quote with formatted academic citation`
 - ✔ `navigates directly to the reader when clicking Read Passage`
-- ✔ `deletes an individual quote card when delete button is clicked`
+- ✔ `shows confirmation modal and deletes an individual quote card when confirmed`
+- ✔ `cancels individual quote deletion when clicking cancel in modal`
 - ✔ `clears all annotations when confirming clear everything in modal`
 - ✔ `cancels clear everything in modal when clicking cancel button`
 - ✔ `allows adding a personal note when none was initially provided`
@@ -416,7 +417,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (15 Suites · 106 Tests)
+### 📖 In-Browser Focus Reader (15 Suites · 108 Tests)
 
 <details>
 <summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
@@ -428,7 +429,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders annotations list with quotes and section pills`
 - ✔ `renders empty state when there are no annotations`
@@ -436,7 +437,8 @@
 - ✔ `filters annotations by search input`
 - ✔ `calls onJumpToAnnotation and closes drawer when jump button is clicked`
 - ✔ `allows editing an annotation note`
-- ✔ `calls onDeleteAnnotation when delete button is clicked`
+- ✔ `shows confirmation modal and calls onDeleteAnnotation when confirmed`
+- ✔ `cancels deletion when clicking cancel in modal`
 - ✔ `translates vertical wheel scroll to horizontal scroll on color filter tags`
 
 </details>
@@ -563,7 +565,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (20 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -584,6 +586,7 @@
 - ✔ `renders user annotations with designated highlight color marks and triggers onSelectAnnotation`
 - ✔ `renders multiple annotations with amber, mint, and rose colors alongside speech highlight`
 - ✔ `detects window text selection and triggers onTextSelected on mouseUp`
+- ✔ `applies color-specific selection styling to highlight marks`
 
 </details>
 
@@ -1162,10 +1165,10 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (24 Suites · 78 Tests)
+### 🧩 UI Primitives & Motion (24 Suites · 80 Tests)
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated`
 - ✔ `renders authenticated profile and handles saving display name`
@@ -1182,6 +1185,7 @@
 - ✔ `dismisses deletion verification confirmation screen on close button click`
 - ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
 - ✔ `handles resending email verification on unverified account`
+- ✔ `renders notes & quotes count in library statistics`
 
 </details>
 
@@ -1220,9 +1224,10 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (2 tests)</summary>
 
-- ✔ `renders library statistics with links and values`
+- ✔ `renders library statistics with links and values including notes and quotes`
+- ✔ `renders default 0 for annotationCount when omitted`
 
 </details>
 
