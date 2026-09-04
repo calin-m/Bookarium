@@ -30,6 +30,7 @@ import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-bo
 import { useBooks } from '@/hooks/queries/useBooks';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import {
   cleanBookTitle,
   isPlaceholderAuthor,
@@ -357,23 +358,15 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" aria-label="Literary Commonplace Notebook">
       <div key="view-page-turn-notebook" className="animate-page-turn">
         {/* Booksaw Centered Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-          <div className="text-[11px] font-mono tracking-widest uppercase text-muted-foreground font-semibold">
-            PERSONAL COMMONPLACE NOTEBOOK • MARGINALIA & REFLECTIONS
-          </div>
-
-          <div className="flex items-center justify-center gap-3">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-foreground tracking-tight">
-              Literary Notebook
-            </h2>
-          </div>
-
-          <p className="text-xs sm:text-sm text-muted-foreground font-serif italic">
-            {annotations.length > 0
+        <SectionHeader
+          eyebrow="PERSONAL COMMONPLACE NOTEBOOK • MARGINALIA & REFLECTIONS"
+          title="Literary Notebook"
+          subtitle={
+            annotations.length > 0
               ? `You have preserved ${annotations.length} passage${annotations.length === 1 ? '' : 's'} across ${uniqueBookCount} literary volume${uniqueBookCount === 1 ? '' : 's'}.`
-              : 'Capture, organize, and revisit prose excerpts, colorful thematic highlights, and personal reflections.'}
-          </p>
-
+              : 'Capture, organize, and revisit prose excerpts, colorful thematic highlights, and personal reflections.'
+          }
+        >
           {annotations.length > 0 && (
             <div className="pt-2">
               <Button
@@ -387,7 +380,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
               </Button>
             </div>
           )}
-        </div>
+        </SectionHeader>
 
       {annotations.length === 0 ? (
         /* Empty State */

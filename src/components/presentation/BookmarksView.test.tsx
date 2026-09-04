@@ -78,5 +78,70 @@ describe('BookmarksView', () => {
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
   });
+
+  it('filters active volumes using the search bar and supports clearing search', () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 45);
+
+    render(<BookmarksView />);
+
+    const searchInput = screen.getByRole('textbox', { name: /search bookmarks/i });
+    expect(searchInput).toBeInTheDocument();
+
+    // Type non-matching search
+    fireEvent.change(searchInput, { target: { value: 'Nonexistent Author' } });
+    expect(screen.getByText(/No bookmarks matching "Nonexistent Author"/i)).toBeInTheDocument();
+    expect(screen.queryByText('Pride and Prejudice')).not.toBeInTheDocument();
+
+    // Click 'Clear Search' button
+    const clearSearchBtn = screen.getByRole('button', { name: /Clear Search/i });
+    fireEvent.click(clearSearchBtn);
+
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+  });
+
+  it('opens confirmation modal on Clear Bookmarks, cancels, and clears ledger when confirmed', () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      recentBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 60);
+    useReaderStore.getState().saveReadingPosition(1342, {
+      chapterIndex: 2,
+      chapterPage: 8,
+      globalPage: 24,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    render(<BookmarksView />);
+
+    const clearBookmarksBtn = screen.getByRole('button', { name: /Clear Bookmarks/i });
+    expect(clearBookmarksBtn).toBeInTheDocument();
+    fireEvent.click(clearBookmarksBtn);
+
+    // Modal dialog is open
+    expect(screen.getByTestId('clear-bookmarks-dialog')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to clear your reading bookmarks/i)).toBeInTheDocument();
+
+    // Click Cancel
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+    expect(screen.queryByTestId('clear-bookmarks-dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+
+    // Open modal again and Confirm
+    fireEvent.click(screen.getByRole('button', { name: /Clear Bookmarks/i }));
+    const confirmBtn = screen.getByRole('button', { name: /Yes, Clear Bookmarks/i });
+    fireEvent.click(confirmBtn);
+
+    // Modal closed and ledger is emptied
+    expect(screen.queryByTestId('clear-bookmarks-dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('No active reading volumes yet')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Clear Bookmarks/i })).not.toBeInTheDocument();
+  });
 });
 

@@ -24,7 +24,7 @@ export interface CollectionSearchBarProps {
   mobilePlaceholder?: string;
   totalCount: number;
   filteredCount: number;
-  collectionName?: 'bookshelf' | 'favorites';
+  collectionName?: 'bookshelf' | 'favorites' | 'bookmarks';
   className?: string;
 }
 

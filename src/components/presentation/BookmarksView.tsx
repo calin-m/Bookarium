@@ -1,11 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookMarked, Clock, CheckCircle2, PauseCircle, Compass } from 'lucide-react';
+import {
+  BookMarked,
+  Clock,
+  CheckCircle2,
+  PauseCircle,
+  Compass,
+  Trash2,
+  AlertTriangle,
+} from 'lucide-react';
 import { useContinueReadingLedger } from '@/hooks/reader/useContinueReadingLedger';
 import { BookmarkCard } from './BookmarkCard';
+import { CollectionSearchBar } from './CollectionSearchBar';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ROUTES } from '@/config/routes';
 import type { LedgerFilter } from '@/types/book.types';
 
@@ -15,13 +26,18 @@ export interface BookmarksViewProps {
 
 export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+
   const {
     filteredVolumes,
     activeFilter,
     setActiveFilter,
+    searchQuery,
+    setSearchQuery,
     counts,
     updateVolumeStatus,
     clearVolumeProgress,
+    clearAllVolumes,
   } = useContinueReadingLedger();
 
   const handleResume = (bookId: number) => {
@@ -41,40 +57,41 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
       aria-label="Bookmarks and Continue Reading Ledger"
     >
-      {/* Centered Editorial Header */}
-      <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-        <div className="text-[11px] font-mono tracking-widest uppercase text-muted-foreground font-semibold">
-          READING LEDGER • PROGRESSIVE RESUME
-        </div>
+      <div key="view-page-turn-bookmarks" className="animate-page-turn">
+        {/* Centered Editorial Header */}
+      <SectionHeader
+        eyebrow="READING LEDGER • PROGRESSIVE RESUME"
+        title="Continue Reading & Bookmarks"
+        subtitle="Pick up right where you left off across all your active public domain volumes."
+      >
+        {/* Clear Bookmarks Button */}
+        {counts.all > 0 && (
+          <div className="pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsClearConfirmOpen(true)}
+              className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear Bookmarks
+            </Button>
+          </div>
+        )}
+      </SectionHeader>
 
-        <div className="flex items-center justify-center gap-3">
-          <div className="h-[1px] w-12 bg-border" />
-          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-foreground tracking-tight">
-            Continue Reading & Bookmarks
-          </h2>
-          <div className="h-[1px] w-12 bg-border" />
-        </div>
-
-        <p className="text-sm text-muted-foreground font-serif italic max-w-lg mx-auto">
-          Pick up right where you left off across all your active public domain volumes.
-        </p>
-
-        {/* Global Stats Summary Badges */}
-        <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-muted/80 text-foreground border border-border">
-            <span className="w-2 h-2 rounded-full bg-primary" />
-            <strong className="font-bold">{counts.in_progress}</strong> In Progress
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-muted/80 text-foreground border border-border">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <strong className="font-bold">{counts.completed}</strong> Completed
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-muted/80 text-foreground border border-border">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            <strong className="font-bold">{counts.on_hold}</strong> On Hold
-          </span>
-        </div>
-      </div>
+      {/* Smart Collection Search Bar for Bookmarks */}
+      {counts.all > 0 && (
+        <CollectionSearchBar
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          placeholder="Search your reading bookmarks by title, author, or subject..."
+          mobilePlaceholder="Search bookmarks..."
+          totalCount={activeFilter === 'all' ? counts.all : counts[activeFilter]}
+          filteredCount={filteredVolumes.length}
+          collectionName="bookmarks"
+        />
+      )}
 
       {/* Filter Navigation Tabs */}
       <div className="flex items-center justify-center mb-8 border-b border-border">
@@ -109,46 +126,122 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       </div>
 
       {/* Main Ledger Content */}
-      {filteredVolumes.length === 0 ? (
-        <div className="bg-card rounded-2xl border border-border p-12 text-center max-w-lg mx-auto shadow-xs">
-          <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-            <BookMarked className="w-8 h-8" />
+      <div key={`bookmarks-filter-${activeFilter}`} className="animate-page-turn">
+        {filteredVolumes.length === 0 ? (
+          <div className="bg-card rounded-2xl border border-border p-12 text-center max-w-lg mx-auto shadow-xs">
+            <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+              <BookMarked className="w-8 h-8" />
+            </div>
+
+            <h3 className="font-serif font-bold text-xl text-foreground mb-2">
+              {searchQuery.trim()
+                ? `No bookmarks matching "${searchQuery}"`
+                : activeFilter === 'all'
+                ? 'No active reading volumes yet'
+                : `No volumes marked as ${activeFilter.replace('_', ' ')}`}
+            </h3>
+
+            <p className="text-sm text-muted-foreground font-serif leading-relaxed mb-6">
+              {searchQuery.trim()
+                ? 'Try adjusting your search terms, author name, or clear the search query.'
+                : 'Volumes you begin reading or place bookmarks in will appear in this ledger with exact coordinates, completion percentages, and one-click chapter resume.'}
+            </p>
+
+            {searchQuery.trim() ? (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setSearchQuery('')}
+                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
+              >
+                <span>Clear Search</span>
+              </Button>
+            ) : activeFilter !== 'all' ? (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setActiveFilter('all')}
+                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
+              >
+                <span>View All Volumes</span>
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={onBrowseCatalog}
+                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
+              >
+                <Compass className="w-4 h-4" />
+                <span>Browse Library Catalog</span>
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredVolumes.map((vol) => (
+              <BookmarkCard
+                key={vol.book.id}
+                volume={vol}
+                onResume={handleResume}
+                onStatusChange={updateVolumeStatus}
+                onClear={clearVolumeProgress}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Clear Bookmarks Confirmation Modal */}
+      <Modal
+        isOpen={isClearConfirmOpen}
+        onClose={() => setIsClearConfirmOpen(false)}
+        title="Clear Reading Bookmarks"
+        maxWidth="md"
+      >
+        <div className="p-6 space-y-5" data-testid="clear-bookmarks-dialog">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground text-sm sm:text-base">
+                Are you sure you want to clear your reading bookmarks?
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                This will reset your reading progress, exact coordinates, and reading positions across all{' '}
+                <strong className="font-semibold text-foreground">{counts.all}</strong> active volumes in your ledger.
+                This action cannot be undone.
+              </p>
+            </div>
           </div>
 
-          <h3 className="font-serif font-bold text-xl text-foreground mb-2">
-            {activeFilter === 'all'
-              ? 'No active reading volumes yet'
-              : `No volumes marked as ${activeFilter.replace('_', ' ')}`}
-          </h3>
-
-          <p className="text-sm text-muted-foreground font-serif leading-relaxed mb-6">
-            Volumes you begin reading or place bookmarks in will appear in this ledger with exact coordinates,
-            completion percentages, and one-click chapter resume.
-          </p>
-
-          <Button
-            variant="primary"
-            size="md"
-            onClick={onBrowseCatalog}
-            className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
-          >
-            <Compass className="w-4 h-4" />
-            <span>Browse Library Catalog</span>
-          </Button>
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsClearConfirmOpen(false)}
+              className="text-xs font-mono uppercase"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
+              onClick={() => {
+                clearAllVolumes();
+                setIsClearConfirmOpen(false);
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Yes, Clear Bookmarks
+            </Button>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVolumes.map((vol) => (
-            <BookmarkCard
-              key={vol.book.id}
-              volume={vol}
-              onResume={handleResume}
-              onStatusChange={updateVolumeStatus}
-              onClear={clearVolumeProgress}
-            />
-          ))}
-        </div>
-      )}
+      </Modal>
     </section>
   );
 };
+

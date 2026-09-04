@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20867%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.94%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-121%20Suites%20%7C%20876%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.02%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -40,10 +40,10 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v1.9.4)
 
-- **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), and 1-click chapter resume.
+- **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), real-time search (`CollectionSearchBar`), "Clear Bookmarks" accessible confirmation modal, and 1-click chapter resume.
+- **Unified SectionHeader & Editorial Typography Harmonization (`SectionHeader.tsx`)**: Reusable `<SectionHeader>` and `<SectionTitle>` component standardizing subtle decorative flank border lines (`h-[1px] w-12 bg-border`), refined typography scale (`text-3xl sm:text-4xl`), and action slots across Catalog, Bookshelf, Favorites, Bookmarks, and Literary Notebook views.
+- **Tactile Booksaw Page-Turn Transitions**: Integrated hardware-accelerated `animate-page-turn` transitions on view transitions and filter tab switching in the Bookmarks ledger.
 - **Canonical Domain Book Entity & Adapter (`toCanonicalBook`)**: Provider-agnostic Book and ActiveReadingVolume domain entities in `src/types/book.types.ts` and `src/lib/adapters/book.adapter.ts` for clean architectural decoupling.
-- **Headless Reading Ledger Hook (`useContinueReadingLedger.ts`)**: Aggregates reading progress, bookmarks, and statuses across stores with client-side status filtering and recency sorting.
-- **Navigation & Route Integration**: Added Bookmarks tab to Navbar with BookMarked icon, active styling in library-tokens.ts, and BOOKMARKS route target in routes.ts.
 - **Pre-Commit Hook Hardening (`.husky/pre-commit`)**: Eliminated child git process lock collisions on Windows NTFS by running the 7-Gateway Quality Engine via pure Node.js.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -105,7 +105,8 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * Horizontally scrollable active filter chips strip (`overflow-x-auto scrollbar-none`) preventing vertical height shifts (0 CLS).
 * **Deep Archive Query UX & Live Telemetry**: Sticky catalog toolbar equipped with real-time roundtrip latency telemetry, direct page jumping, animated `Info` indicators, responsive mobile two-tier wrapping, and informative tooltips explaining relational SQL offsets across 70,000+ public domain volumes.
 * **Header Navigation & Brand Reset**: Clean top bar with unified iconography (**Catalog** `<BookOpen>`, **Bookshelf** `<Bookmark>`, **Favorites** `<Heart>`, **Notebook** `<Highlighter>`, **Bookmarks** `<BookMarked>`), dynamic solid fill states, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
-* **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger displaying all active public domain volumes with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), and 1-click chapter resume actions.
+* **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger displaying all active public domain volumes with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), real-time search filtering (`<CollectionSearchBar>`), accessible "Clear Bookmarks" confirmation modal, Booksaw page-turn transitions (`animate-page-turn`), and 1-click chapter resume actions.
+* **Unified SectionHeader Component & Editorial Typography Harmonization**: Reusable `<SectionHeader>` and `<SectionTitle>` component (`src/components/ui/SectionHeader.tsx`) standardizing section title typography scales (`text-3xl sm:text-4xl font-serif font-bold text-foreground tracking-tight`), subtle decorative flank border lines (`h-[1px] w-12 bg-border shrink-0`), centered Booksaw editorial layouts, and contextual action slots ("Clear Shelf", "Clear Favorites", "Clear All Notes", "Clear Bookmarks") across Catalog, Bookshelf, Favorites, Bookmarks, and Literary Notebook views.
 * **Provider-Agnostic Canonical Book Entity & Adapter (`toCanonicalBook`)**: Clean domain architecture decoupling Bookarium UI components from upstream raw Gutendex schemas, automatically normalizing Gutenberg author strings, resolving preferred MIME format URLs, and ensuring 100% backward compatibility with guest and cloud storage.
 * **Progressive Web App (PWA), Offline App Shell & Standalone Installation**:
   * Native Next.js 16 Web App Manifest (`manifest.ts`) declaring standalone display mode, `id: '/?source=pwa'`, explicit `scope: '/'`, brand obsidian/cream theme colors, and a full suite of standard and maskable PWA icons (`public/icons/`).
@@ -665,7 +666,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 867 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 876 tests across 121 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

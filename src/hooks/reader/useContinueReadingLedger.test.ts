@@ -136,9 +136,9 @@ describe('useContinueReadingLedger', () => {
     expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
   });
 
-  it('clears volume progress and coordinates via clearVolumeProgress', () => {
+  it('clears volume progress, coordinates, and recentBooks via clearVolumeProgress', () => {
     act(() => {
-      useBookshelfStore.setState({ savedBooks: [mockBook] });
+      useBookshelfStore.setState({ savedBooks: [mockBook], recentBooks: [mockBook] });
       useReaderStore.getState().setProgress(1342, 50);
       useReaderStore.getState().saveReadingPosition(1342, {
         chapterIndex: 5,
@@ -156,6 +156,88 @@ describe('useContinueReadingLedger', () => {
 
     expect(useReaderStore.getState().readingProgress[1342]).toBe(0);
     expect(useReaderStore.getState().readingPositions[1342]).toBeUndefined();
+    expect(useBookshelfStore.getState().recentBooks).toEqual([]);
+  });
+
+  it('filters volumes by search query across title, author, and subject', () => {
+    const book2: GutendexBook = {
+      ...mockBook,
+      id: 84,
+      title: 'Frankenstein; Or, The Modern Prometheus',
+      authors: [{ name: 'Shelley, Mary Wollstonecraft', birth_year: 1797, death_year: 1851 }],
+      subjects: ['Monsters -- Fiction', 'Science fiction'],
+    };
+
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [mockBook, book2] });
+      useReaderStore.getState().setProgress(1342, 30);
+      useReaderStore.getState().setProgress(84, 75);
+    });
+
+    const { result } = renderHook(() => useContinueReadingLedger());
+
+    expect(result.current.volumes).toHaveLength(2);
+    expect(result.current.filteredVolumes).toHaveLength(2);
+
+    // Search by title keyword
+    act(() => {
+      result.current.setSearchQuery('Frankenstein');
+    });
+    expect(result.current.filteredVolumes).toHaveLength(1);
+    expect(result.current.filteredVolumes[0].book.id).toBe(84);
+
+    // Search by author name keyword
+    act(() => {
+      result.current.setSearchQuery('Mary');
+    });
+    expect(result.current.filteredVolumes).toHaveLength(1);
+    expect(result.current.filteredVolumes[0].book.id).toBe(84);
+
+    // Search by subject keyword
+    act(() => {
+      result.current.setSearchQuery('England');
+    });
+    expect(result.current.filteredVolumes).toHaveLength(1);
+    expect(result.current.filteredVolumes[0].book.id).toBe(1342);
+
+    // Clear search query
+    act(() => {
+      result.current.setSearchQuery('');
+    });
+    expect(result.current.filteredVolumes).toHaveLength(2);
+  });
+
+  it('wipes all ledger progress, coordinates, and statuses via clearAllVolumes', () => {
+    act(() => {
+      useBookshelfStore.setState({
+        savedBooks: [mockBook],
+        recentBooks: [mockBook],
+        bookStatuses: { 1342: 'currently_reading', 999: 'finished' },
+      });
+      useReaderStore.getState().setProgress(1342, 40);
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 2,
+        chapterPage: 3,
+        globalPage: 15,
+        lastReadAt: '2026-09-02T10:00:00Z',
+      });
+    });
+
+    const { result } = renderHook(() => useContinueReadingLedger());
+
+    expect(result.current.volumes.length).toBeGreaterThan(0);
+
+    act(() => {
+      result.current.clearAllVolumes();
+    });
+
+    expect(useReaderStore.getState().readingProgress).toEqual({});
+    expect(useReaderStore.getState().readingPositions).toEqual({});
+    expect(useBookshelfStore.getState().recentBooks).toEqual([]);
+    // currently_reading was removed, other statuses (finished) kept
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBeUndefined();
+    expect(useBookshelfStore.getState().bookStatuses[999]).toBe('finished');
+    expect(result.current.volumes).toEqual([]);
   });
 });
 

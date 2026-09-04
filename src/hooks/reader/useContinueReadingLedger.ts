@@ -17,6 +17,8 @@ export interface UseContinueReadingLedgerReturn {
   filteredVolumes: ActiveReadingVolume[];
   activeFilter: LedgerFilter;
   setActiveFilter: (filter: LedgerFilter) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
   counts: {
     all: number;
     in_progress: number;
@@ -26,6 +28,7 @@ export interface UseContinueReadingLedgerReturn {
   isLoading: boolean;
   updateVolumeStatus: (bookId: number, status: LedgerItemStatus) => Promise<void>;
   clearVolumeProgress: (bookId: number) => void;
+  clearAllVolumes: () => void;
 }
 
 /**
@@ -35,6 +38,7 @@ export interface UseContinueReadingLedgerReturn {
 export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   const hasMounted = useHasMounted();
   const [activeFilter, setActiveFilter] = useState<LedgerFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const readingPositions = useReaderStore((s) => s.readingPositions);
@@ -168,9 +172,24 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   }, [volumes]);
 
   const filteredVolumes = useMemo(() => {
-    if (activeFilter === 'all') return volumes;
-    return volumes.filter((vol) => vol.status === activeFilter);
-  }, [volumes, activeFilter]);
+    let result = volumes;
+    if (activeFilter !== 'all') {
+      result = result.filter((vol) => vol.status === activeFilter);
+    }
+    const cleanQuery = searchQuery.trim().toLowerCase();
+    if (!cleanQuery) return result;
+
+    return result.filter((vol) => {
+      const titleMatch = vol.book.title?.toLowerCase().includes(cleanQuery);
+      const authorMatch = vol.book.authors?.some((author) =>
+        author.toLowerCase().includes(cleanQuery)
+      );
+      const subjectMatch = vol.book.subjects?.some((subject) =>
+        subject.toLowerCase().includes(cleanQuery)
+      );
+      return Boolean(titleMatch || authorMatch || subjectMatch);
+    });
+  }, [volumes, activeFilter, searchQuery]);
 
   const updateVolumeStatus = useCallback(
     async (bookId: number, status: LedgerItemStatus) => {
@@ -192,19 +211,46 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       clearReadingPosition(bookId);
       setProgress(bookId, 0);
       void setReadingStatus(bookId, null);
+      useBookshelfStore.setState((state) => ({
+        recentBooks: state.recentBooks.filter((b) => b.id !== bookId),
+      }));
     },
     [clearReadingPosition, setProgress, setReadingStatus]
   );
+
+  const clearAllVolumes = useCallback(() => {
+    useReaderStore.setState({
+      readingProgress: {},
+      readingPositions: {},
+      currentBook: null,
+    });
+    useBookshelfStore.setState((state) => {
+      const nextStatuses = { ...state.bookStatuses };
+      Object.keys(nextStatuses).forEach((key) => {
+        const id = parseInt(key, 10);
+        if (nextStatuses[id] === 'currently_reading') {
+          delete nextStatuses[id];
+        }
+      });
+      return {
+        recentBooks: [],
+        bookStatuses: nextStatuses,
+      };
+    });
+  }, []);
 
   return {
     volumes,
     filteredVolumes,
     activeFilter,
     setActiveFilter,
+    searchQuery,
+    setSearchQuery,
     counts,
     isLoading: !hasMounted,
     updateVolumeStatus,
     clearVolumeProgress,
+    clearAllVolumes,
   };
 }
 
