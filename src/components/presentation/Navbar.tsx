@@ -15,8 +15,8 @@ import { SITE_CONFIG } from '@/config/site-config';
 import { LIBRARY_THEMES } from '@/config/library-tokens';
 
 export interface NavbarProps {
-  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks' | 'account';
-  onViewChange?: (view: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks') => void;
+  activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks' | 'account';
+  onViewChange?: (view: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks') => void;
   isVisible?: boolean;
 }
 
@@ -26,7 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isVisible = true,
 }) => {
   const router = useRouter();
-  const { savedCount, likedCount, hasMounted } = useHydratedBookshelf();
+  const { savedCount, favoriteCount, hasMounted } = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
   const annotationCount = annotations.length;
   const readingPositions = useReaderStore((s) => s.readingPositions);
@@ -125,18 +125,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               type="button"
-              onClick={() => onViewChange?.('likes')}
+              onClick={() => onViewChange?.('favorites')}
               title="Favorites"
               className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
-                activeView === 'likes'
+                activeView === 'favorites'
                   ? `${LIBRARY_THEMES.favorites.navActiveText} font-bold ${LIBRARY_THEMES.favorites.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
               }`}
-              aria-label="Liked Books"
+              aria-label="Favorites"
             >
               <Heart
                 className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                  hasMounted && likedCount > 0
+                  hasMounted && favoriteCount > 0
                     ? LIBRARY_THEMES.favorites.navFill
                     : 'fill-transparent'
                 }`}

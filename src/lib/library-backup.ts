@@ -36,7 +36,8 @@ export interface LibraryBackupPayload {
   library: {
     savedBooks: GutendexBook[];
     readingQueue: GutendexBook[];
-    likedBookIds: number[];
+    favoriteBookIds: number[];
+    likedBookIds?: number[];
     customShelves: LibraryBackupShelf[];
     bookRatings?: Record<number, number>;
     bookStatuses?: Record<number, ReadingStatus>;
@@ -90,7 +91,7 @@ export function createLibraryBackup(): LibraryBackupPayload {
 
   const savedBooks = bookshelfState.savedBooks || [];
   const readingQueue = bookshelfState.readingQueue || [];
-  const likedBookIds = bookshelfState.likedBookIds || [];
+  const favoriteBookIds = bookshelfState.favoriteBookIds || [];
   const cloudShelves = bookshelfState.cloudBookshelves || [];
   const shelfItems = bookshelfState.cloudBookshelfItems || [];
   const bookRatings = bookshelfState.bookRatings || {};
@@ -118,14 +119,15 @@ export function createLibraryBackup(): LibraryBackupPayload {
     summary: {
       bookCount: savedBooks.length,
       customShelfCount: customShelves.filter((s) => !s.isDefault).length,
-      favoriteCount: likedBookIds.length,
+      favoriteCount: favoriteBookIds.length,
       annotationCount: annotations.length,
       bookmarkCount: Object.keys(positions).length,
     },
     library: {
       savedBooks,
       readingQueue,
-      likedBookIds,
+      favoriteBookIds,
+      likedBookIds: favoriteBookIds,
       customShelves,
       bookRatings,
       bookStatuses,
@@ -238,7 +240,7 @@ export function exportLibraryToCSV(backup?: LibraryBackupPayload, filename?: str
   for (const book of data.library.savedBooks) {
     const authors = book.authors && book.authors.length > 0 ? formatAuthorNames(book.authors) : 'Unknown Author';
     const shelves = shelfMap.get(book.id)?.join('; ') || 'General';
-    const isLiked = data.library.likedBookIds?.includes(book.id) ? 'Yes' : 'No';
+    const isFavorite = (data.library.favoriteBookIds || data.library.likedBookIds)?.includes(book.id) ? 'Yes' : 'No';
     const rating = data.library.bookRatings?.[book.id] ? `${data.library.bookRatings[book.id]} / 5` : 'Unrated';
     const status = formatStatus(data.library.bookStatuses?.[book.id]);
     const progress = data.reading.progress?.[book.id] ?? 0;
@@ -250,7 +252,7 @@ export function exportLibraryToCSV(backup?: LibraryBackupPayload, filename?: str
       book.title,
       authors,
       shelves,
-      isLiked,
+      isFavorite,
       rating,
       status,
       `${progress}%`,
@@ -406,12 +408,17 @@ export function validateLibraryBackup(raw: unknown): ValidationResult {
     return { valid: false, error: 'Invalid backup file: annotations must be an array if provided.' };
   }
 
+  if (obj.library.favoriteBookIds && !Array.isArray(obj.library.favoriteBookIds)) {
+    return { valid: false, error: 'Invalid backup file: favoriteBookIds must be an array if provided.' };
+  }
+
   if (obj.library.likedBookIds && !Array.isArray(obj.library.likedBookIds)) {
     return { valid: false, error: 'Invalid backup file: likedBookIds must be an array if provided.' };
   }
 
-  const likedBookIds: number[] = Array.isArray(obj.library.likedBookIds)
-    ? obj.library.likedBookIds.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0)
+  const rawFavoriteIds = obj.library.favoriteBookIds ?? obj.library.likedBookIds;
+  const favoriteBookIds: number[] = Array.isArray(rawFavoriteIds)
+    ? rawFavoriteIds.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0)
     : [];
 
   const normalized: LibraryBackupPayload = {
@@ -421,14 +428,15 @@ export function validateLibraryBackup(raw: unknown): ValidationResult {
     summary: {
       bookCount: obj.library.savedBooks.length,
       customShelfCount: customShelves.length,
-      favoriteCount: likedBookIds.length,
+      favoriteCount: favoriteBookIds.length,
       annotationCount: Array.isArray(obj.annotations) ? obj.annotations.length : 0,
       bookmarkCount: isPlainObject(obj.reading?.positions) ? Object.keys(obj.reading.positions).length : 0,
     },
     library: {
       savedBooks: obj.library.savedBooks,
       readingQueue,
-      likedBookIds,
+      favoriteBookIds,
+      likedBookIds: favoriteBookIds,
       customShelves,
       bookRatings,
       bookStatuses,
@@ -459,7 +467,7 @@ export async function restoreLibraryBackup(
   const prefsStore = usePreferencesStore.getState();
 
   let finalBooks: GutendexBook[] = [];
-  let finalLikedIds: number[] = [];
+  let finalFavoriteIds: number[] = [];
   let finalReadingQueue: GutendexBook[] = [];
   let finalRatings: Record<number, number> = {};
   let finalStatuses: Record<number, ReadingStatus> = {};
@@ -471,7 +479,7 @@ export async function restoreLibraryBackup(
 
   if (strategy === 'replace') {
     finalBooks = [...backup.library.savedBooks];
-    finalLikedIds = [...backup.library.likedBookIds];
+    finalFavoriteIds = [...(backup.library.favoriteBookIds || backup.library.likedBookIds || [])];
     finalReadingQueue = [...backup.library.readingQueue];
     finalRatings = { ...(backup.library.bookRatings || {}) };
     finalStatuses = { ...(backup.library.bookStatuses || {}) };
@@ -542,11 +550,11 @@ export async function restoreLibraryBackup(
     }
     finalReadingQueue = Array.from(queueMap.values());
 
-    const likedSet = new Set<number>([
-      ...(bookshelfStore.likedBookIds || []),
-      ...(backup.library.likedBookIds || []),
+    const favoriteSet = new Set<number>([
+      ...(bookshelfStore.favoriteBookIds || []),
+      ...(backup.library.favoriteBookIds || backup.library.likedBookIds || []),
     ]);
-    finalLikedIds = Array.from(likedSet);
+    finalFavoriteIds = Array.from(favoriteSet);
 
     finalPositions = { ...(readerStore.readingPositions || {}) };
     for (const [idStr, newPos] of Object.entries(backup.reading.positions || {})) {
@@ -625,8 +633,8 @@ export async function restoreLibraryBackup(
   useBookshelfStore.setState({
     savedBooks: finalBooks,
     readingQueue: finalReadingQueue,
-    likedBookIds: finalLikedIds,
-    likedBooks: finalBooks.filter((b) => finalLikedIds.includes(b.id)),
+    favoriteBookIds: finalFavoriteIds,
+    favoriteBooks: finalBooks.filter((b) => finalFavoriteIds.includes(b.id)),
     cloudBookshelves: finalShelves,
     cloudBookshelfItems: finalShelfItems,
     bookRatings: finalRatings,
@@ -681,7 +689,7 @@ export async function restoreLibraryBackup(
   return {
     booksRestored: finalBooks.length,
     shelvesRestored: finalShelves.filter((s) => !s.is_default).length,
-    favoritesRestored: finalLikedIds.length,
+    favoritesRestored: finalFavoriteIds.length,
     annotationsRestored: finalAnnotations.length,
     bookmarksRestored: Object.keys(finalPositions).length,
   };

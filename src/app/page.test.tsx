@@ -155,10 +155,10 @@ describe('Home page integration', () => {
   });
 
   it('should switch to favorites view and require confirmation to clear favorites', () => {
-    useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
+    useBookshelfStore.getState().toggleFavoriteBook(mockBooks[0]);
     renderHome();
 
-    const likedBtn = screen.getByLabelText('Liked Books');
+    const likedBtn = screen.getByLabelText('Favorites');
     fireEvent.click(likedBtn);
 
     expect(screen.getByText('Favorite Works')).toBeInTheDocument();
@@ -173,13 +173,13 @@ describe('Home page integration', () => {
     // Cancel preserves favorites
     const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
     fireEvent.click(cancelBtn);
-    expect(useBookshelfStore.getState().likedBookIds).toHaveLength(1);
+    expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(1);
 
     // Click again and confirm
     fireEvent.click(clearFavBtn);
     const confirmBtn = screen.getByRole('button', { name: /Yes, Clear Favorites/i });
     fireEvent.click(confirmBtn);
-    expect(useBookshelfStore.getState().likedBookIds).toHaveLength(0);
+    expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(0);
   });
 
   it('should open download hub and close it', () => {
@@ -236,10 +236,10 @@ describe('Home page integration', () => {
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
 
     // Switch to Favorites
-    const favoritesBtn = screen.getByRole('button', { name: /^Liked Books$/i });
+    const favoritesBtn = screen.getByRole('button', { name: /^Favorites$/i });
     fireEvent.click(favoritesBtn);
     expect(screen.getByText('Favorite Works')).toBeInTheDocument();
-    expect(screen.getByText('No liked books yet')).toBeInTheDocument();
+    expect(screen.getByText('No favorite books yet')).toBeInTheDocument();
 
     // Switch back to Catalog
     const catalogBtn = screen.getByRole('button', { name: /^Catalog$/i });
@@ -278,10 +278,10 @@ describe('Home page integration', () => {
 
     // Step 5: User saves book to personal shelf
     useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
-    useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
+    useBookshelfStore.getState().toggleFavoriteBook(mockBooks[0]);
 
     expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
-    expect(useBookshelfStore.getState().likedBookIds).toHaveLength(1);
+    expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(1);
 
     // Step 6: User switches to Bookshelf view
     const bookshelfTab = screen.getByRole('button', { name: /^Bookshelf$/i });
@@ -315,13 +315,13 @@ describe('Home page integration', () => {
   });
 
   it('should dynamically filter favorites books and show empty search feedback', () => {
-    useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
-    useBookshelfStore.getState().syncLikedBooks([mockBooks[0]]);
+    useBookshelfStore.getState().toggleFavoriteBook(mockBooks[0]);
+    useBookshelfStore.getState().syncFavoriteBooks([mockBooks[0]]);
 
     renderHome();
 
     // Switch to Favorites view
-    const favoritesTab = screen.getByRole('button', { name: /^Liked Books$/i });
+    const favoritesTab = screen.getByRole('button', { name: /^Favorites$/i });
     fireEvent.click(favoritesTab);
 
     const searchInput = screen.getByRole('textbox', { name: /search favorites/i });

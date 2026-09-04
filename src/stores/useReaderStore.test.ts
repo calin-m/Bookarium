@@ -23,6 +23,7 @@ describe('useReaderStore', () => {
       fontFamily: 'serif',
       theme: 'light',
       readingProgress: {},
+      readingPositions: {},
     });
   });
 
@@ -202,6 +203,9 @@ describe('useReaderStore', () => {
           progress_percent: 60,
           scroll_offset: 4,
           last_read_at: '2026-09-04T12:00:00.000Z',
+          book_title: 'Frankenstein',
+          book_authors: ['Mary Wollstonecraft Shelley'],
+          cover_url: 'https://example.com/frankenstein.jpg',
         },
         error: null,
       });
@@ -225,9 +229,152 @@ describe('useReaderStore', () => {
         chapterPage: 4,
         globalPage: 4,
         lastReadAt: '2026-09-04T12:00:00.000Z',
+        bookTitle: 'Frankenstein',
+        bookAuthors: ['Mary Wollstonecraft Shelley'],
+        coverUrl: 'https://example.com/frankenstein.jpg',
       });
       expect(useReaderStore.getState().getReadingPosition(84)).toEqual(restored);
       expect(useReaderStore.getState().getProgress(84)).toBe(60);
+    });
+
+    it('enriches cloud upsert with book metadata from currentBook', async () => {
+      const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({ upsert: mockUpsert });
+
+      useAuthStore.setState({
+        user: { id: 'test-user-123', email: 'reader@example.com' } as any,
+      });
+
+      const book = mockBooks[0]; // Pride and Prejudice (id: 1342)
+      useReaderStore.getState().openReader(book);
+
+      const pos = {
+        chapterIndex: 0,
+        chapterPage: 1,
+        globalPage: 1,
+        lastReadAt: new Date().toISOString(),
+      };
+
+      useReaderStore.getState().setProgress(1342, 10);
+      useReaderStore.getState().saveReadingPosition(1342, pos);
+
+      vi.advanceTimersByTime(2000);
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'test-user-123',
+          book_id: 1342,
+          book_title: 'Pride and Prejudice',
+          book_authors: ['Austen, Jane'],
+          cover_url: 'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+          progress_percent: 10,
+        }),
+        { onConflict: 'user_id,book_id' }
+      );
+    });
+
+    it('bulk synchronizes all user reading progress via syncWithCloud', async () => {
+      const mockSelect = vi.fn().mockReturnValue({
+        eq: () => ({
+          order: () =>
+            Promise.resolve({
+              data: [
+                {
+                  book_id: 1342,
+                  book_title: 'Pride and Prejudice',
+                  book_authors: ['Jane Austen'],
+                  cover_url: 'https://example.com/pride.jpg',
+                  current_chapter_index: 5,
+                  progress_percent: 50,
+                  scroll_offset: 2,
+                  last_read_at: '2026-09-04T10:00:00.000Z',
+                },
+                {
+                  book_id: 84,
+                  book_title: 'Frankenstein',
+                  book_authors: ['Mary Shelley'],
+                  cover_url: null,
+                  current_chapter_index: 2,
+                  progress_percent: 20,
+                  scroll_offset: 1,
+                  last_read_at: '2026-09-03T10:00:00.000Z',
+                },
+              ],
+              error: null,
+            }),
+        }),
+      });
+
+      mockFrom.mockReturnValue({ select: mockSelect });
+
+      await useReaderStore.getState().syncWithCloud('test-user-123');
+
+      expect(mockFrom).toHaveBeenCalledWith('reading_progress');
+      const pos1342 = useReaderStore.getState().getReadingPosition(1342);
+      expect(pos1342?.bookTitle).toBe('Pride and Prejudice');
+      expect(pos1342?.chapterIndex).toBe(5);
+      expect(useReaderStore.getState().getProgress(1342)).toBe(50);
+
+      const pos84 = useReaderStore.getState().getReadingPosition(84);
+      expect(pos84?.bookTitle).toBe('Frankenstein');
+      expect(useReaderStore.getState().getProgress(84)).toBe(20);
+    });
+
+    it('deletes from Supabase when clearReadingPosition is invoked while authenticated', async () => {
+      const mockEqBook = vi.fn().mockResolvedValue({ error: null });
+      const mockEqUser = vi.fn().mockReturnValue({ eq: mockEqBook });
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEqUser });
+      mockFrom.mockReturnValue({ delete: mockDelete });
+
+      useAuthStore.setState({
+        user: { id: 'test-user-123' } as any,
+      });
+
+      useReaderStore.setState({
+        readingPositions: {
+          1342: {
+            chapterIndex: 1,
+            chapterPage: 1,
+            globalPage: 1,
+            lastReadAt: new Date().toISOString(),
+          },
+        },
+        readingProgress: { 1342: 30 },
+      });
+
+      await useReaderStore.getState().clearReadingPosition(1342);
+
+      expect(useReaderStore.getState().getReadingPosition(1342)).toBeNull();
+      expect(mockFrom).toHaveBeenCalledWith('reading_progress');
+      expect(mockDelete).toHaveBeenCalled();
+      expect(mockEqUser).toHaveBeenCalledWith('user_id', 'test-user-123');
+      expect(mockEqBook).toHaveBeenCalledWith('book_id', 1342);
+    });
+
+    it('deletes all user records from Supabase on clearAllVolumes while authenticated', async () => {
+      const mockEqUser = vi.fn().mockResolvedValue({ error: null });
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEqUser });
+      mockFrom.mockReturnValue({ delete: mockDelete });
+
+      useAuthStore.setState({
+        user: { id: 'test-user-123' } as any,
+      });
+
+      useReaderStore.setState({
+        readingPositions: {
+          1342: { chapterIndex: 1, chapterPage: 1, globalPage: 1, lastReadAt: '2026-09-01' },
+          84: { chapterIndex: 2, chapterPage: 2, globalPage: 2, lastReadAt: '2026-09-02' },
+        },
+        readingProgress: { 1342: 30, 84: 50 },
+      });
+
+      await useReaderStore.getState().clearAllVolumes();
+
+      expect(useReaderStore.getState().readingPositions).toEqual({});
+      expect(useReaderStore.getState().readingProgress).toEqual({});
+      expect(mockFrom).toHaveBeenCalledWith('reading_progress');
+      expect(mockDelete).toHaveBeenCalled();
+      expect(mockEqUser).toHaveBeenCalledWith('user_id', 'test-user-123');
     });
   });
 });

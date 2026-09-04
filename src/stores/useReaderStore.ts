@@ -15,6 +15,9 @@ export interface BookReadingPosition {
   chapterPage: number;
   globalPage: number;
   lastReadAt: string;
+  bookTitle?: string;
+  bookAuthors?: string[];
+  coverUrl?: string | null;
 }
 
 export interface ReaderState {
@@ -47,9 +50,11 @@ export interface ReaderState {
   getProgress: (bookId: number) => number;
   saveReadingPosition: (bookId: number, position: BookReadingPosition, userId?: string) => void;
   getReadingPosition: (bookId: number) => BookReadingPosition | null;
-  clearReadingPosition: (bookId: number) => void;
+  clearReadingPosition: (bookId: number, userId?: string) => Promise<void>;
+  clearAllVolumes: (userId?: string) => Promise<void>;
   syncReadingPositionToCloud: (bookId: number, position: BookReadingPosition, userId: string) => Promise<void>;
   restoreReadingPositionFromCloud: (bookId: number, userId: string) => Promise<BookReadingPosition | null>;
+  syncWithCloud: (userId: string) => Promise<void>;
 }
 
 const progressDebounceTimers = new Map<number, ReturnType<typeof setTimeout>>();
@@ -118,10 +123,28 @@ export const useReaderStore = create<ReaderState>()(
       },
 
       saveReadingPosition: (bookId, position, userId) => {
+        const currentBook = get().currentBook;
+        let enrichedPosition: BookReadingPosition = position;
+        if (!position.bookTitle && currentBook && currentBook.id === bookId) {
+          const authors = (currentBook.authors || [])
+            .map((a: any) => (typeof a === 'string' ? a : a?.name || ''))
+            .filter(Boolean);
+          const coverUrl =
+            (currentBook as any).formats?.['image/jpeg'] ||
+            (currentBook as any).coverUrl ||
+            null;
+          enrichedPosition = {
+            ...position,
+            bookTitle: currentBook.title,
+            bookAuthors: authors,
+            coverUrl,
+          };
+        }
+
         set((state) => ({
           readingPositions: {
             ...state.readingPositions,
-            [bookId]: position,
+            [bookId]: enrichedPosition,
           },
         }));
 
@@ -135,7 +158,7 @@ export const useReaderStore = create<ReaderState>()(
 
         const timer = setTimeout(() => {
           progressDebounceTimers.delete(bookId);
-          get().syncReadingPositionToCloud(bookId, position, currentUserId);
+          get().syncReadingPositionToCloud(bookId, enrichedPosition, currentUserId);
         }, 2000);
 
         progressDebounceTimers.set(bookId, timer);
@@ -150,6 +173,9 @@ export const useReaderStore = create<ReaderState>()(
             {
               user_id: userId,
               book_id: bookId,
+              book_title: position.bookTitle || null,
+              book_authors: position.bookAuthors || [],
+              cover_url: position.coverUrl || null,
               current_chapter_index: position.chapterIndex,
               progress_percent: progress,
               scroll_offset: position.chapterPage,
@@ -179,6 +205,9 @@ export const useReaderStore = create<ReaderState>()(
               chapterPage: Number(data.scroll_offset) || 1,
               globalPage: Number(data.scroll_offset) || 1,
               lastReadAt: data.last_read_at || new Date().toISOString(),
+              bookTitle: data.book_title || undefined,
+              bookAuthors: data.book_authors || undefined,
+              coverUrl: data.cover_url || undefined,
             };
             set((state) => ({
               readingPositions: {
@@ -198,21 +227,109 @@ export const useReaderStore = create<ReaderState>()(
         return null;
       },
 
+      syncWithCloud: async (userId: string) => {
+        if (!userId) return;
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase
+            .from('reading_progress')
+            .select('*')
+            .eq('user_id', userId)
+            .order('last_read_at', { ascending: false });
+
+          if (error || !data) return;
+
+          set((state) => {
+            const nextPositions = { ...state.readingPositions };
+            const nextProgress = { ...state.readingProgress };
+
+            data.forEach((row) => {
+              const bookId = row.book_id;
+              const localPos = nextPositions[bookId];
+              const remoteTime = new Date(row.last_read_at).getTime();
+              const localTime = localPos?.lastReadAt ? new Date(localPos.lastReadAt).getTime() : 0;
+
+              // Reconcile via Last-Write-Wins (LWW)
+              if (!localPos || remoteTime >= localTime) {
+                nextPositions[bookId] = {
+                  chapterIndex: row.current_chapter_index ?? 0,
+                  chapterPage: Number(row.scroll_offset) || 1,
+                  globalPage: Number(row.scroll_offset) || 1,
+                  lastReadAt: row.last_read_at || new Date().toISOString(),
+                  bookTitle: row.book_title || undefined,
+                  bookAuthors: row.book_authors || undefined,
+                  coverUrl: row.cover_url || undefined,
+                };
+                nextProgress[bookId] = Math.min(
+                  Math.max(Math.round(Number(row.progress_percent) || 0), 0),
+                  100
+                );
+              }
+            });
+
+            return {
+              readingPositions: nextPositions,
+              readingProgress: nextProgress,
+            };
+          });
+        } catch {
+          // Silent non-blocking fallback for offline/network loss
+        }
+      },
+
       getReadingPosition: (bookId) => {
         return get().readingPositions[bookId] ?? null;
       },
 
-      clearReadingPosition: (bookId) => {
+      clearReadingPosition: async (bookId, userId) => {
         const timer = progressDebounceTimers.get(bookId);
         if (timer) {
           clearTimeout(timer);
           progressDebounceTimers.delete(bookId);
         }
         set((state) => {
-          const next = { ...state.readingPositions };
-          delete next[bookId];
-          return { readingPositions: next };
+          const nextPositions = { ...state.readingPositions };
+          delete nextPositions[bookId];
+          return { readingPositions: nextPositions };
         });
+
+        const currentUserId = userId || useAuthStore.getState().user?.id;
+        if (currentUserId) {
+          try {
+            const supabase = createClient();
+            await supabase
+              .from('reading_progress')
+              .delete()
+              .eq('user_id', currentUserId)
+              .eq('book_id', bookId);
+          } catch {
+            // Non-blocking fallback
+          }
+        }
+      },
+
+      clearAllVolumes: async (userId) => {
+        progressDebounceTimers.forEach((timer) => clearTimeout(timer));
+        progressDebounceTimers.clear();
+
+        set({
+          readingProgress: {},
+          readingPositions: {},
+          currentBook: null,
+        });
+
+        const currentUserId = userId || useAuthStore.getState().user?.id;
+        if (currentUserId) {
+          try {
+            const supabase = createClient();
+            await supabase
+              .from('reading_progress')
+              .delete()
+              .eq('user_id', currentUserId);
+          } catch {
+            // Non-blocking fallback
+          }
+        }
       },
     }),
     {

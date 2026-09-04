@@ -53,7 +53,7 @@ describe('AccountPage', () => {
 
     useBookshelfStore.setState({
       savedBooks: [{ id: 1, title: 'Pride and Prejudice', authors: [], formats: {} } as any],
-      likedBookIds: [1, 2],
+      favoriteBookIds: [1, 2],
       cloudBookshelves: [{ id: 's1', user_id: 'u1', name: 'Favorites', is_default: true, created_at: '', updated_at: '' }],
     });
 
@@ -162,7 +162,7 @@ describe('AccountPage', () => {
 
     useBookshelfStore.setState({
       savedBooks: [{ id: 1, title: 'Pride and Prejudice', authors: [], formats: {} } as any],
-      likedBookIds: [1, 2, 3],
+      favoriteBookIds: [1, 2, 3],
       cloudBookshelves: [
         { id: 's0', user_id: 'u1', name: 'General', is_default: true, created_at: '', updated_at: '' },
         { id: 's1', user_id: 'u1', name: 'Philosophy', is_default: false, created_at: '', updated_at: '' },
@@ -179,7 +179,7 @@ describe('AccountPage', () => {
     expect(screen.getByText('Shelved Volumes')).toBeInTheDocument();
 
     const favoritesLink = screen.getByRole('link', { name: /View Favorite Titles in Favorites/i });
-    expect(favoritesLink).toHaveAttribute('href', ROUTES.LIKES);
+    expect(favoritesLink).toHaveAttribute('href', ROUTES.FAVORITES);
     expect(screen.getByText('Favorite Titles')).toBeInTheDocument();
 
     const customShelvesLink = screen.getByRole('link', { name: /View Custom Shelves in Bookshelf/i });

@@ -19,7 +19,7 @@ describe('Navbar component', () => {
     expect(brandText).toHaveClass('min-[375px]:inline', 'text-xs');
     expect(screen.getByRole('button', { name: 'Catalog' })).toBeInTheDocument();
     expect(screen.getByLabelText('Bookshelf')).toBeInTheDocument();
-    expect(screen.getByLabelText('Liked Books')).toBeInTheDocument();
+    expect(screen.getByLabelText('Favorites')).toBeInTheDocument();
     expect(screen.getByLabelText('Notebook')).toBeInTheDocument();
     expect(screen.getByLabelText('Bookmarks')).toBeInTheDocument();
   });
@@ -81,8 +81,8 @@ describe('Navbar component', () => {
     expect(bookmarkSvg).toHaveClass('fill-primary');
   });
 
-  it('should fill heart icon when books are liked in favorites', () => {
-    useBookshelfStore.getState().toggleLikeBook(mockBooks[0].id);
+  it('should fill heart icon when books are favorited', () => {
+    useBookshelfStore.getState().toggleFavoriteBook(mockBooks[0]);
     const { container } = render(<Navbar activeView="catalog" />);
     const heartSvg = container.querySelector('svg.lucide-heart');
     expect(heartSvg).toHaveClass('fill-destructive');
@@ -96,9 +96,20 @@ describe('Navbar component', () => {
     fireEvent.click(bookshelfBtn);
     expect(handleViewChange).toHaveBeenCalledWith('bookshelf');
 
+    const favoritesBtn = screen.getByLabelText('Favorites');
+    fireEvent.click(favoritesBtn);
+    expect(handleViewChange).toHaveBeenCalledWith('favorites');
+
     const brand = screen.getByText(/Bookarium/i);
     fireEvent.click(brand);
     expect(handleViewChange).toHaveBeenCalledWith('catalog');
+  });
+
+  it('applies active styling when activeView is favorites', () => {
+    render(<Navbar activeView="favorites" />);
+    const favoritesBtn = screen.getByLabelText('Favorites');
+    expect(favoritesBtn).toHaveClass('font-bold');
+    expect(favoritesBtn).toHaveClass('border-destructive');
   });
 
   it('should cycle through themes when clicking theme button', () => {

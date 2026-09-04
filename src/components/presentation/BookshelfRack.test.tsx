@@ -108,9 +108,9 @@ describe('BookshelfRack Component', () => {
     fireEvent.click(saveBtns[0]);
     expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(true);
 
-    const likeBtns = screen.getAllByLabelText('Like book');
+    const likeBtns = screen.getAllByLabelText('Add to favorites');
     fireEvent.click(likeBtns[0]);
-    expect(useBookshelfStore.getState().isBookLiked(mockBooks[0].id)).toBe(true);
+    expect(useBookshelfStore.getState().isBookFavorite(mockBooks[0].id)).toBe(true);
   });
 
   it('renders guest mode sync prompt and triggers auth modal', () => {
@@ -318,8 +318,8 @@ describe('BookshelfRack Component', () => {
   it('triggers onBookClick when Read button is clicked on hover card', () => {
     useBookshelfStore.setState({
       savedBooks: mockBooks,
-      likedBooks: mockBooks,
-      likedBookIds: [mockBooks[0].id],
+      favoriteBooks: mockBooks,
+      favoriteBookIds: [mockBooks[0].id],
     });
     const handleBookClick = vi.fn();
     render(
@@ -337,8 +337,8 @@ describe('BookshelfRack Component', () => {
   it('triggers onDownloadClick when Download button is clicked on hover card', () => {
     useBookshelfStore.setState({
       savedBooks: mockBooks,
-      likedBooks: mockBooks,
-      likedBookIds: [mockBooks[0].id],
+      favoriteBooks: mockBooks,
+      favoriteBookIds: [mockBooks[0].id],
     });
     const handleDownload = vi.fn();
     render(
@@ -356,8 +356,8 @@ describe('BookshelfRack Component', () => {
   it('toggles saved bookmark state when Save button is clicked on hover card', () => {
     useBookshelfStore.setState({
       savedBooks: mockBooks,
-      likedBooks: mockBooks,
-      likedBookIds: [mockBooks[0].id],
+      favoriteBooks: mockBooks,
+      favoriteBookIds: [mockBooks[0].id],
     });
     render(
       <BookshelfRack
@@ -370,11 +370,11 @@ describe('BookshelfRack Component', () => {
     expect(useBookshelfStore.getState().savedBooks).toHaveLength(mockBooks.length - 1);
   });
 
-  it('toggles liked state when Like button is clicked on hover card', () => {
+  it('toggles favorite state when Favorite button is clicked on hover card', () => {
     useBookshelfStore.setState({
       savedBooks: mockBooks,
-      likedBooks: mockBooks,
-      likedBookIds: [mockBooks[0].id],
+      favoriteBooks: mockBooks,
+      favoriteBookIds: [mockBooks[0].id],
     });
     render(
       <BookshelfRack
@@ -382,9 +382,9 @@ describe('BookshelfRack Component', () => {
       />
     );
 
-    const unlikeBtns = screen.getAllByLabelText('Unlike book');
+    const unlikeBtns = screen.getAllByLabelText('Remove from favorites');
     fireEvent.click(unlikeBtns[0]);
-    expect(useBookshelfStore.getState().likedBookIds).not.toContain(mockBooks[0].id);
+    expect(useBookshelfStore.getState().favoriteBookIds).not.toContain(mockBooks[0].id);
   });
 
   it('opens quick-action bottom sheet on mobile spine tap without immediate navigation', () => {
@@ -485,11 +485,11 @@ describe('BookshelfRack Component', () => {
     window.innerWidth = 1024;
   });
 
-  it('toggles bookmark and like status from mobile action sheet', () => {
+  it('toggles bookmark and favorite status from mobile action sheet', () => {
     window.innerWidth = 375;
     useBookshelfStore.setState({
       savedBooks: mockBooks,
-      likedBookIds: [],
+      favoriteBookIds: [],
     });
 
     render(<BookshelfRack books={mockBooks} />);
@@ -504,10 +504,10 @@ describe('BookshelfRack Component', () => {
     fireEvent.click(removeBtn);
     expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(false);
 
-    // Like book
-    const likeBtn = within(sheet).getByRole('button', { name: 'Like book' });
+    // Favorite book
+    const likeBtn = within(sheet).getByRole('button', { name: 'Add to favorites' });
     fireEvent.click(likeBtn);
-    expect(useBookshelfStore.getState().isBookLiked(mockBooks[0].id)).toBe(true);
+    expect(useBookshelfStore.getState().isBookFavorite(mockBooks[0].id)).toBe(true);
 
     window.innerWidth = 1024;
   });

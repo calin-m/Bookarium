@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 04 Sep 2026 20:16:56 GMT  
+**Last Generated**: Fri, 04 Sep 2026 23:29:12 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 120 passed  
-**Total Verified Tests**: 907 passed  
+**Total Verified Tests**: 915 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (907 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (915 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 14 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.12%** (4822/5234) — *Target: $ge$ 80%*
-- **Statements**: **90.31%** (5268/5833) — *Target: $ge$ 80%*
-- **Functions**: **88.33%** (1234/1397) — *Target: $ge$ 80%*
-- **Branches**: **80.29%** (4506/5612) — *Target: $ge$ 80%*
+- **Lines**: **92.14%** (4871/5286) — *Target: $ge$ 80%*
+- **Statements**: **90.32%** (5320/5890) — *Target: $ge$ 80%*
+- **Functions**: **88.26%** (1241/1406) — *Target: $ge$ 80%*
+- **Branches**: **80.15%** (4569/5700) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (120 Suites / 907 Tests)
+## 🧪 Comprehensive Test Suite Catalog (120 Suites / 915 Tests)
 
 ### 🚀 App Routes & Pages (10 Suites · 82 Tests)
 
@@ -178,7 +178,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (20 Suites · 196 Tests)
+### 🎨 Catalog & Presentation (20 Suites · 197 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -202,11 +202,11 @@
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
 - ✔ `should render link to /read/[id] when clicking Read button`
-- ✔ `should toggle like and bookmark state on button clicks`
+- ✔ `should toggle favorite and bookmark state on button clicks`
 - ✔ `should call onDownloadClick when clicking Formats button`
 - ✔ `should call onPreviewClick when clicking book cover visual on desktop`
 - ✔ `should navigate to /read/[id] on mobile when clicking book cover visual in catalog view`
-- ✔ `should call onPreviewClick on mobile when activeView is likes`
+- ✔ `should call onPreviewClick on mobile when activeView is favorites`
 - ✔ `applies opacity-0 when isPreviewActive is true`
 - ✔ `should render cursor tooltip on hover when onPreviewClick is provided`
 - ✔ `renders fallback cover when image error occurs`
@@ -270,7 +270,7 @@
 - ✔ `invokes onWillClose during the landing flight prior to full onClose`
 - ✔ `renders long book titles and authors in full without truncation`
 - ✔ `does not render curation controls for unsaved books in catalog view`
-- ✔ `renders curation controls when activeView is bookshelf or likes`
+- ✔ `renders curation controls when activeView is bookshelf or favorites`
 - ✔ `does not render curation controls in catalog view even if book is saved or has ratings in store`
 - ✔ `renders curation toolbar with solid bg-card and text-foreground modal styling`
 - ✔ `closes modal when clicking empty space in the viewport container outside the book`
@@ -296,7 +296,7 @@
 - ✔ `renders rating and reading status controls and handles interactions`
 - ✔ `calls onClose when clicking the backdrop or pressing Escape`
 - ✔ `hides personal curation section when activeView is catalog`
-- ✔ `shows personal curation section when activeView is likes`
+- ✔ `shows personal curation section when activeView is favorites`
 
 </details>
 
@@ -333,13 +333,13 @@
 - ✔ `triggers onBookClick when Read button is clicked on hover card`
 - ✔ `triggers onDownloadClick when Download button is clicked on hover card`
 - ✔ `toggles saved bookmark state when Save button is clicked on hover card`
-- ✔ `toggles liked state when Like button is clicked on hover card`
+- ✔ `toggles favorite state when Favorite button is clicked on hover card`
 - ✔ `opens quick-action bottom sheet on mobile spine tap without immediate navigation`
 - ✔ `triggers onBookClick and closes sheet when clicking Read in mobile action sheet`
 - ✔ `dismisses mobile action sheet when clicking backdrop`
 - ✔ `handles mobile action sheet close button and dismiss`
 - ✔ `triggers download callback from mobile action sheet`
-- ✔ `toggles bookmark and like status from mobile action sheet`
+- ✔ `toggles bookmark and favorite status from mobile action sheet`
 - ✔ `handles moving a book to another shelf and default read routing from mobile action sheet`
 - ✔ `renders offline download button and triggers download all`
 - ✔ `renders individual offline download button on book spine and triggers toggle`
@@ -429,7 +429,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (18 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -438,8 +438,9 @@
 - ✔ `triggers onViewChange with bookmarks when Bookmarks tab is clicked`
 - ✔ `applies active styling when activeView is bookmarks`
 - ✔ `should fill bookmark icon when books are saved to bookshelf`
-- ✔ `should fill heart icon when books are liked in favorites`
+- ✔ `should fill heart icon when books are favorited`
 - ✔ `should trigger onViewChange callback when clicking tabs`
+- ✔ `applies active styling when activeView is favorites`
 - ✔ `should cycle through themes when clicking theme button`
 - ✔ `renders Sign In button for guests and triggers openAuthModal`
 - ✔ `renders direct Account Link when user is authenticated`
@@ -728,7 +729,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (6 Suites · 89 Tests)
+### ⚡ Zustand State Stores (6 Suites · 93 Tests)
 
 <details>
 <summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
@@ -784,9 +785,9 @@
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
 - ✔ `should manage reading queue`
-- ✔ `should toggle like status and store likedBooks`
-- ✔ `should sync and clear liked books`
-- ✔ `should call Supabase upsert and delete on toggleLikeBook with userId`
+- ✔ `should toggle favorite status and store favoriteBooks`
+- ✔ `should sync and clear favorite books`
+- ✔ `should call Supabase upsert and delete on toggleFavoriteBook with userId`
 - ✔ `returns live hydrated state and reactive actions`
 - ✔ `handles activeBookshelfId selection and cloud bookshelf list`
 - ✔ `handles syncWithCloud fetching bookshelves and items`
@@ -827,7 +828,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -840,6 +841,10 @@
 - ✔ `does not invoke Supabase in guest mode (Zero Auth / Zero Key)`
 - ✔ `debounces cloud upsert by 2000ms when authenticated`
 - ✔ `restores reading position and progress from cloud`
+- ✔ `enriches cloud upsert with book metadata from currentBook`
+- ✔ `bulk synchronizes all user reading progress via syncWithCloud`
+- ✔ `deletes from Supabase when clearReadingPosition is invoked while authenticated`
+- ✔ `deletes all user records from Supabase on clearAllVolumes while authenticated`
 
 </details>
 
@@ -982,7 +987,7 @@
 - ✔ `rejects missing library section`
 - ✔ `rejects invalid savedBooks structure`
 - ✔ `rejects corrupted book items inside savedBooks`
-- ✔ `rejects non-array annotations or likedBookIds if provided`
+- ✔ `rejects non-array annotations, favoriteBookIds, or likedBookIds if provided`
 - ✔ `merges incoming backup non-destructively by default`
 - ✔ `overwrites state completely when replace strategy is selected`
 - ✔ `triggers cloud sync if userId is provided`
@@ -1111,7 +1116,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (18 Suites · 134 Tests)
+### 🔄 Hooks & React Query (18 Suites · 137 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
@@ -1187,7 +1192,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -1200,6 +1205,8 @@
 - ✔ `excludes un-opened books that are only in recentBooks or bookStatuses with 0 progress`
 - ✔ `resolves real title and author via resolveBookMetadata when book is not in savedBooks`
 - ✔ `actively queries and hydrates missing book metadata (e.g. Volume #55179) and caches in recentBooks`
+- ✔ `immediately renders volumes using cloud-restored bookTitle and authors on readingPosition without calling useBooks`
+- ✔ `clears individual volume progress and all volumes via store methods`
 
 </details>
 
@@ -1289,7 +1296,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -1300,6 +1307,7 @@
 - ✔ `hydrates initial filter state from window.location.search including view=bookshelf`
 - ✔ `hydrates initial filter state with view=notebook`
 - ✔ `hydrates initial filter state with view=bookmarks`
+- ✔ `hydrates initial filter state with view=favorites and normalizes legacy view=likes`
 
 </details>
 

@@ -119,7 +119,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   // Cross-reference metadata sources
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
-  const likedBooks = useBookshelfStore((s) => s.likedBooks || []);
+  const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks || []);
   const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
 
   // Identify book IDs that lack resolved titles/authors and are not in local stores or static fixtures
@@ -133,15 +133,15 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       if (hasValidTitle && hasValidAuthor) continue;
 
       const inSaved = savedBooks.some((b) => b.id === ann.bookId);
-      const inLiked = likedBooks.some((b) => b.id === ann.bookId);
+      const inFavorite = favoriteBooks.some((b) => b.id === ann.bookId);
       const inFeatured = FEATURED_HERO_BOOKS.some((b) => b.id === ann.bookId);
 
-      if (!inSaved && !inLiked && !inFeatured) {
+      if (!inSaved && !inFavorite && !inFeatured) {
         ids.add(ann.bookId);
       }
     }
     return Array.from(ids).sort((a, b) => a - b);
-  }, [annotations, savedBooks, likedBooks]);
+  }, [annotations, savedBooks, favoriteBooks]);
 
   // Query Gutendex remote API / cache for any unindexed annotated books
   const { data: remoteBooksData } = useBooks(
@@ -218,7 +218,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const resolveBookDetails = useCallback(
     (ann: Annotation) => {
       const fromSaved = savedBooks.find((b) => b.id === ann.bookId);
-      const fromLiked = likedBooks.find((b) => b.id === ann.bookId);
+      const fromFavorite = favoriteBooks.find((b) => b.id === ann.bookId);
       const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === ann.bookId);
       const fromApi = remoteBooksData?.results?.find((b: GutendexBook) => b.id === ann.bookId);
 
@@ -228,7 +228,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       const candidateTitle =
         (hasValidAnnTitle ? cleanedAnnTitle : '') ||
         fromSaved?.title ||
-        fromLiked?.title ||
+        fromFavorite?.title ||
         fromFeatured?.title ||
         fromApi?.title ||
         cleanedAnnTitle;
@@ -236,13 +236,13 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       const cleanedAnnAuthor = !isPlaceholderAuthor(ann.bookAuthor) ? ann.bookAuthor?.replace(/^by\s+/i, '').trim() : '';
 
       const savedAuthor = fromSaved?.authors ? formatAuthorNames(fromSaved.authors) : '';
-      const likedAuthor = fromLiked?.authors ? formatAuthorNames(fromLiked.authors) : '';
+      const favoriteAuthor = fromFavorite?.authors ? formatAuthorNames(fromFavorite.authors) : '';
       const apiAuthor = fromApi?.authors ? formatAuthorNames(fromApi.authors) : '';
 
       const candidateAuthor =
         cleanedAnnAuthor ||
         (!isPlaceholderAuthor(savedAuthor) ? savedAuthor : '') ||
-        (!isPlaceholderAuthor(likedAuthor) ? likedAuthor : '') ||
+        (!isPlaceholderAuthor(favoriteAuthor) ? favoriteAuthor : '') ||
         fromFeatured?.author ||
         (!isPlaceholderAuthor(apiAuthor) ? apiAuthor : '') ||
         '';
@@ -252,7 +252,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         (!isPlaceholderTitle(cleanTitle) ? cleanTitle : '') ||
         cleanBookTitle(fromFeatured?.title) ||
         cleanBookTitle(fromSaved?.title) ||
-        cleanBookTitle(fromLiked?.title) ||
+        cleanBookTitle(fromFavorite?.title) ||
         cleanBookTitle(fromApi?.title) ||
         (ann.bookId ? `Volume #${ann.bookId}` : 'Public Domain Classic');
 
@@ -267,7 +267,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         author: finalAuthor,
       };
     },
-    [savedBooks, likedBooks, remoteBooksData]
+    [savedBooks, favoriteBooks, remoteBooksData]
   );
 
   // Filtered list of annotations

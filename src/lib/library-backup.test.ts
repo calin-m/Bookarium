@@ -48,8 +48,8 @@ describe('library-backup domain engine', () => {
     useBookshelfStore.setState({
       savedBooks: [mockBook1],
       readingQueue: [],
-      likedBooks: [mockBook1],
-      likedBookIds: [1342],
+      favoriteBooks: [mockBook1],
+      favoriteBookIds: [1342],
       cloudBookshelves: [
         {
           id: 'shelf-1',
@@ -140,6 +140,7 @@ describe('library-backup domain engine', () => {
 
       expect(backup.library.savedBooks).toHaveLength(1);
       expect(backup.library.savedBooks[0].title).toBe('Pride and Prejudice');
+      expect(backup.library.favoriteBookIds).toEqual([1342]);
       expect(backup.library.likedBookIds).toEqual([1342]);
       expect(backup.library.customShelves).toHaveLength(1);
       expect(backup.library.customShelves[0].name).toBe('Classics');
@@ -258,7 +259,14 @@ describe('library-backup domain engine', () => {
       expect(result.error).toContain('missing valid ID or title');
     });
 
-    it('rejects non-array annotations or likedBookIds if provided', () => {
+    it('rejects non-array annotations, favoriteBookIds, or likedBookIds if provided', () => {
+      const resFav = validateLibraryBackup({
+        app: 'Bookarium',
+        library: { savedBooks: [], favoriteBookIds: 'invalid' },
+      });
+      expect(resFav.valid).toBe(false);
+      expect(resFav.error).toContain('favoriteBookIds must be an array');
+
       const res1 = validateLibraryBackup({
         app: 'Bookarium',
         library: { savedBooks: [], likedBookIds: 'invalid' },
@@ -280,7 +288,7 @@ describe('library-backup domain engine', () => {
     const incomingBackup: LibraryBackupPayload = {
       version: '1.0',
       app: 'Bookarium',
-      exportedAt: '2026-09-02T10:00:00Z',
+      exportedAt: '2026-06-01T12:00:00Z',
       summary: {
         bookCount: 1,
         customShelfCount: 1,
@@ -291,6 +299,7 @@ describe('library-backup domain engine', () => {
       library: {
         savedBooks: [mockBook2],
         readingQueue: [],
+        favoriteBookIds: [84],
         likedBookIds: [84],
         customShelves: [
           {
@@ -363,7 +372,7 @@ describe('library-backup domain engine', () => {
       expect(bookshelfState.savedBooks.map((b) => b.id).sort((a, b) => a - b)).toEqual([84, 1342]);
 
       // Favorites should contain both
-      expect(bookshelfState.likedBookIds.sort((a, b) => a - b)).toEqual([84, 1342]);
+      expect(bookshelfState.favoriteBookIds.sort((a, b) => a - b)).toEqual([84, 1342]);
 
       // Ratings & reading statuses should be merged
       expect(bookshelfState.bookRatings).toEqual({ 1342: 5, 84: 4 });
@@ -410,7 +419,7 @@ describe('library-backup domain engine', () => {
       expect(bookshelfState.savedBooks[0].id).toBe(84);
 
       // Favorites should only contain 84
-      expect(bookshelfState.likedBookIds).toEqual([84]);
+      expect(bookshelfState.favoriteBookIds).toEqual([84]);
 
       // Ratings & reading statuses should only contain incoming backup
       expect(bookshelfState.bookRatings).toEqual({ 84: 4 });

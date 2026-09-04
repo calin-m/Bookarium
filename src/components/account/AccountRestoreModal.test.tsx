@@ -18,6 +18,7 @@ const mockBackup: LibraryBackupPayload = {
   library: {
     savedBooks: [],
     readingQueue: [],
+    favoriteBookIds: [],
     likedBookIds: [],
     customShelves: [],
   },

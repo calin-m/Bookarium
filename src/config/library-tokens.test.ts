@@ -41,7 +41,7 @@ describe('LIBRARY_THEMES configuration', () => {
   });
 
   it('maps correct route targets for favorites and notebook', () => {
-    expect(LIBRARY_THEMES.favorites.route).toBe(ROUTES.LIKES);
+    expect(LIBRARY_THEMES.favorites.route).toBe(ROUTES.FAVORITES);
     expect(LIBRARY_THEMES.favorites.iconColor).toBe('text-destructive');
     expect(LIBRARY_THEMES.notebook.route).toBe(ROUTES.NOTEBOOK);
     expect(LIBRARY_THEMES.notebook.iconColor).toBe('text-amber-500');

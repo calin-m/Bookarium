@@ -22,10 +22,10 @@ export interface BookshelfMobileModalProps {
   onClose: () => void;
   readingProgress?: number;
   isSaved?: boolean;
-  isLiked?: boolean;
+  isFavorite?: boolean;
   isOffline?: boolean;
   onToggleSave?: (book: GutendexBook) => void;
-  onToggleLike?: (book: GutendexBook) => void;
+  onToggleFavorite?: (book: GutendexBook) => void;
   onToggleOffline?: (book: GutendexBook) => void;
   onBookClick?: (book: GutendexBook) => void;
   onDownloadClick?: (book: GutendexBook) => void;
@@ -35,7 +35,7 @@ export interface BookshelfMobileModalProps {
   currentActiveShelfId?: string;
   userId?: string;
   onMoveBookToShelf?: (bookId: number, targetShelfId: string, userId: string) => Promise<boolean | void>;
-  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks';
+  activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
   className?: string;
 }
 
@@ -44,10 +44,10 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
   onClose,
   readingProgress,
   isSaved,
-  isLiked,
+  isFavorite,
   isOffline = false,
   onToggleSave,
-  onToggleLike,
+  onToggleFavorite,
   onToggleOffline,
   onBookClick,
   onDownloadClick,
@@ -65,9 +65,9 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
 
   const {
     isSaved: storeIsSaved,
-    isLiked: storeIsLiked,
+    isFavorite: storeIsFavorite,
     toggleSaveBook,
-    toggleLikeBook,
+    toggleFavoriteBook,
     bookRatings,
     bookStatuses,
     setBookRating,
@@ -80,18 +80,18 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
     ? storeIsSaved(selectedMobileBook.id)
     : false;
 
-  const effectiveIsLiked = isLiked !== undefined
-    ? isLiked
+  const effectiveIsFavorite = isFavorite !== undefined
+    ? isFavorite
     : selectedMobileBook
-    ? storeIsLiked(selectedMobileBook.id)
+    ? storeIsFavorite(selectedMobileBook.id)
     : false;
 
   const handleToggleSave = onToggleSave || toggleSaveBook;
-  const handleToggleLike = onToggleLike || toggleLikeBook;
+  const handleToggleFavorite = onToggleFavorite || toggleFavoriteBook;
 
   const currentRating = selectedMobileBook ? bookRatings[selectedMobileBook.id] ?? null : null;
   const currentStatus = selectedMobileBook ? bookStatuses[selectedMobileBook.id] ?? null : null;
-  const isCuratable = activeView === undefined || activeView === 'bookshelf' || activeView === 'likes';
+  const isCuratable = activeView === undefined || activeView === 'bookshelf' || activeView === 'favorites';
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -234,15 +234,15 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => handleToggleLike(selectedMobileBook)}
+                  onClick={() => handleToggleFavorite(selectedMobileBook)}
                   className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
-                    effectiveIsLiked
+                    effectiveIsFavorite
                       ? 'border-destructive bg-destructive/10 text-destructive'
                       : 'border-border hover:bg-muted text-foreground'
                   }`}
-                  aria-label={effectiveIsLiked ? 'Unlike book' : 'Like book'}
+                  aria-label={effectiveIsFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 >
-                  <Heart className={`w-4 h-4 ${effectiveIsLiked ? 'fill-current' : ''}`} />
+                  <Heart className={`w-4 h-4 ${effectiveIsFavorite ? 'fill-current' : ''}`} />
                 </button>
               </div>
 

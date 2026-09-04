@@ -27,9 +27,9 @@ describe('BookshelfMobileModal Component', () => {
         isClosingMobileSheet={false}
         onClose={vi.fn()}
         isSaved={false}
-        isLiked={false}
+        isFavorite={false}
         onToggleSave={vi.fn()}
-        onToggleLike={vi.fn()}
+        onToggleFavorite={vi.fn()}
       />
     );
     expect(container).toBeEmptyDOMElement();
@@ -40,7 +40,7 @@ describe('BookshelfMobileModal Component', () => {
     const handleBookClick = vi.fn();
     const handleDownload = vi.fn();
     const handleSave = vi.fn();
-    const handleLike = vi.fn();
+    const handleFavorite = vi.fn();
 
     render(
       <BookshelfMobileModal
@@ -49,9 +49,9 @@ describe('BookshelfMobileModal Component', () => {
         onClose={handleClose}
         readingProgress={25}
         isSaved={false}
-        isLiked={false}
+        isFavorite={false}
         onToggleSave={handleSave}
-        onToggleLike={handleLike}
+        onToggleFavorite={handleFavorite}
         onBookClick={handleBookClick}
         onDownloadClick={handleDownload}
       />
@@ -73,9 +73,9 @@ describe('BookshelfMobileModal Component', () => {
     fireEvent.click(saveBtn);
     expect(handleSave).toHaveBeenCalledWith(mockBook);
 
-    const likeBtn = screen.getByLabelText('Like book');
+    const likeBtn = screen.getByLabelText('Add to favorites');
     fireEvent.click(likeBtn);
-    expect(handleLike).toHaveBeenCalledWith(mockBook);
+    expect(handleFavorite).toHaveBeenCalledWith(mockBook);
   });
 
   it('renders offline indicator and fires onToggleOffline', () => {
@@ -86,10 +86,10 @@ describe('BookshelfMobileModal Component', () => {
         isClosingMobileSheet={false}
         onClose={vi.fn()}
         isSaved={false}
-        isLiked={false}
+        isFavorite={false}
         isOffline={true}
         onToggleSave={vi.fn()}
-        onToggleLike={vi.fn()}
+        onToggleFavorite={vi.fn()}
         onToggleOffline={handleToggleOffline}
       />
     );
@@ -107,9 +107,9 @@ describe('BookshelfMobileModal Component', () => {
         isClosingMobileSheet={false}
         onClose={vi.fn()}
         isSaved={true}
-        isLiked={false}
+        isFavorite={false}
         onToggleSave={vi.fn()}
-        onToggleLike={vi.fn()}
+        onToggleFavorite={vi.fn()}
       />
     );
 
@@ -158,12 +158,12 @@ describe('BookshelfMobileModal Component', () => {
     expect(screen.queryByText('My Rating')).not.toBeInTheDocument();
   });
 
-  it('shows personal curation section when activeView is likes', () => {
+  it('shows personal curation section when activeView is favorites', () => {
     render(
       <BookshelfMobileModal
         selectedMobileBook={mockBook}
         onClose={vi.fn()}
-        activeView="likes"
+        activeView="favorites"
       />
     );
 

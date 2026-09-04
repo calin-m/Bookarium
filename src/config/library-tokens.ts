@@ -42,7 +42,7 @@ export const LIBRARY_THEMES = {
   },
   favorites: {
     name: 'Favorites',
-    route: ROUTES.LIKES,
+    route: ROUTES.FAVORITES,
     iconColor: 'text-destructive',
     hoverBorder: 'hover:border-destructive',
     focusRing: 'focus-visible:ring-destructive',

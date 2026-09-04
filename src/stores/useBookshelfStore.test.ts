@@ -27,7 +27,7 @@ describe('useBookshelfStore', () => {
     const state = useBookshelfStore.getState();
     expect(state.savedBooks).toEqual([]);
     expect(state.readingQueue).toEqual([]);
-    expect(state.likedBookIds).toEqual([]);
+    expect(state.favoriteBookIds).toEqual([]);
     expect(state.recentBooks).toEqual([]);
   });
 
@@ -63,40 +63,40 @@ describe('useBookshelfStore', () => {
     expect(useBookshelfStore.getState().isInQueue(book1.id)).toBe(false);
   });
 
-  it('should toggle like status and store likedBooks', () => {
+  it('should toggle favorite status and store favoriteBooks', () => {
     const book = mockBooks[0];
-    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(false);
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(false);
 
-    useBookshelfStore.getState().toggleLikeBook(book);
-    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(true);
-    expect(useBookshelfStore.getState().likedBooks).toHaveLength(1);
-    expect(useBookshelfStore.getState().likedBooks[0].id).toBe(book.id);
+    useBookshelfStore.getState().toggleFavoriteBook(book);
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(true);
+    expect(useBookshelfStore.getState().favoriteBooks).toHaveLength(1);
+    expect(useBookshelfStore.getState().favoriteBooks[0].id).toBe(book.id);
 
-    useBookshelfStore.getState().toggleLikeBook(book);
-    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(false);
-    expect(useBookshelfStore.getState().likedBooks).toHaveLength(0);
+    useBookshelfStore.getState().toggleFavoriteBook(book);
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(false);
+    expect(useBookshelfStore.getState().favoriteBooks).toHaveLength(0);
 
-    // Also support ID-based toggle for backward compatibility
-    useBookshelfStore.getState().toggleLikeBook(book.id);
-    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(true);
-    useBookshelfStore.getState().toggleLikeBook(book.id);
-    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(false);
+    // Also support ID-based toggle
+    useBookshelfStore.getState().toggleFavoriteBook(book.id);
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(true);
+    useBookshelfStore.getState().toggleFavoriteBook(book.id);
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(false);
   });
 
-  it('should sync and clear liked books', () => {
+  it('should sync and clear favorite books', () => {
     const book = mockBooks[0];
-    useBookshelfStore.setState({ likedBookIds: [book.id], likedBooks: [] });
+    useBookshelfStore.setState({ favoriteBookIds: [book.id], favoriteBooks: [] });
 
-    useBookshelfStore.getState().syncLikedBooks([book]);
-    expect(useBookshelfStore.getState().likedBooks).toHaveLength(1);
-    expect(useBookshelfStore.getState().likedBooks[0].id).toBe(book.id);
+    useBookshelfStore.getState().syncFavoriteBooks([book]);
+    expect(useBookshelfStore.getState().favoriteBooks).toHaveLength(1);
+    expect(useBookshelfStore.getState().favoriteBooks[0].id).toBe(book.id);
 
-    useBookshelfStore.getState().clearLikedBooks();
-    expect(useBookshelfStore.getState().likedBooks).toHaveLength(0);
-    expect(useBookshelfStore.getState().likedBookIds).toHaveLength(0);
+    useBookshelfStore.getState().clearFavoriteBooks();
+    expect(useBookshelfStore.getState().favoriteBooks).toHaveLength(0);
+    expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(0);
   });
 
-  it('should call Supabase upsert and delete on toggleLikeBook with userId', async () => {
+  it('should call Supabase upsert and delete on toggleFavoriteBook with userId', async () => {
     const mockUpsert = vi.fn().mockResolvedValue({ error: null });
     const mockEqBook = vi.fn().mockResolvedValue({ error: null });
     const mockEqUser = vi.fn().mockReturnValue({ eq: mockEqBook });
@@ -113,9 +113,9 @@ describe('useBookshelfStore', () => {
     });
 
     const book = mockBooks[0];
-    // Like with userId
+    // Favorite with userId
     await act(async () => {
-      await useBookshelfStore.getState().toggleLikeBook(book, 'user-1');
+      await useBookshelfStore.getState().toggleFavoriteBook(book, 'user-1');
     });
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -125,9 +125,9 @@ describe('useBookshelfStore', () => {
       })
     );
 
-    // Unlike with userId
+    // Unfavorite with userId
     await act(async () => {
-      await useBookshelfStore.getState().toggleLikeBook(book, 'user-1');
+      await useBookshelfStore.getState().toggleFavoriteBook(book, 'user-1');
     });
     expect(mockDelete).toHaveBeenCalled();
   });
@@ -139,18 +139,18 @@ describe('useBookshelfStore', () => {
 
       expect(result.current.hasMounted).toBe(true);
       expect(result.current.isSaved(book.id)).toBe(false);
-      expect(result.current.isLiked(book.id)).toBe(false);
+      expect(result.current.isFavorite(book.id)).toBe(false);
       expect(result.current.savedCount).toBe(0);
 
       act(() => {
         result.current.toggleSaveBook(book);
-        result.current.toggleLikeBook(book);
+        result.current.toggleFavoriteBook(book);
       });
 
       expect(result.current.isSaved(book.id)).toBe(true);
-      expect(result.current.isLiked(book.id)).toBe(true);
+      expect(result.current.isFavorite(book.id)).toBe(true);
       expect(result.current.savedCount).toBe(1);
-      expect(result.current.likedCount).toBe(1);
+      expect(result.current.favoriteCount).toBe(1);
 
       act(() => {
         result.current.addToQueue(book);
@@ -167,7 +167,7 @@ describe('useBookshelfStore', () => {
         result.current.clearBookshelf();
       });
       expect(result.current.savedCount).toBe(0);
-      expect(result.current.likedCount).toBe(0);
+      expect(result.current.favoriteCount).toBe(0);
     });
 
     it('handles activeBookshelfId selection and cloud bookshelf list', () => {
@@ -245,9 +245,9 @@ describe('useBookshelfStore', () => {
       expect(useBookshelfStore.getState().cloudBookshelves).toHaveLength(1);
       expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
       expect(useBookshelfStore.getState().savedBooks[0].title).toBe('Alice in Wonderland');
-      expect(useBookshelfStore.getState().likedBooks).toHaveLength(1);
-      expect(useBookshelfStore.getState().likedBooks[0].title).toBe('Frankenstein');
-      expect(useBookshelfStore.getState().likedBookIds).toContain(84);
+      expect(useBookshelfStore.getState().favoriteBooks).toHaveLength(1);
+      expect(useBookshelfStore.getState().favoriteBooks[0].title).toBe('Frankenstein');
+      expect(useBookshelfStore.getState().favoriteBookIds).toContain(84);
     });
 
     it('bidirectionally pushes unsynced local books and favorites to Supabase during syncWithCloud', async () => {
@@ -294,8 +294,8 @@ describe('useBookshelfStore', () => {
       // Populate local store with books from guest session
       useBookshelfStore.setState({
         savedBooks: [mockBooks[0]],
-        likedBooks: [mockBooks[1]],
-        likedBookIds: [mockBooks[1].id],
+        favoriteBooks: [mockBooks[1]],
+        favoriteBookIds: [mockBooks[1].id],
       });
 
       await act(async () => {

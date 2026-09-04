@@ -150,5 +150,19 @@ describe('useCatalogFilters', () => {
 
     (window as any).location = new URL('http://localhost:3000/');
   });
+
+  it('hydrates initial filter state with view=favorites and normalizes legacy view=likes', () => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/?view=favorites');
+
+    const { result: favResult } = renderHook(() => useCatalogFilters());
+    expect(favResult.current.activeView).toBe('favorites');
+
+    (window as any).location = new URL('http://localhost:3000/?view=likes');
+    const { result: likesResult } = renderHook(() => useCatalogFilters());
+    expect(likesResult.current.activeView).toBe('favorites');
+
+    (window as any).location = new URL('http://localhost:3000/');
+  });
 });
 
