@@ -137,6 +137,7 @@ describe('BookshelfMobileModal Component', () => {
     );
 
     const backdrop = screen.getByTestId('mobile-sheet-backdrop');
+    expect(backdrop).toHaveClass('bg-transparent');
     fireEvent.click(backdrop);
     expect(handleClose).toHaveBeenCalledTimes(1);
 

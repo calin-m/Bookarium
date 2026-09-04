@@ -77,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <BookOpen className="w-4 h-4" />
           </div>
           <div>
-            <span className="hidden min-[405px]:inline text-sm sm:text-base md:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap">
+            <span className="hidden min-[375px]:inline text-xs min-[440px]:text-sm sm:text-base md:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap">
               {SITE_CONFIG.LOGO_TEXT}
             </span>
           </div>

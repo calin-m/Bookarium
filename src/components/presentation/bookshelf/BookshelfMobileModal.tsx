@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Download, Bookmark, Heart, Sparkles, X, CheckCircle2, HardDriveDownload } from 'lucide-react';
@@ -11,6 +12,7 @@ import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { Button } from '@/components/ui/Button';
+import { useHasMounted } from '@/hooks/useHasMounted';
 import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
 
@@ -57,6 +59,8 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
   activeView,
 }) => {
   const router = useRouter();
+  const hasMounted = useHasMounted();
+
   const {
     isSaved: storeIsSaved,
     isLiked: storeIsLiked,
@@ -101,17 +105,19 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
     };
   }, [selectedMobileBook, onClose]);
 
-  return (
+  if (!hasMounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {selectedMobileBook && (
         <>
-          {/* Backdrop to capture outside taps */}
+          {/* Transparent Backdrop to capture outside taps without dimming */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-2xs z-50 cursor-pointer"
+            className="fixed inset-0 bg-transparent z-50 cursor-pointer"
             onClick={onClose}
             aria-hidden="true"
             data-testid="mobile-sheet-backdrop"
@@ -127,7 +133,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 8 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="relative w-full max-w-sm bg-card text-foreground border border-border rounded-2xl p-5 shadow-2xl z-10 space-y-4 pointer-events-auto"
+              className="relative w-full max-w-sm bg-card text-foreground border border-border rounded-2xl p-5 shadow-2xl z-10 space-y-4 pointer-events-auto my-auto"
               role="dialog"
               aria-modal="true"
               aria-label={`Book actions for ${selectedMobileBook.title}`}
@@ -297,6 +303,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

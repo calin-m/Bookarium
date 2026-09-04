@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 04 Sep 2026 18:58:55 GMT  
+**Last Generated**: Fri, 04 Sep 2026 19:59:57 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 120 passed  
-**Total Verified Tests**: 906 passed  
+**Total Verified Tests**: 907 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (906 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (907 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 14 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.12%** (4820/5232) — *Target: $ge$ 80%*
-- **Statements**: **90.32%** (5266/5830) — *Target: $ge$ 80%*
+- **Lines**: **92.14%** (4823/5234) — *Target: $ge$ 80%*
+- **Statements**: **90.31%** (5268/5833) — *Target: $ge$ 80%*
 - **Functions**: **88.26%** (1233/1397) — *Target: $ge$ 80%*
-- **Branches**: **80.32%** (4506/5610) — *Target: $ge$ 80%*
+- **Branches**: **80.32%** (4507/5611) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (120 Suites / 906 Tests)
+## 🧪 Comprehensive Test Suite Catalog (120 Suites / 907 Tests)
 
 ### 🚀 App Routes & Pages (10 Suites · 82 Tests)
 
@@ -178,7 +178,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (20 Suites · 195 Tests)
+### 🎨 Catalog & Presentation (20 Suites · 196 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -311,13 +311,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (30 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (31 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
 - ✔ `triggers onBookClick or openReader when book spine is clicked`
 - ✔ `supports keyboard navigation via Enter and Space keys`
 - ✔ `opens reader route using default handler if onBookClick is omitted`
+- ✔ `opens mobile modal when book spine is clicked on mobile screen (<640px)`
 - ✔ `handles quick action download and bookmark clicks`
 - ✔ `renders guest mode sync prompt and triggers auth modal`
 - ✔ `displays rounded integer percentage for reading progress`

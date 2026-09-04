@@ -93,7 +93,6 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           query={searchQuery}
           onQueryChange={setSearchQuery}
           placeholder="Search your reading bookmarks by title, author, or subject..."
-          mobilePlaceholder="Search bookmarks..."
           totalCount={activeFilter === 'all' ? counts.all : counts[activeFilter]}
           filteredCount={filteredVolumes.length}
           collectionName="bookmarks"
