@@ -9,6 +9,23 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '1.9.4',
+    date: '2026-09-04',
+    title: 'Bookmarks & Continue Reading Ledger, Canonical Book Domain Adapter & Hardened Pre-Commit Hook',
+    sections: {
+      Added: [
+        'Bookmarks & Continue Reading Ledger (`/?view=bookmarks`): Dedicated reading ledger with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), and 1-click chapter resume.',
+        'Canonical Domain Book Entity & Adapter (`toCanonicalBook`): Provider-agnostic Book and ActiveReadingVolume domain entities in `src/types/book.types.ts` and `src/lib/adapters/book.adapter.ts` for clean architectural decoupling.',
+        'Headless Reading Ledger Hook (`useContinueReadingLedger.ts`): Aggregates reading progress, bookmarks, and statuses across stores with client-side status filtering and recency sorting.',
+        'Navigation & Route Integration: Added Bookmarks tab to Navbar with BookMarked icon, active styling in library-tokens.ts, and BOOKMARKS route target in routes.ts.',
+        'Co-Located Test Suite Expansion: Added 4 new test suites (120 suites / 867 tests total) with 100% pass rate.',
+      ],
+      Fixed: [
+        'Pre-Commit Hook Hardening (`.husky/pre-commit`): Eliminated child git process lock collisions on Windows NTFS by running the 7-Gateway Quality Engine via pure Node.js.',
+      ],
+    },
+  },
+  {
     version: '1.9.3',
     date: '2026-09-04',
     title: 'Personal Curation (Ratings & Statuses), Mobile Action Sheet & Live Static Analysis Telemetry',

@@ -73,6 +73,17 @@ export const LIBRARY_THEMES = {
     navActiveBorder: 'border-primary',
     navFill: 'fill-primary text-primary',
   },
+  bookmarks: {
+    name: 'Bookmarks',
+    route: ROUTES.BOOKMARKS,
+    iconColor: 'text-indigo-500',
+    hoverBorder: 'hover:border-indigo-500',
+    focusRing: 'focus-visible:ring-indigo-500',
+    arrowColor: 'text-indigo-500',
+    navActiveText: 'text-indigo-600 dark:text-indigo-400',
+    navActiveBorder: 'border-indigo-500',
+    navFill: 'fill-indigo-500 text-indigo-500',
+  },
 } as const;
 
 export type LibrarySectionKey = keyof typeof LIBRARY_THEMES;

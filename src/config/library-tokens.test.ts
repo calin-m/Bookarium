@@ -9,6 +9,7 @@ describe('LIBRARY_THEMES configuration', () => {
     'favorites',
     'notebook',
     'customShelves',
+    'bookmarks',
   ];
 
   it('contains all expected library section keys', () => {

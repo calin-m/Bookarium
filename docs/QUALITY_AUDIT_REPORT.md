@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 04 Sep 2026 13:56:53 GMT  
+**Last Generated**: Fri, 04 Sep 2026 14:46:18 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 116 passed  
-**Total Verified Tests**: 840 passed  
+**Total Test Suites**: 120 passed  
+**Total Verified Tests**: 867 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **116/116 test suites passed** (840 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (867 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92%** (4523/4916) — *Target: $ge$ 80%*
-- **Statements**: **90.25%** (4927/5459) — *Target: $ge$ 80%*
-- **Functions**: **87.89%** (1154/1313) — *Target: $ge$ 80%*
-- **Branches**: **80.44%** (4213/5237) — *Target: $ge$ 80%*
+- **Lines**: **91.94%** (4671/5080) — *Target: $ge$ 80%*
+- **Statements**: **90.2%** (5100/5654) — *Target: $ge$ 80%*
+- **Functions**: **87.99%** (1195/1358) — *Target: $ge$ 80%*
+- **Branches**: **80.27%** (4371/5445) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (116 Suites / 840 Tests)
+## 🧪 Comprehensive Test Suite Catalog (120 Suites / 867 Tests)
 
-### 🚀 App Routes & Pages (10 Suites · 80 Tests)
+### 🚀 App Routes & Pages (10 Suites · 81 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -125,7 +125,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -139,6 +139,7 @@
 - ✔ `should dynamically filter bookshelf books with smart multi-word search in arbitrary order`
 - ✔ `should dynamically filter favorites books and show empty search feedback`
 - ✔ `should switch to Notebook view when Notebook tab in Navbar is clicked`
+- ✔ `switches to Bookmarks view and renders reading ledger when Bookmarks nav tab is clicked`
 
 </details>
 
@@ -176,7 +177,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (18 Suites · 174 Tests)
+### 🎨 Catalog & Presentation (20 Suites · 183 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -223,6 +224,25 @@
 - ✔ `should switch between editorial grid and bookshelf rack views`
 - ✔ `should forward onPreviewClick to BookCard`
 - ✔ `hides the active preview card when activePreviewBookId matches`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (5 tests)</summary>
+
+- ✔ `renders book metadata, progress bar, and reading coordinates`
+- ✔ `triggers onResume callback when Resume button is clicked`
+- ✔ `handles status changes from select dropdown`
+- ✔ `triggers onClear when delete action is clicked`
+- ✔ `renders fallback state when cover image triggers onError`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders empty state when no volumes are in the ledger`
+- ✔ `renders active volumes and updates filter tabs`
 
 </details>
 
@@ -395,12 +415,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `should render brand and navigation items`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
 - ✔ `triggers onViewChange with notebook when Notebook tab is clicked`
 - ✔ `applies active styling when activeView is notebook`
+- ✔ `triggers onViewChange with bookmarks when Bookmarks tab is clicked`
+- ✔ `applies active styling when activeView is bookmarks`
 - ✔ `should fill bookmark icon when books are saved to bookshelf`
 - ✔ `should fill heart icon when books are liked in favorites`
 - ✔ `should trigger onViewChange callback when clicking tabs`
@@ -815,7 +837,24 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (16 Suites · 134 Tests)
+### 📚 Gutenberg Parsers & Metadata (17 Suites · 145 Tests)
+
+<details>
+<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (11 tests)</summary>
+
+- ✔ `normalizes `
+- ✔ `returns single word or standard formatted names unchanged`
+- ✔ `handles multiple commas gracefully`
+- ✔ `extracts exact matching MIME type`
+- ✔ `extracts partial/prefix match if exact match is absent`
+- ✔ `returns null when no preferred MIME is available or formats is invalid`
+- ✔ `identifies valid canonical Book object`
+- ✔ `rejects raw GutendexBook or non-book values`
+- ✔ `transforms GutendexBook into canonical Book with normalized authors and format URLs`
+- ✔ `is idempotent when given an already-canonical Book`
+- ✔ `handles missing or empty fields safely with reasonable fallbacks`
+
+</details>
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (10 tests)</summary>
@@ -1047,7 +1086,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (17 Suites · 116 Tests)
+### 🔄 Hooks & React Query (18 Suites · 122 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
@@ -1118,6 +1157,17 @@
 - ✔ `splits paragraphs into punctuation-delimited sentences`
 - ✔ `handles quotes and dialogue gracefully`
 - ✔ `returns empty array for empty or whitespace text`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `returns empty list when no books have reading activity or saved state`
+- ✔ `aggregates reading activity and normalizes metadata into canonical Book`
+- ✔ `filters volumes by tab (all, in_progress, completed, on_hold)`
+- ✔ `updates volume status and completes progress when set to completed`
+- ✔ `clears volume progress and coordinates via clearVolumeProgress`
 
 </details>
 
@@ -1202,7 +1252,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -1212,6 +1262,7 @@
 - ✔ `toggles view modes and drawer visibility`
 - ✔ `hydrates initial filter state from window.location.search including view=bookshelf`
 - ✔ `hydrates initial filter state with view=notebook`
+- ✔ `hydrates initial filter state with view=bookmarks`
 
 </details>
 

@@ -140,5 +140,15 @@ describe('useCatalogFilters', () => {
 
     (window as any).location = new URL('http://localhost:3000/');
   });
+
+  it('hydrates initial filter state with view=bookmarks', () => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/?view=bookmarks');
+
+    const { result } = renderHook(() => useCatalogFilters());
+    expect(result.current.activeView).toBe('bookmarks');
+
+    (window as any).location = new URL('http://localhost:3000/');
+  });
 });
 

@@ -22,7 +22,7 @@ export interface BookPreviewModalProps {
   book: GutendexBook | null;
   originRect?: ElementRect | null;
   isOpen: boolean;
-  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook';
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks';
   onWillClose?: () => void;
   onClose: () => void;
   onReadBook?: (book: GutendexBook) => void;

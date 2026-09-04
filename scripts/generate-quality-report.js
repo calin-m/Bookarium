@@ -166,6 +166,56 @@ function indexTestSuites() {
 }
 
 const { domainMap, totalTestCount, totalSuitesCount } = indexTestSuites();
+
+// Check for idempotency: read previous results to avoid needless timestamp churn
+let existingResults = null;
+if (fs.existsSync(resultsJsonPath)) {
+  try {
+    existingResults = JSON.parse(fs.readFileSync(resultsJsonPath, 'utf-8'));
+  } catch (_e) {}
+}
+
+const isIdenticalMetrics =
+  existingResults &&
+  existingResults.status === (eslintErrors === 0 && knipIssues.length === 0 ? 'PASSED' : 'FAILED') &&
+  existingResults.testSummary?.totalSuites === totalSuitesCount &&
+  existingResults.testSummary?.totalTests === totalTestCount &&
+  existingResults.gateways?.pass3_coverage?.metrics?.lines === coverage.lines.pct &&
+  existingResults.gateways?.pass3_coverage?.metrics?.statements === coverage.statements.pct &&
+  existingResults.gateways?.pass3_coverage?.metrics?.functions === coverage.functions.pct &&
+  existingResults.gateways?.pass3_coverage?.metrics?.branches === coverage.branches.pct &&
+  existingResults.gateways?.pass5_adr_validation?.adrCount === adrCount &&
+  existingResults.gateways?.pass6_quality_suite?.eslintErrors === eslintErrors &&
+  existingResults.gateways?.pass6_quality_suite?.eslintWarnings === eslintWarnings &&
+  existingResults.gateways?.pass6_quality_suite?.knipErrors === knipIssues.length;
+
+// Synchronize README.md test metrics and badges (safe: only writes if changed)
+const readmePath = path.join(rootDir, 'README.md');
+if (fs.existsSync(readmePath)) {
+  let readme = fs.readFileSync(readmePath, 'utf-8');
+  const originalReadme = readme;
+  readme = readme.replace(
+    /\[!\[Vitest\]\(https:\/\/img\.shields\.io\/badge\/Vitest-[^)]+\)\]\(docs\/QUALITY_AUDIT_REPORT\.md\)/,
+    `[![Vitest](https://img.shields.io/badge/Vitest-${totalSuitesCount}%20Suites%20%7C%20${totalTestCount}%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)`
+  );
+  readme = readme.replace(
+    /\[!\[Code Coverage\]\(https:\/\/img\.shields\.io\/badge\/Coverage-[^)]+\)\]\(docs\/QUALITY_AUDIT_REPORT\.md\)/,
+    `[![Code Coverage](https://img.shields.io/badge/Coverage-${coverage.lines.pct}%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)`
+  );
+  readme = readme.replace(
+    /complete index of all \d+ tests across \d+ test suites\./,
+    `complete index of all ${totalTestCount} tests across ${totalSuitesCount} test suites.`
+  );
+  if (readme !== originalReadme) {
+    fs.writeFileSync(readmePath, readme, 'utf-8');
+  }
+}
+
+if (isIdenticalMetrics && fs.existsSync(reportMdPath)) {
+  console.log(`✔ [IDEMPOTENT] Quality Audit Report metrics unchanged (${totalSuitesCount} suites / ${totalTestCount} tests). Preserving existing report.`);
+  return;
+}
+
 const nowIso = new Date().toISOString();
 const nowFormatted = new Date().toUTCString();
 
@@ -283,24 +333,5 @@ All 7 Closed-Loop Quality Gateways passed with zero blockers. The application is
 `;
 
 fs.writeFileSync(reportMdPath, mdContent.trim() + '\n', 'utf-8');
-
-// Synchronize README.md test metrics and badges
-const readmePath = path.join(rootDir, 'README.md');
-if (fs.existsSync(readmePath)) {
-  let readme = fs.readFileSync(readmePath, 'utf-8');
-  readme = readme.replace(
-    /\[!\[Vitest\]\(https:\/\/img\.shields\.io\/badge\/Vitest-[^)]+\)\]\(docs\/QUALITY_AUDIT_REPORT\.md\)/,
-    `[![Vitest](https://img.shields.io/badge/Vitest-${totalSuitesCount}%20Suites%20%7C%20${totalTestCount}%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)`
-  );
-  readme = readme.replace(
-    /\[!\[Code Coverage\]\(https:\/\/img\.shields\.io\/badge\/Coverage-[^)]+\)\]\(docs\/QUALITY_AUDIT_REPORT\.md\)/,
-    `[![Code Coverage](https://img.shields.io/badge/Coverage-${coverage.lines.pct}%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)`
-  );
-  readme = readme.replace(
-    /complete index of all \d+ tests across \d+ test suites\./,
-    `complete index of all ${totalTestCount} tests across ${totalSuitesCount} test suites.`
-  );
-  fs.writeFileSync(readmePath, readme, 'utf-8');
-}
 
 console.log(`✔ [SUCCESS] Enriched Quality Audit Report and Test Catalog generated (${totalSuitesCount} suites / ${totalTestCount} tests).`);

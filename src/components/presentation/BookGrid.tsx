@@ -29,7 +29,7 @@ export interface BookGridProps {
   onBrowseCatalog?: () => void;
   searchQuery?: string;
   onClearSearch?: () => void;
-  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook';
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks';
 }
 
 export const BookGrid: React.FC<BookGridProps> = ({

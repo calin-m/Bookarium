@@ -33,7 +33,7 @@ export interface BookshelfMobileModalProps {
   currentActiveShelfId?: string;
   userId?: string;
   onMoveBookToShelf?: (bookId: number, targetShelfId: string, userId: string) => Promise<boolean | void>;
-  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook';
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks';
 }
 
 export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({

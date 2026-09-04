@@ -364,5 +364,27 @@ describe('Home page integration', () => {
 
     useAnnotationStore.getState().clearAllAnnotations();
   });
+
+  it('switches to Bookmarks view and renders reading ledger when Bookmarks nav tab is clicked', () => {
+    useBookshelfStore.setState({ savedBooks: [pageMockBooks[0]] });
+    useReaderStore.getState().setProgress(pageMockBooks[0].id, 40);
+    useReaderStore.getState().saveReadingPosition(pageMockBooks[0].id, {
+      chapterIndex: 1,
+      chapterPage: 3,
+      globalPage: 15,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    renderHome();
+
+    // Click Bookmarks tab in Navbar
+    const bookmarksTab = screen.getByRole('button', { name: /^Bookmarks/i });
+    expect(bookmarksTab).toBeInTheDocument();
+    fireEvent.click(bookmarksTab);
+
+    // Verify BookmarksView rendered
+    expect(screen.getByText('Continue Reading & Bookmarks')).toBeInTheDocument();
+    expect(screen.getByText('40%')).toBeInTheDocument();
+  });
 });
 
