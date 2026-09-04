@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 04 Sep 2026 14:46:18 GMT  
+**Last Generated**: Fri, 04 Sep 2026 15:31:24 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 120 passed  
-**Total Verified Tests**: 867 passed  
+**Total Test Suites**: 121 passed  
+**Total Verified Tests**: 876 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (867 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **121/121 test suites passed** (876 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.94%** (4671/5080) — *Target: $ge$ 80%*
-- **Statements**: **90.2%** (5100/5654) — *Target: $ge$ 80%*
-- **Functions**: **87.99%** (1195/1358) — *Target: $ge$ 80%*
-- **Branches**: **80.27%** (4371/5445) — *Target: $ge$ 80%*
+- **Lines**: **92.02%** (4706/5114) — *Target: $ge$ 80%*
+- **Statements**: **90.29%** (5137/5689) — *Target: $ge$ 80%*
+- **Functions**: **88.06%** (1210/1374) — *Target: $ge$ 80%*
+- **Branches**: **80.51%** (4409/5476) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (120 Suites / 867 Tests)
+## 🧪 Comprehensive Test Suite Catalog (121 Suites / 876 Tests)
 
 ### 🚀 App Routes & Pages (10 Suites · 81 Tests)
 
@@ -177,7 +177,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (20 Suites · 183 Tests)
+### 🎨 Catalog & Presentation (20 Suites · 186 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -239,10 +239,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
+- ✔ `filters active volumes using the search bar and supports clearing search`
+- ✔ `opens confirmation modal on Clear Bookmarks, cancels, and clears ledger when confirmed`
 
 </details>
 
@@ -335,7 +337,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionSearchBar.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionSearchBar.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `should render search input with placeholder and accessible label`
 - ✔ `should call onQueryChange when user types in the input`
@@ -346,6 +348,7 @@
 - ✔ `should apply compact right padding (pr-4) when idle and expanded padding (pr-24) when filtering`
 - ✔ `should render mobilePlaceholder when screen is mobile viewport and respond to change events`
 - ✔ `should return server and client snapshot correctly and handle undefined matchMedia`
+- ✔ `should render correct accessible labels when collectionName is bookmarks`
 
 </details>
 
@@ -1086,7 +1089,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (18 Suites · 122 Tests)
+### 🔄 Hooks & React Query (18 Suites · 124 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
@@ -1161,13 +1164,15 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
 - ✔ `filters volumes by tab (all, in_progress, completed, on_hold)`
 - ✔ `updates volume status and completes progress when set to completed`
-- ✔ `clears volume progress and coordinates via clearVolumeProgress`
+- ✔ `clears volume progress, coordinates, and recentBooks via clearVolumeProgress`
+- ✔ `filters volumes by search query across title, author, and subject`
+- ✔ `wipes all ledger progress, coordinates, and statuses via clearAllVolumes`
 
 </details>
 
@@ -1318,7 +1323,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (33 Suites · 119 Tests)
+### 🧩 UI Primitives & Motion (34 Suites · 123 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
@@ -1551,6 +1556,16 @@
 - ✔ `renders nothing when strength is empty or score is 0 without label`
 - ✔ `renders score segments and label for Moderate password`
 - ✔ `renders all 3 segments filled for Strong password`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/SectionHeader.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `renders title text inside default h2 with decorative flank lines`
+- ✔ `supports custom semantic heading tag and hiding flank lines`
+- ✔ `renders eyebrow, title, and subtitle correctly`
+- ✔ `renders optional children like buttons or badges`
 
 </details>
 

@@ -188,4 +188,19 @@ describe('CollectionSearchBar', () => {
 
     window.matchMedia = originalMatchMedia;
   });
+
+  it('should render correct accessible labels when collectionName is bookmarks', () => {
+    render(
+      <CollectionSearchBar
+        query="gatsby"
+        onQueryChange={vi.fn()}
+        totalCount={8}
+        filteredCount={1}
+        collectionName="bookmarks"
+      />
+    );
+
+    expect(screen.getByRole('textbox', { name: /search bookmarks/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /clear bookmarks search/i })).toBeInTheDocument();
+  });
 });
