@@ -107,6 +107,29 @@ export function useReaderGestures({
     }
 
     if (readingMode !== 'paginated' || !touchStartRef.current) return;
+
+    // Suppress swipe if user is actively highlighting/selecting text
+    if (typeof window !== 'undefined') {
+      const selection = window.getSelection();
+      if (selection && !selection.isCollapsed && selection.toString().trim().length > 0) {
+        touchStartRef.current = null;
+        return;
+      }
+    }
+
+    // Suppress swipe if touch occurred within an interactive element or popover/dialog
+    const target = e.target as HTMLElement | null;
+    if (
+      target &&
+      typeof target.closest === 'function' &&
+      target.closest(
+        '[role="dialog"], [data-popover], [data-prevent-swipe], button, input, select, textarea'
+      )
+    ) {
+      touchStartRef.current = null;
+      return;
+    }
+
     if (e.changedTouches.length === 1) {
       const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
       const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;

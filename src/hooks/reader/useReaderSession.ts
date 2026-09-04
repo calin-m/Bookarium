@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useReaderStore } from '@/stores/useReaderStore';
+import { useReaderStore, type BookReadingPosition } from '@/stores/useReaderStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import {
   getCharsPerPage,
   paginateChapterContent,
@@ -63,7 +64,7 @@ export function useReaderSession({
   const [resumeNotice, setResumeNotice] = useState<ResumeNotice | null>(null);
   const hasRestoredPositionRef = useRef(false);
 
-  // Auto-Resume Position from Store
+  // Auto-Resume Position from Store or Cloud
   useEffect(() => {
     if (
       hasRestoredPositionRef.current ||
@@ -74,31 +75,50 @@ export function useReaderSession({
       return;
     }
     hasRestoredPositionRef.current = true;
-    const savedPos = getReadingPosition(numericId);
-    if (savedPos && (savedPos.chapterIndex > 0 || savedPos.chapterPage > 1)) {
-      const clampedChap = Math.min(
-        Math.max(0, savedPos.chapterIndex),
-        chaptersWithPagination.length - 1
-      );
-      const targetChap = chaptersWithPagination[clampedChap];
-      const maxPage = targetChap?.pageCount || 1;
-      const clampedPage = Math.min(Math.max(1, savedPos.chapterPage), maxPage);
 
-      queueMicrotask(() => {
-        setActiveChapterIndex(clampedChap);
-        setCurrentChapterPage(clampedPage);
-        setResumeNotice({
-          chapterTitle:
-            targetChap?.displayTitle || targetChap?.title || `Chapter ${clampedChap + 1}`,
-          page: clampedPage,
+    const applyPosition = (savedPos: BookReadingPosition) => {
+      if (savedPos && (savedPos.chapterIndex > 0 || savedPos.chapterPage > 1)) {
+        const clampedChap = Math.min(
+          Math.max(0, savedPos.chapterIndex),
+          chaptersWithPagination.length - 1
+        );
+        const targetChap = chaptersWithPagination[clampedChap];
+        const maxPage = targetChap?.pageCount || 1;
+        const clampedPage = Math.min(Math.max(1, savedPos.chapterPage), maxPage);
+
+        queueMicrotask(() => {
+          setActiveChapterIndex(clampedChap);
+          setCurrentChapterPage(clampedPage);
+          setResumeNotice({
+            chapterTitle:
+              targetChap?.displayTitle || targetChap?.title || `Chapter ${clampedChap + 1}`,
+            page: clampedPage,
+          });
         });
-      });
 
-      // Auto-hide resume notice after 4 seconds
-      const timer = setTimeout(() => {
-        setResumeNotice(null);
-      }, 4000);
-      return () => clearTimeout(timer);
+        // Auto-hide resume notice after 4 seconds
+        const timer = setTimeout(() => {
+          setResumeNotice(null);
+        }, 4000);
+        return () => clearTimeout(timer);
+      }
+    };
+
+    const localPos = getReadingPosition(numericId);
+    if (localPos) {
+      return applyPosition(localPos);
+    }
+
+    const currentUserId = useAuthStore.getState().user?.id;
+    if (currentUserId) {
+      useReaderStore
+        .getState()
+        .restoreReadingPositionFromCloud(numericId, currentUserId)
+        .then((remotePos) => {
+          if (remotePos) {
+            applyPosition(remotePos);
+          }
+        });
     }
   }, [hasMounted, numericId, chaptersWithPagination, getReadingPosition]);
 
@@ -134,12 +154,17 @@ export function useReaderSession({
     if (numericId > 0 && totalVolumePages > 0) {
       setProgress(numericId, volumeProgress);
       if (hasRestoredPositionRef.current) {
-        saveReadingPosition(numericId, {
-          chapterIndex: activeChapterIndex,
-          chapterPage: currentChapterPage,
-          globalPage: currentGlobalPage,
-          lastReadAt: new Date().toISOString(),
-        });
+        const currentUserId = useAuthStore.getState().user?.id;
+        saveReadingPosition(
+          numericId,
+          {
+            chapterIndex: activeChapterIndex,
+            chapterPage: currentChapterPage,
+            globalPage: currentGlobalPage,
+            lastReadAt: new Date().toISOString(),
+          },
+          currentUserId
+        );
       }
     }
   }, [

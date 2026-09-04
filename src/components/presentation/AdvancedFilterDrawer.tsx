@@ -7,20 +7,10 @@ import {
   LITERARY_ERAS,
   SORT_OPTIONS,
   GENRE_FACETS,
-  CATALOG_LANGUAGES,
   FORMAT_FILTERS,
-  type EraOption,
 } from '@/config/catalog-filters';
 import { LanguageSelector } from './LanguageSelector';
 
-export {
-  LITERARY_ERAS,
-  SORT_OPTIONS,
-  GENRE_FACETS,
-  CATALOG_LANGUAGES,
-  FORMAT_FILTERS,
-  type EraOption,
-};
 
 export interface AdvancedFilterDrawerProps {
   isOpen: boolean;

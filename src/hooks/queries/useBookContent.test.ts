@@ -66,6 +66,19 @@ describe('useBookContent hook', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
+
+  it('should handle request abort on network timeout', async () => {
+    const abortError = new Error('The operation was aborted');
+    abortError.name = 'AbortError';
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(abortError);
+
+    await expect(fetchBookContent('https://example.com/slow-mirror.txt', 1234)).rejects.toThrow(
+      /timed out after 8000ms/i
+    );
+
+    fetchSpy.mockRestore();
+  });
 });
 
 

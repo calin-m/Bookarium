@@ -148,4 +148,44 @@ Something completely different.
     expect(workerTwoInstance).not.toBeNull();
     expect(workerTwoInstance.postMessage).toHaveBeenCalled();
   });
+
+  it('preserves persistent worker across font size changes without terminating it', async () => {
+    let workerInstance: any = null;
+    let factoryCallCount = 0;
+
+    const mockWorkerFactory = () => {
+      factoryCallCount++;
+      workerInstance = {
+        postMessage: vi.fn(),
+        terminate: vi.fn(),
+        onmessage: null,
+        onerror: null,
+      };
+      return workerInstance as unknown as Worker;
+    };
+
+    const { rerender } = renderHook(
+      ({ text, size }: { text: string; size: number }) =>
+        useGutenbergParserWorker(text, size, mockWorkerFactory),
+      { initialProps: { text: sampleText, size: 18 } }
+    );
+
+    expect(factoryCallCount).toBe(1);
+    expect(workerInstance.postMessage).toHaveBeenCalledTimes(1);
+    expect(workerInstance.terminate).not.toHaveBeenCalled();
+
+    // Change font size from 18 to 22 for the same book
+    rerender({ text: sampleText, size: 22 });
+
+    // Same worker instance must be kept alive and receive second message
+    expect(factoryCallCount).toBe(1);
+    expect(workerInstance.terminate).not.toHaveBeenCalled();
+    expect(workerInstance.postMessage).toHaveBeenCalledTimes(2);
+    expect(workerInstance.postMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        contentText: sampleText,
+        fontSize: 22,
+      })
+    );
+  });
 });
