@@ -444,5 +444,76 @@ describe('useAnnotationStore', () => {
     const updated = useAnnotationStore.getState().annotations.find((a) => a.id === ann.id);
     expect(updated?.note?.length).toBe(2000);
   });
+
+  it('updates book metadata for annotations with missing or placeholder metadata', async () => {
+    // 1. Annotation with missing metadata
+    const ann1 = await useAnnotationStore.getState().addAnnotation({
+      bookId: 31635,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'A silent barrier stood between them...',
+      color: 'yellow',
+    });
+
+    // 2. Annotation with placeholder metadata
+    const ann2 = await useAnnotationStore.getState().addAnnotation({
+      bookId: 31635,
+      bookTitle: 'Gutenberg Volume #31635',
+      bookAuthor: 'Project Gutenberg',
+      chapterIndex: 1,
+      chapterPage: 2,
+      selectedText: 'Another dramatic passage in the Alps...',
+      color: 'mint',
+    });
+
+    // 3. Annotation for a different book with custom title/author
+    const annOther = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride passage',
+      color: 'rose',
+    });
+
+    // Heal metadata
+    useAnnotationStore.getState().updateBookMetadata(
+      31635,
+      'The Project Gutenberg eBook of The Silent Barrier',
+      'Tracy, Louis'
+    );
+
+    const storeAnnotations = useAnnotationStore.getState().annotations;
+    const updated1 = storeAnnotations.find((a) => a.id === ann1.id);
+    const updated2 = storeAnnotations.find((a) => a.id === ann2.id);
+    const unchanged = storeAnnotations.find((a) => a.id === annOther.id);
+
+    expect(updated1?.bookTitle).toBe('The Silent Barrier');
+    expect(updated1?.bookAuthor).toBe('Louis Tracy');
+
+    expect(updated2?.bookTitle).toBe('The Silent Barrier');
+    expect(updated2?.bookAuthor).toBe('Louis Tracy');
+
+    expect(unchanged?.bookTitle).toBe('Pride and Prejudice');
+    expect(unchanged?.bookAuthor).toBe('Jane Austen');
+  });
+
+  it('ignores invalid or placeholder titles when calling updateBookMetadata', async () => {
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 31635,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Some passage',
+      color: 'yellow',
+    });
+
+    // Placeholder title should be ignored
+    useAnnotationStore.getState().updateBookMetadata(31635, 'The Project Gutenberg eBook', 'Unknown');
+
+    const stored = useAnnotationStore.getState().annotations.find((a) => a.id === ann.id);
+    expect(stored?.bookTitle).toBeUndefined();
+    expect(stored?.bookAuthor).toBeUndefined();
+  });
 });
 

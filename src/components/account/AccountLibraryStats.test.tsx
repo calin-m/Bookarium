@@ -39,5 +39,26 @@ describe('AccountLibraryStats', () => {
 
     expect(screen.getByTestId('notes-quotes-count')).toHaveTextContent('0');
   });
+
+  it('applies theme-tokenized hover border and focus classes on each library card', () => {
+    render(
+      <AccountLibraryStats
+        savedCount={2}
+        likedCount={4}
+        customShelvesCount={1}
+        annotationCount={3}
+      />
+    );
+
+    const shelvedLink = screen.getByLabelText('View Shelved Volumes in Bookshelf');
+    const favoritesLink = screen.getByLabelText('View Favorite Titles in Favorites');
+    const notesLink = screen.getByLabelText('View Saved Notes & Quotes in Notebook');
+    const shelvesLink = screen.getByLabelText('View Custom Shelves in Bookshelf');
+
+    expect(shelvedLink).toHaveClass('hover:border-primary');
+    expect(favoritesLink).toHaveClass('hover:border-destructive');
+    expect(notesLink).toHaveClass('hover:border-amber-500');
+    expect(shelvesLink).toHaveClass('hover:border-primary');
+  });
 });
 

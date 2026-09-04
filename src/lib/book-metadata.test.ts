@@ -3,20 +3,39 @@ import {
   resolveBookMetadata,
   isPlaceholderAuthor,
   isPlaceholderTitle,
+  cleanBookTitle,
 } from './book-metadata';
 import type { GutendexBook, GutendexResponse } from '@/mocks/handlers';
 
 describe('src/lib/book-metadata', () => {
+  describe('cleanBookTitle', () => {
+    it('strips Gutenberg preamble prefixes cleanly', () => {
+      expect(cleanBookTitle('The Project Gutenberg eBook of Frankenstein; Or, The Modern Prometheus')).toBe('Frankenstein; Or, The Modern Prometheus');
+      expect(cleanBookTitle('The Project Gutenberg EBook of Pride and Prejudice')).toBe('Pride and Prejudice');
+      expect(cleanBookTitle("Project Gutenberg's Alice in Wonderland")).toBe('Alice in Wonderland');
+      expect(cleanBookTitle('The Project Gutenberg Edition of The Odyssey')).toBe('The Odyssey');
+      expect(cleanBookTitle('The Gutenberg eBook of Dracula')).toBe('Dracula');
+      expect(cleanBookTitle('Moby Dick')).toBe('Moby Dick');
+      expect(cleanBookTitle('')).toBe('');
+      expect(cleanBookTitle(null)).toBe('');
+      expect(cleanBookTitle(undefined)).toBe('');
+    });
+  });
+
   describe('isPlaceholderAuthor', () => {
     it('identifies placeholder and empty authors correctly', () => {
       expect(isPlaceholderAuthor('')).toBe(true);
       expect(isPlaceholderAuthor(null)).toBe(true);
       expect(isPlaceholderAuthor(undefined)).toBe(true);
       expect(isPlaceholderAuthor('Unknown')).toBe(true);
+      expect(isPlaceholderAuthor('Unknown Author')).toBe(true);
       expect(isPlaceholderAuthor('anonymous')).toBe(true);
       expect(isPlaceholderAuthor('Classic Masterwork')).toBe(true);
       expect(isPlaceholderAuthor('Public Domain Classic')).toBe(true);
       expect(isPlaceholderAuthor('the author')).toBe(true);
+      expect(isPlaceholderAuthor('Project Gutenberg')).toBe(true);
+      expect(isPlaceholderAuthor('Various')).toBe(true);
+      expect(isPlaceholderAuthor('Various Authors')).toBe(true);
 
       expect(isPlaceholderAuthor('Jane Austen')).toBe(false);
       expect(isPlaceholderAuthor('F. Scott Fitzgerald')).toBe(false);
@@ -31,6 +50,8 @@ describe('src/lib/book-metadata', () => {
       expect(isPlaceholderTitle('Unknown Volume')).toBe(true);
       expect(isPlaceholderTitle('Public Domain Classic')).toBe(true);
       expect(isPlaceholderTitle('Gutenberg Volume #1342')).toBe(true);
+      expect(isPlaceholderTitle('The Project Gutenberg eBook')).toBe(true);
+      expect(isPlaceholderTitle('Project Gutenberg eBook')).toBe(true);
 
       expect(isPlaceholderTitle('Pride and Prejudice')).toBe(false);
       expect(isPlaceholderTitle('The Great Gatsby')).toBe(false);

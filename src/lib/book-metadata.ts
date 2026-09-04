@@ -20,6 +20,21 @@ export interface ResolveBookMetadataParams {
 }
 
 /**
+ * Strips raw Project Gutenberg preamble prefixes from title strings, e.g.:
+ * "The Project Gutenberg eBook of Frankenstein; Or, The Modern Prometheus" -> "Frankenstein; Or, The Modern Prometheus"
+ * "The Project Gutenberg EBook of ..." -> "..."
+ * "Project Gutenberg's ..." -> "..."
+ */
+export function cleanBookTitle(title?: string | null): string {
+  if (!title || typeof title !== 'string') return '';
+  let clean = title.replace(/\s+/g, ' ').trim();
+  clean = clean.replace(/^the project gutenberg (?:ebook|e-book|edition)\s+(?:of\s+)?/i, '');
+  clean = clean.replace(/^project gutenberg(?:'s)?\s+(?:ebook|e-book|edition)?\s*(?:of\s+)?/i, '');
+  clean = clean.replace(/^the gutenberg (?:ebook|e-book|edition)\s+(?:of\s+)?/i, '');
+  return clean.trim() || title.trim();
+}
+
+/**
  * Validates whether an author string is a non-empty, authentic author name
  * rather than a generic fallback placeholder.
  */
@@ -29,10 +44,14 @@ export function isPlaceholderAuthor(author?: string | null): boolean {
   return (
     trimmed === '' ||
     trimmed === 'unknown' ||
+    trimmed === 'unknown author' ||
     trimmed === 'anonymous' ||
     trimmed === 'classic masterwork' ||
     trimmed === 'public domain classic' ||
-    trimmed === 'the author'
+    trimmed === 'the author' ||
+    trimmed === 'project gutenberg' ||
+    trimmed === 'various' ||
+    trimmed === 'various authors'
   );
 }
 
@@ -47,7 +66,10 @@ export function isPlaceholderTitle(title?: string | null): boolean {
     trimmed === '' ||
     trimmed === 'unknown volume' ||
     trimmed === 'public domain classic' ||
-    /^gutenberg volume #\d+$/.test(trimmed)
+    /^gutenberg volume #\d+$/.test(trimmed) ||
+    trimmed === 'the project gutenberg ebook' ||
+    trimmed === 'the project gutenberg e-book' ||
+    trimmed === 'project gutenberg ebook'
   );
 }
 
@@ -78,7 +100,10 @@ export function resolveBookMetadata({
   const rawStoreAuthor = storeBook?.authors ? formatAuthorNames(storeBook.authors) : '';
   const rawFixtureAuthor = featuredFixture ? formatAuthorNames(featuredFixture.author) : '';
   const rawApiAuthor = apiBook?.authors ? formatAuthorNames(apiBook.authors) : '';
-  const rawExtractedAuthor = extractedMeta?.author ? formatAuthorNames(extractedMeta.author) : '';
+  let rawExtractedAuthor = extractedMeta?.author ? formatAuthorNames(extractedMeta.author) : '';
+  if (rawExtractedAuthor) {
+    rawExtractedAuthor = rawExtractedAuthor.replace(/^by\s+/i, '').trim();
+  }
 
   const resolvedAuthor =
     (!isPlaceholderAuthor(rawStoreAuthor) ? rawStoreAuthor : '') ||
@@ -89,12 +114,12 @@ export function resolveBookMetadata({
     '';
 
   // Title Resolution Priority: Store -> Fixture -> API -> Raw Text Header -> Fallback
-  const rawStoreTitle = storeBook?.title?.replace(/\s+/g, ' ').trim() || '';
-  const rawFixtureTitle = featuredFixture?.title?.replace(/\s+/g, ' ').trim() || '';
-  const rawApiTitle = apiBook?.title?.replace(/\s+/g, ' ').trim() || '';
-  const rawExtractedTitle = extractedMeta?.title?.replace(/\s+/g, ' ').trim() || '';
+  const rawStoreTitle = cleanBookTitle(storeBook?.title);
+  const rawFixtureTitle = cleanBookTitle(featuredFixture?.title);
+  const rawApiTitle = cleanBookTitle(apiBook?.title);
+  const rawExtractedTitle = cleanBookTitle(extractedMeta?.title);
 
-  const resolvedTitle =
+  const candidateTitle =
     (!isPlaceholderTitle(rawStoreTitle) ? rawStoreTitle : '') ||
     (!isPlaceholderTitle(rawFixtureTitle) ? rawFixtureTitle : '') ||
     (!isPlaceholderTitle(rawApiTitle) ? rawApiTitle : '') ||
@@ -104,6 +129,8 @@ export function resolveBookMetadata({
     rawApiTitle ||
     rawExtractedTitle ||
     (numericId > 0 ? `Gutenberg Volume #${numericId}` : 'Public Domain Classic');
+
+  const resolvedTitle = cleanBookTitle(candidateTitle);
 
   // Primary Subject
   const primarySubject =

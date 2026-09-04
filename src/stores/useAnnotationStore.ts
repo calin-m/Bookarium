@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { createClient } from '@/lib/supabase/client';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { cleanBookTitle, isPlaceholderTitle, isPlaceholderAuthor } from '@/lib/book-metadata';
+import { formatAuthorNames } from '@/lib/utils';
 
 export type HighlightColor = 'yellow' | 'amber' | 'mint' | 'rose';
 
@@ -64,6 +66,7 @@ export interface AnnotationState {
   getAnnotationsForPage: (bookId: number, chapterIndex: number, chapterPage: number) => Annotation[];
 
   syncWithCloud: (userId: string) => Promise<void>;
+  updateBookMetadata: (bookId: number, title: string, author?: string) => void;
   clearAllAnnotations: () => void;
 }
 
@@ -342,6 +345,40 @@ export const useAnnotationStore = create<AnnotationState>()(
         );
       },
 
+      updateBookMetadata: (bookId, title, author) => {
+        if (!bookId || bookId <= 0 || !title) return;
+        const cleanedTitle = cleanBookTitle(title);
+        if (!cleanedTitle || isPlaceholderTitle(cleanedTitle)) return;
+
+        const formattedAuthor = author ? formatAuthorNames(author).replace(/^by\s+/i, '').trim() : '';
+        const cleanedAuthor = formattedAuthor && !isPlaceholderAuthor(formattedAuthor) ? formattedAuthor : undefined;
+
+        set((state) => {
+          let modified = false;
+          const nextAnnotations = state.annotations.map((ann) => {
+            if (ann.bookId !== bookId) return ann;
+
+            const missingOrPlaceholderTitle = !ann.bookTitle || isPlaceholderTitle(cleanBookTitle(ann.bookTitle));
+            const missingOrPlaceholderAuthor = !ann.bookAuthor || isPlaceholderAuthor(ann.bookAuthor);
+
+            const shouldUpdateTitle = missingOrPlaceholderTitle;
+            const shouldUpdateAuthor = missingOrPlaceholderAuthor && Boolean(cleanedAuthor);
+
+            if (shouldUpdateTitle || shouldUpdateAuthor) {
+              modified = true;
+              return {
+                ...ann,
+                bookTitle: shouldUpdateTitle ? cleanedTitle : ann.bookTitle,
+                bookAuthor: shouldUpdateAuthor && cleanedAuthor ? cleanedAuthor : ann.bookAuthor,
+              };
+            }
+            return ann;
+          });
+
+          return modified ? { annotations: nextAnnotations } : state;
+        });
+      },
+
       syncWithCloud: async (userId) => {
         if (!userId) return;
         set({ isSyncing: true });
@@ -440,6 +477,7 @@ export function useHydratedAnnotations() {
   const getAnnotationsForBook = useAnnotationStore((s) => s.getAnnotationsForBook);
   const getAnnotationsForPage = useAnnotationStore((s) => s.getAnnotationsForPage);
   const syncWithCloud = useAnnotationStore((s) => s.syncWithCloud);
+  const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
   const clearAllAnnotations = useAnnotationStore((s) => s.clearAllAnnotations);
 
   return {
@@ -453,6 +491,7 @@ export function useHydratedAnnotations() {
     getAnnotationsForBook,
     getAnnotationsForPage,
     syncWithCloud,
+    updateBookMetadata,
     clearAllAnnotations,
   };
 }

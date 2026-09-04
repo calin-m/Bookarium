@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.9.1] - 2026-09-04
+### *Centralized Library Design Tokens, Reader Dynamic Language Indicators & Account Border Polish*
+
+### Added
+- Centralized Library Design Tokens (`src/config/library-tokens.ts`): Single source of truth for library category colorways (`LIBRARY_THEMES`), synchronizing active borders, focus rings, and filled SVG icons across navbar tabs and account metric cards.
+- Dynamic Reader Language & Bilingual Mode Indicators (`src/components/reader/ReaderHeader.tsx`, `read/[id]/page.tsx`): Header translation trigger dynamically displays active target language code (`ES`) when translated, parallel dual-language format (`EN ∥ ES`) in Bilingual mode, accompanied by visual sparkles and active indicator dot.
+- Co-Located Test Suite Expansion: Added unit tests for library tokens and expanded test coverage across `AccountLibraryStats.test.tsx` and `ReaderHeader.test.tsx`, achieving 108 suites and 760 passing tests.
+
+### Fixed
+- Account Library Statistics Hover Border Contrast (`src/components/account/AccountLibraryStats.tsx`): Resolved Tailwind v3 CSS variable opacity stripping on custom properties (`hover:border-primary/50` -> `hover:border-primary`, `hover:border-destructive`), guaranteeing distinct, visible 1px card borders on hover and keyboard focus across Light, Dark, and Sepia themes.
+
+
 ## [1.9.0] - 2026-09-03
 ### *Literary Notebook, Text Highlighting & Annotations Engine, and PWA Standalone Mode*
 

@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
+import { LIBRARY_THEMES } from '@/config/library-tokens';
 
 export interface NavbarProps {
   activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'account';
@@ -88,7 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Catalog"
               className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
                 activeView === 'catalog'
-                  ? 'text-primary font-bold border-primary'
+                  ? `${LIBRARY_THEMES.catalog.navActiveText} font-bold ${LIBRARY_THEMES.catalog.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
               }`}
               aria-label="Catalog"
@@ -103,7 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Bookshelf"
               className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
                 activeView === 'bookshelf'
-                  ? 'text-primary font-bold border-primary'
+                  ? `${LIBRARY_THEMES.bookshelf.navActiveText} font-bold ${LIBRARY_THEMES.bookshelf.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
               }`}
               aria-label="Bookshelf"
@@ -111,7 +112,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Bookmark
                 className={`w-3.5 h-3.5 shrink-0 transition-colors ${
                   hasMounted && savedCount > 0
-                    ? 'fill-primary text-primary'
+                    ? LIBRARY_THEMES.bookshelf.navFill
                     : 'fill-transparent'
                 }`}
               />
@@ -124,7 +125,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Favorites"
               className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
                 activeView === 'likes'
-                  ? 'text-destructive font-bold border-destructive'
+                  ? `${LIBRARY_THEMES.favorites.navActiveText} font-bold ${LIBRARY_THEMES.favorites.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
               }`}
               aria-label="Liked Books"
@@ -132,7 +133,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Heart
                 className={`w-3.5 h-3.5 shrink-0 transition-colors ${
                   hasMounted && likedCount > 0
-                    ? 'fill-destructive text-destructive'
+                    ? LIBRARY_THEMES.favorites.navFill
                     : 'fill-transparent'
                 }`}
               />
@@ -145,7 +146,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Notebook"
               className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
                 activeView === 'notebook'
-                  ? 'text-amber-600 dark:text-amber-400 font-bold border-amber-500'
+                  ? `${LIBRARY_THEMES.notebook.navActiveText} font-bold ${LIBRARY_THEMES.notebook.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
               }`}
               aria-label="Notebook"
@@ -153,7 +154,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Highlighter
                 className={`w-3.5 h-3.5 shrink-0 transition-colors ${
                   hasMounted && annotationCount > 0
-                    ? 'fill-amber-500 text-amber-500'
+                    ? LIBRARY_THEMES.notebook.navFill
                     : 'fill-transparent'
                 }`}
               />
