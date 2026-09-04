@@ -473,9 +473,9 @@ function HomeContent() {
       </div>
 
       {/* Mobile/Tablet Touch-Friendly Book Action & Curation Sheet (< 1024px) */}
-      <div className="lg:hidden">
-        <BookshelfMobileModal
-          selectedMobileBook={selectedPreviewBook}
+      <BookshelfMobileModal
+        className="lg:hidden"
+        selectedMobileBook={selectedPreviewBook}
           onClose={() => {
             setSelectedPreviewBook(null);
             setActivePreviewBookId(null);
@@ -498,7 +498,6 @@ function HomeContent() {
           isOffline={selectedPreviewBook ? isBookOffline(selectedPreviewBook.id) : false}
           onToggleOffline={handleToggleOffline}
         />
-      </div>
 
       {/* Download Hub Drawer */}
       <DownloadDrawer

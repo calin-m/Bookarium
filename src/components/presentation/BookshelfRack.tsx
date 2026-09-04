@@ -463,6 +463,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       {/* Mobile In-Shelf Quick-Action Centered Floating Modal */}
       {selectedMobileBook && (
         <BookshelfMobileModal
+          className="sm:hidden"
           selectedMobileBook={selectedMobileBook}
           onClose={closeMobileSheet}
           readingProgress={readingProgress[selectedMobileBook.id]}

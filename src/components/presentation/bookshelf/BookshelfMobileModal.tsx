@@ -36,6 +36,7 @@ export interface BookshelfMobileModalProps {
   userId?: string;
   onMoveBookToShelf?: (bookId: number, targetShelfId: string, userId: string) => Promise<boolean | void>;
   activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks';
+  className?: string;
 }
 
 export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
@@ -57,6 +58,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
   userId,
   onMoveBookToShelf,
   activeView,
+  className = '',
 }) => {
   const router = useRouter();
   const hasMounted = useHasMounted();
@@ -117,14 +119,14 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-transparent z-50 cursor-pointer"
+            className={`fixed inset-0 bg-transparent z-50 cursor-pointer ${className}`.trim()}
             onClick={onClose}
             aria-hidden="true"
             data-testid="mobile-sheet-backdrop"
           />
 
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto pointer-events-none"
+            className={`fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto pointer-events-none ${className}`.trim()}
             data-testid="mobile-book-action-sheet"
           >
             {/* Centered Floating Action Card with Fluid Scale In/Out Transition */}
