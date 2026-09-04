@@ -77,7 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <BookOpen className="w-4 h-4" />
           </div>
           <div>
-            <span className="hidden min-[390px]:inline text-sm sm:text-base md:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap">
+            <span className="hidden min-[405px]:inline text-sm sm:text-base md:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap">
               {SITE_CONFIG.LOGO_TEXT}
             </span>
           </div>
@@ -244,14 +244,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             );
           })()}
 
-          {/* GitHub Repository Link (Visible on all screens >= 440px without crowding website title) */}
+          {/* GitHub Repository Link (Visible on all screens >= 320px without colliding with logo) */}
           <a
             href={SITE_CONFIG.GITHUB_REPO}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="View Bookarium repository on GitHub"
             title="View Bookarium repository on GitHub"
-            className="hidden min-[440px]:inline-flex items-center justify-center h-8 w-8 ml-0.5 sm:ml-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+            className="hidden min-[320px]:inline-flex items-center justify-center h-8 w-8 ml-0.5 sm:ml-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
           >
             <GithubIcon className="w-4 h-4" />
           </a>
