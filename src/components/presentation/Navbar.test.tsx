@@ -16,7 +16,7 @@ describe('Navbar component', () => {
     render(<Navbar activeView="catalog" />);
     const brandText = screen.getByText(/Bookarium/i);
     expect(brandText).toBeInTheDocument();
-    expect(brandText).toHaveClass('min-[390px]:inline', 'text-sm');
+    expect(brandText).toHaveClass('min-[405px]:inline', 'text-sm');
     expect(screen.getByRole('button', { name: 'Catalog' })).toBeInTheDocument();
     expect(screen.getByLabelText('Bookshelf')).toBeInTheDocument();
     expect(screen.getByLabelText('Liked Books')).toBeInTheDocument();
@@ -196,7 +196,7 @@ describe('Navbar component', () => {
     expect(githubLink).toBeInTheDocument();
     expect(githubLink).toHaveAttribute('href', 'https://github.com/calin-m/Bookarium');
     expect(githubLink).toHaveAttribute('target', '_blank');
-    expect(githubLink).toHaveClass('hidden', 'min-[440px]:inline-flex');
+    expect(githubLink).toHaveClass('hidden', 'min-[320px]:inline-flex');
   });
 });
 
