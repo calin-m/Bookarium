@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { BookOpen, ZoomIn, Sparkles } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
@@ -38,7 +38,7 @@ export interface ReaderSurfaceProps {
   isTranslating?: boolean;
   annotations?: Annotation[];
   onSelectAnnotation?: (annotation: Annotation, position?: { top: number; left: number }) => void;
-  onTextSelected?: (selection: { text: string; position: { top: number; left: number } }) => void;
+  onTextSelected?: (selection: { text: string; position: { top: number; left: number; bottom?: number } }) => void;
 }
 
 export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
@@ -94,6 +94,58 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     }
   }, [currentPageText, activeChapterIndex, readingMode]);
 
+  const handleSelection = useCallback(() => {
+    if (typeof window === 'undefined' || !onTextSelected) return;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+
+    const text = selection.toString().trim();
+    if (text.length < 2) return;
+
+    // Verify anchor or focus node belongs to reader surface when available
+    const anchor = selection.anchorNode;
+    if (anchor) {
+      const targetElement = anchor.nodeType === Node.ELEMENT_NODE ? (anchor as Element) : anchor.parentElement;
+      if (targetElement && !mainRef.current?.contains(targetElement)) return;
+    }
+
+    try {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        onTextSelected({
+          text,
+          position: {
+            top: rect.top,
+            bottom: rect.bottom,
+            left: rect.left + rect.width / 2,
+          },
+        });
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  }, [onTextSelected]);
+
+  // Listen to standard selectionchange event (essential for mobile & tactile touch selection handles)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !onTextSelected) return;
+
+    let timer: NodeJS.Timeout;
+    const handleSelectionChange = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        handleSelection();
+      }, 250);
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [onTextSelected, handleSelection]);
+
   const fontClass =
     fontFamily === 'serif'
       ? 'font-serif'
@@ -119,31 +171,6 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   const baseContent = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
   const contentToDisplay = translatedText || baseContent;
 
-  const handleMouseUp = () => {
-    if (typeof window === 'undefined' || !onTextSelected) return;
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) return;
-
-    const text = selection.toString().trim();
-    if (text.length < 2) return;
-
-    try {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        onTextSelected({
-          text,
-          position: {
-            top: rect.top,
-            left: rect.left + rect.width / 2,
-          },
-        });
-      }
-    } catch {
-      // Non-blocking fallback
-    }
-  };
-
   return (
     <main
       ref={mainRef}
@@ -153,7 +180,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={(e) => {
         handleTouchEnd(e);
-        handleMouseUp();
+        handleSelection();
       }}
       style={{
         fontSize: `${fontSize}px`,
@@ -178,7 +205,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       )}
       <article
         key={readingMode === 'paginated' ? `p-${activeChapterIndex}-${chapterPage ?? (contentToDisplay?.slice(0, 30) || '0')}` : `s-${activeChapterIndex}`}
-        onMouseUp={handleMouseUp}
+        onMouseUp={handleSelection}
         className={`mx-auto px-6 sm:px-12 pt-10 sm:pt-16 ${
           highlightedSentence ? 'pb-32 sm:pb-36' : 'pb-10 sm:pb-16'
         } select-text ${widthClass} ${fontClass} animate-page-turn`}

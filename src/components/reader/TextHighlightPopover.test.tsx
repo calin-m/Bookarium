@@ -167,7 +167,7 @@ describe('TextHighlightPopover', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('positions below anchor on touch devices to avoid native mobile context menu collision', () => {
+  it('positions docked at bottom on touch devices to avoid native mobile context menu collision', () => {
     const originalMatchMedia = window.matchMedia;
     window.matchMedia = vi.fn().mockImplementation((query) => ({
       matches: query === '(pointer: coarse)',
@@ -183,13 +183,41 @@ describe('TextHighlightPopover', () => {
     render(
       <TextHighlightPopover
         {...defaultProps}
-        position={{ top: 250, left: 300 }}
+        position={{ top: 250, left: 300, bottom: 270 }}
       />
     );
 
     const popover = screen.getByTestId('text-highlight-popover');
-    // On touch devices (showBelow = true), top should be position.top + 34 = 284px
-    expect(popover.style.top).toBe('284px');
+    // On touch devices, popover docks at bottom: 5.25rem and horizontally centered at 50%
+    expect(popover.style.bottom).toBe('5.25rem');
+    expect(popover.style.left).toBe('50%');
+
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('positions contextually near anchor on desktop devices', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    render(
+      <TextHighlightPopover
+        {...defaultProps}
+        position={{ top: 250, left: 300, bottom: 270 }}
+      />
+    );
+
+    const popover = screen.getByTestId('text-highlight-popover');
+    // On desktop, top is calculated using anchor
+    expect(popover.style.top).toBe('196px');
 
     window.matchMedia = originalMatchMedia;
   });

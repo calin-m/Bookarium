@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-107%20Suites%20%7C%20735%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.11%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-108%20Suites%20%7C%20760%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.51%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,12 +38,12 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v1.9.0)
+## 🛠️ Latest Improvements (v1.9.1)
 
-- **Progressive Web App (PWA) Standalone Mode (`src/app/manifest.ts`, `src/app/layout.tsx`, `public/icons/`)**: Configured Next.js 16 web app manifest, mobile viewport, apple-touch-icon, and a suite of maskable/standard icons for home screen installation.
-- **Native Service Worker Offline App Shell (`public/sw.js`, `ServiceWorkerRegister.tsx`)**: Built App Shell caching and offline navigation fallback enabling unabridged reading of saved IndexedDB books in airplane mode.
-- **Text Highlighting & Annotations Engine (`public.user_annotations`, `src/stores/useAnnotationStore.ts`)**: Built local-first persistence with Supabase PostgreSQL cloud sync, Row-Level Security, offline mutation outbox, and automatic guest-to-cloud merge upon login.
-- **Cloud Sync Deletion Tombstones & Quota Safety (`useAnnotationStore.ts`)**: Implemented persistent deletion tombstones eliminating cross-device zombie note resurrection, and store-level character clamping protecting localStorage quotas.
+- **Centralized Library Design Tokens (`src/config/library-tokens.ts`)**: Single source of truth for library category colorways (`LIBRARY_THEMES`), synchronizing active borders, focus rings, and filled SVG icons across navbar tabs and account metric cards.
+- **Dynamic Reader Language & Bilingual Mode Indicators (`src/components/reader/ReaderHeader.tsx`, `read/[id]/page.tsx`)**: Header translation trigger dynamically displays active target language code (`ES`) when translated, parallel dual-language format (`EN ∥ ES`) in Bilingual mode, accompanied by visual sparkles and active indicator dot.
+- **Co-Located Test Suite Expansion**: Added unit tests for library tokens and expanded test coverage across `AccountLibraryStats.test.tsx` and `ReaderHeader.test.tsx`, achieving 108 suites and 760 passing tests.
+- **Account Library Statistics Hover Border Contrast (`src/components/account/AccountLibraryStats.tsx`)**: Resolved Tailwind v3 CSS variable opacity stripping on custom properties (`hover:border-primary/50` -> `hover:border-primary`, `hover:border-destructive`), guaranteeing distinct, visible 1px card borders on hover and keyboard focus across Light, Dark, and Sepia themes.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -606,7 +606,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 735 tests across 107 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 760 tests across 108 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

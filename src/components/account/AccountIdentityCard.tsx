@@ -63,12 +63,12 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
         <div className="flex items-center gap-2 shrink-0">
           {isEmailVerified ? (
-            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-success/30">
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-border">
               <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
               <span>Verified Reader</span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-amber-500/10 text-amber-500 border border-amber-500/30">
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-amber-500/10 text-amber-500 border border-border">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
               <span>Email Unverified</span>
             </div>

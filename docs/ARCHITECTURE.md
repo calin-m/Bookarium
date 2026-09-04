@@ -1,8 +1,8 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST.  
-> **Last Synchronized**: `2026-09-03`  
-> **Topology Health**: `117` Modules Analyzed • `329` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Last Synchronized**: `2026-09-04`  
+> **Topology Health**: `118` Modules Analyzed • `339` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -163,7 +163,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`page.tsx`](src/app/read/[id]/page.tsx) | `hooks/queries/useBookContent`, `hooks/queries/useBooks`, `hooks/queries/useBookTranslations`, `hooks/queries/usePageTranslation`, `stores/useReaderStore`, `stores/useThemeStore`, `hooks/useHasMounted`, `lib/gutenberg-parser`, `hooks/reader/useGutenbergParserWorker`, `config/reader-themes`, `lib/book-metadata`, `components/reader/ReaderHeader`, `components/reader/ReaderFooter`, `components/reader/ReaderTocDrawer`, `components/reader/ReaderSearchDrawer`, `components/reader/ReaderControls`, `components/reader/ReaderLanguageDrawer`, `components/reader/ReaderSpeechBar`, `components/reader/ReaderSurface`, `components/reader/TextHighlightPopover`, `components/reader/ReaderAnnotationsDrawer`, `hooks/reader/useReaderDrawers`, `hooks/reader/useReaderSpeech`, `hooks/reader/useReaderSession`, `stores/usePreferencesStore`, `stores/useAnnotationStore`, `stores/useAuthStore`, `components/ui/Modal`, `components/ui/Button`, `config/routes` | _App Route Entry_ | Production Module |
 | [`AccountDeleteModal.tsx`](src/components/account/AccountDeleteModal.tsx) | `components/ui/Modal`, `components/ui/Button` | `page.tsx` | Production Module |
 | [`AccountIdentityCard.tsx`](src/components/account/AccountIdentityCard.tsx) | `types/database.types`, `components/ui/Button`, `components/ui/Input` | `page.tsx` | Production Module |
-| [`AccountLibraryStats.tsx`](src/components/account/AccountLibraryStats.tsx) | `config/routes` | `page.tsx` | Production Module |
+| [`AccountLibraryStats.tsx`](src/components/account/AccountLibraryStats.tsx) | `config/routes`, `config/library-tokens` | `page.tsx` | Production Module |
 | [`AccountPreferencesSection.tsx`](src/components/account/AccountPreferencesSection.tsx) | `stores/useThemeStore`, `lib/speech-utils` | `page.tsx` | Production Module |
 | [`AccountSecuritySection.tsx`](src/components/account/AccountSecuritySection.tsx) | `components/ui/Button`, `components/ui/Input`, `components/ui/PasswordStrengthMeter`, `lib/password` | `page.tsx` | Production Module |
 | [`AuthModal.tsx`](src/components/auth/AuthModal.tsx) | `stores/useAuthStore`, `stores/useBookshelfStore`, `components/ui/Button`, `components/ui/Input`, `components/ui/PasswordStrengthMeter`, `lib/password` | `providers.tsx` | Production Module |
@@ -182,8 +182,8 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`HeroSearch.tsx`](src/components/presentation/HeroSearch.tsx) | `hooks/useHasMounted`, `components/ui/Button`, `config/catalog-filters`, `config/featured-books`, `types/book.types`, `lib/utils`, `./LanguageSelector`, `./HeroFeaturedBook3D` | `page.tsx` | Production Module |
 | [`LanguageSelector.tsx`](src/components/presentation/LanguageSelector.tsx) | `config/catalog-filters` | _Direct Root Consumer_ | Production Module |
 | [`LiteraryQuotes.tsx`](src/components/presentation/LiteraryQuotes.tsx) | `config/literary-quotes`, `config/routes` | `page.tsx` | Production Module |
-| [`Navbar.tsx`](src/components/presentation/Navbar.tsx) | `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useThemeStore`, `stores/useAuthStore`, `components/ui/Button`, `config/routes`, `config/site-config` | `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx` | Production Module |
-| [`NotebookView.tsx`](src/components/presentation/NotebookView.tsx) | `stores/useAnnotationStore`, `stores/useBookshelfStore`, `stores/useAuthStore`, `config/featured-books`, `components/ui/Button`, `components/ui/Modal` | `page.tsx` | Production Module |
+| [`Navbar.tsx`](src/components/presentation/Navbar.tsx) | `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useThemeStore`, `stores/useAuthStore`, `components/ui/Button`, `config/routes`, `config/site-config`, `config/library-tokens` | `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx` | Production Module |
+| [`NotebookView.tsx`](src/components/presentation/NotebookView.tsx) | `stores/useAnnotationStore`, `stores/useBookshelfStore`, `stores/useAuthStore`, `config/featured-books`, `hooks/queries/useBooks`, `components/ui/Button`, `components/ui/Modal`, `lib/book-metadata`, `lib/utils`, `types/book.types` | `page.tsx` | Production Module |
 | [`StickyCatalogToolbar.tsx`](src/components/presentation/StickyCatalogToolbar.tsx) | `components/ui/Button` | `page.tsx` | Production Module |
 | [`BookshelfManageModals.tsx`](src/components/presentation/bookshelf/BookshelfManageModals.tsx) | `components/ui/Button`, `components/ui/Input` | _Direct Root Consumer_ | Production Module |
 | [`BookshelfMobileModal.tsx`](src/components/presentation/bookshelf/BookshelfMobileModal.tsx) | `types/book.types`, `types/database.types`, `stores/useReaderStore`, `components/ui/Button`, `lib/utils`, `config/routes` | _Direct Root Consumer_ | Production Module |
@@ -195,7 +195,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`ReaderDrawerShell.tsx`](src/components/reader/ReaderDrawerShell.tsx) | `stores/useReaderStore`, `config/reader-themes`, `hooks/useHasMounted` | _Direct Root Consumer_ | Production Module |
 | [`ReaderErrorView.tsx`](src/components/reader/ReaderErrorView.tsx) | `config/reader-themes` | _Direct Root Consumer_ | Production Module |
 | [`ReaderFooter.tsx`](src/components/reader/ReaderFooter.tsx) | `stores/useReaderStore`, `config/reader-themes` | `page.tsx` | Production Module |
-| [`ReaderHeader.tsx`](src/components/reader/ReaderHeader.tsx) | `stores/useReaderStore`, `config/reader-themes`, `config/featured-books`, `lib/book-metadata`, `hooks/queries/useBookTranslations`, `hooks/useHasMounted`, `./GutenbergInfoModal`, `./ReaderSubHeaderRibbon` | `page.tsx` | Production Module |
+| [`ReaderHeader.tsx`](src/components/reader/ReaderHeader.tsx) | `stores/useReaderStore`, `config/reader-themes`, `config/featured-books`, `lib/book-metadata`, `hooks/queries/useBookTranslations`, `config/translation-languages`, `hooks/useHasMounted`, `./GutenbergInfoModal`, `./ReaderSubHeaderRibbon` | `page.tsx` | Production Module |
 | [`ReaderLanguageDrawer.tsx`](src/components/reader/ReaderLanguageDrawer.tsx) | `stores/useReaderStore`, `config/reader-themes`, `hooks/queries/useBookTranslations`, `config/translation-languages`, `./ReaderDrawerShell` | `page.tsx` | Production Module |
 | [`ReaderLoadingView.tsx`](src/components/reader/ReaderLoadingView.tsx) | `config/reader-themes` | _Direct Root Consumer_ | Production Module |
 | [`ReaderSearchDrawer.tsx`](src/components/reader/ReaderSearchDrawer.tsx) | `lib/gutenberg-parser`, `lib/in-book-search`, `stores/useReaderStore`, `config/reader-themes`, `config/reader-config`, `./ReaderDrawerShell` | `page.tsx` | Production Module |
@@ -215,15 +215,16 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`api-endpoints.ts`](src/config/api-endpoints.ts) | _Root Primitive_ | `route.ts`, `useBookContent.ts`, `useBooks.ts`, `useOfflineBooks.ts` | Production Module |
 | [`catalog-filters.ts`](src/config/catalog-filters.ts) | _Root Primitive_ | `AdvancedFilterDrawer.tsx`, `HeroSearch.tsx`, `LanguageSelector.tsx`, `useBookTranslations.ts`, `useCatalogFilters.ts` | Production Module |
 | [`featured-books.ts`](src/config/featured-books.ts) | `lib/utils` | `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `ReaderHeader.tsx`, `useBookPassageShuffle.ts`, `book-metadata.ts` | Production Module |
+| [`library-tokens.ts`](src/config/library-tokens.ts) | `config/routes` | `AccountLibraryStats.tsx`, `Navbar.tsx` | Production Module |
 | [`literary-quotes.ts`](src/config/literary-quotes.ts) | _Root Primitive_ | `LiteraryQuotes.tsx` | Production Module |
 | [`reader-config.ts`](src/config/reader-config.ts) | _Root Primitive_ | `ReaderControls.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSurface.tsx`, `useReaderGestures.ts`, `useReaderStore.ts` | Production Module |
 | [`reader-themes.ts`](src/config/reader-themes.ts) | `stores/useReaderStore` | `page.tsx`, `GutenbergInfoModal.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderControls.tsx`, `ReaderDrawerShell.tsx`, `ReaderErrorView.tsx`, `ReaderFooter.tsx`, `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx`, `ReaderLoadingView.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSpeechBar.tsx`, `ReaderSubHeaderRibbon.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx` | Production Module |
-| [`routes.ts`](src/config/routes.ts) | _Root Primitive_ | `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx`, `AccountLibraryStats.tsx`, `BookCard.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `Footer.tsx`, `LiteraryQuotes.tsx`, `Navbar.tsx`, `useAuthStore.ts` | Production Module |
+| [`routes.ts`](src/config/routes.ts) | _Root Primitive_ | `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx`, `AccountLibraryStats.tsx`, `BookCard.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `Footer.tsx`, `LiteraryQuotes.tsx`, `Navbar.tsx`, `library-tokens.ts`, `useAuthStore.ts` | Production Module |
 | [`site-config.ts`](src/config/site-config.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `layout.tsx`, `manifest.ts`, `page.tsx`, `Footer.tsx`, `Navbar.tsx`, `GutenbergInfoModal.tsx`, `useAnnotationStore.ts`, `useBookshelfStore.ts`, `usePreferencesStore.ts`, `useReaderStore.ts`, `useThemeStore.ts` | Production Module |
-| [`translation-languages.ts`](src/config/translation-languages.ts) | _Root Primitive_ | `ReaderLanguageDrawer.tsx` | Production Module |
+| [`translation-languages.ts`](src/config/translation-languages.ts) | _Root Primitive_ | `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx` | Production Module |
 | [`useBookContent.ts`](src/hooks/queries/useBookContent.ts) | `mocks/handlers`, `config/api-endpoints`, `lib/offline-storage` | `page.tsx`, `useBookPassageShuffle.ts` | Production Module |
 | [`useBookTranslations.ts`](src/hooks/queries/useBookTranslations.ts) | `config/catalog-filters`, `lib/book-metadata`, `types/book.types` | `page.tsx`, `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx` | Production Module |
-| [`useBooks.ts`](src/hooks/queries/useBooks.ts) | `types/book.types`, `config/api-endpoints` | `page.tsx`, `page.tsx` | Production Module |
+| [`useBooks.ts`](src/hooks/queries/useBooks.ts) | `types/book.types`, `config/api-endpoints` | `page.tsx`, `page.tsx`, `NotebookView.tsx` | Production Module |
 | [`usePageTranslation.ts`](src/hooks/queries/usePageTranslation.ts) | `app/api/translate/route` | `page.tsx` | Production Module |
 | [`useGutenbergParserWorker.ts`](src/hooks/reader/useGutenbergParserWorker.ts) | `lib/gutenberg-parser` | `page.tsx` | Production Module |
 | [`useReaderDrawers.ts`](src/hooks/reader/useReaderDrawers.ts) | _Root Primitive_ | `page.tsx` | Production Module |
@@ -237,7 +238,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`useOfflineBooks.ts`](src/hooks/useOfflineBooks.ts) | `types/book.types`, `lib/offline-storage`, `config/api-endpoints` | `BookshelfRack.tsx` | Production Module |
 | [`usePerformanceTier.ts`](src/hooks/usePerformanceTier.ts) | _Root Primitive_ | `HeroFeaturedBook3D.tsx` | Production Module |
 | [`useScrollDirection.ts`](src/hooks/useScrollDirection.ts) | _Root Primitive_ | `page.tsx`, `page.tsx` | Production Module |
-| [`book-metadata.ts`](src/lib/book-metadata.ts) | `types/book.types`, `config/featured-books`, `lib/utils` | `page.tsx`, `ReaderHeader.tsx`, `useBookTranslations.ts` | Production Module |
+| [`book-metadata.ts`](src/lib/book-metadata.ts) | `types/book.types`, `config/featured-books`, `lib/utils` | `page.tsx`, `NotebookView.tsx`, `ReaderHeader.tsx`, `useBookTranslations.ts`, `useAnnotationStore.ts` | Production Module |
 | [`gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | _Root Primitive_ | `page.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx`, `useGutenbergParserWorker.ts`, `useReaderSession.ts`, `in-book-search.ts`, `gutenberg.worker.ts` | Production Module |
 | [`index.ts`](src/lib/gutenberg/index.ts) | _Root Primitive_ | _Direct Root Consumer_ | Production Module |
 | [`metadata.ts`](src/lib/gutenberg/metadata.ts) | `./types` | _Direct Root Consumer_ | Production Module |
@@ -255,15 +256,15 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`client.ts`](src/lib/supabase/client.ts) | `types/database.types` | `useAnnotationStore.ts`, `useAuthStore.ts`, `useBookshelfStore.ts` | Production Module |
 | [`middleware.ts`](src/lib/supabase/middleware.ts) | `types/database.types`, `./client` | `proxy.ts` | Production Module |
 | [`server.ts`](src/lib/supabase/server.ts) | `types/database.types`, `./client` | `route.ts` | Production Module |
-| [`utils.ts`](src/lib/utils.ts) | _Root Primitive_ | `BookCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `DownloadDrawer.tsx`, `HeroSearch.tsx`, `Badge.tsx`, `Button.tsx`, `Card.tsx`, `Input.tsx`, `Modal.tsx`, `featured-books.ts`, `book-metadata.ts` | Production Module |
+| [`utils.ts`](src/lib/utils.ts) | _Root Primitive_ | `BookCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `DownloadDrawer.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `Badge.tsx`, `Button.tsx`, `Card.tsx`, `Input.tsx`, `Modal.tsx`, `featured-books.ts`, `book-metadata.ts`, `useAnnotationStore.ts` | Production Module |
 | [`proxy.ts`](src/proxy.ts) | `lib/supabase/middleware` | _Direct Root Consumer_ | Production Module |
-| [`useAnnotationStore.ts`](src/stores/useAnnotationStore.ts) | `config/site-config`, `lib/supabase/client`, `hooks/useHasMounted` | `page.tsx`, `providers.tsx`, `page.tsx`, `Navbar.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSurface.tsx`, `TextHighlightPopover.tsx` | Production Module |
+| [`useAnnotationStore.ts`](src/stores/useAnnotationStore.ts) | `config/site-config`, `lib/supabase/client`, `hooks/useHasMounted`, `lib/book-metadata`, `lib/utils` | `page.tsx`, `providers.tsx`, `page.tsx`, `Navbar.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSurface.tsx`, `TextHighlightPopover.tsx` | Production Module |
 | [`useAuthStore.ts`](src/stores/useAuthStore.ts) | `lib/supabase/client`, `types/database.types`, `config/routes` | `page.tsx`, `page.tsx`, `providers.tsx`, `page.tsx`, `AuthModal.tsx`, `BookshelfRack.tsx`, `Navbar.tsx`, `NotebookView.tsx` | Production Module |
 | [`useBookshelfStore.ts`](src/stores/useBookshelfStore.ts) | `types/book.types`, `hooks/useHasMounted`, `lib/supabase/client`, `types/database.types`, `config/site-config`, `./useAuthStore` | `page.tsx`, `page.tsx`, `providers.tsx`, `AuthModal.tsx`, `BookCard.tsx`, `BookshelfRack.tsx`, `Navbar.tsx`, `NotebookView.tsx` | Production Module |
 | [`usePreferencesStore.ts`](src/stores/usePreferencesStore.ts) | `config/site-config` | `page.tsx`, `page.tsx`, `page.tsx` | Production Module |
 | [`useReaderStore.ts`](src/stores/useReaderStore.ts) | `types/book.types`, `./useThemeStore`, `config/site-config`, `config/reader-config` | `page.tsx`, `page.tsx`, `BookCard.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderControls.tsx`, `ReaderDrawerShell.tsx`, `ReaderFooter.tsx`, `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSpeechBar.tsx`, `ReaderSubHeaderRibbon.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx`, `TextHighlightPopover.tsx`, `reader-themes.ts`, `useReaderSession.ts` | Production Module |
 | [`useThemeStore.ts`](src/stores/useThemeStore.ts) | `config/site-config` | `page.tsx`, `page.tsx`, `AccountPreferencesSection.tsx`, `Navbar.tsx` | Production Module |
-| [`book.types.ts`](src/types/book.types.ts) | _Root Primitive_ | `route.ts`, `page.tsx`, `BookCard.tsx`, `BookGrid.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `DownloadDrawer.tsx`, `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `useBooks.ts`, `useBookTranslations.ts`, `useOfflineBooks.ts`, `book-metadata.ts`, `smart-search.ts`, `useBookshelfStore.ts`, `useReaderStore.ts` | Production Module |
+| [`book.types.ts`](src/types/book.types.ts) | _Root Primitive_ | `route.ts`, `page.tsx`, `BookCard.tsx`, `BookGrid.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `DownloadDrawer.tsx`, `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `useBooks.ts`, `useBookTranslations.ts`, `useOfflineBooks.ts`, `book-metadata.ts`, `smart-search.ts`, `useBookshelfStore.ts`, `useReaderStore.ts` | Production Module |
 | [`database.types.ts`](src/types/database.types.ts) | _Root Primitive_ | `AccountIdentityCard.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `client.ts`, `middleware.ts`, `server.ts`, `useAuthStore.ts`, `useBookshelfStore.ts` | Production Module |
 | [`gutenberg.worker.ts`](src/workers/gutenberg.worker.ts) | `lib/gutenberg-parser` | _Direct Root Consumer_ | Production Module |
 

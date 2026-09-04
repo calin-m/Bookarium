@@ -136,6 +136,11 @@ const ROADMAP_MILESTONES = [
     description: 'Rich reader curation, Goodreads-style reading statuses, and daily habit tracking analytics.',
     features: [
       {
+        title: 'Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)',
+        description: 'Dedicated reading ledger displaying all books in progress with tactile bookmark cards, last-read passage snippets, completion percentages, filtering (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.',
+        check: () => fileExists('src/components/presentation/BookmarksView.tsx') || fileContains('src/stores/useReaderStore.ts', 'lastPassageSnippet'),
+      },
+      {
         title: '1–5 Star Personal Ratings & Reading Statuses',
         description: 'Assign 1–5 star ratings and reading statuses ("Want to Read", "Currently Reading", "Finished") to volumes across book cards and shelf management modals.',
         check: () => fileContains('src/stores/useBookshelfStore.ts', 'rating') || fileContains('src/types/database.types.ts', 'reading_status'),

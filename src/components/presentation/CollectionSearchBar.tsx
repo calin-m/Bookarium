@@ -1,12 +1,27 @@
-'use client';
-
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { Search, X } from 'lucide-react';
+
+export function subscribeMobile(callback: () => void) {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const mq = window.matchMedia('(max-width: 639px)');
+  mq.addEventListener('change', callback);
+  return () => mq.removeEventListener('change', callback);
+}
+
+export function getMobileSnapshot() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia('(max-width: 639px)').matches;
+}
+
+export function getServerMobileSnapshot() {
+  return false;
+}
 
 export interface CollectionSearchBarProps {
   query: string;
   onQueryChange: (query: string) => void;
   placeholder?: string;
+  mobilePlaceholder?: string;
   totalCount: number;
   filteredCount: number;
   collectionName?: 'bookshelf' | 'favorites';
@@ -17,12 +32,16 @@ export const CollectionSearchBar: React.FC<CollectionSearchBarProps> = ({
   query,
   onQueryChange,
   placeholder = 'Search by title, author, or subject...',
+  mobilePlaceholder,
   totalCount,
   filteredCount,
   collectionName = 'bookshelf',
   className = '',
 }) => {
+  const isMobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, getServerMobileSnapshot);
   const isFiltering = Boolean(query.trim());
+
+  const activePlaceholder = isMobile && mobilePlaceholder ? mobilePlaceholder : placeholder;
 
   return (
     <div
@@ -43,9 +62,11 @@ export const CollectionSearchBar: React.FC<CollectionSearchBarProps> = ({
               onQueryChange('');
             }
           }}
-          placeholder={placeholder}
+          placeholder={activePlaceholder}
           aria-label={`Search ${collectionName}`}
-          className="w-full h-11 pl-10 pr-24 sm:pr-28 text-sm font-sans rounded-xl bg-card border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground/70 transition-all outline-none shadow-xs"
+          className={`w-full h-11 pl-10 ${
+            isFiltering ? 'pr-24 sm:pr-28' : 'pr-4'
+          } text-xs sm:text-sm font-sans rounded-xl bg-card border border-border hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground/70 placeholder:truncate transition-all outline-none shadow-booksaw`}
         />
 
         <div className="absolute right-3 flex items-center gap-1.5">

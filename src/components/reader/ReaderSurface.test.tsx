@@ -498,6 +498,7 @@ describe('ReaderSurface', () => {
     const mockRange = {
       getBoundingClientRect: () => ({
         top: 150,
+        bottom: 170,
         left: 200,
         width: 100,
         height: 20,
@@ -526,6 +527,7 @@ describe('ReaderSurface', () => {
       text: 'selected quote from book',
       position: {
         top: 150,
+        bottom: 170,
         left: 250, // left + width / 2
       },
     });
@@ -604,5 +606,116 @@ describe('ReaderSurface', () => {
     expect(mark).toBeInTheDocument();
     expect(mark).toHaveTextContent('importante cita');
     expect(mark).toHaveAttribute('data-annotation-color', 'amber');
+  });
+
+  it('triggers onTextSelected on selectionchange within reader content', async () => {
+    vi.useFakeTimers();
+    const onTextSelected = vi.fn();
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        onTextSelected={onTextSelected}
+      />
+    );
+
+    const contentBody = screen.getByTestId('reader-content-body');
+
+    const mockRange = {
+      getBoundingClientRect: () => ({
+        top: 150,
+        bottom: 180,
+        left: 200,
+        width: 120,
+        height: 30,
+      }),
+    };
+
+    const originalGetSelection = window.getSelection;
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'Call me Ishmael.',
+      anchorNode: contentBody,
+      getRangeAt: () => mockRange,
+    });
+
+    document.dispatchEvent(new Event('selectionchange'));
+    vi.advanceTimersByTime(300);
+
+    expect(onTextSelected).toHaveBeenCalledWith({
+      text: 'Call me Ishmael.',
+      position: {
+        top: 150,
+        bottom: 180,
+        left: 260,
+      },
+    });
+
+    window.getSelection = originalGetSelection;
+    vi.useRealTimers();
+  });
+
+  it('triggers onTextSelected on mouseUp and ignores collapsed or outside selections', () => {
+    const onTextSelected = vi.fn();
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        onTextSelected={onTextSelected}
+      />
+    );
+
+    const contentBody = screen.getByTestId('reader-content-body');
+
+    // 1. Collapsed selection test
+    const originalGetSelection = window.getSelection;
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: true,
+      toString: () => '',
+    });
+
+    fireEvent.mouseUp(contentBody);
+    expect(onTextSelected).not.toHaveBeenCalled();
+
+    // 2. Selection outside reader test
+    const outsideNode = document.createElement('div');
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'Outside text selection',
+      anchorNode: outsideNode,
+    });
+
+    fireEvent.mouseUp(contentBody);
+    expect(onTextSelected).not.toHaveBeenCalled();
+
+    // 3. Valid mouseup selection test
+    const mockRange = {
+      getBoundingClientRect: () => ({
+        top: 100,
+        bottom: 130,
+        left: 50,
+        width: 80,
+        height: 30,
+      }),
+    };
+
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'Some years ago',
+      anchorNode: contentBody,
+      getRangeAt: () => mockRange,
+    });
+
+    fireEvent.mouseUp(contentBody);
+    expect(onTextSelected).toHaveBeenCalledWith({
+      text: 'Some years ago',
+      position: {
+        top: 100,
+        bottom: 130,
+        left: 90,
+      },
+    });
+
+    window.getSelection = originalGetSelection;
   });
 });

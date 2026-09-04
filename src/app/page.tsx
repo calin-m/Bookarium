@@ -310,6 +310,7 @@ function HomeContent() {
                   query={collectionSearchQuery}
                   onQueryChange={setCollectionSearchQuery}
                   placeholder="Search your bookshelf by title, author, or subject..."
+                  mobilePlaceholder="Search bookshelf..."
                   totalCount={savedBooks.length}
                   filteredCount={filteredSavedBooks.length}
                   collectionName="bookshelf"
@@ -321,6 +322,7 @@ function HomeContent() {
                   query={collectionSearchQuery}
                   onQueryChange={setCollectionSearchQuery}
                   placeholder="Search your favorites by title, author, or subject..."
+                  mobilePlaceholder="Search favorites..."
                   totalCount={likedBookIds.length}
                   filteredCount={filteredLikedBooks.length}
                   collectionName="favorites"

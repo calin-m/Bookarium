@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 03 Sep 2026 17:36:03 GMT  
+**Last Generated**: Fri, 04 Sep 2026 09:48:00 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 107 passed  
-**Total Verified Tests**: 735 passed  
+**Total Test Suites**: 108 passed  
+**Total Verified Tests**: 760 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **107/107 test suites passed** (735 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **108/108 test suites passed** (760 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.11%** (3880/4212) — *Target: $ge$ 80%*
-- **Statements**: **90.34%** (4230/4682) — *Target: $ge$ 80%*
-- **Functions**: **87.32%** (1020/1168) — *Target: $ge$ 80%*
-- **Branches**: **80.3%** (3531/4397) — *Target: $ge$ 80%*
+- **Lines**: **92.51%** (4005/4329) — *Target: $ge$ 80%*
+- **Statements**: **90.72%** (4375/4822) — *Target: $ge$ 80%*
+- **Functions**: **87.61%** (1054/1203) — *Target: $ge$ 80%*
+- **Branches**: **80.99%** (3695/4562) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (107 Suites / 735 Tests)
+## 🧪 Comprehensive Test Suite Catalog (108 Suites / 760 Tests)
 
 ### 🚀 App Routes & Pages (10 Suites · 75 Tests)
 
@@ -171,7 +171,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (18 Suites · 153 Tests)
+### 🎨 Catalog & Presentation (18 Suites · 163 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -299,7 +299,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionSearchBar.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionSearchBar.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `should render search input with placeholder and accessible label`
 - ✔ `should call onQueryChange when user types in the input`
@@ -307,6 +307,9 @@
 - ✔ `should call onQueryChange with empty string when clicking clear button`
 - ✔ `should clear search query when pressing Escape key`
 - ✔ `should not display clear button or counter when query is blank or whitespace`
+- ✔ `should apply compact right padding (pr-4) when idle and expanded padding (pr-24) when filtering`
+- ✔ `should render mobilePlaceholder when screen is mobile viewport and respond to change events`
+- ✔ `should return server and client snapshot correctly and handle undefined matchMedia`
 
 </details>
 
@@ -398,10 +401,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (24 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
+- ✔ `cleans raw Gutenberg preamble titles and resolves authentic metadata in Notebook`
+- ✔ `cleans raw preamble titles for non-featured books and falls back gracefully for placeholders`
+- ✔ `resolves authentic title and author for non-featured, non-saved book (e.g. 31635) via remote book query`
 - ✔ `filters annotations by search query across quote, note, title, and author`
 - ✔ `filters annotations by pastel color tabs`
 - ✔ `allows toggling between By Book grouping and Chronological stream`
@@ -417,6 +423,10 @@
 - ✔ `shows reset filters button when search returns 0 results and resets filters`
 - ✔ `resolves metadata from savedBooks and fallback when bookTitle is not stored`
 - ✔ `translates vertical wheel scroll to horizontal scroll on color filter tabs`
+- ✔ `toggles quick color popover and changes highlight color on 1-click swatch`
+- ✔ `dismisses quick color popover when clicking outside or pressing Escape`
+- ✔ `allows full editing of personal reflection and color via card footer Edit button`
+- ✔ `live-previews selected color during edit mode and reverts if cancelled`
 
 </details>
 
@@ -434,7 +444,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (15 Suites · 111 Tests)
+### 📖 In-Browser Focus Reader (15 Suites · 117 Tests)
 
 <details>
 <summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
@@ -504,7 +514,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -517,6 +527,9 @@
 - ✔ `renders the dedicated sub-header metadata ribbon with Book ID, Section, and Progress`
 - ✔ `renders integrated resume notice ribbon in sub-header and handles restart and dismiss`
 - ✔ `renders language and translation switcher and handles edition selection`
+- ✔ `renders single target language with sparkles when dynamic translation is active in translated mode`
+- ✔ `renders parallel notation (e.g. EN ∥ ES) when bilingual mode is active`
+- ✔ `renders active indicator dot in mobile action tray when dynamic translation is active`
 - ✔ `handles link copying when share button is clicked`
 - ✔ `toggles mobile action tray and executes actions`
 - ✔ `renders Read Aloud button and handles click toggles`
@@ -582,7 +595,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (21 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (23 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -605,6 +618,8 @@
 - ✔ `detects window text selection and triggers onTextSelected on mouseUp`
 - ✔ `applies color-specific selection styling to highlight marks`
 - ✔ `renders user annotations inside bilingual parallel mode segments`
+- ✔ `triggers onTextSelected on selectionchange within reader content`
+- ✔ `triggers onTextSelected on mouseUp and ignores collapsed or outside selections`
 
 </details>
 
@@ -620,7 +635,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders all 4 color choices and action buttons`
 - ✔ `calls onSelectColor when a color button is clicked`
@@ -633,7 +648,8 @@
 - ✔ `submits note on clicking Save Note button in note textarea`
 - ✔ `renders in sepia and dark themes without crashing`
 - ✔ `calls onClose when touchstart occurs outside the popover`
-- ✔ `positions below anchor on touch devices to avoid native mobile context menu collision`
+- ✔ `positions docked at bottom on touch devices to avoid native mobile context menu collision`
+- ✔ `positions contextually near anchor on desktop devices`
 
 </details>
 
@@ -660,10 +676,10 @@
 
 </details>
 
-### ⚡ Zustand State Stores (6 Suites · 70 Tests)
+### ⚡ Zustand State Stores (6 Suites · 72 Tests)
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -681,6 +697,8 @@
 - ✔ `handles syncWithCloud with empty userId or network error safely`
 - ✔ `records tombstones on deleteAnnotation and prevents zombie resurrection during sync`
 - ✔ `clamps oversized text and note payloads to prevent localStorage quota exhaustion`
+- ✔ `updates book metadata for annotations with missing or placeholder metadata`
+- ✔ `ignores invalid or placeholder titles when calling updateBookMetadata`
 
 </details>
 
@@ -768,11 +786,12 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (15 Suites · 113 Tests)
+### 📚 Gutenberg Parsers & Metadata (15 Suites · 114 Tests)
 
 <details>
-<summary><b><code>src/lib/book-metadata.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/lib/book-metadata.test.ts</code></b> (10 tests)</summary>
 
+- ✔ `strips Gutenberg preamble prefixes cleanly`
 - ✔ `identifies placeholder and empty authors correctly`
 - ✔ `identifies placeholder and generic volume titles correctly`
 - ✔ `resolves curated static fixtures (Tier 1) for featured book IDs with 0ms preloaded data`
@@ -1192,7 +1211,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (25 Suites · 83 Tests)
+### 🧩 UI Primitives & Motion (26 Suites · 89 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
@@ -1251,10 +1270,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `renders library statistics with links and values including notes and quotes`
 - ✔ `renders default 0 for annotationCount when omitted`
+- ✔ `applies theme-tokenized hover border and focus classes on each library card`
 
 </details>
 
@@ -1381,6 +1401,17 @@
 - ✔ `provides 12 curated quotes with non-empty metadata`
 - ✔ `provides complete theme configs for light, sepia, and dark`
 - ✔ `getReaderTheme returns exact theme or falls back to light`
+
+</details>
+
+<details>
+<summary><b><code>src/config/library-tokens.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `contains all expected library section keys`
+- ✔ `guarantees non-empty class strings and valid metadata for every section`
+- ✔ `preserves intentional conceptual grouping between bookshelf and customShelves`
+- ✔ `maps correct route targets for favorites and notebook`
+- ✔ `retrieves tokens via getLibraryTheme helper correctly`
 
 </details>
 

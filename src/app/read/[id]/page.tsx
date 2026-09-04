@@ -14,7 +14,7 @@ import {
 } from '@/lib/gutenberg-parser';
 import { useGutenbergParserWorker } from '@/hooks/reader/useGutenbergParserWorker';
 import { getReaderTheme } from '@/config/reader-themes';
-import { resolveBookMetadata } from '@/lib/book-metadata';
+import { resolveBookMetadata, isPlaceholderTitle } from '@/lib/book-metadata';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
 import { ReaderFooter } from '@/components/reader/ReaderFooter';
 import { ReaderTocDrawer } from '@/components/reader/ReaderTocDrawer';
@@ -92,6 +92,7 @@ export default function BookReaderPage() {
     updateAnnotationNote,
     deleteAnnotation,
     syncWithCloud,
+    updateBookMetadata,
   } = useHydratedAnnotations();
   const user = useAuthStore((s) => s.user);
 
@@ -107,7 +108,7 @@ export default function BookReaderPage() {
   const [selectionPopover, setSelectionPopover] = useState<{
     isOpen: boolean;
     selectedText: string;
-    position: { top: number; left: number } | null;
+    position: { top: number; left: number; bottom?: number } | null;
     activeAnnotation: Annotation | null;
   }>({
     isOpen: false,
@@ -164,6 +165,13 @@ export default function BookReaderPage() {
       extractedMeta,
     });
   }, [numericId, currentBook, booksData, extractedMeta]);
+
+  // Auto-heal missing or placeholder metadata on any stored annotations for this volume
+  useEffect(() => {
+    if (numericId > 0 && resolvedIdentity.title && !isPlaceholderTitle(resolvedIdentity.title)) {
+      updateBookMetadata(numericId, resolvedIdentity.title, resolvedIdentity.author);
+    }
+  }, [numericId, resolvedIdentity.title, resolvedIdentity.author, updateBookMetadata]);
 
   const bookTitle = resolvedIdentity.title;
   const bookAuthor = resolvedIdentity.author;
@@ -284,7 +292,7 @@ export default function BookReaderPage() {
   });
 
   const handleTextSelected = useCallback(
-    (selection: { text: string; position: { top: number; left: number } }) => {
+    (selection: { text: string; position: { top: number; left: number; bottom?: number } }) => {
       const trimmed = selection.text.trim();
       const existing = bookAnnotations.find(
         (a) =>
@@ -304,7 +312,7 @@ export default function BookReaderPage() {
   );
 
   const handleSelectAnnotation = useCallback(
-    (annotation: Annotation, position?: { top: number; left: number }) => {
+    (annotation: Annotation, position?: { top: number; left: number; bottom?: number }) => {
       if (typeof window === 'undefined') return;
       setSelectionPopover({
         isOpen: true,
@@ -447,6 +455,8 @@ export default function BookReaderPage() {
         onSelectTranslation={(targetBookId) => {
           router.replace(ROUTES.READ(targetBookId));
         }}
+        dynamicTargetLanguage={dynamicTargetLanguage}
+        displayMode={displayMode}
       />
 
       {/* Main Editorial Reading Canvas */}

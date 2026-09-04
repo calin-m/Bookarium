@@ -179,10 +179,10 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
           <div className="flex items-center gap-1 sm:gap-1.5">
             {/* Part 1: Live API Status Badge */}
             <div
-              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border border-border ${
                 isError
-                  ? 'bg-destructive/10 text-destructive border-destructive/30'
-                  : 'bg-success/10 text-success border-success/30'
+                  ? 'bg-destructive/10 text-destructive'
+                  : 'bg-success/10 text-success'
               }`}
               title="Gutenberg API Status"
               data-testid="api-status-badge"

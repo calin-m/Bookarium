@@ -16,12 +16,14 @@ import {
   Share2,
   Headphones,
   Highlighter,
+  Sparkles,
 } from 'lucide-react';
 import { useReaderStore, type ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
+import { resolveTranslationLanguage } from '@/config/translation-languages';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { GutenbergInfoModal } from './GutenbergInfoModal';
 import { ReaderSubHeaderRibbon } from './ReaderSubHeaderRibbon';
@@ -60,6 +62,8 @@ export interface ReaderHeaderProps {
   translations?: BookTranslationOption[];
   isTranslationsLoading?: boolean;
   onSelectTranslation?: (bookId: number) => void;
+  dynamicTargetLanguage?: string | null;
+  displayMode?: 'translated' | 'bilingual';
 }
 
 export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
@@ -91,6 +95,8 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   translations,
   isTranslationsLoading: _isTranslationsLoading,
   onSelectTranslation: _onSelectTranslation,
+  dynamicTargetLanguage = null,
+  displayMode = 'translated',
 }) => {
   const hasMounted = useHasMounted();
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
@@ -101,6 +107,26 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const mobileTrayRef = useRef<HTMLDivElement | null>(null);
   const activeTheme = getReaderTheme(theme);
+
+  const currentBookLang =
+    translations?.find((t) => t.isCurrent)?.languageCode.toUpperCase() || 'EN';
+  const isDynamicActive = Boolean(dynamicTargetLanguage);
+  const dynamicLangUpper = dynamicTargetLanguage?.toUpperCase() || '';
+  const activeLangInfo = dynamicTargetLanguage
+    ? resolveTranslationLanguage(dynamicTargetLanguage)
+    : null;
+
+  const languageButtonLabel = isDynamicActive
+    ? displayMode === 'bilingual'
+      ? `${currentBookLang} ∥ ${dynamicLangUpper}`
+      : dynamicLangUpper
+    : currentBookLang;
+
+  const languageButtonTitle = isDynamicActive
+    ? displayMode === 'bilingual'
+      ? `Bilingual Parallel: ${currentBookLang} ∥ ${activeLangInfo?.label || dynamicLangUpper}`
+      : `Translated to ${activeLangInfo?.label || dynamicLangUpper} (AI Translation)`
+    : `Language Editions & Translations (${currentBookLang})`;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -269,7 +295,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             </button>
 
             {/* Language & Translations Drawer Trigger */}
-            {translations && translations.length > 0 && onToggleTranslations && (
+            {((translations && translations.length > 0) || isDynamicActive) && onToggleTranslations && (
               <button
                 type="button"
                 onClick={onToggleTranslations}
@@ -278,33 +304,48 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                 }`}
                 aria-label="Language Editions & Translations"
                 aria-expanded={isTranslationsOpen}
-                title="View available language editions and translations"
+                title={languageButtonTitle}
                 data-testid="lang-dropdown-button"
               >
-                <Globe
-                  className={`w-3.5 h-3.5 shrink-0 ${
-                    theme === 'sepia'
-                      ? isTranslationsOpen
-                        ? 'text-[#2b1d16]'
-                        : 'text-amber-500'
-                      : 'text-primary'
-                  }`}
-                />
-                <span className="hidden sm:inline">
-                  {translations.find((t) => t.isCurrent)?.languageCode.toUpperCase() || 'EN'}
-                </span>
-                {translations.length > 1 && (
-                  <span
-                    className={`text-[10px] px-1 py-0.2 rounded-full font-bold ${
+                <div className="relative flex items-center justify-center">
+                  <Globe
+                    className={`w-3.5 h-3.5 shrink-0 ${
                       theme === 'sepia'
                         ? isTranslationsOpen
-                          ? 'bg-[#2b1d16]/20 text-[#2b1d16]'
-                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : 'bg-primary/10 text-primary'
+                          ? 'text-[#2b1d16]'
+                          : 'text-amber-500'
+                        : 'text-primary'
                     }`}
-                  >
-                    {translations.length}
-                  </span>
+                  />
+                  {isDynamicActive && (
+                    <span
+                      data-testid="lang-active-dot"
+                      className="sm:hidden absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 ring-1 ring-background"
+                    />
+                  )}
+                </div>
+                <span className="hidden sm:inline font-bold">
+                  {languageButtonLabel}
+                </span>
+                {isDynamicActive ? (
+                  <Sparkles
+                    data-testid="lang-sparkles-icon"
+                    className="w-3 h-3 text-amber-400 shrink-0 animate-pulse"
+                  />
+                ) : (
+                  translations && translations.length > 1 && (
+                    <span
+                      className={`text-[10px] px-1 py-0.2 rounded-full font-bold ${
+                        theme === 'sepia'
+                          ? isTranslationsOpen
+                            ? 'bg-[#2b1d16]/20 text-[#2b1d16]'
+                            : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-primary/10 text-primary'
+                      }`}
+                    >
+                      {translations.length}
+                    </span>
+                  )
                 )}
               </button>
             )}
@@ -457,16 +498,16 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               </button>
 
               {/* 4. Language button */}
-              {translations && translations.length > 0 && onToggleTranslations && (
+              {((translations && translations.length > 0) || isDynamicActive) && onToggleTranslations && (
                 <button
                   type="button"
                   onClick={onToggleTranslations}
-                  className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 ${
+                  className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 relative ${
                     isTranslationsOpen ? activeTheme.activePill : activeTheme.button
                   }`}
                   aria-label="Language Editions & Translations"
                   aria-expanded={isTranslationsOpen}
-                  title="View available language editions and translations"
+                  title={languageButtonTitle}
                   data-testid="mobile-lang-dropdown-button"
                 >
                   <Globe
@@ -478,6 +519,12 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                         : 'text-primary'
                     }`}
                   />
+                  {isDynamicActive && (
+                    <span
+                      data-testid="mobile-lang-active-indicator"
+                      className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400 ring-1 ring-background"
+                    />
+                  )}
                 </button>
               )}
 

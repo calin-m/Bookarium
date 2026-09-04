@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotebookView } from './NotebookView';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -12,9 +13,27 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+let testQueryClient: QueryClient;
+
+const render = (ui: React.ReactElement, client?: QueryClient) => {
+  const queryClient = client || testQueryClient;
+  return rtlRender(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>
+  );
+};
+
 describe('NotebookView component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    testQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
     useAnnotationStore.getState().clearAllAnnotations();
     useBookshelfStore.getState().clearBookshelf();
   });
@@ -50,6 +69,99 @@ describe('NotebookView component', () => {
     expect(screen.getByText(/It is a truth universally acknowledged/i)).toBeInTheDocument();
     expect(screen.getByText('Famous opening quote')).toBeInTheDocument();
     expect(screen.getByText('yellow')).toBeInTheDocument();
+  });
+
+  it('cleans raw Gutenberg preamble titles and resolves authentic metadata in Notebook', async () => {
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 84,
+      bookTitle: 'The Project Gutenberg eBook of Frankenstein; Or, The Modern Prometheus',
+      bookAuthor: 'Project Gutenberg',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'You seek for knowledge and wisdom, as I once did.',
+      color: 'mint',
+      note: 'Walton letters',
+    });
+
+    render(<NotebookView />);
+
+    expect(screen.queryByText(/The Project Gutenberg eBook of/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText('Frankenstein; Or, The Modern Prometheus').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/by Mary Wollstonecraft Shelley/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('cleans raw preamble titles for non-featured books and falls back gracefully for placeholders', async () => {
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 99991,
+      bookTitle: 'The Project Gutenberg eBook of The Secret Garden',
+      bookAuthor: 'by Frances Hodgson Burnett',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'When Mary Lennox was sent to Misselthwaite Manor...',
+      color: 'rose',
+      note: 'Opening line',
+    });
+
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 99992,
+      bookTitle: 'The Project Gutenberg eBook',
+      bookAuthor: 'Unknown Author',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Some uncredited text quote',
+      color: 'amber',
+      note: 'Mystery text',
+    });
+
+    render(<NotebookView />);
+
+    expect(screen.getAllByText('The Secret Garden').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/by Frances Hodgson Burnett/i).length).toBeGreaterThanOrEqual(1);
+
+    expect(screen.getAllByText('Volume #99992').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/by Classic Literature/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('resolves authentic title and author for non-featured, non-saved book (e.g. 31635) via remote book query', async () => {
+    testQueryClient.setQueryData(
+      ['books', { ids: '31635', page: 1, copyright: false }],
+      {
+        count: 1,
+        results: [
+          {
+            id: 31635,
+            title: 'The Silent Barrier',
+            authors: [{ name: 'Tracy, Louis', birth_year: 1863, death_year: 1928 }],
+            subjects: ['Alps -- Fiction', 'Detective and mystery stories'],
+            languages: ['en'],
+            copyright: false,
+            download_count: 500,
+            formats: {},
+          },
+        ],
+      }
+    );
+
+    // Add note for book 31635 with NO title and NO author
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 31635,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'A silent barrier separated the travelers.',
+      color: 'yellow',
+      note: 'Key plot clue',
+    });
+
+    render(<NotebookView />);
+
+    // Authentically resolved title and natural author
+    expect(screen.getAllByText('The Silent Barrier').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/by Louis Tracy/i).length).toBeGreaterThanOrEqual(1);
+
+    // Stored annotation should also be auto-healed in store
+    const storeAnn = useAnnotationStore.getState().annotations.find((a) => a.bookId === 31635);
+    expect(storeAnn?.bookTitle).toBe('The Silent Barrier');
+    expect(storeAnn?.bookAuthor).toBe('Louis Tracy');
   });
 
   it('filters annotations by search query across quote, note, title, and author', async () => {
@@ -485,5 +597,177 @@ describe('NotebookView component', () => {
 
     expect(colorTabs.scrollLeft).toBe(80);
     expect(wheelUpEvent.defaultPrevented).toBe(true);
+  });
+
+  it('toggles quick color popover and changes highlight color on 1-click swatch', async () => {
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Quick color quote',
+      color: 'yellow',
+    });
+
+    render(<NotebookView />);
+
+    // Color popover starts closed
+    expect(screen.queryByTestId(`quick-color-popover-${ann.id}`)).not.toBeInTheDocument();
+
+    // Click color badge button
+    const badgeBtn = screen.getByTestId(`color-badge-btn-${ann.id}`);
+    expect(badgeBtn).toHaveTextContent('yellow');
+    fireEvent.click(badgeBtn);
+
+    // Popover is now visible with 4 swatches
+    const popover = screen.getByTestId(`quick-color-popover-${ann.id}`);
+    expect(popover).toBeInTheDocument();
+
+    // Click Mint swatch
+    const mintBtn = screen.getByTestId(`quick-color-btn-${ann.id}-mint`);
+    await act(async () => {
+      fireEvent.click(mintBtn);
+    });
+
+    // Popover closes and badge updates to mint
+    expect(screen.queryByTestId(`quick-color-popover-${ann.id}`)).not.toBeInTheDocument();
+    expect(badgeBtn).toHaveTextContent('mint');
+
+    // Store is updated
+    const updated = useAnnotationStore.getState().annotations.find((a) => a.id === ann.id);
+    expect(updated?.color).toBe('mint');
+  });
+
+  it('dismisses quick color popover when clicking outside or pressing Escape', async () => {
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Dismiss test quote',
+      color: 'yellow',
+    });
+
+    render(<NotebookView />);
+
+    // Open popover
+    fireEvent.click(screen.getByTestId(`color-badge-btn-${ann.id}`));
+    expect(screen.getByTestId(`quick-color-popover-${ann.id}`)).toBeInTheDocument();
+
+    // Press Escape
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId(`quick-color-popover-${ann.id}`)).not.toBeInTheDocument();
+
+    // Open popover again and click outside
+    fireEvent.click(screen.getByTestId(`color-badge-btn-${ann.id}`));
+    expect(screen.getByTestId(`quick-color-popover-${ann.id}`)).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByTestId(`quick-color-popover-${ann.id}`)).not.toBeInTheDocument();
+  });
+
+  it('allows full editing of personal reflection and color via card footer Edit button', async () => {
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Full edit quote',
+      color: 'amber',
+      note: 'Initial thought',
+    });
+
+    render(<NotebookView />);
+
+    // Click Edit button in card footer
+    const editFooterBtn = screen.getByTestId(`edit-quote-btn-${ann.id}`);
+    expect(editFooterBtn).toBeInTheDocument();
+    fireEvent.click(editFooterBtn);
+
+    // Edit textarea and color swatches appear
+    const textarea = screen.getByTestId(`edit-note-textarea-${ann.id}`);
+    expect(textarea).toHaveValue('Initial thought');
+
+    // Change note text
+    fireEvent.change(textarea, { target: { value: 'Deep literary reflection on pride' } });
+
+    // Change shade to rose
+    const roseBtn = screen.getByTestId(`edit-color-btn-${ann.id}-rose`);
+    fireEvent.click(roseBtn);
+
+    // Click Save Note
+    const saveBtn = screen.getByRole('button', { name: /Save Note/i });
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+
+    // Verify textarea closes
+    expect(screen.queryByTestId(`edit-note-textarea-${ann.id}`)).not.toBeInTheDocument();
+
+    // Verify UI updated
+    expect(screen.getByText('Deep literary reflection on pride')).toBeInTheDocument();
+    expect(screen.getByTestId(`color-badge-btn-${ann.id}`)).toHaveTextContent('rose');
+
+    // Verify store updated
+    const updated = useAnnotationStore.getState().annotations.find((a) => a.id === ann.id);
+    expect(updated?.note).toBe('Deep literary reflection on pride');
+    expect(updated?.color).toBe('rose');
+  });
+
+  it('live-previews selected color during edit mode and reverts if cancelled', async () => {
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Live preview quote',
+      color: 'amber',
+      note: 'Draft thought',
+    });
+
+    render(<NotebookView />);
+
+    const badgeBtn = screen.getByTestId(`color-badge-btn-${ann.id}`);
+    expect(badgeBtn).toHaveTextContent('amber');
+
+    // Enter edit mode
+    fireEvent.click(screen.getByTestId(`edit-quote-btn-${ann.id}`));
+
+    // Click mint swatch in edit mode
+    const mintBtn = screen.getByTestId(`edit-color-btn-${ann.id}-mint`);
+    fireEvent.click(mintBtn);
+
+    // Badge should immediately LIVE PREVIEW as mint even before saving
+    expect(badgeBtn).toHaveTextContent('mint');
+
+    // Store is NOT yet updated (still amber)
+    expect(useAnnotationStore.getState().annotations.find((a) => a.id === ann.id)?.color).toBe('amber');
+
+    // Click Cancel
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+
+    // Badge should REVERT back to amber
+    expect(badgeBtn).toHaveTextContent('amber');
+    expect(useAnnotationStore.getState().annotations.find((a) => a.id === ann.id)?.color).toBe('amber');
+
+    // Enter edit mode again, switch to mint, and Save
+    fireEvent.click(screen.getByTestId(`edit-quote-btn-${ann.id}`));
+    const newMintBtn = screen.getByTestId(`edit-color-btn-${ann.id}-mint`);
+    fireEvent.click(newMintBtn);
+    expect(badgeBtn).toHaveTextContent('mint');
+
+    const saveBtn = screen.getByRole('button', { name: /Save Note/i });
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+
+    // Now permanently mint
+    expect(badgeBtn).toHaveTextContent('mint');
+    expect(useAnnotationStore.getState().annotations.find((a) => a.id === ann.id)?.color).toBe('mint');
   });
 });

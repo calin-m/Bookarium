@@ -16,8 +16,10 @@ import {
   Layers,
   Clock,
   AlertTriangle,
+  Palette,
 } from 'lucide-react';
 import {
+  useAnnotationStore,
   useHydratedAnnotations,
   type Annotation,
   type HighlightColor,
@@ -25,12 +27,52 @@ import {
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
+import { useBooks } from '@/hooks/queries/useBooks';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import {
+  cleanBookTitle,
+  isPlaceholderAuthor,
+  isPlaceholderTitle,
+} from '@/lib/book-metadata';
+import { formatAuthorNames } from '@/lib/utils';
+import type { GutendexBook } from '@/types/book.types';
 
 export interface NotebookViewProps {
   onBrowseCatalog?: () => void;
 }
+
+const HIGHLIGHT_COLOR_SWATCHES: Array<{
+  id: HighlightColor;
+  label: string;
+  pillClass: string;
+  activeRing: string;
+}> = [
+  {
+    id: 'yellow',
+    label: 'Yellow',
+    pillClass: 'bg-amber-300 border-amber-400 dark:bg-amber-400/80',
+    activeRing: 'ring-2 ring-offset-2 ring-amber-500',
+  },
+  {
+    id: 'amber',
+    label: 'Amber',
+    pillClass: 'bg-orange-300 border-orange-400 dark:bg-orange-400/80',
+    activeRing: 'ring-2 ring-offset-2 ring-orange-500',
+  },
+  {
+    id: 'mint',
+    label: 'Mint',
+    pillClass: 'bg-emerald-300 border-emerald-400 dark:bg-emerald-400/80',
+    activeRing: 'ring-2 ring-offset-2 ring-emerald-500',
+  },
+  {
+    id: 'rose',
+    label: 'Rose',
+    pillClass: 'bg-rose-300 border-rose-400 dark:bg-rose-400/80',
+    activeRing: 'ring-2 ring-offset-2 ring-rose-500',
+  },
+];
 
 const COLOR_FILTERS: Array<{ id: HighlightColor | 'all'; label: string; badgeClass: string }> = [
   { id: 'all', label: 'All Colors', badgeClass: 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-border' },
@@ -65,13 +107,55 @@ const HIGHLIGHT_CARD_COLORS: Record<HighlightColor, { border: string; bg: string
 
 export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
-  const { annotations, updateAnnotationNote, deleteAnnotation, clearAllAnnotations } =
-    useHydratedAnnotations();
+  const {
+    annotations,
+    updateAnnotationColor,
+    updateAnnotationNote,
+    deleteAnnotation,
+    clearAllAnnotations,
+  } = useHydratedAnnotations();
   const user = useAuthStore((s) => s.user);
 
   // Cross-reference metadata sources
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
   const likedBooks = useBookshelfStore((s) => s.likedBooks || []);
+  const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
+
+  // Identify book IDs that lack resolved titles/authors and are not in local stores or static fixtures
+  const missingMetadataBookIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const ann of annotations) {
+      if (!ann.bookId || ann.bookId <= 0) continue;
+      const cleanTitle = cleanBookTitle(ann.bookTitle);
+      const hasValidTitle = cleanTitle && !isPlaceholderTitle(cleanTitle);
+      const hasValidAuthor = ann.bookAuthor && !isPlaceholderAuthor(ann.bookAuthor);
+      if (hasValidTitle && hasValidAuthor) continue;
+
+      const inSaved = savedBooks.some((b) => b.id === ann.bookId);
+      const inLiked = likedBooks.some((b) => b.id === ann.bookId);
+      const inFeatured = FEATURED_HERO_BOOKS.some((b) => b.id === ann.bookId);
+
+      if (!inSaved && !inLiked && !inFeatured) {
+        ids.add(ann.bookId);
+      }
+    }
+    return Array.from(ids).sort((a, b) => a - b);
+  }, [annotations, savedBooks, likedBooks]);
+
+  // Query Gutendex remote API / cache for any unindexed annotated books
+  const { data: remoteBooksData } = useBooks(
+    { ids: missingMetadataBookIds.join(','), page: 1, copyright: false },
+    { enabled: missingMetadataBookIds.length > 0 }
+  );
+
+  // Auto-heal missing metadata in local annotations when remote books resolve
+  useEffect(() => {
+    if (!remoteBooksData?.results || remoteBooksData.results.length === 0) return;
+    for (const book of remoteBooksData.results) {
+      const author = book.authors ? formatAuthorNames(book.authors) : undefined;
+      updateBookMetadata(book.id, book.title, author);
+    }
+  }, [remoteBooksData, updateBookMetadata]);
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,7 +165,33 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [editNoteText, setEditNoteText] = useState('');
+  const [editColor, setEditColor] = useState<HighlightColor>('yellow');
+  const [activeColorPickerId, setActiveColorPickerId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Dismiss quick color swatch popover when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!activeColorPickerId) return;
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('[data-testid^="color-badge-container-"]')) return;
+      setActiveColorPickerId(null);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveColorPickerId(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeColorPickerId]);
 
   const colorTabsRef = useRef<HTMLDivElement>(null);
 
@@ -106,36 +216,57 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   // Helper to resolve literary metadata for an annotation
   const resolveBookDetails = useCallback(
     (ann: Annotation) => {
-      if (ann.bookTitle && ann.bookAuthor) {
-        return { title: ann.bookTitle, author: ann.bookAuthor };
-      }
       const fromSaved = savedBooks.find((b) => b.id === ann.bookId);
-      if (fromSaved) {
-        return {
-          title: fromSaved.title,
-          author: fromSaved.authors?.[0]?.name || 'Unknown Author',
-        };
-      }
       const fromLiked = likedBooks.find((b) => b.id === ann.bookId);
-      if (fromLiked) {
-        return {
-          title: fromLiked.title,
-          author: fromLiked.authors?.[0]?.name || 'Unknown Author',
-        };
-      }
       const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === ann.bookId);
-      if (fromFeatured) {
-        return {
-          title: fromFeatured.title,
-          author: fromFeatured.author || 'Unknown Author',
-        };
-      }
+      const fromApi = remoteBooksData?.results?.find((b: GutendexBook) => b.id === ann.bookId);
+
+      const cleanedAnnTitle = cleanBookTitle(ann.bookTitle);
+      const hasValidAnnTitle = cleanedAnnTitle && !isPlaceholderTitle(cleanedAnnTitle);
+
+      const candidateTitle =
+        (hasValidAnnTitle ? cleanedAnnTitle : '') ||
+        fromSaved?.title ||
+        fromLiked?.title ||
+        fromFeatured?.title ||
+        fromApi?.title ||
+        cleanedAnnTitle;
+
+      const cleanedAnnAuthor = !isPlaceholderAuthor(ann.bookAuthor) ? ann.bookAuthor?.replace(/^by\s+/i, '').trim() : '';
+
+      const savedAuthor = fromSaved?.authors ? formatAuthorNames(fromSaved.authors) : '';
+      const likedAuthor = fromLiked?.authors ? formatAuthorNames(fromLiked.authors) : '';
+      const apiAuthor = fromApi?.authors ? formatAuthorNames(fromApi.authors) : '';
+
+      const candidateAuthor =
+        cleanedAnnAuthor ||
+        (!isPlaceholderAuthor(savedAuthor) ? savedAuthor : '') ||
+        (!isPlaceholderAuthor(likedAuthor) ? likedAuthor : '') ||
+        fromFeatured?.author ||
+        (!isPlaceholderAuthor(apiAuthor) ? apiAuthor : '') ||
+        '';
+
+      const cleanTitle = cleanBookTitle(candidateTitle);
+      const finalTitle =
+        (!isPlaceholderTitle(cleanTitle) ? cleanTitle : '') ||
+        cleanBookTitle(fromFeatured?.title) ||
+        cleanBookTitle(fromSaved?.title) ||
+        cleanBookTitle(fromLiked?.title) ||
+        cleanBookTitle(fromApi?.title) ||
+        (ann.bookId ? `Volume #${ann.bookId}` : 'Public Domain Classic');
+
+      const finalAuthor =
+        candidateAuthor ||
+        (!isPlaceholderAuthor(ann.bookAuthor) ? ann.bookAuthor : '') ||
+        fromFeatured?.author ||
+        'Classic Literature';
+
       return {
-        title: ann.bookTitle || `Volume #${ann.bookId}`,
-        author: ann.bookAuthor || 'Classic Literature',
+        title: finalTitle,
+        author: finalAuthor,
       };
     },
-    [savedBooks, likedBooks]
+    [savedBooks, likedBooks, remoteBooksData]
   );
 
   // Filtered list of annotations
@@ -197,9 +328,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const handleStartEditNote = (ann: Annotation) => {
     setEditingAnnotationId(ann.id);
     setEditNoteText(ann.note || '');
+    setEditColor(ann.color);
+    setActiveColorPickerId(null);
   };
 
-  const handleSaveNote = async (id: string) => {
+  const handleSaveNote = async (id: string, originalColor: HighlightColor) => {
+    if (editColor !== originalColor) {
+      await updateAnnotationColor(id, editColor, user?.id);
+    }
     await updateAnnotationNote(id, editNoteText, user?.id);
     setEditingAnnotationId(null);
   };
@@ -543,8 +679,10 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   // Quote Card Renderer
   function renderQuoteCard(ann: Annotation) {
     const { title, author } = resolveBookDetails(ann);
-    const colorStyle = HIGHLIGHT_CARD_COLORS[ann.color] || HIGHLIGHT_CARD_COLORS.yellow;
     const isEditing = editingAnnotationId === ann.id;
+    // Live Preview: If currently editing, preview the draft editColor; otherwise use saved ann.color
+    const activeColor = isEditing ? editColor : ann.color;
+    const colorStyle = HIGHLIGHT_CARD_COLORS[activeColor] || HIGHLIGHT_CARD_COLORS.yellow;
     const isCopied = copiedId === ann.id;
 
     return (
@@ -564,11 +702,48 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
               <span>•</span>
               <span className="truncate">Section {ann.chapterIndex + 1}, p. {ann.chapterPage}</span>
             </div>
-            <span
-              className={`px-1.5 py-0.2 rounded text-[10px] uppercase font-bold tracking-wider ${colorStyle.bg} ${colorStyle.text}`}
-            >
-              {ann.color}
-            </span>
+            {/* Quick Color Swatch Badge & Popover */}
+            <div className="relative shrink-0" data-testid={`color-badge-container-${ann.id}`}>
+              <button
+                type="button"
+                onClick={() => setActiveColorPickerId((prev) => (prev === ann.id ? null : ann.id))}
+                data-testid={`color-badge-btn-${ann.id}`}
+                aria-label={`Highlight color: ${activeColor}. Click to change color.`}
+                aria-expanded={activeColorPickerId === ann.id}
+                title="Click to change highlight color"
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer select-none border border-transparent hover:border-current/30 ${colorStyle.bg} ${colorStyle.text}`}
+              >
+                <span>{activeColor}</span>
+                <Palette className="w-2.5 h-2.5 opacity-70" />
+              </button>
+
+              {activeColorPickerId === ann.id && (
+                <div
+                  data-testid={`quick-color-popover-${ann.id}`}
+                  className="absolute right-0 top-full mt-1.5 z-20 p-1.5 rounded-xl border border-border bg-card shadow-booksaw flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
+                >
+                  {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
+                    const isSelected = ann.color === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        aria-label={`Change highlight color to ${c.label}`}
+                        title={`Change to ${c.label}`}
+                        onClick={async () => {
+                          await updateAnnotationColor(ann.id, c.id, user?.id);
+                          setActiveColorPickerId(null);
+                        }}
+                        data-testid={`quick-color-btn-${ann.id}-${c.id}`}
+                        className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
+                          isSelected ? c.activeRing : ''
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Highlight Quote */}
@@ -578,7 +753,32 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
           {/* Personal Note Box */}
           {isEditing ? (
-            <div className="space-y-2 pt-1">
+            <div className="space-y-2.5 pt-1">
+              {/* Highlight Shade Picker in Edit Mode */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-border/50">
+                <span className="text-[11px] font-mono text-muted-foreground">Highlight Shade:</span>
+                <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Highlight color">
+                  {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
+                    const isSelected = editColor === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        aria-label={c.label}
+                        title={c.label}
+                        onClick={() => setEditColor(c.id)}
+                        data-testid={`edit-color-btn-${ann.id}-${c.id}`}
+                        className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
+                          isSelected ? c.activeRing : ''
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
               <textarea
                 data-testid={`edit-note-textarea-${ann.id}`}
                 value={editNoteText}
@@ -591,13 +791,13 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                 <button
                   type="button"
                   onClick={() => setEditingAnnotationId(null)}
-                  className="px-2.5 py-1 text-xs font-mono rounded text-muted-foreground hover:text-foreground"
+                  className="px-2.5 py-1 text-xs font-mono rounded text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <Button
                   size="sm"
-                  onClick={() => handleSaveNote(ann.id)}
+                  onClick={() => handleSaveNote(ann.id, ann.color)}
                   className="text-xs font-mono uppercase h-7 px-3"
                 >
                   Save Note
@@ -656,6 +856,19 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                   <span>Copy</span>
                 </>
               )}
+            </button>
+
+            {/* Edit Note & Color */}
+            <button
+              type="button"
+              onClick={() => handleStartEditNote(ann)}
+              data-testid={`edit-quote-btn-${ann.id}`}
+              className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1 text-[11px] cursor-pointer"
+              title="Edit personal reflection and color"
+              aria-label="Edit personal reflection and color"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit</span>
             </button>
 
             {/* Delete Annotation */}

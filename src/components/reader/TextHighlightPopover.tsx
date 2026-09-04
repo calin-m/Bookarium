@@ -11,7 +11,7 @@ import { useHasMounted } from '@/hooks/useHasMounted';
 export interface TextHighlightPopoverProps {
   isOpen: boolean;
   selectedText: string;
-  position: { top: number; left: number } | null;
+  position: { top: number; left: number; bottom?: number } | null;
   activeColor?: HighlightColor;
   existingNote?: string;
   existingAnnotationId?: string;
@@ -131,9 +131,9 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
   const isTouchDevice =
     typeof window !== 'undefined' &&
     window.matchMedia &&
-    window.matchMedia('(pointer: coarse)').matches;
+    (window.matchMedia('(pointer: coarse)').matches || (window.innerWidth && window.innerWidth < 640));
 
-  // Viewport bounding clamp and centered positioning
+  // Viewport bounding clamp and centered positioning for desktop
   const popoverWidth = isNoteExpanded ? 288 : 256;
   const halfWidth = popoverWidth / 2;
   const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
@@ -141,10 +141,10 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
   // Center horizontally over the anchor point while preventing offscreen overflow
   const safeLeft = Math.max(12, Math.min(position.left - halfWidth, windowWidth - popoverWidth - 12));
 
-  // Vertical placement: on touch devices or when near header, place below anchor to avoid colliding
-  // with iOS / Android native context menus ("Copy", "Share", "Look Up"); otherwise place above anchor
-  const showBelow = isTouchDevice || (isNoteExpanded ? position.top < 160 : position.top < 120);
-  const safeTop = showBelow ? position.top + 34 : Math.max(70, position.top - (isNoteExpanded ? 130 : 54));
+  // Vertical placement for desktop: place below anchor if room, otherwise place above
+  const anchorBottom = position.bottom ?? position.top;
+  const showBelow = isNoteExpanded ? position.top < 160 : position.top < 120;
+  const safeTop = showBelow ? anchorBottom + 12 : Math.max(70, position.top - (isNoteExpanded ? 130 : 54));
 
   const themeBg =
     theme === 'dark'
@@ -160,16 +160,37 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
         data-testid="text-highlight-popover"
         role="dialog"
         aria-label="Text selection tools"
-        initial={{ opacity: 0, scale: 0.9, y: 6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 4 }}
+        initial={
+          isTouchDevice
+            ? { opacity: 0, scale: 0.9, x: '-50%', y: 8 }
+            : { opacity: 0, scale: 0.9, y: 6 }
+        }
+        animate={
+          isTouchDevice
+            ? { opacity: 1, scale: 1, x: '-50%', y: 0 }
+            : { opacity: 1, scale: 1, y: 0 }
+        }
+        exit={
+          isTouchDevice
+            ? { opacity: 0, scale: 0.9, x: '-50%', y: 8 }
+            : { opacity: 0, scale: 0.9, y: 4 }
+        }
         transition={{ duration: 0.15 }}
-        style={{
-          position: 'fixed',
-          top: safeTop,
-          left: safeLeft,
-          zIndex: 60,
-        }}
+        style={
+          isTouchDevice
+            ? {
+                position: 'fixed',
+                bottom: '5.25rem',
+                left: '50%',
+                zIndex: 60,
+              }
+            : {
+                position: 'fixed',
+                top: safeTop,
+                left: safeLeft,
+                zIndex: 60,
+              }
+        }
         className={`rounded-xl border p-1.5 flex flex-col gap-1.5 text-xs font-sans select-none backdrop-blur-md ${themeBg}`}
       >
         {/* Main Action Bar: 4 Color Swatches + Note + Copy + Delete */}
