@@ -179,5 +179,76 @@ describe('useReaderGestures Hook', () => {
     vi.useRealTimers();
     clearTimeoutSpy.mockRestore();
   });
+
+  it('suppresses swipe navigation when text selection is active', () => {
+    const handleNext = vi.fn();
+    const handlePrev = vi.fn();
+
+    // Mock active selection
+    const mockSelection = {
+      isCollapsed: false,
+      toString: () => 'selected sentence for note or highlight',
+    };
+    vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as unknown as Selection);
+
+    const { result } = renderHook(() =>
+      useReaderGestures({
+        fontSize: 18,
+        readingMode: 'paginated',
+        onNextPage: handleNext,
+        onPreviousPage: handlePrev,
+      })
+    );
+
+    act(() => {
+      result.current.handleTouchStart({
+        touches: [{ clientX: 200, clientY: 100 } as React.Touch],
+      } as unknown as React.TouchEvent);
+    });
+
+    act(() => {
+      result.current.handleTouchEnd({
+        changedTouches: [{ clientX: 100, clientY: 100 } as React.Touch],
+      } as unknown as React.TouchEvent);
+    });
+
+    expect(handleNext).not.toHaveBeenCalled();
+    expect(handlePrev).not.toHaveBeenCalled();
+
+    vi.restoreAllMocks();
+  });
+
+  it('suppresses swipe navigation when touch target is inside a dialog or popover', () => {
+    const handleNext = vi.fn();
+    const { result } = renderHook(() =>
+      useReaderGestures({
+        fontSize: 18,
+        readingMode: 'paginated',
+        onNextPage: handleNext,
+      })
+    );
+
+    act(() => {
+      result.current.handleTouchStart({
+        touches: [{ clientX: 200, clientY: 100 } as React.Touch],
+      } as unknown as React.TouchEvent);
+    });
+
+    const mockTarget = {
+      closest: vi.fn((selector: string) => {
+        if (selector.includes('[role="dialog"]')) return document.createElement('div');
+        return null;
+      }),
+    };
+
+    act(() => {
+      result.current.handleTouchEnd({
+        target: mockTarget,
+        changedTouches: [{ clientX: 100, clientY: 100 } as React.Touch],
+      } as unknown as React.TouchEvent);
+    });
+
+    expect(handleNext).not.toHaveBeenCalled();
+  });
 });
 

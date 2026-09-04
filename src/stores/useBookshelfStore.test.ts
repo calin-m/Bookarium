@@ -924,6 +924,90 @@ describe('useBookshelfStore', () => {
         { onConflict: 'user_id,book_id' }
       );
     });
+
+    it('manages deletedBookIds tombstones and suppresses ghost resurrection during syncWithCloud', async () => {
+      const book = mockBooks[0]; // id: 1342
+      const mockDelete = vi.fn().mockResolvedValue({ error: null });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => Promise.resolve({
+                  data: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true }],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            select: () => ({
+              eq: () => Promise.resolve({
+                data: [
+                  {
+                    id: 'item-1342',
+                    bookshelf_id: 'shelf-1',
+                    user_id: 'user-1',
+                    book_id: book.id,
+                    book_title: book.title,
+                    book_authors: ['Jane Austen'],
+                    cover_url: null,
+                  },
+                ],
+                error: null,
+              }),
+            }),
+            delete: () => ({
+              eq: () => ({
+                eq: mockDelete,
+              }),
+            }),
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
+        if (table === 'user_favorites' || table === 'user_book_curation') {
+          return {
+            select: () => ({
+              eq: () => Promise.resolve({ data: [], error: null }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      // 1. Save book
+      await useBookshelfStore.getState().toggleSaveBook(book);
+      expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
+      expect(useBookshelfStore.getState().deletedBookIds[book.id]).toBeUndefined();
+
+      // 2. Delete book -> tombstone is created
+      await useBookshelfStore.getState().toggleSaveBook(book);
+      expect(useBookshelfStore.getState().savedBooks).toHaveLength(0);
+      expect(useBookshelfStore.getState().deletedBookIds[book.id]).toBeDefined();
+
+      // 3. Sync with cloud (where book 1342 still exists remotely)
+      await useBookshelfStore.getState().syncWithCloud('user-1');
+
+      // 4. Assert book 1342 was NOT resurrected
+      expect(useBookshelfStore.getState().savedBooks).toHaveLength(0);
+
+      // 5. Re-save book -> tombstone must be cleared
+      await useBookshelfStore.getState().toggleSaveBook(book);
+      expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
+      expect(useBookshelfStore.getState().deletedBookIds[book.id]).toBeUndefined();
+
+      // 6. Test clearSavedBooks records tombstones
+      useBookshelfStore.getState().clearSavedBooks();
+      expect(useBookshelfStore.getState().savedBooks).toHaveLength(0);
+      expect(useBookshelfStore.getState().deletedBookIds[book.id]).toBeDefined();
+
+      // 7. Test clearBookshelf resets all tombstones
+      useBookshelfStore.getState().clearBookshelf();
+      expect(useBookshelfStore.getState().deletedBookIds).toEqual({});
+    });
   });
 });
 

@@ -6,7 +6,6 @@ import { ArrowRight, Quote, Shuffle, Sparkles, BookOpen } from 'lucide-react';
 import { LITERARY_QUOTES, type LiteraryQuote } from '@/config/literary-quotes';
 import { ROUTES } from '@/config/routes';
 
-export { LITERARY_QUOTES, type LiteraryQuote };
 
 function getRandomThreeQuotes(excludeIds: number[] = []): LiteraryQuote[] {
   const available = LITERARY_QUOTES.filter((q) => !excludeIds.includes(q.id));

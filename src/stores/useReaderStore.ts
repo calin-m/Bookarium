@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook, Book } from '@/types/book.types';
 import { useThemeStore, applyThemeToDocument } from './useThemeStore';
+import { useAuthStore } from './useAuthStore';
+import { createClient } from '@/lib/supabase/client';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
 
@@ -43,10 +45,14 @@ export interface ReaderState {
   toggleMobileTray: () => void;
   setProgress: (bookId: number, progress: number) => void;
   getProgress: (bookId: number) => number;
-  saveReadingPosition: (bookId: number, position: BookReadingPosition) => void;
+  saveReadingPosition: (bookId: number, position: BookReadingPosition, userId?: string) => void;
   getReadingPosition: (bookId: number) => BookReadingPosition | null;
   clearReadingPosition: (bookId: number) => void;
+  syncReadingPositionToCloud: (bookId: number, position: BookReadingPosition, userId: string) => Promise<void>;
+  restoreReadingPositionFromCloud: (bookId: number, userId: string) => Promise<BookReadingPosition | null>;
 }
+
+const progressDebounceTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
 export const useReaderStore = create<ReaderState>()(
   persist(
@@ -111,13 +117,85 @@ export const useReaderStore = create<ReaderState>()(
         return get().readingProgress[bookId] ?? 0;
       },
 
-      saveReadingPosition: (bookId, position) => {
+      saveReadingPosition: (bookId, position, userId) => {
         set((state) => ({
           readingPositions: {
             ...state.readingPositions,
             [bookId]: position,
           },
         }));
+
+        const currentUserId = userId || useAuthStore.getState().user?.id;
+        if (!currentUserId) return;
+
+        const existingTimer = progressDebounceTimers.get(bookId);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+        }
+
+        const timer = setTimeout(() => {
+          progressDebounceTimers.delete(bookId);
+          get().syncReadingPositionToCloud(bookId, position, currentUserId);
+        }, 2000);
+
+        progressDebounceTimers.set(bookId, timer);
+      },
+
+      syncReadingPositionToCloud: async (bookId, position, userId) => {
+        if (!userId || !bookId) return;
+        try {
+          const supabase = createClient();
+          const progress = get().readingProgress[bookId] ?? 0;
+          await supabase.from('reading_progress').upsert(
+            {
+              user_id: userId,
+              book_id: bookId,
+              current_chapter_index: position.chapterIndex,
+              progress_percent: progress,
+              scroll_offset: position.chapterPage,
+              last_read_at: position.lastReadAt,
+            },
+            { onConflict: 'user_id,book_id' }
+          );
+        } catch {
+          // Silent non-blocking fallback for offline/network loss
+        }
+      },
+
+      restoreReadingPositionFromCloud: async (bookId, userId) => {
+        if (!userId || !bookId) return null;
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase
+            .from('reading_progress')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('book_id', bookId)
+            .maybeSingle();
+
+          if (data && !error) {
+            const remotePosition: BookReadingPosition = {
+              chapterIndex: data.current_chapter_index ?? 0,
+              chapterPage: Number(data.scroll_offset) || 1,
+              globalPage: Number(data.scroll_offset) || 1,
+              lastReadAt: data.last_read_at || new Date().toISOString(),
+            };
+            set((state) => ({
+              readingPositions: {
+                ...state.readingPositions,
+                [bookId]: remotePosition,
+              },
+              readingProgress: {
+                ...state.readingProgress,
+                [bookId]: Math.min(Math.max(Math.round(Number(data.progress_percent) || 0), 0), 100),
+              },
+            }));
+            return remotePosition;
+          }
+        } catch {
+          // Non-blocking fallback
+        }
+        return null;
       },
 
       getReadingPosition: (bookId) => {
@@ -125,6 +203,11 @@ export const useReaderStore = create<ReaderState>()(
       },
 
       clearReadingPosition: (bookId) => {
+        const timer = progressDebounceTimers.get(bookId);
+        if (timer) {
+          clearTimeout(timer);
+          progressDebounceTimers.delete(bookId);
+        }
         set((state) => {
           const next = { ...state.readingPositions };
           delete next[bookId];

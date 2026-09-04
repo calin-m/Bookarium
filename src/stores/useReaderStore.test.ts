@@ -1,9 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { useReaderStore } from './useReaderStore';
+import { useAuthStore } from './useAuthStore';
 import { mockBooks } from '@/mocks/handlers';
+
+const mockFrom = vi.fn();
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    from: mockFrom,
+  }),
+}));
 
 describe('useReaderStore', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    useAuthStore.setState({ user: null, profile: null });
     useReaderStore.setState({
       currentBook: null,
       isOpen: false,
@@ -114,6 +125,110 @@ describe('useReaderStore', () => {
 
     useReaderStore.getState().setMobileTrayOpen(true);
     expect(useReaderStore.getState().isMobileTrayOpen).toBe(true);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('Cloud Reading Progress Sync', () => {
+    it('does not invoke Supabase in guest mode (Zero Auth / Zero Key)', () => {
+      const bookId = 84;
+      const position = {
+        chapterIndex: 1,
+        chapterPage: 2,
+        globalPage: 5,
+        lastReadAt: new Date().toISOString(),
+      };
+
+      useReaderStore.getState().saveReadingPosition(bookId, position);
+      vi.advanceTimersByTime(3000);
+
+      expect(mockFrom).not.toHaveBeenCalled();
+      expect(useReaderStore.getState().getReadingPosition(bookId)).toEqual(position);
+    });
+
+    it('debounces cloud upsert by 2000ms when authenticated', async () => {
+      const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({ upsert: mockUpsert });
+
+      useAuthStore.setState({
+        user: { id: 'test-user-123', email: 'reader@example.com' } as any,
+      });
+
+      const bookId = 84;
+      const pos1 = {
+        chapterIndex: 1,
+        chapterPage: 1,
+        globalPage: 1,
+        lastReadAt: new Date().toISOString(),
+      };
+      const pos2 = {
+        chapterIndex: 1,
+        chapterPage: 2,
+        globalPage: 2,
+        lastReadAt: new Date().toISOString(),
+      };
+
+      useReaderStore.getState().setProgress(bookId, 25);
+      useReaderStore.getState().saveReadingPosition(bookId, pos1);
+      vi.advanceTimersByTime(500);
+
+      // Fast flipping: next page within 500ms should cancel previous timer
+      useReaderStore.getState().saveReadingPosition(bookId, pos2);
+      expect(mockUpsert).not.toHaveBeenCalled();
+
+      // Complete 2000ms debounce
+      vi.advanceTimersByTime(2000);
+
+      expect(mockFrom).toHaveBeenCalledWith('reading_progress');
+      expect(mockUpsert).toHaveBeenCalledTimes(1);
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'test-user-123',
+          book_id: 84,
+          current_chapter_index: 1,
+          progress_percent: 25,
+          scroll_offset: 2,
+        }),
+        { onConflict: 'user_id,book_id' }
+      );
+    });
+
+    it('restores reading position and progress from cloud', async () => {
+      const mockMaybeSingle = vi.fn().mockResolvedValue({
+        data: {
+          current_chapter_index: 3,
+          progress_percent: 60,
+          scroll_offset: 4,
+          last_read_at: '2026-09-04T12:00:00.000Z',
+        },
+        error: null,
+      });
+
+      mockFrom.mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              maybeSingle: mockMaybeSingle,
+            }),
+          }),
+        }),
+      });
+
+      const restored = await useReaderStore
+        .getState()
+        .restoreReadingPositionFromCloud(84, 'test-user-123');
+
+      expect(restored).toEqual({
+        chapterIndex: 3,
+        chapterPage: 4,
+        globalPage: 4,
+        lastReadAt: '2026-09-04T12:00:00.000Z',
+      });
+      expect(useReaderStore.getState().getReadingPosition(84)).toEqual(restored);
+      expect(useReaderStore.getState().getProgress(84)).toBe(60);
+    });
   });
 });
 

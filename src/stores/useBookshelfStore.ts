@@ -69,6 +69,7 @@ export interface BookshelfState {
   bookRatings: Record<number, number>;
   bookStatuses: Record<number, ReadingStatus>;
   curationHistory: Record<number, string>;
+  deletedBookIds: Record<number, string>;
 
   // Cloud State
   cloudBookshelves: Bookshelf[];
@@ -124,6 +125,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       bookRatings: {},
       bookStatuses: {},
       curationHistory: {},
+      deletedBookIds: {},
       cloudBookshelves: [],
       cloudBookshelfItems: [],
       activeBookshelfId: null,
@@ -194,10 +196,17 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       toggleSaveBook: async (book, userId) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
-        const { savedBooks, cloudBookshelves, activeBookshelfId, cloudBookshelfItems } = get();
+        const { savedBooks, cloudBookshelves, activeBookshelfId, cloudBookshelfItems, deletedBookIds = {} } = get();
         const exists = savedBooks.some((b) => b.id === book.id);
         const nextSaved = exists ? savedBooks.filter((b) => b.id !== book.id) : [book, ...savedBooks];
         const targetShelfId = activeBookshelfId || cloudBookshelves.find((s) => s.is_default)?.id || cloudBookshelves[0]?.id;
+
+        const nextDeleted = { ...deletedBookIds };
+        if (exists) {
+          nextDeleted[book.id] = new Date().toISOString();
+        } else {
+          delete nextDeleted[book.id];
+        }
 
         let nextItems = cloudBookshelfItems;
         if (targetShelfId) {
@@ -220,7 +229,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           }
         }
 
-        set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems });
+        set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems, deletedBookIds: nextDeleted });
 
         // Cloud sync if authenticated
         if (currentUserId && targetShelfId) {
@@ -273,7 +282,13 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       clearSavedBooks: () => {
-        set({ savedBooks: [] });
+        const { savedBooks, deletedBookIds = {} } = get();
+        const now = new Date().toISOString();
+        const nextDeleted = { ...deletedBookIds };
+        for (const b of savedBooks) {
+          nextDeleted[b.id] = now;
+        }
+        set({ savedBooks: [], deletedBookIds: nextDeleted });
       },
 
       addToQueue: (book) => {
@@ -389,6 +404,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           bookRatings: {},
           bookStatuses: {},
           curationHistory: {},
+          deletedBookIds: {},
           cloudBookshelves: [],
           activeBookshelfId: null,
           isSyncing: false,
@@ -596,9 +612,13 @@ export const useBookshelfStore = create<BookshelfState>()(
               download_count: 1000,
             }));
 
-            // Merge unique books
-            const localSaved = get().savedBooks;
-            const merged = [...reconstructedBooks];
+            // Tombstone-aware merge: filter out remote items that have been deleted locally
+            const { deletedBookIds = {} } = get();
+            const activeReconstructed = reconstructedBooks.filter((b) => !deletedBookIds[b.id]);
+
+            // Merge unique books (excluding any locally tombstoned items)
+            const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
+            const merged = [...activeReconstructed];
             const unSyncedLocalBooks: GutendexBook[] = [];
 
             for (const lb of localSaved) {
@@ -608,6 +628,12 @@ export const useBookshelfStore = create<BookshelfState>()(
               }
             }
             set({ savedBooks: merged });
+
+            // Propagate deletions: if remote contains items that were tombstoned locally, remove them from cloud
+            const itemsToDelete = (items || []).filter((item: BookshelfItem) => deletedBookIds[item.book_id]);
+            for (const delItem of itemsToDelete) {
+              await supabase.from('bookshelf_items').delete().eq('id', delItem.id);
+            }
 
             // Bidirectional Sync: push local books missing from cloud to the database
             if (unSyncedLocalBooks.length > 0 && currentDefaultShelf?.id) {
@@ -652,7 +678,8 @@ export const useBookshelfStore = create<BookshelfState>()(
                 cloudBookshelfItems: [],
               });
 
-              const localSaved = get().savedBooks;
+              const { deletedBookIds = {} } = get();
+              const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
               if (localSaved.length > 0) {
                 const inserts = localSaved.map((b) => ({
                   bookshelf_id: currentDefaultShelf!.id,

@@ -36,11 +36,17 @@ export function useGutenbergParserWorker(
   fontSize: number,
   workerFactory: () => Worker | null = createGutenbergWorker
 ): UseGutenbergParserWorkerReturn {
-  // Derive stable content identity to prevent stale book cross-talk
+  // Derive stable book content identity to manage worker lifecycle
+  const bookIdentity = useMemo(() => {
+    if (!contentText) return '';
+    return `${contentText.length}-${contentText.slice(0, 32)}`;
+  }, [contentText]);
+
+  // Derive stable pagination request hash including font size
   const currentContentHash = useMemo(() => {
     if (!contentText) return '';
-    return `${contentText.length}-${fontSize}-${contentText.slice(0, 32)}`;
-  }, [contentText, fontSize]);
+    return `${bookIdentity}-${fontSize}`;
+  }, [bookIdentity, contentText, fontSize]);
 
   const [workerResult, setWorkerResult] = useState<{
     bookHash: string;
@@ -49,11 +55,19 @@ export function useGutenbergParserWorker(
     totalVolumePages: number;
   } | null>(null);
 
-  const [workerFailed, setWorkerFailed] = useState(false);
+  const [workerFailed, setWorkerFailed] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return typeof window.Worker === 'undefined';
+  });
   const workerRef = useRef<Worker | null>(null);
+  const prevBookIdentityRef = useRef<string>('');
 
-  // Synchronous fallback for SSR or when worker fails/is unavailable
+  // Lazy synchronous fallback for SSR, test environments, or when worker fails
   const syncFallback = useMemo(() => {
+    const isUnsupported = typeof window === 'undefined' || typeof window.Worker === 'undefined';
+    if (!isUnsupported && !workerFailed) {
+      return { rawChapters: [], chaptersWithPagination: [], totalVolumePages: 0 };
+    }
     if (!contentText) {
       return { rawChapters: [], chaptersWithPagination: [], totalVolumePages: 0 };
     }
@@ -64,19 +78,36 @@ export function useGutenbergParserWorker(
       chaptersWithPagination: spread.chaptersWithPagination,
       totalVolumePages: spread.totalVolumePages,
     };
-  }, [contentText, fontSize]);
+  }, [contentText, fontSize, workerFailed]);
 
   useEffect(() => {
     if (!contentText || !currentContentHash) {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
       return;
     }
 
-    const worker = workerFactory();
+    // Terminate and respawn only if the book content text changed
+    const bookChanged = prevBookIdentityRef.current !== bookIdentity;
+    prevBookIdentityRef.current = bookIdentity;
+
+    if (bookChanged && workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = null;
+    }
+
+    let worker = workerRef.current;
     if (!worker) {
-      queueMicrotask(() => {
-        setWorkerFailed(true);
-      });
-      return;
+      worker = workerFactory();
+      if (!worker) {
+        queueMicrotask(() => {
+          setWorkerFailed(true);
+        });
+        return;
+      }
+      workerRef.current = worker;
     }
 
     let isSubscribed = true;
@@ -84,8 +115,6 @@ export function useGutenbergParserWorker(
       typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random()}`;
-
-    workerRef.current = worker;
 
     worker.onmessage = (event: MessageEvent) => {
       if (!isSubscribed) return;
@@ -123,12 +152,18 @@ export function useGutenbergParserWorker(
 
     return () => {
       isSubscribed = false;
+    };
+  }, [bookIdentity, currentContentHash, contentText, fontSize, workerFactory]);
+
+  // Clean up worker on component unmount
+  useEffect(() => {
+    return () => {
       if (workerRef.current) {
         workerRef.current.terminate();
         workerRef.current = null;
       }
     };
-  }, [currentContentHash, contentText, fontSize, workerFactory]);
+  }, []);
 
   const hasMatchingResult = workerResult && workerResult.bookHash === currentContentHash;
   const isProcessing = Boolean(contentText && !hasMatchingResult && !workerFailed);

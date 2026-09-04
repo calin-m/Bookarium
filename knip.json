@@ -1,7 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
-    "src/middleware.ts",
     "src/app/**/*.{ts,tsx}",
     "src/components/**/*.{ts,tsx}",
     "src/hooks/**/*.{ts,tsx}",
@@ -16,12 +15,6 @@
     "scripts/**/*.js"
   ],
   "ignoreDependencies": [
-    "@testing-library/user-event",
-    "@babel/parser",
-    "@babel/traverse",
-    "@types/babel__traverse",
-    "eslint",
-    "eslint-config-next",
     "husky"
   ],
   "ignoreExportsUsedInFile": true

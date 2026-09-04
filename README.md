@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20896%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.1%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20906%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.14%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,13 +38,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v1.9.4)
+## 🛠️ Latest Improvements (v1.9.5)
 
-- **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), real-time search (`CollectionSearchBar`), "Clear Bookmarks" accessible confirmation modal, and 1-click chapter resume.
-- **Authentic Reading Telemetry & Unopened Volume Exclusion**: Refined `useContinueReadingLedger` to strictly enroll books with active reading coordinates (`readingPositions`) or progress (`readingProgress > 0`), eliminating contradictory "Never opened" cards on bookmarks and decoupling ledger resets from user curation.
-- **Two-Way Metadata Synchronization & Warm Reader Handoff**: Active query hydration in `useContinueReadingLedger` resolves missing book metadata via TanStack Query without displaying generic Gutenberg fallbacks; `/read/[id]` immediately persists resolved book identity to `recentBooks` on load and primes reader state upon resume.
-- **DRY Parser & Adapter Normalization**: Unified author reversed-name parsing, lifespan stripping (`formatAuthorNames`), title prefix cleaning (`cleanBookTitle`), and relative time calculation (`formatRelativeTime`) into canonical `@/lib/utils` and `book.adapter.ts`.
-- **Pre-Commit Hook Hardening (`.husky/pre-commit`)**: Eliminated child git process lock collisions on Windows NTFS by running the 7-Gateway Quality Engine via pure Node.js.
+- **Multi-Device Deletion Tombstones (`useBookshelfStore.ts`)**: Integrated `deletedBookIds` tombstone tracking to prevent deleted bookshelf volumes from being resurrected as ghost items during cross-device Supabase cloud reconciliation.
+- **Cross-Device Cloud Reading Progress Sync (`useReaderStore.ts`, `useReaderSession.ts`)**: 2000ms debounced upsert to Supabase `public.reading_progress` table with automatic reading coordinate restoration when resuming sessions on new devices, strictly gated for authenticated accounts with 0ms/zero-network guest mode.
+- **Persistent Gutenberg Parser Worker (`useGutenbergParserWorker.ts`)**: Maintained a single long-lived Web Worker instance across typography, font scaling, and line spacing adjustments, eliminating worker churn and UI thread freezes with non-blocking async fallback.
+- **Selection-Safe Touch Gestures (`useReaderGestures.ts`)**: Suppressed horizontal swipe navigation when active DOM text selection exists or touch starts inside an active modal/popover, preventing accidental page turns during passage highlighting.
+- **Ghost Volume Resurrection**: Resolved issue where deleting a book on one client could be overwritten and resurrected upon syncing with cloud storage.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -154,6 +154,9 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 * **Zero-Copyright Download Hub & Canonical Fallback Engine**: Multi-format downloads (direct EPUB, Kindle/MOBI, clean UTF-8 plain text, and web-ready HTML) backed by Project Gutenberg permanent canonical URLs, guaranteeing 100% download availability across the Catalog, Bookshelf, and Favorites.
 * **Native IndexedDB Offline Book Storage Engine**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download individual books or entire bookshelf collections for instant offline reading with a single click and clear with confirmation safety.
 * **Auto-Healing Personal Bookshelf & Cross-Device Favorites Sync**: Curated collections, reading queue, reading history, and favorited titles synchronized across devices via Supabase PostgreSQL and Row Level Security (RLS), with automatic local-to-cloud migration on login and database uniqueness guards.
+* **Tombstone-Driven Cloud Synchronization & Anti-Ghost Deletion**: Persistent deletion tombstones (`deletedBookIds`) recorded in `useBookshelfStore` ensuring volumes removed from a user's collection on one device are reliably pruned from remote Supabase cloud storage upon sync rather than resurrected by multi-device race conditions.
+* **Bi-Directional Cloud Reading Progress & Cross-Device Auto-Resume**: 2000ms debounced upsert to Supabase `public.reading_progress` table with Row-Level Security, automatically restoring the most recent chapter, virtual page, and scroll coordinates across devices via `useReaderSession` with zero overhead or network requests for guest readers.
+* **Persistent Web Worker Lifecycle & Selection-Safe Gestures**: Single-instance Web Worker retained across typography, line-height, and font adjustments (`useGutenbergParserWorker`) avoiding worker churn and thread lag, paired with touch selection conflict suppression (`useReaderGestures`) that prevents accidental swipe navigation while highlighting text or interacting with popovers.
 * **Personal 1–5 Star Book Ratings & Reading Status Management**:
   * Tactile 5-star rating system (`StarRating.tsx`) with hover-preview, active selection, accessible clear rating toggle (`×`), and zero layout shifts.
   * 3-tier reading status classification (**Want to Read**, **Currently Reading**, **Finished**) with active selection rings and single-click removal.
@@ -225,9 +228,9 @@ flowchart TD
         Account["Account & Reading Preferences (src/app/account/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• likedBookIds: []\n• bookRatings: {}\n• readingStatuses: {}")]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• likedBookIds: []\n• deletedBookIds: [] (Tombstones)\n• bookRatings: {}\n• readingStatuses: {}")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}\n• syncReadingProgressToCloud()")]
         StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
         
         ScrollHook["📜 useScrollDirection\n(3-State Gesture Stepping)"]
@@ -269,7 +272,7 @@ flowchart TD
         
         GutendexAPI["🌐 Gutendex REST API\n(70,000+ Titles)"]
         GutenbergContent["🌐 Gutenberg Content CDN\n(text/plain & EPUB)"]
-        SupabaseCloud[("⚡ Supabase Cloud\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves, Progress, Curations)")]
+        SupabaseCloud[("⚡ Supabase Cloud\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves, Progress, Curations)\n• reading_progress (2s Debounced Sync & Restore)")]
         
         QueryBooks --> ProxyRoute
         ProxyRoute --> GutendexAPI
@@ -279,6 +282,7 @@ flowchart TD
         ContentProxy --> GutenbergContent
         StoreAuth <-->|"Session / Profiles"| SupabaseCloud
         StoreShelf <-->|"Cloud Sync (RLS)"| SupabaseCloud
+        StoreReader <-->|"Progress Sync (RLS)"| SupabaseCloud
         AuthCallback <-->|"Code Exchange"| SupabaseCloud
     end
 
@@ -319,12 +323,14 @@ flowchart LR
 
     subgraph ParsingEngine ["Gutenberg Typography & Segmentation AST"]
         RawText["Raw Plain Text Stream"]
+        WorkerPool["Persistent Web Worker Thread\n(useGutenbergParserWorker)\n• Kept alive across font/spacing tweaks\n• Chunked async main-thread fallback"]
         Reflow["reflowGutenbergParagraphs\n(Normalizes 70-col hard wraps)"]
         TOCFilter["Front-Matter TOC Suppressor"]
         Segmentation["Chapter Section Segmentation"]
         VirtualPages["Virtual Continuous Page Spread (5600 chars/pg)"]
         
-        RawText --> Reflow
+        RawText --> WorkerPool
+        WorkerPool --> Reflow
         Reflow --> TOCFilter
         TOCFilter --> Segmentation
         Segmentation --> VirtualPages
@@ -344,10 +350,11 @@ flowchart LR
         InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
     end
 
-    subgraph Persistence ["Browser LocalStorage"]
+    subgraph Persistence ["Browser LocalStorage & Supabase Cloud"]
         LSState[("bookarium-reader-preferences")]
         LSProgress[("bookarium-progress-map")]
         LSPositions[("bookarium-reading-positions")]
+        CloudProgress[("⚡ Supabase Cloud\npublic.reading_progress\n(2s Debounced Sync & Restore)")]
     end
 
     Toolbar -->|"Adjust Size / Family / Width / Mode / Theme"| ReaderState
@@ -363,6 +370,7 @@ flowchart LR
     ReaderState <--> LSState
     ReaderState <--> LSProgress
     ReaderState <--> LSPositions
+    ReaderState <-->|"Authenticated"| CloudProgress
 ```
 
 ---
@@ -732,12 +740,12 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 896 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 906 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 12 validated ADRs (ADR-001 through ADR-012) governing zero-API keys, state architecture, and UI physics. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 14 validated ADRs (ADR-001 through ADR-014) governing zero-API keys, state architecture, and UI physics. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

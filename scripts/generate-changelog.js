@@ -9,6 +9,27 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '1.9.5',
+    date: '2026-09-04',
+    title: 'Multi-Device Deletion Tombstones, Cloud Reading Progress Synchronization & Persistent Worker Architecture',
+    sections: {
+      Added: [
+        'Multi-Device Deletion Tombstones (`useBookshelfStore.ts`): Integrated `deletedBookIds` tombstone tracking to prevent deleted bookshelf volumes from being resurrected as ghost items during cross-device Supabase cloud reconciliation.',
+        'Cross-Device Cloud Reading Progress Sync (`useReaderStore.ts`, `useReaderSession.ts`): 2000ms debounced upsert to Supabase `public.reading_progress` table with automatic reading coordinate restoration when resuming sessions on new devices, strictly gated for authenticated accounts with 0ms/zero-network guest mode.',
+        'Persistent Gutenberg Parser Worker (`useGutenbergParserWorker.ts`): Maintained a single long-lived Web Worker instance across typography, font scaling, and line spacing adjustments, eliminating worker churn and UI thread freezes with non-blocking async fallback.',
+        'Selection-Safe Touch Gestures (`useReaderGestures.ts`): Suppressed horizontal swipe navigation when active DOM text selection exists or touch starts inside an active modal/popover, preventing accidental page turns during passage highlighting.',
+        'Content Fetch Timeout & Failover (`useBookContent.ts`): Added an 8000ms client-side `AbortSignal.timeout` to gracefully trigger Gutenberg mirror failover during slow or stalled upstream connections.',
+        'Architecture Decision Record (`ADR-014`): Formally ratified Deletion Tombstones, Cloud Reading Progress Synchronization & Persistent Worker Architecture in `docs/DECISIONS.md`.',
+        'Co-Located Test Suite Hardening: Expanded unit and integration test coverage across all 120 test suites and 906 tests, maintaining 100% pass rate and 92.14% line coverage.',
+      ],
+      Fixed: [
+        'Ghost Volume Resurrection: Resolved issue where deleting a book on one client could be overwritten and resurrected upon syncing with cloud storage.',
+        'Swipe Gesture Collisions with Text Selection: Resolved conflicts where attempting to drag selection handles on mobile readers triggered page flips.',
+        'Knip Dead Code Hygiene: Cleaned up unused exports across presentation and mock layers, ensuring full Pass 6 compliance with zero errors.',
+      ],
+    },
+  },
+  {
     version: '1.9.4',
     date: '2026-09-04',
     title: 'Bookmarks & Continue Reading Ledger, Unified SectionHeader Component & Hardened Pre-Commit Hook',

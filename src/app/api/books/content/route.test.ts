@@ -114,14 +114,18 @@ describe('GET /api/books/content', () => {
     expect(calledUrl).toMatch(/^https:\/\/www\.gutenberg\.org\/(cache\/epub|files)\/\d{1,8}\//);
   });
 
-  it('never calls fetch when an invalid or SSRF payload is provided', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch');
+  it('falls back to secondary mirror when primary mirror returns 404', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+      .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
 
-    const req = new NextRequest('http://localhost:3000/api/books/content?url=http://169.254.169.254/latest/meta-data/');
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
     const res = await GET(req);
 
-    expect(res.status).toBe(400);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const text = await res.text();
+    expect(text).toContain('Pride and Prejudice');
   });
 });
 

@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
-import type { Author, GutendexBook, GutendexResponse } from '@/types/book.types';
+import type { GutendexBook, GutendexResponse } from '@/types/book.types';
 
-export type { Author, GutendexBook, GutendexResponse };
+export type { GutendexBook, GutendexResponse };
 
 export const mockBooks: GutendexBook[] = [
   {

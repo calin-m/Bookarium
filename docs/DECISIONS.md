@@ -82,6 +82,18 @@
   4. **Decoupled Telemetry Clearing**: Resetting reading positions (`clearVolumeProgress` / `clearAllVolumes`) strictly purges reader coordinates and progress without mutating or deleting user bookshelf curation (`bookStatuses`).
 - **Consequences**: 100% authentic title and author presentation across all active volumes, mathematical zero "Never opened" artifacts on bookmarks, clean decoupling between user library curation and reader coordinates, and fluid, warm route transitions across reading sessions.
 
-
-
-
+## ADR-014: Deletion Tombstones, Cloud Reading Progress Synchronization & Persistent Worker Architecture
+- **Status**: Accepted
+- **Context**: 
+  1. Multi-device cloud sync: Deleting a book on one client allowed remote Supabase records or secondary devices to resurrect the deleted volume as a "ghost" on subsequent sync cycles.
+  2. Reading progress cloud sync: Reading coordinates were previously persisted solely in browser `localStorage`, preventing readers from seamlessly continuing reading across desktop, tablet, and mobile devices.
+  3. Web Worker lifecycle: Every font size, font family, or line spacing tweak terminated and re-spawned the Gutenberg parsing worker thread, causing thread churn and garbage collection spikes.
+  4. Reader gesture collision: Touch swipes on mobile readers inadvertently triggered page flips while readers were attempting to select text for annotations or interacting with toolbar popovers.
+  5. Upstream content timeouts: Client-side fetches to `/api/books/content` could hang indefinitely on slow or stalled upstream Gutenberg mirrors.
+- **Decision**: 
+  1. **Deletion Tombstones (`deletedBookIds`)**: Record deletion tombstones in `useBookshelfStore`. During cloud sync reconciliation, items matching tombstones are pruned and prevented from re-inserting into local state. Saving a book explicitly untombstones it.
+  2. **Bi-Directional Cloud Reading Progress**: Introduce a 2000ms debounced sync in `useReaderStore` sending `current_chapter_index`, `progress_percent`, `scroll_offset`, and `last_read_at` to the Supabase `public.reading_progress` table with Row-Level Security. In `useReaderSession`, check remote progress on load and restore coordinates if the cloud record represents a more advanced session. Strictly gate by `if (user?.id)` to ensure zero network overhead for guest readers.
+  3. **Persistent Web Worker Lifecycle**: Keep a single long-lived Web Worker instance across typography and layout updates, falling back to non-blocking asynchronous chunks if Web Workers are unsupported.
+  4. **Gesture Conflict Guarding**: Suppress swipe gesture handlers in `useReaderGestures` when `window.getSelection()` contains active text or when the touch target originates within an interactive modal or popover.
+  5. **Client-Side Fetch Timeout**: Enforce an 8000ms `AbortSignal.timeout` on content queries to fail fast and trigger mirror failover rather than hanging.
+- **Consequences**: Zero ghost volume resurrections across devices, cross-device reading continuity for authenticated users with zero disruption to guest mode, zero Web Worker spawning lag on slider tweaks, clean touch text selection ergonomics, and 100% co-located test coverage across 120 test suites (906 tests).

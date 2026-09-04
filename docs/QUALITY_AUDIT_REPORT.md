@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 04 Sep 2026 17:30:31 GMT  
+**Last Generated**: Fri, 04 Sep 2026 18:28:23 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 120 passed  
-**Total Verified Tests**: 896 passed  
+**Total Verified Tests**: 906 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (896 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (906 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 13 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 14 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.1%** (4736/5142) — *Target: $ge$ 80%*
-- **Statements**: **90.34%** (5177/5730) — *Target: $ge$ 80%*
-- **Functions**: **88.27%** (1220/1382) — *Target: $ge$ 80%*
-- **Branches**: **80.26%** (4440/5532) — *Target: $ge$ 80%*
+- **Lines**: **92.14%** (4821/5232) — *Target: $ge$ 80%*
+- **Statements**: **90.34%** (5267/5830) — *Target: $ge$ 80%*
+- **Functions**: **88.33%** (1234/1397) — *Target: $ge$ 80%*
+- **Branches**: **80.33%** (4507/5610) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (120 Suites / 896 Tests)
+## 🧪 Comprehensive Test Suite Catalog (120 Suites / 906 Tests)
 
 ### 🚀 App Routes & Pages (10 Suites · 82 Tests)
 
@@ -63,7 +63,7 @@
 - ✔ `should fetch and return book text for valid id`
 - ✔ `should return 502 if upstream fails or times out`
 - ✔ `guarantees fetch is strictly called with canonical Gutenberg endpoints only`
-- ✔ `never calls fetch when an invalid or SSRF payload is provided`
+- ✔ `falls back to secondary mirror when primary mirror returns 404`
 
 </details>
 
@@ -727,7 +727,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (6 Suites · 85 Tests)
+### ⚡ Zustand State Stores (6 Suites · 89 Tests)
 
 <details>
 <summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
@@ -778,7 +778,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (30 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (31 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -810,6 +810,7 @@
 - ✔ `synchronizes reading progress to 100% in reader store when marked finished`
 - ✔ `tracks mutation timestamps in curationHistory`
 - ✔ `preserves newer local offline curation over older cloud records via LWW`
+- ✔ `manages deletedBookIds tombstones and suppresses ghost resurrection during syncWithCloud`
 
 </details>
 
@@ -825,7 +826,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -835,6 +836,9 @@
 - ✔ `should record and retrieve reading progress percentage`
 - ✔ `should save, retrieve, and clear exact reading positions`
 - ✔ `should toggle and set isMobileTrayOpen`
+- ✔ `does not invoke Supabase in guest mode (Zero Auth / Zero Key)`
+- ✔ `debounces cloud upsert by 2000ms when authenticated`
+- ✔ `restores reading position and progress from cloud`
 
 </details>
 
@@ -1106,15 +1110,16 @@
 
 </details>
 
-### 🔄 Hooks & React Query (18 Suites · 128 Tests)
+### 🔄 Hooks & React Query (18 Suites · 134 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
 - ✔ `should throw when fetch returns non-ok status or empty content`
 - ✔ `should return offline cached content without calling fetch when available`
+- ✔ `should handle request abort on network timeout`
 
 </details>
 
@@ -1198,13 +1203,14 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useGutenbergParserWorker.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/reader/useGutenbergParserWorker.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `returns empty result when contentText is empty or undefined`
 - ✔ `parses text synchronously via fallback when workerFactory returns null`
 - ✔ `dispatches worker postMessage and handles worker response when Worker is available`
 - ✔ `falls back gracefully when worker encounters an error`
 - ✔ `cancels in-flight worker and prevents stale data when switching books`
+- ✔ `preserves persistent worker across font size changes without terminating it`
 
 </details>
 
@@ -1220,7 +1226,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `initializes with null zoom feedback`
 - ✔ `triggers onNextPage on leftward swipe with sufficient distance`
@@ -1228,16 +1234,20 @@
 - ✔ `does not trigger swipe if vertical delta exceeds threshold ratio`
 - ✔ `handles 2-finger pinch scaling and clamps font size`
 - ✔ `cancels pending zoom feedback timeout upon unmounting`
+- ✔ `suppresses swipe navigation when text selection is active`
+- ✔ `suppresses swipe navigation when touch target is inside a dialog or popover`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
 - ✔ `allows chapter selection and restart to chapter 0 page 1`
 - ✔ `jumps to target page accurately across chapters`
+- ✔ `auto-resumes from stored local reading position and triggers notice`
+- ✔ `restores position from cloud when authenticated and local is empty`
 
 </details>
 
@@ -1670,7 +1680,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 
