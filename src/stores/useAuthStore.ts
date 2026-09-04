@@ -314,7 +314,7 @@ export const useAuthStore = create<AuthState>()(
       await supabase.from('profiles').delete().eq('id', user.id);
       // 3. Attempt RPC user account deletion if configured on database
       try {
-        await (supabase as any).rpc('delete_current_user');
+        await supabase.rpc('delete_current_user');
       } catch {
         // Non-blocking fallback if RPC is not provisioned
       }
@@ -322,7 +322,7 @@ export const useAuthStore = create<AuthState>()(
       await supabase.auth.signOut();
       set({ user: null, profile: null, isAuthModalOpen: false, error: null });
       return { error: null };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return { error: err instanceof Error ? err : new Error(String(err)) };
     }
   },

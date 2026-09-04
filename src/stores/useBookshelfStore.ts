@@ -6,13 +6,57 @@ import { createClient } from '@/lib/supabase/client';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { useAuthStore } from './useAuthStore';
+import { useReaderStore } from './useReaderStore';
 
-export interface OutboxAction {
+export type OutboxActionInput =
+  | {
+      type: 'DELETE_BOOK';
+      payload: { bookshelf_id: string; book_id: number };
+    }
+  | {
+      type: 'INSERT_BOOK';
+      payload: {
+        bookshelf_id: string;
+        user_id: string;
+        book_id: number;
+        book_title: string;
+        book_authors: string[];
+        cover_url: string | null;
+      };
+    }
+  | {
+      type: 'DELETE_FAVORITE';
+      payload: { user_id: string; book_id: number };
+    }
+  | {
+      type: 'UPSERT_FAVORITE';
+      payload: {
+        user_id: string;
+        book_id: number;
+        book_title: string;
+        book_authors: string[];
+        cover_url: string | null;
+      };
+    }
+  | {
+      type: 'UPSERT_CURATION';
+      payload: {
+        user_id: string;
+        book_id: number;
+        rating?: number | null;
+        reading_status?: ReadingStatus | null;
+        updated_at?: string;
+      };
+    }
+  | {
+      type: 'DELETE_CURATION';
+      payload: { user_id: string; book_id: number };
+    };
+
+export type OutboxAction = OutboxActionInput & {
   id: string;
-  type: 'DELETE_BOOK' | 'INSERT_BOOK' | 'DELETE_FAVORITE' | 'UPSERT_FAVORITE' | 'UPSERT_CURATION' | 'DELETE_CURATION';
-  payload: any;
   timestamp: string;
-}
+};
 
 export interface BookshelfState {
   savedBooks: GutendexBook[];
@@ -24,6 +68,7 @@ export interface BookshelfState {
   // Personal Curation State (1-5 Star Ratings & Reading Statuses)
   bookRatings: Record<number, number>;
   bookStatuses: Record<number, ReadingStatus>;
+  curationHistory: Record<number, string>;
 
   // Cloud State
   cloudBookshelves: Bookshelf[];
@@ -33,7 +78,7 @@ export interface BookshelfState {
   outbox: OutboxAction[];
 
   // Outbox Actions
-  queueOutboxAction: (action: Omit<OutboxAction, 'id' | 'timestamp'>) => void;
+  queueOutboxAction: (action: OutboxActionInput) => void;
   flushOutbox: (userId: string) => Promise<void>;
 
   // Actions
@@ -78,6 +123,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       recentBooks: [],
       bookRatings: {},
       bookStatuses: {},
+      curationHistory: {},
       cloudBookshelves: [],
       cloudBookshelfItems: [],
       activeBookshelfId: null,
@@ -342,6 +388,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           recentBooks: [],
           bookRatings: {},
           bookStatuses: {},
+          curationHistory: {},
           cloudBookshelves: [],
           activeBookshelfId: null,
           isSyncing: false,
@@ -352,7 +399,8 @@ export const useBookshelfStore = create<BookshelfState>()(
       setBookRating: async (bookId: number, rating: number | null, userId?: string) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
         const clamped = rating === null ? null : Math.min(Math.max(Math.round(rating), 1), 5);
-        const { bookRatings, bookStatuses } = get();
+        const now = new Date().toISOString();
+        const { bookRatings, curationHistory = {} } = get();
 
         const nextRatings = { ...bookRatings };
         if (clamped === null) {
@@ -360,10 +408,13 @@ export const useBookshelfStore = create<BookshelfState>()(
         } else {
           nextRatings[bookId] = clamped;
         }
-        set({ bookRatings: nextRatings });
+
+        const nextHistory = { ...curationHistory, [bookId]: now };
+        set({ bookRatings: nextRatings, curationHistory: nextHistory });
 
         if (currentUserId) {
-          const currentStatus = bookStatuses[bookId] || null;
+          // Re-read latest status to prevent stale snapshot clobbering in concurrent calls
+          const currentStatus = get().bookStatuses[bookId] || null;
           if (clamped === null && currentStatus === null) {
             try {
               const supabase = createClient();
@@ -385,7 +436,7 @@ export const useBookshelfStore = create<BookshelfState>()(
               book_id: bookId,
               rating: clamped,
               reading_status: currentStatus,
-              updated_at: new Date().toISOString(),
+              updated_at: now,
             };
             try {
               const supabase = createClient();
@@ -405,7 +456,8 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       setReadingStatus: async (bookId: number, status: ReadingStatus | null, userId?: string) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
-        const { bookStatuses, bookRatings } = get();
+        const now = new Date().toISOString();
+        const { bookStatuses, curationHistory = {} } = get();
 
         const nextStatuses = { ...bookStatuses };
         if (status === null) {
@@ -413,10 +465,18 @@ export const useBookshelfStore = create<BookshelfState>()(
         } else {
           nextStatuses[bookId] = status;
         }
-        set({ bookStatuses: nextStatuses });
+
+        const nextHistory = { ...curationHistory, [bookId]: now };
+        set({ bookStatuses: nextStatuses, curationHistory: nextHistory });
+
+        // Synchronize reader store completion state if marked finished
+        if (status === 'finished') {
+          useReaderStore.getState().setProgress(bookId, 100);
+        }
 
         if (currentUserId) {
-          const currentRating = bookRatings[bookId] ?? null;
+          // Re-read latest rating to prevent stale snapshot clobbering in concurrent calls
+          const currentRating = get().bookRatings[bookId] ?? null;
           if (status === null && currentRating === null) {
             try {
               const supabase = createClient();
@@ -438,7 +498,7 @@ export const useBookshelfStore = create<BookshelfState>()(
               book_id: bookId,
               rating: currentRating,
               reading_status: status,
-              updated_at: new Date().toISOString(),
+              updated_at: now,
             };
             try {
               const supabase = createClient();
@@ -680,28 +740,15 @@ export const useBookshelfStore = create<BookshelfState>()(
             .select('*')
             .eq('user_id', userId);
 
-          const remoteRatings: Record<number, number> = {};
-          const remoteStatuses: Record<number, ReadingStatus> = {};
+          const localRatings = { ...(get().bookRatings || {}) };
+          const localStatuses = { ...(get().bookStatuses || {}) };
+          const localHistory = { ...(get().curationHistory || {}) };
 
+          const remoteMap = new Map<number, any>();
           for (const item of (curations || [])) {
-            if (item.rating !== null && item.rating !== undefined) {
-              remoteRatings[item.book_id] = item.rating;
-            }
-            if (item.reading_status) {
-              remoteStatuses[item.book_id] = item.reading_status as ReadingStatus;
-            }
+            remoteMap.set(item.book_id, item);
           }
 
-          // Merge: remote takes precedence, but preserve local guest ratings/statuses that don't exist remotely
-          const localRatings = get().bookRatings || {};
-          const localStatuses = get().bookStatuses || {};
-
-          const mergedRatings = { ...localRatings, ...remoteRatings };
-          const mergedStatuses = { ...localStatuses, ...remoteStatuses };
-
-          set({ bookRatings: mergedRatings, bookStatuses: mergedStatuses });
-
-          // Bidirectional Sync: push local guest curations missing from cloud to the database
           const unSyncedCurations: Array<{
             user_id: string;
             book_id: number;
@@ -710,19 +757,64 @@ export const useBookshelfStore = create<BookshelfState>()(
             updated_at: string;
           }> = [];
 
-          const allCurationBookIds = Array.from(new Set([...Object.keys(localRatings), ...Object.keys(localStatuses)]).values()).map(Number);
-          for (const bId of allCurationBookIds) {
-            const hasRemote = curations?.some((c: any) => c.book_id === bId);
-            if (!hasRemote) {
+          // 4a. Reconcile remote items using Last-Write-Wins (LWW)
+          for (const item of (curations || [])) {
+            const bId = item.book_id;
+            const localTimestamp = localHistory[bId];
+            const remoteTimestamp = item.updated_at || item.created_at;
+
+            const isRemoteNewer =
+              !localTimestamp ||
+              (remoteTimestamp && new Date(remoteTimestamp).getTime() >= new Date(localTimestamp).getTime());
+
+            if (isRemoteNewer) {
+              if (item.rating !== null && item.rating !== undefined) {
+                localRatings[bId] = item.rating;
+              } else {
+                delete localRatings[bId];
+              }
+              if (item.reading_status) {
+                localStatuses[bId] = item.reading_status as ReadingStatus;
+              } else {
+                delete localStatuses[bId];
+              }
+              localHistory[bId] = remoteTimestamp || new Date().toISOString();
+            } else {
+              // Local mutation is strictly newer than remote - push to Supabase
               unSyncedCurations.push({
                 user_id: userId,
                 book_id: bId,
                 rating: localRatings[bId] ?? null,
                 reading_status: localStatuses[bId] ?? null,
-                updated_at: new Date().toISOString(),
+                updated_at: localTimestamp,
               });
             }
           }
+
+          // 4b. Push local guest curations that do not exist remotely
+          const allLocalCurationBookIds = Array.from(
+            new Set([...Object.keys(localRatings), ...Object.keys(localStatuses)]).values()
+          ).map(Number);
+
+          for (const bId of allLocalCurationBookIds) {
+            if (!remoteMap.has(bId)) {
+              const localTimestamp = localHistory[bId] || new Date().toISOString();
+              localHistory[bId] = localTimestamp;
+              unSyncedCurations.push({
+                user_id: userId,
+                book_id: bId,
+                rating: localRatings[bId] ?? null,
+                reading_status: localStatuses[bId] ?? null,
+                updated_at: localTimestamp,
+              });
+            }
+          }
+
+          set({
+            bookRatings: localRatings,
+            bookStatuses: localStatuses,
+            curationHistory: localHistory,
+          });
 
           if (unSyncedCurations.length > 0) {
             await supabase.from('user_book_curation').upsert(unSyncedCurations, {
@@ -980,6 +1072,7 @@ export function useHydratedBookshelf() {
   const getBookCuration = useBookshelfStore((s) => s.getBookCuration);
   const bookRatings = useBookshelfStore((s) => s.bookRatings);
   const bookStatuses = useBookshelfStore((s) => s.bookStatuses);
+  const curationHistory = useBookshelfStore((s) => s.curationHistory);
   const syncWithCloud = useBookshelfStore((s) => s.syncWithCloud);
   const createCloudBookshelf = useBookshelfStore((s) => s.createCloudBookshelf);
   const updateCloudBookshelf = useBookshelfStore((s) => s.updateCloudBookshelf);
@@ -998,6 +1091,7 @@ export function useHydratedBookshelf() {
     recentBooks: hasMounted ? recentBooks : [],
     bookRatings: hasMounted ? bookRatings : {},
     bookStatuses: hasMounted ? bookStatuses : {},
+    curationHistory: hasMounted ? (curationHistory || {}) : {},
     cloudBookshelves: hasMounted ? cloudBookshelves : [],
     cloudBookshelfItems: hasMounted ? cloudBookshelfItems : [],
     activeBookshelfId: hasMounted ? activeBookshelfId : null,

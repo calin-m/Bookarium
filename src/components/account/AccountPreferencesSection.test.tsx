@@ -245,6 +245,18 @@ describe('AccountPreferencesSection', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(/Failed to parse JSON file/i);
     });
 
+    it('shows error when backup file exceeds 10MB limit', async () => {
+      render(<AccountPreferencesSection {...defaultProps} />);
+
+      const fileInput = screen.getByTestId('library-backup-file-input');
+      const oversizedFile = new File([''], 'huge.json', { type: 'application/json' });
+      Object.defineProperty(oversizedFile, 'size', { value: 11 * 1024 * 1024 });
+
+      fireEvent.change(fileInput, { target: { files: [oversizedFile] } });
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/exceeds the 10MB limit/i);
+    });
+
     it('handles exportLibraryData utility directly', () => {
       const csvResult = exportLibraryData('csv');
       expect(typeof csvResult).toBe('string');

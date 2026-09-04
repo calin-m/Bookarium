@@ -12,12 +12,14 @@ on:
         default: 'v1.9.0'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     name: Verify, Extract Notes & Publish Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
@@ -39,10 +41,13 @@ jobs:
 
       - name: Extract Release Notes from CHANGELOG.md
         id: extract_notes
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
           node -e '
             const fs = require("fs");
-            const tag = (process.env.GITHUB_REF_NAME || "${{ github.event.inputs.tag }}").replace(/^v/, "");
+            const rawTag = process.env.INPUT_TAG || process.env.GITHUB_REF_NAME || "";
+            const tag = rawTag.replace(/^v/, "").trim();
             const changelog = fs.readFileSync("CHANGELOG.md", "utf8");
             const escapedTag = tag.replace(/\./g, "\\.");
             const regex = new RegExp("## \\[" + escapedTag + "\\][\\s\\S]*?(?=\\n## \\[|$)", "i");

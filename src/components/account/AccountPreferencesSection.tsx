@@ -98,6 +98,8 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
     setTimeout(() => setExportSuccess(null), 2500);
   };
 
+  const MAX_BACKUP_SIZE_BYTES = 10 * 1024 * 1024; // 10MB payload ceiling
+
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -105,6 +107,12 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
     setFileError(null);
     setRestoreSuccess(null);
     setRestoreError(null);
+
+    if (file.size > MAX_BACKUP_SIZE_BYTES) {
+      setFileError('File size exceeds the 10MB limit. Please upload a valid Bookarium backup file.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     try {
       const text = await file.text();

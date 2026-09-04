@@ -68,15 +68,30 @@ describe('GET /api/books route handler', () => {
     fetchSpy.mockRestore();
   });
 
-  it('should return 504 status code when upstream API times out or network fails', async () => {
+  it('should return 502 status code when network connection fails', async () => {
     const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network connection failed'));
+
+    const req = new NextRequest('http://localhost:3000/api/books?page=1');
+    const res = await GET(req);
+
+    expect(res.status).toBe(502);
+    const json = await res.json();
+    expect(json.error).toContain('Unable to connect to Gutenberg API');
+    expect(json.results).toHaveLength(0);
+    fetchSpy.mockRestore();
+  });
+
+  it('should return 504 status code when upstream API times out via AbortError', async () => {
+    const abortError = new Error('The operation was aborted');
+    abortError.name = 'AbortError';
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(abortError);
 
     const req = new NextRequest('http://localhost:3000/api/books?page=1');
     const res = await GET(req);
 
     expect(res.status).toBe(504);
     const json = await res.json();
-    expect(json.error).toContain('Unable to connect to Gutenberg API');
+    expect(json.error).toContain('Gutenberg API request timed out');
     expect(json.results).toHaveLength(0);
     fetchSpy.mockRestore();
   });

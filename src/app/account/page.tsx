@@ -8,6 +8,7 @@ import {
   Sparkles,
   ArrowLeft,
 } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
@@ -28,7 +29,29 @@ import { ROUTES } from '@/config/routes';
 
 export default function AccountPage() {
   const router = useRouter();
-  const { user, profile, isLoading, updateProfile, updatePassword, requestAccountDeletion, signOut, openAuthModal, resendVerificationEmail } = useAuthStore();
+  const {
+    user,
+    profile,
+    isLoading,
+    updateProfile,
+    updatePassword,
+    requestAccountDeletion,
+    signOut,
+    openAuthModal,
+    resendVerificationEmail,
+  } = useAuthStore(
+    useShallow((s) => ({
+      user: s.user,
+      profile: s.profile,
+      isLoading: s.isLoading,
+      updateProfile: s.updateProfile,
+      updatePassword: s.updatePassword,
+      requestAccountDeletion: s.requestAccountDeletion,
+      signOut: s.signOut,
+      openAuthModal: s.openAuthModal,
+      resendVerificationEmail: s.resendVerificationEmail,
+    }))
+  );
   const { savedCount, likedCount, cloudBookshelves } = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
   const annotationCount = annotations.length;
@@ -36,7 +59,8 @@ export default function AccountPage() {
     () => cloudBookshelves.filter((s) => !s.is_default).length,
     [cloudBookshelves]
   );
-  const { theme, setTheme } = useThemeStore();
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
   const {
     stickyScrollEnabled,
     setStickyScrollEnabled,
@@ -49,7 +73,21 @@ export default function AccountPage() {
     speechHighlightEnabled,
     setSpeechHighlightEnabled,
     resetSpeechPreferences,
-  } = usePreferencesStore();
+  } = usePreferencesStore(
+    useShallow((s) => ({
+      stickyScrollEnabled: s.stickyScrollEnabled,
+      setStickyScrollEnabled: s.setStickyScrollEnabled,
+      speechRate: s.speechRate,
+      setSpeechRate: s.setSpeechRate,
+      speechVoiceURI: s.speechVoiceURI,
+      setSpeechVoiceURI: s.setSpeechVoiceURI,
+      speechAutoPageAdvance: s.speechAutoPageAdvance,
+      setSpeechAutoPageAdvance: s.setSpeechAutoPageAdvance,
+      speechHighlightEnabled: s.speechHighlightEnabled,
+      setSpeechHighlightEnabled: s.setSpeechHighlightEnabled,
+      resetSpeechPreferences: s.resetSpeechPreferences,
+    }))
+  );
   const { isHeaderVisible } = useScrollDirection({ enabled: stickyScrollEnabled });
 
   const defaultName = profile?.display_name || user?.user_metadata?.display_name || '';

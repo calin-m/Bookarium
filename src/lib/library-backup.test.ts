@@ -436,5 +436,100 @@ describe('library-backup domain engine', () => {
 
       expect(syncWithCloudMock).toHaveBeenCalledWith('auth-user-999');
     });
+
+    it('restores readingQueue correctly in replace mode', async () => {
+      useBookshelfStore.setState({
+        readingQueue: [{ id: 999, title: 'Old Queue Book', authors: [], formats: {} } as any],
+      });
+
+      const backupWithQueue = {
+        ...incomingBackup,
+        library: {
+          ...incomingBackup.library,
+          readingQueue: [{ id: 84, title: 'Frankenstein', authors: [], formats: {} } as any],
+        },
+      };
+
+      await restoreLibraryBackup(backupWithQueue, 'replace');
+
+      const queue = useBookshelfStore.getState().readingQueue;
+      expect(queue).toHaveLength(1);
+      expect(queue[0].id).toBe(84);
+    });
+  });
+
+  describe('Security & Deserialization Defense Suite', () => {
+    it('rejects payloads containing prototype pollution keys', () => {
+      const maliciousPayload = {
+        version: '1.0',
+        app: 'Bookarium',
+        library: {
+          savedBooks: [{ id: 1, title: 'Safe Book' }],
+          bookRatings: JSON.parse('{"__proto__": {"admin": true}}'),
+        },
+      };
+
+      const result = validateLibraryBackup(maliciousPayload);
+      expect(result.valid).toBe(false);
+      expect(result.error).toMatch(/prototype/i);
+    });
+
+    it('validates all items in large savedBooks arrays beyond index 50', () => {
+      const books = Array.from({ length: 60 }, (_, i) => ({
+        id: i + 1,
+        title: `Book ${i + 1}`,
+        authors: [{ name: 'Author' }],
+        formats: {},
+      }));
+
+      // Inject invalid book at index 55 (previously unreached due to Math.min 50)
+      books[55] = { id: 'invalid-id' as any, title: 'Corrupted Book' } as any;
+
+      const payload = {
+        version: '1.0',
+        app: 'Bookarium',
+        library: {
+          savedBooks: books,
+        },
+      };
+
+      const result = validateLibraryBackup(payload);
+      expect(result.valid).toBe(false);
+      expect(result.error).toMatch(/index 55/i);
+    });
+
+    it('rejects malformed customShelves missing bookIds array', () => {
+      const payload = {
+        version: '1.0',
+        app: 'Bookarium',
+        library: {
+          savedBooks: [{ id: 1, title: 'Dracula' }],
+          customShelves: [
+            { name: 'Malformed Shelf' }, // Missing bookIds
+          ],
+        },
+      };
+
+      const result = validateLibraryBackup(payload);
+      expect(result.valid).toBe(false);
+      expect(result.error).toMatch(/custom shelf at index 0/i);
+    });
+
+    it('filters out-of-bounds ratings and non-standard statuses', () => {
+      const payload = {
+        version: '1.0',
+        app: 'Bookarium',
+        library: {
+          savedBooks: [{ id: 1, title: 'Frankenstein' }],
+          bookRatings: { 1: 10, 2: -5, 3: 4 },
+          bookStatuses: { 1: 'super_finished', 3: 'finished' },
+        },
+      };
+
+      const result = validateLibraryBackup(payload);
+      expect(result.valid).toBe(true);
+      expect(result.data?.library.bookRatings).toEqual({ 3: 4 });
+      expect(result.data?.library.bookStatuses).toEqual({ 3: 'finished' });
+    });
   });
 });

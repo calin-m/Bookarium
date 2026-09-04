@@ -151,5 +151,52 @@ describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
       expect(json.error).toMatch(/too many requests/i);
     });
   });
+
+  describe('HTTP Redirect Traversal & Upstream Header Sanitization', () => {
+    it('enforces redirect: manual and rejects 301/302 redirects to private link-local endpoints', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: false,
+        status: 302,
+        type: 'opaqueredirect',
+        headers: new Headers({
+          Location: 'http://169.254.169.254/latest/meta-data/',
+        }),
+        text: async () => '',
+      } as any);
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('https://www.gutenberg.org'),
+        expect.objectContaining({ redirect: 'manual' })
+      );
+
+      expect(res.status).toBe(502);
+    });
+
+    it('strips all upstream server headers and sets explicit sanitized response headers', async () => {
+      vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({
+          'Server': 'Apache/2.4.41 (Ubuntu)',
+          'Set-Cookie': 'tracking_session=secret_token',
+          'X-Powered-By': 'PHP/7.4.3',
+        }),
+        text: async () => sampleBookText,
+      } as any);
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Server')).toBeNull();
+      expect(res.headers.get('Set-Cookie')).toBeNull();
+      expect(res.headers.get('X-Powered-By')).toBeNull();
+      expect(res.headers.get('Content-Type')).toBe('text/plain; charset=utf-8');
+      expect(res.headers.get('Cache-Control')).toBe('public, s-maxage=86400, stale-while-revalidate=604800');
+    });
+  });
 });
 

@@ -705,10 +705,13 @@ describe('useBookshelfStore', () => {
 
       const outbox = useBookshelfStore.getState().outbox;
       expect(outbox).toHaveLength(1);
-      expect(outbox[0].type).toBe('UPSERT_CURATION');
-      expect(outbox[0].payload.user_id).toBe('user-offline-1');
-      expect(outbox[0].payload.book_id).toBe(1342);
-      expect(outbox[0].payload.rating).toBe(4);
+      const action = outbox[0];
+      expect(action.type).toBe('UPSERT_CURATION');
+      if (action.type === 'UPSERT_CURATION') {
+        expect(action.payload.user_id).toBe('user-offline-1');
+        expect(action.payload.book_id).toBe(1342);
+        expect(action.payload.rating).toBe(4);
+      }
     });
 
     it('flushes UPSERT_CURATION and DELETE_CURATION from outbox', async () => {
@@ -827,6 +830,99 @@ describe('useBookshelfStore', () => {
 
       expect(useBookshelfStore.getState().bookRatings).toEqual({});
       expect(useBookshelfStore.getState().bookStatuses).toEqual({});
+      expect(useBookshelfStore.getState().curationHistory).toEqual({});
+    });
+
+    it('synchronizes reading progress to 100% in reader store when marked finished', async () => {
+      const { useReaderStore } = await import('./useReaderStore');
+      useReaderStore.setState({ readingProgress: { 1342: 45 } });
+
+      await useBookshelfStore.getState().setReadingStatus(1342, 'finished');
+
+      expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
+    });
+
+    it('tracks mutation timestamps in curationHistory', async () => {
+      await useBookshelfStore.getState().setBookRating(1342, 5);
+      const timestamp1 = useBookshelfStore.getState().curationHistory[1342];
+      expect(timestamp1).toBeDefined();
+
+      await useBookshelfStore.getState().setReadingStatus(1342, 'finished');
+      const timestamp2 = useBookshelfStore.getState().curationHistory[1342];
+      expect(timestamp2).toBeDefined();
+    });
+
+    it('preserves newer local offline curation over older cloud records via LWW', async () => {
+      const mockCurationUpsert = vi.fn().mockResolvedValue({ error: null });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [{ id: 'shelf-1', name: 'General', is_default: true }] }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ data: [] }),
+            }),
+          };
+        }
+        if (table === 'user_favorites') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [] }),
+              }),
+            }),
+          };
+        }
+        if (table === 'user_book_curation') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    user_id: 'user-1',
+                    book_id: 1342,
+                    rating: 2,
+                    reading_status: 'want_to_read',
+                    updated_at: '2026-01-01T00:00:00.000Z', // Old cloud timestamp
+                  },
+                ],
+              }),
+            }),
+            upsert: mockCurationUpsert,
+          };
+        }
+        return {};
+      });
+
+      // User modified book 1342 more recently locally while offline
+      useBookshelfStore.setState({
+        bookRatings: { 1342: 5 },
+        bookStatuses: { 1342: 'finished' },
+        curationHistory: { 1342: '2026-09-01T00:00:00.000Z' }, // Newer local timestamp
+      });
+
+      await useBookshelfStore.getState().syncWithCloud('user-1');
+
+      const state = useBookshelfStore.getState();
+      // Local changes should win over older cloud record
+      expect(state.bookRatings[1342]).toBe(5);
+      expect(state.bookStatuses[1342]).toBe('finished');
+
+      // Newer local edit should be pushed to cloud
+      expect(mockCurationUpsert).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ user_id: 'user-1', book_id: 1342, rating: 5, reading_status: 'finished' }),
+        ]),
+        { onConflict: 'user_id,book_id' }
+      );
     });
   });
 });

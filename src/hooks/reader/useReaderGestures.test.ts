@@ -140,5 +140,44 @@ describe('useReaderGestures Hook', () => {
     expect(handleFontChange).toHaveBeenCalledWith(27);
     expect(result.current.zoomFeedback?.size).toBe(27);
   });
+
+  it('cancels pending zoom feedback timeout upon unmounting', () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+    const onFontSizeChange = vi.fn();
+
+    const { result, unmount } = renderHook(() =>
+      useReaderGestures({
+        fontSize: 18,
+        readingMode: 'paginated',
+        onFontSizeChange,
+      })
+    );
+
+    // Trigger pinch touch start
+    act(() => {
+      result.current.handleTouchStart({
+        touches: [
+          { clientX: 100, clientY: 100 } as React.Touch,
+          { clientX: 200, clientY: 100 } as React.Touch,
+        ],
+      } as unknown as React.TouchEvent);
+    });
+
+    // Trigger pinch touch end (schedules zoom timeout)
+    act(() => {
+      result.current.handleTouchEnd({
+        touches: [],
+        changedTouches: [{ clientX: 100, clientY: 100 } as React.Touch],
+      } as unknown as React.TouchEvent);
+    });
+
+    // Unmount hook while timeout is pending
+    unmount();
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    vi.useRealTimers();
+    clearTimeoutSpy.mockRestore();
+  });
 });
 

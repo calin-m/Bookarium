@@ -13,6 +13,7 @@ import { useThemeStore } from '@/stores/useThemeStore';
 import type { GutendexBook, ReadingStatus } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { formatAuthorNames } from '@/lib/utils';
+import { getOfflineBookIds, removeOfflineBook } from '@/lib/offline-storage';
 
 export interface LibraryBackupShelf {
   id: string;
@@ -277,21 +278,42 @@ export function exportLibraryToCSV(backup?: LibraryBackupPayload, filename?: str
   return csvContent;
 }
 
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function isPlainObject(val: unknown): val is Record<string, any> {
+  return typeof val === 'object' && val !== null && !Array.isArray(val);
+}
+
+function hasPrototypePollutionKey(obj: unknown): boolean {
+  if (!obj || typeof obj !== 'object') return false;
+  for (const key of Object.keys(obj)) {
+    if (FORBIDDEN_KEYS.has(key)) return true;
+    if (typeof (obj as any)[key] === 'object' && hasPrototypePollutionKey((obj as any)[key])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Validates untrusted raw JSON input against the Bookarium backup schema.
  */
 export function validateLibraryBackup(raw: unknown): ValidationResult {
-  if (!raw || typeof raw !== 'object') {
+  if (!isPlainObject(raw)) {
     return { valid: false, error: 'Invalid backup file: file content must be a JSON object.' };
   }
 
-  const obj = raw as Record<string, any>;
+  if (hasPrototypePollutionKey(raw)) {
+    return { valid: false, error: 'Invalid backup file: forbidden prototype modification detected.' };
+  }
+
+  const obj = raw;
 
   if (obj.app && obj.app !== 'Bookarium') {
     return { valid: false, error: `Unrecognized backup application: expected Bookarium, got "${obj.app}".` };
   }
 
-  if (!obj.library || typeof obj.library !== 'object') {
+  if (!isPlainObject(obj.library)) {
     return { valid: false, error: 'Invalid backup file: missing required library section.' };
   }
 
@@ -299,11 +321,84 @@ export function validateLibraryBackup(raw: unknown): ValidationResult {
     return { valid: false, error: 'Invalid backup file: library.savedBooks must be an array.' };
   }
 
-  // Validate book items
-  for (let i = 0; i < Math.min(obj.library.savedBooks.length, 50); i++) {
+  // Validate all book items
+  for (let i = 0; i < obj.library.savedBooks.length; i++) {
     const b = obj.library.savedBooks[i];
-    if (!b || typeof b.id !== 'number' || typeof b.title !== 'string') {
+    if (
+      !isPlainObject(b) ||
+      typeof b.id !== 'number' ||
+      !Number.isInteger(b.id) ||
+      b.id <= 0 ||
+      typeof b.title !== 'string'
+    ) {
       return { valid: false, error: `Invalid backup file: volume at index ${i} is missing valid ID or title.` };
+    }
+  }
+
+  // Deep validation for custom shelves
+  const customShelves: LibraryBackupShelf[] = [];
+  if (obj.library.customShelves !== undefined) {
+    if (!Array.isArray(obj.library.customShelves)) {
+      return { valid: false, error: 'Invalid backup file: customShelves must be an array if provided.' };
+    }
+    for (let i = 0; i < obj.library.customShelves.length; i++) {
+      const s = obj.library.customShelves[i];
+      if (!isPlainObject(s) || typeof s.name !== 'string' || !Array.isArray(s.bookIds)) {
+        return { valid: false, error: `Invalid backup file: custom shelf at index ${i} is missing name or bookIds array.` };
+      }
+      const validBookIds = s.bookIds.filter(
+        (id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0
+      );
+      customShelves.push({
+        id: typeof s.id === 'string' ? s.id : `shelf-${Date.now()}-${i}`,
+        name: s.name.trim() || 'Untitled Shelf',
+        isDefault: Boolean(s.isDefault),
+        bookIds: validBookIds,
+      });
+    }
+  }
+
+  // Validate reading queue
+  const readingQueue: GutendexBook[] = [];
+  if (obj.library.readingQueue !== undefined) {
+    if (!Array.isArray(obj.library.readingQueue)) {
+      return { valid: false, error: 'Invalid backup file: readingQueue must be an array if provided.' };
+    }
+    for (let i = 0; i < obj.library.readingQueue.length; i++) {
+      const b = obj.library.readingQueue[i];
+      if (
+        isPlainObject(b) &&
+        typeof b.id === 'number' &&
+        Number.isInteger(b.id) &&
+        b.id > 0 &&
+        typeof b.title === 'string'
+      ) {
+        readingQueue.push(b as GutendexBook);
+      }
+    }
+  }
+
+  // Sanitize ratings: enforce 1-5 integer bounds
+  const bookRatings: Record<number, number> = {};
+  if (isPlainObject(obj.library.bookRatings)) {
+    for (const [key, val] of Object.entries(obj.library.bookRatings)) {
+      const bookId = Number(key);
+      const rating = Number(val);
+      if (Number.isInteger(bookId) && bookId > 0 && Number.isInteger(rating) && rating >= 1 && rating <= 5) {
+        bookRatings[bookId] = rating;
+      }
+    }
+  }
+
+  // Sanitize reading statuses: enforce valid enum values
+  const VALID_STATUSES = new Set<ReadingStatus>(['want_to_read', 'currently_reading', 'finished']);
+  const bookStatuses: Record<number, ReadingStatus> = {};
+  if (isPlainObject(obj.library.bookStatuses)) {
+    for (const [key, val] of Object.entries(obj.library.bookStatuses)) {
+      const bookId = Number(key);
+      if (Number.isInteger(bookId) && bookId > 0 && VALID_STATUSES.has(val as ReadingStatus)) {
+        bookStatuses[bookId] = val as ReadingStatus;
+      }
     }
   }
 
@@ -315,31 +410,35 @@ export function validateLibraryBackup(raw: unknown): ValidationResult {
     return { valid: false, error: 'Invalid backup file: likedBookIds must be an array if provided.' };
   }
 
+  const likedBookIds: number[] = Array.isArray(obj.library.likedBookIds)
+    ? obj.library.likedBookIds.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0)
+    : [];
+
   const normalized: LibraryBackupPayload = {
     version: obj.version || '1.0',
     app: 'Bookarium',
     exportedAt: typeof obj.exportedAt === 'string' ? obj.exportedAt : new Date().toISOString(),
     summary: {
       bookCount: obj.library.savedBooks.length,
-      customShelfCount: Array.isArray(obj.library.customShelves) ? obj.library.customShelves.length : 0,
-      favoriteCount: Array.isArray(obj.library.likedBookIds) ? obj.library.likedBookIds.length : 0,
+      customShelfCount: customShelves.length,
+      favoriteCount: likedBookIds.length,
       annotationCount: Array.isArray(obj.annotations) ? obj.annotations.length : 0,
-      bookmarkCount: obj.reading && obj.reading.positions ? Object.keys(obj.reading.positions).length : 0,
+      bookmarkCount: isPlainObject(obj.reading?.positions) ? Object.keys(obj.reading.positions).length : 0,
     },
     library: {
       savedBooks: obj.library.savedBooks,
-      readingQueue: Array.isArray(obj.library.readingQueue) ? obj.library.readingQueue : [],
-      likedBookIds: Array.isArray(obj.library.likedBookIds) ? obj.library.likedBookIds : [],
-      customShelves: Array.isArray(obj.library.customShelves) ? obj.library.customShelves : [],
-      bookRatings: obj.library.bookRatings && typeof obj.library.bookRatings === 'object' ? obj.library.bookRatings : {},
-      bookStatuses: obj.library.bookStatuses && typeof obj.library.bookStatuses === 'object' ? obj.library.bookStatuses : {},
+      readingQueue,
+      likedBookIds,
+      customShelves,
+      bookRatings,
+      bookStatuses,
     },
     reading: {
-      positions: obj.reading && typeof obj.reading.positions === 'object' && obj.reading.positions !== null ? obj.reading.positions : {},
-      progress: obj.reading && typeof obj.reading.progress === 'object' && obj.reading.progress !== null ? obj.reading.progress : {},
+      positions: isPlainObject(obj.reading?.positions) ? obj.reading.positions : {},
+      progress: isPlainObject(obj.reading?.progress) ? obj.reading.progress : {},
     },
     annotations: Array.isArray(obj.annotations) ? obj.annotations : [],
-    preferences: obj.preferences && typeof obj.preferences === 'object' ? obj.preferences : {},
+    preferences: isPlainObject(obj.preferences) ? obj.preferences : {},
   };
 
   return { valid: true, data: normalized };
@@ -361,6 +460,7 @@ export async function restoreLibraryBackup(
 
   let finalBooks: GutendexBook[] = [];
   let finalLikedIds: number[] = [];
+  let finalReadingQueue: GutendexBook[] = [];
   let finalRatings: Record<number, number> = {};
   let finalStatuses: Record<number, ReadingStatus> = {};
   let finalPositions: Record<number, BookReadingPosition> = {};
@@ -372,6 +472,7 @@ export async function restoreLibraryBackup(
   if (strategy === 'replace') {
     finalBooks = [...backup.library.savedBooks];
     finalLikedIds = [...backup.library.likedBookIds];
+    finalReadingQueue = [...backup.library.readingQueue];
     finalRatings = { ...(backup.library.bookRatings || {}) };
     finalStatuses = { ...(backup.library.bookStatuses || {}) };
     finalPositions = { ...backup.reading.positions };
@@ -404,6 +505,21 @@ export async function restoreLibraryBackup(
         }
       }
     }
+
+    // Clean up orphaned offline book cache in IndexedDB
+    if (typeof window !== 'undefined') {
+      try {
+        const offlineIds = await getOfflineBookIds();
+        const restoredBookIdSet = new Set(finalBooks.map((b) => b.id));
+        for (const id of offlineIds) {
+          if (!restoredBookIdSet.has(id)) {
+            await removeOfflineBook(id);
+          }
+        }
+      } catch {
+        // Non-blocking offline storage cleanup
+      }
+    }
   } else {
     // MERGE STRATEGY
     const currentBooks = bookshelfStore.savedBooks || [];
@@ -415,6 +531,16 @@ export async function restoreLibraryBackup(
       }
     }
     finalBooks = Array.from(bookMap.values());
+
+    const currentQueue = bookshelfStore.readingQueue || [];
+    const queueMap = new Map<number, GutendexBook>();
+    for (const b of currentQueue) queueMap.set(b.id, b);
+    for (const b of backup.library.readingQueue || []) {
+      if (!queueMap.has(b.id)) {
+        queueMap.set(b.id, b);
+      }
+    }
+    finalReadingQueue = Array.from(queueMap.values());
 
     const likedSet = new Set<number>([
       ...(bookshelfStore.likedBookIds || []),
@@ -498,12 +624,16 @@ export async function restoreLibraryBackup(
   // Update store states
   useBookshelfStore.setState({
     savedBooks: finalBooks,
+    readingQueue: finalReadingQueue,
     likedBookIds: finalLikedIds,
     likedBooks: finalBooks.filter((b) => finalLikedIds.includes(b.id)),
     cloudBookshelves: finalShelves,
     cloudBookshelfItems: finalShelfItems,
     bookRatings: finalRatings,
     bookStatuses: finalStatuses,
+    ...(strategy === 'replace'
+      ? { activeBookshelfId: finalShelves.find((s) => s.is_default)?.id || finalShelves[0]?.id || null }
+      : {}),
   });
 
   useReaderStore.setState({

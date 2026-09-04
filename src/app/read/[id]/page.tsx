@@ -28,6 +28,7 @@ import { ReaderAnnotationsDrawer } from '@/components/reader/ReaderAnnotationsDr
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
 import { useReaderSession } from '@/hooks/reader/useReaderSession';
+import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useHydratedAnnotations, type HighlightColor, type Annotation } from '@/stores/useAnnotationStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -70,7 +71,16 @@ export default function BookReaderPage() {
     setSpeechVoiceURI,
     speechAutoPageAdvance,
     speechHighlightEnabled,
-  } = usePreferencesStore();
+  } = usePreferencesStore(
+    useShallow((s) => ({
+      speechRate: s.speechRate,
+      setSpeechRate: s.setSpeechRate,
+      speechVoiceURI: s.speechVoiceURI,
+      setSpeechVoiceURI: s.setSpeechVoiceURI,
+      speechAutoPageAdvance: s.speechAutoPageAdvance,
+      speechHighlightEnabled: s.speechHighlightEnabled,
+    }))
+  );
 
   // Local Reader State
   const {
