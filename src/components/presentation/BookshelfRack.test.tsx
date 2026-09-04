@@ -68,6 +68,34 @@ describe('BookshelfRack Component', () => {
     expect(pushMock).toHaveBeenCalledWith(`/read/${mockBooks[0].id}`);
   });
 
+  it('opens mobile modal when book spine is clicked on mobile screen (<640px)', () => {
+    const originalInnerWidth = window.innerWidth;
+    window.innerWidth = 480;
+
+    try {
+      render(<BookshelfRack books={mockBooks} />);
+
+      const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
+      act(() => {
+        fireEvent.click(bookElem);
+      });
+
+      const actionSheet = screen.getByTestId('mobile-book-action-sheet');
+      expect(actionSheet).toBeInTheDocument();
+      expect(within(actionSheet).getByText(mockBooks[0].title)).toBeInTheDocument();
+
+      const backdrop = screen.getByTestId('mobile-sheet-backdrop');
+      expect(backdrop).toHaveClass('bg-transparent');
+      act(() => {
+        fireEvent.click(backdrop);
+      });
+
+      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+    } finally {
+      window.innerWidth = originalInnerWidth;
+    }
+  });
+
   it('handles quick action download and bookmark clicks', () => {
     const handleDownload = vi.fn();
     render(<BookshelfRack books={mockBooks} onDownloadClick={handleDownload} />);

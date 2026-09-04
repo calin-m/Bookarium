@@ -16,7 +16,7 @@ describe('Navbar component', () => {
     render(<Navbar activeView="catalog" />);
     const brandText = screen.getByText(/Bookarium/i);
     expect(brandText).toBeInTheDocument();
-    expect(brandText).toHaveClass('min-[405px]:inline', 'text-sm');
+    expect(brandText).toHaveClass('min-[375px]:inline', 'text-xs');
     expect(screen.getByRole('button', { name: 'Catalog' })).toBeInTheDocument();
     expect(screen.getByLabelText('Bookshelf')).toBeInTheDocument();
     expect(screen.getByLabelText('Liked Books')).toBeInTheDocument();

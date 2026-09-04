@@ -455,32 +455,32 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
               {/* Hardwood Shelf Plank Base */}
               <div className="shelf-wood-ledge w-full h-5 rounded-b-2xl relative z-20 border-t border-black/30 shadow-md" />
-
-              {/* Mobile In-Shelf Quick-Action Centered Floating Modal */}
-              {selectedMobileBook && shelfBooks.some((b) => b.id === selectedMobileBook.id) && (
-                <BookshelfMobileModal
-                  selectedMobileBook={selectedMobileBook}
-                  onClose={closeMobileSheet}
-                  readingProgress={readingProgress[selectedMobileBook.id]}
-                  isSaved={checkIsSaved(selectedMobileBook.id)}
-                  isLiked={checkIsLiked(selectedMobileBook.id)}
-                  isOffline={isBookOffline(selectedMobileBook.id)}
-                  onToggleSave={toggleSave}
-                  onToggleLike={toggleLike}
-                  onToggleOffline={handleToggleOffline}
-                  onBookClick={onBookClick}
-                  onDownloadClick={onDownloadClick}
-                  cloudBookshelves={cloudBookshelves}
-                  cloudBookshelfItems={cloudBookshelfItems}
-                  defaultShelfId={defaultShelf?.id}
-                  currentActiveShelfId={currentActiveShelfId}
-                  userId={user?.id}
-                  onMoveBookToShelf={moveBookToShelf}
-                />
-              )}
             </div>
           </div>
         ))
+      )}
+
+      {/* Mobile In-Shelf Quick-Action Centered Floating Modal */}
+      {selectedMobileBook && (
+        <BookshelfMobileModal
+          selectedMobileBook={selectedMobileBook}
+          onClose={closeMobileSheet}
+          readingProgress={readingProgress[selectedMobileBook.id]}
+          isSaved={checkIsSaved(selectedMobileBook.id)}
+          isLiked={checkIsLiked(selectedMobileBook.id)}
+          isOffline={isBookOffline(selectedMobileBook.id)}
+          onToggleSave={toggleSave}
+          onToggleLike={toggleLike}
+          onToggleOffline={handleToggleOffline}
+          onBookClick={onBookClick}
+          onDownloadClick={onDownloadClick}
+          cloudBookshelves={cloudBookshelves}
+          cloudBookshelfItems={cloudBookshelfItems}
+          defaultShelfId={defaultShelf?.id}
+          currentActiveShelfId={currentActiveShelfId}
+          userId={user?.id}
+          onMoveBookToShelf={moveBookToShelf}
+        />
       )}
 
       {/* Shelf Management Modals (Create / Rename / Delete) */}
