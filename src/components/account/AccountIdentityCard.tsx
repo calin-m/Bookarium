@@ -40,7 +40,10 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
   resendError = null,
   resendCooldown = 0,
 }) => {
-  const isEmailVerified = Boolean(user.email_confirmed_at || (user as any).confirmed_at);
+  const isEmailVerified = Boolean(
+    user.email_confirmed_at ||
+    ('confirmed_at' in user && typeof user.confirmed_at === 'string' && user.confirmed_at)
+  );
 
   return (
     <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6">

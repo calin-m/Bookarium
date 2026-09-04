@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { READER_FONT_CONFIG, READER_GESTURE_CONFIG } from '@/config/reader-config';
 
 export interface UseReaderGesturesOptions {
@@ -38,6 +38,15 @@ export function useReaderGestures({
   const pinchStartRef = useRef<{ distance: number; initialFontSize: number } | null>(null);
   const [zoomFeedback, setZoomFeedback] = useState<ZoomFeedbackState | null>(null);
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current);
+        zoomTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2 && onFontSizeChange) {

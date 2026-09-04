@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, Eye, EyeOff, KeyRound, Check } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { Button } from '@/components/ui/Button';
@@ -23,9 +24,24 @@ export const AuthModal: React.FC = () => {
     signInWithOAuth,
     resetPasswordForEmail,
     resendVerificationEmail,
-  } = useAuthStore();
+  } = useAuthStore(
+    useShallow((s) => ({
+      isAuthModalOpen: s.isAuthModalOpen,
+      authModalView: s.authModalView,
+      error: s.error,
+      closeAuthModal: s.closeAuthModal,
+      setAuthModalView: s.setAuthModalView,
+      setError: s.setError,
+      signInWithPassword: s.signInWithPassword,
+      signUpWithPassword: s.signUpWithPassword,
+      signInWithOtp: s.signInWithOtp,
+      signInWithOAuth: s.signInWithOAuth,
+      resetPasswordForEmail: s.resetPasswordForEmail,
+      resendVerificationEmail: s.resendVerificationEmail,
+    }))
+  );
 
-  const { syncWithCloud } = useBookshelfStore();
+  const syncWithCloud = useBookshelfStore((s) => s.syncWithCloud);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

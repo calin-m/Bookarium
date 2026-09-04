@@ -30,7 +30,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const annotationCount = annotations.length;
   const theme = useThemeStore((s) => s.theme);
   const cycleTheme = useThemeStore((s) => s.cycleTheme);
-  const { user, openAuthModal } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const openAuthModal = useAuthStore((s) => s.openAuthModal);
 
   const handleBrandClick = () => {
     onViewChange?.('catalog');

@@ -147,7 +147,8 @@ export async function GET(request: NextRequest) {
     );
   } catch (err: unknown) {
     const latencyMs = Date.now() - startTime;
-    const isTimeout = err instanceof Error && err.name === 'AbortError';
+    const isTimeout = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError');
+    const statusCode = isTimeout ? 504 : 502;
 
     return NextResponse.json(
       {
@@ -157,7 +158,7 @@ export async function GET(request: NextRequest) {
         count: 0,
         source: 'upstream',
       },
-      { status: 504 }
+      { status: statusCode }
     );
   }
 }

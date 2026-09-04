@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 04 Sep 2026 12:53:18 GMT  
+**Last Generated**: Fri, 04 Sep 2026 13:56:53 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 112 passed  
-**Total Verified Tests**: 820 passed  
+**Total Test Suites**: 116 passed  
+**Total Verified Tests**: 840 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **112/112 test suites passed** (820 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **116/116 test suites passed** (840 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,19 +25,19 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.05%** (4426/4808) — *Target: $ge$ 80%*
-- **Statements**: **90.24%** (4818/5339) — *Target: $ge$ 80%*
-- **Functions**: **87.57%** (1128/1288) — *Target: $ge$ 80%*
-- **Branches**: **80.31%** (4134/5147) — *Target: $ge$ 80%*
+- **Lines**: **92%** (4523/4916) — *Target: $ge$ 80%*
+- **Statements**: **90.25%** (4927/5459) — *Target: $ge$ 80%*
+- **Functions**: **87.89%** (1154/1313) — *Target: $ge$ 80%*
+- **Branches**: **80.44%** (4213/5237) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (112 Suites / 820 Tests)
+## 🧪 Comprehensive Test Suite Catalog (116 Suites / 840 Tests)
 
-### 🚀 App Routes & Pages (10 Suites · 77 Tests)
+### 🚀 App Routes & Pages (10 Suites · 80 Tests)
 
 <details>
-<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `blocks AWS and GCP cloud metadata IP endpoints`
 - ✔ `blocks loopback and private RFC 1918 IPv4/IPv6 addresses`
@@ -47,6 +47,8 @@
 - ✔ `ensures global.fetch is never triggered for unauthenticated/malicious inputs`
 - ✔ `strictly confines legitimate outgoing requests to approved Gutenberg CDN endpoints`
 - ✔ `protects backend from request flooding by enforcing 429 response`
+- ✔ `enforces redirect: manual and rejects 301/302 redirects to private link-local endpoints`
+- ✔ `strips all upstream server headers and sets explicit sanitized response headers`
 
 </details>
 
@@ -66,13 +68,14 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `should return 429 when client exceeds max request rate limit`
 - ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
 - ✔ `should pass topic, language, page, era, sort, and mime_type query parameters`
 - ✔ `should return error response when upstream API returns an error status`
-- ✔ `should return 504 status code when upstream API times out or network fails`
+- ✔ `should return 502 status code when network connection fails`
+- ✔ `should return 504 status code when upstream API times out via AbortError`
 - ✔ `should return 502 status code when upstream API returns invalid non-JSON body`
 
 </details>
@@ -689,7 +692,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (6 Suites · 82 Tests)
+### ⚡ Zustand State Stores (6 Suites · 85 Tests)
 
 <details>
 <summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
@@ -740,7 +743,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (27 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (30 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -769,6 +772,9 @@
 - ✔ `flushes UPSERT_CURATION and DELETE_CURATION from outbox`
 - ✔ `syncs curation from cloud and merges with local guest ratings`
 - ✔ `resets curation upon clearBookshelf`
+- ✔ `synchronizes reading progress to 100% in reader store when marked finished`
+- ✔ `tracks mutation timestamps in curationHistory`
+- ✔ `preserves newer local offline curation over older cloud records via LWW`
 
 </details>
 
@@ -809,7 +815,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (16 Suites · 129 Tests)
+### 📚 Gutenberg Parsers & Metadata (16 Suites · 134 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (10 tests)</summary>
@@ -905,7 +911,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/library-backup.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/lib/library-backup.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `generates a complete, structured backup payload from active stores`
 - ✔ `creates a download blob and triggers click in DOM`
@@ -922,6 +928,11 @@
 - ✔ `merges incoming backup non-destructively by default`
 - ✔ `overwrites state completely when replace strategy is selected`
 - ✔ `triggers cloud sync if userId is provided`
+- ✔ `restores readingQueue correctly in replace mode`
+- ✔ `rejects payloads containing prototype pollution keys`
+- ✔ `validates all items in large savedBooks arrays beyond index 50`
+- ✔ `rejects malformed customShelves missing bookIds array`
+- ✔ `filters out-of-bounds ratings and non-standard statuses`
 
 </details>
 
@@ -1036,7 +1047,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (17 Suites · 115 Tests)
+### 🔄 Hooks & React Query (17 Suites · 116 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (4 tests)</summary>
@@ -1133,13 +1144,14 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `initializes with null zoom feedback`
 - ✔ `triggers onNextPage on leftward swipe with sufficient distance`
 - ✔ `triggers onPreviousPage on rightward swipe with sufficient distance`
 - ✔ `does not trigger swipe if vertical delta exceeds threshold ratio`
 - ✔ `handles 2-finger pinch scaling and clamps font size`
+- ✔ `cancels pending zoom feedback timeout upon unmounting`
 
 </details>
 
@@ -1255,7 +1267,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (29 Suites · 111 Tests)
+### 🧩 UI Primitives & Motion (33 Suites · 119 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
@@ -1280,10 +1292,41 @@
 </details>
 
 <details>
+<summary><b><code>src/app/error.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders heading, description, and action buttons`
+- ✔ `renders error digest when provided`
+- ✔ `calls reset handler when Try Again button is clicked`
+
+</details>
+
+<details>
+<summary><b><code>src/app/global-error.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders critical error message and reset button`
+- ✔ `displays error digest when available`
+
+</details>
+
+<details>
+<summary><b><code>src/app/loading.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders status role with busy indicator`
+
+</details>
+
+<details>
 <summary><b><code>src/app/manifest.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `returns valid metadata complying with PWA standards`
 - ✔ `includes required icon sizes and purposes for desktop and mobile installation`
+
+</details>
+
+<details>
+<summary><b><code>src/app/not-found.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders heading, literary quote, and navigation links`
 
 </details>
 
@@ -1323,7 +1366,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
 - ✔ `renders read-aloud section and handles speed selection`
@@ -1333,6 +1376,7 @@
 - ✔ `renders the portability section with JSON, CSV, and Import buttons`
 - ✔ `handles JSON and CSV export clicks`
 - ✔ `handles file input change and shows error on corrupted file`
+- ✔ `shows error when backup file exceeds 10MB limit`
 - ✔ `handles exportLibraryData utility directly`
 
 </details>
