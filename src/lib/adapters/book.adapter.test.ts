@@ -22,7 +22,7 @@ describe('book.adapter', () => {
     });
 
     it('handles multiple commas gracefully', () => {
-      expect(normalizeAuthorName('Tolkien, J. R. R., Sir')).toBe('J. R. R. Sir Tolkien');
+      expect(normalizeAuthorName('Tolkien, J. R. R., Sir')).toBe('Sir J. R. R. Tolkien');
     });
   });
 
@@ -165,6 +165,19 @@ describe('book.adapter', () => {
       expect(result.authors).toEqual(['Anonymous']);
       expect(result.coverUrl).toBeNull();
       expect(result.downloadCount).toBe(0);
+    });
+
+    it('cleans Gutenberg title preambles and normalizes author names with dates', () => {
+      const rawGutenberg = {
+        id: 84,
+        title: 'The Project Gutenberg eBook of Frankenstein; Or, The Modern Prometheus',
+        authors: [{ name: 'Shelley, Mary Wollstonecraft, 1797-1851' }],
+        formats: {},
+      };
+
+      const result = toCanonicalBook(rawGutenberg as any);
+      expect(result.title).toBe('Frankenstein; Or, The Modern Prometheus');
+      expect(result.authors).toEqual(['Mary Wollstonecraft Shelley']);
     });
   });
 });

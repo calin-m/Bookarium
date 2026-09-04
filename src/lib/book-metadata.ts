@@ -1,4 +1,4 @@
-import type { GutendexBook, GutendexResponse } from '@/types/book.types';
+import type { GutendexBook, GutendexResponse, Book } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 
@@ -14,7 +14,7 @@ export interface ResolvedBookIdentity {
 
 export interface ResolveBookMetadataParams {
   id: number;
-  currentBook?: GutendexBook | null;
+  currentBook?: GutendexBook | Book | null;
   booksData?: GutendexResponse | null;
   extractedMeta?: { title?: string; author?: string; language?: string } | null;
 }

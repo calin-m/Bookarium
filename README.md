@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-121%20Suites%20%7C%20876%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.02%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20896%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.1%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -41,9 +41,9 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ## 🛠️ Latest Improvements (v1.9.4)
 
 - **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), real-time search (`CollectionSearchBar`), "Clear Bookmarks" accessible confirmation modal, and 1-click chapter resume.
-- **Unified SectionHeader & Editorial Typography Harmonization (`SectionHeader.tsx`)**: Reusable `<SectionHeader>` and `<SectionTitle>` component standardizing subtle decorative flank border lines (`h-[1px] w-12 bg-border`), refined typography scale (`text-3xl sm:text-4xl`), and action slots across Catalog, Bookshelf, Favorites, Bookmarks, and Literary Notebook views.
-- **Tactile Booksaw Page-Turn Transitions**: Integrated hardware-accelerated `animate-page-turn` transitions on view transitions and filter tab switching in the Bookmarks ledger.
-- **Canonical Domain Book Entity & Adapter (`toCanonicalBook`)**: Provider-agnostic Book and ActiveReadingVolume domain entities in `src/types/book.types.ts` and `src/lib/adapters/book.adapter.ts` for clean architectural decoupling.
+- **Authentic Reading Telemetry & Unopened Volume Exclusion**: Refined `useContinueReadingLedger` to strictly enroll books with active reading coordinates (`readingPositions`) or progress (`readingProgress > 0`), eliminating contradictory "Never opened" cards on bookmarks and decoupling ledger resets from user curation.
+- **Two-Way Metadata Synchronization & Warm Reader Handoff**: Active query hydration in `useContinueReadingLedger` resolves missing book metadata via TanStack Query without displaying generic Gutenberg fallbacks; `/read/[id]` immediately persists resolved book identity to `recentBooks` on load and primes reader state upon resume.
+- **DRY Parser & Adapter Normalization**: Unified author reversed-name parsing, lifespan stripping (`formatAuthorNames`), title prefix cleaning (`cleanBookTitle`), and relative time calculation (`formatRelativeTime`) into canonical `@/lib/utils` and `book.adapter.ts`.
 - **Pre-Commit Hook Hardening (`.husky/pre-commit`)**: Eliminated child git process lock collisions on Windows NTFS by running the 7-Gateway Quality Engine via pure Node.js.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -106,6 +106,11 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 * **Deep Archive Query UX & Live Telemetry**: Sticky catalog toolbar equipped with real-time roundtrip latency telemetry, direct page jumping, animated `Info` indicators, responsive mobile two-tier wrapping, and informative tooltips explaining relational SQL offsets across 70,000+ public domain volumes.
 * **Header Navigation & Brand Reset**: Clean top bar with unified iconography (**Catalog** `<BookOpen>`, **Bookshelf** `<Bookmark>`, **Favorites** `<Heart>`, **Notebook** `<Highlighter>`, **Bookmarks** `<BookMarked>`), dynamic solid fill states, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
 * **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger displaying all active public domain volumes with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), real-time search filtering (`<CollectionSearchBar>`), accessible "Clear Bookmarks" confirmation modal, Booksaw page-turn transitions (`animate-page-turn`), and 1-click chapter resume actions.
+  * **Authentic Reading Telemetry**: Strictly enrolls volumes with active coordinates (`readingPositions`) or active progress (`readingProgress > 0`), ensuring zero unopened bookshelf books appear on bookmarks with "Never opened" badges.
+  * **Two-Way Dynamic Hydration**: Automatically resolves missing book identities for un-shelved volumes via TanStack React Query (`useBooks`), eliminating generic Gutenberg fallback placeholders (e.g. Volume `#55179`), and persistently writes resolved metadata into `recentBooks` upon reader load.
+  * **Warm Route Transitions**: Clicking Resume or tapping the interactive cover thumbnail pre-seeds `useReaderStore.openReader(book)`, guaranteeing instantaneous 0ms warm-cache navigation to `/read/[id]` with mathematical zero layout shift.
+  * **Offline Availability Indicator**: Automatically detects locally stored IndexedDB books via `useOfflineBooks` and badges cached volumes with an emerald `CheckCircle2 Offline` indicator.
+  * **Decoupled Telemetry Clearing**: Resetting reading progress strictly purges reader coordinates and progress while preserving user bookshelf curation (`bookStatuses`) and reading history (`recentBooks`).
 * **Unified SectionHeader Component & Editorial Typography Harmonization**: Reusable `<SectionHeader>` and `<SectionTitle>` component (`src/components/ui/SectionHeader.tsx`) standardizing section title typography scales (`text-3xl sm:text-4xl font-serif font-bold text-foreground tracking-tight`), subtle decorative flank border lines (`h-[1px] w-12 bg-border shrink-0`), centered Booksaw editorial layouts, and contextual action slots ("Clear Shelf", "Clear Favorites", "Clear All Notes", "Clear Bookmarks") across Catalog, Bookshelf, Favorites, Bookmarks, and Literary Notebook views.
 * **Provider-Agnostic Canonical Book Entity & Adapter (`toCanonicalBook`)**: Clean domain architecture decoupling Bookarium UI components from upstream raw Gutendex schemas, automatically normalizing Gutenberg author strings, resolving preferred MIME format URLs, and ensuring 100% backward compatibility with guest and cloud storage.
 * **Progressive Web App (PWA), Offline App Shell & Standalone Installation**:
@@ -213,21 +218,33 @@ flowchart TD
         Grid["Interactive Book Grid & Filtering (BookGrid.tsx)"]
         Card["Book Card Component (BookCard.tsx)"]
         Modal["3D Book Preview Modal (BookPreviewModal.tsx)"]
+        Bookmarks["Bookmarks & Reading Ledger (BookmarksView.tsx)"]
+        BookmarkCard["Tactile Bookmark Card (BookmarkCard.tsx)"]
+        Notebook["Literary Notebook & Journal (NotebookView.tsx)"]
         Reader["Dedicated In-Browser Reader (src/app/read/[id]/page.tsx)"]
         Account["Account & Reading Preferences (src/app/account/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• cloudBookshelves: []\n• likedBookIds: []\n• bookRatings: {}\n• readingStatuses: {}")]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• likedBookIds: []\n• bookRatings: {}\n• readingStatuses: {}")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}")]
         StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
         
         ScrollHook["📜 useScrollDirection\n(3-State Gesture Stepping)"]
+        LedgerHook["🔖 useContinueReadingLedger\n(Authentic Telemetry & Two-Way Hydration)"]
         QueryBooks["🔄 useBooks(query, topic, page)"]
         QueryContent["🔄 useBookContent(textUrl, bookId)"]
         
         Nav -->|"Open Auth / Account"| StoreAuth
         Nav -->|"View Bookshelf"| StoreShelf
+        Nav -->|"View Bookmarks"| Bookmarks
+        Nav -->|"View Notebook"| Notebook
+        Bookmarks --> LedgerHook
+        LedgerHook --> StoreReader
+        LedgerHook --> StoreShelf
+        LedgerHook -->|"Hydrate Missing"| QueryBooks
+        Bookmarks --> BookmarkCard
+        BookmarkCard -->|"Warm Resume / Open"| Reader
         StorePrefs --> ScrollHook
         ScrollHook --> Nav
         ScrollHook --> Toolbar
@@ -346,6 +363,55 @@ flowchart LR
     ReaderState <--> LSState
     ReaderState <--> LSProgress
     ReaderState <--> LSPositions
+```
+
+---
+
+### 3. Bookmarks & Continue Reading Ledger Architecture
+
+```mermaid
+flowchart TD
+    subgraph Storage ["Persistent State Stores"]
+        RS["📖 useReaderStore\n• readingPositions (exact coordinates & timestamp)\n• readingProgress (0-100%)\n• openReader(book) [warm cache]"]
+        BS["⚡ useBookshelfStore\n• savedBooks []\n• recentBooks [] (cached identity)\n• bookStatuses {} ('currently_reading', etc.)"]
+        IDB["📦 IndexedDB (useOfflineBooks)\n• cached offline book bundles"]
+    end
+
+    subgraph LedgerHook ["useContinueReadingLedger Hook"]
+        FilterActive["Active Telemetry Filter\n(readingPositions exists OR readingProgress > 0)\n⚠️ Excludes un-opened shelved books"]
+        MissingCheck{"Missing Cached\nIdentity?"}
+        QueryMissing["🔄 useBooks(ids: missingIds)\n(TanStack Query - Gutendex API)"]
+        EnrichDict["Enriched Book Dictionary\n(savedBooks + recentBooks + queryResults)"]
+        Parser["Canonical Utilities (@/lib/utils)\n• formatAuthorNames (reverse 'Last, First' & strip dates)\n• cleanBookTitle (strip Gutenberg prefixes)\n• formatRelativeTime ('Recently', '2h ago')"]
+        Assembly["Assemble ActiveReadingVolume[]\n• progress, chapter, coordinates, lastReadAt\n• status (in_progress / completed / on_hold)\n• isOffline badge"]
+        FilterSort["Client Search & Status Filter\n• 'all' | 'in_progress' | 'completed' | 'on_hold'\n• CollectionSearchBar token matching\n• Recency sorting (lastReadAt desc)"]
+    end
+
+    subgraph UI ["Presentation Layer (BookmarksView.tsx)"]
+        Header["SectionHeader ('Continue Reading & Bookmarks')\n• Eyebrow, Flank lines, Clear Bookmarks modal"]
+        Search["CollectionSearchBar (real-time filtering)"]
+        Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]
+        Cards["BookmarkCard.tsx\n• Tactile ribbon accent\n• Interactive cover thumbnail\n• Cleaned title & normalized author\n• Reading coordinates badge\n• Offline pill badge\n• Status dropdown selector"]
+        ResumeAction["1-Click Resume / Cover Tap\n• Seed useReaderStore.openReader(book) [Warm Cache]\n• router.push('/read/' + id)"]
+    end
+
+    RS --> FilterActive
+    FilterActive --> MissingCheck
+    BS --> MissingCheck
+    MissingCheck -->|"Yes (e.g. un-shelved #55179)"| QueryMissing
+    QueryMissing --> EnrichDict
+    MissingCheck -->|"No"| EnrichDict
+    BS --> EnrichDict
+    EnrichDict --> Parser
+    Parser --> Assembly
+    IDB --> Assembly
+    Assembly --> FilterSort
+    FilterSort --> Cards
+    Header --> UI
+    Search --> FilterSort
+    Tabs --> FilterSort
+    Cards --> ResumeAction
+    ResumeAction -->|"Warm Reader Transition (0 CLS)"| RS
 ```
 
 ---
@@ -666,7 +732,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 876 tests across 121 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 896 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

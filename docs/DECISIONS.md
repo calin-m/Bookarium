@@ -72,5 +72,16 @@
 - **Decision**: Elevate all 4 reader tool dialogs (`ReaderTocDrawer`, `ReaderSearchDrawer`, `ReaderControls`, and `ReaderLanguageDrawer`) into dedicated, portaled components (`createPortal(..., document.body)`). Centralize modal visibility at the parent reader page level with strict 4-way mutual exclusivity (opening one closes the others, while re-clicking toggles closed). Elevate the reader header to `z-[10000]` so toolbar triggers remain interactive above modal backdrops, and decouple drawer lifecycle so the mobile tray only retracts upon explicit handle action.
 - **Consequences**: Deterministic modal exclusivity, zero backdrop event interception, unified theme-aware palette tokens across all 3 reading modes (Light, Sepia, Dark), seamless page-flipping during tool navigation, and 100% co-located test coverage.
 
+## ADR-013: Headless Continue Reading Ledger, Authentic Telemetry & Two-Way Metadata Synchronization
+- **Status**: Accepted
+- **Context**: The application required a dedicated, tactile Bookmarks & Continue Reading ledger (`/?view=bookmarks`) to allow readers to immediately resume active public domain volumes. Prior to this decision, volumes accessed directly via URL (e.g. `/read/55179`) had active reading positions saved in `useReaderStore`, but lacked cached book metadata in `useBookshelfStore`, causing bookmark cards to render generic Gutenberg fallbacks (`Gutenberg Volume #55179` and `Public Domain Author`). Furthermore, books added to user bookshelves without any active reading telemetry were appearing on bookmarks with contradictory "Never opened" badges, and clearing reading progress conflated reading telemetry with user bookshelf curation.
+- **Decision**: Architect a headless, provider-agnostic ledger hook (`useContinueReadingLedger.ts`) governed by four core principles:
+  1. **Strict Telemetry Enrollment**: A book is enrolled into the ledger strictly when active reading coordinates exist (`readingPositions` map entry) or progress is greater than zero (`readingProgress > 0`), ensuring zero unopened books appear on the Bookmarks page.
+  2. **Active Query Hydration**: The ledger computes missing IDs (volumes with active telemetry but no local cached entity in `savedBooks` or `recentBooks`) and hydrates their authentic metadata dynamically via TanStack React Query (`useBooks`), injecting results directly into the book dictionary.
+  3. **Reader Handoff & Persistence Co-Evolution**: When a volume is opened in `/read/[id]`, its resolved identity is immediately persisted to `recentBooks`, while clicking resume or tapping covers on bookmark cards primes `useReaderStore.openReader(book)` to guarantee 0ms warm-cache route transitions with zero layout shift.
+  4. **Decoupled Telemetry Clearing**: Resetting reading positions (`clearVolumeProgress` / `clearAllVolumes`) strictly purges reader coordinates and progress without mutating or deleting user bookshelf curation (`bookStatuses`).
+- **Consequences**: 100% authentic title and author presentation across all active volumes, mathematical zero "Never opened" artifacts on bookmarks, clean decoupling between user library curation and reader coordinates, and fluid, warm route transitions across reading sessions.
+
+
 
 

@@ -9,6 +9,7 @@ import {
   formatAuthorNames,
   formatPrimarySubject,
   extractBookTags,
+  formatRelativeTime,
 } from './utils';
 
 describe('lib/utils', () => {
@@ -102,11 +103,15 @@ describe('lib/utils', () => {
       expect(formatAuthorName(undefined)).toBe('');
     });
 
-    it('should format array of author objects into comma separated string', () => {
+    it('should format array of author objects or strings into comma separated string', () => {
       expect(formatAuthorNames([{ name: 'Marx, Karl' }, { name: 'Engels, Friedrich' }])).toBe(
         'Karl Marx, Friedrich Engels'
       );
+      expect(formatAuthorNames(['Marx, Karl', 'Engels, Friedrich'])).toBe(
+        'Karl Marx, Friedrich Engels'
+      );
       expect(formatAuthorNames([{ name: 'Austen, Jane' }])).toBe('Jane Austen');
+      expect(formatAuthorNames(['Austen, Jane'])).toBe('Jane Austen');
       expect(formatAuthorNames('Austen, Jane')).toBe('Jane Austen');
       expect(formatAuthorNames([])).toBe('');
       expect(formatAuthorNames(undefined)).toBe('');
@@ -161,6 +166,42 @@ describe('lib/utils', () => {
       expect(extractBookTags(undefined)).toEqual(['Classic Literature']);
       expect(extractBookTags([])).toEqual(['Classic Literature']);
       expect(extractBookTags([''])).toEqual(['Classic Literature']);
+    });
+  });
+
+  describe('formatRelativeTime', () => {
+    it('returns "Just now" for timestamps less than 1 minute ago', () => {
+      const now = new Date(Date.now() - 30 * 1000).toISOString();
+      expect(formatRelativeTime(now)).toBe('Just now');
+    });
+
+    it('returns minutes ago for timestamps under 1 hour', () => {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      expect(formatRelativeTime(tenMinutesAgo)).toBe('10m ago');
+    });
+
+    it('returns hours ago for timestamps under 24 hours', () => {
+      const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+      expect(formatRelativeTime(threeHoursAgo)).toBe('3h ago');
+    });
+
+    it('returns days ago for timestamps under 7 days', () => {
+      const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+      expect(formatRelativeTime(twoDaysAgo)).toBe('2d ago');
+    });
+
+    it('formats date string for timestamps older than 7 days', () => {
+      const oldDate = new Date('2025-01-15T12:00:00Z').toISOString();
+      const expected = new Date(oldDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      expect(formatRelativeTime(oldDate)).toBe(expected);
+    });
+
+    it('falls back gracefully to "Recently" for invalid dates or epoch zero', () => {
+      expect(formatRelativeTime(undefined)).toBe('Recently');
+      expect(formatRelativeTime(null)).toBe('Recently');
+      expect(formatRelativeTime('')).toBe('Recently');
+      expect(formatRelativeTime('invalid-date')).toBe('Recently');
+      expect(formatRelativeTime(new Date(0).toISOString())).toBe('Recently');
     });
   });
 });

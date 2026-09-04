@@ -9,6 +9,7 @@ import { usePageTranslation } from '@/hooks/queries/usePageTranslation';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import type { GutendexBook } from '@/types/book.types';
 import {
   extractGutenbergHeaderMetadata,
 } from '@/lib/gutenberg-parser';
@@ -184,6 +185,43 @@ export default function BookReaderPage() {
       updateBookMetadata(numericId, resolvedIdentity.title, resolvedIdentity.author);
     }
   }, [numericId, resolvedIdentity.title, resolvedIdentity.author, updateBookMetadata]);
+
+  // Persist authentic resolved book identity into recentBooks and warm reader store
+  useEffect(() => {
+    if (numericId <= 0) return;
+    const existingRecent = useBookshelfStore.getState().recentBooks.find((b) => b.id === numericId);
+
+    if (booksData?.results?.[0]) {
+      const apiBook = booksData.results[0];
+      useBookshelfStore.getState().addRecentBook(apiBook);
+      useReaderStore.getState().openReader(apiBook);
+    } else if (
+      resolvedIdentity.title &&
+      !isPlaceholderTitle(resolvedIdentity.title) &&
+      (!existingRecent || isPlaceholderTitle(existingRecent.title))
+    ) {
+      const bookObj: GutendexBook = {
+        id: numericId,
+        title: resolvedIdentity.title,
+        authors: resolvedIdentity.author
+          ? [{ name: resolvedIdentity.author, birth_year: null, death_year: null }]
+          : [],
+        translators: [],
+        subjects: resolvedIdentity.primarySubject ? [resolvedIdentity.primarySubject] : [],
+        bookshelves: [],
+        languages: resolvedIdentity.languages || ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {
+          'image/jpeg': `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.cover.medium.jpg`,
+          'application/epub+zip': `https://www.gutenberg.org/ebooks/${numericId}.epub3.images`,
+        },
+        download_count: 0,
+      };
+      useBookshelfStore.getState().addRecentBook(bookObj);
+      useReaderStore.getState().openReader(bookObj);
+    }
+  }, [numericId, booksData, resolvedIdentity]);
 
   const bookTitle = resolvedIdentity.title;
   const bookAuthor = resolvedIdentity.author;

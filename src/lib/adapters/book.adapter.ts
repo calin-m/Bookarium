@@ -1,20 +1,13 @@
 import type { GutendexBook, Author, Book } from '@/types/book.types';
+import { formatAuthorName } from '@/lib/utils';
+import { cleanBookTitle } from '@/lib/book-metadata';
 
 /**
  * Normalizes Gutenberg author name formatting ("Austen, Jane" -> "Jane Austen")
+ * Delegates to canonical formatAuthorName from lib/utils for DRY architecture.
  */
 export function normalizeAuthorName(rawName: string): string {
-  if (!rawName) return '';
-  const trimmed = rawName.trim();
-  if (!trimmed.includes(',')) return trimmed;
-
-  const parts = trimmed.split(',').map((p) => p.trim());
-  if (parts.length >= 2) {
-    const lastName = parts[0];
-    const firstName = parts.slice(1).join(' ');
-    return `${firstName} ${lastName}`.trim();
-  }
-  return trimmed;
+  return formatAuthorName(rawName);
 }
 
 /**
@@ -130,7 +123,7 @@ export function toCanonicalBook(
 
   return {
     id: input.id ?? 0,
-    title: input.title || 'Untitled',
+    title: cleanBookTitle(input.title) || 'Untitled',
     authors,
     subjects: Array.isArray(input.subjects) ? [...input.subjects] : [],
     languages: Array.isArray(input.languages) ? [...input.languages] : [],

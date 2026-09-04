@@ -1,9 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
 import { BookmarksView } from './BookmarksView';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import type { GutendexBook } from '@/types/book.types';
+
+function renderWithClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+  return render(
+    React.createElement(QueryClientProvider, { client: queryClient }, ui)
+  );
+}
+
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}));
+
+let mockOfflineBookIds: number[] = [];
+vi.mock('@/hooks/useOfflineBooks', () => ({
+  useOfflineBooks: () => ({
+    offlineBookIds: mockOfflineBookIds,
+    isBookOffline: (id: number) => mockOfflineBookIds.includes(id),
+  }),
+}));
 
 const mockBook: GutendexBook = {
   id: 1342,
@@ -23,6 +53,8 @@ const mockBook: GutendexBook = {
 
 describe('BookmarksView', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    mockOfflineBookIds = [];
     useReaderStore.setState({
       readingProgress: {},
       readingPositions: {},
@@ -37,7 +69,7 @@ describe('BookmarksView', () => {
 
   it('renders empty state when no volumes are in the ledger', () => {
     const handleBrowse = vi.fn();
-    render(<BookmarksView onBrowseCatalog={handleBrowse} />);
+    renderWithClient(<BookmarksView onBrowseCatalog={handleBrowse} />);
 
     expect(screen.getByText('Continue Reading & Bookmarks')).toBeInTheDocument();
     expect(screen.getByText('No active reading volumes yet')).toBeInTheDocument();
@@ -60,7 +92,7 @@ describe('BookmarksView', () => {
       lastReadAt: new Date().toISOString(),
     });
 
-    render(<BookmarksView />);
+    renderWithClient(<BookmarksView />);
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('60%')).toBeInTheDocument();
@@ -86,7 +118,7 @@ describe('BookmarksView', () => {
     });
     useReaderStore.getState().setProgress(1342, 45);
 
-    render(<BookmarksView />);
+    renderWithClient(<BookmarksView />);
 
     const searchInput = screen.getByRole('textbox', { name: /search bookmarks/i });
     expect(searchInput).toBeInTheDocument();
@@ -117,7 +149,7 @@ describe('BookmarksView', () => {
       lastReadAt: new Date().toISOString(),
     });
 
-    render(<BookmarksView />);
+    renderWithClient(<BookmarksView />);
 
     const clearBookmarksBtn = screen.getByRole('button', { name: /Clear Bookmarks/i });
     expect(clearBookmarksBtn).toBeInTheDocument();
@@ -142,6 +174,56 @@ describe('BookmarksView', () => {
     expect(screen.queryByTestId('clear-bookmarks-dialog')).not.toBeInTheDocument();
     expect(screen.getByText('No active reading volumes yet')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Clear Bookmarks/i })).not.toBeInTheDocument();
+  });
+
+  it('resumes volume by pre-populating useReaderStore and navigating to reader route', () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 60);
+
+    renderWithClient(<BookmarksView />);
+
+    const resumeBtn = screen.getByRole('button', { name: /^Resume reading Pride and Prejudice$/i });
+    fireEvent.click(resumeBtn);
+
+    expect(useReaderStore.getState().currentBook?.id).toBe(1342);
+    expect(mockPush).toHaveBeenCalledWith('/read/1342');
+  });
+
+  it('passes offline status to BookmarkCard when book is saved in offline storage', () => {
+    mockOfflineBookIds = [1342];
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 60);
+
+    renderWithClient(<BookmarksView />);
+
+    expect(screen.getByLabelText('Available offline')).toBeInTheDocument();
+    expect(screen.getByText('Offline')).toBeInTheDocument();
+  });
+
+  it('hydrates missing book metadata (e.g. Volume #55179) and displays real title and author', async () => {
+    useReaderStore.getState().setProgress(55179, 45);
+    useReaderStore.getState().saveReadingPosition(55179, {
+      chapterIndex: 1,
+      chapterPage: 2,
+      globalPage: 8,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    // Wait for the query to resolve and hydrate the card
+    await waitFor(() => {
+      expect(screen.getByText('The King in Yellow')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Robert W. Chambers')).toBeInTheDocument();
+    expect(screen.getByText('45%')).toBeInTheDocument();
   });
 });
 

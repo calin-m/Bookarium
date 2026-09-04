@@ -537,5 +537,20 @@ describe('Dedicated Reader Page (/read/[id])', () => {
 
     expect(screen.queryByTestId('volume-completion-modal')).not.toBeInTheDocument();
   });
+
+  it('persists authentic resolved book metadata to recentBooks and warms reader store on load', async () => {
+    expect(useBookshelfStore.getState().recentBooks).toEqual([]);
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      const recent = useBookshelfStore.getState().recentBooks;
+      expect(recent.length).toBeGreaterThanOrEqual(1);
+      expect(recent[0].id).toBe(1342);
+      expect(recent[0].title).toBe('Pride and Prejudice');
+    });
+
+    expect(useReaderStore.getState().currentBook?.id).toBe(1342);
+  });
 });
 

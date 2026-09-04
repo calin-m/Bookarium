@@ -79,6 +79,10 @@ describe('useReaderStore', () => {
     // clamping
     useReaderStore.getState().setProgress(bookId, 150);
     expect(useReaderStore.getState().getProgress(bookId)).toBe(100);
+
+    // rounding
+    useReaderStore.getState().setProgress(bookId, 0.578034);
+    expect(useReaderStore.getState().getProgress(bookId)).toBe(1);
   });
 
   it('should save, retrieve, and clear exact reading positions', () => {

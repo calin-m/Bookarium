@@ -73,6 +73,7 @@ export function useReaderSession({
     ) {
       return;
     }
+    hasRestoredPositionRef.current = true;
     const savedPos = getReadingPosition(numericId);
     if (savedPos && (savedPos.chapterIndex > 0 || savedPos.chapterPage > 1)) {
       const clampedChap = Math.min(
@@ -99,7 +100,6 @@ export function useReaderSession({
       }, 4000);
       return () => clearTimeout(timer);
     }
-    hasRestoredPositionRef.current = true;
   }, [hasMounted, numericId, chaptersWithPagination, getReadingPosition]);
 
   const activeChapter = chaptersWithPagination[activeChapterIndex] || chaptersWithPagination[0];
