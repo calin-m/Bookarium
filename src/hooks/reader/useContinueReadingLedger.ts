@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { useBooks } from '@/hooks/queries/useBooks';
 import { toCanonicalBook } from '@/lib/adapters/book.adapter';
+import { resolveBookMetadata, cleanBookTitle } from '@/lib/book-metadata';
 import type {
   ActiveReadingVolume,
   LedgerFilter,
@@ -50,39 +52,45 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   const bookStatuses = useBookshelfStore((s) => s.bookStatuses);
   const setReadingStatus = useBookshelfStore((s) => s.setReadingStatus);
 
-  const volumes: ActiveReadingVolume[] = useMemo(() => {
+  const allActiveIds = useMemo(() => {
     if (!hasMounted) return [];
 
     const idSet = new Set<number>();
-
-    // Collect IDs from reading positions
     Object.keys(readingPositions).forEach((idStr) => {
       const id = parseInt(idStr, 10);
       if (!Number.isNaN(id)) idSet.add(id);
     });
 
-    // Collect IDs from reading progress
     Object.keys(readingProgress).forEach((idStr) => {
       const id = parseInt(idStr, 10);
       if (!Number.isNaN(id) && readingProgress[id] > 0) idSet.add(id);
     });
 
-    // Collect IDs from recent books
-    recentBooks.forEach((book) => {
-      if (book && typeof book.id === 'number') idSet.add(book.id);
-    });
+    return Array.from(idSet).sort((a, b) => a - b);
+  }, [hasMounted, readingPositions, readingProgress]);
 
-    // Collect IDs from explicitly curated currently_reading books
-    Object.entries(bookStatuses).forEach(([idStr, status]) => {
-      const id = parseInt(idStr, 10);
-      if (!Number.isNaN(id) && status === 'currently_reading') {
-        idSet.add(id);
-      }
-    });
+  const missingIds = useMemo(() => {
+    const known = new Set<number>();
+    savedBooks.forEach((b) => b?.id && known.add(b.id));
+    recentBooks.forEach((b) => b?.id && known.add(b.id));
+    const current = useReaderStore.getState().currentBook;
+    if (current?.id) known.add(current.id);
+
+    return allActiveIds.filter((id) => !known.has(id));
+  }, [allActiveIds, savedBooks, recentBooks]);
+
+  const idsParam = useMemo(() => missingIds.join(','), [missingIds]);
+  const { data: missingBooksData, isLoading: isMissingBooksLoading } = useBooks(
+    { ids: idsParam, copyright: false },
+    { enabled: missingIds.length > 0 }
+  );
+
+  const volumes: ActiveReadingVolume[] = useMemo(() => {
+    if (!hasMounted) return [];
 
     const bookDictionary = new Map<number, ReturnType<typeof toCanonicalBook>>();
 
-    // Prioritize metadata sources: recentBooks, then savedBooks, then currentBook
+    // Prioritize metadata sources: recentBooks, then savedBooks, then currentBook, then fetched missing books
     savedBooks.forEach((b) => {
       if (b && typeof b.id === 'number') {
         bookDictionary.set(b.id, toCanonicalBook(b));
@@ -100,27 +108,46 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       bookDictionary.set(currentBook.id, toCanonicalBook(currentBook));
     }
 
+    if (missingBooksData?.results) {
+      missingBooksData.results.forEach((b) => {
+        if (b && typeof b.id === 'number') {
+          bookDictionary.set(b.id, toCanonicalBook(b));
+        }
+      });
+    }
+
     const items: ActiveReadingVolume[] = [];
 
-    idSet.forEach((bookId) => {
+    allActiveIds.forEach((bookId) => {
       let book = bookDictionary.get(bookId);
       if (!book) {
+        const resolved = resolveBookMetadata({
+          id: bookId,
+          currentBook: currentBook?.id === bookId ? currentBook : undefined,
+        });
+
         book = {
           id: bookId,
-          title: `Volume #${bookId}`,
-          authors: ['Public Domain Author'],
-          subjects: [],
-          languages: ['en'],
+          title: cleanBookTitle(resolved.title) || `Volume #${bookId}`,
+          authors: resolved.author ? [resolved.author] : ['Public Domain Author'],
+          subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
+          languages: resolved.languages || ['en'],
           coverUrl: `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
           epubUrl: `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
           htmlUrl: null,
           txtUrl: null,
           downloadCount: 0,
         };
+      } else {
+        book = {
+          ...book,
+          title: cleanBookTitle(book.title),
+        };
       }
 
       const position = readingPositions[bookId];
-      const progress = Math.min(Math.max(readingProgress[bookId] ?? 0, 0), 100);
+      const rawProgress = readingProgress[bookId] ?? 0;
+      const progress = Math.min(Math.max(Math.round(rawProgress), 0), 100);
       const rawStatus = bookStatuses[bookId];
 
       let status: LedgerItemStatus = 'in_progress';
@@ -150,7 +177,16 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     });
 
     return items;
-  }, [hasMounted, readingPositions, readingProgress, recentBooks, savedBooks, bookStatuses]);
+  }, [
+    hasMounted,
+    allActiveIds,
+    readingPositions,
+    readingProgress,
+    recentBooks,
+    savedBooks,
+    bookStatuses,
+    missingBooksData,
+  ]);
 
   const counts = useMemo(() => {
     let inProgress = 0;
@@ -210,12 +246,8 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     (bookId: number) => {
       clearReadingPosition(bookId);
       setProgress(bookId, 0);
-      void setReadingStatus(bookId, null);
-      useBookshelfStore.setState((state) => ({
-        recentBooks: state.recentBooks.filter((b) => b.id !== bookId),
-      }));
     },
-    [clearReadingPosition, setProgress, setReadingStatus]
+    [clearReadingPosition, setProgress]
   );
 
   const clearAllVolumes = useCallback(() => {
@@ -223,19 +255,6 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       readingProgress: {},
       readingPositions: {},
       currentBook: null,
-    });
-    useBookshelfStore.setState((state) => {
-      const nextStatuses = { ...state.bookStatuses };
-      Object.keys(nextStatuses).forEach((key) => {
-        const id = parseInt(key, 10);
-        if (nextStatuses[id] === 'currently_reading') {
-          delete nextStatuses[id];
-        }
-      });
-      return {
-        recentBooks: [],
-        bookStatuses: nextStatuses,
-      };
     });
   }, []);
 
@@ -247,7 +266,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     searchQuery,
     setSearchQuery,
     counts,
-    isLoading: !hasMounted,
+    isLoading: !hasMounted || (missingIds.length > 0 && isMissingBooksLoading),
     updateVolumeStatus,
     clearVolumeProgress,
     clearAllVolumes,

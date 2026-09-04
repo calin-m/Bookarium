@@ -129,6 +129,22 @@ export const mockBooks: GutendexBook[] = [
     },
     download_count: 42100,
   },
+  {
+    id: 55179,
+    title: 'The King in Yellow',
+    authors: [{ name: 'Chambers, Robert W. (Robert William)', birth_year: 1865, death_year: 1933 }],
+    translators: [],
+    subjects: ['Short stories, American', 'Gothic fiction'],
+    bookshelves: ['Horror Fiction'],
+    languages: ['en'],
+    copyright: false,
+    media_type: 'Text',
+    formats: {
+      'image/jpeg': 'https://www.gutenberg.org/cache/epub/55179/pg55179.cover.medium.jpg',
+      'application/epub+zip': 'https://www.gutenberg.org/ebooks/55179.epub3.images',
+    },
+    download_count: 12500,
+  },
 ];
 
 export const sampleBookText = `The Project Gutenberg eBook of Pride and Prejudice, by Jane Austen
@@ -175,8 +191,16 @@ export const handlers = [
     const search = url.searchParams.get('search')?.toLowerCase() || '';
     const topic = url.searchParams.get('topic')?.toLowerCase() || '';
     const languages = url.searchParams.get('languages')?.toLowerCase() || '';
+    const ids = url.searchParams.get('ids');
 
     let filtered = [...mockBooks];
+
+    if (ids) {
+      const idList = ids.split(',').map((id) => parseInt(id.trim(), 10)).filter((n) => !isNaN(n));
+      if (idList.length > 0) {
+        filtered = filtered.filter((b) => idList.includes(b.id));
+      }
+    }
 
     if (search) {
       filtered = filtered.filter(
@@ -214,8 +238,16 @@ export const handlers = [
     const search = url.searchParams.get('search')?.toLowerCase() || '';
     const topic = url.searchParams.get('topic')?.toLowerCase() || '';
     const languages = url.searchParams.get('languages')?.toLowerCase() || '';
+    const ids = url.searchParams.get('ids');
 
     let filtered = [...mockBooks];
+
+    if (ids) {
+      const idList = ids.split(',').map((id) => parseInt(id.trim(), 10)).filter((n) => !isNaN(n));
+      if (idList.length > 0) {
+        filtered = filtered.filter((b) => idList.includes(b.id));
+      }
+    }
 
     if (search) {
       filtered = filtered.filter(

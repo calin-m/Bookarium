@@ -58,10 +58,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         isVisible ? 'translate-y-0' : '-translate-y-full pointer-events-none'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Brand */}
         <div
-          className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group select-none shrink-0"
+          className="flex items-center gap-2 sm:gap-3 cursor-pointer group select-none shrink-0"
           onClick={handleBrandClick}
           role="button"
           tabIndex={0}
@@ -77,21 +77,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             <BookOpen className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-lg sm:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap">
+            <span className="hidden min-[390px]:inline text-sm sm:text-base md:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap">
               {SITE_CONFIG.LOGO_TEXT}
             </span>
           </div>
         </div>
 
         {/* Right Navigation & Actions */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1.5 md:gap-2 shrink-0">
           {/* Navigation Tabs */}
-          <nav className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
+          <nav className="flex items-center gap-0.5 sm:gap-1.5 md:gap-2">
             <button
               type="button"
               onClick={() => onViewChange?.('catalog')}
               title="Catalog"
-              className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
                 activeView === 'catalog'
                   ? `${LIBRARY_THEMES.catalog.navActiveText} font-bold ${LIBRARY_THEMES.catalog.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -106,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => onViewChange?.('bookshelf')}
               title="Bookshelf"
-              className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
                 activeView === 'bookshelf'
                   ? `${LIBRARY_THEMES.bookshelf.navActiveText} font-bold ${LIBRARY_THEMES.bookshelf.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -127,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => onViewChange?.('likes')}
               title="Favorites"
-              className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
                 activeView === 'likes'
                   ? `${LIBRARY_THEMES.favorites.navActiveText} font-bold ${LIBRARY_THEMES.favorites.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -148,7 +148,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => onViewChange?.('notebook')}
               title="Notebook"
-              className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
                 activeView === 'notebook'
                   ? `${LIBRARY_THEMES.notebook.navActiveText} font-bold ${LIBRARY_THEMES.notebook.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -169,7 +169,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => onViewChange?.('bookmarks')}
               title="Bookmarks & Continue Reading"
-              className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
                 activeView === 'bookmarks'
                   ? `${LIBRARY_THEMES.bookmarks.navActiveText} font-bold ${LIBRARY_THEMES.bookmarks.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'

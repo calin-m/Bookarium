@@ -12,6 +12,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useContinueReadingLedger } from '@/hooks/reader/useContinueReadingLedger';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useReaderStore } from '@/stores/useReaderStore';
 import { BookmarkCard } from './BookmarkCard';
 import { CollectionSearchBar } from './CollectionSearchBar';
 import { Button } from '@/components/ui/Button';
@@ -27,6 +29,7 @@ export interface BookmarksViewProps {
 export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const { isBookOffline } = useOfflineBooks();
 
   const {
     filteredVolumes,
@@ -41,6 +44,10 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
   } = useContinueReadingLedger();
 
   const handleResume = (bookId: number) => {
+    const matchedVolume = filteredVolumes.find((v) => v.book.id === bookId);
+    if (matchedVolume?.book) {
+      useReaderStore.getState().openReader(matchedVolume.book);
+    }
     router.push(ROUTES.READ(bookId));
   };
 
@@ -183,6 +190,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
               <BookmarkCard
                 key={vol.book.id}
                 volume={vol}
+                isOffline={isBookOffline(vol.book.id)}
                 onResume={handleResume}
                 onStatusChange={updateVolumeStatus}
                 onClear={clearVolumeProgress}

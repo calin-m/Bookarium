@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { GutendexBook } from '@/types/book.types';
+import type { GutendexBook, Book } from '@/types/book.types';
 import { useThemeStore, applyThemeToDocument } from './useThemeStore';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
@@ -16,7 +16,7 @@ export interface BookReadingPosition {
 }
 
 export interface ReaderState {
-  currentBook: GutendexBook | null;
+  currentBook: GutendexBook | Book | null;
   isOpen: boolean;
   fontSize: number;
   lineHeight: number;
@@ -30,7 +30,7 @@ export interface ReaderState {
    * Sets the active book identity in memory prior to navigating to /read/[id].
    * Also sets isOpen: true for compatibility.
    */
-  openReader: (book: GutendexBook) => void;
+  openReader: (book: GutendexBook | Book) => void;
   /**
    * Resets active reading state flag.
    */
@@ -98,7 +98,7 @@ export const useReaderStore = create<ReaderState>()(
       },
 
       setProgress: (bookId, progress) => {
-        const clamped = Math.min(Math.max(progress, 0), 100);
+        const clamped = Math.min(Math.max(Math.round(progress), 0), 100);
         set((state) => ({
           readingProgress: {
             ...state.readingProgress,

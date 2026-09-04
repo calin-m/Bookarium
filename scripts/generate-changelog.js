@@ -15,15 +15,20 @@ const RELEASES = [
     sections: {
       Added: [
         'Bookmarks & Continue Reading Ledger (`/?view=bookmarks`): Dedicated reading ledger with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), real-time search (`CollectionSearchBar`), "Clear Bookmarks" accessible confirmation modal, and 1-click chapter resume.',
+        'Authentic Reading Telemetry & Unopened Volume Exclusion: Refined `useContinueReadingLedger` to strictly enroll books with active reading coordinates (`readingPositions`) or progress (`readingProgress > 0`), eliminating contradictory "Never opened" cards on bookmarks and decoupling ledger resets from user curation.',
+        'Two-Way Metadata Synchronization & Warm Reader Handoff: Active query hydration in `useContinueReadingLedger` resolves missing book metadata via TanStack Query without displaying generic Gutenberg fallbacks; `/read/[id]` immediately persists resolved book identity to `recentBooks` on load and primes reader state upon resume.',
+        'DRY Parser & Adapter Normalization: Unified author reversed-name parsing, lifespan stripping (`formatAuthorNames`), title prefix cleaning (`cleanBookTitle`), and relative time calculation (`formatRelativeTime`) into canonical `@/lib/utils` and `book.adapter.ts`.',
         'Unified SectionHeader & Editorial Typography Harmonization (`SectionHeader.tsx`): Reusable `<SectionHeader>` and `<SectionTitle>` component standardizing subtle decorative flank border lines (`h-[1px] w-12 bg-border`), refined typography scale (`text-3xl sm:text-4xl`), and action slots across Catalog, Bookshelf, Favorites, Bookmarks, and Literary Notebook views.',
         'Tactile Booksaw Page-Turn Transitions: Integrated hardware-accelerated `animate-page-turn` transitions on view transitions and filter tab switching in the Bookmarks ledger.',
         'Canonical Domain Book Entity & Adapter (`toCanonicalBook`): Provider-agnostic Book and ActiveReadingVolume domain entities in `src/types/book.types.ts` and `src/lib/adapters/book.adapter.ts` for clean architectural decoupling.',
         'Headless Reading Ledger Hook (`useContinueReadingLedger.ts`): Aggregates reading progress, bookmarks, and statuses across stores with client-side multi-field search filtering, status filtering, and recency sorting.',
         'Navigation & Route Integration: Added Bookmarks tab to Navbar with BookMarked icon, active styling in `library-tokens.ts`, and BOOKMARKS route target in `routes.ts`.',
-        'Co-Located Test Suite Expansion: Added new test suites (121 suites / 875 tests total) with 100% pass rate.',
+        'Co-Located Test Suite Expansion: Added new test suites (120 suites / 896 tests total) with 100% pass rate and >= 92% coverage.',
       ],
       Fixed: [
         'Pre-Commit Hook Hardening (`.husky/pre-commit`): Eliminated child git process lock collisions on Windows NTFS by running the 7-Gateway Quality Engine via pure Node.js.',
+        'Generic Gutenberg Fallbacks (e.g. Volume #55179): Resolved placeholder title and author display by dynamically querying Gutendex and persisting metadata across client reading sessions.',
+        'Un-Opened Books Appearing on Bookmarks: Fixed ledger volume calculation so unread bookshelf books never pollute the continue reading flow with "Never opened" tags.',
       ],
     },
   },

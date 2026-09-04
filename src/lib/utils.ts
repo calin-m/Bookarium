@@ -127,16 +127,23 @@ export function formatAuthorName(rawName?: string): string {
 }
 
 /**
- * Formats an array of authors or raw author string into a natural comma-separated string.
+ * Formats an array of authors (strings or Gutendex author objects) or raw author string
+ * into a natural comma-separated string.
  */
-export function formatAuthorNames(authors?: { name: string }[] | string): string {
+export function formatAuthorNames(
+  authors?: (string | { name: string } | { name?: string })[] | string
+): string {
   if (!authors) return '';
   if (typeof authors === 'string') {
     return formatAuthorName(authors);
   }
   if (Array.isArray(authors) && authors.length > 0) {
     return authors
-      .map((a) => formatAuthorName(a.name))
+      .map((a) => {
+        if (!a) return '';
+        if (typeof a === 'string') return formatAuthorName(a);
+        return formatAuthorName(a.name);
+      })
       .filter(Boolean)
       .join(', ');
   }
@@ -185,5 +192,33 @@ export function extractBookTags(
   }
 
   return tags.length > 0 ? tags : ['Classic Literature'];
+}
+
+/**
+ * Formats an ISO date timestamp into a human-readable relative interval
+ * (e.g. "Just now", "5m ago", "2h ago", "3d ago", or "Oct 12").
+ * Safely falls back to "Recently" for invalid dates or epoch zero.
+ */
+export function formatRelativeTime(dateIso?: string | null): string {
+  if (!dateIso || typeof dateIso !== 'string') return 'Recently';
+  try {
+    const timestamp = new Date(dateIso).getTime();
+    if (!timestamp || Number.isNaN(timestamp) || timestamp <= 0) {
+      return 'Recently';
+    }
+    const diffMs = Date.now() - timestamp;
+    if (diffMs < 0) return 'Just now';
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return new Date(dateIso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch {
+    return 'Recently';
+  }
 }
 

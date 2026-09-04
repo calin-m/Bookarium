@@ -12,9 +12,11 @@ describe('Navbar component', () => {
     document.documentElement.className = '';
   });
 
-  it('should render brand and navigation items', () => {
+  it('should render brand and navigation items with responsive title classes', () => {
     render(<Navbar activeView="catalog" />);
-    expect(screen.getByText(/Bookarium/i)).toBeInTheDocument();
+    const brandText = screen.getByText(/Bookarium/i);
+    expect(brandText).toBeInTheDocument();
+    expect(brandText).toHaveClass('min-[390px]:inline', 'text-sm');
     expect(screen.getByRole('button', { name: 'Catalog' })).toBeInTheDocument();
     expect(screen.getByLabelText('Bookshelf')).toBeInTheDocument();
     expect(screen.getByLabelText('Liked Books')).toBeInTheDocument();
