@@ -4,6 +4,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BookPreviewModal } from './BookPreviewModal';
 import { mockBooks } from '@/mocks/handlers';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
 
 const createTestQueryClient = () =>
   new QueryClient({
@@ -25,6 +26,15 @@ describe('BookPreviewModal component', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    useBookshelfStore.setState({
+      savedBooks: [],
+      readingQueue: [],
+      likedBooks: [],
+      likedBookIds: [],
+      recentBooks: [],
+      bookRatings: {},
+      bookStatuses: {},
+    });
   });
 
   it('renders nothing when isOpen is false or book is null', () => {
@@ -216,4 +226,167 @@ describe('BookPreviewModal component', () => {
     expect(screen.getAllByText(longBook.title).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Robert Louis Stevenson/i).length).toBeGreaterThan(0);
   });
+
+  it('does not render curation controls for unsaved books in catalog view', () => {
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        activeView="catalog"
+        onClose={vi.fn()}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(screen.queryByRole('radiogroup', { name: /rate/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /reading status selector/i })).not.toBeInTheDocument();
+  });
+
+  it('renders curation controls when activeView is bookshelf or likes', () => {
+    const { rerender } = renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        activeView="bookshelf"
+        onClose={vi.fn()}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(screen.getByRole('radiogroup', { name: /rate/i })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /reading status selector/i })).toBeInTheDocument();
+
+    rerender(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <BookPreviewModal
+          book={defaultBook}
+          isOpen={true}
+          activeView="likes"
+          onClose={vi.fn()}
+        />
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByRole('radiogroup', { name: /rate/i })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /reading status selector/i })).toBeInTheDocument();
+  });
+
+  it('does not render curation controls in catalog view even if book is saved or has ratings in store', () => {
+    useBookshelfStore.setState({
+      savedBooks: [defaultBook],
+      bookRatings: { [defaultBook.id]: 4 },
+      bookStatuses: { [defaultBook.id]: 'currently_reading' },
+    });
+
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        activeView="catalog"
+        onClose={vi.fn()}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(screen.queryByRole('radiogroup', { name: /rate/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /reading status selector/i })).not.toBeInTheDocument();
+  });
+
+  it('renders curation toolbar with solid bg-card and text-foreground modal styling', () => {
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        activeView="likes"
+        onClose={vi.fn()}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    const toolbar = screen.getByTestId('personal-curation-toolbar');
+    expect(toolbar).toBeInTheDocument();
+    expect(toolbar.className).toContain('bg-card');
+    expect(toolbar.className).toContain('text-foreground');
+    expect(toolbar.className).toContain('border-border');
+    expect(toolbar.className).not.toContain('bg-card/95');
+    expect(toolbar.className).not.toContain('backdrop-blur-md');
+  });
+
+  it('closes modal when clicking empty space in the viewport container outside the book', () => {
+    const handleClose = vi.fn();
+
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        activeView="likes"
+        onClose={handleClose}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    const viewportContainer = screen.getByTestId('preview-viewport-container');
+    fireEvent.click(viewportContainer);
+
+    // After animation duration, handleClose should be triggered
+    act(() => {
+      vi.advanceTimersByTime(450);
+    });
+
+    expect(handleClose).toHaveBeenCalled();
+  });
+
+  it('does not close modal when clicking inside the curation bar', () => {
+    const handleClose = vi.fn();
+
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        activeView="likes"
+        onClose={handleClose}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    const toolbar = screen.getByTestId('personal-curation-toolbar');
+    fireEvent.click(toolbar);
+
+    // Clicking star button inside toolbar
+    const fourStarBtn = screen.getByRole('radio', { name: /Rate 4 of 5 stars/i });
+    fireEvent.click(fourStarBtn);
+
+    // Clicking reading status badge
+    const wantToReadBtn = screen.getByRole('radio', { name: /Want to Read/i });
+    fireEvent.click(wantToReadBtn);
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    // None of these clicks should have called handleClose
+    expect(handleClose).not.toHaveBeenCalled();
+    expect(useBookshelfStore.getState().bookRatings[defaultBook.id]).toBe(4);
+    expect(useBookshelfStore.getState().bookStatuses[defaultBook.id]).toBe('want_to_read');
+  });
 });
+
+

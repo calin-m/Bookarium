@@ -2,15 +2,15 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-75%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-12_of_16-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-88%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-14_of_16-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[███████████████░░░░░]` **12/16 (75%)**
+`[██████████████████░░]` **14/16 (88%)**
 
 ---
 
@@ -51,7 +51,7 @@
 ---
 
 ### Milestone 2: Scholar Annotations & Data Portability (`Target: v1.9.0`)
-`[███████████████░░░░░]` **3/4 (75%)**
+`[████████████████████]` **4/4 (100%)**
 
 > Transform Bookarium into a tactile literary notebook with colored quote highlights, personal annotations, and full library export/import.
 
@@ -61,19 +61,19 @@
   Dedicated commonplace journal (`/?view=notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, academic citation generation, and deletion protection.
 - [x] **IndexedDB Offline Book Storage** `✅ VERIFIED`
   Ultra-lightweight local caching of downloaded and saved book texts using IndexedDB (`idb-keyval`), enabling unabridged reading on airplanes or offline.
-- [ ] **Library Portability: Export & Import** `⏳ PLANNED`
+- [x] **Library Portability: Export & Import** `✅ VERIFIED`
   Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.
 
 ---
 
 ### Milestone 3: Habits, Goals & Library Curation (`Target: v2.0.0`)
-`[░░░░░░░░░░░░░░░░░░░░]` **0/3 (0%)**
+`[███████░░░░░░░░░░░░░]` **1/3 (33%)**
 
 > Rich reader curation, Goodreads-style reading statuses, and daily habit tracking analytics.
 
 - [ ] **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)** `⏳ PLANNED`
   Dedicated reading ledger displaying all books in progress with tactile bookmark cards, last-read passage snippets, completion percentages, filtering (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.
-- [ ] **1–5 Star Personal Ratings & Reading Statuses** `⏳ PLANNED`
+- [x] **1–5 Star Personal Ratings & Reading Statuses** `✅ VERIFIED`
   Assign 1–5 star ratings and reading statuses ("Want to Read", "Currently Reading", "Finished") to volumes across book cards and shelf management modals.
 - [ ] **Reading Streaks & Annual Goal Tracking** `⏳ PLANNED`
   Track daily reading activity timestamps to display consecutive reading streaks, estimated hours read, and annual reading challenge goals in the Account dashboard.

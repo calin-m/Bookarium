@@ -4,10 +4,12 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Bookmark, Heart, Sparkles, CheckCircle2, HardDriveDownload } from 'lucide-react';
+import { BookOpen, Download, Bookmark, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useBookRating } from '@/stores/useBookshelfStore';
+import { StarRating } from '@/components/ui/StarRating';
 import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
 
@@ -64,6 +66,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   onMoveBookToShelf,
 }) => {
   const router = useRouter();
+  const rating = useBookRating(book.id);
   const palette = SPINE_PALETTES[(book.id + bookIndex) % SPINE_PALETTES.length];
 
   // Deterministic height and thickness variation based on book id
@@ -147,6 +150,14 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         {/* Headcap Gilded Rule */}
         <div className="w-full h-0.5 border-t border-b border-white/20 mb-1 shrink-0 z-20" />
 
+        {/* Embossed Gold Rating Stamp on Leather Spine */}
+        {rating && (
+          <div className="flex items-center justify-center gap-0.5 mb-1 z-20 shrink-0" title={`Rated ${rating}/5 stars`}>
+            <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+            <span className="font-mono text-[9px] font-bold text-amber-200">{rating}</span>
+          </div>
+        )}
+
         {/* Vertical Foil Title */}
         <div className="flex-1 flex flex-col items-center justify-center overflow-hidden my-1 z-20">
           <span
@@ -194,9 +205,16 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         <h4 className="font-serif font-bold text-foreground text-xs line-clamp-2 leading-tight mb-1">
           {book.title}
         </h4>
-        <p className="text-[11px] text-muted-foreground mb-2 truncate">
+        <p className="text-[11px] text-muted-foreground mb-1.5 truncate">
           {formatAuthorNames(book.authors) || authorName}
         </p>
+
+        {rating && (
+          <div className="mb-2">
+            <StarRating value={rating} readOnly size="sm" showLabel />
+          </div>
+        )}
+
 
         {/* Quick Action Buttons */}
         <div className="flex items-center gap-1.5 pt-2 border-t border-border">

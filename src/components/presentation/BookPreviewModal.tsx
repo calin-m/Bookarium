@@ -6,6 +6,9 @@ import type { GutendexBook } from '@/types/book.types';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { StarRating } from '@/components/ui/StarRating';
+import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
+import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { BookCard } from './BookCard';
 
 export interface ElementRect {
@@ -19,6 +22,7 @@ export interface BookPreviewModalProps {
   book: GutendexBook | null;
   originRect?: ElementRect | null;
   isOpen: boolean;
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook';
   onWillClose?: () => void;
   onClose: () => void;
   onReadBook?: (book: GutendexBook) => void;
@@ -28,6 +32,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   book,
   originRect,
   isOpen,
+  activeView,
   onWillClose,
   onClose,
   onReadBook,
@@ -36,6 +41,14 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const [isCoverOpen, setIsCoverOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const { bookRatings, bookStatuses, setBookRating, setReadingStatus } = useHydratedBookshelf();
+  const rating = book?.id ? bookRatings[book.id] ?? null : null;
+  const status = book?.id ? bookStatuses[book.id] ?? null : null;
+
+  // Personal curation toolbar is strictly restricted to personal collections (Bookshelf & Favorites)
+  // and completely hidden in the main catalog view
+  const isCuratable = activeView === 'bookshelf' || activeView === 'likes';
 
   const {
     passages,
@@ -173,6 +186,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
   // Click on book stage: Close if not clicking interactive buttons
   const handleBookStageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('a') || target.closest('input')) {
       return;
@@ -182,7 +196,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-hidden select-none overscroll-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto overflow-x-hidden select-none overscroll-none"
       onClick={handleClose}
       onWheel={(e) => e.stopPropagation()}
       role="dialog"
@@ -200,8 +214,8 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
       {/* Modal Viewport Container */}
       <div
         ref={modalRef}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl mx-auto flex flex-col items-center justify-center py-2 z-10"
+        data-testid="preview-viewport-container"
+        className="relative w-full max-w-5xl mx-auto flex flex-col items-center justify-center py-2 z-10 my-auto"
       >
         {/* 3D Realistic Stage with FLIP transition */}
         <div
@@ -605,8 +619,38 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Floating Personal Curation Bar (Ratings & Reading Status) */}
+        {isCoverOpen && book && isCuratable && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            data-testid="personal-curation-toolbar"
+            className="mt-3 sm:mt-5 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 bg-card text-foreground border border-border px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300 z-30 w-full max-w-[calc(100vw-2rem)] sm:max-w-lg"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-muted-foreground uppercase tracking-wider">
+                Rating:
+              </span>
+              <StarRating
+                value={rating}
+                onChange={(newRating) => setBookRating(book.id, newRating)}
+                size="md"
+                showLabel
+              />
+            </div>
+
+            <div className="h-4 w-px bg-border hidden sm:block" />
+
+            <ReadingStatusSelector
+              status={status}
+              onChange={(newStatus) => setReadingStatus(book.id, newStatus)}
+              size="sm"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
 

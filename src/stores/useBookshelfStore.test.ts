@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useBookshelfStore, useHydratedBookshelf, useSavedBooksCount, useIsBookSaved } from './useBookshelfStore';
+import {
+  useBookshelfStore,
+  useHydratedBookshelf,
+  useSavedBooksCount,
+  useIsBookSaved,
+  useBookRating,
+  useReadingStatus,
+  useBookCuration,
+} from './useBookshelfStore';
 import { mockBooks } from '@/mocks/handlers';
 
 const mockFrom = vi.fn();
@@ -599,7 +607,229 @@ describe('useBookshelfStore', () => {
       const { result: updated } = renderHook(() => useIsBookSaved(mockBooks[0].id));
       expect(updated.current).toBe(true);
     });
+
+    it('returns book rating via useBookRating', async () => {
+      const { result } = renderHook(() => useBookRating(1342));
+      expect(result.current).toBeNull();
+
+      await act(async () => {
+        await useBookshelfStore.getState().setBookRating(1342, 5);
+      });
+
+      const { result: updated } = renderHook(() => useBookRating(1342));
+      expect(updated.current).toBe(5);
+    });
+
+    it('returns reading status via useReadingStatus', async () => {
+      const { result } = renderHook(() => useReadingStatus(1342));
+      expect(result.current).toBeNull();
+
+      await act(async () => {
+        await useBookshelfStore.getState().setReadingStatus(1342, 'currently_reading');
+      });
+
+      const { result: updated } = renderHook(() => useReadingStatus(1342));
+      expect(updated.current).toBe('currently_reading');
+    });
+
+    it('returns combined curation via useBookCuration', async () => {
+      await act(async () => {
+        await useBookshelfStore.getState().setBookRating(1342, 4);
+        await useBookshelfStore.getState().setReadingStatus(1342, 'finished');
+      });
+
+      const { result } = renderHook(() => useBookCuration(1342));
+      expect(result.current).toEqual({
+        rating: 4,
+        status: 'finished',
+      });
+    });
+  });
+
+  describe('Personal Curation (Ratings & Reading Statuses)', () => {
+    it('initializes with empty ratings and statuses', () => {
+      const state = useBookshelfStore.getState();
+      expect(state.bookRatings).toEqual({});
+      expect(state.bookStatuses).toEqual({});
+      expect(state.getBookRating(100)).toBeNull();
+      expect(state.getReadingStatus(100)).toBeNull();
+      expect(state.getBookCuration(100)).toEqual({ rating: null, status: null });
+    });
+
+    it('sets and clears 1-5 star ratings with proper clamping', async () => {
+      const store = useBookshelfStore.getState();
+
+      // Normal rating 1-5
+      await store.setBookRating(1342, 5);
+      expect(useBookshelfStore.getState().getBookRating(1342)).toBe(5);
+
+      // Clamping lower bound (0 or negative -> 1)
+      await store.setBookRating(1342, 0);
+      expect(useBookshelfStore.getState().getBookRating(1342)).toBe(1);
+
+      // Clamping upper bound (> 5 -> 5)
+      await store.setBookRating(1342, 7);
+      expect(useBookshelfStore.getState().getBookRating(1342)).toBe(5);
+
+      // Clearing rating (null)
+      await store.setBookRating(1342, null);
+      expect(useBookshelfStore.getState().getBookRating(1342)).toBeNull();
+      expect(useBookshelfStore.getState().bookRatings[1342]).toBeUndefined();
+    });
+
+    it('sets and toggles reading statuses', async () => {
+      const store = useBookshelfStore.getState();
+
+      await store.setReadingStatus(84, 'want_to_read');
+      expect(useBookshelfStore.getState().getReadingStatus(84)).toBe('want_to_read');
+
+      await store.setReadingStatus(84, 'currently_reading');
+      expect(useBookshelfStore.getState().getReadingStatus(84)).toBe('currently_reading');
+
+      await store.setReadingStatus(84, 'finished');
+      expect(useBookshelfStore.getState().getReadingStatus(84)).toBe('finished');
+
+      // Clearing status
+      await store.setReadingStatus(84, null);
+      expect(useBookshelfStore.getState().getReadingStatus(84)).toBeNull();
+      expect(useBookshelfStore.getState().bookStatuses[84]).toBeUndefined();
+    });
+
+    it('queues outbox action when rating a book while offline/authenticated', async () => {
+      mockFrom.mockReturnValue({
+        upsert: vi.fn().mockRejectedValue(new Error('Network error')),
+        delete: vi.fn().mockRejectedValue(new Error('Network error')),
+      });
+
+      await useBookshelfStore.getState().setBookRating(1342, 4, 'user-offline-1');
+
+      const outbox = useBookshelfStore.getState().outbox;
+      expect(outbox).toHaveLength(1);
+      expect(outbox[0].type).toBe('UPSERT_CURATION');
+      expect(outbox[0].payload.user_id).toBe('user-offline-1');
+      expect(outbox[0].payload.book_id).toBe(1342);
+      expect(outbox[0].payload.rating).toBe(4);
+    });
+
+    it('flushes UPSERT_CURATION and DELETE_CURATION from outbox', async () => {
+      const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+      const mockDelete = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'user_book_curation') {
+          return {
+            upsert: mockUpsert,
+            delete: mockDelete,
+          };
+        }
+        return {};
+      });
+
+      useBookshelfStore.setState({
+        outbox: [
+          {
+            id: 'cur-1',
+            type: 'UPSERT_CURATION',
+            payload: { user_id: 'user-1', book_id: 1342, rating: 5, reading_status: 'finished' },
+            timestamp: new Date().toISOString(),
+          },
+          {
+            id: 'cur-2',
+            type: 'DELETE_CURATION',
+            payload: { user_id: 'user-1', book_id: 84 },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      });
+
+      await useBookshelfStore.getState().flushOutbox('user-1');
+      expect(useBookshelfStore.getState().outbox).toHaveLength(0);
+      expect(mockUpsert).toHaveBeenCalled();
+    });
+
+    it('syncs curation from cloud and merges with local guest ratings', async () => {
+      const mockCurationUpsert = vi.fn().mockResolvedValue({ error: null });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true }] }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ data: [] }),
+            }),
+          };
+        }
+        if (table === 'user_favorites') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [] }),
+              }),
+            }),
+          };
+        }
+        if (table === 'user_book_curation') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [
+                  { user_id: 'user-1', book_id: 1342, rating: 5, reading_status: 'finished' },
+                ],
+              }),
+            }),
+            upsert: mockCurationUpsert,
+          };
+        }
+        return {};
+      });
+
+      // Guest rated book 84 locally prior to login
+      useBookshelfStore.setState({
+        bookRatings: { 84: 4 },
+        bookStatuses: { 84: 'want_to_read' },
+      });
+
+      await useBookshelfStore.getState().syncWithCloud('user-1');
+
+      const state = useBookshelfStore.getState();
+      // Should have both remote 1342 and local 84
+      expect(state.bookRatings[1342]).toBe(5);
+      expect(state.bookStatuses[1342]).toBe('finished');
+      expect(state.bookRatings[84]).toBe(4);
+      expect(state.bookStatuses[84]).toBe('want_to_read');
+
+      // Unsynced guest curation should have been pushed to cloud
+      expect(mockCurationUpsert).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ user_id: 'user-1', book_id: 84, rating: 4, reading_status: 'want_to_read' }),
+        ]),
+        { onConflict: 'user_id,book_id' }
+      );
+    });
+
+    it('resets curation upon clearBookshelf', async () => {
+      await useBookshelfStore.getState().setBookRating(1342, 5);
+      await useBookshelfStore.getState().setReadingStatus(1342, 'finished');
+
+      useBookshelfStore.getState().clearBookshelf();
+
+      expect(useBookshelfStore.getState().bookRatings).toEqual({});
+      expect(useBookshelfStore.getState().bookStatuses).toEqual({});
+    });
   });
 });
+
 
 

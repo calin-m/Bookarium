@@ -29,6 +29,7 @@ export interface BookGridProps {
   onBrowseCatalog?: () => void;
   searchQuery?: string;
   onClearSearch?: () => void;
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook';
 }
 
 export const BookGrid: React.FC<BookGridProps> = ({
@@ -43,7 +44,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   onPreviewClick,
   activePreviewBookId = null,
   emptyTitle = 'No public domain books found',
-  emptyDescription = 'Try adjusting your search terms, topic filters, or language selection.',
+  emptyDescription = 'Try adjusting your search criteria or topic selection.',
   viewMode: controlledViewMode,
   onViewModeChange,
   initialViewMode = 'grid',
@@ -51,6 +52,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   onBrowseCatalog,
   searchQuery,
   onClearSearch,
+  activeView,
 }) => {
   const [internalViewMode, setInternalViewMode] = useState<BookViewMode>(initialViewMode);
   const activeViewMode = controlledViewMode ?? internalViewMode;
@@ -206,6 +208,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
                 onDownloadClick={onDownloadClick}
                 onPreviewClick={onPreviewClick}
                 isPreviewActive={activePreviewBookId === book.id}
+                activeView={activeView}
               />
             ))}
           </div>

@@ -7,6 +7,9 @@ import { BookOpen, Download, Bookmark, Heart, Sparkles, X, CheckCircle2, HardDri
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
+import { StarRating } from '@/components/ui/StarRating';
+import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { Button } from '@/components/ui/Button';
 import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
@@ -16,11 +19,11 @@ export interface BookshelfMobileModalProps {
   isClosingMobileSheet?: boolean;
   onClose: () => void;
   readingProgress?: number;
-  isSaved: boolean;
-  isLiked: boolean;
+  isSaved?: boolean;
+  isLiked?: boolean;
   isOffline?: boolean;
-  onToggleSave: (book: GutendexBook) => void;
-  onToggleLike: (book: GutendexBook) => void;
+  onToggleSave?: (book: GutendexBook) => void;
+  onToggleLike?: (book: GutendexBook) => void;
   onToggleOffline?: (book: GutendexBook) => void;
   onBookClick?: (book: GutendexBook) => void;
   onDownloadClick?: (book: GutendexBook) => void;
@@ -30,6 +33,7 @@ export interface BookshelfMobileModalProps {
   currentActiveShelfId?: string;
   userId?: string;
   onMoveBookToShelf?: (bookId: number, targetShelfId: string, userId: string) => Promise<boolean | void>;
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook';
 }
 
 export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
@@ -50,27 +54,71 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
   currentActiveShelfId,
   userId,
   onMoveBookToShelf,
+  activeView,
 }) => {
   const router = useRouter();
+  const {
+    isSaved: storeIsSaved,
+    isLiked: storeIsLiked,
+    toggleSaveBook,
+    toggleLikeBook,
+    bookRatings,
+    bookStatuses,
+    setBookRating,
+    setReadingStatus,
+  } = useHydratedBookshelf();
+
+  const effectiveIsSaved = isSaved !== undefined
+    ? isSaved
+    : selectedMobileBook
+    ? storeIsSaved(selectedMobileBook.id)
+    : false;
+
+  const effectiveIsLiked = isLiked !== undefined
+    ? isLiked
+    : selectedMobileBook
+    ? storeIsLiked(selectedMobileBook.id)
+    : false;
+
+  const handleToggleSave = onToggleSave || toggleSaveBook;
+  const handleToggleLike = onToggleLike || toggleLikeBook;
+
+  const currentRating = selectedMobileBook ? bookRatings[selectedMobileBook.id] ?? null : null;
+  const currentStatus = selectedMobileBook ? bookStatuses[selectedMobileBook.id] ?? null : null;
+  const isCuratable = activeView === undefined || activeView === 'bookshelf' || activeView === 'likes';
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedMobileBook) {
+        onClose();
+      }
+    };
+    if (selectedMobileBook) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedMobileBook, onClose]);
 
   return (
     <AnimatePresence>
       {selectedMobileBook && (
         <>
-          {/* Transparent Backdrop to capture outside taps without dimming */}
+          {/* Backdrop to capture outside taps */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-transparent z-40 sm:hidden cursor-pointer"
+            className="fixed inset-0 bg-black/60 backdrop-blur-2xs z-50 cursor-pointer"
             onClick={onClose}
             aria-hidden="true"
             data-testid="mobile-sheet-backdrop"
           />
 
           <div
-            className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:hidden pointer-events-none"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto pointer-events-none"
             data-testid="mobile-book-action-sheet"
           >
             {/* Centered Floating Action Card with Fluid Scale In/Out Transition */}
@@ -79,7 +127,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 8 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="relative w-full max-w-sm bg-card border border-border rounded-2xl p-5 shadow-2xl z-10 space-y-4 pointer-events-auto"
+              className="relative w-full max-w-sm bg-card text-foreground border border-border rounded-2xl p-5 shadow-2xl z-10 space-y-4 pointer-events-auto"
               role="dialog"
               aria-modal="true"
               aria-label={`Book actions for ${selectedMobileBook.title}`}
@@ -165,30 +213,57 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => onToggleSave(selectedMobileBook)}
+                  onClick={() => handleToggleSave(selectedMobileBook)}
                   className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
-                    isSaved
+                    effectiveIsSaved
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border hover:bg-muted text-foreground'
                   }`}
-                  aria-label={isSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
+                  aria-label={effectiveIsSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
                 >
-                  <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+                  <Bookmark className={`w-4 h-4 ${effectiveIsSaved ? 'fill-current' : ''}`} />
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => onToggleLike(selectedMobileBook)}
+                  onClick={() => handleToggleLike(selectedMobileBook)}
                   className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
-                    isLiked
+                    effectiveIsLiked
                       ? 'border-destructive bg-destructive/10 text-destructive'
                       : 'border-border hover:bg-muted text-foreground'
                   }`}
-                  aria-label={isLiked ? 'Unlike book' : 'Like book'}
+                  aria-label={effectiveIsLiked ? 'Unlike book' : 'Like book'}
                 >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                  <Heart className={`w-4 h-4 ${effectiveIsLiked ? 'fill-current' : ''}`} />
                 </button>
               </div>
+
+              {/* Personal Curation: Status & Rating */}
+              {isCuratable && (
+                <div className="pt-3 border-t border-border space-y-2.5" data-testid="mobile-curation-section">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
+                      My Rating
+                    </span>
+                    <StarRating
+                      value={currentRating}
+                      onChange={(newRating) => setBookRating(selectedMobileBook.id, newRating)}
+                      size="sm"
+                      aria-label={`Rate ${selectedMobileBook.title}`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold block">
+                      Reading Status
+                    </span>
+                    <ReadingStatusSelector
+                      status={currentStatus}
+                      onChange={(newStatus) => setReadingStatus(selectedMobileBook.id, newStatus)}
+                      size="sm"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Move to Shelf selector for multi-shelf users */}
               {cloudBookshelves.length > 1 && onMoveBookToShelf && (

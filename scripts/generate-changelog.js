@@ -9,6 +9,41 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '1.9.3',
+    date: '2026-09-04',
+    title: 'Personal Curation (Ratings & Statuses), Mobile Action Sheet & Live Static Analysis Telemetry',
+    sections: {
+      Added: [
+        'Personal 1-5 Star Book Ratings (`StarRating.tsx`): Tactile star rating widget with hover preview, clear toggle, and zero layout shift.',
+        'Reading Status Management (`ReadingStatusSelector.tsx`): 3-tier reading status selector (Want to Read, Currently Reading, Finished) with active visual states.',
+        'Viewport-Level Mobile Modal (`BookshelfMobileModal.tsx`): Touch-optimized action sheet for mobile and vertical displays (< 1024px) enabling full rating and shelf curation on Favorites and Bookshelf.',
+        'Live Static Analysis Telemetry (`scripts/generate-quality-report.js`): Automated execution and telemetry recording of ESLint 9 and Knip dead code audits directly in `QUALITY_AUDIT_REPORT.md` and `quality-audit-results.json`.',
+        'Co-Located Test Suite Expansion: Expanded unit test coverage across 112 suites and 819 tests, achieving 92.05% line coverage.',
+      ],
+      Fixed: [
+        'Knip Duplicate Export Resolution (`BookshelfMobileModal.tsx`): Removed redundant alias exports (`BookMobileModal`), ensuring clean Pass 6 audit compliance with 0 errors.',
+        'Outside-Click Dismissal & Event Isolation (`BookPreviewModal.tsx`): Enabled whitespace dismissal while strictly isolating interactive curation controls.',
+      ],
+    },
+  },
+  {
+    version: '1.9.2',
+    date: '2026-09-04',
+    title: 'Library Portability Engine, JSON Backup/Restore, CSV Catalog Export & Pre-Commit Sync',
+    sections: {
+      Added: [
+        'Pure Domain Library Portability Engine (`src/lib/library-backup.ts`): Single-click portable JSON backup and RFC 4180 compliant CSV spreadsheet catalog export capturing volumes, shelves, bookmarks, and literary annotations.',
+        'Defensive Backup Schema Validation (`validateLibraryBackup`): Strict JSON structure, application name, and array integrity checks preventing corrupted or malformed payload injection.',
+        'Dual-Strategy Library Restore (`restoreLibraryBackup`): Non-destructive "Merge with Existing Library" preserving current collections and "Replace Entire Library" for clean snapshot restores, with automatic cloud sync for authenticated readers.',
+        'Account Portability & Backup Interface (`AccountPreferencesSection.tsx`, `AccountRestoreModal.tsx`): Dedicated dashboard controls for JSON/CSV exports and accessible restore modal with live preview badges and destructive action safeguards.',
+        'Co-Located Test Suite Expansion: Added unit test coverage across `library-backup.test.ts` and `AccountRestoreModal.test.tsx`, reaching 110 suites and 784 verified tests.',
+      ],
+      Fixed: [
+        'Pre-Commit Auto-Staging (`.husky/pre-commit`): Included `README.md` and `ROADMAP.md` in automated staging list, guaranteeing 0% unstaged drift after quality engine passes.',
+      ],
+    },
+  },
+  {
     version: '1.9.1',
     date: '2026-09-04',
     title: 'Centralized Library Design Tokens, Reader Dynamic Language Indicators & Account Border Polish',

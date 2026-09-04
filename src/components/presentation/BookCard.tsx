@@ -8,11 +8,12 @@ import { CursorTooltip } from '@/components/ui/CursorTooltip';
 import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount, extractBookTags } from '@/lib/utils';
-import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
+import { useHydratedBookshelf, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { StarRating } from '@/components/ui/StarRating';
 import { ROUTES } from '@/config/routes';
 
 export interface BookCardProps {
@@ -20,15 +21,24 @@ export interface BookCardProps {
   onDownloadClick?: (book: GutendexBook) => void;
   onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
   isPreviewActive?: boolean;
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook';
 }
 
-export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPreviewClick, isPreviewActive = false }) => {
+export const BookCard: React.FC<BookCardProps> = ({
+  book,
+  onDownloadClick,
+  onPreviewClick,
+  isPreviewActive = false,
+  activeView,
+}) => {
   const router = useRouter();
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = React.useState(false);
   const { isSaved: checkIsSaved, isLiked: checkIsLiked, toggleSaveBook: toggleSave, toggleLikeBook: toggleLike } = useHydratedBookshelf();
   const isSaved = checkIsSaved(book.id);
   const isLiked = checkIsLiked(book.id);
+  const rating = useBookRating(book.id);
+  const status = useReadingStatus(book.id);
 
   const formats = extractBookFormats(book.formats, book.id);
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
@@ -66,6 +76,13 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
 
   const handleCoverClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      if (activeView === 'likes' || activeView === 'bookshelf') {
+        if (onPreviewClick) {
+          const cardEl = cardRef.current || ((e.currentTarget as HTMLElement).closest('[data-testid^="book-card-"]') as HTMLElement);
+          onPreviewClick(book, cardEl ? cardEl.getBoundingClientRect() : undefined);
+          return;
+        }
+      }
       useReaderStore.getState().openReader(book);
       router.push(ROUTES.READ(book.id));
       return;
@@ -224,11 +241,27 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDownloadClick, onPre
         </div>
 
         <div className="space-y-2 pt-2 border-t border-border">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
-            <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
-              CC0 / Free
-            </span>
+          <div
+            onClick={activeView === 'likes' || activeView === 'bookshelf' ? handleCoverClick : undefined}
+            className={`flex items-center justify-between text-xs text-muted-foreground ${
+              activeView === 'likes' || activeView === 'bookshelf' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
+            }`}
+            title={activeView === 'likes' || activeView === 'bookshelf' ? 'Click to rate or change reading status' : undefined}
+          >
+            {rating ? (
+              <StarRating value={rating} readOnly size="sm" showLabel />
+            ) : (
+              <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
+            )}
+            {status ? (
+              <span className="text-[10px] font-mono font-bold uppercase text-primary">
+                {status === 'currently_reading' ? '📖 Reading' : status === 'finished' ? '✓ Finished' : '🔖 Want to Read'}
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
+                CC0 / Free
+              </span>
+            )}
           </div>
 
           {/* Action Buttons */}

@@ -66,3 +66,12 @@ All ADRs in `docs/DECISIONS.md` must adhere to standard schema (Status, Context,
 ### Rule 8: Repository Hygiene & Secret Prevention Protocol
 - **Zero Secrets Policy:** Never commit API keys, RSA/EC private keys, passwords, database URLs with embedded credentials, or `.env` files containing live secrets.
 - **Pass 0.5 Scanner:** Scans all codebase files for exposed tokens or keys prior to commit.
+
+### Rule 9: Idempotent Database Schema Co-Evolution & RLS Governance
+- **Canonical Schema Co-Evolution:** Any change, addition, or removal of tables, columns, indexes, triggers, or policies in Supabase must be simultaneously documented and synchronized in:
+  1. `supabase/schema.sql` (the canonical database schema file).
+  2. `src/types/database.types.ts` (TypeScript types representing the database rows, inserts, and updates).
+  3. `README.md` (quickstart database setup instructions).
+- **Strict Idempotency Requirement:** All DDL and DCL statements in `supabase/schema.sql` and manual migration scripts MUST be strictly idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$`, `DROP POLICY IF EXISTS ... CREATE POLICY ...`). Running the schema migration script multiple times must never throw duplicate-key, duplicate-table, or duplicate-policy errors and must never cause destructive data loss.
+- **Row-Level Security (RLS) Policy Enforcement:** Every table created in PostgreSQL must explicitly enable Row Level Security (`ALTER TABLE <name> ENABLE ROW LEVEL SECURITY;`) and have granular, authenticated-only policies for `SELECT`, `INSERT`, `UPDATE`, and `DELETE` ensuring users can only read and mutate their own rows (`auth.uid() = user_id`).
+

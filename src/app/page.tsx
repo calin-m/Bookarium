@@ -10,6 +10,7 @@ import { BookGrid } from '@/components/presentation/BookGrid';
 import { LiteraryQuotes } from '@/components/presentation/LiteraryQuotes';
 import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
 import { BookPreviewModal } from '@/components/presentation/BookPreviewModal';
+import { BookshelfMobileModal } from '@/components/presentation/bookshelf/BookshelfMobileModal';
 import { NotebookView } from '@/components/presentation/NotebookView';
 import { Modal } from '@/components/ui/Modal';
 import { Footer } from '@/components/presentation/Footer';
@@ -20,6 +21,7 @@ import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/types/book.types';
 import { Trash2, BookOpen, Quote, ArrowRight, AlertTriangle } from 'lucide-react';
@@ -39,6 +41,15 @@ function HomeContent() {
   const [previewOriginRect, setPreviewOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'likes' | null>(null);
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
+
+  const { isBookOffline, downloadBook, removeBook } = useOfflineBooks();
+  const handleToggleOffline = async (book: GutendexBook) => {
+    if (isBookOffline(book.id)) {
+      await removeBook(book.id);
+    } else {
+      await downloadBook(book);
+    }
+  };
 
   // Bookshelf store items (hydrated safely on mount)
   const rawSavedBooks = useBookshelfStore((s) => s.savedBooks);
@@ -352,6 +363,7 @@ function HomeContent() {
                 onBrowseCatalog={() => setActiveView('catalog')}
                 searchQuery={collectionSearchQuery}
                 onClearSearch={collectionSearchQuery.trim() ? () => setCollectionSearchQuery('') : undefined}
+                activeView={activeView}
                 emptyTitle={
                   collectionSearchQuery.trim()
                     ? `No volumes found matching "${collectionSearchQuery}"`
@@ -432,27 +444,58 @@ function HomeContent() {
         {activeView === 'catalog' && <LiteraryQuotes />}
       </main>
 
-      {/* 3D Open Book Preview Spread Modal */}
-      <BookPreviewModal
-        book={selectedPreviewBook}
-        originRect={previewOriginRect}
-        isOpen={Boolean(selectedPreviewBook)}
-        onWillClose={() => {
-          setActivePreviewBookId(null);
-        }}
-        onClose={() => {
-          setSelectedPreviewBook(null);
-          setActivePreviewBookId(null);
-          setPreviewOriginRect(null);
-        }}
-        onReadBook={(book) => {
-          setSelectedPreviewBook(null);
-          setActivePreviewBookId(null);
-          setPreviewOriginRect(null);
-          useReaderStore.getState().openReader(book);
-          router.push(ROUTES.READ(book.id));
-        }}
-      />
+      {/* Desktop 3D Open Book Preview Spread Modal (>= 1024px) */}
+      <div className="hidden lg:contents">
+        <BookPreviewModal
+          book={selectedPreviewBook}
+          originRect={previewOriginRect}
+          isOpen={Boolean(selectedPreviewBook)}
+          activeView={activeView}
+          onWillClose={() => {
+            setActivePreviewBookId(null);
+          }}
+          onClose={() => {
+            setSelectedPreviewBook(null);
+            setActivePreviewBookId(null);
+            setPreviewOriginRect(null);
+          }}
+          onReadBook={(book) => {
+            setSelectedPreviewBook(null);
+            setActivePreviewBookId(null);
+            setPreviewOriginRect(null);
+            useReaderStore.getState().openReader(book);
+            router.push(ROUTES.READ(book.id));
+          }}
+        />
+      </div>
+
+      {/* Mobile/Tablet Touch-Friendly Book Action & Curation Sheet (< 1024px) */}
+      <div className="lg:hidden">
+        <BookshelfMobileModal
+          selectedMobileBook={selectedPreviewBook}
+          onClose={() => {
+            setSelectedPreviewBook(null);
+            setActivePreviewBookId(null);
+            setPreviewOriginRect(null);
+          }}
+          activeView={activeView}
+          onBookClick={(book) => {
+            setSelectedPreviewBook(null);
+            setActivePreviewBookId(null);
+            setPreviewOriginRect(null);
+            useReaderStore.getState().openReader(book);
+            router.push(ROUTES.READ(book.id));
+          }}
+          onDownloadClick={(book) => {
+            setSelectedPreviewBook(null);
+            setActivePreviewBookId(null);
+            setPreviewOriginRect(null);
+            setSelectedDownloadBook(book);
+          }}
+          isOffline={selectedPreviewBook ? isBookOffline(selectedPreviewBook.id) : false}
+          onToggleOffline={handleToggleOffline}
+        />
+      </div>
 
       {/* Download Hub Drawer */}
       <DownloadDrawer

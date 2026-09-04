@@ -329,6 +329,7 @@ export default function AccountPage() {
                 speechHighlightEnabled={speechHighlightEnabled}
                 onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
                 onResetSpeechPreferences={resetSpeechPreferences}
+                userId={user?.id}
               />
 
               {/* Security & Password Card */}

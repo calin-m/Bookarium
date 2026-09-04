@@ -85,14 +85,14 @@ describe('BookCard component', () => {
     }
   });
 
-  it('should navigate to /read/[id] on mobile when clicking book cover visual', () => {
+  it('should navigate to /read/[id] on mobile when clicking book cover visual in catalog view', () => {
     const handlePreview = vi.fn();
     const book = mockBooks[0];
     const originalWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 768 });
 
     try {
-      render(<BookCard book={book} onPreviewClick={handlePreview} />);
+      render(<BookCard book={book} onPreviewClick={handlePreview} activeView="catalog" />);
 
       const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
       fireEvent.click(coverVisual);
@@ -100,6 +100,25 @@ describe('BookCard component', () => {
       expect(handlePreview).not.toHaveBeenCalled();
       expect(mockPush).toHaveBeenCalledWith(`/read/${book.id}`);
       expect(useReaderStore.getState().currentBook?.id).toBe(book.id);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
+    }
+  });
+
+  it('should call onPreviewClick on mobile when activeView is likes', () => {
+    const handlePreview = vi.fn();
+    const book = mockBooks[0];
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 768 });
+
+    try {
+      render(<BookCard book={book} onPreviewClick={handlePreview} activeView="likes" />);
+
+      const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
+      fireEvent.click(coverVisual);
+
+      expect(handlePreview).toHaveBeenCalledWith(book, expect.any(Object));
+      expect(mockPush).not.toHaveBeenCalled();
     } finally {
       Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
     }

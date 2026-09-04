@@ -234,7 +234,51 @@ CREATE INDEX IF NOT EXISTS idx_user_annotations_user_book
   ON public.user_annotations(user_id, book_id);
 
 -- ============================================================================
--- 7. Auto-Provisioning User Trigger (Profile + Default General Shelf)
+-- 7. User Book Curation Table (Personal 1-5 Star Ratings & Reading Statuses)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.user_book_curation (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  book_id INTEGER NOT NULL,
+  rating SMALLINT CHECK (rating >= 1 AND rating <= 5),
+  reading_status TEXT CHECK (reading_status IN ('want_to_read', 'currently_reading', 'finished')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  UNIQUE(user_id, book_id)
+);
+
+ALTER TABLE public.user_book_curation ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own book curation" ON public.user_book_curation;
+CREATE POLICY "Users can view their own book curation"
+  ON public.user_book_curation FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own book curation" ON public.user_book_curation;
+CREATE POLICY "Users can insert their own book curation"
+  ON public.user_book_curation FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own book curation" ON public.user_book_curation;
+CREATE POLICY "Users can update their own book curation"
+  ON public.user_book_curation FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own book curation" ON public.user_book_curation;
+CREATE POLICY "Users can delete their own book curation"
+  ON public.user_book_curation FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_book_curation_user_book 
+  ON public.user_book_curation(user_id, book_id);
+
+-- ============================================================================
+-- 8. Auto-Provisioning User Trigger (Profile + Default General Shelf)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -267,7 +311,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================================
--- 8. RPC Function: Delete Current User Account
+-- 9. RPC Function: Delete Current User Account
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.delete_current_user()
 RETURNS VOID AS $$
@@ -275,3 +319,4 @@ BEGIN
   DELETE FROM auth.users WHERE id = auth.uid();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
