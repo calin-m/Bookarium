@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-108%20Suites%20%7C%20760%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.51%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-112%20Suites%20%7C%20820%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.05%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,12 +38,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v1.9.1)
+## 🛠️ Latest Improvements (v1.9.3)
 
-- **Centralized Library Design Tokens (`src/config/library-tokens.ts`)**: Single source of truth for library category colorways (`LIBRARY_THEMES`), synchronizing active borders, focus rings, and filled SVG icons across navbar tabs and account metric cards.
-- **Dynamic Reader Language & Bilingual Mode Indicators (`src/components/reader/ReaderHeader.tsx`, `read/[id]/page.tsx`)**: Header translation trigger dynamically displays active target language code (`ES`) when translated, parallel dual-language format (`EN ∥ ES`) in Bilingual mode, accompanied by visual sparkles and active indicator dot.
-- **Co-Located Test Suite Expansion**: Added unit tests for library tokens and expanded test coverage across `AccountLibraryStats.test.tsx` and `ReaderHeader.test.tsx`, achieving 108 suites and 760 passing tests.
-- **Account Library Statistics Hover Border Contrast (`src/components/account/AccountLibraryStats.tsx`)**: Resolved Tailwind v3 CSS variable opacity stripping on custom properties (`hover:border-primary/50` -> `hover:border-primary`, `hover:border-destructive`), guaranteeing distinct, visible 1px card borders on hover and keyboard focus across Light, Dark, and Sepia themes.
+- **Personal 1-5 Star Book Ratings (`StarRating.tsx`)**: Tactile star rating widget with hover preview, clear toggle, and zero layout shift.
+- **Reading Status Management (`ReadingStatusSelector.tsx`)**: 3-tier reading status selector (Want to Read, Currently Reading, Finished) with active visual states.
+- **Viewport-Level Mobile Modal (`BookshelfMobileModal.tsx`)**: Touch-optimized action sheet for mobile and vertical displays (< 1024px) enabling full rating and shelf curation on Favorites and Bookshelf.
+- **Live Static Analysis Telemetry (`scripts/generate-quality-report.js`)**: Automated execution and telemetry recording of ESLint 9 and Knip dead code audits directly in `QUALITY_AUDIT_REPORT.md` and `quality-audit-results.json`.
+- **Knip Duplicate Export Resolution (`BookshelfMobileModal.tsx`)**: Removed redundant alias exports (`BookMobileModal`), ensuring clean Pass 6 audit compliance with 0 errors.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -145,6 +146,16 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 * **Zero-Copyright Download Hub & Canonical Fallback Engine**: Multi-format downloads (direct EPUB, Kindle/MOBI, clean UTF-8 plain text, and web-ready HTML) backed by Project Gutenberg permanent canonical URLs, guaranteeing 100% download availability across the Catalog, Bookshelf, and Favorites.
 * **Native IndexedDB Offline Book Storage Engine**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download individual books or entire bookshelf collections for instant offline reading with a single click and clear with confirmation safety.
 * **Auto-Healing Personal Bookshelf & Cross-Device Favorites Sync**: Curated collections, reading queue, reading history, and favorited titles synchronized across devices via Supabase PostgreSQL and Row Level Security (RLS), with automatic local-to-cloud migration on login and database uniqueness guards.
+* **Personal 1–5 Star Book Ratings & Reading Status Management**:
+  * Tactile 5-star rating system (`StarRating.tsx`) with hover-preview, active selection, accessible clear rating toggle (`×`), and zero layout shifts.
+  * 3-tier reading status classification (**Want to Read**, **Currently Reading**, **Finished**) with active selection rings and single-click removal.
+  * Responsive dual-mode presentation:
+    * **Desktop** ($\ge 1024\text{px}$): Integrated into the floating 3D hardcover preview toolbar (`BookPreviewModal`) rendered on a solid theme-consistent card surface (`bg-card`) with outside-click backdrop dismissal and isolated interactive controls.
+    * **Mobile & Narrow Displays** ($< 1024\text{px}$): Touch-optimized modal sheet (`BookshelfMobileModal`) triggered directly when tapping covers or ratings in Favorites (`activeView === 'likes'`) or Bookshelf, providing phone/tablet rating ergonomics without impacting 1-tap catalog reading.
+  * 100% offline-first via Zustand `useBookshelfStore`, synchronized with Supabase PostgreSQL (`public.user_book_curation`) using Row Level Security.
+* **Pure Domain Library Portability & Full Data Sovereignty**:
+  * Single-click portable JSON backup and RFC 4180-compliant CSV spreadsheet catalog export (`src/lib/library-backup.ts`) capturing volumes, shelves, bookmarks, ratings, reading statuses, and literary annotations.
+  * Defensive schema validation (`validateLibraryBackup`) and dual-strategy restore (**Merge with Existing Library** preserving current collections, or **Replace Entire Library** for clean snapshot restores) with live preview badges, destructive action safeguards, and automatic cloud sync.
 ### 🌐 Supported Languages, On-Demand AI Translation & Neural Read-Aloud
 
 Bookarium provides a comprehensive, multi-tiered language ecosystem designed for both authentic public domain archive discovery and universal accessibility:
@@ -203,7 +214,7 @@ flowchart TD
         Account["Account & Reading Preferences (src/app/account/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• cloudBookshelves: []\n• likedBookIds: []")]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• cloudBookshelves: []\n• likedBookIds: []\n• bookRatings: {}\n• readingStatuses: {}")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
         StoreReader[("📖 Reader Store\n• activeBookId\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}")]
         StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
@@ -238,7 +249,7 @@ flowchart TD
         
         GutendexAPI["🌐 Gutendex REST API\n(70,000+ Titles)"]
         GutenbergContent["🌐 Gutenberg Content CDN\n(text/plain & EPUB)"]
-        SupabaseCloud[("⚡ Supabase Cloud\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves & Profiles)")]
+        SupabaseCloud[("⚡ Supabase Cloud\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves, Progress, Curations)")]
         
         QueryBooks --> ProxyRoute
         ProxyRoute --> GutendexAPI
@@ -468,7 +479,53 @@ CREATE POLICY "Users can update their own reading progress" ON public.reading_pr
 DROP POLICY IF EXISTS "Users can delete their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can delete their own reading progress" ON public.reading_progress FOR DELETE USING (auth.uid() = user_id);
 
--- 6. Auto-Provisioning User Trigger (Profile + Default General Shelf)
+-- 6. User Annotations Table (Highlights & Scholarly Notes)
+CREATE TABLE IF NOT EXISTS public.user_annotations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  book_id INTEGER NOT NULL,
+  chapter_index INTEGER NOT NULL,
+  chapter_page INTEGER NOT NULL,
+  selected_text TEXT NOT NULL,
+  color TEXT NOT NULL CHECK (color IN ('yellow', 'amber', 'mint', 'rose')),
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.user_annotations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own annotations" ON public.user_annotations;
+CREATE POLICY "Users can view their own annotations" ON public.user_annotations FOR SELECT TO authenticated USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own annotations" ON public.user_annotations;
+CREATE POLICY "Users can insert their own annotations" ON public.user_annotations FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own annotations" ON public.user_annotations;
+CREATE POLICY "Users can update their own annotations" ON public.user_annotations FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own annotations" ON public.user_annotations;
+CREATE POLICY "Users can delete their own annotations" ON public.user_annotations FOR DELETE TO authenticated USING (auth.uid() = user_id);
+CREATE INDEX IF NOT EXISTS idx_user_annotations_user_book ON public.user_annotations(user_id, book_id);
+
+-- 7. User Book Curation Table (Personal 1-5 Star Ratings & Reading Statuses)
+CREATE TABLE IF NOT EXISTS public.user_book_curation (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  book_id INTEGER NOT NULL,
+  rating SMALLINT CHECK (rating >= 1 AND rating <= 5),
+  reading_status TEXT CHECK (reading_status IN ('want_to_read', 'currently_reading', 'finished')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  UNIQUE(user_id, book_id)
+);
+ALTER TABLE public.user_book_curation ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own book curation" ON public.user_book_curation;
+CREATE POLICY "Users can view their own book curation" ON public.user_book_curation FOR SELECT TO authenticated USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own book curation" ON public.user_book_curation;
+CREATE POLICY "Users can insert their own book curation" ON public.user_book_curation FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own book curation" ON public.user_book_curation;
+CREATE POLICY "Users can update their own book curation" ON public.user_book_curation FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own book curation" ON public.user_book_curation;
+CREATE POLICY "Users can delete their own book curation" ON public.user_book_curation FOR DELETE TO authenticated USING (auth.uid() = user_id);
+CREATE INDEX IF NOT EXISTS idx_user_book_curation_user_book ON public.user_book_curation(user_id, book_id);
+
+-- 8. Auto-Provisioning User Trigger (Profile + Default General Shelf)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -489,7 +546,7 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 7. RPC Function: Delete Current User Account
+-- 9. RPC Function: Delete Current User Account
 CREATE OR REPLACE FUNCTION public.delete_current_user()
 RETURNS VOID AS $$
 BEGIN
@@ -606,7 +663,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 760 tests across 108 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 820 tests across 112 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

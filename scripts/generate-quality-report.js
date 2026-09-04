@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const rootDir = path.resolve(__dirname, '..');
 const srcDir = path.join(rootDir, 'src');
@@ -31,6 +32,57 @@ if (fs.existsSync(adrPath)) {
   const adrContent = fs.readFileSync(adrPath, 'utf-8');
   const adrMatches = adrContent.match(/## ADR-\d+:/g);
   if (adrMatches) adrCount = adrMatches.length;
+}
+
+// 2b. Live ESLint 9 & Knip Quality Audit Inspection
+let eslintErrors = 0;
+let eslintWarnings = 0;
+let knipIssues = [];
+
+const isWin = process.platform === 'win32';
+const npxCmd = isWin ? 'npx.cmd' : 'npx';
+
+const shouldAudit = !process.argv.includes('--fast');
+if (shouldAudit) {
+  try {
+    const eslintRaw = execSync(`${npxCmd} eslint . --format json`, {
+      cwd: rootDir,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    const eslintParsed = JSON.parse(eslintRaw);
+    for (const file of eslintParsed) {
+      eslintErrors += file.errorCount || 0;
+      eslintWarnings += file.warningCount || 0;
+    }
+  } catch (err) {
+    try {
+      const eslintParsed = JSON.parse(err.stdout ? err.stdout.toString() : '[]');
+      for (const file of eslintParsed) {
+        eslintErrors += file.errorCount || 0;
+        eslintWarnings += file.warningCount || 0;
+      }
+    } catch (_e) {
+      eslintErrors = 1;
+    }
+  }
+
+  try {
+    const knipRaw = execSync(`${npxCmd} knip --reporter json`, {
+      cwd: rootDir,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    const knipParsed = JSON.parse(knipRaw);
+    knipIssues = knipParsed.issues || [];
+  } catch (err) {
+    try {
+      const knipParsed = JSON.parse(err.stdout ? err.stdout.toString() : '{}');
+      knipIssues = knipParsed.issues || [];
+    } catch (_e) {
+      knipIssues = [{ type: 'knip-error', message: 'Knip reported issues' }];
+    }
+  }
 }
 
 // 3. Scan & Index All Test Suites
@@ -142,7 +194,13 @@ const auditResults = {
     },
     pass4_docs_sync: { status: 'PASSED' },
     pass5_adr_validation: { status: 'PASSED', adrCount },
-    pass6_quality_suite: { status: 'PASSED', eslintErrors: 0, knipErrors: 0 },
+    pass6_quality_suite: {
+      status: eslintErrors === 0 && knipIssues.length === 0 ? 'PASSED' : 'FAILED',
+      eslintErrors,
+      eslintWarnings,
+      knipErrors: knipIssues.length,
+      knipIssues: knipIssues.slice(0, 20),
+    },
     pass7_production_build: { status: 'PASSED' },
   },
 };
@@ -153,7 +211,7 @@ fs.writeFileSync(resultsJsonPath, JSON.stringify(auditResults, null, 2), 'utf-8'
 let mdContent = `# Quality Audit & Test Suite Catalog Report
 
 **Last Generated**: ${nowFormatted}  
-**Overall Status**: 🟢 PASSED  
+**Overall Status**: ${eslintErrors === 0 && knipIssues.length === 0 ? '🟢 PASSED' : '🔴 FAILED'}  
 **Total Test Suites**: ${totalSuitesCount} passed  
 **Total Verified Tests**: ${totalTestCount} passed  
 
@@ -170,7 +228,7 @@ let mdContent = `# Quality Audit & Test Suite Catalog Report
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | \`docs/ARCHITECTURE.md\`, \`CHANGELOG.md\`, & \`docs/QUALITY_AUDIT_REPORT.md\` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | ${adrCount} Architectural Decision Records validated |
-| **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
+| **Pass 6** | ESLint & Knip Audit | ${eslintErrors === 0 && knipIssues.length === 0 ? '✅ Passed' : '❌ Failed'} | ${eslintErrors} lint errors, ${knipIssues.length} unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
 ---
@@ -200,6 +258,22 @@ for (const [domainName, suites] of Object.entries(domainMap)) {
     }
     mdContent += `\n</details>\n\n`;
   }
+}
+
+mdContent += `---
+
+## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
+
+- **ESLint 9 Code Quality**: **${eslintErrors} errors**, **${eslintWarnings} warnings**
+- **Knip Dead Code & Unused Exports**: **${knipIssues.length} issues** ${knipIssues.length === 0 ? '(0 unused files, 0 unused dependencies, 0 dead exports)' : ''}
+`;
+
+if (knipIssues.length > 0) {
+  mdContent += `\n> [!WARNING]\n> **Knip Issues Detected**:\n`;
+  for (const issue of knipIssues.slice(0, 15)) {
+    mdContent += `> - \`${issue.file || 'unknown'}\`: ${issue.symbol || issue.title || issue.name || 'unused export'}\n`;
+  }
+  mdContent += `\n`;
 }
 
 mdContent += `---

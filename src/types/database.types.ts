@@ -192,6 +192,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      user_book_curation: {
+        Row: {
+          id: string;
+          user_id: string;
+          book_id: number;
+          rating: number | null;
+          reading_status: 'want_to_read' | 'currently_reading' | 'finished' | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          book_id: number;
+          rating?: number | null;
+          reading_status?: 'want_to_read' | 'currently_reading' | 'finished' | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          book_id?: number;
+          rating?: number | null;
+          reading_status?: 'want_to_read' | 'currently_reading' | 'finished' | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -206,3 +236,4 @@ export type BookshelfItem = Database['public']['Tables']['bookshelf_items']['Row
 export type UserFavorite = Database['public']['Tables']['user_favorites']['Row'];
 export type ReadingProgress = Database['public']['Tables']['reading_progress']['Row'];
 export type UserAnnotation = Database['public']['Tables']['user_annotations']['Row'];
+export type UserBookCuration = Database['public']['Tables']['user_book_curation']['Row'];

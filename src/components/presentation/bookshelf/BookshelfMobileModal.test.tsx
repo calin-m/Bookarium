@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { BookshelfMobileModal } from './BookshelfMobileModal';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import type { GutendexBook } from '@/mocks/handlers';
 
 const mockBook: GutendexBook = {
@@ -98,4 +99,76 @@ describe('BookshelfMobileModal Component', () => {
     fireEvent.click(offlineBtn);
     expect(handleToggleOffline).toHaveBeenCalledWith(mockBook);
   });
+
+  it('renders rating and reading status controls and handles interactions', () => {
+    render(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        isClosingMobileSheet={false}
+        onClose={vi.fn()}
+        isSaved={true}
+        isLiked={false}
+        onToggleSave={vi.fn()}
+        onToggleLike={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('My Rating')).toBeInTheDocument();
+    expect(screen.getByText('Reading Status')).toBeInTheDocument();
+
+    const star4 = screen.getByRole('radio', { name: 'Rate 4 of 5 stars' });
+    fireEvent.click(star4);
+    expect(useBookshelfStore.getState().bookRatings[mockBook.id]).toBe(4);
+    expect(screen.getByRole('radio', { name: 'Rate 4 of 5 stars' })).toHaveAttribute('aria-checked', 'true');
+
+    const finishedBtn = screen.getByRole('radio', { name: 'Finished' });
+    fireEvent.click(finishedBtn);
+    expect(useBookshelfStore.getState().bookStatuses[mockBook.id]).toBe('finished');
+    expect(screen.getByRole('radio', { name: 'Finished' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('calls onClose when clicking the backdrop or pressing Escape', () => {
+    const handleClose = vi.fn();
+    render(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        onClose={handleClose}
+      />
+    );
+
+    const backdrop = screen.getByTestId('mobile-sheet-backdrop');
+    fireEvent.click(backdrop);
+    expect(handleClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(handleClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('hides personal curation section when activeView is catalog', () => {
+    render(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        onClose={vi.fn()}
+        activeView="catalog"
+      />
+    );
+
+    expect(screen.queryByTestId('mobile-curation-section')).not.toBeInTheDocument();
+    expect(screen.queryByText('My Rating')).not.toBeInTheDocument();
+  });
+
+  it('shows personal curation section when activeView is likes', () => {
+    render(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        onClose={vi.fn()}
+        activeView="likes"
+      />
+    );
+
+    expect(screen.getByTestId('mobile-curation-section')).toBeInTheDocument();
+    expect(screen.getByText('My Rating')).toBeInTheDocument();
+  });
 });
+
+

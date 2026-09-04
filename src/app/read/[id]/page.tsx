@@ -31,9 +31,11 @@ import { useReaderSession } from '@/hooks/reader/useReaderSession';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useHydratedAnnotations, type HighlightColor, type Annotation } from '@/stores/useAnnotationStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useBookshelfStore, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
+import { StarRating } from '@/components/ui/StarRating';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Trash2, Trophy } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 
 export default function BookReaderPage() {
@@ -244,8 +246,34 @@ export default function BookReaderPage() {
 
   const isPrevDisabled = activeChapterIndex === 0 && currentChapterPage === 1;
   const isNextDisabled =
+    chaptersWithPagination.length > 0 &&
     activeChapterIndex === chaptersWithPagination.length - 1 &&
     currentChapterPage === activeChapterPageCount;
+
+  // Personal Curation: Reading Status & Ratings
+  const readingStatus = useReadingStatus(numericId);
+  const bookRating = useBookRating(numericId);
+  const setReadingStatus = useBookshelfStore((s) => s.setReadingStatus);
+  const setBookRating = useBookshelfStore((s) => s.setBookRating);
+  const [isCompletionDismissed, setIsCompletionDismissed] = useState(false);
+  const isAtEnd = isNextDisabled && chaptersWithPagination.length > 0;
+  const isCompletionModalOpen = isAtEnd && !isCompletionDismissed;
+
+  // Auto-transition to 'currently_reading' when reader begins a book
+  useEffect(() => {
+    if (numericId > 0 && !isContentLoading && contentText) {
+      if (!readingStatus || readingStatus === 'want_to_read') {
+        setReadingStatus(numericId, 'currently_reading', user?.id);
+      }
+    }
+  }, [numericId, isContentLoading, contentText, readingStatus, setReadingStatus, user?.id]);
+
+  // Auto-update reading status to 'finished' when reaching the final page
+  useEffect(() => {
+    if (isAtEnd && readingStatus !== 'finished' && numericId > 0) {
+      setReadingStatus(numericId, 'finished', user?.id);
+    }
+  }, [isAtEnd, readingStatus, numericId, user?.id, setReadingStatus]);
 
   const activeTheme = getReaderTheme(theme);
 
@@ -683,6 +711,61 @@ export default function BookReaderPage() {
             >
               <Trash2 className="w-3.5 h-3.5" />
               Delete Note
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Volume Completion Modal */}
+      <Modal
+        isOpen={isCompletionModalOpen}
+        onClose={() => setIsCompletionDismissed(true)}
+        title="Volume Finished!"
+        maxWidth="md"
+      >
+        <div className="p-6 space-y-5 text-center" data-testid="volume-completion-modal">
+          <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+            <Trophy className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-serif font-bold text-lg text-foreground">
+              Congratulations!
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+              You have completed reading <span className="font-semibold text-foreground">&ldquo;{bookTitle}&rdquo;</span>.
+              Your reading status has been updated to <span className="font-mono text-emerald-500 font-medium">Finished</span>.
+            </p>
+          </div>
+
+          <div className="pt-2 pb-1 space-y-2 flex flex-col items-center">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
+              Leave a Rating
+            </span>
+            <StarRating
+              value={bookRating}
+              onChange={(newRating) => setBookRating(numericId, newRating, user?.id)}
+              size="lg"
+              showLabel
+              aria-label={`Rate ${bookTitle}`}
+            />
+          </div>
+
+          <div className="flex items-center justify-center gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(ROUTES.BOOKSHELF)}
+              className="text-xs font-mono uppercase"
+            >
+              My Bookshelf
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsCompletionDismissed(true)}
+              className="text-xs font-mono uppercase"
+            >
+              Close
             </Button>
           </div>
         </div>

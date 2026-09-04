@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { AccountPreferencesSection } from './AccountPreferencesSection';
+import { AccountPreferencesSection, exportLibraryData } from './AccountPreferencesSection';
 
 describe('AccountPreferencesSection', () => {
   const defaultProps = {
@@ -211,6 +211,48 @@ describe('AccountPreferencesSection', () => {
     });
     fireEvent.click(testVoiceBtn);
     expect(screen.getByRole('button', { name: 'Test voice' })).toBeInTheDocument();
+  });
+
+  describe('Library Portability & Backups', () => {
+    it('renders the portability section with JSON, CSV, and Import buttons', () => {
+      render(<AccountPreferencesSection {...defaultProps} />);
+
+      expect(screen.getByTestId('library-portability-section')).toBeInTheDocument();
+      expect(screen.getByText('Library Portability & Backups')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Export library backup in JSON/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Export reading catalog in CSV/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Import library backup/i })).toBeInTheDocument();
+    });
+
+    it('handles JSON and CSV export clicks', () => {
+      render(<AccountPreferencesSection {...defaultProps} />);
+
+      const jsonBtn = screen.getByRole('button', { name: /Export library backup in JSON/i });
+      fireEvent.click(jsonBtn);
+
+      const csvBtn = screen.getByRole('button', { name: /Export reading catalog in CSV/i });
+      fireEvent.click(csvBtn);
+    });
+
+    it('handles file input change and shows error on corrupted file', async () => {
+      render(<AccountPreferencesSection {...defaultProps} />);
+
+      const fileInput = screen.getByTestId('library-backup-file-input');
+      const corruptedFile = new File(['not valid json'], 'corrupted.json', { type: 'application/json' });
+
+      fireEvent.change(fileInput, { target: { files: [corruptedFile] } });
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/Failed to parse JSON file/i);
+    });
+
+    it('handles exportLibraryData utility directly', () => {
+      const csvResult = exportLibraryData('csv');
+      expect(typeof csvResult).toBe('string');
+      expect(csvResult).toContain('Book ID');
+
+      const jsonResult = exportLibraryData('json');
+      expect(jsonResult).toBeUndefined();
+    });
   });
 });
 

@@ -31,3 +31,13 @@ export interface GutendexResponse {
   latencyMs?: number;
 }
 
+export type ReadingStatus = 'want_to_read' | 'currently_reading' | 'finished';
+
+export interface BookCuration {
+  bookId: number;
+  rating: number | null;
+  readingStatus: ReadingStatus | null;
+  ratedAt?: string;
+  statusUpdatedAt?: string;
+}
+

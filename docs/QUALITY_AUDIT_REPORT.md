@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 04 Sep 2026 09:48:00 GMT  
+**Last Generated**: Fri, 04 Sep 2026 12:53:18 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 108 passed  
-**Total Verified Tests**: 760 passed  
+**Total Test Suites**: 112 passed  
+**Total Verified Tests**: 820 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **108/108 test suites passed** (760 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **112/112 test suites passed** (820 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 12 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.51%** (4005/4329) — *Target: $ge$ 80%*
-- **Statements**: **90.72%** (4375/4822) — *Target: $ge$ 80%*
-- **Functions**: **87.61%** (1054/1203) — *Target: $ge$ 80%*
-- **Branches**: **80.99%** (3695/4562) — *Target: $ge$ 80%*
+- **Lines**: **92.05%** (4426/4808) — *Target: $ge$ 80%*
+- **Statements**: **90.24%** (4818/5339) — *Target: $ge$ 80%*
+- **Functions**: **87.57%** (1128/1288) — *Target: $ge$ 80%*
+- **Branches**: **80.31%** (4134/5147) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (108 Suites / 760 Tests)
+## 🧪 Comprehensive Test Suite Catalog (112 Suites / 820 Tests)
 
-### 🚀 App Routes & Pages (10 Suites · 75 Tests)
+### 🚀 App Routes & Pages (10 Suites · 77 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (8 tests)</summary>
@@ -147,7 +147,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -168,10 +168,12 @@
 - ✔ `toggles Read Aloud audio bar and triggers speech controls`
 - ✔ `toggles Annotations & Notes drawer from reader header`
 - ✔ `allows user to select text, apply highlight color, update note, and delete from drawer`
+- ✔ `automatically sets reading status to currently_reading when beginning a volume`
+- ✔ `renders volume completion modal with star rating and sets status to finished on the final page`
 
 </details>
 
-### 🎨 Catalog & Presentation (18 Suites · 163 Tests)
+### 🎨 Catalog & Presentation (18 Suites · 174 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -190,7 +192,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -198,7 +200,8 @@
 - ✔ `should toggle like and bookmark state on button clicks`
 - ✔ `should call onDownloadClick when clicking Formats button`
 - ✔ `should call onPreviewClick when clicking book cover visual on desktop`
-- ✔ `should navigate to /read/[id] on mobile when clicking book cover visual`
+- ✔ `should navigate to /read/[id] on mobile when clicking book cover visual in catalog view`
+- ✔ `should call onPreviewClick on mobile when activeView is likes`
 - ✔ `applies opacity-0 when isPreviewActive is true`
 - ✔ `should render cursor tooltip on hover when onPreviewClick is provided`
 - ✔ `renders fallback cover when image error occurs`
@@ -221,7 +224,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false or book is null`
 - ✔ `renders book preview modal and triggers cover open animation`
@@ -231,6 +234,12 @@
 - ✔ `applies FLIP transform when originRect is provided`
 - ✔ `invokes onWillClose during the landing flight prior to full onClose`
 - ✔ `renders long book titles and authors in full without truncation`
+- ✔ `does not render curation controls for unsaved books in catalog view`
+- ✔ `renders curation controls when activeView is bookshelf or likes`
+- ✔ `does not render curation controls in catalog view even if book is saved or has ratings in store`
+- ✔ `renders curation toolbar with solid bg-card and text-foreground modal styling`
+- ✔ `closes modal when clicking empty space in the viewport container outside the book`
+- ✔ `does not close modal when clicking inside the curation bar`
 
 </details>
 
@@ -244,11 +253,15 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `returns null when selectedMobileBook is null`
 - ✔ `renders modal with formatted author names and triggers actions`
 - ✔ `renders offline indicator and fires onToggleOffline`
+- ✔ `renders rating and reading status controls and handles interactions`
+- ✔ `calls onClose when clicking the backdrop or pressing Escape`
+- ✔ `hides personal curation section when activeView is catalog`
+- ✔ `shows personal curation section when activeView is likes`
 
 </details>
 
@@ -676,7 +689,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (6 Suites · 72 Tests)
+### ⚡ Zustand State Stores (6 Suites · 82 Tests)
 
 <details>
 <summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
@@ -727,7 +740,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (27 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -746,6 +759,16 @@
 - ✔ `queues offline actions to outbox when Supabase network rejects and flushes them on syncWithCloud`
 - ✔ `returns saved books count via useSavedBooksCount`
 - ✔ `returns isSaved status via useIsBookSaved`
+- ✔ `returns book rating via useBookRating`
+- ✔ `returns reading status via useReadingStatus`
+- ✔ `returns combined curation via useBookCuration`
+- ✔ `initializes with empty ratings and statuses`
+- ✔ `sets and clears 1-5 star ratings with proper clamping`
+- ✔ `sets and toggles reading statuses`
+- ✔ `queues outbox action when rating a book while offline/authenticated`
+- ✔ `flushes UPSERT_CURATION and DELETE_CURATION from outbox`
+- ✔ `syncs curation from cloud and merges with local guest ratings`
+- ✔ `resets curation upon clearBookshelf`
 
 </details>
 
@@ -786,7 +809,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (15 Suites · 114 Tests)
+### 📚 Gutenberg Parsers & Metadata (16 Suites · 129 Tests)
 
 <details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (10 tests)</summary>
@@ -878,6 +901,27 @@
 - ✔ `caps matches to maxResults limit`
 - ✔ `safely skips chapters with null or empty content`
 - ✔ `caps matches to maxResults when using diacritic fallback`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/library-backup.test.ts</code></b> (15 tests)</summary>
+
+- ✔ `generates a complete, structured backup payload from active stores`
+- ✔ `creates a download blob and triggers click in DOM`
+- ✔ `generates a valid CSV string with proper escaping and headers`
+- ✔ `\r\n`
+- ✔ `escapes cells containing commas, quotes, and newlines`
+- ✔ `accepts a valid backup payload`
+- ✔ `rejects non-object raw inputs`
+- ✔ `rejects payloads from foreign applications`
+- ✔ `rejects missing library section`
+- ✔ `rejects invalid savedBooks structure`
+- ✔ `rejects corrupted book items inside savedBooks`
+- ✔ `rejects non-array annotations or likedBookIds if provided`
+- ✔ `merges incoming backup non-destructively by default`
+- ✔ `overwrites state completely when replace strategy is selected`
+- ✔ `triggers cloud sync if userId is provided`
 
 </details>
 
@@ -1211,7 +1255,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (26 Suites · 89 Tests)
+### 🧩 UI Primitives & Motion (29 Suites · 111 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
@@ -1279,13 +1323,28 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
 - ✔ `renders read-aloud section and handles speed selection`
 - ✔ `handles auto-page advance and sentence highlight toggles`
 - ✔ `handles voice preview audio playback and toggle`
 - ✔ `covers light and dark theme buttons and preview completion callbacks`
+- ✔ `renders the portability section with JSON, CSV, and Import buttons`
+- ✔ `handles JSON and CSV export clicks`
+- ✔ `handles file input change and shows error on corrupted file`
+- ✔ `handles exportLibraryData utility directly`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountRestoreModal.test.tsx</code></b> (5 tests)</summary>
+
+- ✔ `renders nothing when closed or no backupData and no success`
+- ✔ `renders backup metadata counts and allows strategy switching`
+- ✔ `displays loading state while restoring`
+- ✔ `displays error message if restore failed`
+- ✔ `displays success state when restore succeeds`
 
 </details>
 
@@ -1293,6 +1352,18 @@
 <summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `renders password fields, strength meter, and buttons`
+
+</details>
+
+<details>
+<summary><b><code>src/components/bookshelf/ReadingStatusSelector.test.tsx</code></b> (6 tests)</summary>
+
+- ✔ `renders all three reading status options`
+- ✔ `marks current status as checked`
+- ✔ `calls onChange with selected status when clicked`
+- ✔ `clears status when clicking the active option`
+- ✔ `renders clear button when status is active and invokes onChange(null)`
+- ✔ `renders clear button immediately following the selected option across all status variants`
 
 </details>
 
@@ -1389,6 +1460,19 @@
 </details>
 
 <details>
+<summary><b><code>src/components/ui/StarRating.test.tsx</code></b> (7 tests)</summary>
+
+- ✔ `renders 5 interactive star buttons in interactive mode`
+- ✔ `marks the active star as aria-checked`
+- ✔ `calls onChange with star index on click`
+- ✔ `toggles rating off (calls onChange with null) when clicking active star`
+- ✔ `updates display rating on hover and restores on mouse leave with fixed width to prevent layout shift`
+- ✔ `supports keyboard navigation with arrow keys and enter`
+- ✔ `renders correctly in readOnly mode without interactive buttons`
+
+</details>
+
+<details>
 <summary><b><code>src/config/config.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `defines valid non-empty endpoint URLs`
@@ -1458,6 +1542,12 @@
 
 </details>
 
+---
+
+## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
+
+- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
+- **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 
 ## Quality Gate Verification
