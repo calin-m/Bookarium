@@ -335,5 +335,71 @@ describe('useContinueReadingLedger', () => {
     expect(result.current.volumes[0].progressPercent).toBe(42);
     expect(result.current.volumes[0].book.subjects).toContain('Gothic fiction');
   });
+
+  it('immediately renders volumes using cloud-restored bookTitle and authors on readingPosition without calling useBooks', () => {
+    act(() => {
+      useReaderStore.getState().setProgress(7777, 65);
+      useReaderStore.getState().saveReadingPosition(7777, {
+        chapterIndex: 4,
+        chapterPage: 2,
+        globalPage: 45,
+        lastReadAt: '2026-09-04T12:00:00Z',
+        bookTitle: 'Cloud Restored Volume',
+        bookAuthors: ['Archival Author'],
+        coverUrl: 'https://example.com/cover7777.jpg',
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    expect(result.current.volumes).toHaveLength(1);
+    const volume = result.current.volumes[0];
+    expect(volume.book.id).toBe(7777);
+    expect(volume.book.title).toBe('Cloud Restored Volume');
+    expect(volume.book.authors).toEqual(['Archival Author']);
+    expect(volume.book.coverUrl).toBe('https://example.com/cover7777.jpg');
+    expect(volume.progressPercent).toBe(65);
+  });
+
+  it('clears individual volume progress and all volumes via store methods', async () => {
+    act(() => {
+      useReaderStore.getState().setProgress(1342, 50);
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 1,
+        chapterPage: 1,
+        globalPage: 1,
+        lastReadAt: new Date().toISOString(),
+        bookTitle: 'Pride and Prejudice',
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    expect(result.current.volumes).toHaveLength(1);
+
+    await act(async () => {
+      await result.current.clearVolumeProgress(1342);
+    });
+
+    expect(result.current.volumes).toHaveLength(0);
+
+    act(() => {
+      useReaderStore.getState().setProgress(84, 80);
+      useReaderStore.getState().saveReadingPosition(84, {
+        chapterIndex: 2,
+        chapterPage: 2,
+        globalPage: 2,
+        lastReadAt: new Date().toISOString(),
+        bookTitle: 'Frankenstein',
+      });
+    });
+
+    expect(result.current.volumes).toHaveLength(1);
+
+    await act(async () => {
+      await result.current.clearAllVolumes();
+    });
+
+    expect(result.current.volumes).toHaveLength(0);
+  });
 });
 

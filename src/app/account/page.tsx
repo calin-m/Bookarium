@@ -53,7 +53,7 @@ export default function AccountPage() {
       resendVerificationEmail: s.resendVerificationEmail,
     }))
   );
-  const { savedCount, likedCount, cloudBookshelves } = useHydratedBookshelf();
+  const { savedCount, favoriteCount, cloudBookshelves } = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
   const annotationCount = annotations.length;
   const readingPositions = useReaderStore((s) => s.readingPositions);
@@ -359,7 +359,7 @@ export default function AccountPage() {
               {/* Library Statistics Card */}
               <AccountLibraryStats
                 savedCount={savedCount}
-                likedCount={likedCount}
+                favoriteCount={favoriteCount}
                 customShelvesCount={customShelvesCount}
                 annotationCount={annotationCount}
                 bookmarksCount={bookmarksCount}

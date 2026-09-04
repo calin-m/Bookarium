@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20907%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.12%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20915%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.14%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -78,7 +78,7 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 * **Procedural Cover Art Fallback**:
   * Automatic `onError` detection replaces missing or dead remote cover images with elegant, dark-academia typographic cover art in pure CSS with zero layout shifts.
 * **SSR Hydration Guarding Protocol**:
-  * Store reads for liked and saved book collections are guarded with `useHasMounted()` to guarantee zero React hydration mismatches on initial server render.
+  * Store reads for favorite and saved book collections are guarded with `useHasMounted()` to guarantee zero React hydration mismatches on initial server render.
 * **100% Live Dual-Gateway Data Pipeline**: Next.js Server Route Proxy paired with direct client upstream failover to `https://gutendex.com/` guaranteeing 100% uptime on serverless platforms without reliance on local mock fallbacks.
 * **Dynamic Hourly Rotating 3D Featured Book & Interactive 3D Open-Book Physics**:
   * Curated pool of iconic public domain classics dynamically rotated every UTC hour with zero-cron client/server deterministic synchronization.
@@ -162,7 +162,7 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * 3-tier reading status classification (**Want to Read**, **Currently Reading**, **Finished**) with active selection rings and single-click removal.
   * Responsive dual-mode presentation:
     * **Desktop** ($\ge 1024\text{px}$): Integrated into the floating 3D hardcover preview toolbar (`BookPreviewModal`) rendered on a solid theme-consistent card surface (`bg-card`) with outside-click backdrop dismissal and isolated interactive controls.
-    * **Mobile & Narrow Displays** ($< 1024\text{px}$): Touch-optimized modal sheet (`BookshelfMobileModal`) triggered directly when tapping covers or ratings in Favorites (`activeView === 'likes'`) or Bookshelf, providing phone/tablet rating ergonomics without impacting 1-tap catalog reading.
+    * **Mobile & Narrow Displays** ($< 1024\text{px}$): Touch-optimized modal sheet (`BookshelfMobileModal`) triggered directly when tapping covers or ratings in Favorites (`activeView === 'favorites'`) or Bookshelf, providing phone/tablet rating ergonomics without impacting 1-tap catalog reading.
   * 100% offline-first via Zustand `useBookshelfStore`, synchronized with Supabase PostgreSQL (`public.user_book_curation`) using Row Level Security.
 * **Pure Domain Library Portability & Full Data Sovereignty**:
   * Single-click portable JSON backup and RFC 4180-compliant CSV spreadsheet catalog export (`src/lib/library-backup.ts`) capturing volumes, shelves, bookmarks, ratings, reading statuses, and literary annotations.
@@ -228,7 +228,7 @@ flowchart TD
         Account["Account & Reading Preferences (src/app/account/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• likedBookIds: []\n• deletedBookIds: [] (Tombstones)\n• bookRatings: {}\n• readingStatuses: {}")]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• favoriteBookIds: []\n• recentBooks: []\n• cloudBookshelves: []\n• deletedBookIds: [] (Tombstones)\n• bookRatings: {}\n• readingStatuses: {}")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
         StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}\n• syncReadingProgressToCloud()")]
         StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
@@ -239,7 +239,7 @@ flowchart TD
         QueryContent["🔄 useBookContent(textUrl, bookId)"]
         
         Nav -->|"Open Auth / Account"| StoreAuth
-        Nav -->|"View Bookshelf"| StoreShelf
+        Nav -->|"View Bookshelf / Favorites"| StoreShelf
         Nav -->|"View Bookmarks"| Bookmarks
         Nav -->|"View Notebook"| Notebook
         Bookmarks --> LedgerHook
@@ -740,7 +740,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 907 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 915 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

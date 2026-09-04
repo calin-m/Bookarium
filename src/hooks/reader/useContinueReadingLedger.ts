@@ -76,8 +76,15 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     const current = useReaderStore.getState().currentBook;
     if (current?.id) known.add(current.id);
 
+    Object.entries(readingPositions).forEach(([idStr, pos]) => {
+      const id = parseInt(idStr, 10);
+      if (!Number.isNaN(id) && pos?.bookTitle) {
+        known.add(id);
+      }
+    });
+
     return allActiveIds.filter((id) => !known.has(id));
-  }, [allActiveIds, savedBooks, recentBooks]);
+  }, [allActiveIds, savedBooks, recentBooks, readingPositions]);
 
   const idsParam = useMemo(() => missingIds.join(','), [missingIds]);
   const { data: missingBooksData, isLoading: isMissingBooksLoading } = useBooks(
@@ -120,24 +127,41 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
 
     allActiveIds.forEach((bookId) => {
       let book = bookDictionary.get(bookId);
-      if (!book) {
-        const resolved = resolveBookMetadata({
-          id: bookId,
-          currentBook: currentBook?.id === bookId ? currentBook : undefined,
-        });
+      const position = readingPositions[bookId];
 
-        book = {
-          id: bookId,
-          title: cleanBookTitle(resolved.title) || `Volume #${bookId}`,
-          authors: resolved.author ? [resolved.author] : ['Public Domain Author'],
-          subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
-          languages: resolved.languages || ['en'],
-          coverUrl: `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
-          epubUrl: `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
-          htmlUrl: null,
-          txtUrl: null,
-          downloadCount: 0,
-        };
+      if (!book) {
+        if (position?.bookTitle) {
+          book = {
+            id: bookId,
+            title: cleanBookTitle(position.bookTitle),
+            authors: position.bookAuthors && position.bookAuthors.length > 0 ? position.bookAuthors : ['Public Domain Author'],
+            subjects: [],
+            languages: ['en'],
+            coverUrl: position.coverUrl || `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
+            epubUrl: `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
+            htmlUrl: null,
+            txtUrl: null,
+            downloadCount: 0,
+          };
+        } else {
+          const resolved = resolveBookMetadata({
+            id: bookId,
+            currentBook: currentBook?.id === bookId ? currentBook : undefined,
+          });
+
+          book = {
+            id: bookId,
+            title: cleanBookTitle(resolved.title) || `Volume #${bookId}`,
+            authors: resolved.author ? [resolved.author] : ['Public Domain Author'],
+            subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
+            languages: resolved.languages || ['en'],
+            coverUrl: `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
+            epubUrl: `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
+            htmlUrl: null,
+            txtUrl: null,
+            downloadCount: 0,
+          };
+        }
       } else {
         book = {
           ...book,
@@ -145,7 +169,6 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
         };
       }
 
-      const position = readingPositions[bookId];
       const rawProgress = readingProgress[bookId] ?? 0;
       const progress = Math.min(Math.max(Math.round(rawProgress), 0), 100);
       const rawStatus = bookStatuses[bookId];
@@ -250,12 +273,8 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     [clearReadingPosition, setProgress]
   );
 
-  const clearAllVolumes = useCallback(() => {
-    useReaderStore.setState({
-      readingProgress: {},
-      readingPositions: {},
-      currentBook: null,
-    });
+  const clearAllVolumes = useCallback(async () => {
+    await useReaderStore.getState().clearAllVolumes();
   }, []);
 
   return {

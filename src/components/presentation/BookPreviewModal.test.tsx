@@ -29,8 +29,8 @@ describe('BookPreviewModal component', () => {
     useBookshelfStore.setState({
       savedBooks: [],
       readingQueue: [],
-      likedBooks: [],
-      likedBookIds: [],
+      favoriteBooks: [],
+      favoriteBookIds: [],
       recentBooks: [],
       bookRatings: {},
       bookStatuses: {},
@@ -245,7 +245,7 @@ describe('BookPreviewModal component', () => {
     expect(screen.queryByRole('group', { name: /reading status selector/i })).not.toBeInTheDocument();
   });
 
-  it('renders curation controls when activeView is bookshelf or likes', () => {
+  it('renders curation controls when activeView is bookshelf or favorites', () => {
     const { rerender } = renderWithQueryClient(
       <BookPreviewModal
         book={defaultBook}
@@ -267,7 +267,7 @@ describe('BookPreviewModal component', () => {
         <BookPreviewModal
           book={defaultBook}
           isOpen={true}
-          activeView="likes"
+          activeView="favorites"
           onClose={vi.fn()}
         />
       </QueryClientProvider>
@@ -306,7 +306,7 @@ describe('BookPreviewModal component', () => {
       <BookPreviewModal
         book={defaultBook}
         isOpen={true}
-        activeView="likes"
+        activeView="favorites"
         onClose={vi.fn()}
       />
     );
@@ -331,7 +331,7 @@ describe('BookPreviewModal component', () => {
       <BookPreviewModal
         book={defaultBook}
         isOpen={true}
-        activeView="likes"
+        activeView="favorites"
         onClose={handleClose}
       />
     );
@@ -358,7 +358,7 @@ describe('BookPreviewModal component', () => {
       <BookPreviewModal
         book={defaultBook}
         isOpen={true}
-        activeView="likes"
+        activeView="favorites"
         onClose={handleClose}
       />
     );

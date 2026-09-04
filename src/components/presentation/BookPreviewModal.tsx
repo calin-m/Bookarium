@@ -22,7 +22,7 @@ export interface BookPreviewModalProps {
   book: GutendexBook | null;
   originRect?: ElementRect | null;
   isOpen: boolean;
-  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks';
+  activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
   onWillClose?: () => void;
   onClose: () => void;
   onReadBook?: (book: GutendexBook) => void;
@@ -48,7 +48,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
   // Personal curation toolbar is strictly restricted to personal collections (Bookshelf & Favorites)
   // and completely hidden in the main catalog view
-  const isCuratable = activeView === 'bookshelf' || activeView === 'likes';
+  const isCuratable = activeView === 'bookshelf' || activeView === 'favorites';
 
   const {
     passages,

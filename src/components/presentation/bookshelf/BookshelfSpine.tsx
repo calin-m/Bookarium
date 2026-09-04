@@ -29,10 +29,10 @@ export interface BookshelfSpineProps {
   bookIndex: number;
   readingProgress?: number;
   isSaved: boolean;
-  isLiked: boolean;
+  isFavorite: boolean;
   isOffline?: boolean;
   onToggleSave: (book: GutendexBook) => void;
-  onToggleLike: (book: GutendexBook) => void;
+  onToggleFavorite: (book: GutendexBook) => void;
   onToggleOffline?: (book: GutendexBook) => void;
   onSpineClick: (book: GutendexBook) => void;
   onBookClick?: (book: GutendexBook) => void;
@@ -50,10 +50,10 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   bookIndex,
   readingProgress,
   isSaved,
-  isLiked,
+  isFavorite,
   isOffline = false,
   onToggleSave,
-  onToggleLike,
+  onToggleFavorite,
   onToggleOffline,
   onSpineClick,
   onBookClick,
@@ -115,13 +115,13 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         };
       case 'favorite':
         return {
-          icon: <Heart className={`w-3 h-3 text-destructive shrink-0 ${isLiked ? 'fill-current' : ''}`} />,
-          text: isLiked ? 'Remove from Favorites' : 'Add to Favorites',
+          icon: <Heart className={`w-3 h-3 text-destructive shrink-0 ${isFavorite ? 'fill-current' : ''}`} />,
+          text: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
         };
       default:
         return null;
     }
-  }, [hoveredAction, isOffline, isSaved, isLiked]);
+  }, [hoveredAction, isOffline, isSaved, isFavorite]);
 
   return (
     <div
@@ -313,7 +313,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onToggleLike(book);
+              onToggleFavorite(book);
             }}
             onMouseEnter={() => {
               setHoveredAction('favorite');
@@ -324,13 +324,13 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               setHoveredAction(null);
             }}
             className={`p-1 rounded-lg border transition-colors ${
-              isLiked
+              isFavorite
                 ? 'border-destructive bg-destructive/10 text-destructive'
                 : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground'
             }`}
-            aria-label={isLiked ? 'Unlike book' : 'Like book'}
+            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           >
-            <Heart className={`w-3 h-3 ${isLiked ? 'fill-current' : ''}`} />
+            <Heart className={`w-3 h-3 ${isFavorite ? 'fill-current' : ''}`} />
           </button>
         </div>
 

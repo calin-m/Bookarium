@@ -10,7 +10,7 @@ describe('ROUTES Configuration', () => {
     expect(ROUTES.CONFIRM_DELETION).toBe('/auth/confirm-deletion');
     expect(ROUTES.AUTH_CALLBACK).toBe('/auth/callback');
     expect(ROUTES.BOOKSHELF).toBe('/?view=bookshelf');
-    expect(ROUTES.LIKES).toBe('/?view=likes');
+    expect(ROUTES.FAVORITES).toBe('/?view=favorites');
     expect(ROUTES.NOTEBOOK).toBe('/?view=notebook');
     expect(ROUTES.BOOKMARKS).toBe('/?view=bookmarks');
     expect(ROUTES.API_BOOKS).toBe('/api/books');
@@ -25,7 +25,7 @@ describe('ROUTES Configuration', () => {
   it('builds view query route correctly', () => {
     expect(ROUTES.VIEW('catalog')).toBe('/');
     expect(ROUTES.VIEW('bookshelf')).toBe('/?view=bookshelf');
-    expect(ROUTES.VIEW('likes')).toBe('/?view=likes');
+    expect(ROUTES.VIEW('favorites')).toBe('/?view=favorites');
     expect(ROUTES.VIEW('notebook')).toBe('/?view=notebook');
     expect(ROUTES.VIEW('bookmarks')).toBe('/?view=bookmarks');
   });

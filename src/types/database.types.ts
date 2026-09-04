@@ -101,6 +101,9 @@ export interface Database {
           id: string;
           user_id: string;
           book_id: number;
+          book_title: string | null;
+          book_authors: string[];
+          cover_url: string | null;
           current_chapter_index: number;
           progress_percent: number;
           scroll_offset: number;
@@ -110,6 +113,9 @@ export interface Database {
           id?: string;
           user_id: string;
           book_id: number;
+          book_title?: string | null;
+          book_authors?: string[];
+          cover_url?: string | null;
           current_chapter_index?: number;
           progress_percent?: number;
           scroll_offset?: number;
@@ -119,6 +125,9 @@ export interface Database {
           id?: string;
           user_id?: string;
           book_id?: number;
+          book_title?: string | null;
+          book_authors?: string[];
+          cover_url?: string | null;
           current_chapter_index?: number;
           progress_percent?: number;
           scroll_offset?: number;

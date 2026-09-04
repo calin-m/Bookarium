@@ -45,13 +45,16 @@ describe('BookCard component', () => {
     expect(readLink).toHaveAttribute('href', `/read/${book.id}`);
   });
 
-  it('should toggle like and bookmark state on button clicks', () => {
+  it('should toggle favorite and bookmark state on button clicks', () => {
     const book = mockBooks[0];
     render(<BookCard book={book} />);
 
-    const likeBtn = screen.getByLabelText('Like book');
+    const likeBtn = screen.getByLabelText('Add to favorites');
     fireEvent.click(likeBtn);
-    expect(useBookshelfStore.getState().isBookLiked(book.id)).toBe(true);
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(true);
+
+    const unlikeBtn = screen.getByLabelText('Remove from favorites');
+    expect(unlikeBtn).toBeInTheDocument();
 
     const bookmarkBtn = screen.getByLabelText('Save to bookshelf');
     fireEvent.click(bookmarkBtn);
@@ -105,14 +108,14 @@ describe('BookCard component', () => {
     }
   });
 
-  it('should call onPreviewClick on mobile when activeView is likes', () => {
+  it('should call onPreviewClick on mobile when activeView is favorites', () => {
     const handlePreview = vi.fn();
     const book = mockBooks[0];
     const originalWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 768 });
 
     try {
-      render(<BookCard book={book} onPreviewClick={handlePreview} activeView="likes" />);
+      render(<BookCard book={book} onPreviewClick={handlePreview} activeView="favorites" />);
 
       const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
       fireEvent.click(coverVisual);
@@ -181,7 +184,7 @@ describe('BookCard component', () => {
     fireEvent.mouseEnter(coverVisual);
     fireEvent.mouseMove(coverVisual, { clientX: 100, clientY: 100 });
 
-    const likeButton = screen.getByRole('button', { name: /Like book/i });
+    const likeButton = screen.getByRole('button', { name: /Add to favorites/i });
     fireEvent.mouseEnter(likeButton);
 
     expect(screen.getByText(/Add to Favorites/i)).toBeInTheDocument();

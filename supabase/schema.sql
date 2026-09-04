@@ -158,12 +158,20 @@ CREATE TABLE IF NOT EXISTS public.reading_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   book_id INTEGER NOT NULL,
+  book_title TEXT,
+  book_authors TEXT[] NOT NULL DEFAULT '{}',
+  cover_url TEXT,
   current_chapter_index INTEGER NOT NULL DEFAULT 0,
   progress_percent NUMERIC NOT NULL DEFAULT 0,
   scroll_offset NUMERIC NOT NULL DEFAULT 0,
   last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, book_id)
 );
+
+-- Idempotent column migrations for existing instances:
+ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS book_title TEXT;
+ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS book_authors TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS cover_url TEXT;
 
 ALTER TABLE public.reading_progress ENABLE ROW LEVEL SECURITY;
 

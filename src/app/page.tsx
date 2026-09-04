@@ -41,7 +41,7 @@ function HomeContent() {
   const [selectedPreviewBook, setSelectedPreviewBook] = useState<GutendexBook | null>(null);
   const [activePreviewBookId, setActivePreviewBookId] = useState<number | null>(null);
   const [previewOriginRect, setPreviewOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
-  const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'likes' | null>(null);
+  const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'favorites' | null>(null);
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
 
   const { isBookOffline, downloadBook, removeBook } = useOfflineBooks();
@@ -56,32 +56,32 @@ function HomeContent() {
   // Bookshelf store items (hydrated safely on mount)
   const rawSavedBooks = useBookshelfStore((s) => s.savedBooks);
   const savedBooks = useMemo(() => (hasMounted ? rawSavedBooks : []), [hasMounted, rawSavedBooks]);
-  const rawLikedBooks = useBookshelfStore((s) => s.likedBooks || []);
-  const likedBooks = useMemo(() => (hasMounted ? rawLikedBooks : []), [hasMounted, rawLikedBooks]);
-  const rawLikedBookIds = useBookshelfStore((s) => s.likedBookIds);
-  const likedBookIds = useMemo(() => (hasMounted ? rawLikedBookIds : []), [hasMounted, rawLikedBookIds]);
+  const rawFavoriteBooks = useBookshelfStore((s) => s.favoriteBooks || []);
+  const favoriteBooks = useMemo(() => (hasMounted ? rawFavoriteBooks : []), [hasMounted, rawFavoriteBooks]);
+  const rawFavoriteBookIds = useBookshelfStore((s) => s.favoriteBookIds);
+  const favoriteBookIds = useMemo(() => (hasMounted ? rawFavoriteBookIds : []), [hasMounted, rawFavoriteBookIds]);
   const clearSavedBooks = useBookshelfStore((s) => s.clearSavedBooks);
 
-  // Auto-healing: detect any liked IDs in localStorage that lack full book metadata
-  const missingLikedIds = useMemo(() => {
+  // Auto-healing: detect any favorite IDs in localStorage that lack full book metadata
+  const missingFavoriteIds = useMemo(() => {
     if (!hasMounted) return [];
-    const knownIds = new Set((likedBooks || []).map((b) => b.id));
-    return likedBookIds.filter((id) => !knownIds.has(id));
-  }, [likedBookIds, likedBooks, hasMounted]);
+    const knownIds = new Set((favoriteBooks || []).map((b) => b.id));
+    return favoriteBookIds.filter((id) => !knownIds.has(id));
+  }, [favoriteBookIds, favoriteBooks, hasMounted]);
 
-  const missingIdsParam = missingLikedIds.length > 0 ? missingLikedIds.join(',') : undefined;
+  const missingIdsParam = missingFavoriteIds.length > 0 ? missingFavoriteIds.join(',') : undefined;
 
   const { data: missingBooksData, isLoading: isMissingLoading } = useBooks(
     missingIdsParam ? { ids: missingIdsParam } : undefined,
     { enabled: Boolean(missingIdsParam) }
   );
 
-  // Sync returned book objects into likedBooks store
+  // Sync returned book objects into favoriteBooks store
   useEffect(() => {
-    if (missingLikedIds.length > 0 && missingBooksData?.results && missingBooksData.results.length > 0) {
-      useBookshelfStore.getState().syncLikedBooks(missingBooksData.results);
+    if (missingFavoriteIds.length > 0 && missingBooksData?.results && missingBooksData.results.length > 0) {
+      useBookshelfStore.getState().syncFavoriteBooks(missingBooksData.results);
     }
-  }, [missingBooksData, missingLikedIds]);
+  }, [missingBooksData, missingFavoriteIds]);
 
   // Centralized Catalog Filters Hook
   const {
@@ -155,20 +155,20 @@ function HomeContent() {
     [savedBooks, collectionSearchQuery]
   );
 
-  const uniqueKnownLikedBooks = useMemo(() => {
+  const uniqueKnownFavoriteBooks = useMemo(() => {
     const allKnown = [
-      ...(likedBooks || []),
+      ...(favoriteBooks || []),
       ...(missingBooksData?.results || []),
       ...(booksData?.results || []),
       ...savedBooks,
     ];
     const uniqueKnown = Array.from(new Map(allKnown.map((b) => [b.id, b])).values());
-    return uniqueKnown.filter((b) => likedBookIds.includes(b.id));
-  }, [likedBooks, missingBooksData?.results, booksData?.results, savedBooks, likedBookIds]);
+    return uniqueKnown.filter((b) => favoriteBookIds.includes(b.id));
+  }, [favoriteBooks, missingBooksData?.results, booksData?.results, savedBooks, favoriteBookIds]);
 
-  const filteredLikedBooks = useMemo(
-    () => filterBooksSmart(uniqueKnownLikedBooks, collectionSearchQuery),
-    [uniqueKnownLikedBooks, collectionSearchQuery]
+  const filteredFavoriteBooks = useMemo(
+    () => filterBooksSmart(uniqueKnownFavoriteBooks, collectionSearchQuery),
+    [uniqueKnownFavoriteBooks, collectionSearchQuery]
   );
 
   // Derive displayed books based on active view
@@ -180,9 +180,9 @@ function HomeContent() {
     displayedBooks = filteredSavedBooks;
     isDisplayLoading = false;
     isDisplayError = false;
-  } else if (activeView === 'likes') {
-    displayedBooks = filteredLikedBooks;
-    isDisplayLoading = missingLikedIds.length > 0 && isMissingLoading;
+  } else if (activeView === 'favorites') {
+    displayedBooks = filteredFavoriteBooks;
+    isDisplayLoading = missingFavoriteIds.length > 0 && isMissingLoading;
     isDisplayError = false;
   }
 
@@ -288,7 +288,7 @@ function HomeContent() {
                       : 'Searching Project Gutenberg catalog...'
                     : activeView === 'bookshelf'
                     ? `You have ${savedBooks.length} titles preserved on your personal shelf`
-                    : `You have ${likedBookIds.length} titles in your favorites`
+                    : `You have ${favoriteBookIds.length} titles in your favorites`
                 }
               >
                 {activeView === 'bookshelf' && savedBooks.length > 0 && (
@@ -305,12 +305,12 @@ function HomeContent() {
                   </div>
                 )}
 
-                {activeView === 'likes' && likedBookIds.length > 0 && (
+                {activeView === 'favorites' && favoriteBookIds.length > 0 && (
                   <div className="pt-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setConfirmClearType('likes')}
+                      onClick={() => setConfirmClearType('favorites')}
                       className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -332,13 +332,13 @@ function HomeContent() {
                 />
               )}
 
-              {activeView === 'likes' && likedBookIds.length > 0 && (
+              {activeView === 'favorites' && favoriteBookIds.length > 0 && (
                 <CollectionSearchBar
                   query={collectionSearchQuery}
                   onQueryChange={setCollectionSearchQuery}
                   placeholder="Search your favorites by title, author, or subject..."
-                  totalCount={likedBookIds.length}
-                  filteredCount={filteredLikedBooks.length}
+                  totalCount={favoriteBookIds.length}
+                  filteredCount={filteredFavoriteBooks.length}
                   collectionName="favorites"
                 />
               )}
@@ -372,8 +372,8 @@ function HomeContent() {
                     ? `No volumes found matching "${collectionSearchQuery}"`
                     : activeView === 'bookshelf'
                     ? 'Your personal shelf is currently empty'
-                    : activeView === 'likes'
-                    ? 'No liked books yet'
+                    : activeView === 'favorites'
+                    ? 'No favorite books yet'
                     : 'No matching public domain works found'
                 }
                 emptyDescription={
@@ -381,7 +381,7 @@ function HomeContent() {
                     ? 'Try adjusting your search terms, author name, or clear the search query.'
                     : activeView === 'bookshelf'
                     ? 'Click the bookmark ribbon on any volume to place it on your shelf for offline access.'
-                    : activeView === 'likes'
+                    : activeView === 'favorites'
                     ? 'Click the heart icon on any work to save it to your favorites.'
                     : 'Try adjusting your search keywords, collection facets, or clearing the language/era filter.'
                 }
@@ -545,7 +545,7 @@ function HomeContent() {
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 {confirmClearType === 'shelf'
                   ? `This will remove all ${savedBooks.length} titles currently preserved on your personal reading shelf. This action cannot be undone.`
-                  : `This will remove all ${likedBookIds.length} titles from your curated favorites list. This action cannot be undone.`}
+                  : `This will remove all ${favoriteBookIds.length} titles from your curated favorites list. This action cannot be undone.`}
               </p>
             </div>
           </div>
@@ -566,8 +566,8 @@ function HomeContent() {
               onClick={() => {
                 if (confirmClearType === 'shelf') {
                   clearSavedBooks();
-                } else if (confirmClearType === 'likes') {
-                  useBookshelfStore.getState().clearLikedBooks();
+                } else if (confirmClearType === 'favorites') {
+                  useBookshelfStore.getState().clearFavoriteBooks();
                 }
                 setConfirmClearType(null);
               }}

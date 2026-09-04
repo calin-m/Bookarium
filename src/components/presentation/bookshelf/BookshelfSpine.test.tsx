@@ -31,9 +31,9 @@ describe('BookshelfSpine Component', () => {
         bookIndex={0}
         readingProgress={50}
         isSaved={false}
-        isLiked={false}
+        isFavorite={false}
         onToggleSave={vi.fn()}
-        onToggleLike={vi.fn()}
+        onToggleFavorite={vi.fn()}
         onSpineClick={handleSpineClick}
       />
     );
@@ -53,7 +53,7 @@ describe('BookshelfSpine Component', () => {
     const handleBookClick = vi.fn();
     const handleDownload = vi.fn();
     const handleToggleSave = vi.fn();
-    const handleToggleLike = vi.fn();
+    const handleToggleFavorite = vi.fn();
 
     render(
       <BookshelfSpine
@@ -61,9 +61,9 @@ describe('BookshelfSpine Component', () => {
         bookIndex={0}
         readingProgress={75}
         isSaved={true}
-        isLiked={true}
+        isFavorite={true}
         onToggleSave={handleToggleSave}
-        onToggleLike={handleToggleLike}
+        onToggleFavorite={handleToggleFavorite}
         onSpineClick={vi.fn()}
         onBookClick={handleBookClick}
         onDownloadClick={handleDownload}
@@ -84,9 +84,9 @@ describe('BookshelfSpine Component', () => {
     fireEvent.click(saveBtn);
     expect(handleToggleSave).toHaveBeenCalledWith(mockBook);
 
-    const likeBtn = screen.getByLabelText('Unlike book');
+    const likeBtn = screen.getByLabelText('Remove from favorites');
     fireEvent.click(likeBtn);
-    expect(handleToggleLike).toHaveBeenCalledWith(mockBook);
+    expect(handleToggleFavorite).toHaveBeenCalledWith(mockBook);
   });
 
   it('renders offline indicator and fires onToggleOffline when clicked', () => {
@@ -96,10 +96,10 @@ describe('BookshelfSpine Component', () => {
         book={mockBook}
         bookIndex={0}
         isSaved={true}
-        isLiked={false}
+        isFavorite={false}
         isOffline={true}
         onToggleSave={vi.fn()}
-        onToggleLike={vi.fn()}
+        onToggleFavorite={vi.fn()}
         onToggleOffline={handleToggleOffline}
         onSpineClick={vi.fn()}
       />
@@ -117,10 +117,10 @@ describe('BookshelfSpine Component', () => {
         book={mockBook}
         bookIndex={0}
         isSaved={false}
-        isLiked={false}
+        isFavorite={false}
         isOffline={false}
         onToggleSave={vi.fn()}
-        onToggleLike={vi.fn()}
+        onToggleFavorite={vi.fn()}
         onSpineClick={vi.fn()}
       />
     );

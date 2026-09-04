@@ -14,14 +14,14 @@ export const ROUTES = {
 
   // View Query Targets
   BOOKSHELF: '/?view=bookshelf',
-  LIKES: '/?view=likes',
+  FAVORITES: '/?view=favorites',
   NOTEBOOK: '/?view=notebook',
   BOOKMARKS: '/?view=bookmarks',
 
   // Dynamic Route Builders
   READ: (id: number | string) => `/read/${id}` as const,
-  VIEW: (view: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks') =>
-    (view === 'catalog' ? '/' : `/?view=${view}` as const),
+  VIEW: (view: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks') =>
+    (view === 'catalog' ? '/' : (`/?view=${view}` as const)),
 
   // API Proxy Routes
   API_BOOKS: '/api/books',

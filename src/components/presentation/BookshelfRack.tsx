@@ -34,9 +34,9 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const router = useRouter();
   const {
     isSaved: checkIsSaved,
-    isLiked: checkIsLiked,
+    isFavorite: checkIsFavorite,
     toggleSaveBook: toggleSave,
-    toggleLikeBook: toggleLike,
+    toggleFavoriteBook: toggleFavorite,
     cloudBookshelves,
     cloudBookshelfItems,
     activeBookshelfId,
@@ -435,10 +435,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     bookIndex={bookIndex}
                     readingProgress={readingProgress[book.id]}
                     isSaved={checkIsSaved(book.id)}
-                    isLiked={checkIsLiked(book.id)}
+                    isFavorite={checkIsFavorite(book.id)}
                     isOffline={isBookOffline(book.id)}
                     onToggleSave={toggleSave}
-                    onToggleLike={toggleLike}
+                    onToggleFavorite={toggleFavorite}
                     onToggleOffline={handleToggleOffline}
                     onSpineClick={handleSpineClick}
                     onBookClick={onBookClick}
@@ -468,10 +468,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
           onClose={closeMobileSheet}
           readingProgress={readingProgress[selectedMobileBook.id]}
           isSaved={checkIsSaved(selectedMobileBook.id)}
-          isLiked={checkIsLiked(selectedMobileBook.id)}
+          isFavorite={checkIsFavorite(selectedMobileBook.id)}
           isOffline={isBookOffline(selectedMobileBook.id)}
           onToggleSave={toggleSave}
-          onToggleLike={toggleLike}
+          onToggleFavorite={toggleFavorite}
           onToggleOffline={handleToggleOffline}
           onBookClick={onBookClick}
           onDownloadClick={onDownloadClick}

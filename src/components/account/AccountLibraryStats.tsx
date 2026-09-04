@@ -6,7 +6,7 @@ import { LIBRARY_THEMES } from '@/config/library-tokens';
 
 export interface AccountLibraryStatsProps {
   savedCount: number;
-  likedCount: number;
+  favoriteCount: number;
   customShelvesCount: number;
   annotationCount?: number;
   bookmarksCount?: number;
@@ -14,7 +14,7 @@ export interface AccountLibraryStatsProps {
 
 export const AccountLibraryStats: React.FC<AccountLibraryStatsProps> = ({
   savedCount,
-  likedCount,
+  favoriteCount,
   customShelvesCount,
   annotationCount = 0,
   bookmarksCount = 0,
@@ -59,7 +59,7 @@ export const AccountLibraryStats: React.FC<AccountLibraryStatsProps> = ({
             <span className="truncate group-hover:text-foreground transition-colors">Favorite Titles</span>
           </div>
           <div className="flex items-end justify-between">
-            <p className="text-xl sm:text-2xl font-mono font-bold text-foreground leading-none">{likedCount}</p>
+            <p className="text-xl sm:text-2xl font-mono font-bold text-foreground leading-none">{favoriteCount}</p>
             <ArrowUpRight className={`w-4 h-4 ${LIBRARY_THEMES.favorites.arrowColor} opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 shrink-0`} />
           </div>
         </Link>

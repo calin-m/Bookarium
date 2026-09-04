@@ -61,8 +61,8 @@ export type OutboxAction = OutboxActionInput & {
 export interface BookshelfState {
   savedBooks: GutendexBook[];
   readingQueue: GutendexBook[];
-  likedBooks: GutendexBook[];
-  likedBookIds: number[];
+  favoriteBooks: GutendexBook[];
+  favoriteBookIds: number[];
   recentBooks: GutendexBook[];
 
   // Personal Curation State (1-5 Star Ratings & Reading Statuses)
@@ -89,10 +89,10 @@ export interface BookshelfState {
   addToQueue: (book: GutendexBook) => void;
   removeFromQueue: (id: number) => void;
   isInQueue: (id: number) => boolean;
-  toggleLikeBook: (bookOrId: GutendexBook | number, userId?: string) => Promise<void>;
-  isBookLiked: (id: number) => boolean;
-  syncLikedBooks: (books: GutendexBook[]) => void;
-  clearLikedBooks: () => void;
+  toggleFavoriteBook: (bookOrId: GutendexBook | number, userId?: string) => Promise<void>;
+  isBookFavorite: (id: number) => boolean;
+  syncFavoriteBooks: (books: GutendexBook[]) => void;
+  clearFavoriteBooks: () => void;
   addRecentBook: (book: GutendexBook) => void;
   clearBookshelf: () => void;
 
@@ -119,8 +119,8 @@ export const useBookshelfStore = create<BookshelfState>()(
     (set, get) => ({
       savedBooks: [],
       readingQueue: [],
-      likedBooks: [],
-      likedBookIds: [],
+      favoriteBooks: [],
+      favoriteBookIds: [],
       recentBooks: [],
       bookRatings: {},
       bookStatuses: {},
@@ -306,23 +306,23 @@ export const useBookshelfStore = create<BookshelfState>()(
         return get().readingQueue.some((b) => b.id === id);
       },
 
-      toggleLikeBook: async (bookOrId, userId) => {
+      toggleFavoriteBook: async (bookOrId, userId) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
-        const { likedBookIds, likedBooks = [] } = get();
+        const { favoriteBookIds, favoriteBooks = [] } = get();
         const isNumeric = typeof bookOrId === 'number';
         const id = isNumeric ? bookOrId : bookOrId.id;
-        const exists = likedBookIds.includes(id) || likedBooks.some((b) => b.id === id);
+        const exists = favoriteBookIds.includes(id) || favoriteBooks.some((b) => b.id === id);
 
         if (exists) {
           set({
-            likedBookIds: likedBookIds.filter((item) => item !== id),
-            likedBooks: likedBooks.filter((b) => b.id !== id),
+            favoriteBookIds: favoriteBookIds.filter((item) => item !== id),
+            favoriteBooks: favoriteBooks.filter((b) => b.id !== id),
           });
         } else {
-          const nextLikedBooks = isNumeric ? likedBooks : [bookOrId, ...likedBooks];
+          const nextFavoriteBooks = isNumeric ? favoriteBooks : [bookOrId, ...favoriteBooks];
           set({
-            likedBookIds: [...likedBookIds, id],
-            likedBooks: nextLikedBooks,
+            favoriteBookIds: [...favoriteBookIds, id],
+            favoriteBooks: nextFavoriteBooks,
           });
         }
 
@@ -372,20 +372,20 @@ export const useBookshelfStore = create<BookshelfState>()(
         }
       },
 
-      isBookLiked: (id) => {
-        return get().likedBookIds.includes(id);
+      isBookFavorite: (id) => {
+        return get().favoriteBookIds.includes(id);
       },
 
-      syncLikedBooks: (books) => {
-        const { likedBooks = [], likedBookIds } = get();
-        const existingIds = new Set(likedBooks.map((b) => b.id));
-        const newBooks = books.filter((b) => likedBookIds.includes(b.id) && !existingIds.has(b.id));
+      syncFavoriteBooks: (books) => {
+        const { favoriteBooks = [], favoriteBookIds } = get();
+        const existingIds = new Set(favoriteBooks.map((b) => b.id));
+        const newBooks = books.filter((b) => favoriteBookIds.includes(b.id) && !existingIds.has(b.id));
         if (newBooks.length === 0) return;
-        set({ likedBooks: [...likedBooks, ...newBooks] });
+        set({ favoriteBooks: [...favoriteBooks, ...newBooks] });
       },
 
-      clearLikedBooks: () => {
-        set({ likedBooks: [], likedBookIds: [] });
+      clearFavoriteBooks: () => {
+        set({ favoriteBooks: [], favoriteBookIds: [] });
       },
 
       addRecentBook: (book) => {
@@ -398,8 +398,8 @@ export const useBookshelfStore = create<BookshelfState>()(
         set({
           savedBooks: [],
           readingQueue: [],
-          likedBooks: [],
-          likedBookIds: [],
+          favoriteBooks: [],
+          favoriteBookIds: [],
           recentBooks: [],
           bookRatings: {},
           bookStatuses: {},
@@ -733,18 +733,18 @@ export const useBookshelfStore = create<BookshelfState>()(
           }));
 
           // Merge unique favorites
-          const localLiked = get().likedBooks || [];
-          const mergedLiked = [...reconstructedFavorites];
+          const localFavorites = get().favoriteBooks || [];
+          const mergedFavorites = [...reconstructedFavorites];
           const unSyncedFavorites: GutendexBook[] = [];
 
-          for (const lb of localLiked) {
-            if (!mergedLiked.some((b) => b.id === lb.id)) {
-              mergedLiked.push(lb);
+          for (const lb of localFavorites) {
+            if (!mergedFavorites.some((b) => b.id === lb.id)) {
+              mergedFavorites.push(lb);
               unSyncedFavorites.push(lb);
             }
           }
-          const mergedLikedIds = Array.from(new Set([...mergedLiked.map((b) => b.id), ...get().likedBookIds]));
-          set({ likedBooks: mergedLiked, likedBookIds: mergedLikedIds });
+          const mergedFavoriteIds = Array.from(new Set([...mergedFavorites.map((b) => b.id), ...get().favoriteBookIds]));
+          set({ favoriteBooks: mergedFavorites, favoriteBookIds: mergedFavoriteIds });
 
           // Bidirectional Sync: push local favorites missing from cloud to the database
           if (unSyncedFavorites.length > 0) {
@@ -856,7 +856,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       migrateLocalBooksToCloud: async (userId: string) => {
-        const { savedBooks, likedBooks = [], cloudBookshelves } = get();
+        const { savedBooks, favoriteBooks = [], cloudBookshelves } = get();
         if (!userId) return;
 
         try {
@@ -881,9 +881,9 @@ export const useBookshelfStore = create<BookshelfState>()(
             }
           }
 
-          // 2. Migrate liked books / favorites
-          if (likedBooks.length > 0) {
-            const favoriteInserts = likedBooks.map((b) => ({
+          // 2. Migrate favorites
+          if (favoriteBooks.length > 0) {
+            const favoriteInserts = favoriteBooks.map((b) => ({
               user_id: userId,
               book_id: b.id,
               book_title: b.title,
@@ -1077,18 +1077,18 @@ export const useBookshelfStore = create<BookshelfState>()(
 export function useHydratedBookshelf() {
   const hasMounted = useHasMounted();
   const isBookSaved = useBookshelfStore((s) => s.isBookSaved);
-  const isBookLiked = useBookshelfStore((s) => s.isBookLiked);
+  const isBookFavorite = useBookshelfStore((s) => s.isBookFavorite);
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
   const readingQueue = useBookshelfStore((s) => s.readingQueue);
-  const likedBooks = useBookshelfStore((s) => s.likedBooks);
-  const likedBookIds = useBookshelfStore((s) => s.likedBookIds);
+  const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks);
+  const favoriteBookIds = useBookshelfStore((s) => s.favoriteBookIds);
   const recentBooks = useBookshelfStore((s) => s.recentBooks);
   const cloudBookshelves = useBookshelfStore((s) => s.cloudBookshelves);
   const cloudBookshelfItems = useBookshelfStore((s) => s.cloudBookshelfItems);
   const activeBookshelfId = useBookshelfStore((s) => s.activeBookshelfId);
   const isSyncing = useBookshelfStore((s) => s.isSyncing);
   const toggleSaveBook = useBookshelfStore((s) => s.toggleSaveBook);
-  const toggleLikeBook = useBookshelfStore((s) => s.toggleLikeBook);
+  const toggleFavoriteBook = useBookshelfStore((s) => s.toggleFavoriteBook);
   const addToQueue = useBookshelfStore((s) => s.addToQueue);
   const removeFromQueue = useBookshelfStore((s) => s.removeFromQueue);
   const clearBookshelf = useBookshelfStore((s) => s.clearBookshelf);
@@ -1110,11 +1110,11 @@ export function useHydratedBookshelf() {
   return {
     hasMounted,
     isSaved: (id: number) => (hasMounted ? isBookSaved(id) : false),
-    isLiked: (id: number) => (hasMounted ? isBookLiked(id) : false),
+    isFavorite: (id: number) => (hasMounted ? isBookFavorite(id) : false),
     savedBooks: hasMounted ? savedBooks : [],
     readingQueue: hasMounted ? readingQueue : [],
-    likedBooks: hasMounted ? likedBooks : [],
-    likedBookIds: hasMounted ? likedBookIds : [],
+    favoriteBooks: hasMounted ? favoriteBooks : [],
+    favoriteBookIds: hasMounted ? favoriteBookIds : [],
     recentBooks: hasMounted ? recentBooks : [],
     bookRatings: hasMounted ? bookRatings : {},
     bookStatuses: hasMounted ? bookStatuses : {},
@@ -1124,10 +1124,10 @@ export function useHydratedBookshelf() {
     activeBookshelfId: hasMounted ? activeBookshelfId : null,
     isSyncing: hasMounted ? isSyncing : false,
     savedCount: hasMounted ? savedBooks.length : 0,
-    likedCount: hasMounted ? likedBookIds.length : 0,
+    favoriteCount: hasMounted ? favoriteBookIds.length : 0,
     queueCount: hasMounted ? readingQueue.length : 0,
     toggleSaveBook,
-    toggleLikeBook,
+    toggleFavoriteBook,
     addToQueue,
     removeFromQueue,
     clearBookshelf,

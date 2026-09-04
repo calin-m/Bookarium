@@ -8,7 +8,7 @@ describe('AccountLibraryStats', () => {
     render(
       <AccountLibraryStats
         savedCount={5}
-        likedCount={12}
+        favoriteCount={12}
         customShelvesCount={3}
         annotationCount={8}
         bookmarksCount={4}
@@ -38,7 +38,7 @@ describe('AccountLibraryStats', () => {
     render(
       <AccountLibraryStats
         savedCount={0}
-        likedCount={0}
+        favoriteCount={0}
         customShelvesCount={0}
       />
     );
@@ -51,7 +51,7 @@ describe('AccountLibraryStats', () => {
     render(
       <AccountLibraryStats
         savedCount={2}
-        likedCount={4}
+        favoriteCount={4}
         customShelvesCount={1}
         annotationCount={3}
         bookmarksCount={2}

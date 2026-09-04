@@ -9,7 +9,7 @@ export interface ActiveFilterChip {
   type: 'search' | 'topic' | 'language' | 'era' | 'format';
 }
 
-export type CatalogView = 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks';
+export type CatalogView = 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
 export type CatalogViewMode = 'grid' | 'shelf';
 export type CatalogSortOption = 'popular' | 'descending' | 'ascending' | '';
 
@@ -25,6 +25,14 @@ export interface CatalogQueryParams {
   copyright: false;
 }
 
+export function normalizeCatalogView(raw?: string | null): CatalogView {
+  if (raw === 'likes' || raw === 'favorites') return 'favorites';
+  if (raw && ['catalog', 'bookshelf', 'notebook', 'bookmarks'].includes(raw)) {
+    return raw as CatalogView;
+  }
+  return 'catalog';
+}
+
 function getInitialUrlParams() {
   if (typeof window === 'undefined') return {};
   try {
@@ -37,7 +45,7 @@ function getInitialUrlParams() {
       sort: (sp.get('sort') as CatalogSortOption) || undefined,
       format: sp.get('format') || sp.get('mime_type') || undefined,
       page: sp.get('page') ? parseInt(sp.get('page')!, 10) : undefined,
-      view: (sp.get('view') as CatalogView) || undefined,
+      view: sp.get('view') ? normalizeCatalogView(sp.get('view')) : undefined,
     };
   } catch {
     return {};
@@ -48,8 +56,7 @@ export function useCatalogFilters() {
   const searchParams = useSearchParams();
   const hasMounted = useHasMounted();
   const [activeView, setActiveView] = useState<CatalogView>(() => {
-    const init = getInitialUrlParams();
-    return init.view && ['catalog', 'bookshelf', 'likes', 'notebook', 'bookmarks'].includes(init.view) ? init.view : 'catalog';
+    return normalizeCatalogView(getInitialUrlParams().view);
   });
 
   // Synchronize state with Next.js router URL searchParams during render
@@ -60,8 +67,8 @@ export function useCatalogFilters() {
 
   if (currentViewParam !== prevViewParam) {
     setPrevViewParam(currentViewParam);
-    if (currentViewParam && ['catalog', 'bookshelf', 'likes', 'notebook', 'bookmarks'].includes(currentViewParam)) {
-      setActiveView(currentViewParam as CatalogView);
+    if (currentViewParam) {
+      setActiveView(normalizeCatalogView(currentViewParam));
     }
   }
   const [search, setSearch] = useState(() => getInitialUrlParams().search || '');
