@@ -16,10 +16,11 @@ export const ROUTES = {
   BOOKSHELF: '/?view=bookshelf',
   LIKES: '/?view=likes',
   NOTEBOOK: '/?view=notebook',
+  BOOKMARKS: '/?view=bookmarks',
 
   // Dynamic Route Builders
   READ: (id: number | string) => `/read/${id}` as const,
-  VIEW: (view: 'catalog' | 'bookshelf' | 'likes' | 'notebook') =>
+  VIEW: (view: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks') =>
     (view === 'catalog' ? '/' : `/?view=${view}` as const),
 
   // API Proxy Routes

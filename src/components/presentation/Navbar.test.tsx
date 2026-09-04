@@ -19,6 +19,7 @@ describe('Navbar component', () => {
     expect(screen.getByLabelText('Bookshelf')).toBeInTheDocument();
     expect(screen.getByLabelText('Liked Books')).toBeInTheDocument();
     expect(screen.getByLabelText('Notebook')).toBeInTheDocument();
+    expect(screen.getByLabelText('Bookmarks')).toBeInTheDocument();
   });
 
   it('should fill highlighter icon when annotations are saved in notebook', async () => {
@@ -53,6 +54,22 @@ describe('Navbar component', () => {
     const notebookBtn = screen.getByLabelText('Notebook');
     expect(notebookBtn).toHaveClass('font-bold');
     expect(notebookBtn).toHaveClass('border-amber-500');
+  });
+
+  it('triggers onViewChange with bookmarks when Bookmarks tab is clicked', () => {
+    const handleViewChange = vi.fn();
+    render(<Navbar activeView="catalog" onViewChange={handleViewChange} />);
+
+    const bookmarksBtn = screen.getByLabelText('Bookmarks');
+    fireEvent.click(bookmarksBtn);
+    expect(handleViewChange).toHaveBeenCalledWith('bookmarks');
+  });
+
+  it('applies active styling when activeView is bookmarks', () => {
+    render(<Navbar activeView="bookmarks" />);
+    const bookmarksBtn = screen.getByLabelText('Bookmarks');
+    expect(bookmarksBtn).toHaveClass('font-bold');
+    expect(bookmarksBtn).toHaveClass('border-indigo-500');
   });
 
   it('should fill bookmark icon when books are saved to bookshelf', () => {

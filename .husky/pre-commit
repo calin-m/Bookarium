@@ -1,2 +1,2 @@
 #!/bin/sh
-npm run verify && git add README.md ROADMAP.md docs/ARCHITECTURE.md CHANGELOG.md docs/QUALITY_AUDIT_REPORT.md docs/quality-audit-results.json
+node scripts/verify-build.js && git add README.md ROADMAP.md docs/ARCHITECTURE.md CHANGELOG.md docs/QUALITY_AUDIT_REPORT.md docs/quality-audit-results.json

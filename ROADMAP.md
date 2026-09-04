@@ -2,15 +2,15 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-88%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-14_of_16-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-94%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-15_of_16-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[██████████████████░░]` **14/16 (88%)**
+`[███████████████████░]` **15/16 (94%)**
 
 ---
 
@@ -67,11 +67,11 @@
 ---
 
 ### Milestone 3: Habits, Goals & Library Curation (`Target: v2.0.0`)
-`[███████░░░░░░░░░░░░░]` **1/3 (33%)**
+`[█████████████░░░░░░░]` **2/3 (67%)**
 
 > Rich reader curation, Goodreads-style reading statuses, and daily habit tracking analytics.
 
-- [ ] **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)** `⏳ PLANNED`
+- [x] **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)** `✅ VERIFIED`
   Dedicated reading ledger displaying all books in progress with tactile bookmark cards, last-read passage snippets, completion percentages, filtering (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.
 - [x] **1–5 Star Personal Ratings & Reading Statuses** `✅ VERIFIED`
   Assign 1–5 star ratings and reading statuses ("Want to Read", "Currently Reading", "Finished") to volumes across book cards and shelf management modals.

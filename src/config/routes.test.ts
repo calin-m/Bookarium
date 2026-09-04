@@ -11,6 +11,8 @@ describe('ROUTES Configuration', () => {
     expect(ROUTES.AUTH_CALLBACK).toBe('/auth/callback');
     expect(ROUTES.BOOKSHELF).toBe('/?view=bookshelf');
     expect(ROUTES.LIKES).toBe('/?view=likes');
+    expect(ROUTES.NOTEBOOK).toBe('/?view=notebook');
+    expect(ROUTES.BOOKMARKS).toBe('/?view=bookmarks');
     expect(ROUTES.API_BOOKS).toBe('/api/books');
     expect(ROUTES.API_CONTENT).toBe('/api/books/content');
   });
@@ -24,6 +26,8 @@ describe('ROUTES Configuration', () => {
     expect(ROUTES.VIEW('catalog')).toBe('/');
     expect(ROUTES.VIEW('bookshelf')).toBe('/?view=bookshelf');
     expect(ROUTES.VIEW('likes')).toBe('/?view=likes');
+    expect(ROUTES.VIEW('notebook')).toBe('/?view=notebook');
+    expect(ROUTES.VIEW('bookmarks')).toBe('/?view=bookmarks');
   });
 });
 

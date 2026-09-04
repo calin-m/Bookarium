@@ -3,9 +3,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon, Highlighter } from 'lucide-react';
+import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon, Highlighter, BookMarked } from 'lucide-react';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/Button';
@@ -14,8 +15,8 @@ import { SITE_CONFIG } from '@/config/site-config';
 import { LIBRARY_THEMES } from '@/config/library-tokens';
 
 export interface NavbarProps {
-  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'account';
-  onViewChange?: (view: 'catalog' | 'bookshelf' | 'likes' | 'notebook') => void;
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks' | 'account';
+  onViewChange?: (view: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks') => void;
   isVisible?: boolean;
 }
 
@@ -28,6 +29,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { savedCount, likedCount, hasMounted } = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
   const annotationCount = annotations.length;
+  const readingPositions = useReaderStore((s) => s.readingPositions);
+  const activeReadingCount = Object.keys(readingPositions || {}).length;
   const theme = useThemeStore((s) => s.theme);
   const cycleTheme = useThemeStore((s) => s.cycleTheme);
   const user = useAuthStore((s) => s.user);
@@ -160,6 +163,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               />
               <span className="hidden md:inline">Notebook</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onViewChange?.('bookmarks')}
+              title="Bookmarks & Continue Reading"
+              className={`h-8 px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+                activeView === 'bookmarks'
+                  ? `${LIBRARY_THEMES.bookmarks.navActiveText} font-bold ${LIBRARY_THEMES.bookmarks.navActiveBorder}`
+                  : 'text-muted-foreground hover:text-foreground border-transparent'
+              }`}
+              aria-label="Bookmarks"
+            >
+              <BookMarked
+                className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                  hasMounted && activeReadingCount > 0
+                    ? LIBRARY_THEMES.bookmarks.navFill
+                    : 'fill-transparent'
+                }`}
+              />
+              <span className="hidden md:inline">Bookmarks</span>
             </button>
           </nav>
 

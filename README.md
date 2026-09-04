@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-116%20Suites%20%7C%20840%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20867%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.94%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,13 +38,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v1.9.3)
+## 🛠️ Latest Improvements (v1.9.4)
 
-- **Personal 1-5 Star Book Ratings (`StarRating.tsx`)**: Tactile star rating widget with hover preview, clear toggle, and zero layout shift.
-- **Reading Status Management (`ReadingStatusSelector.tsx`)**: 3-tier reading status selector (Want to Read, Currently Reading, Finished) with active visual states.
-- **Viewport-Level Mobile Modal (`BookshelfMobileModal.tsx`)**: Touch-optimized action sheet for mobile and vertical displays (< 1024px) enabling full rating and shelf curation on Favorites and Bookshelf.
-- **Live Static Analysis Telemetry (`scripts/generate-quality-report.js`)**: Automated execution and telemetry recording of ESLint 9 and Knip dead code audits directly in `QUALITY_AUDIT_REPORT.md` and `quality-audit-results.json`.
-- **Knip Duplicate Export Resolution (`BookshelfMobileModal.tsx`)**: Removed redundant alias exports (`BookMobileModal`), ensuring clean Pass 6 audit compliance with 0 errors.
+- **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), and 1-click chapter resume.
+- **Canonical Domain Book Entity & Adapter (`toCanonicalBook`)**: Provider-agnostic Book and ActiveReadingVolume domain entities in `src/types/book.types.ts` and `src/lib/adapters/book.adapter.ts` for clean architectural decoupling.
+- **Headless Reading Ledger Hook (`useContinueReadingLedger.ts`)**: Aggregates reading progress, bookmarks, and statuses across stores with client-side status filtering and recency sorting.
+- **Navigation & Route Integration**: Added Bookmarks tab to Navbar with BookMarked icon, active styling in library-tokens.ts, and BOOKMARKS route target in routes.ts.
+- **Pre-Commit Hook Hardening (`.husky/pre-commit`)**: Eliminated child git process lock collisions on Windows NTFS by running the 7-Gateway Quality Engine via pure Node.js.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -104,7 +104,9 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * Seamless 0px flush alignment between the top navbar and sticky toolbar with a floating `shadow-md` elevation over scrolling book cards.
   * Horizontally scrollable active filter chips strip (`overflow-x-auto scrollbar-none`) preventing vertical height shifts (0 CLS).
 * **Deep Archive Query UX & Live Telemetry**: Sticky catalog toolbar equipped with real-time roundtrip latency telemetry, direct page jumping, animated `Info` indicators, responsive mobile two-tier wrapping, and informative tooltips explaining relational SQL offsets across 70,000+ public domain volumes.
-* **Header Navigation & Brand Reset**: Clean top bar with unified iconography (**Catalog** `<BookOpen>`, **Bookshelf** `<Bookmark>`, **Favorites** `<Heart>`, **Notebook** `<Highlighter>`), dynamic solid fill states, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
+* **Header Navigation & Brand Reset**: Clean top bar with unified iconography (**Catalog** `<BookOpen>`, **Bookshelf** `<Bookmark>`, **Favorites** `<Heart>`, **Notebook** `<Highlighter>`, **Bookmarks** `<BookMarked>`), dynamic solid fill states, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
+* **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger displaying all active public domain volumes with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), and 1-click chapter resume actions.
+* **Provider-Agnostic Canonical Book Entity & Adapter (`toCanonicalBook`)**: Clean domain architecture decoupling Bookarium UI components from upstream raw Gutendex schemas, automatically normalizing Gutenberg author strings, resolving preferred MIME format URLs, and ensuring 100% backward compatibility with guest and cloud storage.
 * **Progressive Web App (PWA), Offline App Shell & Standalone Installation**:
   * Native Next.js 16 Web App Manifest (`manifest.ts`) declaring standalone display mode, `id: '/?source=pwa'`, explicit `scope: '/'`, brand obsidian/cream theme colors, and a full suite of standard and maskable PWA icons (`public/icons/`).
   * **Native Service Worker Offline Cache Engine (`public/sw.js`, `ServiceWorkerRegister.tsx`)**: Precaches the application shell and static assets, serving cached app shell navigation on offline requests so stored IndexedDB books can be read in airplane mode with zero network access.
@@ -663,7 +665,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 840 tests across 116 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 867 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

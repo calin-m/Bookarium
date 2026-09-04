@@ -21,7 +21,7 @@ export interface BookCardProps {
   onDownloadClick?: (book: GutendexBook) => void;
   onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
   isPreviewActive?: boolean;
-  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook';
+  activeView?: 'catalog' | 'bookshelf' | 'likes' | 'notebook' | 'bookmarks';
 }
 
 export const BookCard: React.FC<BookCardProps> = ({

@@ -12,6 +12,7 @@ import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
 import { BookPreviewModal } from '@/components/presentation/BookPreviewModal';
 import { BookshelfMobileModal } from '@/components/presentation/bookshelf/BookshelfMobileModal';
 import { NotebookView } from '@/components/presentation/NotebookView';
+import { BookmarksView } from '@/components/presentation/BookmarksView';
 import { Modal } from '@/components/ui/Modal';
 import { Footer } from '@/components/presentation/Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
@@ -256,6 +257,8 @@ function HomeContent() {
 
         {activeView === 'notebook' ? (
           <NotebookView onBrowseCatalog={() => setActiveView('catalog')} />
+        ) : activeView === 'bookmarks' ? (
+          <BookmarksView onBrowseCatalog={() => setActiveView('catalog')} />
         ) : (
           <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div key={`view-page-turn-${activeView}`} className="animate-page-turn">
