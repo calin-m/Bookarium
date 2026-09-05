@@ -329,3 +329,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-012: Unified Portaled Drawer Architecture & Mutual Exclusivity for Reader Modals**
 - **ADR-013: Headless Continue Reading Ledger, Authentic Telemetry & Two-Way Metadata Synchronization**
 - **ADR-014: Deletion Tombstones, Cloud Reading Progress Synchronization & Persistent Worker Architecture**
+- **ADR-015: Adoption of Privacy-First Vercel Web Analytics and Real User Speed Insights**

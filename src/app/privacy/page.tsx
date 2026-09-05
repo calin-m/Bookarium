@@ -77,6 +77,11 @@ export default function PrivacyPage() {
               scripts. We do not profile your reading tastes, build behavioral advertising dossiers, or sell information
               to data brokers. Your reading journey is strictly private.
             </p>
+            <div className="bg-muted/50 border border-border rounded-xl p-4 text-xs font-sans text-muted-foreground space-y-2">
+              <p>
+                <strong className="text-foreground font-medium">Privacy-First Aggregate Telemetry:</strong> To monitor system reliability and understand general catalog reach, Bookarium utilizes first-party, cookie-less Vercel Web Analytics and Real User Speed Insights. Telemetry is strictly anonymous and aggregate—no IP addresses are stored, no persistent device fingerprints are collected, and no cross-site tracking occurs.
+              </p>
+            </div>
           </section>
 
           {/* 2. The Cookie Exemption */}
@@ -105,8 +110,8 @@ export default function PrivacyPage() {
                 your authenticated session. This cookie is 100% exempt from consent banner requirements.
               </p>
               <p>
-                As a guest reader, <strong className="text-foreground font-medium">zero cookies</strong> are written to
-                your browser.
+                As a guest reader, <strong className="text-foreground font-medium">zero tracking cookies</strong> are written to
+                your browser. First-party aggregate analytics and Core Web Vitals operate completely cookie-free.
               </p>
             </div>
           </section>
@@ -266,7 +271,7 @@ export default function PrivacyPage() {
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
                 <span className="text-xs font-mono font-bold text-foreground block">Vercel Edge Platform</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
-                  Edge hosting, serverless route proxies, and global CDN delivery.
+                  Edge hosting, global CDN, and cookie-less aggregate performance telemetry (Vercel Web Analytics &amp; Speed Insights).
                 </p>
               </div>
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
