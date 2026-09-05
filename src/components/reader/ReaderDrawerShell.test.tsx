@@ -90,5 +90,42 @@ describe('ReaderDrawerShell Component', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it('applies min-h-0 and overflow-hidden to the panel by default', () => {
+    render(
+      <ReaderDrawerShell
+        isOpen={true}
+        onClose={vi.fn()}
+        title="Settings"
+        ariaLabel="Settings Drawer"
+        panelTestId="test-panel"
+      >
+        <div>Drawer Content</div>
+      </ReaderDrawerShell>
+    );
+
+    const panel = screen.getByTestId('test-panel');
+    expect(panel.className).toContain('overflow-hidden');
+    expect(panel.className).toContain('min-h-0');
+  });
+
+  it('allows custom className to override overflow using cn/twMerge', () => {
+    render(
+      <ReaderDrawerShell
+        isOpen={true}
+        onClose={vi.fn()}
+        title="Settings"
+        ariaLabel="Settings Drawer"
+        panelTestId="test-panel"
+        className="overflow-auto"
+      >
+        <div>Drawer Content</div>
+      </ReaderDrawerShell>
+    );
+
+    const panel = screen.getByTestId('test-panel');
+    expect(panel.className).toContain('overflow-auto');
+    expect(panel.className).not.toContain('overflow-hidden');
+  });
 });
 

@@ -100,72 +100,76 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   }, [isOpen]);
 
   return (
-    <ReaderDrawerShell
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`Notes & Highlights (${annotations.length})`}
-      titleIcon={<Highlighter className="w-5 h-5 text-primary-600 dark:text-primary-400" />}
-      theme={theme}
-      ariaLabel="Annotations and highlights drawer"
-      panelTestId="annotations-drawer-panel"
-    >
-      <div className="flex flex-col h-full gap-4">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            data-testid="annotations-search-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search quotes or notes..."
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/50 focus:outline-none focus:ring-1 focus:ring-primary-500 transition-all font-sans"
-          />
-        </div>
+    <>
+      <ReaderDrawerShell
+        isOpen={isOpen}
+        onClose={onClose}
+        title={`Notes & Highlights (${annotations.length})`}
+        titleIcon={<Highlighter className="w-5 h-5 text-primary-600 dark:text-primary-400" />}
+        theme={theme}
+        ariaLabel="Annotations and highlights drawer"
+        panelTestId="annotations-drawer-panel"
+      >
+        <div className="flex flex-col flex-1 min-h-0 gap-3">
+          {/* Search Bar (Pinned & Non-Compressible) */}
+          <div className="relative shrink-0">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              data-testid="annotations-search-input"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search quotes or notes..."
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/50 focus:outline-none focus:ring-1 focus:ring-primary-500 transition-all font-sans"
+            />
+          </div>
 
-        {/* Color Filter Tabs */}
-        <div
-          ref={colorTabsRef}
-          data-testid="annotations-color-tabs"
-          className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none overscroll-x-contain"
-        >
-          <button
-            type="button"
-            data-testid="filter-color-all"
-            onClick={() => setSelectedColorFilter('all')}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
-              selectedColorFilter === 'all'
-                ? 'bg-primary-600 border-primary-600 text-white'
-                : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-            }`}
+          {/* Color Filter Tabs (Pinned & Non-Compressible) */}
+          <div
+            ref={colorTabsRef}
+            data-testid="annotations-color-tabs"
+            className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none overscroll-x-contain shrink-0"
           >
-            All ({annotations.length})
-          </button>
-          {HIGHLIGHT_COLORS.map((c) => {
-            const count = annotations.filter((a) => a.color === c.id).length;
-            const isSelected = selectedColorFilter === c.id;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                data-testid={`filter-color-${c.id}`}
-                onClick={() => setSelectedColorFilter(c.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
-                  isSelected
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300 font-bold'
-                    : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full ${COLOR_DOT_MAP[c.id]}`} />
-                <span>{c.label.split(' ')[1] || c.label}</span>
-                <span className="text-[10px] opacity-70">({count})</span>
-              </button>
-            );
-          })}
-        </div>
+            <button
+              type="button"
+              data-testid="filter-color-all"
+              onClick={() => setSelectedColorFilter('all')}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
+                selectedColorFilter === 'all'
+                  ? 'bg-primary-600 border-primary-600 text-white'
+                  : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+              }`}
+            >
+              All ({annotations.length})
+            </button>
+            {HIGHLIGHT_COLORS.map((c) => {
+              const count = annotations.filter((a) => a.color === c.id).length;
+              const isSelected = selectedColorFilter === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  data-testid={`filter-color-${c.id}`}
+                  onClick={() => setSelectedColorFilter(c.id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
+                    isSelected
+                      ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-300 font-bold'
+                      : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${COLOR_DOT_MAP[c.id]}`} />
+                  <span>{c.label.split(' ')[1] || c.label}</span>
+                  <span className="text-[10px] opacity-70">({count})</span>
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Annotations List */}
-        <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+          {/* Annotations List (Vertically Scrollable within modal boundaries) */}
+          <div
+            data-testid="annotations-list-container"
+            className={`flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 ${activeTheme.scrollbarClass}`}
+          >
           {filteredAnnotations.length === 0 ? (
             <div
               data-testid="annotations-empty-state"
@@ -282,69 +286,70 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
           )}
         </div>
       </div>
+    </ReaderDrawerShell>
 
-      {/* Delete Single Annotation Confirmation Modal */}
-      <Modal
-        isOpen={itemToDelete !== null}
-        onClose={() => setItemToDelete(null)}
-        title="Delete Saved Highlight & Note?"
-        maxWidth="md"
-      >
-        <div className="p-6 space-y-5" data-testid="delete-single-note-dialog">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="space-y-2">
-              <p className="font-semibold text-foreground text-sm sm:text-base">
-                Are you sure you want to delete this saved quote?
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                This will remove the highlight and any attached personal reflection from your saved notes. This action cannot be undone.
-              </p>
-              {itemToDelete && (
-                <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border/50 text-xs">
-                  <p className="font-serif italic text-foreground/90 line-clamp-3">
-                    &ldquo;{itemToDelete.selectedText}&rdquo;
-                  </p>
-                  {itemToDelete.note && (
-                    <p className="mt-1.5 pt-1.5 border-t border-border/40 font-sans text-muted-foreground line-clamp-2">
-                      <span className="font-mono text-[10px] uppercase text-primary mr-1">Note:</span>
-                      {itemToDelete.note}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+    {/* Delete Single Annotation Confirmation Modal (Rendered outside drawer transform hierarchy) */}
+    <Modal
+      isOpen={itemToDelete !== null}
+      onClose={() => setItemToDelete(null)}
+      title="Delete Saved Highlight & Note?"
+      maxWidth="md"
+    >
+      <div className="p-6 space-y-5" data-testid="delete-single-note-dialog">
+        <div className="flex items-start gap-3.5">
+          <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+            <AlertTriangle className="w-5 h-5" />
           </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setItemToDelete(null)}
-              className="text-xs font-mono uppercase"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                if (itemToDelete) {
-                  onDeleteAnnotation(itemToDelete.id);
-                  setItemToDelete(null);
-                }
-              }}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete Note
-            </Button>
+          <div className="space-y-2">
+            <p className="font-semibold text-foreground text-sm sm:text-base">
+              Are you sure you want to delete this saved quote?
+            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              This will remove the highlight and any attached personal reflection from your saved notes. This action cannot be undone.
+            </p>
+            {itemToDelete && (
+              <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border/50 text-xs">
+                <p className="font-serif italic text-foreground/90 line-clamp-3">
+                  &ldquo;{itemToDelete.selectedText}&rdquo;
+                </p>
+                {itemToDelete.note && (
+                  <p className="mt-1.5 pt-1.5 border-t border-border/40 font-sans text-muted-foreground line-clamp-2">
+                    <span className="font-mono text-[10px] uppercase text-primary mr-1">Note:</span>
+                    {itemToDelete.note}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      </Modal>
-    </ReaderDrawerShell>
-  );
+
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setItemToDelete(null)}
+            className="text-xs font-mono uppercase"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              if (itemToDelete) {
+                onDeleteAnnotation(itemToDelete.id);
+                setItemToDelete(null);
+              }
+            }}
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete Note
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  </>
+);
 };
 

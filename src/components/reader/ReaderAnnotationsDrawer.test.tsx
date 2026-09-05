@@ -171,5 +171,22 @@ describe('ReaderAnnotationsDrawer', () => {
     expect(colorTabs.scrollLeft).toBe(50);
     expect(wheelUpEvent.defaultPrevented).toBe(true);
   });
+
+  it('renders a vertically scrollable list container with sticky non-compressible controls', () => {
+    render(<ReaderAnnotationsDrawer {...defaultProps} />);
+
+    const listContainer = screen.getByTestId('annotations-list-container');
+    expect(listContainer).toBeInTheDocument();
+    expect(listContainer.className).toContain('overflow-y-auto');
+    expect(listContainer.className).toContain('min-h-0');
+    expect(listContainer.className).toContain('flex-1');
+
+    const colorTabs = screen.getByTestId('annotations-color-tabs');
+    expect(colorTabs.className).toContain('shrink-0');
+
+    const searchInput = screen.getByTestId('annotations-search-input');
+    const searchContainer = searchInput.parentElement;
+    expect(searchContainer?.className).toContain('shrink-0');
+  });
 });
 
