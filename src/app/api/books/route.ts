@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const search = searchParams.get('search') || '';
+  const rawSearch = searchParams.get('search') || '';
+  const search = rawSearch.trim().replace(/\s+/g, ' ');
   const topic = searchParams.get('topic') || '';
   const languages = searchParams.get('languages') || '';
   const page = searchParams.get('page') || '1';
@@ -53,8 +54,8 @@ export async function GET(request: NextRequest) {
   if (ids.trim()) {
     gutendexParams.set('ids', ids.trim());
   }
-  if (search.trim()) {
-    gutendexParams.set('search', search.trim());
+  if (search.length >= 2) {
+    gutendexParams.set('search', search);
   }
   if (topic.trim()) {
     gutendexParams.set('topic', topic.trim());

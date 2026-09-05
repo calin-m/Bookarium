@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
+import React, { useState, useMemo, useSyncExternalStore } from 'react';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
 const subscribeHourly = (callback: () => void) => {
@@ -88,21 +88,14 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 }) => {
   const [prevSearch, setPrevSearch] = useState(search);
   const [query, setQuery] = useState(search);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const hasMounted = useHasMounted();
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   if (search !== prevSearch) {
     setPrevSearch(search);
     setQuery(search);
+    setSearchError(null);
   }
-
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, []);
 
   // Deterministic hourly rotation: the Featured Book changes every hour (3,600,000 ms)
   const hourlyIndex = useSyncExternalStore(subscribeHourly, getHourlySnapshot, getHourlyServerSnapshot);
@@ -167,30 +160,37 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
   const handleInputChange = (val: string) => {
     setQuery(val);
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+    if (searchError && (val.trim().length === 0 || val.trim().length >= 2)) {
+      setSearchError(null);
     }
-    debounceTimerRef.current = setTimeout(() => {
-      if (onSearchChange) onSearchChange(val);
-    }, 300);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+    const normalized = query.trim().replace(/\s+/g, ' ');
+
+    if (normalized.length === 0) {
+      setSearchError(null);
+      if (onSearch) onSearch('');
+      if (onSearchChange) onSearchChange('');
+      return;
     }
-    if (onSearch) onSearch(query);
-    if (onSearchChange) onSearchChange(query);
+
+    if (normalized.length === 1) {
+      setSearchError('Please enter at least 2 characters to search.');
+      return;
+    }
+
+    setSearchError(null);
+    if (onSearch) onSearch(normalized);
+    if (onSearchChange) onSearchChange(normalized);
   };
 
   const handleClear = () => {
     setQuery('');
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    if (onSearchChange) onSearchChange('');
+    setSearchError(null);
     if (onSearch) onSearch('');
+    if (onSearchChange) onSearchChange('');
   };
 
   const handleTopicClick = (topicId: string) => {
@@ -231,7 +231,13 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
             {/* Booksaw Spotlight Search Input */}
             <form onSubmit={handleSubmit} className="relative max-w-xl pt-1">
-              <div className="relative flex items-center shadow-booksaw rounded-lg overflow-hidden border border-border bg-card focus-within:ring-2 focus-within:ring-primary/40 transition-all">
+              <div
+                className={`relative flex items-center shadow-booksaw rounded-lg overflow-hidden border bg-card focus-within:ring-2 transition-all ${
+                  searchError
+                    ? 'border-destructive focus-within:ring-destructive/40'
+                    : 'border-border focus-within:ring-primary/40'
+                }`}
+              >
                 <Search className="w-4 h-4 text-muted-foreground ml-4 shrink-0" />
                 <input
                   type="text"
@@ -240,6 +246,8 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                   placeholder="Search 70,000+ classics by title or author (e.g. Austen, Plato)..."
                   className="w-full py-3.5 pl-3 pr-10 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden"
                   data-testid="search-input"
+                  aria-invalid={Boolean(searchError)}
+                  aria-describedby={searchError ? 'search-validation-error' : undefined}
                 />
                 {query && (
                   <button
@@ -254,11 +262,20 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                 <Button
                   type="submit"
                   size="sm"
-                  className="mr-2 px-6 py-2.5 font-mono text-xs uppercase tracking-wider rounded bg-foreground hover:opacity-90 text-background font-bold"
+                  className="mr-2 px-6 py-2.5 font-mono text-xs uppercase tracking-wider rounded bg-foreground hover:opacity-90 text-background font-bold shrink-0"
                 >
                   Search
                 </Button>
               </div>
+              {searchError && (
+                <p
+                  id="search-validation-error"
+                  role="alert"
+                  className="mt-1.5 text-xs font-mono text-destructive text-left animate-in fade-in duration-200"
+                >
+                  {searchError}
+                </p>
+              )}
             </form>
 
             {/* Genre Quick Links & Language Selector */}

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 05 Sep 2026 13:13:45 GMT  
+**Last Generated**: Sat, 05 Sep 2026 15:27:50 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 120 passed  
-**Total Verified Tests**: 933 passed  
+**Total Verified Tests**: 945 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (933 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (945 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 14 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.12%** (4947/5370) — *Target: $ge$ 80%*
-- **Statements**: **90.34%** (5398/5975) — *Target: $ge$ 80%*
-- **Functions**: **88.38%** (1255/1420) — *Target: $ge$ 80%*
-- **Branches**: **80.42%** (4621/5746) — *Target: $ge$ 80%*
+- **Lines**: **92.12%** (4981/5407) — *Target: $ge$ 80%*
+- **Statements**: **90.29%** (5434/6018) — *Target: $ge$ 80%*
+- **Functions**: **88.27%** (1257/1424) — *Target: $ge$ 80%*
+- **Branches**: **80.49%** (4662/5792) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (120 Suites / 933 Tests)
+## 🧪 Comprehensive Test Suite Catalog (120 Suites / 945 Tests)
 
-### 🚀 App Routes & Pages (10 Suites · 82 Tests)
+### 🚀 App Routes & Pages (10 Suites · 87 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -68,11 +68,13 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `should return 429 when client exceeds max request rate limit`
 - ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
 - ✔ `should pass topic, language, page, era, sort, and mime_type query parameters`
+- ✔ `should ignore single-character search queries to protect upstream API`
+- ✔ `should normalize whitespace in search queries when passing to upstream API`
 - ✔ `should return error response when upstream API returns an error status`
 - ✔ `should return 502 status code when network connection fails`
 - ✔ `should return 504 status code when upstream API times out via AbortError`
@@ -125,7 +127,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -135,6 +137,9 @@
 - ✔ `should open download hub and close it`
 - ✔ `should open 3D book preview modal when book cover is clicked and close it on desktop`
 - ✔ `renders Bookshelf and Favorites when views are switched via Navbar`
+- ✔ `allows user to toggle between 8 and 16 books per page via toolbar`
+- ✔ `prevents search execution on 1-character query in HeroSearch on catalog page`
+- ✔ `triggers predictive prefetching when approaching batch end on sub-page 3 (size 8)`
 - ✔ `E2E Journey: full catalog search -> preview open -> reader launch -> shelf curation`
 - ✔ `should dynamically filter bookshelf books with smart multi-word search in arbitrary order`
 - ✔ `should dynamically filter favorites books and show empty search feedback`
@@ -178,7 +183,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (20 Suites · 203 Tests)
+### 🎨 Catalog & Presentation (20 Suites · 206 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -392,15 +397,17 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `should render headline, featured book, and 4-pillar benefit strip`
-- ✔ `should handle search input changes with debounce`
+- ✔ `does not trigger search while typing, but triggers upon explicit submit`
+- ✔ `displays validation warning and prevents search when query is only 1 character`
 - ✔ `should handle topic chip and language selection`
 - ✔ `should handle read featured book button click`
 - ✔ `should render open-book spread with left and right page quotes on featured spotlight`
 - ✔ `should accept dynamic books prop from API and render the active volume`
 - ✔ `should clear search input and submit search correctly`
+- ✔ `normalizes multiple whitespace on submit`
 - ✔ `should shuffle to next passage within the featured book when rotate button is clicked`
 - ✔ `should toggle pinned open and closed states on click and keyboard events on desktop`
 - ✔ `should not toggle pinned open state on mobile viewports (< 1024px)`
@@ -489,7 +496,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and 2-part API status badge`
 - ✔ `should handle page size selection`
@@ -500,6 +507,7 @@
 - ✔ `applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false`
 - ✔ `applies -translate-y-[calc(100%+4rem)] and pointer-events-none when isVisible is false`
 - ✔ `renders archive fetching badge when isFetching is true`
+- ✔ `renders direct page jump input without redundant Pg label`
 
 </details>
 
@@ -1122,7 +1130,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (18 Suites · 142 Tests)
+### 🔄 Hooks & React Query (18 Suites · 146 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
@@ -1302,7 +1310,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -1319,6 +1327,10 @@
 - ✔ `handles empty parameters with safe defaults`
 - ✔ `sanitizes invalid page numbers to default page 1`
 - ✔ `correctly maps route pathname to view mode`
+- ✔ `parses size parameter with valid values and safe fallback`
+- ✔ `maps client sub-pages to upstream 32-batch apiPage`
+- ✔ `translates reading position when switching pageSize between 8 and 16`
+- ✔ `defaults to pageSize 8 on mobile viewports (<768px)`
 
 </details>
 

@@ -129,8 +129,22 @@ function HomeContent() {
     refetch,
   } = useBooks(queryParams);
 
-  // Predictive Next-Page Prefetching
-  const prefetchNextPage = usePrefetchNextPage(queryParams, Boolean(booksData?.next));
+  // Windowed Chunk Sub-Pagination Calculations
+  const subPagesPerBatch = Math.max(1, Math.floor(32 / pageSize));
+  const subIndex = (page - 1) % subPagesPerBatch;
+  const sliceStart = subIndex * pageSize;
+  const sliceEnd = sliceStart + pageSize;
+  const hasNextSubPage = Boolean(booksData?.results && sliceEnd < booksData.results.length);
+  const hasNextPage = hasNextSubPage || Boolean(booksData?.next);
+
+  // Predictive Next-Page Prefetching (triggers when approaching next upstream 32-batch)
+  // - At pageSize=8 (4 sub-pages/batch): triggers on subIndex 2 (subPage 3) & 3 (subPage 4), giving ~15-25s lead time on mobile.
+  // - At pageSize=16 (2 sub-pages/batch): triggers on subIndex 1 (subPage 2), giving 16 books of reading lead time.
+  const isApproachingBatchEnd = subIndex >= Math.max(1, subPagesPerBatch - 2);
+  const prefetchNextPage = usePrefetchNextPage(
+    queryParams,
+    isApproachingBatchEnd && Boolean(booksData?.next)
+  );
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -171,8 +185,8 @@ function HomeContent() {
     [uniqueKnownFavoriteBooks, collectionSearchQuery]
   );
 
-  // Derive displayed books based on active view
-  let displayedBooks = booksData?.results ? booksData.results.slice(0, pageSize) : [];
+  // Derive displayed books with windowed sub-page slicing based on active view
+  let displayedBooks = booksData?.results ? booksData.results.slice(sliceStart, sliceEnd) : [];
   let isDisplayLoading = isLoading;
   let isDisplayError = isError;
 
@@ -237,7 +251,7 @@ function HomeContent() {
           <StickyCatalogToolbar
             page={page}
             onPageChange={handlePageChange}
-            hasNextPage={Boolean(booksData?.next)}
+            hasNextPage={hasNextPage}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onOpenFilters={() => setIsFilterDrawerOpen((prev) => !prev)}

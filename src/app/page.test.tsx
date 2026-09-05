@@ -18,11 +18,13 @@ vi.mock('next/navigation', () => ({
 
 const pageMockBooks = mockBooks.slice(0, 6);
 
+const mockUsePrefetchNextPage = vi.fn();
+
 vi.mock('@/hooks/queries/useBooks', () => ({
   useBooks: () => ({
     data: {
       count: pageMockBooks.length,
-      next: null,
+      next: 'https://gutendex.com/books/?page=2',
       previous: null,
       results: pageMockBooks,
       source: 'upstream',
@@ -33,7 +35,10 @@ vi.mock('@/hooks/queries/useBooks', () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
-  usePrefetchNextPage: () => vi.fn(),
+  usePrefetchNextPage: (...args: any[]) => {
+    mockUsePrefetchNextPage(...args);
+    return vi.fn();
+  },
 }));
 
 vi.mock('@/hooks/queries/useBookContent', () => ({
@@ -98,6 +103,8 @@ describe('Home page integration', () => {
 
     const searchInput = screen.getByTestId('search-input');
     fireEvent.change(searchInput, { target: { value: 'Frankenstein' } });
+    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
+    fireEvent.click(searchBtn);
 
     const topicChip = screen.getByTestId('topic-chip-philosophy');
     fireEvent.click(topicChip);
@@ -248,6 +255,46 @@ describe('Home page integration', () => {
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
   });
 
+  it('allows user to toggle between 8 and 16 books per page via toolbar', () => {
+    renderHome();
+
+    const size8Btn = screen.getByLabelText('Show 8 books per page');
+    expect(size8Btn).toBeInTheDocument();
+    fireEvent.click(size8Btn);
+
+    const size16Btn = screen.getByLabelText('Show 16 books per page');
+    expect(size16Btn).toBeInTheDocument();
+    fireEvent.click(size16Btn);
+  });
+
+  it('prevents search execution on 1-character query in HeroSearch on catalog page', () => {
+    renderHome();
+
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'a' } });
+
+    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
+    fireEvent.click(searchBtn);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/Please enter at least 2 characters to search/i);
+  });
+
+  it('triggers predictive prefetching when approaching batch end on sub-page 3 (size 8)', () => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/?page=3&size=8');
+
+    renderHome();
+
+    // At page=3, size=8, subIndex is (3-1)%4 = 2.
+    // isApproachingBatchEnd = 2 >= max(1, 4-2) = 2 >= 2 is true.
+    expect(mockUsePrefetchNextPage).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1 }),
+      true
+    );
+
+    (window as any).location = new URL('http://localhost:3000/');
+  });
+
   // =========================================================================
   // END-TO-END MULTI-STEP USER JOURNEYS (In-Memory E2E via Vitest)
   // =========================================================================
@@ -257,6 +304,8 @@ describe('Home page integration', () => {
     // Step 1: User performs catalog search
     const searchInput = screen.getByTestId('search-input');
     fireEvent.change(searchInput, { target: { value: 'Pride' } });
+    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
+    fireEvent.click(searchBtn);
 
     // Step 2: User filters by topic chip
     const topicChip = screen.getByTestId('topic-chip-fiction');

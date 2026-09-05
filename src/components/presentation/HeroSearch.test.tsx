@@ -35,17 +35,42 @@ describe('HeroSearch component', () => {
     expect(screen.getByTestId('topic-chip-philosophy')).toBeInTheDocument();
   });
 
-  it('should handle search input changes with debounce', () => {
-    vi.useFakeTimers();
+  it('does not trigger search while typing, but triggers upon explicit submit', () => {
     const handleSearchChange = vi.fn();
-    renderWithClient(<HeroSearch search="" onSearchChange={handleSearchChange} />);
+    const handleSearch = vi.fn();
+    renderWithClient(<HeroSearch search="" onSearchChange={handleSearchChange} onSearch={handleSearch} />);
 
-    fireEvent.change(screen.getByTestId('search-input'), { target: { value: 'Austen' } });
+    const input = screen.getByTestId('search-input');
+    fireEvent.change(input, { target: { value: 'Austen' } });
     expect(handleSearchChange).not.toHaveBeenCalled();
+    expect(handleSearch).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(300);
+    // Submit form via Search button
+    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
+    fireEvent.click(searchBtn);
+
     expect(handleSearchChange).toHaveBeenCalledWith('Austen');
-    vi.useRealTimers();
+    expect(handleSearch).toHaveBeenCalledWith('Austen');
+  });
+
+  it('displays validation warning and prevents search when query is only 1 character', () => {
+    const handleSearchChange = vi.fn();
+    const handleSearch = vi.fn();
+    renderWithClient(<HeroSearch search="" onSearchChange={handleSearchChange} onSearch={handleSearch} />);
+
+    const input = screen.getByTestId('search-input');
+    fireEvent.change(input, { target: { value: 'a' } });
+
+    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
+    fireEvent.click(searchBtn);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/Please enter at least 2 characters to search/i);
+    expect(handleSearchChange).not.toHaveBeenCalled();
+    expect(handleSearch).not.toHaveBeenCalled();
+
+    // Typing more clears the warning once >= 2 characters
+    fireEvent.change(input, { target: { value: 'ab' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('should handle topic chip and language selection', () => {
@@ -144,6 +169,27 @@ describe('HeroSearch component', () => {
     const searchBtn = screen.getByRole('button', { name: /^Search$/i });
     fireEvent.click(searchBtn);
     expect(handleSearch).toHaveBeenCalledWith('Plato');
+  });
+
+  it('normalizes multiple whitespace on submit', () => {
+    const handleSearch = vi.fn();
+    const handleSearchChange = vi.fn();
+
+    renderWithClient(
+      <HeroSearch
+        search=""
+        onSearch={handleSearch}
+        onSearchChange={handleSearchChange}
+      />
+    );
+
+    const input = screen.getByTestId('search-input');
+    fireEvent.change(input, { target: { value: '   Charles    Dickens   ' } });
+    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
+    fireEvent.click(searchBtn);
+
+    expect(handleSearch).toHaveBeenCalledWith('Charles Dickens');
+    expect(handleSearchChange).toHaveBeenCalledWith('Charles Dickens');
   });
 
   it('should shuffle to next passage within the featured book when rotate button is clicked', () => {

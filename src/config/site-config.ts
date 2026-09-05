@@ -18,6 +18,13 @@ export const SITE_CONFIG = {
   PROJECT_GUTENBERG: 'https://www.gutenberg.org',
   GUTENDEX: 'https://gutendex.com',
 
+  // Design Attribution & UI Foundation
+  FIGMA_BOOKSAW:
+    'https://www.figma.com/community/file/1521831984874247291/booksaw-bookstore-ecommerce-website-design-template',
+
+  // AI Engineering & Co-Development
+  GOOGLE_ANTIGRAVITY: 'https://antigravity.google',
+
   // External Canonical Dynamic Builders
   GUTENBERG_EBOOK: (id: number | string) =>
     `https://www.gutenberg.org/ebooks/${id}` as const,

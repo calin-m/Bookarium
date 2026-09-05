@@ -46,9 +46,9 @@ describe('StickyCatalogToolbar component', () => {
     );
 
     expect(screen.getByText('Show:')).toBeInTheDocument();
-    const size32Btn = screen.getByLabelText('Show 32 books per page');
-    fireEvent.click(size32Btn);
-    expect(handlePageSizeChange).toHaveBeenCalledWith(32);
+    const size8Btn = screen.getByLabelText('Show 8 books per page');
+    fireEvent.click(size8Btn);
+    expect(handlePageSizeChange).toHaveBeenCalledWith(8);
   });
 
   it('should trigger filter opening, remove individual chips, and clear all filters', () => {
@@ -234,5 +234,23 @@ describe('StickyCatalogToolbar component', () => {
     );
 
     expect(screen.queryByTestId('archive-fetching-badge')).not.toBeInTheDocument();
+  });
+
+  it('renders direct page jump input without redundant Pg label', () => {
+    render(
+      <StickyCatalogToolbar
+        page={3}
+        onPageChange={vi.fn()}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('Jump to page')).toHaveValue('3');
+    expect(screen.queryByText('Pg')).not.toBeInTheDocument();
   });
 });
