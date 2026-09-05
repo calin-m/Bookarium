@@ -57,6 +57,65 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
     rawMatches[i].bodyLength = end - start;
   }
 
+  // Harvest descriptive chapter subtitles from short TOC items if available
+  const normalizeHeadingId = (title: string): string => {
+    const match = title
+      .trim()
+      .match(
+        /^(?:CHAPTER|Chapter|BOOK|Book|PART|Part|ACT|Act|SCENE|Scene|CANTO|Canto|SECTION|Section)\s+([IVXLCDM\d]+)/i
+      );
+    if (match) {
+      return match[0].toLowerCase().replace(/\s+/, ' ');
+    }
+    const romanMatch = title.trim().match(/^([IVXLCDM]{1,8})\b/i);
+    if (romanMatch) {
+      return romanMatch[1].toLowerCase();
+    }
+    return title.toLowerCase().trim().replace(/\s+/g, ' ').slice(0, 15);
+  };
+
+  const tocSubtitles = new Map<string, string>();
+
+  const recordSubtitle = (rawTitle: string) => {
+    const match = rawTitle
+      .trim()
+      .match(
+        /^(?:CHAPTER|Chapter|BOOK|Book|PART|Part|ACT|Act|SCENE|Scene|CANTO|Canto|SECTION|Section)\s+[IVXLCDM\d]+[:\s\-\.]+(.+)$/i
+      );
+    if (match && match[1]?.trim()) {
+      const norm = normalizeHeadingId(rawTitle);
+      const sub = match[1]
+        .replace(/\s+(?:\.{2,}|\d+|[IVXLCDM]+)\s*$/i, '')
+        .trim();
+      if (sub.length >= 2 && sub.length < 100 && !tocSubtitles.has(norm)) {
+        const formattedSub = sub
+          .toLowerCase()
+          .replace(/(?:^|\s)\S/g, (a) => a.toUpperCase())
+          .replace(/\b(And|Of|The|In|A|An|Or|For|With|To|At|By|From)\b/g, (mText, p1, offset) =>
+            offset === 0 ? mText : mText.toLowerCase()
+          );
+        tocSubtitles.set(norm, formattedSub);
+      }
+    }
+  };
+
+  if (tocMatch) {
+    const tocSlice = mainBody.slice(
+      tocMatch.index,
+      tocMatch.index + GUTENBERG_PARSER_CONFIG.TOC_SEARCH_WINDOW_BYTES
+    );
+    for (const line of tocSlice.split('\n')) {
+      recordSubtitle(line);
+    }
+  }
+
+  for (let i = 0; i < rawMatches.length; i++) {
+    const item = rawMatches[i];
+    if (item.bodyLength < GUTENBERG_PARSER_CONFIG.TOC_MAX_HEADING_LENGTH) {
+      recordSubtitle(item.title);
+    }
+  }
+
   // 3. Filter out Front-Matter Table of Contents lines
   const validMatches: { index: number; title: string; displayTitle?: string }[] = [];
   for (let i = 0; i < rawMatches.length; i++) {
@@ -69,8 +128,9 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
       (prevItem && prevItem.bodyLength < GUTENBERG_PARSER_CONFIG.TOC_MAX_HEADING_LENGTH) ||
       (nextItem && nextItem.bodyLength < GUTENBERG_PARSER_CONFIG.TOC_MAX_HEADING_LENGTH);
 
+    const currentNorm = normalizeHeadingId(item.title);
     const hasLaterDuplicate = rawMatches.some(
-      (other, idx) => idx > i && other.title.toLowerCase().slice(0, 10) === item.title.toLowerCase().slice(0, 10)
+      (other, idx) => idx > i && normalizeHeadingId(other.title) === currentNorm
     );
 
     // If it has a duplicate later and short body, or is inside a TOC cluster before main body
@@ -274,10 +334,25 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
     const next = validMatches[i + 1];
     const rawContent = mainBody.slice(current.index, next ? next.index : mainBody.length).trim();
 
+    let displayTitle = (current.displayTitle || current.title).replace(/\n+/g, ' — ');
+    const norm = normalizeHeadingId(current.title);
+    const subtitle = tocSubtitles.get(norm);
+    if (subtitle && !displayTitle.includes(':')) {
+      const prefixMatch = displayTitle.match(
+        /^(?:CHAPTER|Chapter|BOOK|Book|PART|Part|ACT|Act|SCENE|Scene|CANTO|Canto|SECTION|Section)\s+[IVXLCDM\d]+/i
+      );
+      if (prefixMatch) {
+        const cleanPrefix = prefixMatch[0]
+          .toLowerCase()
+          .replace(/^[a-z]/, (c) => c.toUpperCase());
+        displayTitle = `${cleanPrefix}: ${subtitle}`;
+      }
+    }
+
     sections.push({
       id: i + 1,
       title: current.title,
-      displayTitle: (current.displayTitle || current.title).replace(/\n+/g, ' — '),
+      displayTitle,
       content: reflowGutenbergParagraphs(rawContent),
       startPageNumber: 1,
       pageCount: 1,

@@ -39,6 +39,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { AlertTriangle, Trash2, Trophy } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
+import { SITE_CONFIG } from '@/config/site-config';
 
 export default function BookReaderPage() {
   const params = useParams();
@@ -185,6 +186,14 @@ export default function BookReaderPage() {
       updateBookMetadata(numericId, resolvedIdentity.title, resolvedIdentity.author);
     }
   }, [numericId, resolvedIdentity.title, resolvedIdentity.author, updateBookMetadata]);
+
+  // Synchronize document.title with authentic resolved book identity for client transitions
+  useEffect(() => {
+    if (resolvedIdentity.title && !isPlaceholderTitle(resolvedIdentity.title)) {
+      const authorSuffix = resolvedIdentity.displayAuthor ? ` by ${resolvedIdentity.displayAuthor}` : '';
+      document.title = `${resolvedIdentity.title}${authorSuffix} | ${SITE_CONFIG.NAME}`;
+    }
+  }, [resolvedIdentity.title, resolvedIdentity.displayAuthor]);
 
   // Persist authentic resolved book identity into recentBooks and warm reader store
   useEffect(() => {

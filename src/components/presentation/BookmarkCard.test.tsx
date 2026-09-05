@@ -46,7 +46,7 @@ describe('BookmarkCard', () => {
     // 'Austen, Jane' is formatted to 'Jane Austen' via formatAuthorNames
     expect(screen.getByText('Jane Austen')).toBeInTheDocument();
     expect(screen.getByText('45%')).toBeInTheDocument();
-    expect(screen.getByText(/Chapter 4 • Page 12/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chapter 3 • Page 48/i)).toBeInTheDocument();
 
     const progressBar = screen.getByRole('progressbar');
     expect(progressBar).toHaveAttribute('aria-valuenow', '45');
@@ -155,6 +155,17 @@ describe('BookmarkCard', () => {
   it('displays relative time formatted via canonical formatRelativeTime', () => {
     render(<BookmarkCard volume={mockVolume} />);
     expect(screen.getByText('30m ago')).toBeInTheDocument();
+  });
+
+  it('renders Start and global page coordinate when chapterIndex is 0', () => {
+    const startVolume: ActiveReadingVolume = {
+      ...mockVolume,
+      chapterIndex: 0,
+      chapterPage: 1,
+      globalPage: 1,
+    };
+    render(<BookmarkCard volume={startVolume} />);
+    expect(screen.getByText(/Start • Page 1/i)).toBeInTheDocument();
   });
 });
 

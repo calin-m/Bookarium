@@ -552,5 +552,16 @@ describe('Dedicated Reader Page (/read/[id])', () => {
 
     expect(useReaderStore.getState().currentBook?.id).toBe(1342);
   });
+
+  it('synchronizes document.title with the authentic resolved book title and author', async () => {
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      expect(document.title).toContain('Pride and Prejudice');
+      expect(document.title).toContain('Jane Austen');
+      expect(document.title).toContain('Bookarium');
+    });
+  });
 });
+
 

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 05 Sep 2026 17:05:08 GMT  
+**Last Generated**: Sat, 05 Sep 2026 18:59:29 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 125 passed  
-**Total Verified Tests**: 958 passed  
+**Total Verified Tests**: 966 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (958 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (966 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 16 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 24 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.15%** (5019/5446) — *Target: $ge$ 80%*
-- **Statements**: **90.27%** (5470/6059) — *Target: $ge$ 80%*
-- **Functions**: **88.25%** (1263/1431) — *Target: $ge$ 80%*
-- **Branches**: **80.41%** (4682/5822) — *Target: $ge$ 80%*
+- **Lines**: **92.25%** (5076/5502) — *Target: $ge$ 80%*
+- **Statements**: **90.38%** (5528/6116) — *Target: $ge$ 80%*
+- **Functions**: **88.39%** (1272/1439) — *Target: $ge$ 80%*
+- **Branches**: **80.52%** (4734/5879) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (125 Suites / 958 Tests)
+## 🧪 Comprehensive Test Suite Catalog (125 Suites / 966 Tests)
 
-### 🚀 App Routes & Pages (11 Suites · 91 Tests)
+### 🚀 App Routes & Pages (11 Suites · 96 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -157,16 +157,20 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/layout.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/app/read/[id]/layout.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `generates rich metadata for a curated hero classic (Frankenstein #84)`
 - ✔ `provides safe fallback metadata for invalid book ID`
+- ✔ `bypasses outbound network calls on client-side router navigation (rsc: 1 fast-path)`
+- ✔ `detects client-side navigation correctly from various Next.js headers`
+- ✔ `serves repeated requests from in-memory server cache without network calls`
 - ✔ `renders children and Schema.org Book JSON-LD script`
+- ✔ `falls back gracefully when upstream fetch times out or fails`
 
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (22 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (23 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -190,10 +194,11 @@
 - ✔ `automatically sets reading status to currently_reading when beginning a volume`
 - ✔ `renders volume completion modal with star rating and sets status to finished on the final page`
 - ✔ `persists authentic resolved book metadata to recentBooks and warms reader store on load`
+- ✔ `synchronizes document.title with the authentic resolved book title and author`
 
 </details>
 
-### 🎨 Catalog & Presentation (20 Suites · 206 Tests)
+### 🎨 Catalog & Presentation (20 Suites · 207 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -244,7 +249,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -257,6 +262,7 @@
 - ✔ `applies solid border and canonical booksaw shadow styling`
 - ✔ `rounds floating-point progress to the nearest integer and applies rounded-full pill styling`
 - ✔ `displays relative time formatted via canonical formatRelativeTime`
+- ✔ `renders Start and global page coordinate when chapterIndex is 0`
 
 </details>
 
@@ -884,7 +890,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (17 Suites · 152 Tests)
+### 📚 Gutenberg Parsers & Metadata (17 Suites · 154 Tests)
 
 <details>
 <summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (12 tests)</summary>
@@ -960,7 +966,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `returns empty array on null or undefined input`
 - ✔ `falls back cleanly to Complete Volume for unformatted single-block text`
@@ -971,6 +977,8 @@
 - ✔ `parses multi-work anthologies with standalone titles and footnote brackets (e.g. Book 831 Four Arthurian Romances)`
 - ✔ `parses complex TOC without catastrophic backtracking or thread lock`
 - ✔ `parses books formatted with dotted Roman numerals and subtitle lines (such as The Time Machine)`
+- ✔ `suppresses single-digit front-matter TOC items with subtitles and enriches body chapter titles (such as Jules Verne)`
+- ✔ `preserves repeated chapter numbers across multi-part books`
 
 </details>
 
