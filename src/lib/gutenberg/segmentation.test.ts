@@ -297,5 +297,84 @@ I think that at that time none of us quite believed in the Time Machine.
     expect(ch3).toBeDefined();
     expect(ch3?.content).toContain('none of us quite believed');
   });
+
+  it('suppresses single-digit front-matter TOC items with subtitles and enriches body chapter titles (such as Jules Verne)', () => {
+    const verneStyleText = `
+*** START OF THE PROJECT GUTENBERG EBOOK A JOURNEY TO THE CENTRE OF THE EARTH ***
+
+A JOURNEY TO THE CENTRE OF THE EARTH
+By Jules Verne
+
+TABLE OF CONTENTS
+
+CHAPTER 1 MY UNCLE MAKES A GREAT DISCOVERY
+CHAPTER 2 THE MYSTERIOUS PARCHMENT
+CHAPTER 10 THE SPECULATION
+
+CHAPTER 1
+
+Looking back to all that has occurred to me since that eventful day... ${'content '.repeat(100)}
+
+CHAPTER 2
+
+This momentous book was in my hands... ${'content '.repeat(100)}
+
+CHAPTER 10
+
+It ought, one would have thought, to have been night... ${'content '.repeat(100)}
+
+*** END OF THE PROJECT GUTENBERG EBOOK A JOURNEY TO THE CENTRE OF THE EARTH ***
+`;
+
+    const chapters = parseGutenbergChapters(verneStyleText);
+
+    // Should only have Title & Preamble + 3 authentic Chapters + Colophon = 5 sections (ZERO ghost TOC chapters)
+    expect(chapters.length).toBe(5);
+
+    const ch1 = chapters.find((c) => c.title === 'CHAPTER 1');
+    expect(ch1).toBeDefined();
+    expect(ch1?.content).toContain('Looking back to all that has occurred');
+    // Subtitle harvested from TOC line should be transferred and formatted
+    expect(ch1?.displayTitle).toBe('Chapter 1: My Uncle Makes a Great Discovery');
+
+    const ch2 = chapters.find((c) => c.title === 'CHAPTER 2');
+    expect(ch2).toBeDefined();
+    expect(ch2?.displayTitle).toBe('Chapter 2: The Mysterious Parchment');
+
+    const ch10 = chapters.find((c) => c.title === 'CHAPTER 10');
+    expect(ch10).toBeDefined();
+    expect(ch10?.displayTitle).toBe('Chapter 10: The Speculation');
+  });
+
+  it('preserves repeated chapter numbers across multi-part books', () => {
+    const multiPartBook = `
+*** START OF THE PROJECT GUTENBERG EBOOK WAR AND PEACE ***
+
+PART 1
+
+CHAPTER 1
+
+First part, first chapter content... ${'content '.repeat(100)}
+
+CHAPTER 2
+
+First part, second chapter content... ${'content '.repeat(100)}
+
+PART 2
+
+CHAPTER 1
+
+Second part, first chapter content... ${'content '.repeat(100)}
+
+*** END OF THE PROJECT GUTENBERG EBOOK WAR AND PEACE ***
+`;
+
+    const chapters = parseGutenbergChapters(multiPartBook);
+    const ch1List = chapters.filter((c) => c.title === 'CHAPTER 1');
+    expect(ch1List.length).toBe(2);
+    expect(ch1List[0].content).toContain('First part, first chapter');
+    expect(ch1List[1].content).toContain('Second part, first chapter');
+  });
 });
+
 

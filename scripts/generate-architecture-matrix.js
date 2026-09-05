@@ -1,101 +1,25 @@
 const fs = require('fs');
 const path = require('path');
-const parser = require('@babel/parser');
-const traverse = require('@babel/traverse').default;
+const {
+  analyzeDependencyGraph,
+  detectCircularDependencies,
+  detectOrphanedModules,
+  extractComponentCatalog,
+  extractStoreCatalog,
+  extractApiAndHookCatalog,
+} = require('./lib/ast-parser');
 
 const rootDir = path.resolve(__dirname, '..');
 const srcDir = path.join(rootDir, 'src');
 
-function getAllSourceFiles(dir, fileList = []) {
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const filePath = path.join(dir, file);
-    const stat = fs.statSync(filePath);
-    if (stat.isDirectory()) {
-      if (file !== 'test' && file !== 'mocks') {
-        getAllSourceFiles(filePath, fileList);
-      }
-    } else if (
-      (file.endsWith('.ts') || file.endsWith('.tsx')) &&
-      !file.endsWith('.test.ts') &&
-      !file.endsWith('.test.tsx')
-    ) {
-      fileList.push(filePath);
-    }
-  }
-  return fileList;
-}
-
-function analyzeDependencyGraph() {
-  const sourceFiles = getAllSourceFiles(srcDir);
-  const graph = new Map();
-
-  for (const file of sourceFiles) {
-    const relativePath = path.relative(rootDir, file).replace(/\\/g, '/');
-    const content = fs.readFileSync(file, 'utf-8');
-    const imports = [];
-    const exportedProps = [];
-
-    try {
-      const ast = parser.parse(content, {
-        sourceType: 'module',
-        plugins: ['typescript', 'jsx'],
-      });
-
-      traverse(ast, {
-        ImportDeclaration({ node }) {
-          const importSource = node.source.value;
-          if (importSource.startsWith('@/') || importSource.startsWith('.')) {
-            imports.push(importSource);
-          }
-        },
-        TSInterfaceDeclaration({ node }) {
-          if (node.id && node.id.name) {
-            const propNames = (node.body.body || [])
-              .filter((m) => m.key && m.key.name)
-              .map((m) => m.key.name);
-            exportedProps.push({
-              name: node.id.name,
-              props: propNames,
-            });
-          }
-        },
-      });
-    } catch (_e) {
-      const importRegex = /import\s+.*?from\s+['"](@\/.*?|\..*?)['"]/g;
-      let match;
-      while ((match = importRegex.exec(content)) !== null) {
-        imports.push(match[1]);
-      }
-    }
-
-    graph.set(relativePath, {
-      imports,
-      exportedProps,
-      consumedBy: [],
-    });
-  }
-
-  // Calculate downstream consumers (consumedBy)
-  for (const [file, data] of graph.entries()) {
-    for (const imp of data.imports) {
-      let targetPath = imp.replace(/^@\//, 'src/');
-      for (const otherFile of graph.keys()) {
-        const fileWithoutExt = otherFile.replace(/\.(ts|tsx)$/, '');
-        if (otherFile === targetPath || fileWithoutExt === targetPath || otherFile.endsWith(targetPath)) {
-          if (!graph.get(otherFile).consumedBy.includes(file)) {
-            graph.get(otherFile).consumedBy.push(file);
-          }
-        }
-      }
-    }
-  }
-
-  return graph;
-}
-
 function generateMarkdown() {
-  const graph = analyzeDependencyGraph();
+  const graph = analyzeDependencyGraph(srcDir, rootDir);
+  const circularHealth = detectCircularDependencies(graph);
+  const orphans = detectOrphanedModules(graph);
+  const components = extractComponentCatalog(graph);
+  const stores = extractStoreCatalog(srcDir);
+  const { routes, hooks } = extractApiAndHookCatalog(srcDir);
+
   const timestamp = new Date().toISOString().split('T')[0];
 
   let totalLinks = 0;
@@ -106,9 +30,9 @@ function generateMarkdown() {
   const lines = [
     '# Architecture Matrix & Living Technical Reference — Bookarium',
     '',
-    '> **Auto-Generated Living Architecture**: Programmatically compiled from Source AST.  ',
+    '> **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  ',
     `> **Last Synchronized**: \`${timestamp}\`  `,
-    `> **Topology Health**: \`${graph.size}\` Modules Analyzed • \`${totalLinks}\` Static Linkages • \`0\` Circular Dependencies • \`0\` Orphaned Modules`,
+    `> **Topology Health**: \`${graph.size}\` Modules Analyzed • \`${totalLinks}\` Static Linkages • \`${circularHealth.cycleCount}\` Circular Dependencies • \`${orphans.length}\` Orphaned Modules`,
     '',
     '---',
     '',
@@ -118,33 +42,59 @@ function generateMarkdown() {
     '',
     '```mermaid',
     'flowchart TD',
-    '    User["👤 Reader / Public Domain Explorer"]',
+    '    User["👤 Reader / Public Domain Scholar"]',
     '    ',
     '    subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]',
-    '        Nav["Navbar.tsx\\n(Brand Reset, Navigation Tabs, Theme Cycler)"]',
+    '        Nav["Navbar.tsx\\n(Brand Reset, View Switcher, Theme Cycler)"]',
     '        Hero["HeroSearch.tsx\\n(Dynamic 3D Rotating Spotlight & Search)"]',
     '        Toolbar["StickyCatalogToolbar.tsx\\n(0px Flush Header, Filters Toggle, Telemetry)"]',
     '        FilterDrawer["AdvancedFilterDrawer.tsx\\n(Left Push-Sidebar: Eras, Sort, Formats)"]',
-    '        Grid["BookGrid.tsx\\n(Editorial Card Grid & 3D Wooden Shelf)"]',
-    '        ReaderPage["Dedicated Reader Page (/read/[id])\\n(Multi-Tier Meta, Chapter AST, Virtual Pagination)"]',
-    '        Downloads["DownloadDrawer.tsx\\n(EPUB, MOBI, TXT Direct Streams)"]',
     '        ',
-    '        StoreShelf[("⚡ Bookshelf Store\\n(localStorage: saved, likes, queue, history)")]',
-    '        StoreReader[("📖 Reader Store\\n(localStorage: theme, typography, progress map)")]',
-    '        StoreTheme[("🎨 Theme Store\\n(localStorage: day, sepia, obsidian)")]',
-    '        StoreAnnot[("🖍️ Annotation Store\\n(localStorage: pastel highlights & notes)")]',
-    '        StoreOffline[("📦 IndexedDB Storage\\n(unabridged offline volumes)")]',
+    '        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]',
+    '            Grid["Catalog View (/)\\n(Editorial Card Grid & 3D Hardwood Shelf)"]',
+    '            ShelfView["Bookshelf View (/bookshelf)\\n(Curated Library & Custom Named Shelves)"]',
+    '            FavView["Favorites View (/favorites)\\n(Personal Masterworks Collection)"]',
+    '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger & Telemetry)"]',
+    '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections & Tags)"]',
+    '            AccView["Account Hub (/account)\\n(Library Stats, Cloud Sync & JSON Backup)"]',
+    '            ReaderPage["Focus Reader Page (/read/[id])\\n(Continuous Pagination, Subtitles, AST)"]',
+    '        end',
     '        ',
-    '        QueryBooks["🔄 useBooks & usePrefetchNextPage\\n(Chunked sub-pages & 15-25s prefetch)"]',
-    '        QueryContent["🔄 useBookContent(url, bookId)"]',
-    '        QueryTranslate["🌐 useBookTranslation(targetLang)\\n(Dynamic Neural MT)"]',
+    '        subgraph ReaderDrawers ["Portaled Mutual-Exclusion Dialogs (z-[10000])"]',
+    '            TocDrawer["ReaderTocDrawer\\n(Rich Subtitles & Page Numbers)"]',
+    '            SearchDrawer["ReaderSearchDrawer\\n(In-Volume Live Text Search)"]',
+    '            ControlsDrawer["ReaderControls\\n(Typography, Speech & Themes)"]',
+    '            LangDrawer["ReaderLanguageDrawer\\n(International Editions Handoff)"]',
+    '            DownDrawer["DownloadDrawer\\n(EPUB, MOBI, TXT Direct Streams)"]',
+    '        end',
+    '        ',
+    '        subgraph StateStores ["Zustand Persistent State & Offline Engine"]',
+    '            StoreShelf[("⚡ useBookshelfStore\\n(saved, likes, queue, history, shelves)")]',
+    '            StoreReader[("📖 useReaderStore\\n(typography, progress map, coordinates)")]',
+    '            StoreTheme[("🎨 useThemeStore\\n(day, sepia, obsidian)")]',
+    '            StoreAuth[("🔐 useAuthStore\\n(session, cloud migration, profile)")]',
+    '            StorePref[("⚙️ usePreferencesStore\\n(sticky scroll, layout choices)")]',
+    '            StoreAnnot[("🖍️ useAnnotationStore\\n(pastel highlights, notes, tags)")]',
+    '            StoreOffline[("📦 IndexedDB Engine\\n(unabridged offline volume cache)")]',
+    '        end',
+    '        ',
+    '        subgraph ReaderEngine ["Reader Runtime & Web Speech Subsystem"]',
+    '            SpeechHook["🔊 useReaderSpeech\\n(SpeechSynthesis, Boundary Sync, Auto-Flip)"]',
+    '            WorkerHook["⚙️ useGutenbergParserWorker\\n(Persistent Worker Chapter AST)"]',
+    '            LedgerHook["🔖 useContinueReadingLedger\\n(Two-Way Hydration & 0ms Resume)"]',
+    '        end',
+    '        ',
+    '        QueryBooks["🔄 useBooks & usePrefetchNextPage\\n(Windowed Sub-Pages & Predictive Prefetch)"]',
+    '        QueryContent["🔄 useBookContent(url, bookId)\\n(IndexedDB Check -> CDN Stream)"]',
+    '        QueryTranslate["🌐 useBookTranslations\\n(International Editions Aggregation)"]',
     '        Telemetry["📊 Vercel Telemetry\\n(<Analytics />, <SpeedInsights />)"]',
     '    end',
     '',
     '    subgraph ServerLayer ["Next.js Edge Proxy & Telemetry Layer"]',
-    '        ProxyBooks["GET /api/books\\n(SWR 120s Cache, Latency Tracking, >=2 Char Guard)"]',
-    '        ProxyContent["GET /api/books/content\\n(Unabridged Text Stream, SWR 24h)"]',
+    '        ProxyBooks["GET /api/books\\n(SWR 120s Cache, Latency Tracking, Rate Limit)"]',
+    '        ProxyContent["GET /api/books/content\\n(Unabridged Text Stream, Anti-SSRF, SWR 24h)"]',
     '        ProxyTranslate["POST /api/translate\\n(Neural MT Proxy, 40+ Languages)"]',
+    '        LayoutServer["Server Layout (/read/[id])\\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]',
     '    end',
     '',
     '    subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]',
@@ -160,29 +110,27 @@ function generateMarkdown() {
     '    User <--> Toolbar',
     '    Toolbar --> FilterDrawer',
     '    Toolbar --> Grid',
-    '    Grid --> ReaderPage',
-    '    Grid --> Downloads',
+    '    Nav --> Views',
     '    ',
-    '    Toolbar --> QueryBooks',
+    '    Grid --> QueryBooks',
     '    QueryBooks --> ProxyBooks',
     '    ProxyBooks --> Gutendex',
     '    QueryBooks -.->|Client Failover on 504| Gutendex',
     '    ',
     '    ReaderPage --> QueryContent',
+    '    ReaderPage --> ReaderDrawers',
+    '    ReaderPage --> ReaderEngine',
     '    QueryContent --> ProxyContent',
     '    ProxyContent --> GutenbergCDN',
     '    ReaderPage --> QueryTranslate',
     '    QueryTranslate --> ProxyTranslate',
     '    ProxyTranslate --> GoogleNMT',
     '    ',
-    '    Grid --> StoreShelf',
-    '    Nav --> StoreShelf',
-    '    Nav --> StoreTheme',
-    '    ReaderPage --> StoreReader',
-    '    ReaderPage --> StoreAnnot',
-    '    ReaderPage <--> StoreOffline',
+    '    Views --> StateStores',
+    '    ReaderEngine --> StateStores',
     '    StoreShelf <-->|Cloud Sync (RLS)| SupabaseCloud',
     '    StoreReader <-->|Progress Sync| SupabaseCloud',
+    '    StoreAuth <-->|Session Auth| SupabaseCloud',
     '    Telemetry -.->|Anonymous Metrics| VercelEdge',
     '```',
     '',
@@ -190,68 +138,115 @@ function generateMarkdown() {
     '',
     '## 🧩 Component Catalog & Props Interface Matrix',
     '',
-    'Auto-extracted from Component TypeScript interfaces:',
+    `Auto-extracted dynamically from **${components.length} Production UI Components** using Babel AST:`,
     '',
-    '| Component | Exported Props Interface | Primary Props & Signals | Architectural Role |',
-    '| :--- | :--- | :--- | :--- |',
-    '| **`HeroSearch`** | `HeroSearchProps` | `search`, `onSearchChange`, `selectedTopic`, `selectedLanguage`, `onReadFeaturedBook` | Dynamic rotating 3D book spotlight, unified search bar, and popular topic pills |',
-    '| **`StickyCatalogToolbar`** | `StickyCatalogToolbarProps` | `page`, `onPageChange`, `viewMode`, `onOpenFilters`, `isFiltersOpen`, `activeFilterChips`, `latencyMs` | 0px flush sticky toolbar with live latency telemetry and filter toggle |',
-    '| **`BookCard`** | `BookCardProps` | `book`, `onDownloadClick` | Open-book skeuomorphic cover, like/save actions, and instant reader handoff |',
-    '| **`BookGrid`** | `BookGridProps` | `books`, `isLoading`, `isError`, `page`, `viewMode`, `onViewModeChange`, `onDownloadClick` | Responsive catalog container toggling between Editorial Grid and 3D Shelf |',
-    '| **`BookshelfRack`** | `BookshelfRackProps` | `books`, `onRemoveBook`, `onDownloadClick` | Skeuomorphic wooden shelf with embossed vertical book spines and touch panning |',
-    '| **`AdvancedFilterDrawer`** | `AdvancedFilterDrawerProps` | `isOpen`, `onClose`, `selectedEra`, `selectedSort`, `selectedTopic`, `selectedLanguage`, `selectedFormat` | Collapsible left-side filter sidebar with desktop smooth push transition |',
-    '| **`DownloadDrawer`** | `DownloadDrawerProps` | `book`, `isOpen`, `onClose` | Multi-format download hub (EPUB, MOBI, Plain Text, HTML) |',
-    '| **`Navbar`** | `NavbarProps` | `activeView`, `onViewChange` | Top brand header, live badge counters, view switcher, and theme cycler |',
-    '| **`LiteraryQuotes`** | _Autonomous_ | None (Internal Shuffle State) | 3-column classic literary passage showcase with shuffle discovery |',
-    '| **`ReaderHeader`** | `ReaderHeaderProps` | `title`, `author`, `activeChapterTitle`, `readingMode`, `currentVolumeNumber` | Focus reader header with dual-mode `[ ⇄ Info ]` metadata switcher |',
-    '| **`ReaderControls`** | `ReaderControlsProps` | `isOpen`, `fontSize`, `fontFamily`, `lineHeight`, `theme`, `columnWidth` | Compact typography and reading mode customization popover (0 scrollbars) |',
-    '| **`ReaderTocDrawer`** | `ReaderTocDrawerProps` | `isOpen`, `chapters`, `activeChapterIndex`, `onSelectChapter` | Table of Contents slide-over with page numbers and transparent backdrop |',
-    '| **`ReaderSurface`** | `ReaderSurfaceProps` | `content`, `fontSize`, `fontFamily`, `lineHeight`, `columnWidth`, `currentPage` | Fluid paragraph reflow engine with continuous virtual page spreads |',
-    '| **`ReaderFooter`** | `ReaderFooterProps` | `currentPage`, `totalPages`, `progressPercentage`, `onPageJump` | Thin sticky bottom pagination bar with direct page jump input |',
+    '| Component | Category | Exported Props Interface | Primary Props & Signals | Module Link |',
+    '| :--- | :--- | :--- | :--- | :--- |',
+  ];
+
+  for (const c of components) {
+    const categoryTitle = c.category.charAt(0).toUpperCase() + c.category.slice(1);
+    lines.push(
+      `| **\`${c.name}\`** | ${categoryTitle} | ${c.propsInterface} | ${c.propSignals} | [\`${c.file}\`](${c.file}) |`
+    );
+  }
+
+  lines.push(
     '',
     '---',
     '',
     '## ⚡ State Management & Store Architecture',
     '',
-    'Zustand client-side state stores with persistent browser storage:',
-    '',
-    '### 1. `useBookshelfStore` (`src/stores/useBookshelfStore.ts`)',
-    '* **Storage Key**: `bookarium-bookshelf` (localStorage)',
-    '* **State Tree**:',
-    '  * `savedBooks: GutendexBook[]` — Books saved to personal collection.',
-    '  * `favoriteBookIds: number[]` — IDs of favorited masterworks.',
-    '  * `readingQueue: GutendexBook[]` — Up next reading list.',
-    '  * `readingHistory: ReadingHistoryEntry[]` — Timeline of recently read volumes with timestamps.',
-    '* **Core Actions**: `saveBook`, `removeBook`, `toggleSave`, `toggleFavorite`, `addToQueue`, `removeFromQueue`, `recordHistory`, `clearAllBooks`.',
-    '',
-    '### 2. `useReaderStore` (`src/stores/useReaderStore.ts`)',
-    '* **Storage Keys**: `bookarium-reader-preferences`, `bookarium-progress-map` (localStorage)',
-    '* **State Tree**:',
-    '  * `currentBook: GutendexBook | null` — Active book metadata payload.',
-    '  * `fontSize: number` — Active font size (12px–36px, default 18px).',
-    '  * `fontFamily: \'serif\' | \'sans\' | \'mono\'` — Active font pairing.',
-    '  * `lineHeight: number` — Active line height (1.2–2.6, default 1.8).',
-    '  * `theme: \'light\' | \'sepia\' | \'dark\'` — Active reader theme.',
-    '  * `columnWidth: \'narrow\' | \'normal\' | \'wide\'` — Reading column width (576px / 768px / 1024px).',
-    '  * `readingMode: \'page\' | \'scroll\'` — Virtual paginated vs. vertical scroll.',
-    '  * `progress: Record<number, BookProgress>` — Per-book percentage and chapter bookmarks.',
-    '* **Core Actions**: `openReader`, `closeReader`, `setFontSize`, `setFontFamily`, `setLineHeight`, `setTheme`, `setColumnWidth`, `setReadingMode`, `saveProgress`.',
-    '',
-    '### 3. `useThemeStore` (`src/stores/useThemeStore.ts`)',
-    '* **Storage Key**: `bookarium-theme` (localStorage)',
-    '* **State Tree**: `theme: \'light\' | \'dark\' | \'sepia\'`',
-    '* **Core Actions**: `setTheme`, `cycleTheme`, `applyThemeToDocument`.',
-    '',
+    `Zustand client-side state stores programmatically verified across **${stores.length} Persistent Modules**:`,
+    ''
+  );
+
+  const storeDescriptions = {
+    useAnnotationStore:
+      'Scholar marginalia, categorical pastel highlights (Amber, Emerald, Rose, Sky, Violet), reflections, tags, and commonplace book exports.',
+    useAuthStore:
+      'Supabase session authentication, guest status, password generation, and cloud profile synchronization.',
+    useBookshelfStore:
+      'Personal library collections, reading queue, reading history, custom named shelves, deletion tombstones, and ratings.',
+    usePreferencesStore:
+      'Reader display choices, sticky header auto-hide preferences, and navigation behaviors.',
+    useReaderStore:
+      'Active book payload, typography settings (size, family, line height), reading mode (paginated vs scroll), and coordinates.',
+    useThemeStore:
+      'Global application theme state (Day Paper, Sepia Parchment, Obsidian Dark) with immediate document class application.',
+  };
+
+  for (let i = 0; i < stores.length; i++) {
+    const s = stores[i];
+    const desc = storeDescriptions[s.name] || 'Application state store.';
+    lines.push(`### ${i + 1}. \`${s.name}\` ([\`${s.file}\`](${s.file}))`);
+    lines.push(`* **Storage Key**: ${s.storageKey}`);
+    lines.push(`* **Role & State**: ${desc}`);
+    lines.push('');
+  }
+
+  lines.push(
     '---',
     '',
-    '## 🌐 API Routes, Query Hooks & Network Contracts',
+    '## 🌐 API Routes, Query Hooks & Reader Engine',
     '',
-    '| Endpoint / Hook | Method / Layer | Query Parameters | Cache & Fallback Strategy | Upstream Target |',
-    '| :--- | :--- | :--- | :--- | :--- |',
-    '| **`/api/books`** | `GET` (Route) | `search`, `topic`, `languages`, `page`, `sort`, `author_year_start`, `author_year_end`, `mime_type`, `ids` | `s-maxage=120, stale-while-revalidate=600` • Real-time latency tracking | `https://gutendex.com/books/` |',
-    '| **`/api/books/content`** | `GET` (Route) | `url`, `id` | `s-maxage=86400, stale-while-revalidate=604800` • UTF-8 plain text streaming | `https://www.gutenberg.org/cache/epub/{id}/pg{id}.txt` |',
-    '| **`useBooks`** | TanStack Query | `{ search, topic, languages, page, sort, era, mimeType, enabled }` | `placeholderData: keepPreviousData` • 5m staleTime • Direct client failover on 504 | `/api/books` $\\to$ Gutendex |',
-    '| **`useBookContent`** | TanStack Query | `{ textUrl, bookId, enabled }` | 24h cache • Automated Gutenberg chapter AST parsing | `/api/books/content` $\\to$ Gutenberg CDN |',
+    '### 1. API Route Handlers (Edge Proxy & Telemetry)',
+    '',
+    '| Endpoint / Route | Method(s) | Source File | Cache & Security Strategy | Upstream Target |',
+    '| :--- | :--- | :--- | :--- | :--- |'
+  );
+
+  for (const r of routes) {
+    let cacheDesc = 'Edge Proxy';
+    let upstream = 'Project Gutenberg Infrastructure';
+    if (r.path === '/api/books') {
+      cacheDesc = '`s-maxage=120, stale-while-revalidate=600` • Sliding-Window Rate Limit';
+      upstream = '`https://gutendex.com/books/`';
+    } else if (r.path === '/api/books/content') {
+      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • Anti-SSRF Allowlist';
+      upstream = '`https://www.gutenberg.org/cache/epub/{id}/pg{id}.txt`';
+    } else if (r.path === '/api/translate') {
+      cacheDesc = 'Serverless Neural MT Proxy • 40+ Languages';
+      upstream = 'Google Neural Machine Translation';
+    }
+    lines.push(`| **\`${r.path}\`** | \`${r.methods}\` | [\`${r.file}\`](${r.file}) | ${cacheDesc} | ${upstream} |`);
+  }
+
+  lines.push(
+    '',
+    '### 2. Custom Hooks (Data Queries & Reader Subsystems)',
+    '',
+    '| Hook Name | Subsystem / Layer | Source File | Architectural Responsibility |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  const hookRoles = {
+    useBooks: 'TanStack Query fetching catalog volumes with sub-pagination and client failover.',
+    useBookContent: 'TanStack Query fetching book plain text with IndexedDB offline-first check.',
+    useBookTranslations: 'TanStack Query aggregating international language translations and editions.',
+    usePageTranslation: 'On-demand page-level dynamic neural translation caching.',
+    useReaderSpeech: 'Browser-native Web Speech synthesis with boundary word highlighting and auto-flip.',
+    useReaderSession: 'Reading coordinates restoration, resume ribbons, and cloud session synchronization.',
+    useContinueReadingLedger: 'Headless continue reading ledger with authentic telemetry enrollment and query hydration.',
+    useReaderDrawers: 'Mutual exclusivity coordination for in-reader tool drawers and modals.',
+    useReaderGestures: 'Touch swipe detection, keyboard shortcuts, and selection gesture conflict guards.',
+    useGutenbergParserWorker: 'Persistent Web Worker chapter segmentation and layout pagination calculations.',
+    useCatalogFilters: 'Catalog filter state URL parameter binding, debounce, and query synchronization.',
+    useScrollDirection: 'Stepped directional scroll detection with user auto-hide preference persistence.',
+    usePerformanceTier: 'Hardware concurrency and memory heuristic detection for fluid 60fps animations.',
+    useOfflineBooks: 'IndexedDB cache enumeration and local offline book deletion management.',
+    useCursorTooltip: 'Adaptive unconstrained cursor tooltips for interactive bookshelf elements.',
+    useBookPassageShuffle: 'Autonomous literary quote selection and multi-chapter shuffle engine.',
+    useHasMounted: 'SSR hydration barrier hook preventing client-server markup mismatches.',
+  };
+
+  for (const h of hooks) {
+    const role = hookRoles[h.name] || 'Application custom hook.';
+    const sub = h.category.charAt(0).toUpperCase() + h.category.slice(1);
+    lines.push(`| **\`${h.name}\`** | ${sub} | [\`${h.file}\`](${h.file}) | ${role} |`);
+  }
+
+  lines.push(
     '',
     '---',
     '',
@@ -262,6 +257,8 @@ function generateMarkdown() {
     '* **`GENRE_FACETS`** (`src/config/catalog-filters.ts`): Curated genre tags (Gothic & Horror, Philosophy, Adventure, Sci-Fi, Poetry, Drama, Detective & Mystery, History).',
     '* **`READER_THEMES`** (`src/config/reader-themes.ts`): 3 reading themes (Day Paper, Sepia Parchment, Obsidian Dark) with color tokens for background, text, borders, and accents.',
     '* **`LITERARY_QUOTES`** (`src/config/literary-quotes.ts`): 12 literary passages and opening lines from immortal masterworks.',
+    '* **`ROUTES`** (`src/config/routes.ts`): Centralized single-source route registry defining clean path targets and dynamic route builders.',
+    '* **`SITE_CONFIG`** (`src/config/site-config.ts`): Canonical site metadata, storage key registry, and public domain policy declarations.',
     '',
     '---',
     '',
@@ -270,23 +267,25 @@ function generateMarkdown() {
     'Every source file is analyzed for upstream imports and downstream consumers to guarantee zero orphaned or unlinked code:',
     '',
     '| Module / Component | Upstream Dependencies (Imports) | Downstream Consumers (Consumed By) | Role & Responsibilities |',
-    '| :--- | :--- | :--- | :--- |',
-  ];
+    '| :--- | :--- | :--- | :--- |'
+  );
 
   const sortedFiles = Array.from(graph.keys()).sort();
 
   for (const file of sortedFiles) {
     const data = graph.get(file);
     const basename = path.basename(file);
-    const importsStr = data.imports.length > 0
-      ? data.imports.map((i) => `\`${i.replace('@/', '')}\``).join(', ')
-      : '_Root Primitive_';
-    
-    const consumersStr = data.consumedBy.length > 0
-      ? data.consumedBy.map((c) => `\`${path.basename(c)}\``).join(', ')
-      : file.includes('page.tsx') || file.includes('route.ts') || file.includes('layout.tsx')
-        ? '_App Route Entry_'
-        : '_Direct Root Consumer_';
+    const importsStr =
+      data.imports.length > 0
+        ? data.imports.map((i) => `\`${i.replace('@/', '')}\``).join(', ')
+        : '_Root Primitive_';
+
+    const consumersStr =
+      data.consumedBy.length > 0
+        ? data.consumedBy.map((c) => `\`${path.basename(c)}\``).join(', ')
+        : file.includes('page.tsx') || file.includes('route.ts') || file.includes('layout.tsx')
+          ? '_App Route Entry_'
+          : '_Direct Root Consumer_';
 
     lines.push(`| [\`${basename}\`](${file}) | ${importsStr} | ${consumersStr} | Production Module |`);
   }
@@ -302,6 +301,7 @@ function generateMarkdown() {
     '3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.',
     '4. **Edge SWR Caching**: Common queries are cached with `s-maxage=120, stale-while-revalidate=600` for sub-10ms response times on repeated visits.',
     '5. **On-Demand Text Streaming**: Large book texts (2MB–5MB) are fetched strictly when the focus reader opens.',
+    '6. **Native IndexedDB Offline Cache**: Downloaded unabridged texts are cached in browser IndexedDB for 100% offline access.',
     '',
     '---',
     '',

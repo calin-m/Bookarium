@@ -1,10 +1,10 @@
 # Architectural Decision Records (ADRs)
 
-## ADR-001: Next.js 15 App Router & React 19 Adoption
+## ADR-001: Next.js 16 App Router & React 19 Adoption
 - **Status**: Accepted
-- **Context**: Bookarium requires high-performance server rendering, streaming capabilities, and optimal client-side caching for a seamless reading experience.
-- **Decision**: Adopt Next.js 15+ App Router with React 19, server components for skeleton shells, and client components for interactive reader/filters.
-- **Consequences**: Fast initial load, modern React concurrent features, zero API keys required.
+- **Context**: Bookarium requires high-performance server rendering, streaming capabilities, and optimal client-side caching for a seamless reading experience. The application was initialized with Next.js 15 and subsequently upgraded to Next.js 16 (`next: ^16.3.3`) in commit `24f38a5`.
+- **Decision**: Adopt Next.js 16 App Router with React 19, server components for skeleton shells, and client components for interactive reader/filters.
+- **Consequences**: Fast initial load, modern React concurrent features, zero API keys required, alignment with latest Next.js proxy conventions.
 
 ## ADR-002: Public Domain Zero-Copyright Enforcement
 - **Status**: Accepted
@@ -113,5 +113,85 @@
   3. **Dynamic Reader Metadata with 24h ISR Caching (`/read/[id]/layout.tsx`)**: Introduce a Next.js Server Component layout at `src/app/read/[id]/layout.tsx` leveraging `generateMetadata` with Next.js 24-hour server-side caching (`revalidate: 86400`). Resolves book titles, authors, and cover art to output rich OpenGraph book cards and Twitter `summary_large_image` cards, guaranteeing at most 1 upstream Gutendex call per day per book.
   4. **Native Safe Structured Data (JSON-LD)**: Inject `schema.org/WebSite` (with Sitelinks SearchAction) and universal `schema.org/WebApplication` (`isAccessibleForFree: true`) on the root layout, and `schema.org/Book` on reader pages using native React 19 text nodes, completely eliminating forbidden `dangerouslySetInnerHTML` primitives in compliance with Pass 0.5 security policies.
 - **Consequences**: Archival-grade search engine discoverability; rich, beautiful social share previews on all modern platforms; zero visual UI or client reader disruption; 100% protection of upstream Gutendex resources; 0 XSS vulnerabilities; and 100% co-located test coverage across all SEO route handlers.
+
+## ADR-017: Canonical Gutenberg Heading Normalization & Reading Coordinate Harmonization
+- **Status**: Accepted
+- **Context**: 
+  1. **Gutenberg Chapter Segmentation Mismatch**: In Project Gutenberg books featuring front-matter Tables of Contents, naive fixed-length 10-character string slicing (`.slice(0, 10)`) caused character alignment failures between TOC listings and body headings. For double-digit chapters (e.g. `CHAPTER 10`), the 10-character slice was `"chapter 10"`, matching the body heading. However, for single-digit chapters (Chapters 1–9), the TOC slice included a trailing space (e.g. `"chapter 1 "`, length 10) while the standalone body heading had no space (`"chapter 1"`, length 9). Because `"chapter 1 "` !== `"chapter 1"`, single-digit TOC lines were never deduplicated, leaking into the volume as 9 empty phantom chapters with only 30–50 characters of text (as seen in Jules Verne's *A Journey to the Centre of the Earth*, `read/18857`). Furthermore, chapter display titles in the Table of Contents drawer remained bare numbers (`CHAPTER 1`) even when the front-matter TOC contained descriptive subtitles.
+  2. **Reading Coordinates Discrepancy**: In `BookmarkCard.tsx`, the card displayed `volume.chapterPage` (chapter-relative page) and added `+ 1` to `chapterIndex`, while `ReaderFooter.tsx` displayed `volume.globalPage` (book-wide page) and `useReaderSession.ts` indexed Section 0 as Preamble and Section 1 as Chapter 1. Consequently, a user reading Chapter 1 on Global Page 3 saw "Chapter 2 • Page 2" on the bookmark card, but "Page 3 of 150" upon clicking Resume.
+- **Decision**: 
+  1. **Semantic Heading Normalization**: Introduce `normalizeHeadingId` in `src/lib/gutenberg/segmentation.ts` extracting canonical keyword-numeral tokens (e.g. `chapter 1`, `part 2`, `book 3`, Roman numerals `i`, `iv`) to guarantee exact matching regardless of trailing whitespace or line length differences. Deduplication strictly requires both `isVeryShort` (`bodyLength < 150`) and confirmed later duplication (`hasLaterDuplicate`), guaranteeing that legitimate chapters with prose are never dropped.
+  2. **Automated Chapter Subtitle Harvesting**: Extract descriptive chapter subtitles from front-matter TOC lines during deduplication and transfer them to body chapters, formatting them in clean title case (e.g. `Chapter 1: My Uncle Makes a Great Discovery`) for presentation in the Table of Contents drawer and reader navigation.
+  3. **Unified Global Reading Coordinates**: Harmonize `BookmarkCard.tsx` and `useReaderSession.ts` around `globalPage` and 1-based `chapterIndex`. The bookmark card, reader resume notification ribbon, and reader footer all display identical coordinates (`Chapter 1 • Page 3`), eliminating cognitive dissonance.
+  4. **Server-Side Fetch Memoization & Timeout Protection**: Wrap `fetchBookData` in `src/app/read/[id]/layout.tsx` with React's canonical `cache()` primitive to deduplicate redundant server requests between `generateMetadata` and `BookReaderLayout` within the same request lifecycle. Add `signal: AbortSignal.timeout(2500)` to ensure that slow or stalled upstream queries fail fast and trigger instant static metadata fallback rather than blocking page rendering.
+- **Consequences**: Complete elimination of phantom TOC ghost chapters on Verne/Wells/Doyle masterworks; exactly 44 authentic chapters produced for `read/18857`; rich, commercial-grade chapter titles in the Table of Contents drawer; 100% preservation of multi-part books and unnumbered anthologies; unified reading coordinates across all UI surfaces; and elimination of server-side rendering latency on cold reader route transitions.
+
+## ADR-018: Browser-Native Web Speech Synthesis Narration Engine
+- **Status**: Accepted
+- **Context**: Readers requested synchronized audio narration for classic books. Commercial cloud text-to-speech APIs (e.g. ElevenLabs, Google Cloud TTS, Amazon Polly) require paid API keys, expose user reading telemetry to external networks, introduce audio streaming latency, and violate Rule 4 (Zero API Key Requirement & Public Domain Integrity).
+- **Decision**: Architect a zero-cost, zero-key audio narration subsystem (`src/hooks/reader/useReaderSpeech.ts`) utilizing the browser's native `window.speechSynthesis` API:
+  1. **Dynamic Voice Discovery**: Enforce asynchronous speech voice discovery across OS synthesis engines (macOS, Windows, iOS, Android, Linux) with language-matching filters.
+  2. **Real-Time Word & Sentence Synchronization**: Bind `onboundary` utterance events to visual highlight ranges, rendering a synchronized karaoke-style reading tracker across paragraph text.
+  3. **Auto-Advancing Page Automation**: Synchronize speech completion with virtual page state, automatically flipping to subsequent pages upon paragraph or chapter completion when auto-advance is enabled.
+  4. **Hydration & Gesture Safeguards**: Defer speech initialization to client mount to eliminate SSR hydration mismatches, and bind play triggers to explicit user gestures to satisfy mobile browser autoplay policies.
+- **Consequences**: 100% offline-capable, zero-cost audio narration; zero API keys or external server dependencies; seamless synchronization between spoken audio and visual reading coordinates; 100% test coverage with MSW and simulated `SpeechSynthesis` mock suites.
+
+## ADR-019: Commonplace Book, Scholar Annotations & Mobile PWA Manifest
+- **Status**: Accepted
+- **Context**: Readers of literary classics actively highlight passages, record reflections, and compile commonplace notes. Modifying or injecting annotations directly into raw Gutenberg text strings risks corrupting source text and breaking virtual pagination column layouts. Furthermore, mobile readers desired an installable, app-like reading experience without app store gatekeepers.
+- **Decision**: Architect an offline-first Commonplace Book and scholar annotation subsystem:
+  1. **Non-Destructive Text Selection**: Capture text selections via `window.getSelection()` and record relative character offsets within chapters, preserving source text purity.
+  2. **Categorical Marginalia & Highlighter Palettes**: Implement a dedicated Zustand store (`src/stores/useAnnotationStore.ts`) persisting quotes, book metadata, categorical pastel highlighter colors (Amber, Emerald, Rose, Sky, Violet), user reflection notes, and custom tags in `localStorage`.
+  3. **Aggregated Commonplace Notebook Hub**: Build a dedicated `/notebook` view aggregating highlights across all books with full-text search, tag filtering, and multi-format export (Markdown, TXT, JSON).
+  4. **Progressive Web App Manifest**: Introduce an installable Progressive Web App manifest (`src/app/manifest.ts`) providing native-like icons, standalone display mode, and offline launch capabilities.
+- **Consequences**: Rich scholar tools and marginalia without modifying book source text; instant multi-book commonplace compilation; offline note-taking; installable mobile PWA experience; 100% co-located unit test coverage across annotation stores and UI components.
+
+## ADR-020: Unabridged Offline Book Storage via Native IndexedDB Engine & LRU Eviction
+- **Status**: Accepted
+- **Context**: Bookarium's offline-first architecture allows readers to read without active internet connectivity. However, browser `localStorage` enforces a strict 5MB quota shared across all keys, making it impossible to store unabridged plain-text volumes (which typically span 500KB to 3MB each). Attempting to store multiple unabridged books in `localStorage` triggers `QuotaExceededError` crashes.
+- **Decision**: Architect a native, zero-dependency `IndexedDB` storage engine (`src/lib/offline-storage.ts`) dedicated to full book texts:
+  1. **Dedicated Versioned Database**: Create a versioned IndexedDB database (`BookariumOfflineDB`) with a dedicated `book_cache` object store indexed by `bookId`.
+  2. **Asynchronous Cache Integration**: Implement asynchronous storage wrappers (`saveOfflineBook`, `getOfflineBook`, `removeOfflineBook`, `getOfflineBookIds`) integrated directly into `useBookContent`.
+  3. **Defensive LRU Eviction & Quota Recovery**: Implement Least Recently Used (LRU) cache pruning and quota error handling, transparently falling back to direct network streaming when storage is restricted.
+- **Consequences**: Readers can store dozens of unabridged classic masterworks directly in browser storage; zero risk of blowing the 5MB `localStorage` quota; instant sub-millisecond reader loading for downloaded volumes; fully functional offline reader.
+
+## ADR-021: Clean Path URL Architecture via Next.js Edge Rewrites
+- **Status**: Accepted
+- **Context**: Originally, Bookarium switched views using query parameters (`/?view=bookshelf`, `/?view=favorites`, `/?view=notebook`, `/?view=bookmarks`). Query parameter URLs feel unpolished, look cluttered when shared, and conflict with standard SEO canonical URL patterns. However, migrating to separate Next.js route directories (`/bookshelf/page.tsx`, etc.) would cause full React unmount/remount cycles during navigation, destroying filter states, audio speech playback, and search results.
+- **Decision**: Implement a Clean Path URL architecture using Next.js `rewrites()` in `next.config.ts`:
+  1. **Edge Rewrites**: Rewrite clean top-level paths (`/catalog`, `/bookshelf`, `/favorites`, `/notebook`, `/bookmarks`) to the root page (`/`) at the Next.js routing layer.
+  2. **Type-Safe Route Registry**: Synchronize navigation tabs, browser history (`pushState` / `replaceState`), and canonical route definitions in `ROUTES` (`src/config/routes.ts`).
+  3. **Backward Compatibility**: Maintain seamless backward compatibility for incoming legacy query parameters (`?view=...`).
+- **Consequences**: Commercial-grade, clean, human-readable URLs for all library views; zero unmount/remount cycle overhead for client SPA state; 100% backward compatibility for existing bookmarks and shared links.
+
+## ADR-022: API Proxy Hardening, Anti-SSRF Allowlisting & Sliding-Window Rate Limiting
+- **Status**: Accepted
+- **Context**: Bookarium proxies requests to public Project Gutenberg servers via `/api/books` and `/api/books/content` to circumvent CORS restrictions. Without strict defensive controls, open proxy endpoints can be exploited for Server-Side Request Forgery (SSRF), path traversal, or distributed denial-of-service against Gutenberg's volunteer-run infrastructure, triggering upstream IP bans.
+- **Decision**: Implement multi-layered security barriers on API proxy routes:
+  1. **Anti-SSRF Allowlist**: Strictly constrain content fetch URLs to canonical Gutenberg endpoint templates (`https://www.gutenberg.org/ebooks/${id}.txt.utf-8` and `/cache/epub/${id}/pg${id}.txt`), completely rejecting arbitrary user-supplied target URLs.
+  2. **Strict Numeric ID Barriers**: Enforce integer barriers (`parseInt(id, 10)`) with positive boundary validation (`id > 0 && id < 10_000_000`) and CodeQL-compliant path sanitization, eliminating directory traversal payloads.
+  3. **Sliding-Window Rate Limiting**: Implement in-memory sliding-window request throttling with sliding timestamp windows and burst guards, returning `429 Too Many Requests` when thresholds are exceeded.
+- **Consequences**: Complete neutralization of SSRF and path traversal attack vectors; full compliance with OWASP Top 10 and CodeQL security audits (Pass 0.5 security gate); responsible, polite proxying that shields Project Gutenberg's infrastructure.
+
+## ADR-023: Library Data Sovereignty, Schema Validation & Headless Backup Engine
+- **Status**: Accepted
+- **Context**: Bookarium prioritizes digital sovereignty—readers must never be trapped in a walled garden or lose their library data due to browser cache clearing, device changes, or database migration errors.
+- **Decision**: Build a comprehensive, client-side Library Portability & Backup Engine (`src/lib/library-backup.ts`):
+  1. **Full-Spectrum Schema Export**: Single-click export of complete reader state into a versioned JSON schema (`version: '1.0'`) and CSV spreadsheet formats, encapsulating saved books, reading queue, custom shelves, reading positions, ratings, reading statuses, scholar annotations, and speech preferences.
+  2. **Defensive Schema Validation**: Defensive schema validation on import with structural type guards, sanitizing corrupted or malicious JSON payloads before state ingestion.
+  3. **Dual Restore Strategies**: Support both non-destructive "Merge" (combining imported data with existing collections) and clean "Replace" (restoring an exact snapshot).
+- **Consequences**: Complete reader data sovereignty and portability; protection against browser storage eviction; effortless migration across devices without requiring third-party cloud accounts; 100% co-located test coverage.
+
+## ADR-024: Zero-Latency Client Navigation Fast-Path & Decoupled Crawler Metadata
+- **Status**: Accepted
+- **Context**: In commit `b73cd94`, `/read/[id]/layout.tsx` was introduced to serve OpenGraph/Twitter cards and Schema.org JSON-LD to search engine crawlers via an outbound `gutendex.com` API request. Because Gutendex is a free volunteer service prone to multi-second latency spikes (up to 47 seconds), every internal client navigation (`router.push('/read/[id]')`) suffered a blocking delay of 2500ms (the abort timeout) while the server logged `Rendering /read/[id]...`, even though the client reader already possessed the book in memory and never used the layout's fetched metadata.
+- **Decision**: Architect a bifurcated metadata resolution and rendering strategy in `src/app/read/[id]/layout.tsx`:
+  1. **Client-Side Navigation Detection (Fast-Path)**: Inspect incoming request headers via `headers()` for Next.js internal transition flags (`rsc === '1'`, `next-router-state-tree`, `accept: text/x-component`). When detected, immediately bypass outbound network calls and generate instant fallback metadata in 0ms using multi-tier static fixtures (`FEATURED_HERO_BOOKS`) and synthetic volume identifiers.
+  2. **In-Memory Server Process Cache**: Maintain an in-memory process cache (`serverMetadataCache`) to instantly serve crawler and external requests without re-fetching Gutenberg catalog records.
+  3. **Client Title Synchronization**: Guarantee that client readers transition in 0ms, while the client page mounts immediately and synchronizes the browser `document.title` to the authentic literary title and author upon mounting via `useEffect`.
+  4. **Strict Crawler Preservation**: Direct browser entries, Googlebot, and social crawlers (`rsc !== '1'`) continue to receive rich OpenGraph cards, Twitter cards, and Schema.org JSON-LD with a tightened 1500ms timeout guard.
+- **Consequences**: Restores authentic 0ms instant transitions when opening books from Bookmarks, Favorites, Bookshelf, and Catalog; eliminates Next.js server stalls on `/read/[id]`; preserves 100% SEO, social sharing cards, and Schema.org compliance for external search crawlers.
+
+
 
 

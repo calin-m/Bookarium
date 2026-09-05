@@ -168,7 +168,7 @@ describe('useReaderSession', () => {
     expect(result.current.currentChapterPage).toBe(1);
     expect(result.current.resumeNotice).toEqual({
       chapterTitle: 'Chapter 2',
-      page: 1,
+      page: 3,
     });
   });
 

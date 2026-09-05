@@ -27,7 +27,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 }) => {
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
-  const { book, progressPercent, chapterIndex, chapterPage, lastReadAt, status } = volume;
+  const { book, progressPercent, chapterIndex, globalPage, lastReadAt, status } = volume;
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
   const handleResume = () => {
@@ -170,7 +170,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
           <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground pt-1">
             <span>
-              {chapterIndex > 0 ? `Chapter ${chapterIndex + 1}` : 'Start'} • Page {chapterPage}
+              {chapterIndex > 0 ? `Chapter ${chapterIndex}` : 'Start'} • Page {globalPage || 1}
             </span>
             <span>{formatRelativeTime(lastReadAt)}</span>
           </div>

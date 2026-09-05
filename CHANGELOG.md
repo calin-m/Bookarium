@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.9.7] - 2026-09-05
+### *Gutenberg Heading Semantic Normalization, Phantom Chapter Elimination & Reading Coordinate Harmonization*
+
+### Added
+- Semantic Gutenberg Heading Normalization (`segmentation.ts`): Replaced brittle fixed-length string slicing with canonical keyword and numeral extraction (`normalizeHeadingId`), matching single-digit and multi-digit chapter identifiers consistently across front-matter TOCs and body text.
+- Automated Chapter Subtitle Harvesting (`segmentation.ts`): Enriched body chapter display titles (e.g. `Chapter 1: My Uncle Makes a Great Discovery`) by extracting and title-casing subtitles from front-matter TOC listings during the deduplication pass.
+- Server-Side Fetch Deduplication & Timeout Hardening (`src/app/read/[id]/layout.tsx`): Wrapped reader layout metadata fetching with React `cache()` and an `AbortSignal.timeout(2500)` guard, collapsing redundant server requests into a single call and preventing slow upstream API queries from blocking page transitions.
+- Dynamic AST-Driven Architecture Engine (Governance Rule 2): Implemented `scripts/lib/ast-parser.js` using Babel AST traversal, mathematical DFS cycle detection, and automated discovery of all 57 components, 6 stores, and 17 hooks, eliminating static table hardcoding in `docs/ARCHITECTURE.md`.
+- Architecture Decision Records (`ADR-017` through `ADR-023`): Formally ratified Gutenberg heading normalization, Web Speech narration, Commonplace Notebook, IndexedDB offline engine, Clean Path edge rewrites, API proxy security, and library backup engine in `docs/DECISIONS.md`.
+
+### Fixed
+- Gutenberg Phantom Chapter Leakage (`segmentation.ts`): Resolved bug where single-digit chapters in front-matter TOC clusters (Chapters 1–9) failed duplicate detection due to trailing space mismatches in naive `slice(0, 10)`, eliminating 9 empty ghost chapters on Jules Verne's *A Journey to the Centre of the Earth* (`read/18857`) and similar books.
+- Reading Coordinates Off-by-One Discrepancy (`BookmarkCard.tsx`): Aligned reading coordinates to display the global book page number (`globalPage`) instead of chapter-local page (`chapterPage`), and eliminated false `chapterIndex + 1` addition so bookmarks and reader footer (`ReaderFooter.tsx`) display identical coordinates.
+- Session Resume Notice Coordinate Sync (`useReaderSession.ts`): Updated reader resume notice ribbon to display `savedGlobalPage` and correct chapter number upon session restoration, eliminating coordinate divergence between bookmarks, notification ribbons, and reader footers.
+
+
 ## [1.9.6] - 2026-09-05
 ### *Technical SEO Architecture, Dynamic OpenGraph Previews, Windowed Sub-Pagination & Upstream Rate-Shielding*
 
@@ -334,7 +350,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Architectural Decision Records (ADRs)
 The following key architectural decisions are recorded in [`docs/DECISIONS.md`](docs/DECISIONS.md):
-- **ADR-001: Next.js 15 App Router & React 19 Adoption**
+- **ADR-001: Next.js 16 App Router & React 19 Adoption**
 - **ADR-002: Public Domain Zero-Copyright Enforcement**
 - **ADR-003: Zustand for Offline Bookshelf and Reader State**
 - **ADR-004: TanStack React Query for Server Data Caching**
@@ -350,3 +366,11 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-014: Deletion Tombstones, Cloud Reading Progress Synchronization & Persistent Worker Architecture**
 - **ADR-015: Adoption of Privacy-First Vercel Web Analytics and Real User Speed Insights**
 - **ADR-016: Technical SEO Architecture, Dynamic OpenGraph & Upstream Rate-Shielding**
+- **ADR-017: Canonical Gutenberg Heading Normalization & Reading Coordinate Harmonization**
+- **ADR-018: Browser-Native Web Speech Synthesis Narration Engine**
+- **ADR-019: Commonplace Book, Scholar Annotations & Mobile PWA Manifest**
+- **ADR-020: Unabridged Offline Book Storage via Native IndexedDB Engine & LRU Eviction**
+- **ADR-021: Clean Path URL Architecture via Next.js Edge Rewrites**
+- **ADR-022: API Proxy Hardening, Anti-SSRF Allowlisting & Sliding-Window Rate Limiting**
+- **ADR-023: Library Data Sovereignty, Schema Validation & Headless Backup Engine**
+- **ADR-024: Zero-Latency Client Navigation Fast-Path & Decoupled Crawler Metadata**

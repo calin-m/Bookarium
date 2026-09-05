@@ -86,13 +86,17 @@ export function useReaderSession({
         const maxPage = targetChap?.pageCount || 1;
         const clampedPage = Math.min(Math.max(1, savedPos.chapterPage), maxPage);
 
+        const savedGlobalPage =
+          savedPos.globalPage || (targetChap?.startPageNumber || 1) + (clampedPage - 1);
         queueMicrotask(() => {
           setActiveChapterIndex(clampedChap);
           setCurrentChapterPage(clampedPage);
           setResumeNotice({
             chapterTitle:
-              targetChap?.displayTitle || targetChap?.title || `Chapter ${clampedChap + 1}`,
-            page: clampedPage,
+              targetChap?.displayTitle ||
+              targetChap?.title ||
+              (clampedChap > 0 ? `Chapter ${clampedChap}` : 'Start'),
+            page: savedGlobalPage,
           });
         });
 

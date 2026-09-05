@@ -9,6 +9,25 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '1.9.7',
+    date: '2026-09-05',
+    title: 'Gutenberg Heading Semantic Normalization, Phantom Chapter Elimination & Reading Coordinate Harmonization',
+    sections: {
+      Added: [
+        'Semantic Gutenberg Heading Normalization (`segmentation.ts`): Replaced brittle fixed-length string slicing with canonical keyword and numeral extraction (`normalizeHeadingId`), matching single-digit and multi-digit chapter identifiers consistently across front-matter TOCs and body text.',
+        'Automated Chapter Subtitle Harvesting (`segmentation.ts`): Enriched body chapter display titles (e.g. `Chapter 1: My Uncle Makes a Great Discovery`) by extracting and title-casing subtitles from front-matter TOC listings during the deduplication pass.',
+        'Server-Side Fetch Deduplication & Timeout Hardening (`src/app/read/[id]/layout.tsx`): Wrapped reader layout metadata fetching with React `cache()` and an `AbortSignal.timeout(2500)` guard, collapsing redundant server requests into a single call and preventing slow upstream API queries from blocking page transitions.',
+        'Dynamic AST-Driven Architecture Engine (Governance Rule 2): Implemented `scripts/lib/ast-parser.js` using Babel AST traversal, mathematical DFS cycle detection, and automated discovery of all 57 components, 6 stores, and 17 hooks, eliminating static table hardcoding in `docs/ARCHITECTURE.md`.',
+        'Architecture Decision Records (`ADR-017` through `ADR-023`): Formally ratified Gutenberg heading normalization, Web Speech narration, Commonplace Notebook, IndexedDB offline engine, Clean Path edge rewrites, API proxy security, and library backup engine in `docs/DECISIONS.md`.',
+      ],
+      Fixed: [
+        'Gutenberg Phantom Chapter Leakage (`segmentation.ts`): Resolved bug where single-digit chapters in front-matter TOC clusters (Chapters 1–9) failed duplicate detection due to trailing space mismatches in naive `slice(0, 10)`, eliminating 9 empty ghost chapters on Jules Verne\'s *A Journey to the Centre of the Earth* (`read/18857`) and similar books.',
+        'Reading Coordinates Off-by-One Discrepancy (`BookmarkCard.tsx`): Aligned reading coordinates to display the global book page number (`globalPage`) instead of chapter-local page (`chapterPage`), and eliminated false `chapterIndex + 1` addition so bookmarks and reader footer (`ReaderFooter.tsx`) display identical coordinates.',
+        'Session Resume Notice Coordinate Sync (`useReaderSession.ts`): Updated reader resume notice ribbon to display `savedGlobalPage` and correct chapter number upon session restoration, eliminating coordinate divergence between bookmarks, notification ribbons, and reader footers.',
+      ],
+    },
+  },
+  {
     version: '1.9.6',
     date: '2026-09-05',
     title: 'Technical SEO Architecture, Dynamic OpenGraph Previews, Windowed Sub-Pagination & Upstream Rate-Shielding',
