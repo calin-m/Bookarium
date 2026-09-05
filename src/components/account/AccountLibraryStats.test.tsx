@@ -70,5 +70,31 @@ describe('AccountLibraryStats', () => {
     expect(shelvesLink).toHaveClass('hover:border-primary');
     expect(bookmarksLink).toHaveClass('hover:border-indigo-500');
   });
+
+  it('renders all 5 library cards with uniform horizontal flex layout', () => {
+    render(
+      <AccountLibraryStats
+        savedCount={1}
+        favoriteCount={2}
+        customShelvesCount={3}
+        annotationCount={4}
+        bookmarksCount={5}
+      />
+    );
+
+    const cards = [
+      screen.getByLabelText('View Shelved Volumes in Bookshelf'),
+      screen.getByLabelText('View Favorite Titles in Favorites'),
+      screen.getByLabelText('View Saved Notes & Quotes in Notebook'),
+      screen.getByLabelText('View Custom Shelves in Bookshelf'),
+      screen.getByLabelText('View Reading Bookmarks in Bookmarks'),
+    ];
+
+    cards.forEach((card) => {
+      expect(card).toHaveClass('flex');
+      expect(card).toHaveClass('items-center');
+      expect(card).toHaveClass('justify-between');
+    });
+  });
 });
 

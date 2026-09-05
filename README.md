@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20915%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.14%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20918%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.16%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -126,9 +126,9 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 * **Literary Commonplace Notebook & Reading Journal (`/?view=notebook`)**:
   * Dedicated 4th navigation tab in the top header with active amber fill state, clean Booksaw editorial typography, and zero badge clutter.
   * Comprehensive reading journal view organizing all highlighted excerpts and personal marginalia across your entire library.
-  * Multi-tier book metadata resolution, full-text search, pastel color filter pills with horizontal mouse wheel scroll translation, volume grouping vs chronological stream, safe single-quote and collection wipe confirmation modals, and 1-click academic citation copying.
-* **User Account Reading Journal Metrics (`/account`)**:
-  * Added a dedicated 4th metric card in a responsive 2x2 grid displaying live "Notes & Quotes" counts with amber accenting and direct deep-linking to the Literary Notebook.
+  * Multi-tier book metadata resolution, full-text search, pastel color filter pills with horizontal mouse wheel scroll translation, volume grouping vs chronological stream, dedicated personal reflection deletion with dual entrypoints (reflection header and active editor toolbar) guarded by note-snippet confirmation modals, safe single-quote and collection wipe confirmation modals, and 1-click academic citation copying.
+* **User Account Library Hub & Telemetry (`/account`)**:
+  * Unified vertical stack of 5 uniform horizontal destination cards (*Shelved Volumes*, *Favorite Titles*, *Notes & Quotes*, *Custom Shelves*, and *Reading Bookmarks*) featuring live metric counts, theme-tokenized accent borders, animated hover arrows, and direct deep-linking to catalog views and the Literary Notebook.
 * **Floating Back to Top & Quick Navigation**: Motion-animated scroll-to-top button with viewport threshold detection.
 * **Interactive Studio Bookshelf Mode**:
   * **Unified Hardwood Bookcase**: Integrated shelf niche alcove and solid timber rail with bevel highlights and ambient spotlight vignettes (`.shelf-ambient-niche`), ensuring books sit directly flush on the wood ledge.
@@ -162,7 +162,7 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * 3-tier reading status classification (**Want to Read**, **Currently Reading**, **Finished**) with active selection rings and single-click removal.
   * Responsive dual-mode presentation:
     * **Desktop** ($\ge 1024\text{px}$): Integrated into the floating 3D hardcover preview toolbar (`BookPreviewModal`) rendered on a solid theme-consistent card surface (`bg-card`) with outside-click backdrop dismissal and isolated interactive controls.
-    * **Mobile & Narrow Displays** ($< 1024\text{px}$): Touch-optimized modal sheet (`BookshelfMobileModal`) triggered directly when tapping covers or ratings in Favorites (`activeView === 'favorites'`) or Bookshelf, providing phone/tablet rating ergonomics without impacting 1-tap catalog reading.
+    * **Mobile & Narrow Displays** ($< 1024\text{px}$): Touch-optimized modal sheet (`BookshelfMobileModal`) triggered directly when tapping covers or ratings in Favorites (`activeView === 'favorites'`) or Bookshelf, providing phone/tablet rating ergonomics without impacting 1-tap catalog reading, with originating book cards remaining 100% visible beneath the sheet and highlighted with an active primary accent ring.
   * 100% offline-first via Zustand `useBookshelfStore`, synchronized with Supabase PostgreSQL (`public.user_book_curation`) using Row Level Security.
 * **Pure Domain Library Portability & Full Data Sovereignty**:
   * Single-click portable JSON backup and RFC 4180-compliant CSV spreadsheet catalog export (`src/lib/library-backup.ts`) capturing volumes, shelves, bookmarks, ratings, reading statuses, and literary annotations.
@@ -740,7 +740,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 915 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 918 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

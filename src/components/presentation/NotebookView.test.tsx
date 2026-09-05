@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render as rtlRender, screen, fireEvent, act } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotebookView } from './NotebookView';
@@ -297,6 +297,91 @@ describe('NotebookView component', () => {
 
     expect(screen.getByText('Updated reflection note')).toBeInTheDocument();
     expect(useAnnotationStore.getState().annotations[0].note).toBe('Updated reflection note');
+  });
+
+  it('allows deleting personal reflection via card header with confirmation modal', async () => {
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Passage with reflection to delete',
+      color: 'rose',
+      note: 'Deep thoughts on this passage',
+    });
+
+    render(<NotebookView />);
+
+    // Reflection is visible
+    expect(screen.getByText('Deep thoughts on this passage')).toBeInTheDocument();
+
+    // Click delete personal reflection button
+    const deleteReflectionBtn = screen.getByTestId(`delete-reflection-btn-${ann.id}`);
+    fireEvent.click(deleteReflectionBtn);
+
+    // Confirmation modal should appear
+    const dialog = screen.getByTestId('delete-reflection-dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText('Delete Personal Reflection?')).toBeInTheDocument();
+    expect(screen.getByText(/This will remove only your written personal reflection/i)).toBeInTheDocument();
+
+    // Cancel first
+    const cancelBtn = within(dialog).getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+    expect(screen.queryByTestId('delete-reflection-dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('Deep thoughts on this passage')).toBeInTheDocument();
+
+    // Open modal again and confirm deletion
+    fireEvent.click(deleteReflectionBtn);
+    const confirmBtn = screen.getByTestId('confirm-delete-reflection-btn');
+    fireEvent.click(confirmBtn);
+
+    // Reflection should be gone, but the highlight passage remains intact
+    await waitFor(() => {
+      expect(screen.queryByText('Deep thoughts on this passage')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(/Passage with reflection to delete/i)).toBeInTheDocument();
+    expect(screen.getByText('Add a personal note...')).toBeInTheDocument();
+    expect(useAnnotationStore.getState().annotations[0].note).toBeUndefined();
+  });
+
+  it('allows deleting personal reflection from within edit mode toolbar', async () => {
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Passage edited then deleted',
+      color: 'mint',
+      note: 'Note to delete from editor',
+    });
+
+    render(<NotebookView />);
+
+    // Enter edit mode
+    fireEvent.click(screen.getByLabelText('Edit personal reflection'));
+    expect(screen.getByTestId(`edit-note-textarea-${ann.id}`)).toBeInTheDocument();
+
+    // Click Delete Note in editor toolbar
+    const editorDeleteBtn = screen.getByTestId(`delete-reflection-editor-btn-${ann.id}`);
+    fireEvent.click(editorDeleteBtn);
+
+    // Confirmation modal appears
+    expect(screen.getByTestId('delete-reflection-dialog')).toBeInTheDocument();
+
+    // Confirm deletion
+    fireEvent.click(screen.getByTestId('confirm-delete-reflection-btn'));
+
+    // Should close modal, exit edit mode, and wipe note
+    await waitFor(() => {
+      expect(screen.queryByTestId('delete-reflection-dialog')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(`edit-note-textarea-${ann.id}`)).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText('Note to delete from editor')).not.toBeInTheDocument();
+    expect(screen.getByText(/Passage edited then deleted/i)).toBeInTheDocument();
+    expect(screen.getByText('Add a personal note...')).toBeInTheDocument();
   });
 
   it('allows copying quote with formatted academic citation', async () => {

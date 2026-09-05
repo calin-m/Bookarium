@@ -164,6 +164,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const [groupMode, setGroupMode] = useState<'volume' | 'chronological'>('volume');
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
+  const [reflectionToDelete, setReflectionToDelete] = useState<Annotation | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [editNoteText, setEditNoteText] = useState('');
   const [editColor, setEditColor] = useState<HighlightColor>('yellow');
@@ -343,6 +344,15 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   const handleDelete = async (id: string) => {
     await deleteAnnotation(id, user?.id);
+  };
+
+  const handleConfirmDeleteReflection = async () => {
+    if (!reflectionToDelete) return;
+    await updateAnnotationNote(reflectionToDelete.id, '', user?.id);
+    if (editingAnnotationId === reflectionToDelete.id) {
+      setEditingAnnotationId(null);
+    }
+    setReflectionToDelete(null);
   };
 
   const handleJumpToReader = (ann: Annotation) => {
@@ -666,6 +676,61 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           </div>
         </div>
       </Modal>
+
+      {/* Delete Single Personal Reflection Confirmation Modal */}
+      <Modal
+        isOpen={reflectionToDelete !== null}
+        onClose={() => setReflectionToDelete(null)}
+        title="Delete Personal Reflection?"
+        maxWidth="md"
+      >
+        <div className="p-6 space-y-5" data-testid="delete-reflection-dialog">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="space-y-2">
+              <p className="font-semibold text-foreground text-sm sm:text-base">
+                Are you sure you want to delete your personal reflection?
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                This will remove only your written personal reflection. The highlighted book passage will remain safely preserved in your commonplace notebook.
+              </p>
+              {reflectionToDelete?.note && (
+                <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border text-xs">
+                  <span className="font-mono text-[10px] uppercase text-primary block mb-1">
+                    Reflection to be deleted:
+                  </span>
+                  <p className="font-sans text-foreground/90 whitespace-pre-wrap line-clamp-4">
+                    {reflectionToDelete.note}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReflectionToDelete(null)}
+              className="text-xs font-mono uppercase"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmDeleteReflection}
+              data-testid="confirm-delete-reflection-btn"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Reflection
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 
@@ -780,21 +845,37 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                 rows={3}
                 className="w-full text-xs p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary font-sans leading-relaxed resize-none"
               />
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingAnnotationId(null)}
-                  className="px-2.5 py-1 text-xs font-mono rounded text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <Button
-                  size="sm"
-                  onClick={() => handleSaveNote(ann.id, ann.color)}
-                  className="text-xs font-mono uppercase h-7 px-3"
-                >
-                  Save Note
-                </Button>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                {ann.note ? (
+                  <button
+                    type="button"
+                    onClick={() => setReflectionToDelete(ann)}
+                    aria-label="Delete note"
+                    data-testid={`delete-reflection-editor-btn-${ann.id}`}
+                    className="text-[11px] font-mono text-destructive/80 hover:text-destructive hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Delete Note</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingAnnotationId(null)}
+                    className="px-2.5 py-1 text-xs font-mono rounded text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleSaveNote(ann.id, ann.color)}
+                    className="text-xs font-mono uppercase h-7 px-3"
+                  >
+                    Save Note
+                  </Button>
+                </div>
               </div>
             </div>
           ) : ann.note ? (
@@ -804,14 +885,26 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                   <MessageSquare className="w-3 h-3 text-primary" />
                   Personal Reflection
                 </span>
-                <button
-                  type="button"
-                  onClick={() => handleStartEditNote(ann)}
-                  aria-label="Edit personal reflection"
-                  className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
-                >
-                  Edit
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleStartEditNote(ann)}
+                    aria-label="Edit personal reflection"
+                    className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  <span className="text-border select-none" aria-hidden="true">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setReflectionToDelete(ann)}
+                    aria-label="Delete personal reflection"
+                    data-testid={`delete-reflection-btn-${ann.id}`}
+                    className="text-muted-foreground hover:text-destructive hover:underline cursor-pointer transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
               <p className="leading-relaxed whitespace-pre-wrap">{ann.note}</p>
             </div>

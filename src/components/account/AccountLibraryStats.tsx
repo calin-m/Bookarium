@@ -33,78 +33,78 @@ export const AccountLibraryStats: React.FC<AccountLibraryStatsProps> = ({
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
+      <div className="space-y-2.5 sm:space-y-3">
         <Link
           href={LIBRARY_THEMES.bookshelf.route}
-          className={`p-3.5 sm:p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.bookshelf.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex flex-col justify-between gap-3 group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.bookshelf.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+          className={`p-3 sm:p-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.bookshelf.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex items-center justify-between group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.bookshelf.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
           aria-label="View Shelved Volumes in Bookshelf"
         >
-          <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono">
+          <div className="flex items-center gap-2.5 text-muted-foreground text-xs font-mono">
             <Bookmark className={`w-3.5 h-3.5 ${LIBRARY_THEMES.bookshelf.iconColor} shrink-0`} />
-            <span className="truncate group-hover:text-foreground transition-colors">Shelved Volumes</span>
+            <span className="truncate group-hover:text-foreground transition-colors font-medium">Shelved Volumes</span>
           </div>
-          <div className="flex items-end justify-between">
-            <p className="text-xl sm:text-2xl font-mono font-bold text-foreground leading-none">{savedCount}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-lg sm:text-xl font-mono font-bold text-foreground leading-none">{savedCount}</p>
             <ArrowUpRight className={`w-4 h-4 ${LIBRARY_THEMES.bookshelf.arrowColor} opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 shrink-0`} />
           </div>
         </Link>
 
         <Link
           href={LIBRARY_THEMES.favorites.route}
-          className={`p-3.5 sm:p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.favorites.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex flex-col justify-between gap-3 group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.favorites.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+          className={`p-3 sm:p-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.favorites.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex items-center justify-between group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.favorites.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
           aria-label="View Favorite Titles in Favorites"
         >
-          <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono">
+          <div className="flex items-center gap-2.5 text-muted-foreground text-xs font-mono">
             <Heart className={`w-3.5 h-3.5 ${LIBRARY_THEMES.favorites.iconColor} shrink-0`} />
-            <span className="truncate group-hover:text-foreground transition-colors">Favorite Titles</span>
+            <span className="truncate group-hover:text-foreground transition-colors font-medium">Favorite Titles</span>
           </div>
-          <div className="flex items-end justify-between">
-            <p className="text-xl sm:text-2xl font-mono font-bold text-foreground leading-none">{favoriteCount}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-lg sm:text-xl font-mono font-bold text-foreground leading-none">{favoriteCount}</p>
             <ArrowUpRight className={`w-4 h-4 ${LIBRARY_THEMES.favorites.arrowColor} opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 shrink-0`} />
           </div>
         </Link>
 
         <Link
           href={LIBRARY_THEMES.notebook.route}
-          className={`p-3.5 sm:p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.notebook.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex flex-col justify-between gap-3 group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.notebook.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+          className={`p-3 sm:p-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.notebook.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex items-center justify-between group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.notebook.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
           aria-label="View Saved Notes & Quotes in Notebook"
         >
-          <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono">
+          <div className="flex items-center gap-2.5 text-muted-foreground text-xs font-mono">
             <Highlighter className={`w-3.5 h-3.5 ${LIBRARY_THEMES.notebook.iconColor} shrink-0`} />
-            <span className="truncate group-hover:text-foreground transition-colors">Notes & Quotes</span>
+            <span className="truncate group-hover:text-foreground transition-colors font-medium">Notes & Quotes</span>
           </div>
-          <div className="flex items-end justify-between">
-            <p data-testid="notes-quotes-count" className="text-xl sm:text-2xl font-mono font-bold text-foreground leading-none">{annotationCount}</p>
+          <div className="flex items-center gap-2">
+            <p data-testid="notes-quotes-count" className="text-lg sm:text-xl font-mono font-bold text-foreground leading-none">{annotationCount}</p>
             <ArrowUpRight className={`w-4 h-4 ${LIBRARY_THEMES.notebook.arrowColor} opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 shrink-0`} />
           </div>
         </Link>
 
         <Link
           href={LIBRARY_THEMES.customShelves.route}
-          className={`p-3.5 sm:p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.customShelves.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex flex-col justify-between gap-3 group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.customShelves.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+          className={`p-3 sm:p-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.customShelves.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex items-center justify-between group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.customShelves.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
           aria-label="View Custom Shelves in Bookshelf"
         >
-          <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono">
+          <div className="flex items-center gap-2.5 text-muted-foreground text-xs font-mono">
             <BookOpen className={`w-3.5 h-3.5 ${LIBRARY_THEMES.customShelves.iconColor} shrink-0`} />
-            <span className="truncate group-hover:text-foreground transition-colors">Custom Shelves</span>
+            <span className="truncate group-hover:text-foreground transition-colors font-medium">Custom Shelves</span>
           </div>
-          <div className="flex items-end justify-between">
-            <p data-testid="custom-shelves-count" className="text-xl sm:text-2xl font-mono font-bold text-foreground leading-none">{customShelvesCount}</p>
+          <div className="flex items-center gap-2">
+            <p data-testid="custom-shelves-count" className="text-lg sm:text-xl font-mono font-bold text-foreground leading-none">{customShelvesCount}</p>
             <ArrowUpRight className={`w-4 h-4 ${LIBRARY_THEMES.customShelves.arrowColor} opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 shrink-0`} />
           </div>
         </Link>
 
         <Link
           href={LIBRARY_THEMES.bookmarks.route}
-          className={`col-span-2 p-3.5 sm:p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.bookmarks.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex items-center justify-between group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.bookmarks.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+          className={`p-3 sm:p-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 ${LIBRARY_THEMES.bookmarks.hoverBorder} transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xs flex items-center justify-between group block focus-visible:outline-hidden focus-visible:ring-2 ${LIBRARY_THEMES.bookmarks.focusRing} focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
           aria-label="View Reading Bookmarks in Bookmarks"
         >
-          <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono">
+          <div className="flex items-center gap-2.5 text-muted-foreground text-xs font-mono">
             <BookMarked className={`w-3.5 h-3.5 ${LIBRARY_THEMES.bookmarks.iconColor} shrink-0`} />
             <span className="truncate group-hover:text-foreground transition-colors font-medium">Reading Bookmarks</span>
           </div>
           <div className="flex items-center gap-2">
-            <p data-testid="bookmarks-count" className="text-xl sm:text-2xl font-mono font-bold text-foreground leading-none">{bookmarksCount}</p>
+            <p data-testid="bookmarks-count" className="text-lg sm:text-xl font-mono font-bold text-foreground leading-none">{bookmarksCount}</p>
             <ArrowUpRight className={`w-4 h-4 ${LIBRARY_THEMES.bookmarks.arrowColor} opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 shrink-0`} />
           </div>
         </Link>
