@@ -108,20 +108,35 @@ export const metadata: Metadata = {
   },
 };
 
-const websiteJsonLd = {
+const rootStructuredData = {
   '@context': 'https://schema.org',
-  '@type': 'WebSite',
-  name: SITE_CONFIG.NAME,
-  url: SITE_CONFIG.SITE_URL,
-  description: SITE_CONFIG.DESCRIPTION,
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: {
-      '@type': 'EntryPoint',
-      urlTemplate: `${SITE_CONFIG.SITE_URL}/?search={search_term_string}`,
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      name: SITE_CONFIG.NAME,
+      url: SITE_CONFIG.SITE_URL,
+      description: SITE_CONFIG.DESCRIPTION,
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: `${SITE_CONFIG.SITE_URL}/?search={search_term_string}`,
+        },
+        'query-input': 'required name=search_term_string',
+      },
     },
-    'query-input': 'required name=search_term_string',
-  },
+    {
+      '@type': 'WebApplication',
+      name: SITE_CONFIG.NAME,
+      url: SITE_CONFIG.SITE_URL,
+      description: SITE_CONFIG.DESCRIPTION,
+      applicationCategory: 'BooksApplication',
+      operatingSystem: 'All',
+      browserRequirements: 'Requires JavaScript. Requires HTML5.',
+      isAccessibleForFree: true,
+      license: 'https://opensource.org/licenses/MIT',
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -143,7 +158,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
         >
-          {JSON.stringify(websiteJsonLd)}
+          {JSON.stringify(rootStructuredData)}
         </script>
       </head>
       <body
