@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20945%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.13%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-125%20Suites%20%7C%20957%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.17%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,13 +38,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v1.9.5)
+## 🛠️ Latest Improvements (v1.9.6)
 
-- **Multi-Device Deletion Tombstones (`useBookshelfStore.ts`)**: Integrated `deletedBookIds` tombstone tracking to prevent deleted bookshelf volumes from being resurrected as ghost items during cross-device Supabase cloud reconciliation.
-- **Cross-Device Cloud Reading Progress Sync (`useReaderStore.ts`, `useReaderSession.ts`)**: 2000ms debounced upsert to Supabase `public.reading_progress` table with automatic reading coordinate restoration when resuming sessions on new devices, strictly gated for authenticated accounts with 0ms/zero-network guest mode.
-- **Persistent Gutenberg Parser Worker (`useGutenbergParserWorker.ts`)**: Maintained a single long-lived Web Worker instance across typography, font scaling, and line spacing adjustments, eliminating worker churn and UI thread freezes with non-blocking async fallback.
-- **Selection-Safe Touch Gestures (`useReaderGestures.ts`)**: Suppressed horizontal swipe navigation when active DOM text selection exists or touch starts inside an active modal/popover, preventing accidental page turns during passage highlighting.
-- **Ghost Volume Resurrection**: Resolved issue where deleting a book on one client could be overwritten and resurrected upon syncing with cloud storage.
+- **Technical SEO & Crawl Protection (`src/app/robots.ts`)**: Native Next.js 16 crawl directives disallowing search query parameters (`/*?*search=*`, `/*?*topic=*`, `/*?*languages=*`) and private routes, protecting Project Gutenberg and Gutendex upstream servers from bot query exhaustion.
+- **Curated Masterworks Canonical Sitemap (`src/app/sitemap.ts`)**: High-performance static XML sitemap indexing core routes and 10 iconic public domain masterworks with zero build-time API timeouts.
+- **Dynamic Social OpenGraph & Twitter Cards (`src/app/read/[id]/layout.tsx`)**: Server Component layout dynamically resolving book identity and cover artwork with 24-hour Next.js ISR edge caching (`revalidate: 86400`).
+- **Safe Structured Data (JSON-LD)**: Injected `schema.org/WebSite` (with Sitelinks SearchAction) and `schema.org/Book` using native React 19 text nodes with zero `dangerouslySetInnerHTML`.
+- **Keystroke Query Flooding**: Replaced 300ms keystroke debouncing on catalog search with explicit form submission and a 2-character minimum guardrail, eliminating redundant API load.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -114,6 +114,7 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **Bi-Directional Cloud Reading Progress**: 2000ms debounced upsert to `public.reading_progress`, restoring chapter and scroll coordinates across devices for authenticated accounts while remaining 0ms/zero-network for guest readers.
 * **Full Data Sovereignty & Portability**: Single-click RFC 4180 CSV export and portable JSON backup (`src/lib/library-backup.ts`) with defensive schema validation and merge/replace restore strategies.
 * **Zero-Tracking Privacy Architecture (`/privacy`)**: Zero third-party trackers, zero advertising beacons, cookie-less operation (Art. 5(3) exempt), privacy-first anonymous aggregate telemetry (Vercel Web Analytics & Speed Insights), and self-service account data deletion in User Settings (`/account`).
+* **Technical SEO, Social OpenGraph & Upstream Rate-Shielding**: Native Next.js 16 crawl directives (`robots.ts`) explicitly disallow search query parameters (`?search=*`, `?topic=*`) to protect public Gutendex servers from bot query exhaustion. Dynamic server layouts (`/read/[id]/layout.tsx`) fetch book identities with 24-hour Next.js edge caching (`revalidate: 86400`) to generate rich OpenGraph and Twitter cards (`summary_large_image`) featuring authentic book covers, while injecting safe Schema.org `Book` and `WebSite` JSON-LD structured data.
 
 ---
 
@@ -507,12 +508,12 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 945 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 957 tests across 125 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 15 validated ADRs (ADR-001 through ADR-015) governing zero-API keys, state architecture, and privacy telemetry. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 16 validated ADRs (ADR-001 through ADR-016) governing zero-API keys, state architecture, and SEO rate-shielding. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

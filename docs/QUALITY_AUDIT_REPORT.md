@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 05 Sep 2026 15:46:11 GMT  
+**Last Generated**: Sat, 05 Sep 2026 16:24:20 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 120 passed  
-**Total Verified Tests**: 945 passed  
+**Total Test Suites**: 125 passed  
+**Total Verified Tests**: 957 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (945 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (957 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 15 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 16 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.13%** (4982/5407) — *Target: $ge$ 80%*
-- **Statements**: **90.29%** (5434/6018) — *Target: $ge$ 80%*
-- **Functions**: **88.27%** (1257/1424) — *Target: $ge$ 80%*
-- **Branches**: **80.5%** (4663/5792) — *Target: $ge$ 80%*
+- **Lines**: **92.17%** (5020/5446) — *Target: $ge$ 80%*
+- **Statements**: **90.31%** (5472/6059) — *Target: $ge$ 80%*
+- **Functions**: **88.39%** (1265/1431) — *Target: $ge$ 80%*
+- **Branches**: **80.43%** (4683/5822) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (120 Suites / 945 Tests)
+## 🧪 Comprehensive Test Suite Catalog (125 Suites / 957 Tests)
 
-### 🚀 App Routes & Pages (10 Suites · 87 Tests)
+### 🚀 App Routes & Pages (11 Suites · 90 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -121,7 +121,7 @@
 <details>
 <summary><b><code>src/app/layout.test.tsx</code></b> (2 tests)</summary>
 
-- ✔ `should expose valid metadata`
+- ✔ `should expose valid metadata with OpenGraph, Twitter, and canonical alternates`
 - ✔ `should render children within html structure alongside analytics and performance telemetry`
 
 </details>
@@ -152,6 +152,15 @@
 <summary><b><code>src/app/providers.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
+
+</details>
+
+<details>
+<summary><b><code>src/app/read/[id]/layout.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `generates rich metadata for a curated hero classic (Frankenstein #84)`
+- ✔ `provides safe fallback metadata for invalid book ID`
+- ✔ `renders children and Schema.org Book JSON-LD script`
 
 </details>
 
@@ -1386,7 +1395,15 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (33 Suites · 129 Tests)
+### 🧩 UI Primitives & Motion (37 Suites · 138 Tests)
+
+<details>
+<summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `exposes accurate account metadata and blocks search engine indexing`
+- ✔ `renders children transparently without modifying DOM tree`
+
+</details>
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
@@ -1443,12 +1460,37 @@
 </details>
 
 <details>
+<summary><b><code>src/app/privacy/layout.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `exposes accurate privacy metadata and canonical url`
+- ✔ `renders children transparently without modifying DOM tree`
+
+</details>
+
+<details>
 <summary><b><code>src/app/privacy/page.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders page header and architectural manifesto`
 - ✔ `renders all core GDPR and ePrivacy disclosure sections`
 - ✔ `provides working navigation links to catalog and account settings`
 - ✔ `handles Navbar view change callback by navigating via router`
+
+</details>
+
+<details>
+<summary><b><code>src/app/robots.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `returns valid crawler rules and sitemap location`
+- ✔ `allows public canonical pages while strictly disallowing query parameter search crawling and private routes`
+
+</details>
+
+<details>
+<summary><b><code>src/app/sitemap.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `generates canonical sitemap entries for root and privacy routes`
+- ✔ `indexes featured public domain classic books`
+- ✔ `provides valid timestamps across all entries`
 
 </details>
 
