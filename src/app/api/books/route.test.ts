@@ -50,6 +50,34 @@ describe('GET /api/books route handler', () => {
     expect(json.results).toBeDefined();
   });
 
+  it('should ignore single-character search queries to protect upstream API', async () => {
+    let capturedUrl = '';
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementationOnce(async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify({ count: 10, results: [] }), { status: 200 });
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/books?search=a');
+    await GET(req);
+
+    expect(capturedUrl).not.toContain('search=');
+    fetchSpy.mockRestore();
+  });
+
+  it('should normalize whitespace in search queries when passing to upstream API', async () => {
+    let capturedUrl = '';
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementationOnce(async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify({ count: 10, results: [] }), { status: 200 });
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/books?search=Charles%20%20%20Dickens');
+    await GET(req);
+
+    expect(capturedUrl).toContain('search=Charles+Dickens');
+    fetchSpy.mockRestore();
+  });
+
   it('should return error response when upstream API returns an error status', async () => {
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ detail: 'Invalid query parameter' }), {

@@ -1,7 +1,23 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { LITERARY_ERAS, CATALOG_LANGUAGES, GENRE_FACETS } from '@/config/catalog-filters';
 import { useHasMounted } from '@/hooks/useHasMounted';
+
+function subscribeMobile(callback: () => void) {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const mq = window.matchMedia('(max-width: 767px)');
+  mq.addEventListener('change', callback);
+  return () => mq.removeEventListener('change', callback);
+}
+
+function getMobileSnapshot() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia('(max-width: 767px)').matches;
+}
+
+function getServerMobileSnapshot() {
+  return false;
+}
 
 export interface ActiveFilterChip {
   id: string;
@@ -65,14 +81,22 @@ export function parseFiltersFromUrl(
   const parsedPage = rawPage ? parseInt(rawPage, 10) : undefined;
   const validPage = parsedPage && !isNaN(parsedPage) && parsedPage >= 1 ? parsedPage : undefined;
 
+  const rawSize = sp?.get('size');
+  let parsedSize: number | undefined = undefined;
+  if (rawSize === '8' || rawSize === '16' || rawSize === '32') {
+    parsedSize = parseInt(rawSize, 10);
+  }
+
   return {
-    search: sp?.get('search') || '',
+    search: (sp?.get('search') || '').trim().replace(/\s+/g, ' '),
     topic: sp?.get('topic') || '',
     language: sp?.get('languages') || sp?.get('language') || '',
     era: sp?.get('era') || '',
     sort: (sp?.get('sort') as CatalogSortOption) || 'popular',
     format: sp?.get('format') || sp?.get('mime_type') || '',
     page: validPage || 1,
+    size: parsedSize || 16,
+    explicitSize: parsedSize,
     view: pathView || queryView || 'catalog',
   };
 }
@@ -81,6 +105,7 @@ export function useCatalogFilters() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const hasMounted = useHasMounted();
+  const isMobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, getServerMobileSnapshot);
 
   const initialParams = useMemo(() => {
     return parseFiltersFromUrl(pathname, searchParams);
@@ -113,9 +138,11 @@ export function useCatalogFilters() {
   const [sort, setSort] = useState<CatalogSortOption>(() => initialParams.sort);
   const [format, setFormat] = useState(() => initialParams.format);
   const [page, setPage] = useState(() => initialParams.page);
-  const [pageSize, setPageSize] = useState(32);
+  const [explicitPageSize, setExplicitPageSize] = useState<number | null>(() => initialParams.explicitSize ?? null);
   const [viewMode, setViewMode] = useState<CatalogViewMode>('grid');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+
+  const pageSize = explicitPageSize ?? (isMobile ? 8 : 16);
 
   // Sync state to URL search parameters and clean path without page reload (after hydration)
   useEffect(() => {
@@ -143,6 +170,13 @@ export function useCatalogFilters() {
       if (page > 1) url.searchParams.set('page', String(page));
       else url.searchParams.delete('page');
 
+      const defaultSize = isMobile ? 8 : 16;
+      if (explicitPageSize && explicitPageSize !== defaultSize) {
+        url.searchParams.set('size', String(explicitPageSize));
+      } else {
+        url.searchParams.delete('size');
+      }
+
       // Clear legacy 'view' parameter for clean paths
       url.searchParams.delete('view');
 
@@ -158,7 +192,7 @@ export function useCatalogFilters() {
     } catch {
       // Safe fallback in test or sandboxed environments
     }
-  }, [search, topic, language, era, sort, format, page, activeView, hasMounted]);
+  }, [search, topic, language, era, sort, format, page, explicitPageSize, isMobile, activeView, hasMounted]);
 
   // Support browser Back/Forward navigation popstate
   useEffect(() => {
@@ -173,6 +207,7 @@ export function useCatalogFilters() {
       setSort(parsed.sort);
       setFormat(parsed.format);
       setPage(parsed.page);
+      setExplicitPageSize(parsed.explicitSize ?? null);
       setActiveView(parsed.view);
     };
 
@@ -185,6 +220,9 @@ export function useCatalogFilters() {
   }, [era]);
 
   const queryParams = useMemo<CatalogQueryParams>(() => {
+    const subPagesPerBatch = Math.max(1, Math.floor(32 / pageSize));
+    const apiPage = Math.floor((page - 1) / subPagesPerBatch) + 1;
+
     return {
       search: search || undefined,
       topic: topic || undefined,
@@ -193,10 +231,10 @@ export function useCatalogFilters() {
       authorYearEnd: selectedEraObj?.end,
       sort: sort || undefined,
       mimeType: format || undefined,
-      page: page,
+      page: apiPage,
       copyright: false as const,
     };
-  }, [search, topic, language, selectedEraObj, sort, format, page]);
+  }, [search, topic, language, selectedEraObj, sort, format, page, pageSize]);
 
   const activeFilterChips = useMemo<ActiveFilterChip[]>(() => {
     const chips: ActiveFilterChip[] = [];
@@ -224,7 +262,8 @@ export function useCatalogFilters() {
   }, [search, topic, language, era, format]);
 
   const handleSearchChange = useCallback((val: string) => {
-    setSearch(val);
+    const cleanVal = val.trim().replace(/\s+/g, ' ');
+    setSearch(cleanVal);
     setPage(1);
   }, []);
 
@@ -284,6 +323,14 @@ export function useCatalogFilters() {
     setPage(1);
   }, []);
 
+  const handlePageSizeChange = useCallback((newSize: number) => {
+    if (newSize === pageSize) return;
+    const currentFirstBookIndex = (page - 1) * pageSize;
+    const newPage = Math.floor(currentFirstBookIndex / newSize) + 1;
+    setExplicitPageSize(newSize);
+    setPage(newPage);
+  }, [page, pageSize]);
+
   return {
     // State
     activeView,
@@ -304,7 +351,7 @@ export function useCatalogFilters() {
     // Actions & Setters
     setActiveView,
     setPage,
-    setPageSize,
+    setPageSize: handlePageSizeChange,
     setViewMode,
     setIsFilterDrawerOpen,
     handleSearchChange,

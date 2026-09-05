@@ -36,10 +36,10 @@ export const Footer: React.FC = () => {
             </div>
           </div>
 
-          {/* Col 2: Open Data Sources */}
+          {/* Col 2: Open Data Sources & Design Foundation */}
           <div>
             <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground mb-4 pb-1 border-b border-border">
-              Data Engine
+              Sources & Credits
             </h4>
             <ul className="space-y-2.5 text-xs text-muted-foreground font-mono">
               <li>
@@ -62,8 +62,28 @@ export const Footer: React.FC = () => {
                   Gutendex REST API <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
               </li>
+              <li>
+                <a
+                  href={SITE_CONFIG.FIGMA_BOOKSAW}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
+                >
+                  Booksaw UI Template (CC BY 4.0) <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                </a>
+              </li>
+              <li>
+                <a
+                  href={SITE_CONFIG.GOOGLE_ANTIGRAVITY}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
+                >
+                  Google Antigravity (AI Co-Engineer) <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                </a>
+              </li>
               <li className="text-[11px] font-sans text-muted-foreground/80 pt-1 leading-relaxed">
-                70,000+ unabridged public domain volumes indexed with strict zero-copyright verification.
+                70,000+ public domain volumes indexed with zero-copyright verification. Editorial UI inspired by Booksaw. Co-engineered with Google Antigravity.
               </li>
             </ul>
           </div>

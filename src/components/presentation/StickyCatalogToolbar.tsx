@@ -8,10 +8,8 @@ import {
   LayoutGrid,
   Library,
   X,
-  Loader2,
   WifiOff,
   Zap,
-  Info,
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -77,7 +75,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   };
 
   const displayLatency = latencyMs !== undefined ? latencyMs : 140;
-  const pageSizes = [8, 16, 24, 32];
+  const pageSizes = [8, 16];
 
   return (
     <div
@@ -108,8 +106,8 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
             aria-expanded={isFiltersOpen}
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Filters</span>
+            <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Filters</span>
             {activeFilterCount > 0 && (
               <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold ${
                 isFiltersOpen ? 'bg-primary text-primary-foreground' : 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 [html.sepia_&]:bg-primary/30 [html.sepia_&]:text-primary-foreground'
@@ -267,16 +265,15 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               {/* Direct Page Jump Form */}
               <form
                 onSubmit={handleJumpSubmit}
-                className="flex items-center gap-1"
+                className="flex items-center"
                 title="Jump directly to any page (e.g. 35). Note: Deep offset queries scan 70,000+ volumes from the live Gutenberg archive."
               >
-                <span className="text-xs font-mono text-muted-foreground select-none">Pg</span>
                 <input
                   type="text"
                   value={jumpPageInput || page}
                   onChange={(e) => setJumpPageInput(e.target.value)}
                   onFocus={() => setJumpPageInput(String(page))}
-                  className="w-9 sm:w-10 h-8 text-center text-xs font-mono font-bold rounded border border-border bg-card text-foreground focus:outline-hidden focus:border-primary"
+                  className="w-8 sm:w-9 h-8 text-center text-xs font-mono font-bold rounded border border-border bg-card text-foreground focus:outline-hidden focus:border-primary"
                   aria-label="Jump to page"
                   title="Enter page number and press Enter"
                 />
@@ -304,12 +301,16 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                   <div
                     tabIndex={0}
                     role="status"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-lg text-[11px] font-mono tracking-wider transition-all cursor-help focus:outline-hidden focus:ring-1 focus:ring-primary shadow-xs"
+                    className="inline-flex items-center justify-center p-1.5 sm:px-2.5 sm:py-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-lg text-[11px] font-mono tracking-wider transition-all cursor-help focus:outline-hidden focus:ring-1 focus:ring-primary shadow-xs"
                     aria-label={`Fetching page ${page} from archive. Hover or click for details.`}
                   >
-                    <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
-                    <span className="hidden sm:inline">Fetching Pg {page}...</span>
-                    <Info className="w-3.5 h-3.5 text-primary/80 animate-bounce hover:text-primary shrink-0" />
+                    <span className="relative flex items-center justify-center w-4 h-4 shrink-0 animate-bounce">
+                      <span className="absolute inset-0 rounded-full border-[1.5px] border-primary/30 border-t-primary animate-spin" />
+                      <span className="text-[10px] font-serif font-bold italic text-primary leading-none select-none">
+                        i
+                      </span>
+                    </span>
+                    <span className="hidden sm:inline ml-1.5">Fetching Pg {page}...</span>
                   </div>
 
                   {/* Rich Animated Tooltip Popover Card */}

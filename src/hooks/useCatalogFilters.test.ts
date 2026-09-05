@@ -21,6 +21,7 @@ describe('useCatalogFilters', () => {
     expect(result.current.era).toBe('');
     expect(result.current.sort).toBe('popular');
     expect(result.current.page).toBe(1);
+    expect(result.current.pageSize).toBe(16);
     expect(result.current.activeView).toBe('catalog');
     expect(result.current.viewMode).toBe('grid');
     expect(result.current.activeFilterChips).toEqual([]);
@@ -36,12 +37,12 @@ describe('useCatalogFilters', () => {
     expect(result.current.page).toBe(5);
 
     act(() => {
-      result.current.handleSearchChange('Austen');
+      result.current.handleSearchChange('   Jane    Austen   ');
     });
 
-    expect(result.current.search).toBe('Austen');
+    expect(result.current.search).toBe('Jane Austen');
     expect(result.current.page).toBe(1);
-    expect(result.current.queryParams.search).toBe('Austen');
+    expect(result.current.queryParams.search).toBe('Jane Austen');
     expect(result.current.activeFilterChips.length).toBe(1);
     expect(result.current.activeFilterChips[0].id).toBe('search');
   });
@@ -232,5 +233,88 @@ describe('parseFiltersFromUrl', () => {
     expect(parseFiltersFromUrl('/bookmarks', null).view).toBe('bookmarks');
     expect(parseFiltersFromUrl('/catalog', null).view).toBe('catalog');
   });
+
+  it('parses size parameter with valid values and safe fallback', () => {
+    expect(parseFiltersFromUrl('/', new URLSearchParams('size=8')).size).toBe(8);
+    expect(parseFiltersFromUrl('/', new URLSearchParams('size=16')).size).toBe(16);
+    expect(parseFiltersFromUrl('/', new URLSearchParams('size=invalid')).size).toBe(16);
+    expect(parseFiltersFromUrl('/', new URLSearchParams('')).size).toBe(16);
+  });
 });
+
+describe('windowed chunk sub-pagination in useCatalogFilters', () => {
+  it('maps client sub-pages to upstream 32-batch apiPage', () => {
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.setPageSize(8);
+    });
+
+    // When pageSize = 8, subPagesPerBatch = 4
+    // Client pages 1..4 map to upstream apiPage 1
+    act(() => {
+      result.current.setPage(1);
+    });
+    expect(result.current.queryParams.page).toBe(1);
+
+    act(() => {
+      result.current.setPage(4);
+    });
+    expect(result.current.queryParams.page).toBe(1);
+
+    // Client page 5 moves to upstream apiPage 2
+    act(() => {
+      result.current.setPage(5);
+    });
+    expect(result.current.queryParams.page).toBe(2);
+
+    // Client page 8 is still in upstream apiPage 2
+    act(() => {
+      result.current.setPage(8);
+    });
+    expect(result.current.queryParams.page).toBe(2);
+
+    // Client page 9 moves to upstream apiPage 3
+    act(() => {
+      result.current.setPage(9);
+    });
+    expect(result.current.queryParams.page).toBe(3);
+  });
+
+  it('translates reading position when switching pageSize between 8 and 16', () => {
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.setPageSize(8);
+      result.current.setPage(5); // first book index is (5 - 1) * 8 = 32
+    });
+
+    // Switching to size 16 should place book 32 on page 3: Math.floor(32 / 16) + 1 = 3
+    act(() => {
+      result.current.setPageSize(16);
+    });
+    expect(result.current.page).toBe(3);
+    expect(result.current.pageSize).toBe(16);
+  });
+
+  it('defaults to pageSize 8 on mobile viewports (<768px)', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 767px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const { result } = renderHook(() => useCatalogFilters());
+    expect(result.current.pageSize).toBe(8);
+
+    window.matchMedia = originalMatchMedia;
+  });
+});
+
 
