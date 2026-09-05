@@ -9,6 +9,28 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '1.9.6',
+    date: '2026-09-05',
+    title: 'Technical SEO Architecture, Dynamic OpenGraph Previews, Windowed Sub-Pagination & Upstream Rate-Shielding',
+    sections: {
+      Added: [
+        'Technical SEO & Crawl Protection (`src/app/robots.ts`): Native Next.js 16 crawl directives disallowing search query parameters (`/*?*search=*`, `/*?*topic=*`, `/*?*languages=*`) and private routes, protecting Project Gutenberg and Gutendex upstream servers from bot query exhaustion.',
+        'Curated Masterworks Canonical Sitemap (`src/app/sitemap.ts`): High-performance static XML sitemap indexing core routes and 10 iconic public domain masterworks with zero build-time API timeouts.',
+        'Dynamic Social OpenGraph & Twitter Cards (`src/app/read/[id]/layout.tsx`): Server Component layout dynamically resolving book identity and cover artwork with 24-hour Next.js ISR edge caching (`revalidate: 86400`).',
+        'Safe Structured Data (JSON-LD): Injected `schema.org/WebSite` (with Sitelinks SearchAction) and `schema.org/Book` using native React 19 text nodes with zero `dangerouslySetInnerHTML`.',
+        'Windowed Chunk Sub-Pagination & Predictive Prefetching: Viewport-optimized sub-pagination (8 books/page mobile, 16 desktop) with predictive background prefetching triggered on Sub-page 3 for instant 0ms transitions.',
+        'Privacy-First Web Telemetry: Integrated `@vercel/analytics` and `@vercel/speed-insights` for anonymous aggregate performance telemetry with zero tracking cookies or personal data collection.',
+        'Open Design & AI Co-Engineering Attributions: Added compliant footer credits for Booksaw Bookstore UI template (CC BY 4.0) and Google Antigravity.',
+        'Architecture Decision Records (`ADR-015`, `ADR-016`): Formally ratified privacy telemetry and technical SEO rate-shielding in `docs/DECISIONS.md`.',
+        'Co-Located Test Suite Hardening: Added co-located unit and integration tests for all layouts, sitemaps, and robots (`robots.test.ts`, `sitemap.test.ts`, `read/[id]/layout.test.tsx`, `privacy/layout.test.tsx`, `account/layout.test.tsx`, `layout.test.tsx`), reaching 125 suites and 957 verified tests.',
+      ],
+      Fixed: [
+        'Keystroke Query Flooding: Replaced 300ms keystroke debouncing on catalog search with explicit form submission and a 2-character minimum guardrail, eliminating redundant API load.',
+        'Mobile Prefetch Timing Gaps: Widened prefetch buffer on mobile to initiate on Sub-page 3, providing 15-25s lead time before batch boundaries.',
+      ],
+    },
+  },
+  {
     version: '1.9.5',
     date: '2026-09-04',
     title: 'Multi-Device Deletion Tombstones, Cloud Reading Progress Synchronization & Persistent Worker Architecture',

@@ -12,9 +12,17 @@ vi.mock('@vercel/speed-insights/next', () => ({
 }));
 
 describe('RootLayout', () => {
-  it('should expose valid metadata', () => {
-    expect(metadata.title).toContain('Bookarium');
+  it('should expose valid metadata with OpenGraph, Twitter, and canonical alternates', () => {
+    const titleObj = metadata.title as { default: string; template: string };
+    expect(titleObj.default).toContain('Bookarium');
     expect(metadata.description).toBeDefined();
+    expect(metadata.metadataBase).toBeDefined();
+    expect(metadata.alternates?.canonical).toBe('/');
+    const og = metadata.openGraph as Record<string, unknown> | undefined;
+    const tw = metadata.twitter as Record<string, unknown> | undefined;
+    expect(og?.type).toBe('website');
+    expect(og?.images).toBeDefined();
+    expect(tw?.card).toBe('summary');
   });
 
   it('should render children within html structure alongside analytics and performance telemetry', () => {

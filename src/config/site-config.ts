@@ -10,6 +10,9 @@ export const SITE_CONFIG = {
     'Free, open, zero-cost access to 70,000+ public domain literary classics from Project Gutenberg.',
   TAGLINE: 'Crafted with care for book lovers everywhere',
 
+  // Canonical Domain & Production URL
+  SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://bookarium.vercel.app',
+
   // Author & Repository Links
   GITHUB_PROFILE: 'https://github.com/calin-m',
   GITHUB_REPO: 'https://github.com/calin-m/Bookarium',

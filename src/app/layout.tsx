@@ -34,7 +34,11 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Bookarium | Zero-Copyright Public Domain Library',
+  metadataBase: new URL(SITE_CONFIG.SITE_URL),
+  title: {
+    default: 'Bookarium | Zero-Copyright Public Domain Library',
+    template: '%s | Bookarium',
+  },
   description:
     'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
   keywords: [
@@ -47,6 +51,51 @@ export const metadata: Metadata = {
     'Philosophy',
   ],
   authors: [{ name: `${SITE_CONFIG.NAME} Team` }],
+  creator: `${SITE_CONFIG.NAME} Team`,
+  publisher: SITE_CONFIG.NAME,
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: SITE_CONFIG.SITE_URL,
+    siteName: SITE_CONFIG.NAME,
+    title: 'Bookarium | Zero-Copyright Public Domain Library',
+    description:
+      'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
+    images: [
+      {
+        url: '/icons/apple-touch-icon.png',
+        width: 180,
+        height: 180,
+        alt: 'Bookarium Logo',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Bookarium | Zero-Copyright Public Domain Library',
+    description:
+      'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
+    images: ['/icons/apple-touch-icon.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
@@ -56,6 +105,22 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.ico',
     apple: '/icons/apple-touch-icon.png',
+  },
+};
+
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE_CONFIG.NAME,
+  url: SITE_CONFIG.SITE_URL,
+  description: SITE_CONFIG.DESCRIPTION,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${SITE_CONFIG.SITE_URL}/?search={search_term_string}`,
+    },
+    'query-input': 'required name=search_term_string',
   },
 };
 
@@ -75,6 +140,11 @@ export default function RootLayout({
         <link rel="dns-prefetch" href={SITE_CONFIG.GUTENDEX} />
         <link rel="preconnect" href={SITE_CONFIG.PROJECT_GUTENBERG} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={SITE_CONFIG.PROJECT_GUTENBERG} />
+        <script
+          type="application/ld+json"
+        >
+          {JSON.stringify(websiteJsonLd)}
+        </script>
       </head>
       <body
         suppressHydrationWarning
