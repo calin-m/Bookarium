@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 05 Sep 2026 16:24:20 GMT  
+**Last Generated**: Sat, 05 Sep 2026 17:05:08 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 125 passed  
-**Total Verified Tests**: 957 passed  
+**Total Verified Tests**: 958 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (957 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (958 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 16 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.17%** (5020/5446) — *Target: $ge$ 80%*
-- **Statements**: **90.31%** (5472/6059) — *Target: $ge$ 80%*
-- **Functions**: **88.39%** (1265/1431) — *Target: $ge$ 80%*
-- **Branches**: **80.43%** (4683/5822) — *Target: $ge$ 80%*
+- **Lines**: **92.15%** (5019/5446) — *Target: $ge$ 80%*
+- **Statements**: **90.27%** (5470/6059) — *Target: $ge$ 80%*
+- **Functions**: **88.25%** (1263/1431) — *Target: $ge$ 80%*
+- **Branches**: **80.41%** (4682/5822) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (125 Suites / 957 Tests)
+## 🧪 Comprehensive Test Suite Catalog (125 Suites / 958 Tests)
 
-### 🚀 App Routes & Pages (11 Suites · 90 Tests)
+### 🚀 App Routes & Pages (11 Suites · 91 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -119,10 +119,11 @@
 </details>
 
 <details>
-<summary><b><code>src/app/layout.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/app/layout.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `should expose valid metadata with OpenGraph, Twitter, and canonical alternates`
 - ✔ `should render children within html structure alongside analytics and performance telemetry`
+- ✔ `should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities`
 
 </details>
 

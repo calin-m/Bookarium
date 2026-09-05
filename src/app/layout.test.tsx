@@ -47,5 +47,40 @@ describe('RootLayout', () => {
       console.error = originalError;
     }
   });
+
+  it('should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities', () => {
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
+        return;
+      }
+      originalError(...args);
+    };
+
+    try {
+      render(
+        <RootLayout>
+          <div>Test Content</div>
+        </RootLayout>
+      );
+      const script = document.querySelector('script[type="application/ld+json"]');
+      expect(script).toBeInTheDocument();
+      if (script) {
+        const parsed = JSON.parse(script.textContent || '{}');
+        expect(parsed['@context']).toBe('https://schema.org');
+        expect(Array.isArray(parsed['@graph'])).toBe(true);
+        const website = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebSite');
+        const webApp = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebApplication');
+        expect(website).toBeDefined();
+        expect(website.potentialAction).toBeDefined();
+        expect(webApp).toBeDefined();
+        expect(webApp.isAccessibleForFree).toBe(true);
+        expect(webApp.applicationCategory).toBe('BooksApplication');
+        expect(webApp.license).toBe('https://opensource.org/licenses/MIT');
+      }
+    } finally {
+      console.error = originalError;
+    }
+  });
 });
 
