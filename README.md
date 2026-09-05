@@ -12,7 +12,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20945%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.12%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.13%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -60,7 +60,7 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 | **Gutendex REST API** | [`gutendex.com`](https://gutendex.com/) • [`GitHub`](https://github.com/garethbjohnson/gutendex) | Open-source JSON Web API created by [Gareth B. Johnson](https://github.com/garethbjohnson/gutendex) indexing over 70,000+ Project Gutenberg public domain titles. Provides search, topic filters, author timelines, download metrics, and metadata with strict `copyright=false` filtering. |
 | **Project Gutenberg CDN** | [`gutenberg.org`](https://www.gutenberg.org/) | Direct content delivery network providing unabridged plain text (`.txt`), official EPUB packages (`.epub.images`, `.epub.noimages`), Kindle/MOBI formats, and web-ready HTML. |
 | **Supabase (Auth & Postgres)** | [`supabase.com`](https://supabase.com/) | Optional cloud authentication and PostgreSQL synchronization for custom bookshelves and reading progress using Row Level Security (RLS). |
-| **Vercel Edge Platform** | [`vercel.com`](https://vercel.com/) | High-performance edge deployment, dynamic SSR route handlers, zero-config production caching, and global CDN delivery. |
+| **Vercel Edge Platform** | [`vercel.com`](https://vercel.com/) | High-performance edge deployment, dynamic SSR route handlers, zero-config production caching, global CDN delivery, and cookie-less aggregate performance telemetry (Vercel Web Analytics & Speed Insights). |
 | **Public Domain Archive Proxy** | `/api/books` & `/api/books/content` | Next.js server-side route proxies providing caching, CORS handling, query length validation (protecting upstream servers from 1-character scans), and guaranteed public domain integrity before client delivery. |
 
 ---
@@ -113,7 +113,7 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **Auto-Healing Cloud Sync & Deletion Tombstones**: Optional Supabase PostgreSQL cloud sync with Row Level Security (RLS). Persistent deletion tombstones (`deletedBookIds`) prevent zombie volumes from resurrecting during cross-device synchronization.
 * **Bi-Directional Cloud Reading Progress**: 2000ms debounced upsert to `public.reading_progress`, restoring chapter and scroll coordinates across devices for authenticated accounts while remaining 0ms/zero-network for guest readers.
 * **Full Data Sovereignty & Portability**: Single-click RFC 4180 CSV export and portable JSON backup (`src/lib/library-backup.ts`) with defensive schema validation and merge/replace restore strategies.
-* **Zero-Tracking Privacy Architecture (`/privacy`)**: Zero third-party trackers, zero advertising beacons, cookie-less operation (Art. 5(3) exempt), and self-service account data deletion in User Settings (`/account`).
+* **Zero-Tracking Privacy Architecture (`/privacy`)**: Zero third-party trackers, zero advertising beacons, cookie-less operation (Art. 5(3) exempt), privacy-first anonymous aggregate telemetry (Vercel Web Analytics & Speed Insights), and self-service account data deletion in User Settings (`/account`).
 
 ---
 
@@ -139,26 +139,34 @@ flowchart TD
         Account["Account & Reading Preferences (src/app/account/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• favoriteBookIds: []\n• recentBooks: []\n• cloudBookshelves: []\n• deletedBookIds: [] (Tombstones)\n• bookRatings: {}\n• bookStatuses: {}")]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• deletedBookIds: [] (Tombstones)\n• bookRatings: {}\n• bookStatuses: {}")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• theme (light/dark/sepia)\n• readingPositions: {}\n• readingProgress: {}\n• syncReadingPositionToCloud()")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• readingPositions: {}\n• readingProgress: {}\n• syncReadingPositionToCloud()")]
+        StoreTheme[("🎨 Theme Store\n• theme: day | sepia | obsidian")]
+        StoreAnnot[("🖍️ Annotation Store\n• highlights: []\n• 4 pastel palettes")]
+        StoreOffline[("📦 IndexedDB (useOfflineBooks)\n• downloaded volumes\n• offline text & EPUBs")]
         StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
         
         ScrollHook["📜 useScrollDirection\n(3-State Gesture Stepping)"]
         LedgerHook["🔖 useContinueReadingLedger\n(Authentic Telemetry & Two-Way Hydration)"]
-        QueryBooks["🔄 useBooks(query, topic, page)"]
+        QueryBooks["🔄 useBooks & usePrefetchNextPage\n(Chunked sub-pages & 15-25s prefetch)"]
         QueryContent["🔄 useBookContent(textUrl, bookId)"]
+        QueryTranslate["🌐 useBookTranslation(targetLang)\n(Dynamic In-Reader NMT)"]
+        Telemetry["📊 Vercel Telemetry (<Analytics />, <SpeedInsights />)"]
         
         Nav -->|"Open Auth / Account"| StoreAuth
         Nav -->|"View Bookshelf / Favorites"| StoreShelf
         Nav -->|"View Bookmarks"| Bookmarks
         Nav -->|"View Notebook"| Notebook
+        Nav -->|"Cycle Theme"| StoreTheme
         Bookmarks --> LedgerHook
         LedgerHook --> StoreReader
         LedgerHook --> StoreShelf
+        LedgerHook --> StoreOffline
         LedgerHook -->|"Hydrate Missing"| QueryBooks
         Bookmarks --> BookmarkCard
         BookmarkCard -->|"Warm Resume / Open"| Reader
+        Notebook --> StoreAnnot
         StorePrefs --> ScrollHook
         ScrollHook --> Nav
         ScrollHook --> Toolbar
@@ -169,21 +177,27 @@ flowchart TD
         Card -->|"Open Reader"| Reader
         Card -->|"Save / Like"| StoreShelf
         Reader --> StoreReader
+        Reader --> StoreTheme
+        Reader --> StoreAnnot
         Reader --> QueryContent
+        Reader --> QueryTranslate
         Account --> StoreAuth
         Account --> StoreShelf
         Account --> StorePrefs
     end
 
-    subgraph BackendServices ["Live Data & Cloud Synchronization"]
-        ProxyRoute["Gateway 1: GET /api/books\n(SSR Proxy)"]
-        DirectUpstream["Gateway 2: Direct Upstream Fetch\n(Client Failover)"]
-        ContentProxy["GET /api/books/content\n(Text Stream)"]
+    subgraph BackendServices ["Live Data, Cloud Sync & Telemetry"]
+        ProxyRoute["Gateway 1: GET /api/books\n(SSR Proxy, SWR Cache, >=2 Char Guard)"]
+        DirectUpstream["Gateway 2: Direct Upstream Fetch\n(Client Failover on 504)"]
+        ContentProxy["GET /api/books/content\n(Text Stream, SWR 24h)"]
+        TranslateProxy["Gateway 3: POST /api/translate\n(Google Neural MT Proxy)"]
         AuthCallback["GET /auth/callback\n(Session Token Exchange)"]
         
         GutendexAPI["🌐 Gutendex REST API\n(70,000+ Titles)"]
         GutenbergContent["🌐 Gutenberg Content CDN\n(text/plain & EPUB)"]
+        GoogleNMT["🌐 Google Neural MT\n(40+ Languages)"]
         SupabaseCloud[("⚡ Supabase Cloud\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves, Progress, Curations)\n• reading_progress (2s Debounced Sync & Restore)")]
+        VercelEdge["⚡ Vercel Edge Platform\n• Cookie-less Web Analytics\n• Real User Speed Insights (Core Web Vitals)"]
         
         QueryBooks --> ProxyRoute
         ProxyRoute --> GutendexAPI
@@ -191,10 +205,13 @@ flowchart TD
         DirectUpstream --> GutendexAPI
         QueryContent --> ContentProxy
         ContentProxy --> GutenbergContent
+        QueryTranslate --> TranslateProxy
+        TranslateProxy --> GoogleNMT
         StoreAuth <-->|"Session / Profiles"| SupabaseCloud
         StoreShelf <-->|"Cloud Sync (RLS)"| SupabaseCloud
         StoreReader <-->|"Progress Sync (RLS)"| SupabaseCloud
         AuthCallback <-->|"Code Exchange"| SupabaseCloud
+        Telemetry -.->|"Anonymous Metrics"| VercelEdge
     end
 
     subgraph QualityGateEngine ["7-Gateway Verification Engine"]
@@ -250,7 +267,7 @@ flowchart LR
     subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]
         Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader)"]
         SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]
-        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap)"]
+        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap & Amber Sentence Highlight)"]
         ProgressBar["Top Reading Progress Indicator"]
         ResumeToast["Exact-Page Auto-Resume Toast"]
         FooterBar["Sticky Bottom Pagination & Page Jump"]
@@ -258,11 +275,16 @@ flowchart LR
         SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]
         LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]
         Controls["Appearance & Typography Popover (ReaderControls)"]
+        AudioBar["Speech Narration Bar (ReaderAudioToolbar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]
+        TransBar["Bilingual Translation Bar (ReaderTranslationBar)\n(useBookTranslation • 40+ Languages)"]
+        AnnotDrawer["Annotations Drawer (ReaderAnnotationDrawer)\n(4 Pastel Highlighters • Canary, Amber, Mint, Rose)"]
         InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
     end
 
-    subgraph Persistence ["Browser LocalStorage & Supabase Cloud"]
+    subgraph Persistence ["Browser LocalStorage, IndexedDB & Supabase Cloud"]
         LSPrefs[("bookarium-reader-preferences\n(theme, font, spacing, readingProgress, readingPositions)")]
+        LSAnnot[("bookarium-annotations-storage\n(useAnnotationStore highlights & reflections)")]
+        IDBStorage[("IndexedDB (useOfflineBooks)\n(unabridged offline volumes)")]
         CloudProgress[("⚡ Supabase Cloud\npublic.reading_progress\n(2s Debounced Sync & Restore)")]
     end
 
@@ -276,6 +298,11 @@ flowchart LR
     SearchDrawer -->|"Jump to Match (p. X)"| ReaderState
     LangDrawer -->|"Switch Translation"| ReaderState
     Controls -->|"Tweak Settings"| ReaderState
+    AudioBar -->|"Sentence Highlight Sync"| ContentArea
+    TransBar -->|"Parallel Bilingual Text"| ContentArea
+    AnnotDrawer -->|"Render Highlights"| ContentArea
+    AnnotDrawer <--> LSAnnot
+    ReaderView <--> IDBStorage
     ReaderState <--> LSPrefs
     ReaderState <-->|"Authenticated"| CloudProgress
 ```
@@ -485,7 +512,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 14 validated ADRs (ADR-001 through ADR-014) governing zero-API keys, state architecture, and UI physics. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 15 validated ADRs (ADR-001 through ADR-015) governing zero-API keys, state architecture, and privacy telemetry. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

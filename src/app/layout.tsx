@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
 import { Providers } from './providers';
 import { SITE_CONFIG } from '@/config/site-config';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 
 const playfair = Playfair_Display({
@@ -78,7 +80,11 @@ export default function RootLayout({
         suppressHydrationWarning
         className="min-h-screen flex flex-col bg-background text-foreground antialiased font-sans"
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Analytics />
+          <SpeedInsights />
+        </Providers>
       </body>
     </html>
   );

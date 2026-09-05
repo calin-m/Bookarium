@@ -33,14 +33,16 @@ describe('PrivacyPage', () => {
   it('renders all core GDPR and ePrivacy disclosure sections', () => {
     render(<PrivacyPage />);
 
-    // Section 1: Zero tracking
+    // Section 1: Zero tracking & aggregate telemetry
     expect(screen.getByText(/1\. Zero Tracking & No Ad Networks/i)).toBeInTheDocument();
     expect(screen.getByText(/Bookarium does not load Google Analytics, Meta Pixels/i)).toBeInTheDocument();
+    expect(screen.getByText(/Privacy-First Aggregate Telemetry:/i)).toBeInTheDocument();
 
     // Section 2: Cookie Exemption
     expect(screen.getByText(/2\. Why There Is No Cookie Consent Banner/i)).toBeInTheDocument();
     expect(screen.getByText(/Strictly Necessary Cookies Only/i)).toBeInTheDocument();
     expect(screen.getByText(/sb-\*-auth-token/i)).toBeInTheDocument();
+    expect(screen.getByText(/zero tracking cookies/i)).toBeInTheDocument();
 
     // Section 3: Local-First Storage
     expect(screen.getByText(/3\. Local-First Browser Storage/i)).toBeInTheDocument();
@@ -65,6 +67,7 @@ describe('PrivacyPage', () => {
     // Section 7: Infrastructure Partners
     expect(screen.getByText(/7\. Infrastructure Partners/i)).toBeInTheDocument();
     expect(screen.getByText(/Vercel Edge Platform/i)).toBeInTheDocument();
+    expect(screen.getByText(/cookie-less aggregate performance telemetry/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Project Gutenberg/i).length).toBeGreaterThanOrEqual(1);
   });
