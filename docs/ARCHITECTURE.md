@@ -30,7 +30,7 @@ flowchart TD
             ReaderPage["Focus Reader Page (/read/[id])\n(Continuous Pagination, Subtitles, AST)"]
         end
         
-        subgraph ReaderDrawers ["Portaled Mutual-Exclusion Dialogs (z-[10000])"]
+        subgraph ReaderDrawers ["Portaled Mutual-Exclusion Dialogs (z-10000)"]
             TocDrawer["ReaderTocDrawer\n(Rich Subtitles & Page Numbers)"]
             SearchDrawer["ReaderSearchDrawer\n(In-Volume Live Text Search)"]
             ControlsDrawer["ReaderControls\n(Typography, Speech & Themes)"]
@@ -55,9 +55,9 @@ flowchart TD
         end
         
         QueryBooks["🔄 useBooks & usePrefetchNextPage\n(Windowed Sub-Pages & Predictive Prefetch)"]
-        QueryContent["🔄 useBookContent(url, bookId)\n(IndexedDB Check -> CDN Stream)"]
+        QueryContent["🔄 useBookContent(url, bookId)\n(IndexedDB Check to CDN Stream)"]
         QueryTranslate["🌐 useBookTranslations\n(International Editions Aggregation)"]
-        Telemetry["📊 Vercel Telemetry\n(<Analytics />, <SpeedInsights />)"]
+        Telemetry["📊 Vercel Telemetry\n(Analytics & Speed Insights)"]
     end
 
     subgraph ServerLayer ["Next.js Edge Proxy & Telemetry Layer"]
@@ -75,9 +75,9 @@ flowchart TD
         VercelEdge["⚡ Vercel Edge Platform\n(Cookie-less Analytics & Speed Insights)"]
     end
 
-    User <--> Nav
-    User <--> Hero
-    User <--> Toolbar
+    User --> Nav
+    User --> Hero
+    User --> Toolbar
     Toolbar --> FilterDrawer
     Toolbar --> Grid
     Nav --> Views
@@ -98,9 +98,9 @@ flowchart TD
     
     Views --> StateStores
     ReaderEngine --> StateStores
-    StoreShelf <-->|Cloud Sync (RLS)| SupabaseCloud
-    StoreReader <-->|Progress Sync| SupabaseCloud
-    StoreAuth <-->|Session Auth| SupabaseCloud
+    StoreShelf -->|Cloud Sync via RLS| SupabaseCloud
+    StoreReader -->|Progress Sync| SupabaseCloud
+    StoreAuth -->|Session Auth| SupabaseCloud
     Telemetry -.->|Anonymous Metrics| VercelEdge
 ```
 
