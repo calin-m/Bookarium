@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20918%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.16%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20927%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.22%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -68,9 +68,9 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 ## 🎯 Key Features & Capabilities
 
 * **Zero API Key Requirement**: Works instantly out of the box with zero third-party developer keys, sign-ups, or credit card walls.
-* **Strict Public Domain Integrity**: All queries programmatically enforce `copyright=false` through Gutendex and Project Gutenberg.
-* **Deep Linking & Bidirectional URL State Synchronization**:
-  * All catalog filters (`search`, `topic`, `language`, `era`, `sort`, `format`, `page`, `view`) automatically synchronize bidirectionally with URL search parameters via shallow `history.replaceState`.
+* **Clean Path URL Architecture & Deep Linking**:
+  * Primary catalog and library views operate on canonical, clean path URLs (`/`, `/bookshelf`, `/favorites`, `/notebook`, `/bookmarks`) powered by Next.js server rewrites and client history synchronization with zero code duplication or layout remounting.
+  * Catalog search and facet filters (`search`, `topic`, `language`, `era`, `sort`, `format`, `page`) seamlessly append query parameters (e.g. `/bookshelf?search=Austen`), with full backward compatibility automatically normalizing legacy `?view=...` links.
   * Fully supports direct bookmarking, shareable search URLs, and native browser Back / Forward (`popstate`) navigation with zero page reloads and 0 CLS.
 * **Network Debouncing & Resilient Upstream Querying**:
   * 300ms keystroke debouncing prevents API spamming while typing, with 0ms instant flush on `Enter` / form submission.
@@ -104,8 +104,8 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * Seamless 0px flush alignment between the top navbar and sticky toolbar with a floating `shadow-md` elevation over scrolling book cards.
   * Horizontally scrollable active filter chips strip (`overflow-x-auto scrollbar-none`) preventing vertical height shifts (0 CLS).
 * **Deep Archive Query UX & Live Telemetry**: Sticky catalog toolbar equipped with real-time roundtrip latency telemetry, direct page jumping, animated `Info` indicators, responsive mobile two-tier wrapping, and informative tooltips explaining relational SQL offsets across 70,000+ public domain volumes.
-* **Header Navigation & Brand Reset**: Clean top bar with unified iconography (**Catalog** `<BookOpen>`, **Bookshelf** `<Bookmark>`, **Favorites** `<Heart>`, **Notebook** `<Highlighter>`, **Bookmarks** `<BookMarked>`), dynamic solid fill states, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
-* **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)**: Dedicated reading ledger displaying all active public domain volumes with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), real-time search filtering (`<CollectionSearchBar>`), accessible "Clear Bookmarks" confirmation modal, Booksaw page-turn transitions (`animate-page-turn`), and 1-click chapter resume actions.
+* **Header Navigation & Brand Reset**: Clean top bar with unified, semantic iconography (**Catalog** `<Compass>`, **Bookshelf** `<Library>`, **Favorites** `<Heart>`, **Notebook** `<Highlighter>`, **Bookmarks** `<Bookmark>`), dynamic solid fill states, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
+* **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: Dedicated reading ledger displaying all active public domain volumes with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), real-time search filtering (`<CollectionSearchBar>`), accessible "Clear Bookmarks" confirmation modal, Booksaw page-turn transitions (`animate-page-turn`), and 1-click chapter resume actions.
   * **Authentic Reading Telemetry**: Strictly enrolls volumes with active coordinates (`readingPositions`) or active progress (`readingProgress > 0`), ensuring zero unopened bookshelf books appear on bookmarks with "Never opened" badges.
   * **Two-Way Dynamic Hydration**: Automatically resolves missing book identities for un-shelved volumes via TanStack React Query (`useBooks`), eliminating generic Gutenberg fallback placeholders (e.g. Volume `#55179`), and persistently writes resolved metadata into `recentBooks` upon reader load.
   * **Warm Route Transitions**: Clicking Resume or tapping the interactive cover thumbnail pre-seeds `useReaderStore.openReader(book)`, guaranteeing instantaneous 0ms warm-cache navigation to `/read/[id]` with mathematical zero layout shift.
@@ -123,12 +123,13 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
   * Bilingual Parallel mode annotation integration rendering highlights and notes on both translated and original sentences.
   * Full-text searchable drawer (`ReaderAnnotationsDrawer`) with chapter/page coordinates, color filter tabs, and 1-click jumps.
   * Dual-tier persistence: 100% offline-first in browser storage with Supabase PostgreSQL cloud sync, Row-Level Security (`public.user_annotations`), persistent deletion tombstones preventing zombie note resurrection, and an offline mutation outbox queue.
-* **Literary Commonplace Notebook & Reading Journal (`/?view=notebook`)**:
+* **Literary Commonplace Notebook & Reading Journal (`/notebook`)**:
   * Dedicated 4th navigation tab in the top header with active amber fill state, clean Booksaw editorial typography, and zero badge clutter.
   * Comprehensive reading journal view organizing all highlighted excerpts and personal marginalia across your entire library.
   * Multi-tier book metadata resolution, full-text search, pastel color filter pills with horizontal mouse wheel scroll translation, volume grouping vs chronological stream, dedicated personal reflection deletion with dual entrypoints (reflection header and active editor toolbar) guarded by note-snippet confirmation modals, safe single-quote and collection wipe confirmation modals, and 1-click academic citation copying.
 * **User Account Library Hub & Telemetry (`/account`)**:
-  * Unified vertical stack of 5 uniform horizontal destination cards (*Shelved Volumes*, *Favorite Titles*, *Notes & Quotes*, *Custom Shelves*, and *Reading Bookmarks*) featuring live metric counts, theme-tokenized accent borders, animated hover arrows, and direct deep-linking to catalog views and the Literary Notebook.
+  * Unified vertical stack of 5 uniform horizontal destination cards (*Shelved Volumes* `<Library>`, *Favorite Titles* `<Heart>`, *Notes & Quotes* `<Highlighter>`, *Custom Shelves* `<Layers>`, and *Reading Bookmarks* `<Bookmark>`) featuring live metric counts, theme-tokenized accent borders, animated hover arrows, and direct deep-linking to clean path catalog views and the Literary Notebook.
+  * **Equal-Progression Stepper & Hover Priority**: Touch and single-column displays (< 1024px) utilize a normalized scroll focal band where discrete travel windows smoothly spotlight each card sequentially with zero skipping or edge skew, paired with instant mouse hover priority on desktop.
 * **Floating Back to Top & Quick Navigation**: Motion-animated scroll-to-top button with viewport threshold detection.
 * **Interactive Studio Bookshelf Mode**:
   * **Unified Hardwood Bookcase**: Integrated shelf niche alcove and solid timber rail with bevel highlights and ambient spotlight vignettes (`.shelf-ambient-niche`), ensuring books sit directly flush on the wood ledge.
@@ -740,7 +741,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 918 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 927 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

@@ -7,6 +7,7 @@ vi.mock('next/navigation', () => ({
     push: vi.fn(),
     replace: vi.fn(),
   }),
+  usePathname: () => (typeof window !== 'undefined' ? window.location.pathname : '/'),
   useSearchParams: () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''),
 }));
 
@@ -116,7 +117,37 @@ describe('useCatalogFilters', () => {
     expect(result.current.isFilterDrawerOpen).toBe(true);
   });
 
-  it('hydrates initial filter state from window.location.search including view=bookshelf', () => {
+  it('hydrates initial filter state from clean pathname /bookshelf', () => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/bookshelf?search=Plato&page=2');
+
+    const { result } = renderHook(() => useCatalogFilters());
+
+    expect(result.current.activeView).toBe('bookshelf');
+    expect(result.current.search).toBe('Plato');
+    expect(result.current.page).toBe(2);
+
+    (window as any).location = new URL('http://localhost:3000/');
+  });
+
+  it('hydrates initial filter state from clean pathname /favorites, /notebook, and /bookmarks', () => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/favorites');
+    const { result: favResult } = renderHook(() => useCatalogFilters());
+    expect(favResult.current.activeView).toBe('favorites');
+
+    (window as any).location = new URL('http://localhost:3000/notebook');
+    const { result: noteResult } = renderHook(() => useCatalogFilters());
+    expect(noteResult.current.activeView).toBe('notebook');
+
+    (window as any).location = new URL('http://localhost:3000/bookmarks');
+    const { result: markResult } = renderHook(() => useCatalogFilters());
+    expect(markResult.current.activeView).toBe('bookmarks');
+
+    (window as any).location = new URL('http://localhost:3000/');
+  });
+
+  it('preserves backward compatibility by hydrating from legacy query param view=bookshelf', () => {
     delete (window as any).location;
     (window as any).location = new URL('http://localhost:3000/?search=Plato&topic=philosophy&page=3&sort=ascending&view=bookshelf');
 
@@ -131,30 +162,22 @@ describe('useCatalogFilters', () => {
     (window as any).location = new URL('http://localhost:3000/');
   });
 
-  it('hydrates initial filter state with view=notebook', () => {
+  it('preserves backward compatibility with legacy view=notebook and view=bookmarks', () => {
     delete (window as any).location;
     (window as any).location = new URL('http://localhost:3000/?view=notebook');
+    const { result: noteResult } = renderHook(() => useCatalogFilters());
+    expect(noteResult.current.activeView).toBe('notebook');
 
-    const { result } = renderHook(() => useCatalogFilters());
-    expect(result.current.activeView).toBe('notebook');
-
-    (window as any).location = new URL('http://localhost:3000/');
-  });
-
-  it('hydrates initial filter state with view=bookmarks', () => {
-    delete (window as any).location;
     (window as any).location = new URL('http://localhost:3000/?view=bookmarks');
-
-    const { result } = renderHook(() => useCatalogFilters());
-    expect(result.current.activeView).toBe('bookmarks');
+    const { result: markResult } = renderHook(() => useCatalogFilters());
+    expect(markResult.current.activeView).toBe('bookmarks');
 
     (window as any).location = new URL('http://localhost:3000/');
   });
 
-  it('hydrates initial filter state with view=favorites and normalizes legacy view=likes', () => {
+  it('preserves backward compatibility with legacy view=favorites and view=likes', () => {
     delete (window as any).location;
     (window as any).location = new URL('http://localhost:3000/?view=favorites');
-
     const { result: favResult } = renderHook(() => useCatalogFilters());
     expect(favResult.current.activeView).toBe('favorites');
 

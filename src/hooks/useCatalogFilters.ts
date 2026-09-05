@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 import { LITERARY_ERAS, CATALOG_LANGUAGES, GENRE_FACETS } from '@/config/catalog-filters';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
@@ -37,6 +37,14 @@ function getInitialUrlParams() {
   if (typeof window === 'undefined') return {};
   try {
     const sp = new URLSearchParams(window.location.search);
+    const pathSegment = (window.location.pathname || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+
+    let pathView: CatalogView | undefined = undefined;
+    if (pathSegment && ['catalog', 'bookshelf', 'favorites', 'notebook', 'bookmarks'].includes(pathSegment)) {
+      pathView = normalizeCatalogView(pathSegment);
+    }
+    const queryView = sp.get('view') ? normalizeCatalogView(sp.get('view')) : undefined;
+
     return {
       search: sp.get('search') || undefined,
       topic: sp.get('topic') || undefined,
@@ -45,7 +53,7 @@ function getInitialUrlParams() {
       sort: (sp.get('sort') as CatalogSortOption) || undefined,
       format: sp.get('format') || sp.get('mime_type') || undefined,
       page: sp.get('page') ? parseInt(sp.get('page')!, 10) : undefined,
-      view: sp.get('view') ? normalizeCatalogView(sp.get('view')) : undefined,
+      view: pathView || queryView || undefined,
     };
   } catch {
     return {};
@@ -53,22 +61,31 @@ function getInitialUrlParams() {
 }
 
 export function useCatalogFilters() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const hasMounted = useHasMounted();
   const [activeView, setActiveView] = useState<CatalogView>(() => {
     return normalizeCatalogView(getInitialUrlParams().view);
   });
 
-  // Synchronize state with Next.js router URL searchParams during render
-  const currentViewParam = searchParams?.get('view') || null;
-  const [prevViewParam, setPrevViewParam] = useState<string | null>(() => {
-    return typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('view') : null;
+  // Synchronize state with Next.js router URL pathname or searchParams during render
+  const cleanPath = (pathname || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+  const currentViewFromRoute: CatalogView | null = ['bookshelf', 'favorites', 'notebook', 'bookmarks'].includes(cleanPath)
+    ? (cleanPath as CatalogView)
+    : searchParams?.get('view')
+    ? normalizeCatalogView(searchParams.get('view'))
+    : cleanPath === 'catalog' || pathname === '/'
+    ? 'catalog'
+    : null;
+
+  const [prevViewFromRoute, setPrevViewFromRoute] = useState<CatalogView | null>(() => {
+    return getInitialUrlParams().view ? normalizeCatalogView(getInitialUrlParams().view) : null;
   });
 
-  if (currentViewParam !== prevViewParam) {
-    setPrevViewParam(currentViewParam);
-    if (currentViewParam) {
-      setActiveView(normalizeCatalogView(currentViewParam));
+  if (currentViewFromRoute !== prevViewFromRoute) {
+    setPrevViewFromRoute(currentViewFromRoute);
+    if (currentViewFromRoute) {
+      setActiveView(currentViewFromRoute);
     }
   }
   const [search, setSearch] = useState(() => getInitialUrlParams().search || '');
@@ -82,7 +99,7 @@ export function useCatalogFilters() {
   const [viewMode, setViewMode] = useState<CatalogViewMode>('grid');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
-  // Sync state to URL search parameters without page reload (after hydration)
+  // Sync state to URL search parameters and clean path without page reload (after hydration)
   useEffect(() => {
     if (typeof window === 'undefined' || !hasMounted) return;
     try {
@@ -108,10 +125,18 @@ export function useCatalogFilters() {
       if (page > 1) url.searchParams.set('page', String(page));
       else url.searchParams.delete('page');
 
-      if (activeView !== 'catalog') url.searchParams.set('view', activeView);
-      else url.searchParams.delete('view');
+      // Clear legacy 'view' parameter for clean paths
+      url.searchParams.delete('view');
 
-      window.history.replaceState(null, '', url.pathname + (url.search ? url.search : ''));
+      // Determine clean target path based on activeView
+      const targetPath = activeView === 'catalog' ? '/' : `/${activeView}`;
+      const searchStr = url.searchParams.toString();
+      const newRelativeUrl = searchStr ? `${targetPath}?${searchStr}` : targetPath;
+
+      const currentRelativeUrl = `${window.location.pathname}${window.location.search}`;
+      if (currentRelativeUrl !== newRelativeUrl) {
+        window.history.replaceState(null, '', newRelativeUrl);
+      }
     } catch {
       // Safe fallback in test or sandboxed environments
     }

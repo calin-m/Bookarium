@@ -12,7 +12,8 @@ vi.mock('next/navigation', () => ({
     push: vi.fn(),
     replace: vi.fn(),
   }),
-  useSearchParams: () => new URLSearchParams(''),
+  usePathname: () => (typeof window !== 'undefined' ? window.location.pathname : '/'),
+  useSearchParams: () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''),
 }));
 
 const pageMockBooks = mockBooks.slice(0, 6);

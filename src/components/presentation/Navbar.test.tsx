@@ -74,11 +74,11 @@ describe('Navbar component', () => {
     expect(bookmarksBtn).toHaveClass('border-indigo-500');
   });
 
-  it('should fill bookmark icon when books are saved to bookshelf', () => {
+  it('should fill library icon when books are saved to bookshelf', () => {
     useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
     const { container } = render(<Navbar activeView="catalog" />);
-    const bookmarkSvg = container.querySelector('svg.lucide-bookmark');
-    expect(bookmarkSvg).toHaveClass('fill-primary');
+    const librarySvg = container.querySelector('svg.lucide-library');
+    expect(librarySvg).toHaveClass('fill-primary');
   });
 
   it('should fill heart icon when books are favorited', () => {
@@ -208,6 +208,34 @@ describe('Navbar component', () => {
     expect(githubLink).toHaveAttribute('href', 'https://github.com/calin-m/Bookarium');
     expect(githubLink).toHaveAttribute('target', '_blank');
     expect(githubLink).toHaveClass('hidden', 'min-[320px]:inline-flex');
+  });
+
+  it('renders dynamic active view masthead subtitle with section theme color and responsive classes', () => {
+    const { rerender } = render(<Navbar activeView="catalog" />);
+    let subtitle = screen.getByTestId('navbar-active-view-subtitle');
+    expect(subtitle).toBeInTheDocument();
+    expect(subtitle).toHaveTextContent('Catalog');
+    expect(subtitle).toHaveClass('text-primary', 'md:hidden', 'min-[375px]:inline');
+
+    rerender(<Navbar activeView="favorites" />);
+    subtitle = screen.getByTestId('navbar-active-view-subtitle');
+    expect(subtitle).toHaveTextContent('Favorites');
+    expect(subtitle).toHaveClass('text-destructive');
+
+    rerender(<Navbar activeView="notebook" />);
+    subtitle = screen.getByTestId('navbar-active-view-subtitle');
+    expect(subtitle).toHaveTextContent('Notebook');
+    expect(subtitle).toHaveClass('text-amber-600');
+
+    rerender(<Navbar activeView="bookmarks" />);
+    subtitle = screen.getByTestId('navbar-active-view-subtitle');
+    expect(subtitle).toHaveTextContent('Bookmarks');
+    expect(subtitle).toHaveClass('text-indigo-600');
+
+    rerender(<Navbar activeView="account" />);
+    subtitle = screen.getByTestId('navbar-active-view-subtitle');
+    expect(subtitle).toHaveTextContent('Account');
+    expect(subtitle).toHaveClass('text-primary');
   });
 });
 

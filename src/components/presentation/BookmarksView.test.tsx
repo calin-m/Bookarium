@@ -225,5 +225,38 @@ describe('BookmarksView', () => {
     expect(screen.getByText('Robert W. Chambers')).toBeInTheDocument();
     expect(screen.getByText('45%')).toBeInTheDocument();
   });
+
+  it('applies adaptive responsive label expansion and tooltip attributes to filter tabs', () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 60);
+
+    renderWithClient(<BookmarksView />);
+
+    // By default, 'all' filter is active
+    const allTab = screen.getByTestId('bookmarks-tab-all');
+    const inProgressTab = screen.getByTestId('bookmarks-tab-in_progress');
+    const completedTab = screen.getByTestId('bookmarks-tab-completed');
+    const onHoldTab = screen.getByTestId('bookmarks-tab-on_hold');
+
+    expect(allTab).toHaveAttribute('aria-label', expect.stringContaining('All Volumes'));
+    expect(allTab).toHaveAttribute('title', expect.stringContaining('All Volumes'));
+    expect(allTab).toHaveAttribute('aria-pressed', 'true');
+
+    // Active tab label has 'inline' class, while inactive has 'hidden md:inline'
+    expect(allTab.querySelector('span')).toHaveClass('inline');
+    expect(inProgressTab.querySelector('span')).toHaveClass('hidden md:inline');
+    expect(completedTab.querySelector('span')).toHaveClass('hidden md:inline');
+    expect(onHoldTab.querySelector('span')).toHaveClass('hidden md:inline');
+
+    // Click 'in_progress' tab -> in_progress expands, all collapses
+    fireEvent.click(inProgressTab);
+    expect(inProgressTab).toHaveAttribute('aria-pressed', 'true');
+    expect(inProgressTab.querySelector('span')).toHaveClass('inline');
+    expect(allTab.querySelector('span')).toHaveClass('hidden md:inline');
+  });
 });
+
 

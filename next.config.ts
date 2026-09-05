@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'gutenberg.org' },
     ],
   },
+  async rewrites() {
+    return [
+      { source: '/catalog', destination: '/' },
+      { source: '/bookshelf', destination: '/' },
+      { source: '/favorites', destination: '/' },
+      { source: '/notebook', destination: '/' },
+      { source: '/bookmarks', destination: '/' },
+    ];
+  },
   async headers() {
     return [
       {

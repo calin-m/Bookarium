@@ -9,6 +9,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  usePathname: () => '/privacy',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('@/components/presentation/Footer', () => ({
