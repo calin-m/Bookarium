@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20927%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.22%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-120%20Suites%20%7C%20933%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.12%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -31,7 +31,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 * **Open-Book Skeuomorphic Details**: Custom open-book card spreads with subtle center spine creases (`.book-center-crease`), realistic paper texture shadows (`shadow-booksaw`), and page depth elevation.
 * **Warm Editorial Palettes & 100% Solid Surfaces**:
   * **Day / Standard**: Crisp cream-paper tones (`#fcfbf9`, `#ffffff`) with rich obsidian ink typography and 100% solid, non-transparent surfaces.
-  * **Sepia / Cozy Coffee (Warm Midtone)**: Warm roasted espresso and cafe mocha tones (`#251d18`, `#322720`) with steamed milk cream typography (`#f5ece1`) and warm caramel accents for eye comfort in ambient evening light.
+  * **Sepia / Cozy Coffee (Warm Midtone)**: Warm roasted espresso and cafe mocha tones (`#2b1d16`, `#3c281e`, `#332219`) with steamed milk cream typography (`#fef6eb`) and warm caramel amber accents (`#f59e0b`) for eye comfort in ambient evening light.
   * **Dark Mode**: High-contrast slate obsidian canvas (`#0e1117`, `#161b26`) preserving focus in low-light settings.
 * **Refined Typography**: Pairings of classic literary serifs, clean sans-serifs, and monospace archival metadata accents.
 
@@ -67,143 +67,51 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 
 ## 🎯 Key Features & Capabilities
 
-* **Zero API Key Requirement**: Works instantly out of the box with zero third-party developer keys, sign-ups, or credit card walls.
-* **Clean Path URL Architecture & Deep Linking**:
-  * Primary catalog and library views operate on canonical, clean path URLs (`/`, `/bookshelf`, `/favorites`, `/notebook`, `/bookmarks`) powered by Next.js server rewrites and client history synchronization with zero code duplication or layout remounting.
-  * Catalog search and facet filters (`search`, `topic`, `language`, `era`, `sort`, `format`, `page`) seamlessly append query parameters (e.g. `/bookshelf?search=Austen`), with full backward compatibility automatically normalizing legacy `?view=...` links.
-  * Fully supports direct bookmarking, shareable search URLs, and native browser Back / Forward (`popstate`) navigation with zero page reloads and 0 CLS.
-* **Network Debouncing & Resilient Upstream Querying**:
-  * 300ms keystroke debouncing prevents API spamming while typing, with 0ms instant flush on `Enter` / form submission.
-  * Robust JSON response parsing with graceful 502/504 failover handling for Gutenberg upstream timeouts.
-* **Procedural Cover Art Fallback**:
-  * Automatic `onError` detection replaces missing or dead remote cover images with elegant, dark-academia typographic cover art in pure CSS with zero layout shifts.
-* **SSR Hydration Guarding Protocol**:
-  * Store reads for favorite and saved book collections are guarded with `useHasMounted()` to guarantee zero React hydration mismatches on initial server render.
-* **100% Live Dual-Gateway Data Pipeline**: Next.js Server Route Proxy paired with direct client upstream failover to `https://gutendex.com/` guaranteeing 100% uptime on serverless platforms without reliance on local mock fallbacks.
-* **Dynamic Hourly Rotating 3D Featured Book & Interactive 3D Open-Book Physics**:
-  * Curated pool of iconic public domain classics dynamically rotated every UTC hour with zero-cron client/server deterministic synchronization.
-  * **Realistic 3D Open-Book Hover & Click-to-Pin State Machine**: On desktop hover, the hardbound volume smoothly elevates and takes a gentle isometric tabletop inclination while the front cover swings open 180° on its left spine hinge—revealing facing **Left Page** (title, author, comprehensive opening chapter reflection) and **Right Page** (notable passage, public domain stamp, and direct read action). Clicking pins the volume open or closed with automatic hover re-engagement.
-  * **Physical 60–120 FPS Right-to-Left 3D Page Turn**: Shuffling passages flips a physical 3D leaf ($0^\circ \to -180^\circ$) across the spine with physically synchronized ink reveals, preserving the underlying left page until the leaf physically lands.
-  * **Comprehensive Literary Typography**: Full-bodied literary excerpts and opening reflections typeset with balanced line-clamping (`line-clamp-8`) to naturally fill the 2-page spreads without UI overlap.
-  * In-book passage shuffle button to cycle through narrative acts and chapters of the open volume without page reloads.
-  * 1-Click instant reader handoff with 0ms metadata population.
-* **Interactive 3D Book Preview Modal & FLIP Physical Landing**:
-  * Clicking "Preview Volume" on any catalog book card triggers a seamless 3D hardcover modal with fluid FLIP geometry transitions.
-  * Measures precise viewport-safe bounds (`document.documentElement.clientWidth`) and preserves exact $1.000\times$ typography scales, delivering zero font distortion and seamless subpixel return landing without jumps or pops.
-  * Features live in-modal chapter shuffling, opening act excerpts, and instant reader handoff.
-* **Directional Stepped Scroll Navigation & User Profile Preferences**:
-  * Dynamic scroll detection (`useScrollDirection`) with session-isolated continuous gesture locking (180ms debounce).
-  * Smoothly hides top header on first scroll down, docks filter bar to `top-0`, and hides the filter bar on second scroll for 100% immersive book viewing.
-  * 1-gesture up-scroll immediately reveals the filter bar at `top-0` for instant page jumping and filter tweaking.
-  * User-configurable in User Account Settings (`/account`) between **Smart Auto-Hide** and **Always Fixed**.
-* **Collapsible Left-Side Catalog Filter Sidebar & Push-Content Desktop Layout**:
-  * Slide-out left-docked filter drawer (`slide-in-from-left duration-300`) with zero dark background dimming.
-  * On desktop, opening filters smoothly pushes the entire webpage content (`<main>`) to the right (`lg:pl-96 duration-300`), allowing non-blocking side-by-side catalog browsing and live filter tweaking.
-  * The **Filters** button functions as an interactive toggle (`Open / Close`) with active state highlights.
-* **Flush 0px Sticky Header & Floating Shadow Elevation**:
-  * Seamless 0px flush alignment between the top navbar and sticky toolbar with a floating `shadow-md` elevation over scrolling book cards.
-  * Horizontally scrollable active filter chips strip (`overflow-x-auto scrollbar-none`) preventing vertical height shifts (0 CLS).
-* **Deep Archive Query UX & Live Telemetry**: Sticky catalog toolbar equipped with real-time roundtrip latency telemetry, direct page jumping, animated `Info` indicators, responsive mobile two-tier wrapping, and informative tooltips explaining relational SQL offsets across 70,000+ public domain volumes.
-* **Header Navigation & Brand Reset**: Clean top bar with unified, semantic iconography (**Catalog** `<Compass>`, **Bookshelf** `<Library>`, **Favorites** `<Heart>`, **Notebook** `<Highlighter>`, **Bookmarks** `<Bookmark>`), dynamic solid fill states, single-click brand catalog reset/refresh, and automatic mobile icon collapsing for zero horizontal overflow.
-* **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: Dedicated reading ledger displaying all active public domain volumes with tactile bookmark cards, bookmark ribbon accents, live progress percentages, last-read coordinates, status filter tabs (All, In Progress, Completed, On Hold), real-time search filtering (`<CollectionSearchBar>`), accessible "Clear Bookmarks" confirmation modal, Booksaw page-turn transitions (`animate-page-turn`), and 1-click chapter resume actions.
-  * **Authentic Reading Telemetry**: Strictly enrolls volumes with active coordinates (`readingPositions`) or active progress (`readingProgress > 0`), ensuring zero unopened bookshelf books appear on bookmarks with "Never opened" badges.
-  * **Two-Way Dynamic Hydration**: Automatically resolves missing book identities for un-shelved volumes via TanStack React Query (`useBooks`), eliminating generic Gutenberg fallback placeholders (e.g. Volume `#55179`), and persistently writes resolved metadata into `recentBooks` upon reader load.
-  * **Warm Route Transitions**: Clicking Resume or tapping the interactive cover thumbnail pre-seeds `useReaderStore.openReader(book)`, guaranteeing instantaneous 0ms warm-cache navigation to `/read/[id]` with mathematical zero layout shift.
-  * **Offline Availability Indicator**: Automatically detects locally stored IndexedDB books via `useOfflineBooks` and badges cached volumes with an emerald `CheckCircle2 Offline` indicator.
-  * **Decoupled Telemetry Clearing**: Resetting reading progress strictly purges reader coordinates and progress while preserving user bookshelf curation (`bookStatuses`) and reading history (`recentBooks`).
-* **Unified SectionHeader Component & Editorial Typography Harmonization**: Reusable `<SectionHeader>` and `<SectionTitle>` component (`src/components/ui/SectionHeader.tsx`) standardizing section title typography scales (`text-3xl sm:text-4xl font-serif font-bold text-foreground tracking-tight`), subtle decorative flank border lines (`h-[1px] w-12 bg-border shrink-0`), centered Booksaw editorial layouts, and contextual action slots ("Clear Shelf", "Clear Favorites", "Clear All Notes", "Clear Bookmarks") across Catalog, Bookshelf, Favorites, Bookmarks, and Literary Notebook views.
-* **Provider-Agnostic Canonical Book Entity & Adapter (`toCanonicalBook`)**: Clean domain architecture decoupling Bookarium UI components from upstream raw Gutendex schemas, automatically normalizing Gutenberg author strings, resolving preferred MIME format URLs, and ensuring 100% backward compatibility with guest and cloud storage.
-* **Progressive Web App (PWA), Offline App Shell & Standalone Installation**:
-  * Native Next.js 16 Web App Manifest (`manifest.ts`) declaring standalone display mode, `id: '/?source=pwa'`, explicit `scope: '/'`, brand obsidian/cream theme colors, and a full suite of standard and maskable PWA icons (`public/icons/`).
-  * **Native Service Worker Offline Cache Engine (`public/sw.js`, `ServiceWorkerRegister.tsx`)**: Precaches the application shell and static assets, serving cached app shell navigation on offline requests so stored IndexedDB books can be read in airplane mode with zero network access.
-  * Seamless 1-click home screen installation on iOS, Android, macOS, and Windows with zero browser address bar chrome.
-* **In-Reader Text Highlighting & Annotations Engine**:
-  * Direct prose text selection triggers a floating contextual toolbar (`TextHighlightPopover`) offering 4 editorial pastel highlighters (Canary Yellow, Vintage Amber, Calm Mint, Soft Rose) with coarse-pointer context menu clearance and touch dismissal.
-  * Chapter-scoped annotation filtering, in-place color switching, single-quote deletion confirmation modals with quote previews, passage deduplication, and color-matched selection styling (`::selection`) across Light, Dark, and Sepia themes to eliminate default browser selection clashing.
-  * Bilingual Parallel mode annotation integration rendering highlights and notes on both translated and original sentences.
-  * Full-text searchable drawer (`ReaderAnnotationsDrawer`) with chapter/page coordinates, color filter tabs, and 1-click jumps.
-  * Dual-tier persistence: 100% offline-first in browser storage with Supabase PostgreSQL cloud sync, Row-Level Security (`public.user_annotations`), persistent deletion tombstones preventing zombie note resurrection, and an offline mutation outbox queue.
-* **Literary Commonplace Notebook & Reading Journal (`/notebook`)**:
-  * Dedicated 4th navigation tab in the top header with active amber fill state, clean Booksaw editorial typography, and zero badge clutter.
-  * Comprehensive reading journal view organizing all highlighted excerpts and personal marginalia across your entire library.
-  * Multi-tier book metadata resolution, full-text search, pastel color filter pills with horizontal mouse wheel scroll translation, volume grouping vs chronological stream, dedicated personal reflection deletion with dual entrypoints (reflection header and active editor toolbar) guarded by note-snippet confirmation modals, safe single-quote and collection wipe confirmation modals, and 1-click academic citation copying.
-* **User Account Library Hub & Telemetry (`/account`)**:
-  * Unified vertical stack of 5 uniform horizontal destination cards (*Shelved Volumes* `<Library>`, *Favorite Titles* `<Heart>`, *Notes & Quotes* `<Highlighter>`, *Custom Shelves* `<Layers>`, and *Reading Bookmarks* `<Bookmark>`) featuring live metric counts, theme-tokenized accent borders, animated hover arrows, and direct deep-linking to clean path catalog views and the Literary Notebook.
-  * **Equal-Progression Stepper & Hover Priority**: Touch and single-column displays (< 1024px) utilize a normalized scroll focal band where discrete travel windows smoothly spotlight each card sequentially with zero skipping or edge skew, paired with instant mouse hover priority on desktop.
-* **Floating Back to Top & Quick Navigation**: Motion-animated scroll-to-top button with viewport threshold detection.
-* **Interactive Studio Bookshelf Mode**:
-  * **Unified Hardwood Bookcase**: Integrated shelf niche alcove and solid timber rail with bevel highlights and ambient spotlight vignettes (`.shelf-ambient-niche`), ensuring books sit directly flush on the wood ledge.
-  * **3D Convex Spines & Gilded Lettering**: Convex specular spine curvature (`.book-spine-convex`) with 8 authentic binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), hot-foil gold/silver typography, and bookmark ribbons.
-  * **Multi-Shelf Categories & General View**: Master "General" view displaying all library volumes alongside custom collections, with a floating "Move to Shelf" selector on spine hover cards.
-  * **Grounded Pull-Forward Hover**: Physical scaling (`scale-105 origin-bottom`) pulling the volume forward toward the reader with instant `Read`, `Download`, and `Bookmark` actions.
-* **Dedicated In-Browser Focus Reader (`/read/[id]`)**:
-  * **Exact-Page Bookmarking & Auto-Resume**: Automatic persistence of exact chapter and page coordinates (`readingPositions`) in `useReaderStore`. Opening any volume displays a non-intrusive "Resumed at Chapter X, Page Y" toast with a 1-click Restart option.
-  * **Triple-Tier Metadata Resolution & Gutenberg Archive Modal**: Instant reader metadata resolution (Store $\to$ Plain-Text Header Parsing $\to$ API) with an interactive `[ ℹ️ #VolumeID ]` badge that opens a detailed Gutenberg Public Domain Archive modal without causing any header layout shifts.
-  * **Edge-to-Edge Symmetrical Reader Toolbars**: Full-width top navigation header and bottom footer with mathematically locked center progress badges and page jumpers, eliminating layout drift across varying book and chapter title lengths.
-  * **Tactile Hardware-Accelerated Page-Turn Opacity Transitions**: Smooth 180ms ease-out opacity micro-transitions (`animate-page-turn`) paired with motion-safe scroll-to-top on page flips, Next/Prev actions, and catalog grid browsing with automatic `prefers-reduced-motion` compliance.
-  * **Dual-Strategy Chapter & Anthology TOC Engine**: Automatically segments both standard numbered chapters (`CHAPTER 1`, `BOOK I`) and short story/tale anthologies (e.g. *"Twenty-Five Ghost Stories"* `read/53419`) via front-matter `CONTENTS` index scanning, listing all individual stories as discrete, jumpable sections in the Table of Contents drawer.
-  * **Gutenberg Paragraph Reflow Engine**: Normalizes legacy 70-character hard linebreaks into fluid prose across Narrow (`576px`), Normal (`768px`), and Wide (`1024px`) reading layouts while preserving double-spaced paragraphs, dialogue, and indented poetry/verse.
-  * **True Book-Wide Global Pagination**: Calculates virtual pages across the entire volume with keyboard (`←`/`→`) and input page jumping.
-  * **Table of Contents Drawer (`ReaderTocDrawer`)**: Instant chapter navigation with live starting page number badges (`p. 18`, `p. 28`, `p. 34`), read-time estimates, and solid opaque surfaces with transparent backdrops.
-  * **In-Book Full-Text Search Drawer (`ReaderSearchDrawer`)**: Real-time client regex search engine scanning the entire volume with highlighted snippet matches (`<mark>`), chapter grouping, live match count badges, 1-click chapter jumps, and keyboard shortcut invocation (`Ctrl+F` / `Cmd+F` / `/`).
-  * **Language Editions & Translations Drawer (`ReaderLanguageDrawer`)**: Portaled modal discovering all international editions (Spanish, French, German, Italian, etc.) and bilingual translations with 1-click reading handoff.
-  * **Physical Sliding Mobile Toolbar Drawer (`ReaderHeader`)**: Pin-docked mobile control drawer with an integrated traveling pull handle (`[‹] / [›]`), keeping the reading canvas and page-turn tap zones 100% unblocked.
-  * **Font Scaler & Dynamic Line Spacing Sliders**: Real-time font sizing (12px–36px) and dynamic line height (1.2–2.6) with 1-click presets (`14px / 18px / 24px` and `1.4 Compact / 1.8 Standard / 2.2 Spacious`) and top bar quick spacing cycler (`↕`).
-  * **Pinch‑to‑Zoom Font Scaling (Mobile)**: Two‑finger pinch gestures adjust the font size between 12 px – 36 px, displaying a transient HUD pill with the current size.
-  * **Typography & Reading Modes**: 1-click column width presets (**Narrow** / **Normal** / **Wide** — defaulting to **Wide** `1024px`) and reading mode switching (**Page** / **Scroll**).
-* **Dynamic Literary Passages & Quotes ("Words That Shaped Humanity")**: Rotating showcase of iconic classic quotes with classical first-line editorial indentation, interactive shuffle discovery, and bottom-aligned author citations and read prompts across all cards.
-* **Zero-Copyright Download Hub & Canonical Fallback Engine**: Multi-format downloads (direct EPUB, Kindle/MOBI, clean UTF-8 plain text, and web-ready HTML) backed by Project Gutenberg permanent canonical URLs, guaranteeing 100% download availability across the Catalog, Bookshelf, and Favorites.
-* **Native IndexedDB Offline Book Storage Engine**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download individual books or entire bookshelf collections for instant offline reading with a single click and clear with confirmation safety.
-* **Auto-Healing Personal Bookshelf & Cross-Device Favorites Sync**: Curated collections, reading queue, reading history, and favorited titles synchronized across devices via Supabase PostgreSQL and Row Level Security (RLS), with automatic local-to-cloud migration on login and database uniqueness guards.
-* **Tombstone-Driven Cloud Synchronization & Anti-Ghost Deletion**: Persistent deletion tombstones (`deletedBookIds`) recorded in `useBookshelfStore` ensuring volumes removed from a user's collection on one device are reliably pruned from remote Supabase cloud storage upon sync rather than resurrected by multi-device race conditions.
-* **Bi-Directional Cloud Reading Progress & Cross-Device Auto-Resume**: 2000ms debounced upsert to Supabase `public.reading_progress` table with Row-Level Security, automatically restoring the most recent chapter, virtual page, and scroll coordinates across devices via `useReaderSession` with zero overhead or network requests for guest readers.
-* **Persistent Web Worker Lifecycle & Selection-Safe Gestures**: Single-instance Web Worker retained across typography, line-height, and font adjustments (`useGutenbergParserWorker`) avoiding worker churn and thread lag, paired with touch selection conflict suppression (`useReaderGestures`) that prevents accidental swipe navigation while highlighting text or interacting with popovers.
-* **Personal 1–5 Star Book Ratings & Reading Status Management**:
-  * Tactile 5-star rating system (`StarRating.tsx`) with hover-preview, active selection, accessible clear rating toggle (`×`), and zero layout shifts.
-  * 3-tier reading status classification (**Want to Read**, **Currently Reading**, **Finished**) with active selection rings and single-click removal.
-  * Responsive dual-mode presentation:
-    * **Desktop** ($\ge 1024\text{px}$): Integrated into the floating 3D hardcover preview toolbar (`BookPreviewModal`) rendered on a solid theme-consistent card surface (`bg-card`) with outside-click backdrop dismissal and isolated interactive controls.
-    * **Mobile & Narrow Displays** ($< 1024\text{px}$): Touch-optimized modal sheet (`BookshelfMobileModal`) triggered directly when tapping covers or ratings in Favorites (`activeView === 'favorites'`) or Bookshelf, providing phone/tablet rating ergonomics without impacting 1-tap catalog reading, with originating book cards remaining 100% visible beneath the sheet and highlighted with an active primary accent ring.
-  * 100% offline-first via Zustand `useBookshelfStore`, synchronized with Supabase PostgreSQL (`public.user_book_curation`) using Row Level Security.
-* **Pure Domain Library Portability & Full Data Sovereignty**:
-  * Single-click portable JSON backup and RFC 4180-compliant CSV spreadsheet catalog export (`src/lib/library-backup.ts`) capturing volumes, shelves, bookmarks, ratings, reading statuses, and literary annotations.
-  * Defensive schema validation (`validateLibraryBackup`) and dual-strategy restore (**Merge with Existing Library** preserving current collections, or **Replace Entire Library** for clean snapshot restores) with live preview badges, destructive action safeguards, and automatic cloud sync.
-### 🌐 Supported Languages, On-Demand AI Translation & Neural Read-Aloud
+Bookarium delivers an archival-grade, high-performance reading environment organized across four foundational pillars:
 
-Bookarium provides a comprehensive, multi-tiered language ecosystem designed for both authentic public domain archive discovery and universal accessibility:
+### 1. 🎨 Tactile Editorial Design & 3D Book Physics
+* **Booksaw Editorial Aesthetic**: Classical typography inspired by fine art bookstore catalogues, featuring open-book card spreads with center spine creases, realistic paper shadows, and 100% solid non-transparent surfaces across Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) themes.
+* **Hourly Rotating 3D Featured Book**: Curated pool of iconic public domain classics rotated every UTC hour with zero-cron deterministic synchronization.
+  * **Interactive Open-Cover Physics**: On desktop hover, the hardbound volume smoothly elevates and opens 180° on its spine hinge, displaying opening reflections on the Left Page and notable excerpts on the Right Page. Clicking pins the volume open or closed.
+  * **Physical 60–120 FPS Page Turn**: Shuffling passages flips a physical 3D leaf across the spine with synchronized ink reveals.
+* **Interactive 3D Book Preview Modal**: Clicking or tapping any book card cover launches a 3D hardcover preview modal with fluid FLIP geometry transitions, subpixel return landing, chapter shuffling, and 1-click reader handoff.
+* **Studio Bookshelf Bookcase**: Hardwood shelf alcove with 8 authentic spine binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), convex specular curvature, gilded lettering, and pull-forward hover scaling.
+* **Directional Stepped Scroll Navigation**: Dynamic scroll detection (`useScrollDirection`) smoothly hides the top header on scroll down, docks the catalog filter toolbar to `top-0`, and instantly reveals navigation on upward scroll gestures. Configurable in Account Settings between **Smart Auto-Hide** and **Always Fixed**.
+* **Responsive Filter Drawer & Push-Content Layout**: Persistent left-docked drawer on desktop & ultrawide viewports (≥ 1280px / `xl:`) shifting main content to the right (`xl:pl-96`) for non-blocking catalog browsing; smoothly adapts to a focused slide-out overlay with soft backdrop blur (`backdrop-blur-xs`) on laptops, vertical monitors, and mobile devices—guaranteeing 100% unclipped facet typography with zero text truncation.
+* **Streamlined Single-Row Sticky Catalog Toolbar**: Ultra-compact ~44px mobile toolbar unifying search filter triggers, real-time API health status, view mode toggling (Grid vs. Spine Shelf), and deep-archive pagination in a single horizontal row, maximizing vertical screen real estate for book covers.
 
-#### 1. Catalog & Archive Filtering (12 Primary Languages)
-The catalog can be filtered by the following primary language options (ISO‑639‑1 codes used by the API):
-- `en` – English
-- `fr` – French (Français)
-- `de` – German (Deutsch)
-- `es` – Spanish (Español)
-- `it` – Italian (Italiano)
-- `la` – Latin (Lingua Latina)
-- `el` – Greek (Ancient & Modern)
-- `pt` – Portuguese (Português)
-- `nl` – Dutch (Nederlands)
-- `ru` – Russian (Русский)
-- `zh` – Chinese (中文)
-- `ro` – Romanian (Română)
+### 2. 📖 Dedicated Focus Reader & Typography Engine
+* **Unabridged Reading Canvas (`/read/[id]`)**: Full-screen, distraction-free reading with exact chapter and page coordinate auto-resume toasts and 1-click restart option.
+* **Gutenberg Paragraph Reflow Engine**: Normalizes legacy 70-character hard linebreaks into fluid prose across Narrow (`576px`), Normal (`768px`), and Wide (`1024px`) layouts while preserving double-spaced paragraphs, dialogue, and indented poetry.
+* **Granular Typography Popover (`Aa`)**: Real-time font sizing (12px–36px) and dynamic line height (1.2–2.6) with 1-click presets (`14px / 18px / 24px` and `1.4 / 1.8 / 2.2`), font family selection (Serif, Sans, Mono), and reading mode toggling (Paginated / Scroll).
+* **Mobile Pinch-to-Zoom Scaling**: Two-finger pinch gestures adjust font sizing with a transient HUD size badge.
+* **Global Sentence-Snapped Virtual Pagination**: Virtual page engine with a 500-entry memory LRU cache for instant sub-millisecond virtual page turns without redundant calculation.
+* **Integrated Reading Drawers**:
+  * **Table of Contents (`ReaderTocDrawer`)**: Instant chapter navigation with live start-page badges, read-time estimates, and front-matter anthology story detection.
+  * **In-Book Search (`ReaderSearchDrawer`)**: Real-time regex scanner across the unabridged volume with highlighted matches (`<mark>`), chapter grouping, match counters, and keyboard shortcut invocation (`Ctrl+F` / `/`).
+  * **Language Editions (`ReaderLanguageDrawer`)**: Discovers authentic foreign language Gutenberg editions and translations with 1-click reading handoff.
+* **Persistent Web Worker Lifecycle**: Single long-lived Web Worker (`useGutenbergParserWorker`) retained across typography tweaks, eliminating UI thread lag with non-blocking async fallback.
 
-> **How it works** – Selecting a language via the unified `<LanguageSelector />` component (available on both the main Hero search bar and the sidebar filter drawer) adds a `languages=<code>` query parameter that flows through `useBooks` → `/api/books` → Gutendex API, returning only public domain books in the chosen language. Inside the reader, the **Language Drawer** also discovers all authentic Project Gutenberg foreign editions and translations for the current title.
+### 3. 🌐 Universal Languages, AI Translation & Neural Narration
+* **Catalog & Archive Filtering (12 Primary Languages)**: Full catalog search and facet filtering across English, French, German, Spanish, Italian, Latin, Ancient & Modern Greek, Portuguese, Dutch, Russian, Chinese, and Romanian via the unified `<LanguageSelector />`.
+* **On-Demand Dynamic AI Translation (40+ Languages)**: In-reader on-the-fly translation via a zero-key serverless Google Neural Machine Translation proxy (`/api/translate`) featuring 18 popular language quick-chips.
+  * **Offline Page-Level Caching**: Every translated page is automatically cached in browser storage for instant zero-latency transitions on re-read.
+  * **Bilingual Parallel Reading Mode**: Displays translated paragraphs side-by-side with original authentic sentences for comparative study and language learning.
+* **Synchronized Neural Voice Read-Aloud (Text-to-Speech)**: Offline-first narration (`window.speechSynthesis`) with automatic original/translated language-voice pairing, amber visual sentence highlight tracking, speed presets (0.85x–2.0x), sentence navigation, and OS-level MediaSession lockscreen controls.
 
-#### 2. On-Demand Dynamic AI Translation (40+ Languages)
-Inside any public domain volume, readers can translate pages on-the-fly into **40+ world languages** (featuring 18 popular language quick-chips including Spanish, French, German, Italian, Portuguese, Romanian, Dutch, Russian, Japanese, Chinese, Polish, Swedish, and more):
-- **Zero-Key Serverless Architecture**: Powered by a rate-limited Google Neural Machine Translation proxy (`/api/translate`) requiring zero third-party paid API keys or account sign-in.
-- **Offline Page-Level Caching**: Every translated page is automatically cached in `localStorage` per book and page, enabling instant, zero-latency transitions on re-read.
-- **Bilingual Parallel Reading Mode**: Seamlessly toggle between full translation and bilingual parallel view, displaying translated paragraphs alongside authentic original sentence subtitles for comparative study and language learning.
-
-#### 3. Synchronized Neural Voice Read-Aloud (Text-to-Speech)
-- **Automatic Language-Aware Voice Pairing**: The offline-first Web Speech narration engine (`window.speechSynthesis`) automatically detects whether the reader is viewing original text or a translated page, instantly pairing narration with high-definition neural voices native to that language.
-- **Real-Time Visual Sentence Highlighting**: As narration plays, each active sentence is highlighted with an amber glow on `ReaderSurface`, synchronizing visual reading and audio narration.
-- **Full Media Session & Audio Controls**: Offers speed presets (0.85x–2.0x), sentence navigation (Skip Prev / Next), and OS-level MediaSession integration for lock screen and Bluetooth headphone controls.
-#### 4. Transparent Privacy & Global Data Sovereignty (`/privacy`)
-- **Zero-Tracking Architecture**: Engineered with zero Google Analytics, zero Meta Pixels, zero advertising beacons, and zero commercial tracking dossiers.
-- **ePrivacy Directive Art. 5(3) Exemption**: Omits intrusive cookie pop-up banners because Bookarium sets no non-essential cookies. The only cookie used is the strictly necessary Supabase authentication session token (`sb-*-auth-token`) when a user explicitly signs in.
-- **Local-First Storage**: Reading progress, themes, font settings, and downloaded books are saved locally in browser `localStorage` and `IndexedDB`.
-- **Global Compliance & Self-Service Erasure**: Fully compliant with GDPR (Articles 15–20), California CCPA/CPRA ("Do Not Sell or Share My Personal Information"), COPPA (under-13 protections), and UK GDPR, featuring instant self-service account deletion and data wiping in User Settings (`/account`).
+### 4. ⚡ Offline-First Persistence, Cloud Sync & Data Sovereignty
+* **Clean Path URL & Symmetric SSR Hydration Architecture**: Canonical routes (`/`, `/bookshelf`, `/favorites`, `/notebook`, `/bookmarks`) powered by Next.js server rewrites, client history synchronization, and symmetric `parseFiltersFromUrl` query parsing—guaranteeing identical server-rendered HTML and client hydration on deep paginated URLs (e.g. `?page=8`) with zero layout shift and 0 CLS.
+* **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: Dedicated reading ledger tracking active volumes with tactile bookmark cards, ribbon accents, live progress percentages, last-read coordinates, status filters (All, In Progress, Completed, On Hold), and 1-click chapter resume.
+  * **Authentic Reading Telemetry**: Strictly enrolls volumes with active coordinates or progress, eliminating unopened placeholder clutter.
+  * **Two-Way Dynamic Hydration**: Resolves un-shelved book identities via TanStack React Query and automatically pre-seeds warm reader state for instant 0ms transitions.
+* **In-Reader Highlighting & Literary Commonplace Notebook (`/notebook`)**:
+  * 4 editorial pastel highlighters (Canary Yellow, Vintage Amber, Calm Mint, Soft Rose) with coarse-pointer touch dismissal and chapter-scoped annotation drawer.
+  * Comprehensive reading journal organizing highlighted excerpts, personal reflections, pastel color filters, full-text search, volume grouping, and 1-click academic citation copying.
+* **Native IndexedDB Offline Book Storage**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading in airplane mode.
+* **Auto-Healing Cloud Sync & Deletion Tombstones**: Optional Supabase PostgreSQL cloud sync with Row Level Security (RLS). Persistent deletion tombstones (`deletedBookIds`) prevent zombie volumes from resurrecting during cross-device synchronization.
+* **Bi-Directional Cloud Reading Progress**: 2000ms debounced upsert to `public.reading_progress`, restoring chapter and scroll coordinates across devices for authenticated accounts while remaining 0ms/zero-network for guest readers.
+* **Full Data Sovereignty & Portability**: Single-click RFC 4180 CSV export and portable JSON backup (`src/lib/library-backup.ts`) with defensive schema validation and merge/replace restore strategies.
+* **Zero-Tracking Privacy Architecture (`/privacy`)**: Zero third-party trackers, zero advertising beacons, cookie-less operation (Art. 5(3) exempt), and self-service account data deletion in User Settings (`/account`).
 
 ---
 
@@ -229,9 +137,9 @@ flowchart TD
         Account["Account & Reading Preferences (src/app/account/page.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• favoriteBookIds: []\n• recentBooks: []\n• cloudBookshelves: []\n• deletedBookIds: [] (Tombstones)\n• bookRatings: {}\n• readingStatuses: {}")]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• favoriteBookIds: []\n• recentBooks: []\n• cloudBookshelves: []\n• deletedBookIds: [] (Tombstones)\n• bookRatings: {}\n• bookStatuses: {}")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• theme (light/dark/sepia)\n• readingPositions: {}\n• progress: {}\n• syncReadingProgressToCloud()")]
+        StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• theme (light/dark/sepia)\n• readingPositions: {}\n• readingProgress: {}\n• syncReadingPositionToCloud()")]
         StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
         
         ScrollHook["📜 useScrollDirection\n(3-State Gesture Stepping)"]
@@ -352,9 +260,7 @@ flowchart LR
     end
 
     subgraph Persistence ["Browser LocalStorage & Supabase Cloud"]
-        LSState[("bookarium-reader-preferences")]
-        LSProgress[("bookarium-progress-map")]
-        LSPositions[("bookarium-reading-positions")]
+        LSPrefs[("bookarium-reader-preferences\n(theme, font, spacing, readingProgress, readingPositions)")]
         CloudProgress[("⚡ Supabase Cloud\npublic.reading_progress\n(2s Debounced Sync & Restore)")]
     end
 
@@ -368,9 +274,7 @@ flowchart LR
     SearchDrawer -->|"Jump to Match (p. X)"| ReaderState
     LangDrawer -->|"Switch Translation"| ReaderState
     Controls -->|"Tweak Settings"| ReaderState
-    ReaderState <--> LSState
-    ReaderState <--> LSProgress
-    ReaderState <--> LSPositions
+    ReaderState <--> LSPrefs
     ReaderState <-->|"Authenticated"| CloudProgress
 ```
 
@@ -453,187 +357,20 @@ Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-devi
 
 ### Step 2: Run Database Schema Script
 1. In your Supabase Dashboard, open the **SQL Editor** from the left sidebar.
-2. Click **New Query** and copy the contents of [`supabase/schema.sql`](supabase/schema.sql):
+2. Click **New Query**, copy and paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**.
+3. The script is **100% idempotent** and safely provisions all database tables, Row Level Security (RLS) policies, indexes, and triggers:
 
-```sql
--- 1. Profiles Table
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  display_name TEXT,
-  preferred_theme TEXT DEFAULT 'light',
-  font_size INTEGER DEFAULT 18,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
-CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
-DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
-CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
-CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-DROP POLICY IF EXISTS "Users can delete their own profile" ON public.profiles;
-CREATE POLICY "Users can delete their own profile" ON public.profiles FOR DELETE USING (auth.uid() = id);
-
--- 2. Bookshelves Table (Master 'General' + Custom Shelves)
-CREATE TABLE IF NOT EXISTS public.bookshelves (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  is_default BOOLEAN NOT NULL DEFAULT false,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE UNIQUE INDEX IF NOT EXISTS unique_user_default_bookshelf ON public.bookshelves(user_id) WHERE is_default = true;
-CREATE UNIQUE INDEX IF NOT EXISTS unique_user_shelf_name ON public.bookshelves(user_id, lower(trim(name)));
-ALTER TABLE public.bookshelves ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can view their own bookshelves" ON public.bookshelves;
-CREATE POLICY "Users can view their own bookshelves" ON public.bookshelves FOR SELECT USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can insert their own bookshelves" ON public.bookshelves;
-CREATE POLICY "Users can insert their own bookshelves" ON public.bookshelves FOR INSERT WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can update their own bookshelves" ON public.bookshelves;
-CREATE POLICY "Users can update their own bookshelves" ON public.bookshelves FOR UPDATE USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can delete their own bookshelves" ON public.bookshelves;
-CREATE POLICY "Users can delete their own bookshelves" ON public.bookshelves FOR DELETE USING (auth.uid() = user_id);
-
--- 3. Bookshelf Items Table
-CREATE TABLE IF NOT EXISTS public.bookshelf_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  bookshelf_id UUID NOT NULL REFERENCES public.bookshelves(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  book_id INTEGER NOT NULL,
-  book_title TEXT NOT NULL,
-  book_authors TEXT[] NOT NULL DEFAULT '{}',
-  cover_url TEXT,
-  added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(bookshelf_id, book_id)
-);
-ALTER TABLE public.bookshelf_items ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can view their own bookshelf items" ON public.bookshelf_items;
-CREATE POLICY "Users can view their own bookshelf items" ON public.bookshelf_items FOR SELECT USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can insert their own bookshelf items" ON public.bookshelf_items;
-CREATE POLICY "Users can insert their own bookshelf items" ON public.bookshelf_items FOR INSERT WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can update their own bookshelf items" ON public.bookshelf_items;
-CREATE POLICY "Users can update their own bookshelf items" ON public.bookshelf_items FOR UPDATE USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can delete their own bookshelf items" ON public.bookshelf_items;
-CREATE POLICY "Users can delete their own bookshelf items" ON public.bookshelf_items FOR DELETE USING (auth.uid() = user_id);
-
--- 4. User Favorites Table (Cross-Device Favorites Sync)
-CREATE TABLE IF NOT EXISTS public.user_favorites (
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  book_id INTEGER NOT NULL,
-  book_title TEXT NOT NULL,
-  book_authors TEXT[] NOT NULL DEFAULT '{}',
-  cover_url TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, book_id)
-);
-ALTER TABLE public.user_favorites ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can view their own favorites" ON public.user_favorites;
-CREATE POLICY "Users can view their own favorites" ON public.user_favorites FOR SELECT USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can insert their own favorites" ON public.user_favorites;
-CREATE POLICY "Users can insert their own favorites" ON public.user_favorites FOR INSERT WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can delete their own favorites" ON public.user_favorites;
-CREATE POLICY "Users can delete their own favorites" ON public.user_favorites FOR DELETE USING (auth.uid() = user_id);
-
--- 5. Reading Progress Table
-CREATE TABLE IF NOT EXISTS public.reading_progress (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  book_id INTEGER NOT NULL,
-  current_chapter_index INTEGER NOT NULL DEFAULT 0,
-  progress_percent NUMERIC NOT NULL DEFAULT 0,
-  scroll_offset NUMERIC NOT NULL DEFAULT 0,
-  last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(user_id, book_id)
-);
-ALTER TABLE public.reading_progress ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can view their own reading progress" ON public.reading_progress;
-CREATE POLICY "Users can view their own reading progress" ON public.reading_progress FOR SELECT USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can insert their own reading progress" ON public.reading_progress;
-CREATE POLICY "Users can insert their own reading progress" ON public.reading_progress FOR INSERT WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can update their own reading progress" ON public.reading_progress;
-CREATE POLICY "Users can update their own reading progress" ON public.reading_progress FOR UPDATE USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can delete their own reading progress" ON public.reading_progress;
-CREATE POLICY "Users can delete their own reading progress" ON public.reading_progress FOR DELETE USING (auth.uid() = user_id);
-
--- 6. User Annotations Table (Highlights & Scholarly Notes)
-CREATE TABLE IF NOT EXISTS public.user_annotations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  book_id INTEGER NOT NULL,
-  chapter_index INTEGER NOT NULL,
-  chapter_page INTEGER NOT NULL,
-  selected_text TEXT NOT NULL,
-  color TEXT NOT NULL CHECK (color IN ('yellow', 'amber', 'mint', 'rose')),
-  note TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
-);
-ALTER TABLE public.user_annotations ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can view their own annotations" ON public.user_annotations;
-CREATE POLICY "Users can view their own annotations" ON public.user_annotations FOR SELECT TO authenticated USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can insert their own annotations" ON public.user_annotations;
-CREATE POLICY "Users can insert their own annotations" ON public.user_annotations FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can update their own annotations" ON public.user_annotations;
-CREATE POLICY "Users can update their own annotations" ON public.user_annotations FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can delete their own annotations" ON public.user_annotations;
-CREATE POLICY "Users can delete their own annotations" ON public.user_annotations FOR DELETE TO authenticated USING (auth.uid() = user_id);
-CREATE INDEX IF NOT EXISTS idx_user_annotations_user_book ON public.user_annotations(user_id, book_id);
-
--- 7. User Book Curation Table (Personal 1-5 Star Ratings & Reading Statuses)
-CREATE TABLE IF NOT EXISTS public.user_book_curation (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  book_id INTEGER NOT NULL,
-  rating SMALLINT CHECK (rating >= 1 AND rating <= 5),
-  reading_status TEXT CHECK (reading_status IN ('want_to_read', 'currently_reading', 'finished')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-  UNIQUE(user_id, book_id)
-);
-ALTER TABLE public.user_book_curation ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can view their own book curation" ON public.user_book_curation;
-CREATE POLICY "Users can view their own book curation" ON public.user_book_curation FOR SELECT TO authenticated USING (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can insert their own book curation" ON public.user_book_curation;
-CREATE POLICY "Users can insert their own book curation" ON public.user_book_curation FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can update their own book curation" ON public.user_book_curation;
-CREATE POLICY "Users can update their own book curation" ON public.user_book_curation FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-DROP POLICY IF EXISTS "Users can delete their own book curation" ON public.user_book_curation;
-CREATE POLICY "Users can delete their own book curation" ON public.user_book_curation FOR DELETE TO authenticated USING (auth.uid() = user_id);
-CREATE INDEX IF NOT EXISTS idx_user_book_curation_user_book ON public.user_book_curation(user_id, book_id);
-
--- 8. Auto-Provisioning User Trigger (Profile + Default General Shelf)
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, display_name, preferred_theme)
-  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'display_name', 'Reader'), 'light')
-  ON CONFLICT (id) DO NOTHING;
-
-  INSERT INTO public.bookshelves (user_id, name, is_default)
-  VALUES (NEW.id, 'General', true)
-  ON CONFLICT DO NOTHING;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- 9. RPC Function: Delete Current User Account
-CREATE OR REPLACE FUNCTION public.delete_current_user()
-RETURNS VOID AS $$
-BEGIN
-  DELETE FROM auth.users WHERE id = auth.uid();
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
-
-3. Click **Run** to execute the script. This provisions all tables, enables strict Row Level Security (RLS), registers automatic profile creation triggers, and installs the self-account deletion RPC.
+| Database Object | Type | Purpose & Security Governance |
+|---|---|---|
+| `public.profiles` | Table (RLS) | User display name, preferred theme, and typography preferences (auto-created on signup) |
+| `public.bookshelves` | Table (RLS) | Master default 'General' shelf and custom user-created collection shelves |
+| `public.bookshelf_items` | Table (RLS) | Volumes filed in specific bookshelves with uniqueness constraints |
+| `public.user_favorites` | Table (RLS) | Cross-device synchronized favorited titles |
+| `public.reading_progress` | Table (RLS) | Chapter coordinates, progress %, scroll offset, and cached volume metadata |
+| `public.user_annotations` | Table (RLS) | Passage highlights (yellow, amber, mint, rose) and personal scholarly notes |
+| `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status classification |
+| `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation |
+| `public.delete_current_user()` | RPC Function | Cascade user data erasure and complete self-service account deletion |
 
 ### Step 3: Configure Authentication Redirect URLs
 1. In your Supabase Dashboard, navigate to **Authentication $\to$ URL Configuration**.
@@ -684,7 +421,7 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 |---|---|---|
 | **Sliding-Window Rate Limiting** | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) | Zero-dependency in-memory sliding-window rate limiter protecting upstream Project Gutenberg APIs (60 req/min on `/api/books`, 30 req/min on `/api/books/content`) with automatic 30s garbage collection, `X-RateLimit-*` headers, and `429 Too Many Requests` status with `Retry-After`. |
 | **HTTP Security Headers** | [`next.config.ts`](next.config.ts) | Enforces HSTS (`max-age=63072000; includeSubDomains; preload`), Clickjacking defense (`X-Frame-Options: SAMEORIGIN`), MIME-type sniffing prevention (`X-Content-Type-Options: nosniff`), Referrer Policy (`strict-origin-when-cross-origin`), and Permissions Policy (`camera=(), microphone=(), geolocation=()`). |
-| **SSRF & Path Traversal Immunity** | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) | Upstream URL whitelisting (`isSafeUpstreamUrl`) restricting fetches strictly to official Project Gutenberg domains (`gutenberg.org`, `aleph.gutenberg.org`, `ibiblio.org`), strict numeric ID regex verification (`^\d{1,8}$`), and `redirect: 'manual'` preventing open redirect hops. |
+| **SSRF & Path Traversal Immunity** | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) | Upstream URL whitelisting (`isSafeUpstreamUrl`) restricting fetches strictly to official Project Gutenberg domains (`gutenberg.org`, `www.gutenberg.org`), strict numeric ID regex verification (`^\d{1,8}$`), and `redirect: 'manual'` preventing open redirect hops. |
 | **Open Redirect Defense** | [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) | Path sanitization (`sanitizeRedirectPath`) guaranteeing OAuth and magic-link redirect paths strictly originate from trusted relative roots (`/^\/[^\/\\]/`) preventing off-site phishing redirects. |
 | **ReDoS & Main Thread Protection** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | Non-backtracking regular expressions (`[^\n]{0,80}`) and bounded passage analysis window (capped at 120,000 characters) eliminating regular expression denial of service (ReDoS) and event loop freezing on massive multi-megabyte classical tomes. |
 | **LRU Pagination Memory Cache** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | 500-entry memory cache (`Map<string, string[]>`) for paginated chapter views, delivering instant sub-millisecond virtual page turns with zero redundant recalculation. |
@@ -741,7 +478,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 927 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 933 tests across 120 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |

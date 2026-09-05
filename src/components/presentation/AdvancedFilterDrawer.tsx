@@ -62,21 +62,21 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
 
   return (
     <div
-      className="fixed top-0 lg:top-16 inset-y-0 left-0 z-50 lg:z-30 flex justify-start animate-in fade-in duration-200 pointer-events-none"
+      className="fixed top-0 xl:top-16 inset-y-0 left-0 z-50 xl:z-30 flex justify-start animate-in fade-in duration-200 pointer-events-none"
       role="dialog"
       aria-modal="true"
       aria-labelledby="advanced-filter-title"
       data-testid="advanced-filter-drawer"
     >
-      {/* Click-outside transparent backdrop on mobile / tablet */}
+      {/* Click-outside blurred backdrop on mobile, tablet & laptop (< xl) */}
       <div
-        className="fixed inset-0 bg-transparent pointer-events-auto lg:hidden"
+        className="fixed inset-0 bg-black/40 backdrop-blur-xs pointer-events-auto xl:hidden transition-opacity"
         onClick={onClose}
         aria-hidden="true"
         data-testid="filter-backdrop"
       />
 
-      <div className="relative w-full max-w-sm sm:max-w-md lg:w-96 h-full lg:h-[calc(100vh-4rem)] bg-background text-foreground flex flex-col justify-between shadow-2xl border-r border-border animate-in slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
+      <div className="relative w-full max-w-sm sm:max-w-md xl:w-96 h-full xl:h-[calc(100vh-4rem)] bg-background text-foreground flex flex-col justify-between shadow-2xl border-r border-border animate-in slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
         
         {/* Drawer Header */}
         <div className="p-6 border-b border-border flex items-center justify-between bg-background">

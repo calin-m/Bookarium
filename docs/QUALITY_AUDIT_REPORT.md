@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 05 Sep 2026 11:47:11 GMT  
+**Last Generated**: Sat, 05 Sep 2026 13:13:45 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 120 passed  
-**Total Verified Tests**: 927 passed  
+**Total Verified Tests**: 933 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (927 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (933 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 14 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.22%** (4943/5360) — *Target: $ge$ 80%*
-- **Statements**: **90.4%** (5392/5964) — *Target: $ge$ 80%*
-- **Functions**: **88.37%** (1254/1419) — *Target: $ge$ 80%*
-- **Branches**: **80.27%** (4624/5760) — *Target: $ge$ 80%*
+- **Lines**: **92.12%** (4947/5370) — *Target: $ge$ 80%*
+- **Statements**: **90.34%** (5398/5975) — *Target: $ge$ 80%*
+- **Functions**: **88.38%** (1255/1420) — *Target: $ge$ 80%*
+- **Branches**: **80.42%** (4621/5746) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (120 Suites / 927 Tests)
+## 🧪 Comprehensive Test Suite Catalog (120 Suites / 933 Tests)
 
 ### 🚀 App Routes & Pages (10 Suites · 82 Tests)
 
@@ -178,7 +178,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (20 Suites · 201 Tests)
+### 🎨 Catalog & Presentation (20 Suites · 203 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -430,7 +430,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (20 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -452,6 +452,7 @@
 - ✔ `renders active Sign In button styling for guests when activeView is account`
 - ✔ `renders GitHub repository link with target _blank on the header`
 - ✔ `renders dynamic active view masthead subtitle with section theme color and responsive classes`
+- ✔ `applies hidden and lg:inline responsive classes to navigation and action text labels`
 
 </details>
 
@@ -488,7 +489,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and 2-part API status badge`
 - ✔ `should handle page size selection`
@@ -498,6 +499,7 @@
 - ✔ `should display error indicator in status badge when isError is true`
 - ✔ `applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false`
 - ✔ `applies -translate-y-[calc(100%+4rem)] and pointer-events-none when isVisible is false`
+- ✔ `renders archive fetching badge when isFetching is true`
 
 </details>
 
@@ -1120,7 +1122,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (18 Suites · 138 Tests)
+### 🔄 Hooks & React Query (18 Suites · 142 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
@@ -1300,7 +1302,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -1313,6 +1315,10 @@
 - ✔ `preserves backward compatibility by hydrating from legacy query param view=bookshelf`
 - ✔ `preserves backward compatibility with legacy view=notebook and view=bookmarks`
 - ✔ `preserves backward compatibility with legacy view=favorites and view=likes`
+- ✔ `parses page from searchParams in SSR and client environments`
+- ✔ `handles empty parameters with safe defaults`
+- ✔ `sanitizes invalid page numbers to default page 1`
+- ✔ `correctly maps route pathname to view mode`
 
 </details>
 

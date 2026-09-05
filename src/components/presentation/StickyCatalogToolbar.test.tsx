@@ -195,4 +195,44 @@ describe('StickyCatalogToolbar component', () => {
     expect(toolbar).toHaveClass('-translate-y-[calc(100%+4rem)]');
     expect(toolbar).toHaveClass('pointer-events-none');
   });
+
+  it('renders archive fetching badge when isFetching is true', () => {
+    const { rerender } = render(
+      <StickyCatalogToolbar
+        page={8}
+        onPageChange={vi.fn()}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        isFetching={true}
+      />
+    );
+
+    const badge = screen.getByTestId('archive-fetching-badge');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('Fetching Pg 8...');
+    expect(screen.getByRole('status')).toHaveAttribute(
+      'aria-label',
+      'Fetching page 8 from archive. Hover or click for details.'
+    );
+
+    rerender(
+      <StickyCatalogToolbar
+        page={8}
+        onPageChange={vi.fn()}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        isFetching={false}
+      />
+    );
+
+    expect(screen.queryByTestId('archive-fetching-badge')).not.toBeInTheDocument();
+  });
 });

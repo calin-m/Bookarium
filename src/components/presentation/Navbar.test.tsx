@@ -215,7 +215,7 @@ describe('Navbar component', () => {
     let subtitle = screen.getByTestId('navbar-active-view-subtitle');
     expect(subtitle).toBeInTheDocument();
     expect(subtitle).toHaveTextContent('Catalog');
-    expect(subtitle).toHaveClass('text-primary', 'md:hidden', 'min-[375px]:inline');
+    expect(subtitle).toHaveClass('text-primary', 'lg:hidden', 'min-[375px]:inline');
 
     rerender(<Navbar activeView="favorites" />);
     subtitle = screen.getByTestId('navbar-active-view-subtitle');
@@ -236,6 +236,27 @@ describe('Navbar component', () => {
     subtitle = screen.getByTestId('navbar-active-view-subtitle');
     expect(subtitle).toHaveTextContent('Account');
     expect(subtitle).toHaveClass('text-primary');
+  });
+
+  it('applies hidden and lg:inline responsive classes to navigation and action text labels', () => {
+    render(<Navbar activeView="catalog" />);
+    const catalogBtn = screen.getByRole('button', { name: 'Catalog' });
+    expect(catalogBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
+
+    const bookshelfBtn = screen.getByRole('button', { name: 'Bookshelf' });
+    expect(bookshelfBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
+
+    const favoritesBtn = screen.getByRole('button', { name: 'Favorites' });
+    expect(favoritesBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
+
+    const notebookBtn = screen.getByRole('button', { name: 'Notebook' });
+    expect(notebookBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
+
+    const bookmarksBtn = screen.getByRole('button', { name: 'Bookmarks' });
+    expect(bookmarksBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
+
+    const signInBtn = screen.getByRole('button', { name: /Sign In/i });
+    expect(signInBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
   });
 });
 
