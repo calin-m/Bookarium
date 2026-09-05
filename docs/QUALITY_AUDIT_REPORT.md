@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 05 Sep 2026 20:00:50 GMT  
+**Last Generated**: Sat, 05 Sep 2026 21:40:09 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 125 passed  
-**Total Verified Tests**: 968 passed  
+**Total Verified Tests**: 971 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (968 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (971 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 24 Architectural Decision Records validated |
@@ -32,7 +32,7 @@
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (125 Suites / 968 Tests)
+## 🧪 Comprehensive Test Suite Catalog (125 Suites / 971 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 96 Tests)
 
@@ -527,7 +527,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (15 Suites · 117 Tests)
+### 📖 In-Browser Focus Reader (15 Suites · 120 Tests)
 
 <details>
 <summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
@@ -539,7 +539,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders annotations list with quotes and section pills`
 - ✔ `renders empty state when there are no annotations`
@@ -550,6 +550,7 @@
 - ✔ `shows confirmation modal and calls onDeleteAnnotation when confirmed`
 - ✔ `cancels deletion when clicking cancel in modal`
 - ✔ `translates vertical wheel scroll to horizontal scroll on color filter tags`
+- ✔ `renders a vertically scrollable list container with sticky non-compressible controls`
 
 </details>
 
@@ -567,13 +568,15 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders children when open`
 - ✔ `does not render when isOpen is false`
 - ✔ `calls onClose when close button is clicked`
 - ✔ `calls onClose when clicking the backdrop`
 - ✔ `calls onClose when pressing Escape key`
+- ✔ `applies min-h-0 and overflow-hidden to the panel by default`
+- ✔ `allows custom className to override overflow using cn/twMerge`
 
 </details>
 
