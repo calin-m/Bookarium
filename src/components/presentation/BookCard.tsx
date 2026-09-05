@@ -105,8 +105,10 @@ export const BookCard: React.FC<BookCardProps> = ({
     <Card
       ref={cardRef}
       variant="default"
-      className={`group relative flex flex-col h-full bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover rounded-xl overflow-hidden transition-[box-shadow,border-color,opacity] duration-300 ease-out ${
-        isPreviewActive ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      className={`group relative flex flex-col h-full bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover rounded-xl overflow-hidden transition-[box-shadow,border-color,opacity,ring] duration-300 ease-out ${
+        isPreviewActive
+          ? 'max-lg:opacity-100 max-lg:ring-2 max-lg:ring-primary/60 max-lg:border-primary/60 lg:opacity-0 lg:pointer-events-none'
+          : 'opacity-100'
       }`}
       data-testid={`book-card-${book.id}`}
     >

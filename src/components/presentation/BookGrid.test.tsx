@@ -77,11 +77,12 @@ describe('BookGrid component', () => {
     expect(handlePreview).toHaveBeenCalledWith(mockBooks[0], expect.any(Object));
   });
 
-  it('hides the active preview card when activePreviewBookId matches', () => {
+  it('applies responsive active preview classes when activePreviewBookId matches', () => {
     render(<BookGrid books={mockBooks} activePreviewBookId={mockBooks[0].id} />);
 
     const activeCard = screen.getByTestId(`book-card-${mockBooks[0].id}`);
-    expect(activeCard).toHaveClass('opacity-0');
+    expect(activeCard).toHaveClass('lg:opacity-0');
+    expect(activeCard).toHaveClass('max-lg:ring-2');
   });
 });
 

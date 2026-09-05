@@ -127,11 +127,13 @@ describe('BookCard component', () => {
     }
   });
 
-  it('applies opacity-0 when isPreviewActive is true', () => {
+  it('applies responsive active styling (desktop hide, mobile highlight) when isPreviewActive is true', () => {
     const book = mockBooks[0];
     render(<BookCard book={book} isPreviewActive={true} />);
     const card = screen.getByTestId(`book-card-${book.id}`);
-    expect(card).toHaveClass('opacity-0');
+    expect(card).toHaveClass('lg:opacity-0');
+    expect(card).toHaveClass('max-lg:opacity-100');
+    expect(card).toHaveClass('max-lg:ring-2');
   });
 
   it('should render cursor tooltip on hover when onPreviewClick is provided', () => {

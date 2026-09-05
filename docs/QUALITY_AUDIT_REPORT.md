@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 04 Sep 2026 23:29:12 GMT  
+**Last Generated**: Sat, 05 Sep 2026 08:50:48 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 120 passed  
-**Total Verified Tests**: 915 passed  
+**Total Verified Tests**: 918 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (915 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (918 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 14 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.14%** (4871/5286) — *Target: $ge$ 80%*
-- **Statements**: **90.32%** (5320/5890) — *Target: $ge$ 80%*
-- **Functions**: **88.26%** (1241/1406) — *Target: $ge$ 80%*
-- **Branches**: **80.15%** (4569/5700) — *Target: $ge$ 80%*
+- **Lines**: **92.16%** (4882/5297) — *Target: $ge$ 80%*
+- **Statements**: **90.32%** (5331/5902) — *Target: $ge$ 80%*
+- **Functions**: **88.37%** (1247/1411) — *Target: $ge$ 80%*
+- **Branches**: **80.18%** (4577/5708) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (120 Suites / 915 Tests)
+## 🧪 Comprehensive Test Suite Catalog (120 Suites / 918 Tests)
 
 ### 🚀 App Routes & Pages (10 Suites · 82 Tests)
 
@@ -178,7 +178,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (20 Suites · 197 Tests)
+### 🎨 Catalog & Presentation (20 Suites · 199 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -207,7 +207,7 @@
 - ✔ `should call onPreviewClick when clicking book cover visual on desktop`
 - ✔ `should navigate to /read/[id] on mobile when clicking book cover visual in catalog view`
 - ✔ `should call onPreviewClick on mobile when activeView is favorites`
-- ✔ `applies opacity-0 when isPreviewActive is true`
+- ✔ `applies responsive active styling (desktop hide, mobile highlight) when isPreviewActive is true`
 - ✔ `should render cursor tooltip on hover when onPreviewClick is provided`
 - ✔ `renders fallback cover when image error occurs`
 - ✔ `triggers preview on Enter or Space key press on cover`
@@ -224,7 +224,7 @@
 - ✔ `should render book cards and trigger pagination`
 - ✔ `should switch between editorial grid and bookshelf rack views`
 - ✔ `should forward onPreviewClick to BookCard`
-- ✔ `hides the active preview card when activePreviewBookId matches`
+- ✔ `applies responsive active preview classes when activePreviewBookId matches`
 
 </details>
 
@@ -454,7 +454,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -465,6 +465,8 @@
 - ✔ `filters annotations by pastel color tabs`
 - ✔ `allows toggling between By Book grouping and Chronological stream`
 - ✔ `allows user to edit note inline and cancel or save`
+- ✔ `allows deleting personal reflection via card header with confirmation modal`
+- ✔ `allows deleting personal reflection from within edit mode toolbar`
 - ✔ `allows copying quote with formatted academic citation`
 - ✔ `navigates directly to the reader when clicking Read Passage`
 - ✔ `shows confirmation modal and deletes an individual quote card when confirmed`
@@ -1363,7 +1365,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (33 Suites · 122 Tests)
+### 🧩 UI Primitives & Motion (33 Suites · 123 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
@@ -1446,11 +1448,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders library statistics with links and values including notes and quotes`
 - ✔ `renders default 0 for annotationCount and bookmarksCount when omitted`
 - ✔ `applies theme-tokenized hover border and focus classes on each library card`
+- ✔ `renders all 5 library cards with uniform horizontal flex layout`
 
 </details>
 
