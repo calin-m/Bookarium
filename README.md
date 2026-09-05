@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-125%20Suites%20%7C%20966%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.25%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-125%20Suites%20%7C%20968%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.21%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -41,9 +41,9 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ## 🛠️ Latest Improvements (v1.9.7)
 
 - **Semantic Gutenberg Heading Normalization (`segmentation.ts`)**: Replaced brittle fixed-length string slicing with canonical keyword and numeral extraction (`normalizeHeadingId`), matching single-digit and multi-digit chapter identifiers consistently across front-matter TOCs and body text.
-- **Automated Chapter Subtitle Harvesting (`segmentation.ts`)**: Enriched body chapter display titles (e.g. `Chapter 1: My Uncle Makes a Great Discovery`) by extracting and title-casing subtitles from front-matter TOC listings during the deduplication pass.
+- **Multi-Pattern TOC Subtitle & Body Subtitle Harvesting (`segmentation.ts`)**: Added Roman/Arabic numeral TOC extraction (`I. THE HIRED CAR 1`) and standalone body subtitle heuristics for books without front-matter TOCs or completing wrapped entries (`read/31472`), formatting Roman numerals strictly uppercase in reader navigation.
+- **AST-Driven Gutenberg Parser Living Reference (`docs/GUTENBERG_PARSER.md`)**: Implemented `scripts/generate-parser-docs.js` using Babel AST traversal to compile parser configurations, API contracts, and regex heuristics directly from TypeScript AST, wired into `npm run docs:sync` and Pass 4 of `npm run verify`.
 - **Server-Side Fetch Deduplication & Timeout Hardening (`src/app/read/[id]/layout.tsx`)**: Wrapped reader layout metadata fetching with React `cache()` and an `AbortSignal.timeout(2500)` guard, collapsing redundant server requests into a single call and preventing slow upstream API queries from blocking page transitions.
-- **Dynamic AST-Driven Architecture Engine (Governance Rule 2)**: Implemented `scripts/lib/ast-parser.js` using Babel AST traversal, mathematical DFS cycle detection, and automated discovery of all 57 components, 6 stores, and 17 hooks, eliminating static table hardcoding in `docs/ARCHITECTURE.md`.
 - **Gutenberg Phantom Chapter Leakage (`segmentation.ts`)**: Resolved bug where single-digit chapters in front-matter TOC clusters (Chapters 1–9) failed duplicate detection due to trailing space mismatches in naive `slice(0, 10)`, eliminating 9 empty ghost chapters on Jules Verne's *A Journey to the Centre of the Earth* (`read/18857`) and similar books.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -475,7 +475,7 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 | `npm run typecheck` | Validates TypeScript types across all `.ts`/`.tsx` files |
 | `npm run lint` | Runs ESLint 9 rules and Core Web Vitals checks |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
-| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
+| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 
@@ -508,9 +508,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 966 tests across 125 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 968 tests across 125 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
 | ⚖️ **Architecture Decision Records (ADRs)** | 24 validated ADRs (ADR-001 through ADR-024) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, and 0ms client-navigation fast-paths. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
