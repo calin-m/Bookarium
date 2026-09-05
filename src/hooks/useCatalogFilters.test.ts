@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useCatalogFilters } from './useCatalogFilters';
+import { useCatalogFilters, parseFiltersFromUrl } from './useCatalogFilters';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -186,6 +186,51 @@ describe('useCatalogFilters', () => {
     expect(likesResult.current.activeView).toBe('favorites');
 
     (window as any).location = new URL('http://localhost:3000/');
+  });
+});
+
+describe('parseFiltersFromUrl', () => {
+  it('parses page from searchParams in SSR and client environments', () => {
+    const searchParams = new URLSearchParams('page=8&search=Dante&topic=poetry&sort=ascending&format=epub');
+    const parsed = parseFiltersFromUrl('/catalog', searchParams);
+
+    expect(parsed.page).toBe(8);
+    expect(parsed.search).toBe('Dante');
+    expect(parsed.topic).toBe('poetry');
+    expect(parsed.sort).toBe('ascending');
+    expect(parsed.format).toBe('epub');
+    expect(parsed.view).toBe('catalog');
+  });
+
+  it('handles empty parameters with safe defaults', () => {
+    const searchParams = new URLSearchParams('');
+    const parsed = parseFiltersFromUrl('/', searchParams);
+
+    expect(parsed.page).toBe(1);
+    expect(parsed.search).toBe('');
+    expect(parsed.topic).toBe('');
+    expect(parsed.sort).toBe('popular');
+    expect(parsed.format).toBe('');
+    expect(parsed.view).toBe('catalog');
+  });
+
+  it('sanitizes invalid page numbers to default page 1', () => {
+    const invalidZero = parseFiltersFromUrl('/', new URLSearchParams('page=0'));
+    expect(invalidZero.page).toBe(1);
+
+    const invalidNegative = parseFiltersFromUrl('/', new URLSearchParams('page=-4'));
+    expect(invalidNegative.page).toBe(1);
+
+    const invalidNaN = parseFiltersFromUrl('/', new URLSearchParams('page=invalid'));
+    expect(invalidNaN.page).toBe(1);
+  });
+
+  it('correctly maps route pathname to view mode', () => {
+    expect(parseFiltersFromUrl('/bookshelf', null).view).toBe('bookshelf');
+    expect(parseFiltersFromUrl('/favorites', null).view).toBe('favorites');
+    expect(parseFiltersFromUrl('/notebook', null).view).toBe('notebook');
+    expect(parseFiltersFromUrl('/bookmarks', null).view).toBe('bookmarks');
+    expect(parseFiltersFromUrl('/catalog', null).view).toBe('catalog');
   });
 });
 

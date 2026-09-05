@@ -87,12 +87,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <BookOpen className="w-4 h-4" />
           </div>
           <div className="flex flex-col justify-center min-w-0">
-            <span className="hidden min-[375px]:inline text-xs min-[440px]:text-sm sm:text-base md:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap leading-tight">
+            <span className="hidden min-[375px]:inline text-xs min-[440px]:text-sm sm:text-base lg:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap leading-tight">
               {SITE_CONFIG.LOGO_TEXT}
             </span>
             <span
               data-testid="navbar-active-view-subtitle"
-              className={`hidden min-[375px]:inline md:hidden text-[9px] min-[440px]:text-[10px] font-mono font-bold tracking-widest uppercase leading-none transition-colors ${activeConfig.activeColor}`}
+              className={`hidden min-[375px]:inline lg:hidden text-[9px] min-[440px]:text-[10px] font-mono font-bold tracking-widest uppercase leading-none transition-colors ${activeConfig.activeColor}`}
             >
               {activeConfig.label}
             </span>
@@ -100,14 +100,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Right Navigation & Actions */}
-        <div className="flex items-center gap-0.5 sm:gap-1.5 md:gap-2 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1.5 lg:gap-2 shrink-0">
           {/* Navigation Tabs */}
-          <nav className="flex items-center gap-0.5 sm:gap-1.5 md:gap-2">
+          <nav className="flex items-center gap-0.5 sm:gap-1.5 lg:gap-2">
             <button
               type="button"
               onClick={() => onViewChange?.('catalog')}
               title="Catalog"
-              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
                 activeView === 'catalog'
                   ? `${LIBRARY_THEMES.catalog.navActiveText} font-bold ${LIBRARY_THEMES.catalog.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -115,14 +115,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="Catalog"
             >
               <Compass className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden md:inline">Catalog</span>
+              <span className="hidden lg:inline">Catalog</span>
             </button>
 
             <button
               type="button"
               onClick={() => onViewChange?.('bookshelf')}
               title="Bookshelf"
-              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
                 activeView === 'bookshelf'
                   ? `${LIBRARY_THEMES.bookshelf.navActiveText} font-bold ${LIBRARY_THEMES.bookshelf.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -136,14 +136,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'fill-transparent'
                 }`}
               />
-              <span className="hidden md:inline">Bookshelf</span>
+              <span className="hidden lg:inline">Bookshelf</span>
             </button>
 
             <button
               type="button"
               onClick={() => onViewChange?.('favorites')}
               title="Favorites"
-              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
                 activeView === 'favorites'
                   ? `${LIBRARY_THEMES.favorites.navActiveText} font-bold ${LIBRARY_THEMES.favorites.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -157,14 +157,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'fill-transparent'
                 }`}
               />
-              <span className="hidden md:inline">Favorites</span>
+              <span className="hidden lg:inline">Favorites</span>
             </button>
 
             <button
               type="button"
               onClick={() => onViewChange?.('notebook')}
               title="Notebook"
-              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
                 activeView === 'notebook'
                   ? `${LIBRARY_THEMES.notebook.navActiveText} font-bold ${LIBRARY_THEMES.notebook.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -178,14 +178,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'fill-transparent'
                 }`}
               />
-              <span className="hidden md:inline">Notebook</span>
+              <span className="hidden lg:inline">Notebook</span>
             </button>
 
             <button
               type="button"
               onClick={() => onViewChange?.('bookmarks')}
               title="Bookmarks & Continue Reading"
-              className={`h-8 px-1.5 sm:px-2 md:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 md:gap-1.5 border-b-2 transition-all ${
+              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
                 activeView === 'bookmarks'
                   ? `${LIBRARY_THEMES.bookmarks.navActiveText} font-bold ${LIBRARY_THEMES.bookmarks.navActiveBorder}`
                   : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -199,7 +199,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'fill-transparent'
                 }`}
               />
-              <span className="hidden md:inline">Bookmarks</span>
+              <span className="hidden lg:inline">Bookmarks</span>
             </button>
           </nav>
 
@@ -208,14 +208,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right Actions: Auth, Theme */}
           {!hasMounted ? (
             <div
-              className="h-8 w-8 md:w-[96px] rounded border border-border/40 bg-muted/40 animate-pulse"
+              className="h-8 w-8 lg:w-[96px] rounded border border-border/40 bg-muted/40 animate-pulse"
               aria-hidden="true"
             />
           ) : user ? (
             <Link
               href={ROUTES.ACCOUNT}
               title="User Account"
-              className={`h-8 w-8 md:w-auto px-0 md:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
+              className={`h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
                 activeView === 'account'
                   ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
                   : 'border-border bg-card hover:border-primary text-foreground'
@@ -223,7 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="User Account"
             >
               <UserIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="hidden md:inline font-mono">Account</span>
+              <span className="hidden lg:inline font-mono">Account</span>
             </Link>
           ) : (
             <Button
@@ -231,10 +231,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => openAuthModal('sign_in')}
               title="Sign In"
               aria-label="Sign In"
-              className="h-8 w-8 md:w-auto px-0 md:px-3 inline-flex items-center justify-center gap-1.5 font-mono text-xs font-bold animate-in fade-in duration-150"
+              className="h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 font-mono text-xs font-bold animate-in fade-in duration-150"
             >
               <UserIcon className={`w-3.5 h-3.5 shrink-0 ${activeView === 'account' ? 'text-primary-foreground' : 'text-primary'}`} />
-              <span className="hidden md:inline">Sign In</span>
+              <span className="hidden lg:inline">Sign In</span>
             </Button>
           )}
 

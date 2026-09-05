@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface ActiveFilterChip {
   id: string;
@@ -63,6 +64,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   isHeaderVisible = true,
   isVisible = true,
 }) => {
+  const hasMounted = useHasMounted();
   const [jumpPageInput, setJumpPageInput] = useState('');
 
   const handleJumpSubmit = (e: React.FormEvent) => {
@@ -88,10 +90,10 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
       }`}
       data-testid="sticky-catalog-toolbar"
     >
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
         
         {/* Left Side: Filter Trigger, Active Chips & Per Page Selector */}
-        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
           {/* Advanced Filters Button */}
           <Button
             variant={isFiltersOpen || activeFilterCount > 0 ? 'primary' : 'outline'}
@@ -173,13 +175,13 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
         </div>
 
         {/* Right Side: 2-Part API Telemetry, View Mode & Sticky Pagination */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-between sm:justify-end w-full sm:w-auto pt-1 sm:pt-0 border-t sm:border-t-0 border-border/60">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           
           {/* 2-Part API Status & Latency Indicator */}
           <div className="flex items-center gap-1 sm:gap-1.5">
             {/* Part 1: Live API Status Badge */}
             <div
-              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border border-border ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border border-border ${
                 isError
                   ? 'bg-destructive/10 text-destructive'
                   : 'bg-success/10 text-success'
@@ -195,14 +197,14 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               ) : (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                  <span className="font-bold">Live</span>
+                  <span className="font-bold hidden md:inline">Live</span>
                 </>
               )}
             </div>
 
             {/* Part 2: Live Latency / Roundtrip Badge */}
             <div
-              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-mono bg-muted text-foreground border border-border"
+              className="hidden md:flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-mono bg-muted text-foreground border border-border"
               title="Real-time API response roundtrip time"
               data-testid="api-latency-badge"
             >
@@ -211,7 +213,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             </div>
           </div>
 
-          <div className="h-4 w-[1px] bg-border hidden xs:block" />
+          <div className="h-4 w-[1px] bg-border hidden md:block" />
 
           {/* View Mode Toggle */}
           <div className="flex items-center bg-muted p-0.5 rounded-lg border border-border">
@@ -294,7 +296,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                 <ChevronRight className="w-3.5 h-3.5" />
               </Button>
 
-              {isFetching && (
+              {hasMounted && isFetching && (
                 <div
                   className="group relative inline-flex items-center ml-1"
                   data-testid="archive-fetching-badge"

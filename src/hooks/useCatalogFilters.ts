@@ -33,40 +33,60 @@ export function normalizeCatalogView(raw?: string | null): CatalogView {
   return 'catalog';
 }
 
-function getInitialUrlParams() {
-  if (typeof window === 'undefined') return {};
-  try {
-    const sp = new URLSearchParams(window.location.search);
-    const pathSegment = (window.location.pathname || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+export function parseFiltersFromUrl(
+  pathname?: string | null,
+  searchParams?: { get: (name: string) => string | null } | null
+) {
+  let sp: { get: (name: string) => string | null } | null = searchParams || null;
+  let p = pathname || '';
 
-    let pathView: CatalogView | undefined = undefined;
-    if (pathSegment && ['catalog', 'bookshelf', 'favorites', 'notebook', 'bookmarks'].includes(pathSegment)) {
-      pathView = normalizeCatalogView(pathSegment);
+  if (typeof window !== 'undefined') {
+    if (!sp) {
+      try {
+        sp = new URLSearchParams(window.location.search);
+      } catch {
+        sp = null;
+      }
     }
-    const queryView = sp.get('view') ? normalizeCatalogView(sp.get('view')) : undefined;
-
-    return {
-      search: sp.get('search') || undefined,
-      topic: sp.get('topic') || undefined,
-      language: sp.get('languages') || sp.get('language') || undefined,
-      era: sp.get('era') || undefined,
-      sort: (sp.get('sort') as CatalogSortOption) || undefined,
-      format: sp.get('format') || sp.get('mime_type') || undefined,
-      page: sp.get('page') ? parseInt(sp.get('page')!, 10) : undefined,
-      view: pathView || queryView || undefined,
-    };
-  } catch {
-    return {};
+    if (!p) {
+      p = window.location.pathname || '';
+    }
   }
+
+  const pathSegment = (p || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+
+  let pathView: CatalogView | undefined = undefined;
+  if (pathSegment && ['catalog', 'bookshelf', 'favorites', 'notebook', 'bookmarks'].includes(pathSegment)) {
+    pathView = normalizeCatalogView(pathSegment);
+  }
+  const queryView = sp?.get('view') ? normalizeCatalogView(sp.get('view')) : undefined;
+
+  const rawPage = sp?.get('page');
+  const parsedPage = rawPage ? parseInt(rawPage, 10) : undefined;
+  const validPage = parsedPage && !isNaN(parsedPage) && parsedPage >= 1 ? parsedPage : undefined;
+
+  return {
+    search: sp?.get('search') || '',
+    topic: sp?.get('topic') || '',
+    language: sp?.get('languages') || sp?.get('language') || '',
+    era: sp?.get('era') || '',
+    sort: (sp?.get('sort') as CatalogSortOption) || 'popular',
+    format: sp?.get('format') || sp?.get('mime_type') || '',
+    page: validPage || 1,
+    view: pathView || queryView || 'catalog',
+  };
 }
 
 export function useCatalogFilters() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const hasMounted = useHasMounted();
-  const [activeView, setActiveView] = useState<CatalogView>(() => {
-    return normalizeCatalogView(getInitialUrlParams().view);
-  });
+
+  const initialParams = useMemo(() => {
+    return parseFiltersFromUrl(pathname, searchParams);
+  }, [pathname, searchParams]);
+
+  const [activeView, setActiveView] = useState<CatalogView>(() => initialParams.view);
 
   // Synchronize state with Next.js router URL pathname or searchParams during render
   const cleanPath = (pathname || '').replace(/^\/+|\/+$/g, '').toLowerCase();
@@ -78,9 +98,7 @@ export function useCatalogFilters() {
     ? 'catalog'
     : null;
 
-  const [prevViewFromRoute, setPrevViewFromRoute] = useState<CatalogView | null>(() => {
-    return getInitialUrlParams().view ? normalizeCatalogView(getInitialUrlParams().view) : null;
-  });
+  const [prevViewFromRoute, setPrevViewFromRoute] = useState<CatalogView | null>(() => initialParams.view);
 
   if (currentViewFromRoute !== prevViewFromRoute) {
     setPrevViewFromRoute(currentViewFromRoute);
@@ -88,13 +106,13 @@ export function useCatalogFilters() {
       setActiveView(currentViewFromRoute);
     }
   }
-  const [search, setSearch] = useState(() => getInitialUrlParams().search || '');
-  const [topic, setTopic] = useState(() => getInitialUrlParams().topic || '');
-  const [language, setLanguage] = useState(() => getInitialUrlParams().language || '');
-  const [era, setEra] = useState(() => getInitialUrlParams().era || '');
-  const [sort, setSort] = useState<CatalogSortOption>(() => getInitialUrlParams().sort || 'popular');
-  const [format, setFormat] = useState(() => getInitialUrlParams().format || '');
-  const [page, setPage] = useState(() => getInitialUrlParams().page || 1);
+  const [search, setSearch] = useState(() => initialParams.search);
+  const [topic, setTopic] = useState(() => initialParams.topic);
+  const [language, setLanguage] = useState(() => initialParams.language);
+  const [era, setEra] = useState(() => initialParams.era);
+  const [sort, setSort] = useState<CatalogSortOption>(() => initialParams.sort);
+  const [format, setFormat] = useState(() => initialParams.format);
+  const [page, setPage] = useState(() => initialParams.page);
   const [pageSize, setPageSize] = useState(32);
   const [viewMode, setViewMode] = useState<CatalogViewMode>('grid');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
@@ -146,15 +164,16 @@ export function useCatalogFilters() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handlePopState = () => {
-      const init = getInitialUrlParams();
-      setSearch(init.search || '');
-      setTopic(init.topic || '');
-      setLanguage(init.language || '');
-      setEra(init.era || '');
-      setSort(init.sort || 'popular');
-      setFormat(init.format || '');
-      setPage(init.page || 1);
-      setActiveView(init.view || 'catalog');
+      const sp = new URLSearchParams(window.location.search);
+      const parsed = parseFiltersFromUrl(window.location.pathname, sp);
+      setSearch(parsed.search);
+      setTopic(parsed.topic);
+      setLanguage(parsed.language);
+      setEra(parsed.era);
+      setSort(parsed.sort);
+      setFormat(parsed.format);
+      setPage(parsed.page);
+      setActiveView(parsed.view);
     };
 
     window.addEventListener('popstate', handlePopState);

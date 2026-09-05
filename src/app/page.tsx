@@ -190,7 +190,7 @@ function HomeContent() {
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
       <Navbar activeView={activeView} onViewChange={setActiveView} isVisible={isHeaderVisible} />
 
-      <main className={`flex-1 transition-all duration-300 ${isFilterDrawerOpen ? 'lg:pl-96' : 'lg:pl-0'}`}>
+      <main className={`flex-1 transition-all duration-300 ${isFilterDrawerOpen ? 'xl:pl-96' : 'xl:pl-0'}`}>
         {activeView === 'catalog' && (
           <HeroSearch
             search={search}
