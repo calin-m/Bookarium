@@ -316,10 +316,11 @@ function pass4DocsSync() {
   logHeader('Pass 4: Living Documentation Synchronization');
   try {
     require('./generate-architecture-matrix.js');
+    require('./generate-parser-docs.js');
     require('./generate-changelog.js');
     require('./generate-quality-report.js');
     require('./generate-roadmap.js');
-    logPass('docs/ARCHITECTURE.md, CHANGELOG.md, docs/QUALITY_AUDIT_REPORT.md, and ROADMAP.md synced successfully from source AST.');
+    logPass('docs/ARCHITECTURE.md, docs/GUTENBERG_PARSER.md, CHANGELOG.md, docs/QUALITY_AUDIT_REPORT.md, and ROADMAP.md synced successfully from source AST.');
     return true;
   } catch (err) {
     logFail(`Documentation synchronization failed: ${err.message}`);

@@ -375,6 +375,83 @@ Second part, first chapter content... ${'content '.repeat(100)}
     expect(ch1List[0].content).toContain('First part, first chapter');
     expect(ch1List[1].content).toContain('Second part, first chapter');
   });
+
+  it('harvests subtitles from Roman and Arabic numeral front-matter TOC lists and attaches them to chapters', () => {
+    const text = `
+*** START OF THE PROJECT GUTENBERG EBOOK CYNTHIA ***
+
+CONTENTS
+
+CHAPTER                                          PAGE
+
+   I. THE HIRED CAR                                1
+  II. THE FIRST DAY'S RUN                         23
+ III. SOME EMOTIONS--WITHOUT A MORAL              47
+
+CHAPTER I
+
+THE HIRED CAR
+
+Derby Day fell that year on the first Wednesday in June... ${'content '.repeat(100)}
+
+CHAPTER II
+
+THE FIRST DAY'S RUN
+
+Next morning the sun shone bright... ${'content '.repeat(100)}
+
+CHAPTER III
+
+SOME EMOTIONS--WITHOUT A MORAL
+
+It was a strange feeling... ${'content '.repeat(100)}
+
+*** END OF THE PROJECT GUTENBERG EBOOK CYNTHIA ***
+`;
+
+    const chapters = parseGutenbergChapters(text);
+    const ch1 = chapters.find((c) => c.title === 'CHAPTER I');
+    expect(ch1).toBeDefined();
+    expect(ch1?.displayTitle).toBe('Chapter I: The Hired Car');
+
+    const ch2 = chapters.find((c) => c.title === 'CHAPTER II');
+    expect(ch2).toBeDefined();
+    expect(ch2?.displayTitle).toBe("Chapter II: The First Day's Run");
+
+    const ch3 = chapters.find((c) => c.title === 'CHAPTER III');
+    expect(ch3).toBeDefined();
+    expect(ch3?.displayTitle).toBe('Chapter III: Some Emotions--without a Moral');
+  });
+
+  it('harvests body subtitles when chapter headings have standalone subtitle lines without a TOC', () => {
+    const textWithoutToc = `
+*** START OF THE PROJECT GUTENBERG EBOOK NOVEL ***
+
+CHAPTER 1
+
+A Sudden Discovery
+
+The morning opened with mist and rain... ${'content '.repeat(100)}
+
+CHAPTER 2
+
+Across the Wilderness
+
+Two weeks had elapsed since our departure... ${'content '.repeat(100)}
+
+*** END OF THE PROJECT GUTENBERG EBOOK NOVEL ***
+`;
+
+    const chapters = parseGutenbergChapters(textWithoutToc);
+    const ch1 = chapters.find((c) => c.title === 'CHAPTER 1');
+    expect(ch1).toBeDefined();
+    expect(ch1?.displayTitle).toBe('Chapter 1: A Sudden Discovery');
+
+    const ch2 = chapters.find((c) => c.title === 'CHAPTER 2');
+    expect(ch2).toBeDefined();
+    expect(ch2?.displayTitle).toBe('Chapter 2: Across the Wilderness');
+  });
 });
+
 
 

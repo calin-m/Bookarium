@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 05 Sep 2026 19:07:27 GMT  
+**Last Generated**: Sat, 05 Sep 2026 20:00:50 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 125 passed  
-**Total Verified Tests**: 966 passed  
+**Total Verified Tests**: 968 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (966 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (968 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 24 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.25%** (5076/5502) — *Target: $ge$ 80%*
-- **Statements**: **90.41%** (5530/6116) — *Target: $ge$ 80%*
-- **Functions**: **88.46%** (1273/1439) — *Target: $ge$ 80%*
-- **Branches**: **80.54%** (4735/5879) — *Target: $ge$ 80%*
+- **Lines**: **92.21%** (5104/5535) — *Target: $ge$ 80%*
+- **Statements**: **90.38%** (5562/6154) — *Target: $ge$ 80%*
+- **Functions**: **88.41%** (1274/1441) — *Target: $ge$ 80%*
+- **Branches**: **80.53%** (4765/5917) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (125 Suites / 966 Tests)
+## 🧪 Comprehensive Test Suite Catalog (125 Suites / 968 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 96 Tests)
 
@@ -890,7 +890,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (17 Suites · 154 Tests)
+### 📚 Gutenberg Parsers & Metadata (17 Suites · 156 Tests)
 
 <details>
 <summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (12 tests)</summary>
@@ -966,7 +966,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `returns empty array on null or undefined input`
 - ✔ `falls back cleanly to Complete Volume for unformatted single-block text`
@@ -979,6 +979,8 @@
 - ✔ `parses books formatted with dotted Roman numerals and subtitle lines (such as The Time Machine)`
 - ✔ `suppresses single-digit front-matter TOC items with subtitles and enriches body chapter titles (such as Jules Verne)`
 - ✔ `preserves repeated chapter numbers across multi-part books`
+- ✔ `harvests subtitles from Roman and Arabic numeral front-matter TOC lists and attaches them to chapters`
+- ✔ `harvests body subtitles when chapter headings have standalone subtitle lines without a TOC`
 
 </details>
 

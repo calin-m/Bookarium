@@ -58,43 +58,68 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
   }
 
   // Harvest descriptive chapter subtitles from short TOC items if available
-  const normalizeHeadingId = (title: string): string => {
-    const match = title
-      .trim()
-      .match(
-        /^(?:CHAPTER|Chapter|BOOK|Book|PART|Part|ACT|Act|SCENE|Scene|CANTO|Canto|SECTION|Section)\s+([IVXLCDM\d]+)/i
+  const formatSubtitleText = (sub: string): string => {
+    return sub
+      .toLowerCase()
+      .replace(/(?:^|\s)\S/g, (a) => a.toUpperCase())
+      .replace(
+        /\b(And|Of|The|In|On|A|An|Or|For|With|To|At|By|From|De|Et|La|Le|Du)\b/g,
+        (mText, p1, offset) => (offset === 0 ? mText : mText.toLowerCase())
       );
-    if (match) {
-      return match[0].toLowerCase().replace(/\s+/, ' ');
+  };
+
+  const normalizeHeadingId = (title: string): string => {
+    const clean = title.trim();
+    const keywordMatch = clean.match(
+      /^(?:CHAPTER|Chapter|BOOK|Book|PART|Part|ACT|Act|SCENE|Scene|CANTO|Canto|SECTION|Section|STORY|Story)\s+([IVXLCDM\d]+)/i
+    );
+    if (keywordMatch) {
+      const prefix = keywordMatch[0].split(/\s+/)[0].toLowerCase().slice(0, 2);
+      const num = keywordMatch[1].toLowerCase();
+      return `${prefix}-${num}`;
     }
-    const romanMatch = title.trim().match(/^([IVXLCDM]{1,8})\b/i);
+
+    const romanMatch = clean.match(/^([IVXLCDM]{1,8})\b/i);
     if (romanMatch) {
-      return romanMatch[1].toLowerCase();
+      return `ch-${romanMatch[1].toLowerCase()}`;
     }
-    return title.toLowerCase().trim().replace(/\s+/g, ' ').slice(0, 15);
+
+    const arabicMatch = clean.match(/^(\d{1,4})\b/);
+    if (arabicMatch) {
+      return `ch-${arabicMatch[1]}`;
+    }
+
+    return clean.toLowerCase().replace(/\s+/g, ' ').slice(0, 15);
   };
 
   const tocSubtitles = new Map<string, string>();
 
   const recordSubtitle = (rawTitle: string) => {
-    const match = rawTitle
-      .trim()
-      .match(
-        /^(?:CHAPTER|Chapter|BOOK|Book|PART|Part|ACT|Act|SCENE|Scene|CANTO|Canto|SECTION|Section)\s+[IVXLCDM\d]+[:\s\-\.]+(.+)$/i
-      );
-    if (match && match[1]?.trim()) {
-      const norm = normalizeHeadingId(rawTitle);
-      const sub = match[1]
-        .replace(/\s+(?:\.{2,}|\d+|[IVXLCDM]+)\s*$/i, '')
-        .trim();
-      if (sub.length >= 2 && sub.length < 100 && !tocSubtitles.has(norm)) {
-        const formattedSub = sub
-          .toLowerCase()
-          .replace(/(?:^|\s)\S/g, (a) => a.toUpperCase())
-          .replace(/\b(And|Of|The|In|A|An|Or|For|With|To|At|By|From)\b/g, (mText, p1, offset) =>
-            offset === 0 ? mText : mText.toLowerCase()
-          );
-        tocSubtitles.set(norm, formattedSub);
+    const clean = rawTitle.trim();
+    if (!clean) return;
+
+    // Pattern 1: Explicit keyword: "CHAPTER I: THE HIRED CAR" or "CHAPTER 1 - THE HIRED CAR"
+    const keywordMatch = clean.match(
+      /^(?:CHAPTER|Chapter|BOOK|Book|PART|Part|ACT|Act|SCENE|Scene|CANTO|Canto|SECTION|Section|STORY|Story)\s+[IVXLCDM\d]+[:\s\-\.]+(.+)$/i
+    );
+    if (keywordMatch && keywordMatch[1]?.trim()) {
+      const norm = normalizeHeadingId(clean);
+      const sub = keywordMatch[1].replace(/\s+(?:\.{2,}|\d+|[IVXLCDM]+)\s*$/i, '').trim();
+      if (sub.length >= 2 && sub.length < 120 && !tocSubtitles.has(norm)) {
+        tocSubtitles.set(norm, formatSubtitleText(sub));
+        return;
+      }
+    }
+
+    // Pattern 2: Front-matter TOC item: "I. THE HIRED CAR 1" or "1. Down the Rabbit-Hole ... 1"
+    const tocItemMatch = clean.match(
+      /^[ \t]*([IVXLCDM]{1,8}|\d{1,4})[\.\-\s]+([A-Za-z][^\n]+?)\s*(?:\.{2,}|\d+)?$/i
+    );
+    if (tocItemMatch && tocItemMatch[2]?.trim()) {
+      const norm = normalizeHeadingId(clean);
+      const sub = tocItemMatch[2].replace(/\s+(?:\.{2,}|\d+|[IVXLCDM]+)\s*$/i, '').trim();
+      if (sub.length >= 2 && sub.length < 120 && !/^(?:page|chapter|\d+)$/i.test(sub) && !tocSubtitles.has(norm)) {
+        tocSubtitles.set(norm, formatSubtitleText(sub));
       }
     }
   };
@@ -336,16 +361,50 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
 
     let displayTitle = (current.displayTitle || current.title).replace(/\n+/g, ' — ');
     const norm = normalizeHeadingId(current.title);
-    const subtitle = tocSubtitles.get(norm);
+    let subtitle = tocSubtitles.get(norm);
+
+    // Body Subtitle: inspect lines immediately following heading for a standalone subtitle
+    const bodyLines = rawContent.split(/\r?\n/).map((l) => l.trim());
+    for (let j = 1; j < Math.min(6, bodyLines.length); j++) {
+      const line = bodyLines[j];
+      if (!line) continue;
+      const nextLine = bodyLines[j + 1];
+      const isCandidate =
+        line.length >= 2 &&
+        line.length <= 90 &&
+        !/[.!?;:]$/.test(line) &&
+        !/^["'“‘(]/.test(line) &&
+        !/^(?:by|illustrated|transcribed|published|page|gutenberg)\b/i.test(line) &&
+        (nextLine === '' || nextLine === undefined);
+
+      if (isCandidate) {
+        const bodySub = formatSubtitleText(line);
+        if (
+          !subtitle ||
+          (bodySub.length > subtitle.length &&
+            bodySub.toLowerCase().includes(subtitle.toLowerCase().slice(0, 15)))
+        ) {
+          subtitle = bodySub;
+        }
+        break;
+      } else {
+        break;
+      }
+    }
+
     if (subtitle && !displayTitle.includes(':')) {
       const prefixMatch = displayTitle.match(
-        /^(?:CHAPTER|Chapter|BOOK|Book|PART|Part|ACT|Act|SCENE|Scene|CANTO|Canto|SECTION|Section)\s+[IVXLCDM\d]+/i
+        /^(?:CHAPTER|Chapter|BOOK|Book|PART|Part|ACT|Act|SCENE|Scene|CANTO|Canto|SECTION|Section|STORY|Story)\s+([IVXLCDM\d]+)/i
       );
       if (prefixMatch) {
-        const cleanPrefix = prefixMatch[0]
-          .toLowerCase()
-          .replace(/^[a-z]/, (c) => c.toUpperCase());
-        displayTitle = `${cleanPrefix}: ${subtitle}`;
+        const keyword = prefixMatch[0].split(/\s+/)[0].toLowerCase().replace(/^[a-z]/, (c) => c.toUpperCase());
+        const numPart = prefixMatch[1];
+        const formattedNum = /^[ivxlcdm]+$/i.test(numPart) ? numPart.toUpperCase() : numPart;
+        displayTitle = `${keyword} ${formattedNum}: ${subtitle}`;
+      } else if (/^[IVXLCDM\d]+/i.test(displayTitle)) {
+        const numMatch = displayTitle.match(/^[IVXLCDM\d]+/i)?.[0] || '';
+        const formattedNum = /^[ivxlcdm]+$/i.test(numMatch) ? numMatch.toUpperCase() : numMatch;
+        displayTitle = `Chapter ${formattedNum}: ${subtitle}`;
       }
     }
 

@@ -46,7 +46,7 @@ Never manually craft static component matrices, route catalogs, or architectural
     -m "[WHAT]: Comprehensive bulleted list of modifications" `
     -m "[VERIFICATION]: 7-Gateway verification command and test results"
   ```
-- **Living Documentation Auto-Staging:** Ensure auto-generated files (`docs/ARCHITECTURE.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) are staged alongside the implementation.
+- **Living Documentation Auto-Staging:** Ensure auto-generated files (`docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `CHANGELOG.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) are staged alongside the implementation.
 
 ### Rule 6: Verification Engine & Test Execution Protocol (On-Demand & Error-Gated)
 - **User-Driven Test & Verification Execution:** The AI agent must only execute the test suite and 7-Gateway Quality Engine (`npm run verify`, `npm test`, or test commands) when explicitly requested by the user (e.g. when the user asks "run verify", "run tests", "verify build") or when actively investigating/debugging an encountered runtime, type, or lint error in code. The agent must not autonomously run full test passes on intermediate turns without cause or request.
