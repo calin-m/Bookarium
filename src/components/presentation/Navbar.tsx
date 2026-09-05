@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon, Highlighter, BookMarked } from 'lucide-react';
+import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon, Highlighter, Compass, Library } from 'lucide-react';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -20,12 +20,22 @@ export interface NavbarProps {
   isVisible?: boolean;
 }
 
+const NAVBAR_VIEW_CONFIG: Record<string, { label: string; activeColor: string }> = {
+  catalog: { label: 'Catalog', activeColor: LIBRARY_THEMES.catalog.navActiveText },
+  bookshelf: { label: 'Bookshelf', activeColor: LIBRARY_THEMES.bookshelf.navActiveText },
+  favorites: { label: 'Favorites', activeColor: LIBRARY_THEMES.favorites.navActiveText },
+  notebook: { label: 'Notebook', activeColor: LIBRARY_THEMES.notebook.navActiveText },
+  bookmarks: { label: 'Bookmarks', activeColor: LIBRARY_THEMES.bookmarks.navActiveText },
+  account: { label: 'Account', activeColor: 'text-primary' },
+};
+
 export const Navbar: React.FC<NavbarProps> = ({
   activeView = 'catalog',
   onViewChange,
   isVisible = true,
 }) => {
   const router = useRouter();
+  const activeConfig = NAVBAR_VIEW_CONFIG[activeView] || NAVBAR_VIEW_CONFIG.catalog;
   const { savedCount, favoriteCount, hasMounted } = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
   const annotationCount = annotations.length;
@@ -76,9 +86,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-primary-foreground shadow-xs group-hover:scale-105 transition-transform shrink-0">
             <BookOpen className="w-4 h-4" />
           </div>
-          <div>
-            <span className="hidden min-[375px]:inline text-xs min-[440px]:text-sm sm:text-base md:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap">
+          <div className="flex flex-col justify-center min-w-0">
+            <span className="hidden min-[375px]:inline text-xs min-[440px]:text-sm sm:text-base md:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap leading-tight">
               {SITE_CONFIG.LOGO_TEXT}
+            </span>
+            <span
+              data-testid="navbar-active-view-subtitle"
+              className={`hidden min-[375px]:inline md:hidden text-[9px] min-[440px]:text-[10px] font-mono font-bold tracking-widest uppercase leading-none transition-colors ${activeConfig.activeColor}`}
+            >
+              {activeConfig.label}
             </span>
           </div>
         </div>
@@ -98,7 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
               aria-label="Catalog"
             >
-              <BookOpen className="w-3.5 h-3.5 shrink-0" />
+              <Compass className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">Catalog</span>
             </button>
 
@@ -113,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
               aria-label="Bookshelf"
             >
-              <Bookmark
+              <Library
                 className={`w-3.5 h-3.5 shrink-0 transition-colors ${
                   hasMounted && savedCount > 0
                     ? LIBRARY_THEMES.bookshelf.navFill
@@ -176,7 +192,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
               aria-label="Bookmarks"
             >
-              <BookMarked
+              <Bookmark
                 className={`w-3.5 h-3.5 shrink-0 transition-colors ${
                   hasMounted && activeReadingCount > 0
                     ? LIBRARY_THEMES.bookmarks.navFill

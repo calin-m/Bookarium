@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import NotFound from './not-found';
+import { ROUTES } from '@/config/routes';
 
 describe('NotFound Component (404)', () => {
   it('renders heading, literary quote, and navigation links', () => {
@@ -12,10 +13,10 @@ describe('NotFound Component (404)', () => {
     expect(screen.getByText(/charles dickens/i)).toBeInTheDocument();
 
     const catalogLink = screen.getByRole('link', { name: /explore public catalog/i });
-    expect(catalogLink).toHaveAttribute('href', '/');
+    expect(catalogLink).toHaveAttribute('href', ROUTES.CATALOG);
 
     const bookshelfLink = screen.getByRole('link', { name: /my bookshelf/i });
-    expect(bookshelfLink).toHaveAttribute('href', '/?view=bookshelf');
+    expect(bookshelfLink).toHaveAttribute('href', ROUTES.BOOKSHELF);
   });
 });
 

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 05 Sep 2026 08:50:48 GMT  
+**Last Generated**: Sat, 05 Sep 2026 11:47:11 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 120 passed  
-**Total Verified Tests**: 918 passed  
+**Total Verified Tests**: 927 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (918 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **120/120 test suites passed** (927 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 14 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.16%** (4882/5297) — *Target: $ge$ 80%*
-- **Statements**: **90.32%** (5331/5902) — *Target: $ge$ 80%*
-- **Functions**: **88.37%** (1247/1411) — *Target: $ge$ 80%*
-- **Branches**: **80.18%** (4577/5708) — *Target: $ge$ 80%*
+- **Lines**: **92.22%** (4943/5360) — *Target: $ge$ 80%*
+- **Statements**: **90.4%** (5392/5964) — *Target: $ge$ 80%*
+- **Functions**: **88.37%** (1254/1419) — *Target: $ge$ 80%*
+- **Branches**: **80.27%** (4624/5760) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (120 Suites / 918 Tests)
+## 🧪 Comprehensive Test Suite Catalog (120 Suites / 927 Tests)
 
 ### 🚀 App Routes & Pages (10 Suites · 82 Tests)
 
@@ -178,7 +178,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (20 Suites · 199 Tests)
+### 🎨 Catalog & Presentation (20 Suites · 201 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -246,7 +246,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
@@ -255,6 +255,7 @@
 - ✔ `resumes volume by pre-populating useReaderStore and navigating to reader route`
 - ✔ `passes offline status to BookmarkCard when book is saved in offline storage`
 - ✔ `hydrates missing book metadata (e.g. Volume #55179) and displays real title and author`
+- ✔ `applies adaptive responsive label expansion and tooltip attributes to filter tabs`
 
 </details>
 
@@ -429,7 +430,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (20 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -437,7 +438,7 @@
 - ✔ `applies active styling when activeView is notebook`
 - ✔ `triggers onViewChange with bookmarks when Bookmarks tab is clicked`
 - ✔ `applies active styling when activeView is bookmarks`
-- ✔ `should fill bookmark icon when books are saved to bookshelf`
+- ✔ `should fill library icon when books are saved to bookshelf`
 - ✔ `should fill heart icon when books are favorited`
 - ✔ `should trigger onViewChange callback when clicking tabs`
 - ✔ `applies active styling when activeView is favorites`
@@ -450,6 +451,7 @@
 - ✔ `renders active account button styling when activeView is account`
 - ✔ `renders active Sign In button styling for guests when activeView is account`
 - ✔ `renders GitHub repository link with target _blank on the header`
+- ✔ `renders dynamic active view masthead subtitle with section theme color and responsive classes`
 
 </details>
 
@@ -1118,7 +1120,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (18 Suites · 137 Tests)
+### 🔄 Hooks & React Query (18 Suites · 138 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
@@ -1298,7 +1300,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -1306,10 +1308,11 @@
 - ✔ `removes individual filter chips`
 - ✔ `resets all filters cleanly`
 - ✔ `toggles view modes and drawer visibility`
-- ✔ `hydrates initial filter state from window.location.search including view=bookshelf`
-- ✔ `hydrates initial filter state with view=notebook`
-- ✔ `hydrates initial filter state with view=bookmarks`
-- ✔ `hydrates initial filter state with view=favorites and normalizes legacy view=likes`
+- ✔ `hydrates initial filter state from clean pathname /bookshelf`
+- ✔ `hydrates initial filter state from clean pathname /favorites, /notebook, and /bookmarks`
+- ✔ `preserves backward compatibility by hydrating from legacy query param view=bookshelf`
+- ✔ `preserves backward compatibility with legacy view=notebook and view=bookmarks`
+- ✔ `preserves backward compatibility with legacy view=favorites and view=likes`
 
 </details>
 
@@ -1365,7 +1368,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (33 Suites · 123 Tests)
+### 🧩 UI Primitives & Motion (33 Suites · 129 Tests)
 
 <details>
 <summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
@@ -1448,12 +1451,18 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders library statistics with links and values including notes and quotes`
 - ✔ `renders default 0 for annotationCount and bookmarksCount when omitted`
 - ✔ `applies theme-tokenized hover border and focus classes on each library card`
 - ✔ `renders all 5 library cards with uniform horizontal flex layout`
+- ✔ `renders clean vertical flex column layout for all library cards`
+- ✔ `calculates active card with equal scroll progression stepper in single-column mode`
+- ✔ `prioritizes mouse hover over scroll position on narrow desktop windows`
+- ✔ `resets active spotlight when library container is scrolled outside focal travel range`
+- ✔ `disables scroll focal spotlight on widescreen desktop displays`
+- ✔ `cleans up scroll and resize listeners when component unmounts`
 
 </details>
 
@@ -1658,7 +1667,7 @@
 
 - ✔ `provides static canonical routes`
 - ✔ `builds dynamic reader route with id`
-- ✔ `builds view query route correctly`
+- ✔ `builds clean view path route correctly`
 
 </details>
 

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  BookMarked,
+  Bookmark,
   Clock,
   CheckCircle2,
   PauseCircle,
@@ -52,7 +52,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
   };
 
   const filterTabs: Array<{ id: LedgerFilter; label: string; count: number; icon: React.ReactNode }> = [
-    { id: 'all', label: 'All Volumes', count: counts.all, icon: <BookMarked className="w-3.5 h-3.5" /> },
+    { id: 'all', label: 'All Volumes', count: counts.all, icon: <Bookmark className="w-3.5 h-3.5" /> },
     { id: 'in_progress', label: 'In Progress', count: counts.in_progress, icon: <Clock className="w-3.5 h-3.5" /> },
     { id: 'completed', label: 'Completed', count: counts.completed, icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
     { id: 'on_hold', label: 'On Hold', count: counts.on_hold, icon: <PauseCircle className="w-3.5 h-3.5" /> },
@@ -101,7 +101,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
 
       {/* Filter Navigation Tabs */}
       <div className="flex items-center justify-center mb-8 border-b border-border">
-        <nav className="flex items-center gap-2 overflow-x-auto pb-px" aria-label="Reading ledger filters">
+        <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px" aria-label="Reading ledger filters">
           {filterTabs.map((tab) => {
             const isActive = activeFilter === tab.id;
             return (
@@ -110,16 +110,19 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
                 type="button"
                 onClick={() => setActiveFilter(tab.id)}
                 aria-pressed={isActive}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold border-b-2 transition-all cursor-pointer select-none ${
+                aria-label={`${tab.label} (${tab.count} volumes)`}
+                title={`${tab.label} (${tab.count} volumes)`}
+                data-testid={`bookmarks-tab-${tab.id}`}
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 md:px-4 py-2 sm:py-2.5 text-xs font-mono uppercase tracking-wider font-semibold border-b-2 transition-all duration-200 cursor-pointer select-none shrink-0 ${
                   isActive
                     ? 'border-primary text-primary font-bold'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                 }`}
               >
                 {tab.icon}
-                <span>{tab.label}</span>
+                <span className={isActive ? 'inline' : 'hidden md:inline'}>{tab.label}</span>
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                     isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
                   }`}
                 >
@@ -136,7 +139,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
         {filteredVolumes.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border p-12 text-center max-w-lg mx-auto shadow-xs">
             <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-              <BookMarked className="w-8 h-8" />
+              <Bookmark className="w-8 h-8" />
             </div>
 
             <h3 className="font-serif font-bold text-xl text-foreground mb-2">
