@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 06 Sep 2026 12:24:32 GMT  
+**Last Generated**: Sun, 06 Sep 2026 12:58:19 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 127 passed  
-**Total Verified Tests**: 997 passed  
+**Total Verified Tests**: 1010 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **127/127 test suites passed** (997 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **127/127 test suites passed** (1010 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 25 Architectural Decision Records validated |
@@ -28,13 +28,13 @@
 - **Lines**: **92.36%** (5151/5577) — *Target: $ge$ 80%*
 - **Statements**: **90.52%** (5610/6197) — *Target: $ge$ 80%*
 - **Functions**: **88.4%** (1281/1449) — *Target: $ge$ 80%*
-- **Branches**: **80.73%** (4802/5948) — *Target: $ge$ 80%*
+- **Branches**: **80.76%** (4804/5948) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (127 Suites / 997 Tests)
+## 🧪 Comprehensive Test Suite Catalog (127 Suites / 1010 Tests)
 
-### 🚀 App Routes & Pages (11 Suites · 96 Tests)
+### 🚀 App Routes & Pages (11 Suites · 100 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -170,7 +170,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (23 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (27 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -190,7 +190,11 @@
 - ✔ `enforces mutual exclusivity between all 4 reader modals (TOC, Search, Controls, Language)`
 - ✔ `toggles Read Aloud audio bar and triggers speech controls`
 - ✔ `toggles Annotations & Notes drawer from reader header`
-- ✔ `allows user to select text, apply highlight color, update note, and delete from drawer`
+- ✔ `renders selection popover on mouseUp and applies chosen highlight color`
+- ✔ `attaches and saves a personal reflection note to an existing highlight`
+- ✔ `displays saved note in notes drawer and closes drawer upon jumping to passage`
+- ✔ `updates highlight color in-place without duplicating annotations in store`
+- ✔ `removes highlight and note upon confirmation in delete modal`
 - ✔ `automatically sets reading status to currently_reading when beginning a volume`
 - ✔ `renders volume completion modal with star rating and sets status to finished on the final page`
 - ✔ `persists authentic resolved book metadata to recentBooks and warms reader store on load`
@@ -543,7 +547,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (16 Suites · 126 Tests)
+### 📖 In-Browser Focus Reader (16 Suites · 131 Tests)
 
 <details>
 <summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
@@ -625,7 +629,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -642,7 +646,9 @@
 - ✔ `renders parallel notation (e.g. EN ∥ ES) when bilingual mode is active`
 - ✔ `renders active indicator dot in mobile action tray when dynamic translation is active`
 - ✔ `handles link copying when share button is clicked`
-- ✔ `toggles mobile action tray and executes actions`
+- ✔ `toggles mobile action tray visibility when clicking the handle button`
+- ✔ `dispatches TOC, Search, and Controls actions while keeping mobile tray open`
+- ✔ `dismisses open mobile action tray when pressing Escape key`
 - ✔ `renders Read Aloud button and handles click toggles`
 
 </details>
@@ -684,12 +690,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders null when isOpen is false`
 - ✔ `renders narration metadata, page coordinates, and progress percentage`
 - ✔ `handles play, pause, and resume actions accurately`
-- ✔ `navigates previous and next sentences and respects boundary disable flags`
+- ✔ `disables previous sentence button and skips to next sentence at start of text`
+- ✔ `disables next sentence button and skips to previous sentence at end of text`
 - ✔ `allows changing voices via dropdown`
 - ✔ `renders categorized optgroups for Natural and Standard voices with quality badge`
 - ✔ `allows selecting speed rates from the popover menu`
@@ -709,7 +716,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (23 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (25 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -733,7 +740,9 @@
 - ✔ `applies color-specific selection styling to highlight marks`
 - ✔ `renders user annotations inside bilingual parallel mode segments`
 - ✔ `triggers onTextSelected on selectionchange within reader content`
-- ✔ `triggers onTextSelected on mouseUp and ignores collapsed or outside selections`
+- ✔ `ignores collapsed text selections on mouseUp`
+- ✔ `ignores text selections anchored outside reader content body`
+- ✔ `triggers onTextSelected with text and coordinate bounds on valid mouseUp`
 
 </details>
 
@@ -790,7 +799,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (6 Suites · 93 Tests)
+### ⚡ Zustand State Stores (6 Suites · 94 Tests)
 
 <details>
 <summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
@@ -841,7 +850,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (31 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (32 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -854,7 +863,8 @@
 - ✔ `handles syncWithCloud fetching bookshelves and items`
 - ✔ `bidirectionally pushes unsynced local books and favorites to Supabase during syncWithCloud`
 - ✔ `handles createCloudBookshelf and migrateLocalBooksToCloud`
-- ✔ `handles updateCloudBookshelf and deleteCloudBookshelf`
+- ✔ `updates cloud bookshelf name and updates local store state`
+- ✔ `deletes cloud bookshelf and falls back activeBookshelfId to default shelf`
 - ✔ `handles moveBookToShelf properly`
 - ✔ `creates a new bookshelf item if book is not in cloudBookshelfItems yet`
 - ✔ `queues offline actions to outbox when Supabase network rejects and flushes them on syncWithCloud`
@@ -1442,7 +1452,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (37 Suites · 143 Tests)
+### 🧩 UI Primitives & Motion (37 Suites · 146 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1549,11 +1559,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders verified reader badge when email_confirmed_at is present`
-- ✔ `renders unverified badge and resend banner when email is not confirmed`
-- ✔ `renders error message and success feedback`
+- ✔ `renders unverified badge and handles resend verification click`
+- ✔ `renders sending spinner and cooldown timer during resend verification states`
+- ✔ `displays save error alert when profile update fails`
+- ✔ `displays save success and verification alert banners`
 
 </details>
 
@@ -1574,13 +1586,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
 - ✔ `renders read-aloud section and handles speed selection`
 - ✔ `handles auto-page advance and sentence highlight toggles`
 - ✔ `handles voice preview audio playback and toggle`
-- ✔ `covers light and dark theme buttons and preview completion callbacks`
+- ✔ `triggers onThemeChange when clicking Light and Dark theme buttons`
+- ✔ `handles speech synthesis voice preview completion and error callbacks`
 - ✔ `renders the portability section with JSON, CSV, and Import buttons`
 - ✔ `handles JSON and CSV export clicks`
 - ✔ `handles file input change and shows error on corrupted file`

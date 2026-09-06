@@ -393,7 +393,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
   });
 
-  it('allows user to select text, apply highlight color, update note, and delete from drawer', async () => {
+  it('renders selection popover on mouseUp and applies chosen highlight color', async () => {
     const originalGetSelection = window.getSelection;
     window.getSelection = vi.fn().mockReturnValue({
       isCollapsed: false,
@@ -426,7 +426,25 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(highlightMark).toHaveTextContent('Pride and Prejudice');
     expect(highlightMark).toHaveAttribute('data-annotation-color', 'mint');
 
-    // Click highlight to re-open popover and add a note
+    window.getSelection = originalGetSelection;
+  });
+
+  it('attaches and saves a personal reflection note to an existing highlight', async () => {
+    useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+    });
+
+    render(<BookReaderPage />);
+
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    expect(highlightMark).toBeInTheDocument();
+
+    // Click highlight to open popover and add a note
     await act(async () => {
       fireEvent.click(highlightMark);
     });
@@ -446,6 +464,20 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     const stored = useAnnotationStore.getState().annotations;
     expect(stored).toHaveLength(1);
     expect(stored[0].note).toBe('Famous opening quote');
+  });
+
+  it('displays saved note in notes drawer and closes drawer upon jumping to passage', async () => {
+    useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+      note: 'Famous opening quote',
+    });
+
+    render(<BookReaderPage />);
 
     // Open Notes drawer and verify it appears with note
     const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
@@ -458,8 +490,20 @@ describe('Dedicated Reader Page (/read/[id])', () => {
 
     // Drawer closes after jump
     expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+  });
 
-    // 6. Click highlight again, change color to rose, and verify in-place update without duplicates
+  it('updates highlight color in-place without duplicating annotations in store', async () => {
+    useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+    });
+
+    render(<BookReaderPage />);
+
     const existingMark = screen.getByTestId('user-annotation-highlight');
     await act(async () => {
       fireEvent.click(existingMark);
@@ -475,11 +519,26 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(useAnnotationStore.getState().annotations).toHaveLength(1);
     expect(useAnnotationStore.getState().annotations[0].color).toBe('rose');
     expect(screen.getByTestId('user-annotation-highlight')).toHaveAttribute('data-annotation-color', 'rose');
+  });
 
-    // 7. Click highlight again, open confirmation modal, and delete it
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('user-annotation-highlight'));
+  it('removes highlight and note upon confirmation in delete modal', async () => {
+    useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+      note: 'Note to be deleted',
     });
+
+    render(<BookReaderPage />);
+
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    await act(async () => {
+      fireEvent.click(highlightMark);
+    });
+
     const deleteBtn = screen.getByTestId('highlight-delete-btn');
     await act(async () => {
       fireEvent.click(deleteBtn);
@@ -493,8 +552,6 @@ describe('Dedicated Reader Page (/read/[id])', () => {
 
     expect(useAnnotationStore.getState().annotations).toHaveLength(0);
     expect(screen.queryByTestId('user-annotation-highlight')).not.toBeInTheDocument();
-
-    window.getSelection = originalGetSelection;
   });
 
   it('automatically sets reading status to currently_reading when beginning a volume', async () => {

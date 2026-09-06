@@ -152,8 +152,29 @@ describe('AccountPreferencesSection', () => {
     expect(cancelMock).toHaveBeenCalled();
   });
 
-  it('covers light and dark theme buttons and preview completion callbacks', () => {
+  it('triggers onThemeChange when clicking Light and Dark theme buttons', () => {
     const handleThemeChange = vi.fn();
+
+    render(
+      <AccountPreferencesSection
+        {...defaultProps}
+        theme="dark"
+        speechAutoPageAdvance={false}
+        speechHighlightEnabled={false}
+        onThemeChange={handleThemeChange}
+      />
+    );
+
+    const lightBtn = screen.getByRole('button', { name: 'Light' });
+    fireEvent.click(lightBtn);
+    expect(handleThemeChange).toHaveBeenCalledWith('light');
+
+    const darkBtn = screen.getByRole('button', { name: 'Dark' });
+    fireEvent.click(darkBtn);
+    expect(handleThemeChange).toHaveBeenCalledWith('dark');
+  });
+
+  it('handles speech synthesis voice preview completion and error callbacks', () => {
     const speakMock = vi.fn();
 
     class MockUtterance {
@@ -185,22 +206,12 @@ describe('AccountPreferencesSection', () => {
     render(
       <AccountPreferencesSection
         {...defaultProps}
-        theme="dark"
         speechAutoPageAdvance={false}
         speechHighlightEnabled={false}
-        onThemeChange={handleThemeChange}
       />
     );
 
-    const lightBtn = screen.getByRole('button', { name: 'Light' });
-    fireEvent.click(lightBtn);
-    expect(handleThemeChange).toHaveBeenCalledWith('light');
-
-    const darkBtn = screen.getByRole('button', { name: 'Dark' });
-    fireEvent.click(darkBtn);
-    expect(handleThemeChange).toHaveBeenCalledWith('dark');
-
-    // Test preview with null voice and error trigger
+    // Test preview with null voice and completion trigger
     const testVoiceBtn = screen.getByRole('button', { name: 'Test voice' });
     fireEvent.click(testVoiceBtn);
     expect(speakMock).toHaveBeenCalled();

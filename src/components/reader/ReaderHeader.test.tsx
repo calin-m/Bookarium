@@ -361,7 +361,24 @@ describe('ReaderHeader', () => {
     expect(copiedBtns[0]).toBeInTheDocument();
   });
 
-  it('toggles mobile action tray and executes actions', () => {
+  it('toggles mobile action tray visibility when clicking the handle button', () => {
+    render(<ReaderHeader {...defaultProps} />);
+
+    const toggleBtn = screen.getByTestId('mobile-tray-toggle');
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+
+    // Open mobile tray
+    fireEvent.click(toggleBtn);
+    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('mobile-action-tray')).toBeInTheDocument();
+
+    // Retract via traveling handle toggle button
+    fireEvent.click(screen.getByTestId('mobile-tray-toggle'));
+    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('dispatches TOC, Search, and Controls actions while keeping mobile tray open', () => {
     const onToggleToc = vi.fn();
     const onToggleSearch = vi.fn();
     const onToggleControls = vi.fn();
@@ -375,15 +392,9 @@ describe('ReaderHeader', () => {
       />
     );
 
-    const toggleBtn = screen.getByTestId('mobile-tray-toggle');
-    expect(toggleBtn).toBeInTheDocument();
-    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
-
     // Open mobile tray
-    fireEvent.click(toggleBtn);
+    fireEvent.click(screen.getByTestId('mobile-tray-toggle'));
     expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
-    const tray = screen.getByTestId('mobile-action-tray');
-    expect(tray).toBeInTheDocument();
 
     // Trigger TOC, Search, and Controls from inside tray - tray remains open for all multi-tool actions
     const tocBtns = screen.getAllByLabelText('Table of Contents');
@@ -400,14 +411,15 @@ describe('ReaderHeader', () => {
     fireEvent.click(controlsBtns[controlsBtns.length - 1]);
     expect(onToggleControls).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
+  });
 
-    // Retract via traveling handle toggle button
-    fireEvent.click(screen.getByTestId('mobile-tray-toggle'));
-    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'false');
+  it('dismisses open mobile action tray when pressing Escape key', () => {
+    render(<ReaderHeader {...defaultProps} />);
 
-    // Reopen and close via Escape key
-    fireEvent.click(screen.getByTestId('mobile-tray-toggle'));
+    const toggleBtn = screen.getByTestId('mobile-tray-toggle');
+    fireEvent.click(toggleBtn);
     expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
+
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'false');
   });

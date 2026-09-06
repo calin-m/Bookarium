@@ -97,11 +97,10 @@ describe('ReaderSpeechBar', () => {
     expect(onResume).toHaveBeenCalledTimes(1);
   });
 
-  it('navigates previous and next sentences and respects boundary disable flags', () => {
+  it('disables previous sentence button and skips to next sentence at start of text', () => {
     const onSkipNext = vi.fn();
-    const onSkipPrev = vi.fn();
 
-    const { rerender } = render(
+    render(
       <ReaderSpeechBar
         {...defaultProps}
         currentSentenceIndex={0}
@@ -109,40 +108,40 @@ describe('ReaderSpeechBar', () => {
         isPrevDisabled={true}
         isNextDisabled={false}
         onSkipNext={onSkipNext}
-        onSkipPrev={onSkipPrev}
       />
     );
 
     const prevBtn = screen.getByRole('button', { name: 'Previous sentence' });
     const nextBtn = screen.getByRole('button', { name: 'Next sentence' });
 
-    // At index 0 with isPrevDisabled=true, previous is disabled
     expect(prevBtn).toBeDisabled();
     expect(nextBtn).not.toBeDisabled();
 
     fireEvent.click(nextBtn);
     expect(onSkipNext).toHaveBeenCalledTimes(1);
+  });
 
-    // At last index with isNextDisabled=true, next is disabled
-    rerender(
+  it('disables next sentence button and skips to previous sentence at end of text', () => {
+    const onSkipPrev = vi.fn();
+
+    render(
       <ReaderSpeechBar
         {...defaultProps}
         currentSentenceIndex={4}
         totalSentences={5}
         isPrevDisabled={false}
         isNextDisabled={true}
-        onSkipNext={onSkipNext}
         onSkipPrev={onSkipPrev}
       />
     );
 
-    const updatedNextBtn = screen.getByRole('button', { name: 'Next sentence' });
-    const updatedPrevBtn = screen.getByRole('button', { name: 'Previous sentence' });
+    const nextBtn = screen.getByRole('button', { name: 'Next sentence' });
+    const prevBtn = screen.getByRole('button', { name: 'Previous sentence' });
 
-    expect(updatedNextBtn).toBeDisabled();
-    expect(updatedPrevBtn).not.toBeDisabled();
+    expect(nextBtn).toBeDisabled();
+    expect(prevBtn).not.toBeDisabled();
 
-    fireEvent.click(updatedPrevBtn);
+    fireEvent.click(prevBtn);
     expect(onSkipPrev).toHaveBeenCalledTimes(1);
   });
 
