@@ -208,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right Actions: Auth, Theme */}
           {!hasMounted ? (
             <div
-              className="h-8 w-8 lg:w-[96px] rounded border border-border/40 bg-muted/40 animate-pulse"
+              className="h-8 w-8 lg:w-[96px] rounded border border-border bg-muted/40 animate-pulse"
               aria-hidden="true"
             />
           ) : user ? (

@@ -107,7 +107,7 @@ export const ReaderLanguageDrawer: React.FC<ReaderLanguageDrawerProps> = ({
                           t.isCurrent
                             ? theme === 'sepia'
                               ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                              : 'bg-primary/20 text-primary border-primary/40'
+                              : 'bg-primary-500/15 dark:bg-primary-500/25 text-primary-600 dark:text-primary-400 border-primary-500/30 dark:border-primary-500/40'
                             : `${activeTheme.border} ${activeTheme.pill}`
                         }`}
                       >
@@ -133,7 +133,7 @@ export const ReaderLanguageDrawer: React.FC<ReaderLanguageDrawerProps> = ({
         </div>
 
         {/* TIER 2: INSTANT DYNAMIC TRANSLATION */}
-        <div className="space-y-3 pt-2 border-t border-border/40">
+        <div className="space-y-3 pt-2 border-t border-border">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 shrink-0 text-amber-400 animate-pulse" />
@@ -206,7 +206,7 @@ export const ReaderLanguageDrawer: React.FC<ReaderLanguageDrawerProps> = ({
                     }}
                     className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-mono text-left border transition-all cursor-pointer ${
                       isSelected
-                        ? `${activeTheme.drawerActive} font-bold ring-1 ring-primary/50 shadow-xs`
+                        ? `${activeTheme.drawerActive} font-bold ring-1 ring-primary-500/40 shadow-xs`
                         : `${activeTheme.pill} ${activeTheme.drawerHover}`
                     }`}
                   >

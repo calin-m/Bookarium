@@ -169,5 +169,26 @@ describe('ReaderLanguageDrawer Component', () => {
     );
 
     expect(screen.getByRole('dialog', { name: 'Language Editions & Translations' })).toBeInTheDocument();
+    // Sepia badge assertion
+    const currentBadge = screen.getByText('en');
+    expect(currentBadge).toHaveClass('border-amber-500/40');
+    expect(currentBadge).toHaveClass('bg-amber-500/20');
+  });
+
+  it('renders active language badge with supported numbered tokens in default light/dark mode', () => {
+    render(
+      <ReaderLanguageDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        translations={mockTranslations}
+        theme="light"
+      />
+    );
+
+    const currentBadge = screen.getByText('en');
+    expect(currentBadge).toHaveClass('border-primary-500/30');
+    expect(currentBadge).toHaveClass('bg-primary-500/15');
+    expect(currentBadge.className).not.toContain('border-primary/40');
+    expect(currentBadge.className).not.toContain('bg-primary/20');
   });
 });

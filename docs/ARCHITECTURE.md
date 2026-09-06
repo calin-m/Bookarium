@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-09-06`  
-> **Topology Health**: `136` Modules Analyzed • `433` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `137` Modules Analyzed • `435` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -108,7 +108,7 @@ flowchart TD
 
 ## 🧩 Component Catalog & Props Interface Matrix
 
-Auto-extracted dynamically from **58 Production UI Components** using Babel AST:
+Auto-extracted dynamically from **59 Production UI Components** using Babel AST:
 
 | Component | Category | Exported Props Interface | Primary Props & Signals | Module Link |
 | :--- | :--- | :--- | :--- | :--- |
@@ -146,6 +146,7 @@ Auto-extracted dynamically from **58 Production UI Components** using Babel AST:
 | **`StickyCatalogToolbar`** | Presentation | `StickyCatalogToolbarProps` | `page`, `onPageChange`, `hasNextPage`, `viewMode`, `onViewModeChange`, `onOpenFilters`, `isFiltersOpen`, `activeFilterCount`, `activeFilterChips`, `onClearAllFilters`, `isFetching`, `onPrefetchNext`, `latencyMs`, `isError`, `pageSize`, `onPageSizeChange`, `isHeaderVisible`, `isVisible` | [`src/components/presentation/StickyCatalogToolbar.tsx`](src/components/presentation/StickyCatalogToolbar.tsx) |
 | **`ServiceWorkerRegister`** | Pwa | _Autonomous_ | None (Self-Contained) | [`src/components/pwa/ServiceWorkerRegister.tsx`](src/components/pwa/ServiceWorkerRegister.tsx) |
 | **`GutenbergInfoModal`** | Reader | `GutenbergInfoModalProps` | `isOpen`, `onClose`, `bookId`, `title`, `author`, `theme` | [`src/components/reader/GutenbergInfoModal.tsx`](src/components/reader/GutenbergInfoModal.tsx) |
+| **`QuoteDeletePreview`** | Reader | `QuoteDeletePreviewProps` | `selectedText`, `note` | [`src/components/reader/QuoteDeletePreview.tsx`](src/components/reader/QuoteDeletePreview.tsx) |
 | **`ReaderAnnotationsDrawer`** | Reader | `ReaderAnnotationsDrawerProps` | `isOpen`, `onClose`, `annotations`, `bookTitle`, `theme`, `onJumpToAnnotation`, `onDeleteAnnotation`, `onUpdateNote` | [`src/components/reader/ReaderAnnotationsDrawer.tsx`](src/components/reader/ReaderAnnotationsDrawer.tsx) |
 | **`ReaderControls`** | Reader | `ReaderControlsProps` | `isOpen`, `onClose`, `fontSize`, `onFontSizeChange`, `lineHeight`, `onLineHeightChange`, `fontFamily`, `onFontFamilyChange`, `theme`, `onThemeChange`, `readingMode`, `onReadingModeChange`, `columnWidth`, `onColumnWidthChange` | [`src/components/reader/ReaderControls.tsx`](src/components/reader/ReaderControls.tsx) |
 | **`ReaderDrawerShell`** | Reader | `ReaderDrawerShellProps` | `isOpen`, `onClose`, `title`, `titleIcon`, `theme`, `children`, `ariaLabel`, `closeAriaLabel`, `backdropTestId`, `panelTestId`, `className`, `role` | [`src/components/reader/ReaderDrawerShell.tsx`](src/components/reader/ReaderDrawerShell.tsx) |
@@ -272,7 +273,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`page.tsx`](src/app/privacy/page.tsx) | `components/presentation/Navbar`, `components/presentation/Footer`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
 | [`providers.tsx`](src/app/providers.tsx) | `stores/useAuthStore`, `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `components/auth/AuthModal`, `components/pwa/ServiceWorkerRegister` | `layout.tsx` | Production Module |
 | [`layout.tsx`](src/app/read/[id]/layout.tsx) | `config/site-config`, `lib/book-metadata`, `types/book.types` | _App Route Entry_ | Production Module |
-| [`page.tsx`](src/app/read/[id]/page.tsx) | `hooks/queries/useBookContent`, `hooks/queries/useBooks`, `hooks/queries/useBookTranslations`, `hooks/queries/usePageTranslation`, `stores/useReaderStore`, `stores/useThemeStore`, `hooks/useHasMounted`, `types/book.types`, `lib/gutenberg-parser`, `hooks/reader/useGutenbergParserWorker`, `config/reader-themes`, `lib/book-metadata`, `components/reader/ReaderHeader`, `components/reader/ReaderFooter`, `components/reader/ReaderTocDrawer`, `components/reader/ReaderSearchDrawer`, `components/reader/ReaderControls`, `components/reader/ReaderLanguageDrawer`, `components/reader/ReaderSpeechBar`, `components/reader/ReaderSurface`, `components/reader/TextHighlightPopover`, `components/reader/ReaderAnnotationsDrawer`, `hooks/reader/useReaderDrawers`, `hooks/reader/useReaderSpeech`, `hooks/reader/useReaderSession`, `stores/usePreferencesStore`, `stores/useAnnotationStore`, `stores/useAuthStore`, `stores/useBookshelfStore`, `components/ui/StarRating`, `components/ui/Modal`, `components/ui/Button`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
+| [`page.tsx`](src/app/read/[id]/page.tsx) | `hooks/queries/useBookContent`, `hooks/queries/useBooks`, `hooks/queries/useBookTranslations`, `hooks/queries/usePageTranslation`, `stores/useReaderStore`, `stores/useThemeStore`, `hooks/useHasMounted`, `types/book.types`, `lib/gutenberg-parser`, `hooks/reader/useGutenbergParserWorker`, `config/reader-themes`, `lib/book-metadata`, `components/reader/ReaderHeader`, `components/reader/ReaderFooter`, `components/reader/ReaderTocDrawer`, `components/reader/ReaderSearchDrawer`, `components/reader/ReaderControls`, `components/reader/ReaderLanguageDrawer`, `components/reader/ReaderSpeechBar`, `components/reader/ReaderSurface`, `components/reader/TextHighlightPopover`, `components/reader/ReaderAnnotationsDrawer`, `components/reader/QuoteDeletePreview`, `hooks/reader/useReaderDrawers`, `hooks/reader/useReaderSpeech`, `hooks/reader/useReaderSession`, `stores/usePreferencesStore`, `stores/useAnnotationStore`, `stores/useAuthStore`, `stores/useBookshelfStore`, `components/ui/StarRating`, `components/ui/Modal`, `components/ui/Button`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
 | [`robots.ts`](src/app/robots.ts) | `config/site-config` | _Direct Root Consumer_ | Production Module |
 | [`sitemap.ts`](src/app/sitemap.ts) | `config/site-config` | _Direct Root Consumer_ | Production Module |
 | [`AccountDeleteModal.tsx`](src/components/account/AccountDeleteModal.tsx) | `components/ui/Modal`, `components/ui/Button` | `page.tsx` | Production Module |
@@ -309,7 +310,8 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`BookshelfSpine.tsx`](src/components/presentation/bookshelf/BookshelfSpine.tsx) | `hooks/useCursorTooltip`, `components/ui/CursorTooltip`, `types/book.types`, `types/database.types`, `stores/useReaderStore`, `stores/useBookshelfStore`, `components/ui/StarRating`, `lib/utils`, `config/routes` | `BookshelfRack.tsx` | Production Module |
 | [`ServiceWorkerRegister.tsx`](src/components/pwa/ServiceWorkerRegister.tsx) | _Root Primitive_ | `providers.tsx` | Production Module |
 | [`GutenbergInfoModal.tsx`](src/components/reader/GutenbergInfoModal.tsx) | `config/site-config`, `config/reader-themes` | `ReaderHeader.tsx` | Production Module |
-| [`ReaderAnnotationsDrawer.tsx`](src/components/reader/ReaderAnnotationsDrawer.tsx) | `./ReaderDrawerShell`, `components/ui/Modal`, `components/ui/Button`, `stores/useAnnotationStore`, `stores/useReaderStore`, `config/reader-themes`, `./TextHighlightPopover` | `page.tsx` | Production Module |
+| [`QuoteDeletePreview.tsx`](src/components/reader/QuoteDeletePreview.tsx) | _Root Primitive_ | `page.tsx`, `ReaderAnnotationsDrawer.tsx` | Production Module |
+| [`ReaderAnnotationsDrawer.tsx`](src/components/reader/ReaderAnnotationsDrawer.tsx) | `./ReaderDrawerShell`, `components/ui/Modal`, `components/ui/Button`, `stores/useAnnotationStore`, `stores/useReaderStore`, `config/reader-themes`, `./TextHighlightPopover`, `./QuoteDeletePreview` | `page.tsx` | Production Module |
 | [`ReaderControls.tsx`](src/components/reader/ReaderControls.tsx) | `stores/useReaderStore`, `config/reader-themes`, `config/reader-config`, `./ReaderDrawerShell` | `page.tsx` | Production Module |
 | [`ReaderDrawerShell.tsx`](src/components/reader/ReaderDrawerShell.tsx) | `stores/useReaderStore`, `config/reader-themes`, `hooks/useHasMounted`, `lib/utils` | `ReaderAnnotationsDrawer.tsx`, `ReaderControls.tsx`, `ReaderLanguageDrawer.tsx`, `ReaderSearchDrawer.tsx`, `ReaderTocDrawer.tsx` | Production Module |
 | [`ReaderErrorView.tsx`](src/components/reader/ReaderErrorView.tsx) | `config/reader-themes` | `ReaderSurface.tsx` | Production Module |

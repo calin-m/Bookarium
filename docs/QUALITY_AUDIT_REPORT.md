@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 06 Sep 2026 11:23:52 GMT  
+**Last Generated**: Sun, 06 Sep 2026 12:24:32 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 126 passed  
-**Total Verified Tests**: 989 passed  
+**Total Test Suites**: 127 passed  
+**Total Verified Tests**: 997 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **126/126 test suites passed** (989 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **127/127 test suites passed** (997 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 25 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.35%** (5149/5575) — *Target: $ge$ 80%*
-- **Statements**: **90.54%** (5609/6195) — *Target: $ge$ 80%*
-- **Functions**: **88.39%** (1280/1448) — *Target: $ge$ 80%*
-- **Branches**: **80.75%** (4805/5950) — *Target: $ge$ 80%*
+- **Lines**: **92.36%** (5151/5577) — *Target: $ge$ 80%*
+- **Statements**: **90.52%** (5610/6197) — *Target: $ge$ 80%*
+- **Functions**: **88.4%** (1281/1449) — *Target: $ge$ 80%*
+- **Branches**: **80.73%** (4802/5948) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (126 Suites / 989 Tests)
+## 🧪 Comprehensive Test Suite Catalog (127 Suites / 997 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 96 Tests)
 
@@ -198,7 +198,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (21 Suites · 216 Tests)
+### 🎨 Catalog & Presentation (21 Suites · 217 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -458,12 +458,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `should render section heading, kicker, and 3 literary quote cards`
 - ✔ `should shuffle quotes when clicking Discover More button`
 - ✔ `should have links pointing to valid /read/[id] routes`
 - ✔ `should cleanly unmount without errors during active shuffle`
+- ✔ `applies theme-aware border-border classes to card dividers without unsupported opacity modifiers`
 
 </details>
 
@@ -542,7 +543,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (15 Suites · 122 Tests)
+### 📖 In-Browser Focus Reader (16 Suites · 126 Tests)
 
 <details>
 <summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
@@ -550,6 +551,15 @@
 - ✔ `renders null when not open`
 - ✔ `renders volume metadata, title, and handles close action`
 - ✔ `triggers onClose when clicking backdrop`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/QuoteDeletePreview.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders selectedText within quotes`
+- ✔ `renders note when provided`
+- ✔ `does not render note section when note is null or omitted`
 
 </details>
 
@@ -638,7 +648,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `does not render content when isOpen is false`
 - ✔ `renders dual-tier layout with archival editions and instant translation`
@@ -647,6 +657,7 @@
 - ✔ `unselects dynamic language when clicking the active quick-pick chip`
 - ✔ `renders fallback message when archival translations array is empty`
 - ✔ `renders properly in Sepia theme`
+- ✔ `renders active language badge with supported numbered tokens in default light/dark mode`
 
 </details>
 
@@ -1431,7 +1442,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (37 Suites · 140 Tests)
+### 🧩 UI Primitives & Motion (37 Suites · 143 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1597,7 +1608,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/bookshelf/ReadingStatusSelector.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/bookshelf/ReadingStatusSelector.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders all three reading status options`
 - ✔ `marks current status as checked`
@@ -1605,6 +1616,7 @@
 - ✔ `clears status when clicking the active option`
 - ✔ `renders clear button when status is active and invokes onChange(null)`
 - ✔ `renders clear button immediately following the selected option across all status variants`
+- ✔ `applies theme-aware border and background classes to active and inactive buttons without unsupported opacity variants`
 
 </details>
 
@@ -1642,9 +1654,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/Badge.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/ui/Badge.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `should render badge content with variant and size classes`
+- ✔ `should render success variant correctly`
+- ✔ `should render default secondary variant and md size`
 
 </details>
 

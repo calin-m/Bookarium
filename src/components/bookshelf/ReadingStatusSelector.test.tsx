@@ -64,5 +64,27 @@ describe('ReadingStatusSelector', () => {
     rerender(<ReadingStatusSelector status={null} onChange={vi.fn()} showClear />);
     expect(screen.queryByRole('button', { name: /clear reading status/i })).not.toBeInTheDocument();
   });
+
+  it('applies theme-aware border and background classes to active and inactive buttons without unsupported opacity variants', () => {
+    const { rerender } = render(<ReadingStatusSelector status={null} onChange={vi.fn()} />);
+
+    // Inactive buttons should use border-border
+    const wantToReadBtn = screen.getByRole('radio', { name: /want to read/i });
+    expect(wantToReadBtn).toHaveClass('border-border');
+    expect(wantToReadBtn.className).not.toContain('border-border/60');
+
+    // Currently Reading active should use border-primary-500/40 and bg-primary-500/15
+    rerender(<ReadingStatusSelector status="currently_reading" onChange={vi.fn()} showClear />);
+    const currentlyReadingBtn = screen.getByRole('radio', { name: /currently reading/i });
+    expect(currentlyReadingBtn).toHaveClass('border-primary-500/40');
+    expect(currentlyReadingBtn).toHaveClass('bg-primary-500/15');
+    expect(currentlyReadingBtn.className).not.toContain('border-primary/40');
+    expect(currentlyReadingBtn.className).not.toContain('bg-primary/15');
+
+    // Clear button should use border-border
+    const clearBtn = screen.getByRole('button', { name: /clear reading status/i });
+    expect(clearBtn).toHaveClass('border-border');
+    expect(clearBtn.className).not.toContain('border-border/40');
+  });
 });
 
