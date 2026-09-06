@@ -53,9 +53,10 @@ global.IntersectionObserver = class IntersectionObserver {
   }
 } as any;
 
-// Mock window.scrollTo
+// Mock window.scrollTo & Element.prototype.scrollIntoView
 window.scrollTo = vi.fn();
 Element.prototype.scrollTo = vi.fn();
+Element.prototype.scrollIntoView = vi.fn();
 
 // Mock window.location for JSDOM
 Object.defineProperty(window, 'location', {

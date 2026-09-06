@@ -2,15 +2,15 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-94%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-15_of_16-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-73%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-16_of_22-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[███████████████████░]` **15/16 (94%)**
+`[███████████████░░░░░]` **16/22 (73%)**
 
 ---
 
@@ -67,7 +67,7 @@
 ---
 
 ### Milestone 3: Habits, Goals & Library Curation (`Target: v2.0.0`)
-`[█████████████░░░░░░░]` **2/3 (67%)**
+`[████████████████████]` **3/3 (100%)**
 
 > Rich reader curation, Goodreads-style reading statuses, and daily habit tracking analytics.
 
@@ -75,8 +75,36 @@
   Dedicated reading ledger displaying all books in progress with tactile bookmark cards, last-read passage snippets, completion percentages, filtering (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.
 - [x] **1–5 Star Personal Ratings & Reading Statuses** `✅ VERIFIED`
   Assign 1–5 star ratings and reading statuses ("Want to Read", "Currently Reading", "Finished") to volumes across book cards and shelf management modals.
-- [ ] **Reading Streaks & Annual Goal Tracking** `⏳ PLANNED`
+- [x] **Reading Streaks & Annual Goal Tracking** `✅ VERIFIED`
   Track daily reading activity timestamps to display consecutive reading streaks, estimated hours read, and annual reading challenge goals in the Account dashboard.
+
+---
+
+### Milestone 4: Literary Accolades & Public Profiles (`Target: v2.1.0`)
+`[░░░░░░░░░░░░░░░░░░░░]` **0/3 (0%)**
+
+> Gamified ex-libris accolades, tactile bookplate achievements, and opt-in public scholar profile pages.
+
+- [ ] **Deterministic Literary Accolades & Badge Engine** `⏳ PLANNED`
+  Ex-libris bookplate badges (Seven-Day Sage, Ancient Antiquarian, Century Voyager, Commonplace Scholar) unlocked via pure client-side reading telemetry with tactile unlock celebrations.
+- [ ] **Opt-In Public Scholar Profiles (`/u/[username]`)** `⏳ PLANNED`
+  Dedicated public profile page showcasing reader biography, public bookshelves, reading challenge progress, and pinned accolade badges with strict privacy toggles (Public vs Private).
+- [ ] **Shareable Reading Cards & OpenGraph Export** `⏳ PLANNED`
+  Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.
+
+---
+
+### Milestone 5: Community Hub & Collective Reading (`Target: v2.2.0`)
+`[░░░░░░░░░░░░░░░░░░░░]` **0/3 (0%)**
+
+> Shared literary agora, community volume reviews, public commonplace quote discussions, and reader circles.
+
+- [ ] **Bookarium Community Hub (`/?view=community`)** `⏳ PLANNED`
+  Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics.
+- [ ] **Public Book Discussions & Margin Notes** `⏳ PLANNED`
+  Reader commentary and reviews on individual book volumes with opt-in publishing of quote highlights from the Commonplace Notebook.
+- [ ] **Reader Circles & Social Activity Stream** `⏳ PLANNED`
+  Follow fellow public readers, see what friends are currently reading in real-time, and celebrate shared milestone completions.
 
 ---
 

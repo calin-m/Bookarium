@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { BookOpen, ZoomIn, Sparkles } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
-import type { Annotation, HighlightColor } from '@/stores/useAnnotationStore';
+import type { Annotation } from '@/stores/useAnnotationStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { ANNOTATION_COLOR_CONFIG } from '@/config/annotation-tokens';

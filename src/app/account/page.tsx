@@ -15,6 +15,7 @@ import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
 import { useThemeStore, type AppTheme } from '@/stores/useThemeStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { useHydratedHabits } from '@/stores/useHabitsStore';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
@@ -22,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { AccountIdentityCard } from '@/components/account/AccountIdentityCard';
 import { AccountLibraryStats } from '@/components/account/AccountLibraryStats';
+import { AccountHabitsCard } from '@/components/account/AccountHabitsCard';
 import { AccountSecuritySection } from '@/components/account/AccountSecuritySection';
 import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
@@ -53,10 +55,23 @@ export default function AccountPage() {
       resendVerificationEmail: s.resendVerificationEmail,
     }))
   );
-  const { savedCount, favoriteCount, cloudBookshelves } = useHydratedBookshelf();
+  const { savedCount, favoriteCount, cloudBookshelves, bookStatuses } = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
+  const { getStreakStats } = useHydratedHabits();
   const annotationCount = annotations.length;
   const bookmarksCount = useReaderStore(getActiveReadingCount);
+  const readingStreak = getStreakStats().currentStreak;
+
+  const completedBooksCount = useMemo(() => {
+    const finishedFromStatus = Object.entries(bookStatuses || {})
+      .filter(([_, status]) => status === 'finished')
+      .map(([id]) => Number(id));
+    const finishedFromProgress = Object.entries(useReaderStore.getState().readingProgress || {})
+      .filter(([_, p]) => p >= 100)
+      .map(([id]) => Number(id));
+    return new Set([...finishedFromStatus, ...finishedFromProgress]).size;
+  }, [bookStatuses]);
+
   const customShelvesCount = useMemo(
     () => cloudBookshelves.filter((s) => !s.is_default).length,
     [cloudBookshelves]
@@ -350,11 +365,18 @@ export default function AccountPage() {
                 customShelvesCount={customShelvesCount}
                 annotationCount={annotationCount}
                 bookmarksCount={bookmarksCount}
+                readingStreak={readingStreak}
               />
             </div>
 
-            {/* Right Column (Reading Preferences & Security) */}
+            {/* Right Column (Habits, Preferences & Security) */}
             <div className="lg:col-span-7 space-y-6">
+              {/* Reading Habits & Annual Challenge Card */}
+              <AccountHabitsCard
+                userId={user?.id}
+                completedBooksCount={completedBooksCount}
+              />
+
               {/* Reading & Navigation Preferences Card */}
               <AccountPreferencesSection
                 theme={theme}

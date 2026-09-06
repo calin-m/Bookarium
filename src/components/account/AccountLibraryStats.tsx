@@ -9,6 +9,7 @@ export interface AccountLibraryStatsProps {
   customShelvesCount: number;
   annotationCount?: number;
   bookmarksCount?: number;
+  readingStreak?: number;
 }
 
 interface LibraryCardConfig {
@@ -29,6 +30,7 @@ export const AccountLibraryStats: React.FC<AccountLibraryStatsProps> = ({
   customShelvesCount,
   annotationCount = 0,
   bookmarksCount = 0,
+  readingStreak,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollActiveIndex, setScrollActiveIndex] = useState<number>(-1);
@@ -166,6 +168,15 @@ export const AccountLibraryStats: React.FC<AccountLibraryStatsProps> = ({
         <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
           Library
         </h2>
+        {readingStreak !== undefined && readingStreak > 0 && (
+          <span
+            className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+            title={`Active reading streak: ${readingStreak} ${readingStreak === 1 ? 'day' : 'days'}`}
+            data-testid="account-library-streak-badge"
+          >
+            🔥 {readingStreak} {readingStreak === 1 ? 'day' : 'days'}
+          </span>
+        )}
       </div>
 
       <div

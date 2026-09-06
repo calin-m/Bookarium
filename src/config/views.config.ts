@@ -1,4 +1,3 @@
-import type { ComponentType } from 'react';
 import { Compass, Library, Heart, Highlighter, Bookmark, type LucideIcon } from 'lucide-react';
 import { LIBRARY_THEMES } from '@/config/library-tokens';
 

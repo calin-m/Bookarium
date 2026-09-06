@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 06 Sep 2026 14:59:04 GMT  
+**Last Generated**: Sun, 06 Sep 2026 21:39:28 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 133 passed  
-**Total Verified Tests**: 1051 passed  
+**Total Test Suites**: 137 passed  
+**Total Verified Tests**: 1096 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **133/133 test suites passed** (1051 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **137/137 test suites passed** (1096 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 26 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 27 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.68%** (5234/5647) — *Target: $ge$ 80%*
-- **Statements**: **90.97%** (5707/6273) — *Target: $ge$ 80%*
-- **Functions**: **88.83%** (1313/1478) — *Target: $ge$ 80%*
-- **Branches**: **81.2%** (4797/5907) — *Target: $ge$ 80%*
+- **Lines**: **92.69%** (5468/5899) — *Target: $ge$ 80%*
+- **Statements**: **91.03%** (5951/6537) — *Target: $ge$ 80%*
+- **Functions**: **88.48%** (1360/1537) — *Target: $ge$ 80%*
+- **Branches**: **81.19%** (4951/6098) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (133 Suites / 1051 Tests)
+## 🧪 Comprehensive Test Suite Catalog (137 Suites / 1096 Tests)
 
-### 🚀 App Routes & Pages (11 Suites · 102 Tests)
+### 🚀 App Routes & Pages (11 Suites · 104 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -128,7 +128,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -146,15 +146,17 @@
 - ✔ `should dynamically filter favorites books and show empty search feedback`
 - ✔ `should switch to Notebook view when Notebook tab in Navbar is clicked`
 - ✔ `switches to Bookmarks view and renders reading ledger when Bookmarks nav tab is clicked`
+- ✔ `smoothly scrolls to catalog-section and updates display mode when toggling between Cards and Bookshelves`
 
 </details>
 
 <details>
-<summary><b><code>src/app/providers.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/app/providers.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
 - ✔ `should call syncAllStoresWithCloud when user is logged in`
 - ✔ `should trigger syncAllStoresWithCloud on window online event when user is logged in`
+- ✔ `should trigger syncAllStoresWithCloud on document visibilitychange when user is logged in and cooldown passed`
 
 </details>
 
@@ -204,10 +206,10 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (21 Suites · 220 Tests)
+### 🎨 Catalog & Presentation (21 Suites · 221 Tests)
 
 <details>
-<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `should render drawer with all filter sections when open`
 - ✔ `should handle era selection on click`
@@ -219,6 +221,7 @@
 - ✔ `should apply filters and close drawer on apply button click`
 - ✔ `should not render anything when isOpen is false`
 - ✔ `should close when pressing the Escape key`
+- ✔ `renders header icon container with theme-aware solid border-border without fractional opacity`
 
 </details>
 
@@ -814,7 +817,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (6 Suites · 99 Tests)
+### ⚡ Zustand State Stores (7 Suites · 107 Tests)
 
 <details>
 <summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
@@ -905,6 +908,20 @@
 </details>
 
 <details>
+<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `initializes with default values`
+- ✔ `records daily activity without duplicates`
+- ✔ `accumulates reading duration and logs today date`
+- ✔ `updates annual reading target clamped between 1 and 365`
+- ✔ `resets habits back to defaults`
+- ✔ `provides computed selectors for streaks, progress, and duration`
+- ✔ `preserves freshly set local goal over older Supabase goal via Last-Write-Wins`
+- ✔ `adopts remote Supabase goal on fresh device where local goal was never modified`
+
+</details>
+
+<details>
 <summary><b><code>src/stores/usePreferencesStore.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `initializes with stickyScrollEnabled = true by default`
@@ -951,7 +968,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (20 Suites · 173 Tests)
+### 📚 Gutenberg Parsers & Metadata (21 Suites · 192 Tests)
 
 <details>
 <summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (16 tests)</summary>
@@ -1163,6 +1180,31 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/reading-analytics.test.ts</code></b> (19 tests)</summary>
+
+- ✔ `formats a date to YYYY-MM-DD`
+- ✔ `pads single-digit month and day with zeros`
+- ✔ `returns zeroes when activeDates is empty`
+- ✔ `filters out invalid date strings`
+- ✔ `calculates 1-day streak when user has only read today`
+- ✔ `preserves grace period streak if user read yesterday but not yet today`
+- ✔ `breaks current streak to 0 if neither today nor yesterday was active`
+- ✔ `accurately calculates consecutive streaks and longest historical streak`
+- ✔ `handles deduplication and arbitrary sorting order`
+- ✔ `populates 7 days of weekActivity ending with today`
+- ✔ `returns `
+- ✔ `returns `
+- ✔ `returns minutes for durations between 1 and 59 minutes`
+- ✔ `returns decimal hours for durations between 1 and 10 hours`
+- ✔ `returns rounded hours for large durations`
+- ✔ `handles zero completed books`
+- ✔ `clamps target to at least 1`
+- ✔ `calculates accurate percentages and remaining counts`
+- ✔ `marks isCompleted as true and caps percent at 100 when target is met or exceeded`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/smart-search.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `should return empty string for null, undefined, or empty inputs`
@@ -1210,7 +1252,7 @@
 <details>
 <summary><b><code>src/lib/sync-utils.test.ts</code></b> (3 tests)</summary>
 
-- ✔ `triggers syncWithCloud concurrently on Bookshelf, Annotation, and Reader stores`
+- ✔ `triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, and Habits stores`
 - ✔ `safely exits without calling stores if userId is empty`
 - ✔ `gracefully settles and does not throw if one store encounters a network rejection`
 
@@ -1246,7 +1288,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (18 Suites · 151 Tests)
+### 🔄 Hooks & React Query (19 Suites · 157 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
@@ -1493,6 +1535,18 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/useReadingTimer.test.ts</code></b> (6 tests)</summary>
+
+- ✔ `does nothing when disabled or bookId is missing`
+- ✔ `records daily activity immediately upon active mounting`
+- ✔ `accumulates reading seconds and flushes on interval`
+- ✔ `flushes uncommitted seconds on unmount`
+- ✔ `stops accumulating seconds when user is idle beyond idleTimeoutMs`
+- ✔ `resets idle guard when registerInteraction is invoked`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/useScrollDirection.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `initializes with BOTH header and toolbar visible at top of page`
@@ -1507,7 +1561,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (39 Suites · 156 Tests)
+### 🧩 UI Primitives & Motion (40 Suites · 165 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1614,6 +1668,20 @@
 </details>
 
 <details>
+<summary><b><code>src/components/account/AccountHabitsCard.test.tsx</code></b> (8 tests)</summary>
+
+- ✔ `renders reading habits card with streak, duration, and challenge horizontal strips`
+- ✔ `renders 7-day activity indicators in the streak strip`
+- ✔ `displays today reading logged indicator when read today`
+- ✔ `opens edit modal and allows backspacing, presets, pace hints, and saving goal`
+- ✔ `displays completion message when annual target is met`
+- ✔ `triggers cloud sync on mount when authenticated userId is provided`
+- ✔ `allows user to enter arbitrary custom goal, clamps on blur, updates pace hint, and reflects changes on the card UI`
+- ✔ `applies theme-aware solid borders and surfaces without fractional opacity variants that vanish in Sepia or Dark mode`
+
+</details>
+
+<details>
 <summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders verified reader badge when email_confirmed_at is present`
@@ -1625,7 +1693,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders library statistics with links and values including notes and quotes`
 - ✔ `renders default 0 for annotationCount and bookmarksCount when omitted`
@@ -1637,6 +1705,7 @@
 - ✔ `resets active spotlight when library container is scrolled outside focal travel range`
 - ✔ `disables scroll focal spotlight on widescreen desktop displays`
 - ✔ `cleans up scroll and resize listeners when component unmounts`
+- ✔ `renders reading streak badge when readingStreak is greater than 0`
 
 </details>
 
@@ -1903,7 +1972,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **2 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

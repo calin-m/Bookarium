@@ -1,6 +1,7 @@
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useHabitsStore } from '@/stores/useHabitsStore';
 
 /**
  * Common syncable store contract.
@@ -21,6 +22,7 @@ export async function syncAllStoresWithCloud(userId: string): Promise<void> {
     useBookshelfStore.getState().syncWithCloud(userId),
     useAnnotationStore.getState().syncWithCloud(userId),
     useReaderStore.getState().syncWithCloud(userId),
+    useHabitsStore.getState().syncWithCloud(userId),
   ]);
 }
 

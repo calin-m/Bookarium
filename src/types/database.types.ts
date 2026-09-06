@@ -231,6 +231,39 @@ export interface Database {
         };
         Relationships: [];
       };
+      user_reading_habits: {
+        Row: {
+          id: string;
+          user_id: string;
+          annual_goal: number;
+          annual_goal_year: number;
+          active_dates: Json;
+          total_reading_seconds: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          annual_goal?: number;
+          annual_goal_year?: number;
+          active_dates?: Json;
+          total_reading_seconds?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          annual_goal?: number;
+          annual_goal_year?: number;
+          active_dates?: Json;
+          total_reading_seconds?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -251,3 +284,4 @@ export type UserFavorite = Database['public']['Tables']['user_favorites']['Row']
 export type ReadingProgress = Database['public']['Tables']['reading_progress']['Row'];
 export type UserAnnotation = Database['public']['Tables']['user_annotations']['Row'];
 export type UserBookCuration = Database['public']['Tables']['user_book_curation']['Row'];
+export type UserReadingHabits = Database['public']['Tables']['user_reading_habits']['Row'];
