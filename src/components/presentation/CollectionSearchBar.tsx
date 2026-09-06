@@ -66,7 +66,7 @@ export const CollectionSearchBar: React.FC<CollectionSearchBarProps> = ({
           aria-label={`Search ${collectionName}`}
           className={`w-full h-11 pl-10 ${
             isFiltering ? 'pr-24 sm:pr-28' : 'pr-4'
-          } text-xs sm:text-sm font-sans rounded-xl bg-card border border-border hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground/70 placeholder:truncate transition-all outline-none shadow-booksaw`}
+          } text-xs sm:text-sm font-sans rounded-xl bg-card border border-border hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground/70 placeholder:truncate transition-all shadow-booksaw`}
         />
 
         <div className="absolute right-3 flex items-center gap-1.5">

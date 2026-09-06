@@ -174,10 +174,14 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       const rawStatus = bookStatuses[bookId];
 
       let status: LedgerItemStatus = 'in_progress';
-      if (rawStatus === 'finished' || progress >= 100) {
+      if (rawStatus === 'finished') {
         status = 'completed';
       } else if (rawStatus === 'want_to_read') {
         status = 'on_hold';
+      } else if (rawStatus === 'currently_reading') {
+        status = 'in_progress';
+      } else if (progress >= 100) {
+        status = 'completed';
       }
 
       items.push({
@@ -258,11 +262,24 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
 
       await setReadingStatus(bookId, mappedStatus);
 
-      if (status === 'completed' && (readingProgress[bookId] ?? 0) < 100) {
+      const currentProgress = useReaderStore.getState().readingProgress[bookId] ?? 0;
+      if (status === 'completed' && currentProgress < 100) {
         setProgress(bookId, 100);
+      } else if (status === 'in_progress' && currentProgress >= 100) {
+        const currentPos = useReaderStore.getState().readingPositions[bookId];
+        useReaderStore.getState().saveReadingPosition(bookId, {
+          chapterIndex: 0,
+          chapterPage: 1,
+          globalPage: 1,
+          lastReadAt: new Date().toISOString(),
+          bookTitle: currentPos?.bookTitle,
+          bookAuthors: currentPos?.bookAuthors,
+          coverUrl: currentPos?.coverUrl,
+        });
+        setProgress(bookId, 0);
       }
     },
-    [setReadingStatus, setProgress, readingProgress]
+    [setReadingStatus, setProgress]
   );
 
   const clearVolumeProgress = useCallback(

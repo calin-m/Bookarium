@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 05 Sep 2026 21:40:09 GMT  
+**Last Generated**: Sun, 06 Sep 2026 11:23:52 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 125 passed  
-**Total Verified Tests**: 971 passed  
+**Total Test Suites**: 126 passed  
+**Total Verified Tests**: 989 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **125/125 test suites passed** (971 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **126/126 test suites passed** (989 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 24 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 25 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.21%** (5104/5535) — *Target: $ge$ 80%*
-- **Statements**: **90.38%** (5562/6154) — *Target: $ge$ 80%*
-- **Functions**: **88.41%** (1274/1441) — *Target: $ge$ 80%*
-- **Branches**: **80.53%** (4765/5917) — *Target: $ge$ 80%*
+- **Lines**: **92.35%** (5149/5575) — *Target: $ge$ 80%*
+- **Statements**: **90.54%** (5609/6195) — *Target: $ge$ 80%*
+- **Functions**: **88.39%** (1280/1448) — *Target: $ge$ 80%*
+- **Branches**: **80.75%** (4805/5950) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (125 Suites / 971 Tests)
+## 🧪 Comprehensive Test Suite Catalog (126 Suites / 989 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 96 Tests)
 
@@ -198,7 +198,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (20 Suites · 207 Tests)
+### 🎨 Catalog & Presentation (21 Suites · 216 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -249,7 +249,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -263,11 +263,12 @@
 - ✔ `rounds floating-point progress to the nearest integer and applies rounded-full pill styling`
 - ✔ `displays relative time formatted via canonical formatRelativeTime`
 - ✔ `renders Start and global page coordinate when chapterIndex is 0`
+- ✔ `renders `
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
@@ -275,8 +276,10 @@
 - ✔ `opens confirmation modal on Clear Bookmarks, cancels, and clears ledger when confirmed`
 - ✔ `resumes volume by pre-populating useReaderStore and navigating to reader route`
 - ✔ `passes offline status to BookmarkCard when book is saved in offline storage`
+- ✔ `allows user to change status of completed volume to reading directly via dropdown`
 - ✔ `hydrates missing book metadata (e.g. Volume #55179) and displays real title and author`
 - ✔ `applies adaptive responsive label expansion and tooltip attributes to filter tabs`
+- ✔ `renders completed volume with 100% progress and Read Again action`
 
 </details>
 
@@ -370,7 +373,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionSearchBar.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionSearchBar.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `should render search input with placeholder and accessible label`
 - ✔ `should call onQueryChange when user types in the input`
@@ -382,6 +385,7 @@
 - ✔ `should render mobilePlaceholder when screen is mobile viewport and respond to change events`
 - ✔ `should return server and client snapshot correctly and handle undefined matchMedia`
 - ✔ `should render correct accessible labels when collectionName is bookmarks`
+- ✔ `should apply crisp focus-ring styling matching the Notebooks search bar effect`
 
 </details>
 
@@ -391,6 +395,16 @@
 - ✔ `should render download formats when opened with a book`
 - ✔ `should return null when book is null`
 - ✔ `should provide canonical Gutenberg download links even if book.formats is empty`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `renders section landmark, Classic of the Day badge, and book details`
+- ✔ `navigates to reader and dispatches openReader on button click`
+- ✔ `dynamically avoids collision when heroBookId matches candidate book`
+- ✔ `accepts custom className and applies it to root section`
 
 </details>
 
@@ -413,7 +427,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `should render headline, featured book, and 4-pillar benefit strip`
 - ✔ `does not trigger search while typing, but triggers upon explicit submit`
@@ -429,6 +443,7 @@
 - ✔ `should not toggle pinned open state on mobile viewports (< 1024px)`
 - ✔ `should trigger onReadFeaturedBook from the action button in open state`
 - ✔ `renders static volume badge on the cover across all viewports`
+- ✔ `should apply native focus ring classes directly to input with inset action button`
 
 </details>
 
@@ -527,7 +542,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (15 Suites · 120 Tests)
+### 📖 In-Browser Focus Reader (15 Suites · 122 Tests)
 
 <details>
 <summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
@@ -643,7 +658,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSearchDrawer.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSearchDrawer.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders search drawer with input when isOpen is true`
 - ✔ `does not render when isOpen is false`
@@ -653,6 +668,7 @@
 - ✔ `shows empty feedback when no matches are found`
 - ✔ `closes drawer on Escape key press`
 - ✔ `closes drawer when clicking the backdrop`
+- ✔ `applies crisp focus ring styling to search input`
 
 </details>
 
@@ -673,10 +689,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSubHeaderRibbon.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSubHeaderRibbon.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `renders default archival metadata, section counter, and progress pill`
 - ✔ `renders resume notice when resumeNotice data is provided`
+- ✔ `renders clean completed notice without Resumed prefix when chapterTitle includes Completed`
 
 </details>
 
@@ -1153,7 +1170,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (18 Suites · 146 Tests)
+### 🔄 Hooks & React Query (18 Suites · 151 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
@@ -1229,12 +1246,15 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
 - ✔ `filters volumes by tab (all, in_progress, completed, on_hold)`
 - ✔ `updates volume status and completes progress when set to completed`
+- ✔ `allows transitioning completed volume back to in_progress with clean progress reset for re-reading`
+- ✔ `allows transitioning completed volume to on_hold without getting trapped in completed`
+- ✔ `infers completed status when progress is 100% on uncurated volume`
 - ✔ `clears volume progress, coordinates, and recentBooks via clearVolumeProgress`
 - ✔ `filters volumes by search query across title, author, and subject`
 - ✔ `wipes all ledger progress and coordinates via clearAllVolumes without mutating bookshelf curation`
@@ -1285,7 +1305,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -1293,6 +1313,8 @@
 - ✔ `jumps to target page accurately across chapters`
 - ✔ `auto-resumes from stored local reading position and triggers notice`
 - ✔ `restores position from cloud when authenticated and local is empty`
+- ✔ `does not overwrite readingProgress with 0 and shows completed notice when readingStatus is finished`
+- ✔ `handleRestart resets progress to 0 and transitions readingStatus to currently_reading`
 
 </details>
 
@@ -1409,7 +1431,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (37 Suites · 138 Tests)
+### 🧩 UI Primitives & Motion (37 Suites · 140 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1702,7 +1724,7 @@
 </details>
 
 <details>
-<summary><b><code>src/config/config.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/config/config.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `defines valid non-empty endpoint URLs`
 - ✔ `provides literary eras with valid date boundaries`
@@ -1711,6 +1733,8 @@
 - ✔ `provides valid sort and format options`
 - ✔ `provides valid hero book spotlight and collection of classics`
 - ✔ `extracts passages for featured and generic books via getBookPassages`
+- ✔ `getHourlyHeroBook returns deterministic book based on hourly index`
+- ✔ `getDailyEditorialBook rotates daily and avoids collision with heroBookId`
 - ✔ `provides 12 curated quotes with non-empty metadata`
 - ✔ `provides complete theme configs for light, sepia, and dark`
 - ✔ `getReaderTheme returns exact theme or falls back to light`

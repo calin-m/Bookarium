@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { BookmarksView } from './BookmarksView';
@@ -206,6 +206,33 @@ describe('BookmarksView', () => {
     expect(screen.getByText('Offline')).toBeInTheDocument();
   });
 
+  it('allows user to change status of completed volume to reading directly via dropdown', async () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'finished' },
+    });
+    useReaderStore.getState().setProgress(1342, 100);
+    useReaderStore.getState().saveReadingPosition(1342, {
+      chapterIndex: 10,
+      chapterPage: 5,
+      globalPage: 120,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    const statusSelect = screen.getByLabelText(/^Change reading status for Pride and Prejudice$/i);
+    expect(statusSelect).toHaveValue('completed');
+
+    await act(async () => {
+      fireEvent.change(statusSelect, { target: { value: 'in_progress' } });
+    });
+
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('currently_reading');
+    expect(useReaderStore.getState().readingProgress[1342]).toBe(0);
+    expect(statusSelect).toHaveValue('in_progress');
+  });
+
   it('hydrates missing book metadata (e.g. Volume #55179) and displays real title and author', async () => {
     useReaderStore.getState().setProgress(55179, 45);
     useReaderStore.getState().saveReadingPosition(55179, {
@@ -256,6 +283,30 @@ describe('BookmarksView', () => {
     expect(inProgressTab).toHaveAttribute('aria-pressed', 'true');
     expect(inProgressTab.querySelector('span')).toHaveClass('inline');
     expect(allTab.querySelector('span')).toHaveClass('hidden md:inline');
+  });
+
+  it('renders completed volume with 100% progress and Read Again action', () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'finished' },
+    });
+    useReaderStore.getState().setProgress(1342, 100);
+    useReaderStore.getState().saveReadingPosition(1342, {
+      chapterIndex: 0,
+      chapterPage: 1,
+      globalPage: 1,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.getByText('100%')).toBeInTheDocument();
+    expect(screen.getAllByText('Completed').length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByRole('button', { name: /^Read Pride and Prejudice again from beginning$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Read Again')).toBeInTheDocument();
   });
 });
 

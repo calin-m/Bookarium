@@ -167,5 +167,19 @@ describe('BookmarkCard', () => {
     render(<BookmarkCard volume={startVolume} />);
     expect(screen.getByText(/Start • Page 1/i)).toBeInTheDocument();
   });
+
+  it('renders "Read Again" button with RotateCcw icon and accessible label when status is completed', () => {
+    const completedVolume: ActiveReadingVolume = {
+      ...mockVolume,
+      status: 'completed',
+      progressPercent: 100,
+    };
+    render(<BookmarkCard volume={completedVolume} />);
+
+    expect(
+      screen.getByRole('button', { name: /^Read Pride and Prejudice again from beginning$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Read Again')).toBeInTheDocument();
+  });
 });
 

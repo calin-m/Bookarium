@@ -249,6 +249,12 @@ export default function BookReaderPage() {
     fontSize
   );
 
+  // Personal Curation: Reading Status & Ratings
+  const readingStatus = useReadingStatus(numericId);
+  const bookRating = useBookRating(numericId);
+  const setReadingStatus = useBookshelfStore((s) => s.setReadingStatus);
+  const setBookRating = useBookshelfStore((s) => s.setBookRating);
+
   const {
     activeChapterIndex,
     setActiveChapterIndex,
@@ -273,6 +279,7 @@ export default function BookReaderPage() {
     totalVolumePages,
     fontSize,
     readingMode,
+    readingStatus,
   });
 
   const activeChapterAnnotations = useMemo(() => {
@@ -307,11 +314,6 @@ export default function BookReaderPage() {
     activeChapterIndex === chaptersWithPagination.length - 1 &&
     currentChapterPage === activeChapterPageCount;
 
-  // Personal Curation: Reading Status & Ratings
-  const readingStatus = useReadingStatus(numericId);
-  const bookRating = useBookRating(numericId);
-  const setReadingStatus = useBookshelfStore((s) => s.setReadingStatus);
-  const setBookRating = useBookshelfStore((s) => s.setBookRating);
   const [isCompletionDismissed, setIsCompletionDismissed] = useState(false);
   const isAtEnd = isNextDisabled && chaptersWithPagination.length > 0;
   const isCompletionModalOpen = isAtEnd && !isCompletionDismissed;

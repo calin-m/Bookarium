@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useReaderSession } from './useReaderSession';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 
 describe('useReaderSession', () => {
@@ -36,6 +37,11 @@ describe('useReaderSession', () => {
       theme: 'light',
       readingProgress: {},
       readingPositions: {},
+    });
+    useBookshelfStore.setState({
+      bookStatuses: {},
+      recentBooks: [],
+      savedBooks: [],
     });
     vi.clearAllMocks();
   });
@@ -203,5 +209,70 @@ describe('useReaderSession', () => {
     expect(mockRestore).toHaveBeenCalledWith(100, 'user-xyz');
     expect(result.current.activeChapterIndex).toBe(1);
     mockRestore.mockRestore();
+  });
+
+  it('does not overwrite readingProgress with 0 and shows completed notice when readingStatus is finished', async () => {
+    useReaderStore.getState().setProgress(100, 100);
+    useReaderStore.getState().saveReadingPosition(100, {
+      chapterIndex: 1,
+      chapterPage: 1,
+      globalPage: 3,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 100,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 3,
+        fontSize: 18,
+        readingMode: 'paginated',
+        readingStatus: 'finished',
+      })
+    );
+
+    // Flush microtask queue
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Initial mount on Page 1 should NOT overwrite progress to 0
+    expect(useReaderStore.getState().readingProgress[100]).toBe(100);
+    expect(result.current.activeChapterIndex).toBe(0);
+    expect(result.current.currentChapterPage).toBe(1);
+    expect(result.current.resumeNotice).toEqual({
+      chapterTitle: 'Completed Volume (100%)',
+      page: 1,
+    });
+  });
+
+  it('handleRestart resets progress to 0 and transitions readingStatus to currently_reading', async () => {
+    useReaderStore.getState().setProgress(100, 100);
+    useBookshelfStore.setState({
+      bookStatuses: { 100: 'finished' },
+    });
+
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 100,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 3,
+        fontSize: 18,
+        readingMode: 'paginated',
+        readingStatus: 'finished',
+      })
+    );
+
+    act(() => {
+      result.current.handleRestart();
+    });
+
+    expect(useReaderStore.getState().readingProgress[100]).toBe(0);
+    expect(useBookshelfStore.getState().bookStatuses[100]).toBe('currently_reading');
+    expect(result.current.activeChapterIndex).toBe(0);
+    expect(result.current.currentChapterPage).toBe(1);
+    expect(result.current.resumeNotice).toBeNull();
   });
 });

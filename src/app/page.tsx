@@ -7,6 +7,7 @@ import { HeroSearch } from '@/components/presentation/HeroSearch';
 import { StickyCatalogToolbar, type ActiveFilterChip } from '@/components/presentation/StickyCatalogToolbar';
 import { AdvancedFilterDrawer } from '@/components/presentation/AdvancedFilterDrawer';
 import { BookGrid } from '@/components/presentation/BookGrid';
+import { EditorialQuoteSection } from '@/components/presentation/EditorialQuoteSection';
 import { LiteraryQuotes } from '@/components/presentation/LiteraryQuotes';
 import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
 import { BookPreviewModal } from '@/components/presentation/BookPreviewModal';
@@ -26,7 +27,7 @@ import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/types/book.types';
-import { Trash2, BookOpen, Quote, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { CollectionSearchBar } from '@/components/presentation/CollectionSearchBar';
 import { filterBooksSmart } from '@/lib/smart-search';
@@ -404,58 +405,8 @@ function HomeContent() {
           </div>
         )}
 
-        {/* Booksaw Editorial Quote / Best Classic Section */}
-        {activeView === 'catalog' && (
-          <section className="bg-muted border-t border-border py-16 transition-colors duration-theme">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-card rounded-2xl p-8 sm:p-12 border border-border shadow-booksaw">
-                <div className="md:col-span-4 flex justify-center">
-                  <div className="w-48 aspect-[2/3] rounded-lg bg-gradient-to-br from-stone-900 to-stone-800 text-white p-5 flex flex-col justify-between shadow-booksaw-hover border-r-2 border-stone-700">
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-primary-400">
-                      Classic of the Century
-                    </div>
-                    <div>
-                      <h4 className="font-serif font-bold text-lg leading-tight">
-                        Moby Dick
-                      </h4>
-                      <p className="text-xs text-stone-300 font-mono mt-1">
-                        Herman Melville
-                      </p>
-                    </div>
-                    <div className="text-[10px] font-mono text-success">
-                      Public Domain • 1851
-                    </div>
-                  </div>
-                </div>
-
-                <div className="md:col-span-8 space-y-4 text-left">
-                  <Quote className="w-8 h-8 text-primary-500/40" />
-                  <blockquote className="text-xl sm:text-2xl font-serif italic text-stone-900 dark:text-stone-100 leading-snug">
-                    &ldquo;There is no friend as loyal as a book. A library is an infinity of voices waiting to speak across centuries.&rdquo;
-                  </blockquote>
-                  <p className="text-xs font-mono uppercase tracking-widest text-stone-500">
-                    Ernest Hemingway • Preserved for Public Humanity
-                  </p>
-                  <div className="pt-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        const targetId = displayedBooks[0]?.id || 2701;
-                        router.push(ROUTES.READ(targetId));
-                      }}
-                      className="font-mono text-xs uppercase tracking-wider gap-2 px-5 py-2.5 rounded bg-primary-600 hover:bg-primary-700 text-white font-bold"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      <span>Start Reading Classics</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* Booksaw Editorial Classic of the Day Section */}
+        {activeView === 'catalog' && <EditorialQuoteSection />}
 
         {/* Booksaw 3-Column Literary Quotes & Passages */}
         {activeView === 'catalog' && <LiteraryQuotes />}

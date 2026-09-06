@@ -96,6 +96,7 @@ describe('Home page integration', () => {
     expect(screen.getByText(/Timeless Literature/i)).toBeInTheDocument();
     expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /Classic of the Day/i })).toBeInTheDocument();
   });
 
   it('should handle search, topic, and language change interactions', () => {

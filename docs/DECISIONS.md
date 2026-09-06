@@ -194,6 +194,20 @@
   4. **Strict Crawler Preservation**: Direct browser entries, Googlebot, and social crawlers (`rsc !== '1'`) continue to receive rich OpenGraph cards, Twitter cards, and Schema.org JSON-LD with a tightened 1500ms timeout guard.
 - **Consequences**: Restores authentic 0ms instant transitions when opening books from Bookmarks, Favorites, Bookshelf, and Catalog; eliminates Next.js server stalls on `/read/[id]`; preserves 100% SEO, social sharing cards, and Schema.org compliance for external search crawlers.
 
-
-
-
+## ADR-025: Completed Reading State Latch, Native Inset Search Architecture & Library Navigation Streamlining
+- **Status**: Accepted
+- **Context**:
+  1. Readers who completed a volume (100% progress) and resumed it from Bookmarks or Catalog previously encountered state regressions where reading progress and status could revert to "in-progress" or calculate inaccurate progress offsets.
+  2. The Catalog hero search bar relied on a compound flex container simulating `:focus-within` around both the text input and the submit button, creating visual inconsistency and an unnatural focus glow compared to the native `<input>`-centric search bars across Bookshelf, Favorites, Bookmarks, and Notebooks.
+  3. The Account page Library stats card included a redundant "Open Bookshelf →" text link in the header directly adjacent to the "Shelved Volumes" navigation card.
+- **Decision**:
+  1. **Completed Reading State Latch (`useReaderSession.ts`, `BookmarkCard.tsx`)**: Implement an explicit 100% completion guard in `useReaderSession` that preserves 100% progress and "Completed" status upon resumption. Introduce a dedicated "Read Again" action on completed bookmark cards that allows readers to re-read from Page 1 without destroying historical reading milestones.
+  2. **Native Inset Search Input Architecture (`HeroSearch.tsx`)**: Refactor `HeroSearch` from a compound `:focus-within` container to a native `<input>` element with inset floating submit and clear buttons. Harmonize focus states across all search bars to use unified `focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary`, `hover:border-primary/40`, and 150ms outward ring pulse bloom.
+  3. **Editorial Classic of the Day Section (`EditorialQuoteSection.tsx`)**: Introduce a dedicated daily rotating classic showcase beneath the Catalog search bar with anti-collision filtering to guarantee candidate books never duplicate the active Hero volume.
+  4. **Library Navigation Streamlining (`AccountLibraryStats.tsx`)**: Prune the redundant "Open Bookshelf →" header link in favor of the interactive library cards below.
+- **Consequences**:
+  - Full protection for completed book records and milestones.
+  - Seamless re-reading UX from Page 1 without destructive state loss.
+  - 100% design and interactive pulse harmony across all search interfaces on every view.
+  - Rich literary curation on the Catalog landing page with zero layout shift or duplicate selections.
+  - Clean, focused Account page library navigation.

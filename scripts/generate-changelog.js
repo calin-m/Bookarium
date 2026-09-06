@@ -9,6 +9,27 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '1.9.8',
+    date: '2026-09-06',
+    title: 'Completed Reading State Latch, Native Inset Search Architecture & Library Navigation Streamlining',
+    sections: {
+      Added: [
+        'Completed Reading Progress Latch & "Read Again" Flow (`useReaderSession.ts`, `BookmarkCard.tsx`): Guarded 100% completed status and progress coordinates when resuming finished books from bookmarks or the catalog. Added a dedicated "Read Again" button on completed volumes allowing readers to restart from Page 1 without prematurely destroying their ledger completion status.',
+        'Classic of the Day Editorial Showcase (`EditorialQuoteSection.tsx`): Dedicated curated literary quote section under the Catalog search bar, featuring deterministic hourly rotation with anti-collision filtering to ensure candidate books never duplicate the active Hero volume.',
+        'Native `<input>` Architecture for Catalog Hero Search (`HeroSearch.tsx`): Refactored the Catalog search bar to a native `<input>`-centric structure with inset floating submit and clear buttons, matching `CollectionSearchBar.tsx` and unlocking authentic 150ms outward focus ring bloom and `hover:border-primary/40` state.',
+        'Architecture Decision Record (`ADR-025`): Formally ratified the completed reading state latch, "Read Again" flow, native inset search architecture, and library navigation streamlining in `docs/DECISIONS.md`.',
+      ],
+      Fixed: [
+        'Reading Status Latch in Bookmarks Ledger (`useContinueReadingLedger.ts`): Resolved issue where resuming a completed volume erroneously reset the reading status badge to "In Progress" in the Bookmarks ledger.',
+        'Notes & Highlights Modal Content Overflow: Fixed height constraints and scrolling containers to prevent notes and annotation highlights from overflowing modal boundaries on mobile and desktop viewports.',
+        'Search Box Focus Harmonization across All Views (`CollectionSearchBar.tsx`, `ReaderSearchDrawer.tsx`, `HeroSearch.tsx`): Harmonized all search boxes across Bookshelf, Favorites, Bookmarks, Reader Search Drawer, and Catalog Hero to use unified `focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary` and `hover:border-primary/40` styling.',
+      ],
+      Removed: [
+        'Redundant Header Link (`AccountLibraryStats.tsx`): Pruned "Open Bookshelf →" text link from the Library stats card header, consolidating library navigation strictly into the tactile card buttons below.',
+      ],
+    },
+  },
+  {
     version: '1.9.7',
     date: '2026-09-05',
     title: 'Gutenberg Heading Semantic Normalization, Phantom Chapter Elimination & Reading Coordinate Harmonization',
