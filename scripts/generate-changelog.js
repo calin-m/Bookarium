@@ -9,6 +9,26 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.0.0',
+    date: '2026-09-07',
+    title: 'Reading Habit Telemetry, Annual Challenges & Reading Analytics (Milestone 3 Completion)',
+    sections: {
+      Added: [
+        'Reading Streaks & Habit Telemetry Engine (`reading-analytics.ts`, `useHabitsStore.ts`): Pure mathematical consecutive streak calculations with 1-day grace period, longest streak tracking, 7-day visual week activity indicators, and total literary immersion duration tracking.',
+        'Annual Reading Challenge & Progress Tracking (`AccountHabitsCard.tsx`, `reading-analytics.ts`): Interactive annual volume challenge with customizable goal targets, real-time pace indicators (on pace, ahead, behind), and smooth progress bar updates.',
+        'Idle-Aware Reading Session Telemetry (`useReadingTimer.ts`): Unobtrusive reading session timer in `/read/[id]` with a 2-minute inactivity guard, pausing on reader idle and flushing on page visibility transitions (`visibilitychange`).',
+        'Multi-Device Cloud Habit Sync & LWW Reconciliation (`sync-utils.ts`, `providers.tsx`): Synchronizes habit state with Supabase `public.user_reading_habits` using Last-Write-Wins (LWW) conflict resolution via `goalUpdatedAt` timestamps and a 15-second debounced visibilitychange sync trigger.',
+        'Idempotent Reading Habits Database Schema (`supabase/schema.sql`, `database.types.ts`): Added `public.user_reading_habits` table with strict Row Level Security (RLS) policies and automatic trigger execution for new users.',
+        'Architecture Decision Record (`ADR-027`): Formally ratified reading habit telemetry, annual goals, and extensible accolade architecture in `docs/DECISIONS.md`.',
+      ],
+      Fixed: [
+        'Border Harmonization across Themes (`AccountHabitsCard.tsx`, `AdvancedFilterDrawer.tsx`): Harmonized all fractional border tokens (`border-border/60`, `border-border/50`, `border-primary/20`) to standard `border-border` and canonical surfaces, resolving vanishing border lines in Sepia and Dark Obsidian modes.',
+        'Catalog View Mode Toggle Scroll Coordinate (`src/app/page.tsx`): Implemented smooth scroll into view on `#catalog-section` when switching between Cards (`grid`) and Bookshelves (`shelf`) display modes, matching the behavior of catalog pagination.',
+        'React Hooks Purity & ESLint 9 Hygiene (`useReadingTimer.ts`, `AccountHabitsCard.tsx`, `useHabitsStore.ts`): Resolved render-time impurity in `useReadingTimer` by initializing interaction refs to 0 and stabilizing effect cleanup, escaped JSX HTML entities in `AccountHabitsCard`, and pruned unused type imports across `views.config.ts` and `ReaderSurface.tsx`.',
+      ],
+    },
+  },
+  {
     version: '1.9.9',
     date: '2026-09-06',
     title: 'Enterprise Polymorphism, Encapsulation & Code Redundancy Elimination',

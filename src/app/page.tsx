@@ -158,6 +158,16 @@ function HomeContent() {
     }
   };
 
+  const handleViewModeChange = (mode: 'grid' | 'shelf') => {
+    setViewMode(mode);
+    if (typeof window !== 'undefined') {
+      const el = document.getElementById('catalog-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
   // Convert chips for toolbar interface
   const toolbarChips: ActiveFilterChip[] = activeFilterChips.map((chip) => ({
     id: chip.id,
@@ -268,7 +278,7 @@ function HomeContent() {
             onPageChange={handlePageChange}
             hasNextPage={hasNextPage}
             viewMode={viewMode}
-            onViewModeChange={setViewMode}
+            onViewModeChange={handleViewModeChange}
             onOpenFilters={() => setIsFilterDrawerOpen((prev) => !prev)}
             isFiltersOpen={isFilterDrawerOpen}
             activeFilterCount={toolbarChips.length}
@@ -347,7 +357,7 @@ function HomeContent() {
                 }}
                 activePreviewBookId={activePreviewBookId}
                 viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}
-                onViewModeChange={setViewMode}
+                onViewModeChange={handleViewModeChange}
                 showViewToggle={false} // Managed by StickyToolbar
                 onBrowseCatalog={() => setActiveView('catalog')}
                 searchQuery={collectionSearchQuery}

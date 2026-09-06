@@ -59,5 +59,39 @@ describe('Providers component', () => {
 
     expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-online-1');
   });
+
+  it('should trigger syncAllStoresWithCloud on document visibilitychange when user is logged in and cooldown passed', () => {
+    vi.useFakeTimers();
+    useAuthStore.setState({
+      user: { id: 'user-vis-1', email: 'vis@example.com' } as any,
+    });
+
+    render(
+      <Providers>
+        <div>Child Content</div>
+      </Providers>
+    );
+
+    expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-vis-1');
+    vi.mocked(syncAllStoresWithCloud).mockClear();
+
+    // Advance time beyond cooldown (15s)
+    act(() => {
+      vi.advanceTimersByTime(20000);
+    });
+
+    // Mock document.visibilityState to 'visible'
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    });
+
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-vis-1');
+    vi.useRealTimers();
+  });
 });
 

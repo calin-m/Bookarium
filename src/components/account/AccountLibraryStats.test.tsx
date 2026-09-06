@@ -334,6 +334,31 @@ describe('AccountLibraryStats', () => {
     expect(removeEventListenerSpy).toHaveBeenCalledWith('scroll', expect.any(Function));
     expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function));
   });
+
+  it('renders reading streak badge when readingStreak is greater than 0', () => {
+    const { rerender } = render(
+      <AccountLibraryStats
+        savedCount={1}
+        favoriteCount={2}
+        customShelvesCount={3}
+        readingStreak={5}
+      />
+    );
+
+    const badge = screen.getByTestId('account-library-streak-badge');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('5 days');
+
+    rerender(
+      <AccountLibraryStats
+        savedCount={1}
+        favoriteCount={2}
+        customShelvesCount={3}
+        readingStreak={0}
+      />
+    );
+    expect(screen.queryByTestId('account-library-streak-badge')).not.toBeInTheDocument();
+  });
 });
 
 

@@ -328,3 +328,49 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- ============================================================================
+-- 10. User Reading Habits Table (Streaks, Active Days & Annual Goals)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.user_reading_habits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  annual_goal INTEGER NOT NULL DEFAULT 12,
+  annual_goal_year INTEGER NOT NULL DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
+  active_dates JSONB NOT NULL DEFAULT '[]'::jsonb,
+  total_reading_seconds BIGINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  UNIQUE(user_id)
+);
+
+ALTER TABLE public.user_reading_habits ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own reading habits" ON public.user_reading_habits;
+CREATE POLICY "Users can view their own reading habits"
+  ON public.user_reading_habits FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own reading habits" ON public.user_reading_habits;
+CREATE POLICY "Users can insert their own reading habits"
+  ON public.user_reading_habits FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own reading habits" ON public.user_reading_habits;
+CREATE POLICY "Users can update their own reading habits"
+  ON public.user_reading_habits FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own reading habits" ON public.user_reading_habits;
+CREATE POLICY "Users can delete their own reading habits"
+  ON public.user_reading_habits FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_reading_habits_user 
+  ON public.user_reading_habits(user_id);
+
+

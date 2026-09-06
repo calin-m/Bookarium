@@ -437,5 +437,36 @@ describe('Home page integration', () => {
     expect(screen.getByText('Continue Reading & Bookmarks')).toBeInTheDocument();
     expect(screen.getByText('40%')).toBeInTheDocument();
   });
+
+  it('smoothly scrolls to catalog-section and updates display mode when toggling between Cards and Bookshelves', () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    renderHome();
+
+    // Verify initial grid mode
+    const gridBtn = screen.getByRole('button', { name: /Grid view/i });
+    const shelfBtn = screen.getByRole('button', { name: /Shelf view/i });
+    expect(gridBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(shelfBtn).toHaveAttribute('aria-pressed', 'false');
+
+    // Click Bookshelves (Shelf) view
+    fireEvent.click(shelfBtn);
+
+    // Verify scrollIntoView was triggered on catalog section
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(shelfBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(gridBtn).toHaveAttribute('aria-pressed', 'false');
+
+    // Reset mock call count and switch back to Cards (Grid) view
+    scrollIntoViewMock.mockClear();
+    fireEvent.click(gridBtn);
+
+    // Verify scrollIntoView was triggered again
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(gridBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(shelfBtn).toHaveAttribute('aria-pressed', 'false');
+  });
 });
+
 

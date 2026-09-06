@@ -248,3 +248,19 @@
   - Strict non-breaking parity: zero database schema changes, zero store API breaks, and 100% contract compliance across all API responses.
   - Test suite expanded to 1,051 tests across 133 suites with 100% pass rate and zero TypeScript compiler errors.
 
+## ADR-027: Reading Habit Telemetry, Annual Goals, and Extensible Accolade Architecture
+- **Status**: Accepted
+- **Context**: Milestone 3, Point 3 requires tracking daily reading activity timestamps to compute consecutive reading streaks, estimated hours read, and annual reading challenge goals in the Account dashboard. Furthermore, the product roadmap envisions a seamless future expansion into Literary Accolades (Milestone 4) and a Community Hub (Milestone 5). Reading session telemetry must be captured without reader latency, without intrusive popups, and must operate 100% offline-first (Rule 4) with optional Supabase cloud sync and strict RLS (Rule 9).
+- **Decision**:
+  1. **Deterministic Analytics Engine (`src/lib/reading-analytics.ts`)**: Implement pure mathematical algorithms for consecutive reading streaks (`calculateStreak`), longest streak, 7-day calendar activity indicators, reading duration formatting, and annual challenge progress (`calculateAnnualGoalProgress`). Provide a 1-day grace period where yesterday's active streak remains valid until midnight today. Define extensible `ReadingSessionTelemetry` types ready to feed Milestone 4 accolade rules.
+  2. **Local-First Habits State (`src/stores/useHabitsStore.ts`)**: Create `useHabitsStore` backed by Zustand `persist` with `localStorage` (`STORAGE_KEYS.HABITS = 'bookarium-habits-storage'`). Store `annualGoal`, `annualGoalYear`, `activeDates` (`YYYY-MM-DD`), and `totalReadingSeconds`. For authenticated users, automatically synchronize with the idempotent `public.user_reading_habits` Supabase table.
+  3. **Idle-Aware Reader Telemetry (`src/hooks/useReadingTimer.ts`)**: Mount an unobtrusive telemetry hook in `src/app/read/[id]/page.tsx` that increments active reading duration while reading. Protect against phantom hours using a 2-minute idle detection guard (pausing when no scroll, page-turn, or keydown occurs) and immediately flushing when the browser tab becomes hidden (`visibilitychange`).
+  4. **Tactile Dashboard Presentation (`AccountHabitsCard.tsx`, `AccountLibraryStats.tsx`)**: Introduce a 3-column metric card in `/account` displaying the active streak with a flame indicator and 7-day week dots, total hours read, and an interactive annual reading challenge progress bar with a target-adjustment modal. Render an active streak badge in `AccountLibraryStats`.
+  5. **Roadmap Formalization (`scripts/generate-roadmap.js`, `ROADMAP.md`)**: Formally chart Milestone 4 (*Literary Accolades & Public Profiles*, `Target: v2.1.0`) and Milestone 5 (*Community Hub & Collective Reading*, `Target: v2.2.0`) in `scripts/generate-roadmap.js` with deterministic AST/file checks.
+- **Consequences**:
+  - Full achievement of Milestone 3 feature completeness (100% verified on the living roadmap).
+  - 100% offline-first capability for guest readers with zero friction.
+  - Zero performance overhead or UI obstruction in the reader surface.
+  - Extensible event foundation ready to unlock Milestone 4 literary accolades and Milestone 5 community sharing without database rewrites.
+
+

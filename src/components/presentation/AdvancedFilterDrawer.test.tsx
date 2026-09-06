@@ -258,5 +258,34 @@ describe('AdvancedFilterDrawer component', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it('renders header icon container with theme-aware solid border-border without fractional opacity', () => {
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        onEraChange={vi.fn()}
+        selectedSort=""
+        onSortChange={vi.fn()}
+        selectedTopic=""
+        onTopicChange={vi.fn()}
+        selectedLanguage=""
+        onLanguageChange={vi.fn()}
+        selectedFormat=""
+        onFormatChange={vi.fn()}
+        onResetAll={vi.fn()}
+        activeFilterCount={0}
+      />
+    );
+
+    const titleEl = screen.getByText('Advanced Archive Filters');
+    const headerLeft = titleEl.closest('.flex.items-center.gap-2\\.5');
+    expect(headerLeft).toBeInTheDocument();
+
+    const iconContainer = headerLeft?.firstElementChild;
+    expect(iconContainer).toHaveClass('border-border');
+    expect(iconContainer?.className).not.toContain('border-primary/20');
+  });
 });
 

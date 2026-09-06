@@ -81,7 +81,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
         {/* Drawer Header */}
         <div className="p-6 border-b border-border flex items-center justify-between bg-background">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-border">
               <Filter className="w-4 h-4" />
             </div>
             <div>

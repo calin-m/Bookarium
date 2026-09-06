@@ -41,15 +41,30 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    let lastSyncTime = Date.now();
+
     const handleOnline = () => {
       if (user?.id) {
+        lastSyncTime = Date.now();
         syncAllStoresWithCloud(user.id);
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user?.id) {
+        const now = Date.now();
+        if (now - lastSyncTime >= 15000) {
+          lastSyncTime = now;
+          syncAllStoresWithCloud(user.id);
+        }
+      }
+    };
+
     window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user?.id]);
 

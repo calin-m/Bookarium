@@ -152,6 +152,54 @@ const ROADMAP_MILESTONES = [
       },
     ],
   },
+  {
+    id: 'm4',
+    title: 'Milestone 4: Literary Accolades & Public Profiles',
+    version: 'Target: v2.1.0',
+    badge: 'https://img.shields.io/badge/Milestone-v2.1.0-blueviolet?style=flat-square',
+    description: 'Gamified ex-libris accolades, tactile bookplate achievements, and opt-in public scholar profile pages.',
+    features: [
+      {
+        title: 'Deterministic Literary Accolades & Badge Engine',
+        description: 'Ex-libris bookplate badges (Seven-Day Sage, Ancient Antiquarian, Century Voyager, Commonplace Scholar) unlocked via pure client-side reading telemetry with tactile unlock celebrations.',
+        check: () => fileExists('src/lib/accolades-engine.ts') || fileContains('src/components/account/AccountAccoladesCard.tsx', 'accolade'),
+      },
+      {
+        title: 'Opt-In Public Scholar Profiles (`/u/[username]`)',
+        description: 'Dedicated public profile page showcasing reader biography, public bookshelves, reading challenge progress, and pinned accolade badges with strict privacy toggles (Public vs Private).',
+        check: () => fileExists('src/app/u/[username]/page.tsx') || fileContains('src/components/profile/PublicProfileView.tsx', 'is_public'),
+      },
+      {
+        title: 'Shareable Reading Cards & OpenGraph Export',
+        description: 'Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.',
+        check: () => fileExists('src/components/account/ShareableReadingCard.tsx') || fileExists('src/lib/reading-card-export.ts'),
+      },
+    ],
+  },
+  {
+    id: 'm5',
+    title: 'Milestone 5: Community Hub & Collective Reading',
+    version: 'Target: v2.2.0',
+    badge: 'https://img.shields.io/badge/Milestone-v2.2.0-indigo?style=flat-square',
+    description: 'Shared literary agora, community volume reviews, public commonplace quote discussions, and reader circles.',
+    features: [
+      {
+        title: 'Bookarium Community Hub (`/?view=community`)',
+        description: 'Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics.',
+        check: () => fileExists('src/components/presentation/CommunityView.tsx') || fileContains('src/config/routes.ts', 'community'),
+      },
+      {
+        title: 'Public Book Discussions & Margin Notes',
+        description: 'Reader commentary and reviews on individual book volumes with opt-in publishing of quote highlights from the Commonplace Notebook.',
+        check: () => fileExists('src/components/community/BookDiscussionThread.tsx') || fileExists('src/components/community/SharedQuoteCard.tsx'),
+      },
+      {
+        title: 'Reader Circles & Social Activity Stream',
+        description: 'Follow fellow public readers, see what friends are currently reading in real-time, and celebrate shared milestone completions.',
+        check: () => fileExists('src/stores/useCommunityStore.ts') || fileContains('src/types/database.types.ts', 'community_follows'),
+      },
+    ],
+  },
 ];
 
 function generateRoadmapMarkdown() {

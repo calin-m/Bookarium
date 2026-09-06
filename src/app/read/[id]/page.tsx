@@ -29,6 +29,7 @@ import { QuoteDeletePreview } from '@/components/reader/QuoteDeletePreview';
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
 import { useReaderSession } from '@/hooks/reader/useReaderSession';
+import { useReadingTimer } from '@/hooks/useReadingTimer';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useHydratedAnnotations, type HighlightColor, type Annotation } from '@/stores/useAnnotationStore';
@@ -183,6 +184,13 @@ export default function BookReaderPage() {
       updateBookMetadata(numericId, resolvedIdentity.title, resolvedIdentity.author);
     }
   }, [numericId, resolvedIdentity.title, resolvedIdentity.author, updateBookMetadata]);
+
+  // Idle-aware authentic reading telemetry (Milestone 3 Habits & Streaks)
+  useReadingTimer({
+    bookId: numericId > 0 ? numericId : undefined,
+    enabled: !isContentLoading && !isContentError && !!contentText,
+    userId: user?.id,
+  });
 
   // Synchronize document.title with authentic resolved book identity for client transitions
   useEffect(() => {
