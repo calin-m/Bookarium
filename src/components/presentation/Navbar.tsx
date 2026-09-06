@@ -3,31 +3,23 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Bookmark, Heart, Sun, Moon, Coffee, User as UserIcon, Highlighter, Compass, Library } from 'lucide-react';
+import { BookOpen, Sun, Moon, Coffee, User as UserIcon } from 'lucide-react';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
-import { useReaderStore } from '@/stores/useReaderStore';
+import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 import { LIBRARY_THEMES } from '@/config/library-tokens';
+import { NAV_ITEMS, NAVBAR_VIEW_CONFIG, type NavViewId, type ViewId } from '@/config/views.config';
 
 export interface NavbarProps {
-  activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks' | 'account';
-  onViewChange?: (view: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks') => void;
+  activeView?: ViewId;
+  onViewChange?: (view: NavViewId) => void;
   isVisible?: boolean;
 }
-
-const NAVBAR_VIEW_CONFIG: Record<string, { label: string; activeColor: string }> = {
-  catalog: { label: 'Catalog', activeColor: LIBRARY_THEMES.catalog.navActiveText },
-  bookshelf: { label: 'Bookshelf', activeColor: LIBRARY_THEMES.bookshelf.navActiveText },
-  favorites: { label: 'Favorites', activeColor: LIBRARY_THEMES.favorites.navActiveText },
-  notebook: { label: 'Notebook', activeColor: LIBRARY_THEMES.notebook.navActiveText },
-  bookmarks: { label: 'Bookmarks', activeColor: LIBRARY_THEMES.bookmarks.navActiveText },
-  account: { label: 'Account', activeColor: 'text-primary' },
-};
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeView = 'catalog',
@@ -39,10 +31,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { savedCount, favoriteCount, hasMounted } = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
   const annotationCount = annotations.length;
-  const readingPositions = useReaderStore((s) => s.readingPositions);
-  const activeReadingCount = Object.keys(readingPositions || {}).length;
+  const activeReadingCount = useReaderStore(getActiveReadingCount);
   const theme = useThemeStore((s) => s.theme);
   const cycleTheme = useThemeStore((s) => s.cycleTheme);
+  const counts = {
+    savedCount,
+    favoriteCount,
+    annotationCount,
+    activeReadingCount,
+  };
   const user = useAuthStore((s) => s.user);
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
 
@@ -103,104 +100,35 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-0.5 sm:gap-1.5 lg:gap-2 shrink-0">
           {/* Navigation Tabs */}
           <nav className="flex items-center gap-0.5 sm:gap-1.5 lg:gap-2">
-            <button
-              type="button"
-              onClick={() => onViewChange?.('catalog')}
-              title="Catalog"
-              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
-                activeView === 'catalog'
-                  ? `${LIBRARY_THEMES.catalog.navActiveText} font-bold ${LIBRARY_THEMES.catalog.navActiveBorder}`
-                  : 'text-muted-foreground hover:text-foreground border-transparent'
-              }`}
-              aria-label="Catalog"
-            >
-              <Compass className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden lg:inline">Catalog</span>
-            </button>
+            {NAV_ITEMS.map((item) => {
+              const isActive = activeView === item.id;
+              const theme = LIBRARY_THEMES[item.themeKey];
+              const count = item.countKey ? counts[item.countKey] : 0;
+              const isFilled = Boolean(hasMounted && item.countKey && count > 0);
+              const Icon = item.icon;
 
-            <button
-              type="button"
-              onClick={() => onViewChange?.('bookshelf')}
-              title="Bookshelf"
-              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
-                activeView === 'bookshelf'
-                  ? `${LIBRARY_THEMES.bookshelf.navActiveText} font-bold ${LIBRARY_THEMES.bookshelf.navActiveBorder}`
-                  : 'text-muted-foreground hover:text-foreground border-transparent'
-              }`}
-              aria-label="Bookshelf"
-            >
-              <Library
-                className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                  hasMounted && savedCount > 0
-                    ? LIBRARY_THEMES.bookshelf.navFill
-                    : 'fill-transparent'
-                }`}
-              />
-              <span className="hidden lg:inline">Bookshelf</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onViewChange?.('favorites')}
-              title="Favorites"
-              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
-                activeView === 'favorites'
-                  ? `${LIBRARY_THEMES.favorites.navActiveText} font-bold ${LIBRARY_THEMES.favorites.navActiveBorder}`
-                  : 'text-muted-foreground hover:text-foreground border-transparent'
-              }`}
-              aria-label="Favorites"
-            >
-              <Heart
-                className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                  hasMounted && favoriteCount > 0
-                    ? LIBRARY_THEMES.favorites.navFill
-                    : 'fill-transparent'
-                }`}
-              />
-              <span className="hidden lg:inline">Favorites</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onViewChange?.('notebook')}
-              title="Notebook"
-              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
-                activeView === 'notebook'
-                  ? `${LIBRARY_THEMES.notebook.navActiveText} font-bold ${LIBRARY_THEMES.notebook.navActiveBorder}`
-                  : 'text-muted-foreground hover:text-foreground border-transparent'
-              }`}
-              aria-label="Notebook"
-            >
-              <Highlighter
-                className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                  hasMounted && annotationCount > 0
-                    ? LIBRARY_THEMES.notebook.navFill
-                    : 'fill-transparent'
-                }`}
-              />
-              <span className="hidden lg:inline">Notebook</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onViewChange?.('bookmarks')}
-              title="Bookmarks & Continue Reading"
-              className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
-                activeView === 'bookmarks'
-                  ? `${LIBRARY_THEMES.bookmarks.navActiveText} font-bold ${LIBRARY_THEMES.bookmarks.navActiveBorder}`
-                  : 'text-muted-foreground hover:text-foreground border-transparent'
-              }`}
-              aria-label="Bookmarks"
-            >
-              <Bookmark
-                className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                  hasMounted && activeReadingCount > 0
-                    ? LIBRARY_THEMES.bookmarks.navFill
-                    : 'fill-transparent'
-                }`}
-              />
-              <span className="hidden lg:inline">Bookmarks</span>
-            </button>
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onViewChange?.(item.id)}
+                  title={item.title}
+                  className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
+                    isActive
+                      ? `${theme.navActiveText} font-bold ${theme.navActiveBorder}`
+                      : 'text-muted-foreground hover:text-foreground border-transparent'
+                  }`}
+                  aria-label={item.label}
+                >
+                  <Icon
+                    className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                      isFilled ? theme.navFill : 'fill-transparent'
+                    }`}
+                  />
+                  <span className="hidden lg:inline">{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
           <div className="h-4 w-[1px] bg-border mx-0.5 sm:mx-1" />

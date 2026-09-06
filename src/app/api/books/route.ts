@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import type { GutendexBook, GutendexResponse } from '@/types/book.types';
 import { booksApiRateLimiter } from '@/lib/rate-limiter';
+import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
 
 // Ensure Vercel runs this as a dynamic serverless function with extended timeout
 export const dynamic = 'force-dynamic';
@@ -9,28 +10,18 @@ export const maxDuration = 30; // seconds
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  const clientIp =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    '127.0.0.1';
+  const clientIp = getClientIp(request);
 
   const rateLimit = booksApiRateLimiter.check(clientIp);
   if (!rateLimit.success) {
-    return NextResponse.json(
+    return createRateLimitErrorResponse(
+      rateLimit,
+      'Too many requests. Please slow down and try again.',
       {
-        error: 'Too many requests. Please slow down and try again.',
         results: [],
         count: 0,
         source: 'upstream',
         latencyMs: Date.now() - startTime,
-      },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': String(Math.max(1, Math.ceil(rateLimit.resetMs / 1000))),
-          'X-RateLimit-Limit': String(rateLimit.limit),
-          'X-RateLimit-Remaining': String(rateLimit.remaining),
-        },
       }
     );
   }

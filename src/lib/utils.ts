@@ -222,3 +222,20 @@ export function formatRelativeTime(dateIso?: string | null): string {
   }
 }
 
+/**
+ * Triggers a browser download for a Blob by dynamically mounting and clicking an anchor element.
+ * Safely no-ops in SSR / non-browser environments.
+ */
+export function triggerBlobDownload(blob: Blob, filename: string): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import type { Annotation, HighlightColor } from '@/stores/useAnnotationStore';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
-import { HIGHLIGHT_COLORS } from './TextHighlightPopover';
+import { ANNOTATION_COLOR_CONFIG, ANNOTATION_COLOR_LIST } from '@/config/annotation-tokens';
 import { QuoteDeletePreview } from './QuoteDeletePreview';
 
 export interface ReaderAnnotationsDrawerProps {
@@ -21,20 +21,6 @@ export interface ReaderAnnotationsDrawerProps {
   onDeleteAnnotation: (id: string) => void;
   onUpdateNote: (id: string, note: string) => void;
 }
-
-const COLOR_BORDER_MAP: Record<HighlightColor, string> = {
-  yellow: 'border-l-amber-400 bg-amber-500/5',
-  amber: 'border-l-orange-400 bg-orange-500/5',
-  mint: 'border-l-emerald-400 bg-emerald-500/5',
-  rose: 'border-l-rose-400 bg-rose-500/5',
-};
-
-const COLOR_DOT_MAP: Record<HighlightColor, string> = {
-  yellow: 'bg-amber-400',
-  amber: 'bg-orange-400',
-  mint: 'bg-emerald-400',
-  rose: 'bg-rose-400',
-};
 
 export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = ({
   isOpen,
@@ -143,7 +129,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
             >
               All ({annotations.length})
             </button>
-            {HIGHLIGHT_COLORS.map((c) => {
+            {ANNOTATION_COLOR_LIST.map((c) => {
               const count = annotations.filter((a) => a.color === c.id).length;
               const isSelected = selectedColorFilter === c.id;
               return (
@@ -158,8 +144,8 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                       : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${COLOR_DOT_MAP[c.id]}`} />
-                  <span>{c.label.split(' ')[1] || c.label}</span>
+                  <span className={`w-2 h-2 rounded-full ${c.dotClass}`} />
+                  <span>{c.label}</span>
                   <span className="text-[10px] opacity-70">({count})</span>
                 </button>
               );
@@ -192,7 +178,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                 key={item.id}
                 data-testid={`annotation-item-${item.id}`}
                 className={`rounded-xl border border-stone-200 dark:border-stone-800 border-l-4 p-3.5 flex flex-col gap-2.5 transition-all shadow-xs ${
-                  COLOR_BORDER_MAP[item.color]
+                  (ANNOTATION_COLOR_CONFIG[item.color] || ANNOTATION_COLOR_CONFIG.yellow).drawerCardClass
                 }`}
               >
                 {/* Header: Section/Page Badge + Actions */}

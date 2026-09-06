@@ -1028,6 +1028,167 @@ describe('useBookshelfStore', () => {
       useBookshelfStore.getState().clearBookshelf();
       expect(useBookshelfStore.getState().deletedBookIds).toEqual({});
     });
+
+    it('manages deletedFavoriteBookIds and suppresses ghost favorite resurrection during syncWithCloud', async () => {
+      const book = mockBooks[0]; // id: 1342
+      const mockFavDelete = vi.fn().mockResolvedValue({ error: null });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => Promise.resolve({
+                  data: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true }],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            select: () => ({
+              eq: () => Promise.resolve({ data: [], error: null }),
+            }),
+          };
+        }
+        if (table === 'user_favorites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => Promise.resolve({
+                  data: [
+                    {
+                      book_id: book.id,
+                      book_title: book.title,
+                      book_authors: ['Jane Austen'],
+                      cover_url: null,
+                      created_at: new Date().toISOString(),
+                    },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+            delete: () => ({
+              eq: () => ({
+                eq: mockFavDelete,
+              }),
+            }),
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
+        if (table === 'user_book_curation') {
+          return {
+            select: () => ({
+              eq: () => Promise.resolve({ data: [], error: null }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      // 1. Favorite book
+      await useBookshelfStore.getState().toggleFavoriteBook(book);
+      expect(useBookshelfStore.getState().favoriteBookIds).toContain(book.id);
+      expect(useBookshelfStore.getState().deletedFavoriteBookIds[book.id]).toBeUndefined();
+
+      // 2. Unfavorite book -> tombstone is created
+      await useBookshelfStore.getState().toggleFavoriteBook(book);
+      expect(useBookshelfStore.getState().favoriteBookIds).not.toContain(book.id);
+      expect(useBookshelfStore.getState().deletedFavoriteBookIds[book.id]).toBeDefined();
+
+      // 3. Sync with cloud (where book 1342 still exists remotely)
+      await useBookshelfStore.getState().syncWithCloud('user-1');
+
+      // 4. Assert book 1342 was NOT resurrected
+      expect(useBookshelfStore.getState().favoriteBookIds).not.toContain(book.id);
+      expect(mockFavDelete).toHaveBeenCalled();
+
+      // 5. Re-favorite book -> tombstone is cleared
+      await useBookshelfStore.getState().toggleFavoriteBook(book);
+      expect(useBookshelfStore.getState().favoriteBookIds).toContain(book.id);
+      expect(useBookshelfStore.getState().deletedFavoriteBookIds[book.id]).toBeUndefined();
+
+      // 6. Test clearFavoriteBooks resets IDs and records sync time
+      useBookshelfStore.getState().clearFavoriteBooks();
+      expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(0);
+      expect(useBookshelfStore.getState().lastFavoritesSyncAt).toBeDefined();
+
+      // 7. Test clearBookshelf resets all
+      useBookshelfStore.getState().clearBookshelf();
+      expect(useBookshelfStore.getState().deletedFavoriteBookIds).toEqual({});
+      expect(useBookshelfStore.getState().lastFavoritesSyncAt).toBeNull();
+    });
+
+    it('removes local favorite when deleted on another device and syncing with cloud', async () => {
+      const book = mockBooks[0]; // id: 1342
+      const favsUpsertMock = vi.fn().mockResolvedValue({ error: null });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => Promise.resolve({
+                  data: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true }],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            select: () => ({
+              eq: () => Promise.resolve({ data: [], error: null }),
+            }),
+          };
+        }
+        if (table === 'user_favorites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => Promise.resolve({
+                  data: [], // Remote favorites is empty (deleted on Device A)
+                  error: null,
+                }),
+              }),
+            }),
+            delete: () => ({
+              eq: () => ({
+                eq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+            upsert: favsUpsertMock,
+          };
+        }
+        if (table === 'user_book_curation') {
+          return {
+            select: () => ({
+              eq: () => Promise.resolve({ data: [], error: null }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      // Device B previously synced with cloud and has book 1342 in local state
+      useBookshelfStore.setState({
+        favoriteBooks: [book],
+        favoriteBookIds: [book.id],
+        lastFavoritesSyncAt: '2026-09-01T12:00:00.000Z',
+        deletedFavoriteBookIds: {},
+      });
+
+      // Device B syncs with cloud
+      await useBookshelfStore.getState().syncWithCloud('user-1');
+
+      // Assert book was removed locally and NOT resurrected to cloud
+      expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(0);
+      expect(favsUpsertMock).not.toHaveBeenCalled();
+    });
   });
 });
 

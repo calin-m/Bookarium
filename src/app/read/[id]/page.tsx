@@ -6,9 +6,8 @@ import { useBookContent } from '@/hooks/queries/useBookContent';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useBookTranslations } from '@/hooks/queries/useBookTranslations';
 import { usePageTranslation } from '@/hooks/queries/usePageTranslation';
-import { useReaderStore } from '@/stores/useReaderStore';
+import { useReaderStore, useHydratedReader } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
-import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/types/book.types';
 import {
   extractGutenbergHeaderMetadata,
@@ -45,26 +44,23 @@ import { SITE_CONFIG } from '@/config/site-config';
 export default function BookReaderPage() {
   const params = useParams();
   const router = useRouter();
-  const hasMounted = useHasMounted();
   const rawId = params?.id;
   const bookId = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '';
   const numericId = parseInt(bookId, 10) || 0;
 
-  // Global Reader Store (Guarded with useHasMounted for zero SSR hydration mismatch)
-  const rawCurrentBook = useReaderStore((s) => s.currentBook);
-  const currentBook = hasMounted ? rawCurrentBook : null;
-  const rawFontSize = useReaderStore((s) => s.fontSize);
-  const fontSize = hasMounted ? rawFontSize : 18;
-  const rawLineHeight = useReaderStore((s) => s.lineHeight);
-  const lineHeight = hasMounted ? rawLineHeight : 1.75;
-  const rawFontFamily = useReaderStore((s) => s.fontFamily);
-  const fontFamily = hasMounted ? rawFontFamily : 'serif';
-  const rawTheme = useReaderStore((s) => s.theme);
-  const theme = hasMounted ? rawTheme : 'light';
-  const setFontSize = useReaderStore((s) => s.setFontSize);
-  const setLineHeight = useReaderStore((s) => s.setLineHeight);
-  const setFontFamily = useReaderStore((s) => s.setFontFamily);
-  const setTheme = useReaderStore((s) => s.setTheme);
+  // Hydrated Global Reader Store (Guarded with useHasMounted for zero SSR hydration mismatch)
+  const {
+    hasMounted,
+    currentBook,
+    fontSize,
+    lineHeight,
+    fontFamily,
+    theme,
+    setFontSize,
+    setLineHeight,
+    setFontFamily,
+    setTheme,
+  } = useHydratedReader();
 
   // Persistent User Preferences
   const {

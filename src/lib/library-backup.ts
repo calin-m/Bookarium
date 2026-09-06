@@ -12,7 +12,7 @@ import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import type { GutendexBook, ReadingStatus } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
-import { formatAuthorNames } from '@/lib/utils';
+import { formatAuthorNames, triggerBlobDownload } from '@/lib/utils';
 import { getOfflineBookIds, removeOfflineBook } from '@/lib/offline-storage';
 
 export interface LibraryBackupShelf {
@@ -160,19 +160,11 @@ export function createLibraryBackup(): LibraryBackupPayload {
  * Serializes the library backup to JSON and triggers an automatic browser download.
  */
 export function downloadLibraryBackupJSON(backup?: LibraryBackupPayload, filename?: string): void {
-  if (typeof window === 'undefined') return;
   const data = backup || createLibraryBackup();
   const jsonStr = JSON.stringify(data, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
   const dateStr = data.exportedAt ? data.exportedAt.slice(0, 10) : new Date().toISOString().slice(0, 10);
-  link.href = url;
-  link.download = filename || `bookarium-library-backup-${dateStr}.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  triggerBlobDownload(blob, filename || `bookarium-library-backup-${dateStr}.json`);
 }
 
 /**
@@ -266,15 +258,8 @@ export function exportLibraryToCSV(backup?: LibraryBackupPayload, filename?: str
 
   if (typeof window !== 'undefined') {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
     const dateStr = (data.exportedAt || new Date().toISOString()).slice(0, 10);
-    link.href = url;
-    link.download = filename || `bookarium-catalog-${dateStr}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    triggerBlobDownload(blob, filename || `bookarium-catalog-${dateStr}.csv`);
   }
 
   return csvContent;

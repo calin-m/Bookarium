@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-127%20Suites%20%7C%201010%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.36%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-133%20Suites%20%7C%201051%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.68%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,13 +38,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v1.9.8)
+## 🛠️ Latest Improvements (v1.9.9)
 
-- **Completed Reading Progress Latch & "Read Again" Flow (`useReaderSession.ts`, `BookmarkCard.tsx`)**: Guarded 100% completed status and progress coordinates when resuming finished books from bookmarks or the catalog. Added a dedicated "Read Again" button on completed volumes allowing readers to restart from Page 1 without prematurely destroying their ledger completion status.
-- **Classic of the Day Editorial Showcase (`EditorialQuoteSection.tsx`)**: Dedicated curated literary quote section under the Catalog search bar, featuring deterministic hourly rotation with anti-collision filtering to ensure candidate books never duplicate the active Hero volume.
-- **Native `<input>` Architecture for Catalog Hero Search (`HeroSearch.tsx`)**: Refactored the Catalog search bar to a native `<input>`-centric structure with inset floating submit and clear buttons, matching `CollectionSearchBar.tsx` and unlocking authentic 150ms outward focus ring bloom and `hover:border-primary/40` state.
-- **Architecture Decision Record (`ADR-025`)**: Formally ratified the completed reading state latch, "Read Again" flow, native inset search architecture, and library navigation streamlining in `docs/DECISIONS.md`.
-- **Reading Status Latch in Bookmarks Ledger (`useContinueReadingLedger.ts`)**: Resolved issue where resuming a completed volume erroneously reset the reading status badge to "In Progress" in the Bookmarks ledger.
+- **Domain Cloud Row Adapters & Normalized Inserts (`book.adapter.ts`)**: Bidirectional transformation between Supabase PostgreSQL schema rows and GutendexBook domain models (`toGutendexBookFromCloudRow`), with type overloads ensuring compatibility with `RejectExcessProperties` in Supabase inserts (`toCloudBookInsert`).
+- **Declarative View Configuration & Main View Strategy (`views.config.ts`)**: Unified application views (`NAV_ITEMS`, `NAVBAR_VIEW_CONFIG`) and content metadata (`VIEW_CONTENT_CONFIG`), eliminating 12+ nested ternaries across view headers, search placeholders, and collection empty states.
+- **Canonical Annotation Token Registry (`annotation-tokens.ts`)**: Centralized single source of truth for annotation colors (`yellow`, `amber`, `mint`, `rose`), surface highlight classes, dot/border styling, and filter badges across Reader Surface, Drawers, Popovers, and Notebooks.
+- **Polymorphic Outbox Command Dispatcher (`useBookshelfStore.ts`)**: Replaced 40-line `if-else` ladder in `flushOutbox` with a polymorphic command dispatcher dictionary `OUTBOX_DISPATCHERS`.
+- **Data-Driven Navigation Architecture (`Navbar.tsx`)**: Migrated hardcoded static `<button>` elements to declarative `NAV_ITEMS.map(...)` iteration with dynamic active styling, responsive badges, and canonical reading count.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -511,13 +511,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1010 tests across 127 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1051 tests across 133 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 25 validated ADRs (ADR-001 through ADR-025) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, 0ms fast-paths, and completed reading state latches. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 26 validated ADRs (ADR-001 through ADR-026) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, and enterprise polymorphism/encapsulation. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   cn,
   extractBookFormats,
@@ -10,6 +10,7 @@ import {
   formatPrimarySubject,
   extractBookTags,
   formatRelativeTime,
+  triggerBlobDownload,
 } from './utils';
 
 describe('lib/utils', () => {
@@ -202,6 +203,37 @@ describe('lib/utils', () => {
       expect(formatRelativeTime('')).toBe('Recently');
       expect(formatRelativeTime('invalid-date')).toBe('Recently');
       expect(formatRelativeTime(new Date(0).toISOString())).toBe('Recently');
+    });
+  });
+
+  describe('triggerBlobDownload', () => {
+    it('creates an anchor, appends to body, clicks, removes anchor, and revokes object URL', () => {
+      const mockUrl = 'blob:http://localhost/fake-uuid';
+      const createSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(mockUrl);
+      const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      let clicked = false;
+      const originalCreateElement = document.createElement.bind(document);
+      const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        const el = originalCreateElement(tag);
+        if (tag === 'a') {
+          el.click = () => {
+            clicked = true;
+          };
+        }
+        return el;
+      });
+
+      const blob = new Blob(['test content'], { type: 'text/plain' });
+      triggerBlobDownload(blob, 'test-download.txt');
+
+      expect(createSpy).toHaveBeenCalledWith(blob);
+      expect(clicked).toBe(true);
+      expect(revokeSpy).toHaveBeenCalledWith(mockUrl);
+
+      createElementSpy.mockRestore();
+      createSpy.mockRestore();
+      revokeSpy.mockRestore();
     });
   });
 });

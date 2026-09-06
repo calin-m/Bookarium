@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 06 Sep 2026 12:58:19 GMT  
+**Last Generated**: Sun, 06 Sep 2026 14:59:04 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 127 passed  
-**Total Verified Tests**: 1010 passed  
+**Total Test Suites**: 133 passed  
+**Total Verified Tests**: 1051 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **127/127 test suites passed** (1010 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **133/133 test suites passed** (1051 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 25 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 26 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.36%** (5151/5577) — *Target: $ge$ 80%*
-- **Statements**: **90.52%** (5610/6197) — *Target: $ge$ 80%*
-- **Functions**: **88.4%** (1281/1449) — *Target: $ge$ 80%*
-- **Branches**: **80.76%** (4804/5948) — *Target: $ge$ 80%*
+- **Lines**: **92.68%** (5234/5647) — *Target: $ge$ 80%*
+- **Statements**: **90.97%** (5707/6273) — *Target: $ge$ 80%*
+- **Functions**: **88.83%** (1313/1478) — *Target: $ge$ 80%*
+- **Branches**: **81.2%** (4797/5907) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (127 Suites / 1010 Tests)
+## 🧪 Comprehensive Test Suite Catalog (133 Suites / 1051 Tests)
 
-### 🚀 App Routes & Pages (11 Suites · 100 Tests)
+### 🚀 App Routes & Pages (11 Suites · 102 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -150,9 +150,11 @@
 </details>
 
 <details>
-<summary><b><code>src/app/providers.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/app/providers.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
+- ✔ `should call syncAllStoresWithCloud when user is logged in`
+- ✔ `should trigger syncAllStoresWithCloud on window online event when user is logged in`
 
 </details>
 
@@ -202,7 +204,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (21 Suites · 217 Tests)
+### 🎨 Catalog & Presentation (21 Suites · 220 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (10 tests)</summary>
@@ -221,7 +223,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -236,6 +238,9 @@
 - ✔ `renders fallback cover when image error occurs`
 - ✔ `triggers preview on Enter or Space key press on cover`
 - ✔ `updates cursor tooltip to Add to Favorites and Add to Bookshelf when hovering action buttons`
+- ✔ `requires two clicks on favorite button to remove from favorites when activeView=`
+- ✔ `auto-disarms favorite removal confirmation after timeout when activeView=`
+- ✔ `disarms favorite removal confirmation on mouse leave or blur when activeView=`
 
 </details>
 
@@ -776,7 +781,7 @@
 
 </details>
 
-### 🔐 Authentication & Security (1 Suites · 15 Tests)
+### 🔐 Authentication & Security (2 Suites · 19 Tests)
 
 <details>
 <summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (15 tests)</summary>
@@ -799,7 +804,17 @@
 
 </details>
 
-### ⚡ Zustand State Stores (6 Suites · 94 Tests)
+<details>
+<summary><b><code>src/components/auth/EmailSentView.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `renders title, email, and message prefix`
+- ✔ `renders optional subtitle and resendSuccess message`
+- ✔ `triggers onBackToSignIn with custom label`
+- ✔ `renders and handles resend button interactions`
+
+</details>
+
+### ⚡ Zustand State Stores (6 Suites · 99 Tests)
 
 <details>
 <summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
@@ -850,7 +865,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (32 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (34 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -884,6 +899,8 @@
 - ✔ `tracks mutation timestamps in curationHistory`
 - ✔ `preserves newer local offline curation over older cloud records via LWW`
 - ✔ `manages deletedBookIds tombstones and suppresses ghost resurrection during syncWithCloud`
+- ✔ `manages deletedFavoriteBookIds and suppresses ghost favorite resurrection during syncWithCloud`
+- ✔ `removes local favorite when deleted on another device and syncing with cloud`
 
 </details>
 
@@ -899,7 +916,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -916,6 +933,9 @@
 - ✔ `bulk synchronizes all user reading progress via syncWithCloud`
 - ✔ `deletes from Supabase when clearReadingPosition is invoked while authenticated`
 - ✔ `deletes all user records from Supabase on clearAllVolumes while authenticated`
+- ✔ `returns 0 for null, undefined, or empty state`
+- ✔ `returns unique volume count across positions and progress`
+- ✔ `provides hydration-safe reader defaults and activeReadingCount`
 
 </details>
 
@@ -931,10 +951,10 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (17 Suites · 156 Tests)
+### 📚 Gutenberg Parsers & Metadata (20 Suites · 173 Tests)
 
 <details>
-<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `normalizes `
 - ✔ `returns single word or standard formatted names unchanged`
@@ -948,6 +968,21 @@
 - ✔ `is idempotent when given an already-canonical Book`
 - ✔ `handles missing or empty fields safely with reasonable fallbacks`
 - ✔ `cleans Gutenberg title preambles and normalizes author names with dates`
+- ✔ `reconstructs GutendexBook with Gutenberg format URLs and normalized author objects`
+- ✔ `handles null cover_url and empty authors gracefully`
+- ✔ `formats a GutendexBook into a standardized Supabase insert payload`
+- ✔ `omits bookshelf_id when not provided`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/api-utils.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `extracts client IP from the first entry of x-forwarded-for`
+- ✔ `extracts client IP from x-real-ip when x-forwarded-for is missing`
+- ✔ `falls back to 127.0.0.1 when no IP headers are present`
+- ✔ `returns a 429 response with default message and standard headers`
+- ✔ `merges custom message and additional body properties`
 
 </details>
 
@@ -964,6 +999,16 @@
 - ✔ `bypasses store placeholder authors and uses authentic API/header authors`
 - ✔ `handles fallback defaults when all metadata sources are empty`
 - ✔ `resolves languages correctly with strict ID-guarding from store, API, and header metadata`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/cache.test.ts</code></b> (4 tests)</summary>
+
+- ✔ `stores and retrieves items correctly`
+- ✔ `evicts the least recently used item when maxEntries is exceeded`
+- ✔ `overwriting an existing key updates its value and recency without exceeding max size`
+- ✔ `supports has, delete, and clear operations`
 
 </details>
 
@@ -1163,7 +1208,16 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/utils.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/lib/sync-utils.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `triggers syncWithCloud concurrently on Bookshelf, Annotation, and Reader stores`
+- ✔ `safely exits without calling stores if userId is empty`
+- ✔ `gracefully settles and does not throw if one store encounters a network rejection`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/utils.test.ts</code></b> (24 tests)</summary>
 
 - ✔ `should merge class names correctly`
 - ✔ `should extract standard Gutenberg format keys`
@@ -1188,6 +1242,7 @@
 - ✔ `returns days ago for timestamps under 7 days`
 - ✔ `formats date string for timestamps older than 7 days`
 - ✔ `falls back gracefully to `
+- ✔ `creates an anchor, appends to body, clicks, removes anchor, and revokes object URL`
 
 </details>
 
@@ -1452,7 +1507,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (37 Suites · 146 Tests)
+### 🧩 UI Primitives & Motion (39 Suites · 156 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1751,6 +1806,16 @@
 </details>
 
 <details>
+<summary><b><code>src/config/annotation-tokens.test.ts</code></b> (4 tests)</summary>
+
+- ✔ `contains configurations for all 4 primary highlight colors`
+- ✔ `populates ANNOTATION_COLOR_LIST with all 4 items`
+- ✔ `provides complete styling tokens for each color theme`
+- ✔ `exports valid fallback class for all colors filter badge`
+
+</details>
+
+<details>
 <summary><b><code>src/config/config.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `defines valid non-empty endpoint URLs`
@@ -1815,6 +1880,18 @@
 </details>
 
 <details>
+<summary><b><code>src/config/views.config.test.ts</code></b> (6 tests)</summary>
+
+- ✔ `contains all 5 primary navigation items`
+- ✔ `has valid labels, titles, and icons for each nav item`
+- ✔ `assigns correct countKey for collections`
+- ✔ `has configuration for all views including account`
+- ✔ `correctly calculates catalog titles and subtitles`
+- ✔ `correctly formats bookshelf and favorites content`
+
+</details>
+
+<details>
 <summary><b><code>src/proxy.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
@@ -1826,7 +1903,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **2 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

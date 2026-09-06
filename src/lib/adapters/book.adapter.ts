@@ -135,3 +135,83 @@ export function toCanonicalBook(
   };
 }
 
+export interface CloudBookRow {
+  book_id: number;
+  book_title: string;
+  book_authors: string[] | null;
+  cover_url: string | null;
+}
+
+/**
+ * Reconstructs a full GutendexBook from a cloud database row (bookshelf_items or user_favorites).
+ * Encapsulates Gutenberg format URL synthesis and author normalization in a single canonical place.
+ */
+export function toGutendexBookFromCloudRow(item: CloudBookRow): GutendexBook {
+  return {
+    id: item.book_id,
+    title: item.book_title,
+    authors: (item.book_authors || []).map((name: string) => ({ name, birth_year: null, death_year: null })),
+    translators: [],
+    subjects: [],
+    bookshelves: [],
+    languages: ['en'],
+    copyright: false,
+    media_type: 'Text',
+    formats: {
+      ...(item.cover_url ? { 'image/jpeg': item.cover_url } : {}),
+      'application/epub+zip': `https://www.gutenberg.org/ebooks/${item.book_id}.epub3.images`,
+      'text/html': `https://www.gutenberg.org/ebooks/${item.book_id}.html.images`,
+      'text/plain; charset=utf-8': `https://www.gutenberg.org/ebooks/${item.book_id}.txt.utf-8`,
+      'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${item.book_id}.kindle.images`,
+    },
+    download_count: 1000,
+  };
+}
+
+export interface CloudFavoriteInsertPayload {
+  user_id: string;
+  book_id: number;
+  book_title: string;
+  book_authors: string[];
+  cover_url: string | null;
+}
+
+export interface CloudBookshelfItemInsertPayload extends CloudFavoriteInsertPayload {
+  bookshelf_id: string;
+}
+
+export type CloudBookInsertPayload = CloudFavoriteInsertPayload | CloudBookshelfItemInsertPayload;
+
+/**
+ * Transforms a GutendexBook entity into a normalized Supabase insert payload.
+ */
+export function toCloudBookInsert(
+  book: GutendexBook,
+  userId: string,
+  bookshelfId: string
+): CloudBookshelfItemInsertPayload;
+export function toCloudBookInsert(
+  book: GutendexBook,
+  userId: string
+): CloudFavoriteInsertPayload;
+export function toCloudBookInsert(
+  book: GutendexBook,
+  userId: string,
+  bookshelfId?: string
+): CloudFavoriteInsertPayload | CloudBookshelfItemInsertPayload {
+  const base: CloudFavoriteInsertPayload = {
+    user_id: userId,
+    book_id: book.id,
+    book_title: book.title,
+    book_authors: book.authors?.map((a) => a.name) || [],
+    cover_url: book.formats?.['image/jpeg'] || null,
+  };
+  if (bookshelfId) {
+    return {
+      ...base,
+      bookshelf_id: bookshelfId,
+    };
+  }
+  return base;
+}
+

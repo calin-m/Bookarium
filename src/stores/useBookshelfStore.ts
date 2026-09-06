@@ -7,6 +7,7 @@ import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { useAuthStore } from './useAuthStore';
 import { useReaderStore } from './useReaderStore';
+import { toGutendexBookFromCloudRow, toCloudBookInsert } from '@/lib/adapters/book.adapter';
 
 export type OutboxActionInput =
   | {
@@ -70,6 +71,8 @@ export interface BookshelfState {
   bookStatuses: Record<number, ReadingStatus>;
   curationHistory: Record<number, string>;
   deletedBookIds: Record<number, string>;
+  deletedFavoriteBookIds: Record<number, string>;
+  lastFavoritesSyncAt: string | null;
 
   // Cloud State
   cloudBookshelves: Bookshelf[];
@@ -114,6 +117,23 @@ export interface BookshelfState {
 }
 
 
+type OutboxDispatcher = (supabase: ReturnType<typeof createClient>, payload: any) => PromiseLike<{ error: unknown }>;
+
+const OUTBOX_DISPATCHERS: Record<OutboxAction['type'], OutboxDispatcher> = {
+  DELETE_BOOK: (sb, p) =>
+    sb.from('bookshelf_items').delete().eq('bookshelf_id', p.bookshelf_id).eq('book_id', p.book_id),
+  DELETE_FAVORITE: (sb, p) =>
+    sb.from('user_favorites').delete().eq('user_id', p.user_id).eq('book_id', p.book_id),
+  INSERT_BOOK: (sb, p) =>
+    sb.from('bookshelf_items').upsert(p, { onConflict: 'bookshelf_id,book_id' }),
+  UPSERT_FAVORITE: (sb, p) =>
+    sb.from('user_favorites').upsert(p, { onConflict: 'user_id,book_id' }),
+  UPSERT_CURATION: (sb, p) =>
+    sb.from('user_book_curation').upsert(p, { onConflict: 'user_id,book_id' }),
+  DELETE_CURATION: (sb, p) =>
+    sb.from('user_book_curation').delete().eq('user_id', p.user_id).eq('book_id', p.book_id),
+};
+
 export const useBookshelfStore = create<BookshelfState>()(
   persist(
     (set, get) => ({
@@ -126,6 +146,8 @@ export const useBookshelfStore = create<BookshelfState>()(
       bookStatuses: {},
       curationHistory: {},
       deletedBookIds: {},
+      deletedFavoriteBookIds: {},
+      lastFavoritesSyncAt: null,
       cloudBookshelves: [],
       cloudBookshelfItems: [],
       activeBookshelfId: null,
@@ -150,41 +172,9 @@ export const useBookshelfStore = create<BookshelfState>()(
 
         for (const action of outbox) {
           try {
-            if (action.type === 'DELETE_BOOK') {
-              const { error } = await supabase
-                .from('bookshelf_items')
-                .delete()
-                .eq('bookshelf_id', action.payload.bookshelf_id)
-                .eq('book_id', action.payload.book_id);
-              if (error) throw error;
-            } else if (action.type === 'DELETE_FAVORITE') {
-              const { error } = await supabase
-                .from('user_favorites')
-                .delete()
-                .eq('user_id', action.payload.user_id)
-                .eq('book_id', action.payload.book_id);
-              if (error) throw error;
-            } else if (action.type === 'INSERT_BOOK') {
-              const { error } = await supabase
-                .from('bookshelf_items')
-                .upsert(action.payload, { onConflict: 'bookshelf_id,book_id' });
-              if (error) throw error;
-            } else if (action.type === 'UPSERT_FAVORITE') {
-              const { error } = await supabase
-                .from('user_favorites')
-                .upsert(action.payload, { onConflict: 'user_id,book_id' });
-              if (error) throw error;
-            } else if (action.type === 'UPSERT_CURATION') {
-              const { error } = await supabase
-                .from('user_book_curation')
-                .upsert(action.payload, { onConflict: 'user_id,book_id' });
-              if (error) throw error;
-            } else if (action.type === 'DELETE_CURATION') {
-              const { error } = await supabase
-                .from('user_book_curation')
-                .delete()
-                .eq('user_id', action.payload.user_id)
-                .eq('book_id', action.payload.book_id);
+            const dispatcher = OUTBOX_DISPATCHERS[action.type];
+            if (dispatcher) {
+              const { error } = await dispatcher(supabase, action.payload);
               if (error) throw error;
             }
           } catch {
@@ -308,21 +298,26 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       toggleFavoriteBook: async (bookOrId, userId) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
-        const { favoriteBookIds, favoriteBooks = [] } = get();
+        const { favoriteBookIds, favoriteBooks = [], deletedFavoriteBookIds = {} } = get();
         const isNumeric = typeof bookOrId === 'number';
         const id = isNumeric ? bookOrId : bookOrId.id;
         const exists = favoriteBookIds.includes(id) || favoriteBooks.some((b) => b.id === id);
 
+        const nextDeletedFavorites = { ...deletedFavoriteBookIds };
         if (exists) {
+          nextDeletedFavorites[id] = new Date().toISOString();
           set({
             favoriteBookIds: favoriteBookIds.filter((item) => item !== id),
             favoriteBooks: favoriteBooks.filter((b) => b.id !== id),
+            deletedFavoriteBookIds: nextDeletedFavorites,
           });
         } else {
+          delete nextDeletedFavorites[id];
           const nextFavoriteBooks = isNumeric ? favoriteBooks : [bookOrId, ...favoriteBooks];
           set({
             favoriteBookIds: [...favoriteBookIds, id],
             favoriteBooks: nextFavoriteBooks,
+            deletedFavoriteBookIds: nextDeletedFavorites,
           });
         }
 
@@ -339,13 +334,8 @@ export const useBookshelfStore = create<BookshelfState>()(
               if (error) throw error;
             } else if (!isNumeric) {
               const book = bookOrId as GutendexBook;
-              const { error } = await supabase.from('user_favorites').upsert({
-                user_id: currentUserId,
-                book_id: book.id,
-                book_title: book.title,
-                book_authors: book.authors?.map((a) => a.name) || [],
-                cover_url: book.formats?.['image/jpeg'] || null,
-              });
+              const payload = toCloudBookInsert(book, currentUserId);
+              const { error } = await supabase.from('user_favorites').upsert(payload);
               if (error) throw error;
             }
           } catch {
@@ -359,13 +349,7 @@ export const useBookshelfStore = create<BookshelfState>()(
               const book = bookOrId as GutendexBook;
               get().queueOutboxAction({
                 type: 'UPSERT_FAVORITE',
-                payload: {
-                  user_id: currentUserId,
-                  book_id: book.id,
-                  book_title: book.title,
-                  book_authors: book.authors?.map((a) => a.name) || [],
-                  cover_url: book.formats?.['image/jpeg'] || null,
-                },
+                payload: toCloudBookInsert(book, currentUserId),
               });
             }
           }
@@ -385,7 +369,12 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       clearFavoriteBooks: () => {
-        set({ favoriteBooks: [], favoriteBookIds: [] });
+        set({
+          favoriteBooks: [],
+          favoriteBookIds: [],
+          deletedFavoriteBookIds: {},
+          lastFavoritesSyncAt: new Date().toISOString(),
+        });
       },
 
       addRecentBook: (book) => {
@@ -405,6 +394,8 @@ export const useBookshelfStore = create<BookshelfState>()(
           bookStatuses: {},
           curationHistory: {},
           deletedBookIds: {},
+          deletedFavoriteBookIds: {},
+          lastFavoritesSyncAt: null,
           cloudBookshelves: [],
           activeBookshelfId: null,
           isSyncing: false,
@@ -592,25 +583,7 @@ export const useBookshelfStore = create<BookshelfState>()(
               cloudBookshelfItems: (items || []) as BookshelfItem[],
             });
 
-            const reconstructedBooks: GutendexBook[] = (items || []).map((item: BookshelfItem) => ({
-              id: item.book_id,
-              title: item.book_title,
-              authors: (item.book_authors || []).map((name) => ({ name, birth_year: null, death_year: null })),
-              translators: [],
-              subjects: [],
-              bookshelves: [],
-              languages: ['en'],
-              copyright: false,
-              media_type: 'Text',
-              formats: {
-                ...(item.cover_url ? { 'image/jpeg': item.cover_url } : {}),
-                'application/epub+zip': `https://www.gutenberg.org/ebooks/${item.book_id}.epub3.images`,
-                'text/html': `https://www.gutenberg.org/ebooks/${item.book_id}.html.images`,
-                'text/plain; charset=utf-8': `https://www.gutenberg.org/ebooks/${item.book_id}.txt.utf-8`,
-                'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${item.book_id}.kindle.images`,
-              } as Record<string, string>,
-              download_count: 1000,
-            }));
+            const reconstructedBooks: GutendexBook[] = (items || []).map(toGutendexBookFromCloudRow);
 
             // Tombstone-aware merge: filter out remote items that have been deleted locally
             const { deletedBookIds = {} } = get();
@@ -637,14 +610,9 @@ export const useBookshelfStore = create<BookshelfState>()(
 
             // Bidirectional Sync: push local books missing from cloud to the database
             if (unSyncedLocalBooks.length > 0 && currentDefaultShelf?.id) {
-              const inserts = unSyncedLocalBooks.map((b) => ({
-                bookshelf_id: currentDefaultShelf!.id,
-                user_id: userId,
-                book_id: b.id,
-                book_title: b.title,
-                book_authors: b.authors?.map((a) => a.name) || [],
-                cover_url: b.formats?.['image/jpeg'] || null,
-              }));
+              const inserts = unSyncedLocalBooks.map((b) =>
+                toCloudBookInsert(b, userId, currentDefaultShelf!.id)
+              );
 
               await supabase.from('bookshelf_items').upsert(inserts, {
                 onConflict: 'bookshelf_id,book_id',
@@ -681,14 +649,9 @@ export const useBookshelfStore = create<BookshelfState>()(
               const { deletedBookIds = {} } = get();
               const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
               if (localSaved.length > 0) {
-                const inserts = localSaved.map((b) => ({
-                  bookshelf_id: currentDefaultShelf!.id,
-                  user_id: userId,
-                  book_id: b.id,
-                  book_title: b.title,
-                  book_authors: b.authors?.map((a) => a.name) || [],
-                  cover_url: b.formats?.['image/jpeg'] || null,
-                }));
+                const inserts = localSaved.map((b) =>
+                  toCloudBookInsert(b, userId, currentDefaultShelf!.id)
+                );
 
                 await supabase.from('bookshelf_items').upsert(inserts, {
                   onConflict: 'bookshelf_id,book_id',
@@ -712,54 +675,62 @@ export const useBookshelfStore = create<BookshelfState>()(
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
-          const reconstructedFavorites: GutendexBook[] = (favorites || []).map((item) => ({
-            id: item.book_id,
-            title: item.book_title,
-            authors: (item.book_authors || []).map((name: string) => ({ name, birth_year: null, death_year: null })),
-            translators: [],
-            subjects: [],
-            bookshelves: [],
-            languages: ['en'],
-            copyright: false,
-            media_type: 'Text',
-            formats: {
-              ...(item.cover_url ? { 'image/jpeg': item.cover_url } : {}),
-              'application/epub+zip': `https://www.gutenberg.org/ebooks/${item.book_id}.epub3.images`,
-              'text/html': `https://www.gutenberg.org/ebooks/${item.book_id}.html.images`,
-              'text/plain; charset=utf-8': `https://www.gutenberg.org/ebooks/${item.book_id}.txt.utf-8`,
-              'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${item.book_id}.kindle.images`,
-            } as Record<string, string>,
-            download_count: 1000,
-          }));
+          const reconstructedFavorites: GutendexBook[] = (favorites || []).map(toGutendexBookFromCloudRow);
 
-          // Merge unique favorites
+          // Reconcile favorites with tombstone awareness and sync anchor
+          const { lastFavoritesSyncAt, deletedFavoriteBookIds = {} } = get();
           const localFavorites = get().favoriteBooks || [];
-          const mergedFavorites = [...reconstructedFavorites];
-          const unSyncedFavorites: GutendexBook[] = [];
 
-          for (const lb of localFavorites) {
-            if (!mergedFavorites.some((b) => b.id === lb.id)) {
-              mergedFavorites.push(lb);
-              unSyncedFavorites.push(lb);
+          // Tombstone-aware filtering: remote items that have been deleted locally
+          const activeReconstructedFavorites = reconstructedFavorites.filter(
+            (b) => !deletedFavoriteBookIds[b.id]
+          );
+
+          // Propagate deletions: if remote contains items that were tombstoned locally, remove them from cloud
+          const favsToDelete = (favorites || []).filter((item) => deletedFavoriteBookIds[item.book_id]);
+          for (const delFav of favsToDelete) {
+            await supabase
+              .from('user_favorites')
+              .delete()
+              .eq('user_id', userId)
+              .eq('book_id', delFav.book_id);
+          }
+
+          let finalFavorites: GutendexBook[];
+
+          if (!lastFavoritesSyncAt) {
+            // Initial sync (e.g. migrating guest session to authenticated account):
+            // Merge local guest favorites into remote favorites and upload unsynced ones
+            const unSyncedFavorites: GutendexBook[] = [];
+            const mergedFavorites = [...activeReconstructedFavorites];
+
+            for (const lb of localFavorites) {
+              if (!deletedFavoriteBookIds[lb.id] && !mergedFavorites.some((b) => b.id === lb.id)) {
+                mergedFavorites.push(lb);
+                unSyncedFavorites.push(lb);
+              }
             }
-          }
-          const mergedFavoriteIds = Array.from(new Set([...mergedFavorites.map((b) => b.id), ...get().favoriteBookIds]));
-          set({ favoriteBooks: mergedFavorites, favoriteBookIds: mergedFavoriteIds });
+            finalFavorites = mergedFavorites;
 
-          // Bidirectional Sync: push local favorites missing from cloud to the database
-          if (unSyncedFavorites.length > 0) {
-            const favoriteInserts = unSyncedFavorites.map((b) => ({
-              user_id: userId,
-              book_id: b.id,
-              book_title: b.title,
-              book_authors: b.authors?.map((a) => a.name) || [],
-              cover_url: b.formats?.['image/jpeg'] || null,
-            }));
+            if (unSyncedFavorites.length > 0) {
+              const favoriteInserts = unSyncedFavorites.map((b) => toCloudBookInsert(b, userId));
 
-            await supabase.from('user_favorites').upsert(favoriteInserts, {
-              onConflict: 'user_id,book_id',
-            });
+              await supabase.from('user_favorites').upsert(favoriteInserts, {
+                onConflict: 'user_id,book_id',
+              });
+            }
+          } else {
+            // Device has previously synced: Cloud is authoritative for multi-device deletions.
+            // Items missing from cloud (and not tombstoned) were removed on another device.
+            finalFavorites = activeReconstructedFavorites;
           }
+
+          const finalFavoriteIds = finalFavorites.map((b) => b.id);
+          set({
+            favoriteBooks: finalFavorites,
+            favoriteBookIds: finalFavoriteIds,
+            lastFavoritesSyncAt: new Date().toISOString(),
+          });
 
           // 4. Fetch user curation (ratings & statuses)
           const { data: curations } = await supabase
@@ -866,14 +837,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           if (savedBooks.length > 0) {
             const targetShelfId = cloudBookshelves.find((s) => s.is_default)?.id || cloudBookshelves[0]?.id;
             if (targetShelfId) {
-              const inserts = savedBooks.map((b) => ({
-                bookshelf_id: targetShelfId,
-                user_id: userId,
-                book_id: b.id,
-                book_title: b.title,
-                book_authors: b.authors?.map((a) => a.name) || [],
-                cover_url: b.formats?.['image/jpeg'] || null,
-              }));
+              const inserts = savedBooks.map((b) => toCloudBookInsert(b, userId, targetShelfId));
 
               await supabase.from('bookshelf_items').upsert(inserts, {
                 onConflict: 'bookshelf_id,book_id',
@@ -883,17 +847,12 @@ export const useBookshelfStore = create<BookshelfState>()(
 
           // 2. Migrate favorites
           if (favoriteBooks.length > 0) {
-            const favoriteInserts = favoriteBooks.map((b) => ({
-              user_id: userId,
-              book_id: b.id,
-              book_title: b.title,
-              book_authors: b.authors?.map((a) => a.name) || [],
-              cover_url: b.formats?.['image/jpeg'] || null,
-            }));
+            const favoriteInserts = favoriteBooks.map((b) => toCloudBookInsert(b, userId));
 
             await supabase.from('user_favorites').upsert(favoriteInserts, {
               onConflict: 'user_id,book_id',
             });
+            set({ lastFavoritesSyncAt: new Date().toISOString() });
           }
         } catch {
           // Non-blocking fallback

@@ -222,3 +222,29 @@
   - Complete elimination of silent Tailwind CSS drop-outs on opacity-modified CSS variables across modals, skeletons, and cards.
   - Zero code duplication for quote deletion preview modals between Reader drawer and full-page reader with 100% visual invariance and full test coverage.
   - Maximum fault isolation and granular regression prevention with test suites expanded to > 1,000 unit and integration tests across 127 suites, strictly maintaining >= 80% coverage on all metrics (Rule 3).
+
+## ADR-026: Enterprise Polymorphism, Encapsulation & Code Redundancy Elimination
+- **Status**: Accepted
+- **Context**: An enterprise audit of code polymorphism, encapsulation, and code redundancy revealed duplicated code and missing domain abstractions across multiple subsystems:
+  1. Data Layer: Repetitive Gutenberg format dictionary parsing and Supabase cloud row conversion were scattered across `useBookshelfStore.ts`, and offline sync command processing relied on a 40-line `if-else` ladder.
+  2. Presentation Layer & Navigation: `Navbar.tsx` manually repeated 5 copy-pasted `<button>` blocks with identical active class logic, while `src/app/page.tsx` contained over 12 nested ternaries to switch section headers, search placeholders, and empty states.
+  3. Annotation Subsystem: 6 duplicate color dictionaries for annotation pastel palettes (`yellow`, `amber`, `mint`, `rose`) existed across `ReaderSurface.tsx`, `ReaderAnnotationsDrawer.tsx`, `TextHighlightPopover.tsx`, and `NotebookView.tsx`.
+  4. Reader Hydration: `src/app/read/[id]/page.tsx` manually queried 10 individual store properties with raw ternaries guarding SSR hydration rather than using an encapsulated hook pattern like `useHydratedBookshelf` and `useHydratedAnnotations`.
+  5. Auth Modal: Three nearly identical email verification and confirmation screens were duplicated for sign-up, magic link, and password reset flows, accompanied by redundant view header ternaries.
+  6. File Downloads: Imperative anchor element creation, object URL allocation, clicking, and revoking were duplicated across JSON and CSV exports in `library-backup.ts`.
+  7. API Proxy Handlers: Client IP extraction (`x-forwarded-for`, `x-real-ip`) and HTTP 429 response construction were duplicated across `/api/books`, `/api/books/content`, and `/api/translate`, while `SimpleLRUCache` was tightly coupled inside `translate/route.ts`.
+  8. Active Reading Counter: Active reader volume calculation was computed via different manual object extractions and `useMemo` loops in `Navbar.tsx` and `account/page.tsx`.
+- **Decision**:
+  1. **Data Layer Adapters & Polymorphic Dispatcher (`book.adapter.ts`, `useBookshelfStore.ts`)**: Encapsulate cloud row conversion into `toGutendexBookFromCloudRow` and normalized insert payload generation into `toCloudBookInsert`. Replace the `flushOutbox` `if-else` ladder with a polymorphic command dispatcher dictionary `OUTBOX_DISPATCHERS`.
+  2. **View Strategy & Declarative Navigation (`views.config.ts`, `Navbar.tsx`, `src/app/page.tsx`)**: Establish `NAV_ITEMS`, `NAVBAR_VIEW_CONFIG`, and `VIEW_CONTENT_CONFIG` strategy registries. Refactor `Navbar` to data-driven `NAV_ITEMS.map(...)` iteration, and resolve view headers, search placeholders, and empty states polymorphically from `viewConfig`.
+  3. **Canonical Annotation Tokens (`annotation-tokens.ts`)**: Consolidate highlight surfaces, dot/border styling, human-readable labels, and filter badges into `ANNOTATION_COLOR_CONFIG` and `ANNOTATION_COLOR_LIST`.
+  4. **Reader Hydration & Reading Count Selectors (`useReaderStore.ts`, `read/[id]/page.tsx`)**: Introduce `useHydratedReader()` to encapsulate reader store SSR hydration, and standardize `getActiveReadingCount(state)` as the canonical selector across `Navbar.tsx` and `account/page.tsx`.
+  5. **Auth Modal Presenter Component (`EmailSentView.tsx`, `AuthModal.tsx`)**: Extract repeated confirmation cards into `<EmailSentView />`, and define declarative `AUTH_VIEW_CONFIG` mapping modal views to titles, descriptions, and submit labels.
+  6. **DOM Blob Download Encapsulation (`utils.ts`, `library-backup.ts`)**: Extract `triggerBlobDownload(blob, filename)` with SSR environment guards, deduplicating DOM anchor creation across library backups.
+  7. **API Route Utilities & Domain Cache (`api-utils.ts`, `cache.ts`)**: Extract `getClientIp(request)` and `createRateLimitErrorResponse(rateLimit, message?, extraBody?)`. Move generic `SimpleLRUCache<K, V>` into a standalone domain module with re-exports for zero breaking changes.
+- **Consequences**:
+  - Complete elimination of duplicate boilerplate and parallel dictionaries across all layers.
+  - Polymorphic extensibility: new views, offline sync commands, and modal states can be added through declarative configuration without modifying JSX control flows or growing `if-else` ladders.
+  - Strict non-breaking parity: zero database schema changes, zero store API breaks, and 100% contract compliance across all API responses.
+  - Test suite expanded to 1,051 tests across 133 suites with 100% pass rate and zero TypeScript compiler errors.
+

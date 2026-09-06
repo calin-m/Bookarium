@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Bookmark, Heart, Sparkles } from 'lucide-react';
+import { BookOpen, Download, Bookmark, Heart, Sparkles, Trash2 } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount, extractBookTags } from '@/lib/utils';
 import { useHydratedBookshelf, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
@@ -34,6 +34,22 @@ export const BookCard: React.FC<BookCardProps> = ({
   const router = useRouter();
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = React.useState(false);
+  const [isConfirmingRemoval, setIsConfirmingRemoval] = React.useState(false);
+  const confirmTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const clearConfirmTimer = React.useCallback(() => {
+    if (confirmTimerRef.current) {
+      clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = null;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      clearConfirmTimer();
+    };
+  }, [clearConfirmTimer]);
+
   const { isSaved: checkIsSaved, isFavorite: checkIsFavorite, toggleSaveBook: toggleSave, toggleFavoriteBook: toggleFavorite } = useHydratedBookshelf();
   const isSaved = checkIsSaved(book.id);
   const isFavorite = checkIsFavorite(book.id);
@@ -57,6 +73,12 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   const tooltipContent = React.useMemo(() => {
     if (hoveredAction === 'favorite') {
+      if (isConfirmingRemoval) {
+        return {
+          icon: <Trash2 className="w-3 h-3 text-destructive shrink-0" />,
+          text: 'Click again to remove',
+        };
+      }
       return {
         icon: <Heart className={`w-3 h-3 text-destructive shrink-0 ${isFavorite ? 'fill-current' : ''}`} />,
         text: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
@@ -72,7 +94,7 @@ export const BookCard: React.FC<BookCardProps> = ({
       icon: <BookOpen className="w-3 h-3 text-primary shrink-0" />,
       text: 'Click to preview quotes',
     };
-  }, [hoveredAction, isFavorite, isSaved]);
+  }, [hoveredAction, isConfirmingRemoval, isFavorite, isSaved]);
 
   const handleCoverClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -123,7 +145,17 @@ export const BookCard: React.FC<BookCardProps> = ({
         }}
         onMouseEnter={onPreviewClick ? handleMouseEnter : undefined}
         onMouseMove={onPreviewClick ? handleMouseMove : undefined}
-        onMouseLeave={onPreviewClick ? handleMouseLeave : undefined}
+        onMouseLeave={
+          onPreviewClick
+            ? () => {
+                handleMouseLeave();
+                if (isConfirmingRemoval) {
+                  clearConfirmTimer();
+                  setIsConfirmingRemoval(false);
+                }
+              }
+            : undefined
+        }
         tabIndex={onPreviewClick ? 0 : undefined}
         role={onPreviewClick ? 'button' : undefined}
         aria-label={onPreviewClick ? `Click to preview quotes for ${book.title}` : undefined}
@@ -175,21 +207,59 @@ export const BookCard: React.FC<BookCardProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              if (activeView === 'favorites' && isFavorite) {
+                if (!isConfirmingRemoval) {
+                  setIsConfirmingRemoval(true);
+                  clearConfirmTimer();
+                  confirmTimerRef.current = setTimeout(() => {
+                    setIsConfirmingRemoval(false);
+                  }, 3500);
+                  return;
+                }
+                clearConfirmTimer();
+                setIsConfirmingRemoval(false);
+                toggleFavorite(book);
+                return;
+              }
               toggleFavorite(book);
             }}
             onMouseEnter={() => {
               setHoveredAction('favorite');
               setShowTooltip(true);
             }}
-            onMouseLeave={() => setHoveredAction('preview')}
+            onMouseLeave={() => {
+              setHoveredAction('preview');
+              if (isConfirmingRemoval) {
+                clearConfirmTimer();
+                setIsConfirmingRemoval(false);
+              }
+            }}
+            onBlur={() => {
+              if (isConfirmingRemoval) {
+                clearConfirmTimer();
+                setIsConfirmingRemoval(false);
+              }
+            }}
             className={`p-1.5 rounded-full transition-all shadow-xs ${
-              isFavorite
+              isConfirmingRemoval
+                ? 'bg-destructive text-destructive-foreground scale-110 ring-2 ring-destructive/40 animate-pulse'
+                : isFavorite
                 ? 'bg-destructive text-destructive-foreground scale-105'
                 : 'bg-card text-muted-foreground hover:text-destructive'
             }`}
-            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-label={
+              isConfirmingRemoval
+                ? 'Click again to confirm removal from favorites'
+                : isFavorite
+                ? 'Remove from favorites'
+                : 'Add to favorites'
+            }
           >
-            <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`} />
+            {isConfirmingRemoval ? (
+              <Trash2 className="w-3.5 h-3.5" />
+            ) : (
+              <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`} />
+            )}
           </button>
 
           <button

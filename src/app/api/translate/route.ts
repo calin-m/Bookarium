@@ -2,45 +2,16 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { InMemoryRateLimiter } from '@/lib/rate-limiter';
 import { SITE_CONFIG } from '@/config/site-config';
+import { SimpleLRUCache } from '@/lib/cache';
+import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
+
+export { SimpleLRUCache };
 
 // Generous rate limiting for normal reader flow (60 translation requests / min per IP)
 export const translateRateLimiter = new InMemoryRateLimiter({
   windowMs: 60_000,
   maxRequests: 60,
 });
-
-export class SimpleLRUCache<K, V> {
-  private cache = new Map<K, V>();
-  constructor(private readonly maxEntries: number = 1000) {}
-
-  get(key: K): V | undefined {
-    if (!this.cache.has(key)) return undefined;
-    const val = this.cache.get(key)!;
-    this.cache.delete(key);
-    this.cache.set(key, val);
-    return val;
-  }
-
-  set(key: K, val: V): void {
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    } else if (this.cache.size >= this.maxEntries) {
-      const oldestKey = this.cache.keys().next().value;
-      if (oldestKey !== undefined) {
-        this.cache.delete(oldestKey);
-      }
-    }
-    this.cache.set(key, val);
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-
-  size(): number {
-    return this.cache.size;
-  }
-}
 
 export const serverTranslationCache = new SimpleLRUCache<string, TranslationResponse>(1000);
 
@@ -57,23 +28,13 @@ export interface TranslationResponse {
 }
 
 export async function POST(request: NextRequest) {
-  const clientIp =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    '127.0.0.1';
+  const clientIp = getClientIp(request);
 
   const rateLimit = translateRateLimiter.check(clientIp);
   if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Too many translation requests. Please slow down and try again.' },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': String(Math.max(1, Math.ceil(rateLimit.resetMs / 1000))),
-          'X-RateLimit-Limit': String(rateLimit.limit),
-          'X-RateLimit-Remaining': String(rateLimit.remaining),
-        },
-      }
+    return createRateLimitErrorResponse(
+      rateLimit,
+      'Too many translation requests. Please slow down and try again.'
     );
   }
 
