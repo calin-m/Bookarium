@@ -365,7 +365,7 @@ describe('useBookshelfStore', () => {
       });
     });
 
-    it('handles updateCloudBookshelf and deleteCloudBookshelf', async () => {
+    it('updates cloud bookshelf name and updates local store state', async () => {
       useBookshelfStore.setState({
         cloudBookshelves: [
           { id: 'shelf-1', user_id: 'user-1', name: 'Main', is_default: true, created_at: '', updated_at: '' },
@@ -382,6 +382,33 @@ describe('useBookshelfStore', () => {
                 eq: vi.fn().mockResolvedValueOnce({ error: null }),
               }),
             }),
+          };
+        }
+        return {};
+      });
+
+      const { result } = renderHook(() => useHydratedBookshelf());
+
+      let updateSuccess = false;
+      await act(async () => {
+        updateSuccess = await result.current.updateCloudBookshelf('shelf-2', 'Greek Philosophy', 'user-1');
+      });
+      expect(updateSuccess).toBe(true);
+      expect(useBookshelfStore.getState().cloudBookshelves.find((s) => s.id === 'shelf-2')?.name).toBe('Greek Philosophy');
+    });
+
+    it('deletes cloud bookshelf and falls back activeBookshelfId to default shelf', async () => {
+      useBookshelfStore.setState({
+        cloudBookshelves: [
+          { id: 'shelf-1', user_id: 'user-1', name: 'Main', is_default: true, created_at: '', updated_at: '' },
+          { id: 'shelf-2', user_id: 'user-1', name: 'Philosophy', is_default: false, created_at: '', updated_at: '' },
+        ],
+        activeBookshelfId: 'shelf-2',
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
             delete: vi.fn().mockReturnValueOnce({
               eq: vi.fn().mockReturnValueOnce({
                 eq: vi.fn().mockResolvedValueOnce({ error: null }),
@@ -407,13 +434,6 @@ describe('useBookshelfStore', () => {
       });
 
       const { result } = renderHook(() => useHydratedBookshelf());
-
-      let updateSuccess = false;
-      await act(async () => {
-        updateSuccess = await result.current.updateCloudBookshelf('shelf-2', 'Greek Philosophy', 'user-1');
-      });
-      expect(updateSuccess).toBe(true);
-      expect(useBookshelfStore.getState().cloudBookshelves.find((s) => s.id === 'shelf-2')?.name).toBe('Greek Philosophy');
 
       let deleteSuccess = false;
       await act(async () => {

@@ -57,10 +57,10 @@ describe('AccountIdentityCard', () => {
     expect(handleSaveProfile).toHaveBeenCalled();
   });
 
-  it('renders unverified badge and resend banner when email is not confirmed', () => {
+  it('renders unverified badge and handles resend verification click', () => {
     const onResendVerification = vi.fn();
 
-    const { rerender } = render(
+    render(
       <AccountIdentityCard
         user={mockUnverifiedUser}
         profile={null}
@@ -84,9 +84,10 @@ describe('AccountIdentityCard', () => {
     const resendBtn = screen.getByRole('button', { name: 'Resend Verification Link' });
     fireEvent.click(resendBtn);
     expect(onResendVerification).toHaveBeenCalledTimes(1);
+  });
 
-    // Resending state
-    rerender(
+  it('renders sending spinner and cooldown timer during resend verification states', () => {
+    const { rerender } = render(
       <AccountIdentityCard
         user={mockUnverifiedUser}
         profile={null}
@@ -97,14 +98,13 @@ describe('AccountIdentityCard', () => {
         isSaving={false}
         saveSuccess={false}
         saveError={null}
-        onResendVerification={onResendVerification}
+        onResendVerification={vi.fn()}
         isResendingVerification={true}
         resendCooldown={0}
       />
     );
     expect(screen.getByText('Sending...')).toBeInTheDocument();
 
-    // Cooldown state
     rerender(
       <AccountIdentityCard
         user={mockUnverifiedUser}
@@ -116,7 +116,7 @@ describe('AccountIdentityCard', () => {
         isSaving={false}
         saveSuccess={false}
         saveError={null}
-        onResendVerification={onResendVerification}
+        onResendVerification={vi.fn()}
         isResendingVerification={false}
         resendCooldown={45}
       />
@@ -124,8 +124,8 @@ describe('AccountIdentityCard', () => {
     expect(screen.getByText('Resend in 45s')).toBeInTheDocument();
   });
 
-  it('renders error message and success feedback', () => {
-    const { rerender } = render(
+  it('displays save error alert when profile update fails', () => {
+    render(
       <AccountIdentityCard
         user={mockVerifiedUser}
         profile={mockProfile}
@@ -136,13 +136,14 @@ describe('AccountIdentityCard', () => {
         isSaving={false}
         saveSuccess={false}
         saveError="Failed to save changes"
-        resendError="Rate limit exceeded"
       />
     );
 
     expect(screen.getByText('Failed to save changes')).toBeInTheDocument();
+  });
 
-    rerender(
+  it('displays save success and verification alert banners', () => {
+    render(
       <AccountIdentityCard
         user={mockUnverifiedUser}
         profile={mockProfile}

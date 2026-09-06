@@ -663,19 +663,11 @@ describe('ReaderSurface', () => {
     vi.useRealTimers();
   });
 
-  it('triggers onTextSelected on mouseUp and ignores collapsed or outside selections', () => {
+  it('ignores collapsed text selections on mouseUp', () => {
     const onTextSelected = vi.fn();
-
-    render(
-      <ReaderSurface
-        {...defaultProps}
-        onTextSelected={onTextSelected}
-      />
-    );
+    render(<ReaderSurface {...defaultProps} onTextSelected={onTextSelected} />);
 
     const contentBody = screen.getByTestId('reader-content-body');
-
-    // 1. Collapsed selection test
     const originalGetSelection = window.getSelection;
     window.getSelection = vi.fn().mockReturnValue({
       isCollapsed: true,
@@ -685,8 +677,16 @@ describe('ReaderSurface', () => {
     fireEvent.mouseUp(contentBody);
     expect(onTextSelected).not.toHaveBeenCalled();
 
-    // 2. Selection outside reader test
+    window.getSelection = originalGetSelection;
+  });
+
+  it('ignores text selections anchored outside reader content body', () => {
+    const onTextSelected = vi.fn();
+    render(<ReaderSurface {...defaultProps} onTextSelected={onTextSelected} />);
+
+    const contentBody = screen.getByTestId('reader-content-body');
     const outsideNode = document.createElement('div');
+    const originalGetSelection = window.getSelection;
     window.getSelection = vi.fn().mockReturnValue({
       isCollapsed: false,
       toString: () => 'Outside text selection',
@@ -696,7 +696,15 @@ describe('ReaderSurface', () => {
     fireEvent.mouseUp(contentBody);
     expect(onTextSelected).not.toHaveBeenCalled();
 
-    // 3. Valid mouseup selection test
+    window.getSelection = originalGetSelection;
+  });
+
+  it('triggers onTextSelected with text and coordinate bounds on valid mouseUp', () => {
+    const onTextSelected = vi.fn();
+    render(<ReaderSurface {...defaultProps} onTextSelected={onTextSelected} />);
+
+    const contentBody = screen.getByTestId('reader-content-body');
+    const originalGetSelection = window.getSelection;
     const mockRange = {
       getBoundingClientRect: () => ({
         top: 100,
