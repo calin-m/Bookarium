@@ -23,6 +23,7 @@ const RELEASES = [
         'Reading Status Latch in Bookmarks Ledger (`useContinueReadingLedger.ts`): Resolved issue where resuming a completed volume erroneously reset the reading status badge to "In Progress" in the Bookmarks ledger.',
         'Notes & Highlights Modal Content Overflow: Fixed height constraints and scrolling containers to prevent notes and annotation highlights from overflowing modal boundaries on mobile and desktop viewports.',
         'Search Box Focus Harmonization across All Views (`CollectionSearchBar.tsx`, `ReaderSearchDrawer.tsx`, `HeroSearch.tsx`): Harmonized all search boxes across Bookshelf, Favorites, Bookmarks, Reader Search Drawer, and Catalog Hero to use unified `focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary` and `hover:border-primary/40` styling.',
+        'Reading Surface Typography Harmonization (`ReaderSurface.tsx`): Removed hardcoded `font-serif` overrides on frontispiece title `<h1>`, author `<p>`, chapter headings `<h2>`, and bilingual comparison lines, allowing the entire reading canvas to dynamically adapt to the reader\'s chosen font family (Serif, Sans, or Mono).',
       ],
       Removed: [
         'Redundant Header Link (`AccountLibraryStats.tsx`): Pruned "Open Bookshelf →" text link from the Library stats card header, consolidating library navigation strictly into the tactile card buttons below.',

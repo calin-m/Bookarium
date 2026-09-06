@@ -205,9 +205,11 @@
   2. **Native Inset Search Input Architecture (`HeroSearch.tsx`)**: Refactor `HeroSearch` from a compound `:focus-within` container to a native `<input>` element with inset floating submit and clear buttons. Harmonize focus states across all search bars to use unified `focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary`, `hover:border-primary/40`, and 150ms outward ring pulse bloom.
   3. **Editorial Classic of the Day Section (`EditorialQuoteSection.tsx`)**: Introduce a dedicated daily rotating classic showcase beneath the Catalog search bar with anti-collision filtering to guarantee candidate books never duplicate the active Hero volume.
   4. **Library Navigation Streamlining (`AccountLibraryStats.tsx`)**: Prune the redundant "Open Bookshelf →" header link in favor of the interactive library cards below.
+  5. **Reading Surface Typography Harmonization (`ReaderSurface.tsx`)**: Remove hardcoded `font-serif` overrides from frontispiece title `<h1>`, author `<p>`, chapter headings `<h2>`, and bilingual comparison lines, allowing the reading canvas to dynamically adapt to the reader's chosen font family (Serif, Sans, or Mono).
 - **Consequences**:
   - Full protection for completed book records and milestones.
   - Seamless re-reading UX from Page 1 without destructive state loss.
   - 100% design and interactive pulse harmony across all search interfaces on every view.
   - Rich literary curation on the Catalog landing page with zero layout shift or duplicate selections.
   - Clean, focused Account page library navigation.
+  - Cohesive typographical cascading across the entire reading surface in Serif, Sans, and Mono modes.
