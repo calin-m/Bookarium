@@ -26,6 +26,7 @@ import { ReaderSpeechBar } from '@/components/reader/ReaderSpeechBar';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
 import { TextHighlightPopover } from '@/components/reader/TextHighlightPopover';
 import { ReaderAnnotationsDrawer } from '@/components/reader/ReaderAnnotationsDrawer';
+import { QuoteDeletePreview } from '@/components/reader/QuoteDeletePreview';
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
 import { useReaderSession } from '@/hooks/reader/useReaderSession';
@@ -733,17 +734,10 @@ export default function BookReaderPage() {
                 This will remove this highlight and any attached personal reflection from your library. This action cannot be undone.
               </p>
               {annotationToDelete && (
-                <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border/50 text-xs">
-                  <p className="font-serif italic text-foreground/90 line-clamp-3">
-                    &ldquo;{annotationToDelete.selectedText}&rdquo;
-                  </p>
-                  {annotationToDelete.note && (
-                    <p className="mt-1.5 pt-1.5 border-t border-border/40 font-sans text-muted-foreground line-clamp-2">
-                      <span className="font-mono text-[10px] uppercase text-primary mr-1">Note:</span>
-                      {annotationToDelete.note}
-                    </p>
-                  )}
-                </div>
+                <QuoteDeletePreview
+                  selectedText={annotationToDelete.selectedText}
+                  note={annotationToDelete.note}
+                />
               )}
             </div>
           </div>

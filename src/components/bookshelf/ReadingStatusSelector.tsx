@@ -30,7 +30,7 @@ const STATUS_OPTIONS: StatusOption[] = [
     id: 'currently_reading',
     label: 'Currently Reading',
     icon: BookOpen,
-    activeClasses: 'bg-primary/15 text-primary border-primary/40 font-bold shadow-sm',
+    activeClasses: 'bg-primary-500/15 text-primary-700 dark:text-primary-400 border-primary-500/40 font-bold shadow-sm',
   },
   {
     id: 'finished',
@@ -80,7 +80,7 @@ export const ReadingStatusSelector: React.FC<ReadingStatusSelectorProps> = ({
               } ${
                 isActive
                   ? opt.activeClasses
-                  : 'border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:border-border'
+                  : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:border-primary/40'
               }`}
             >
               <Icon className={`${isSm ? 'w-3 h-3' : 'w-3.5 h-3.5'} shrink-0 ${isActive ? 'fill-current' : ''}`} />
@@ -93,7 +93,7 @@ export const ReadingStatusSelector: React.FC<ReadingStatusSelectorProps> = ({
                 onClick={() => onChange(null)}
                 aria-label="Clear reading status"
                 title="Clear reading status"
-                className={`inline-flex items-center justify-center rounded-lg border border-border/40 bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer ${
+                className={`inline-flex items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer ${
                   isSm ? 'p-1' : 'p-1.5'
                 }`}
               >

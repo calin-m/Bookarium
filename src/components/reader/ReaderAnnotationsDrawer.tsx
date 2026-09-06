@@ -9,6 +9,7 @@ import type { Annotation, HighlightColor } from '@/stores/useAnnotationStore';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { HIGHLIGHT_COLORS } from './TextHighlightPopover';
+import { QuoteDeletePreview } from './QuoteDeletePreview';
 
 export interface ReaderAnnotationsDrawerProps {
   isOpen: boolean;
@@ -308,17 +309,10 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
               This will remove the highlight and any attached personal reflection from your saved notes. This action cannot be undone.
             </p>
             {itemToDelete && (
-              <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border/50 text-xs">
-                <p className="font-serif italic text-foreground/90 line-clamp-3">
-                  &ldquo;{itemToDelete.selectedText}&rdquo;
-                </p>
-                {itemToDelete.note && (
-                  <p className="mt-1.5 pt-1.5 border-t border-border/40 font-sans text-muted-foreground line-clamp-2">
-                    <span className="font-mono text-[10px] uppercase text-primary mr-1">Note:</span>
-                    {itemToDelete.note}
-                  </p>
-                )}
-              </div>
+              <QuoteDeletePreview
+                selectedText={itemToDelete.selectedText}
+                note={itemToDelete.note}
+              />
             )}
           </div>
         </div>

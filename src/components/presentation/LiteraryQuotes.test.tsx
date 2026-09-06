@@ -40,5 +40,15 @@ describe('LiteraryQuotes component', () => {
     fireEvent.click(shuffleBtn);
     expect(() => unmount()).not.toThrow();
   });
+
+  it('applies theme-aware border-border classes to card dividers without unsupported opacity modifiers', () => {
+    const { container } = render(<LiteraryQuotes />);
+    const topBorderDividers = container.querySelectorAll('.border-t');
+    expect(topBorderDividers.length).toBeGreaterThan(0);
+    topBorderDividers.forEach((el) => {
+      expect(el).toHaveClass('border-border');
+      expect(el.className).not.toContain('border-border/50');
+    });
+  });
 });
 

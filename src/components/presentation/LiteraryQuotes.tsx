@@ -116,7 +116,7 @@ export const LiteraryQuotes: React.FC = () => {
                 </div>
 
                 {/* Read Action Prompt */}
-                <div className="pt-3 border-t border-border/50 flex items-center justify-between text-xs font-mono text-primary font-bold">
+                <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-mono text-primary font-bold">
                   <span>Read Full Volume</span>
                   <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform" />
                 </div>

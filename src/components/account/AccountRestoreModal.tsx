@@ -77,7 +77,7 @@ export const AccountRestoreModal: React.FC<AccountRestoreModalProps> = ({
           <>
             {/* Backup Meta Summary */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-mono text-muted-foreground pb-1 border-b border-border/60">
+              <div className="flex items-center justify-between text-xs font-mono text-muted-foreground pb-1 border-b border-border">
                 <span>Backup Created:</span>
                 <span className="font-semibold text-foreground">{exportedDate}</span>
               </div>

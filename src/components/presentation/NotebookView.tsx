@@ -813,7 +813,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           {isEditing ? (
             <div className="space-y-2.5 pt-1">
               {/* Highlight Shade Picker in Edit Mode */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-border/50">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-border">
                 <span className="text-[11px] font-mono text-muted-foreground">Highlight Shade:</span>
                 <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Highlight color">
                   {HIGHLIGHT_COLOR_SWATCHES.map((c) => {

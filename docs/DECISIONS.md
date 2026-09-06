@@ -206,6 +206,9 @@
   3. **Editorial Classic of the Day Section (`EditorialQuoteSection.tsx`)**: Introduce a dedicated daily rotating classic showcase beneath the Catalog search bar with anti-collision filtering to guarantee candidate books never duplicate the active Hero volume.
   4. **Library Navigation Streamlining (`AccountLibraryStats.tsx`)**: Prune the redundant "Open Bookshelf →" header link in favor of the interactive library cards below.
   5. **Reading Surface Typography Harmonization (`ReaderSurface.tsx`)**: Remove hardcoded `font-serif` overrides from frontispiece title `<h1>`, author `<p>`, chapter headings `<h2>`, and bilingual comparison lines, allowing the reading canvas to dynamically adapt to the reader's chosen font family (Serif, Sans, or Mono).
+  6. **Literary Quote Card Divider Harmonization (`LiteraryQuotes.tsx`)**: Align the divider line above "Read Full Volume" with the standard theme-aware `border-border` token, eliminating broken fallback colors and ensuring full visual harmony across Light, Dark, and Sepia modes.
+  7. **Archival Language Badge & Reading Status Selector Token Harmonization (`ReaderLanguageDrawer.tsx`, `ReadingStatusSelector.tsx`)**: Replace unsupported bare `primary/40` and `border/60` classes with supported numbered palette tokens (`primary-500/30`, `primary-500/40`) and standard `border-border`, restoring soft translucent pill backgrounds, balanced border weights, and authentic theme-adaptive styling across Light, Dark, and Sepia modes.
+  8. **Design Token Hygiene & Reader Quote Delete Preview Deduplication (`Badge.tsx`, `QuoteDeletePreview.tsx`, `AccountRestoreModal.tsx`, `HeroFeaturedBook3D.tsx`, `NotebookView.tsx`, `Navbar.tsx`, `ReaderAnnotationsDrawer.tsx`, `src/app/read/[id]/page.tsx`)**: Normalize unsupported bare variable slash-modifiers (`border-border/80`, `border-border/60`, `border-border/50`, `border-border/40`) to canonical `border-border`, elevate `Badge` variants to concrete numbered palette tokens (`primary-500/15`, `primary-500/30`, `emerald-500/10`, `emerald-500/30`), and extract duplicated quote deletion preview markup into a co-located `QuoteDeletePreview` presenter component.
 - **Consequences**:
   - Full protection for completed book records and milestones.
   - Seamless re-reading UX from Page 1 without destructive state loss.
@@ -213,3 +216,7 @@
   - Rich literary curation on the Catalog landing page with zero layout shift or duplicate selections.
   - Clean, focused Account page library navigation.
   - Cohesive typographical cascading across the entire reading surface in Serif, Sans, and Mono modes.
+  - Consistent, theme-aware card divider lines in LiteraryQuotes across Light, Dark, and Sepia modes with zero fallback color bleeding.
+  - Authentic, soft translucent badge and button borders in the Reader Language Drawer and Reading Status Selector across Light, Dark, and Sepia modes without harsh solid-border fallback bleeding.
+  - Complete elimination of silent Tailwind CSS drop-outs on opacity-modified CSS variables across modals, skeletons, and cards.
+  - Zero code duplication for quote deletion preview modals between Reader drawer and full-page reader with 100% visual invariance and full test coverage.

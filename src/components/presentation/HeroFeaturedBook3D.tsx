@@ -103,7 +103,7 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
           </p>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-muted/50 border border-border/80 space-y-1.5">
+        <div className="p-3.5 rounded-xl bg-muted/50 border border-border space-y-1.5">
           <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground uppercase">
             <Quote className="w-3 h-3 text-primary/70 shrink-0" />
             <span>Opening Line</span>
