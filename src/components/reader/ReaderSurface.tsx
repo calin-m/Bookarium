@@ -7,6 +7,7 @@ import type { ChapterSection } from '@/lib/gutenberg-parser';
 import type { Annotation, HighlightColor } from '@/stores/useAnnotationStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
+import { ANNOTATION_COLOR_CONFIG } from '@/config/annotation-tokens';
 import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
 import { ReaderLoadingView } from './ReaderLoadingView';
 import { ReaderErrorView } from './ReaderErrorView';
@@ -336,17 +337,6 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   );
 };
 
-const HIGHLIGHT_COLOR_CLASSES: Record<HighlightColor, string> = {
-  yellow:
-    'bg-amber-300/40 dark:bg-amber-400/25 border-b-2 border-amber-400/80 text-inherit cursor-pointer rounded-xs px-0.5 transition-colors hover:bg-amber-300/60 dark:hover:bg-amber-400/40 selection:bg-amber-300/70 dark:selection:bg-amber-400/50 selection:text-inherit',
-  amber:
-    'bg-orange-300/40 dark:bg-orange-400/25 border-b-2 border-orange-400/80 text-inherit cursor-pointer rounded-xs px-0.5 transition-colors hover:bg-orange-300/60 dark:hover:bg-orange-400/40 selection:bg-orange-300/70 dark:selection:bg-orange-400/50 selection:text-inherit',
-  mint:
-    'bg-emerald-300/40 dark:bg-emerald-400/25 border-b-2 border-emerald-400/80 text-inherit cursor-pointer rounded-xs px-0.5 transition-colors hover:bg-emerald-300/60 dark:hover:bg-emerald-400/40 selection:bg-emerald-300/70 dark:selection:bg-emerald-400/50 selection:text-inherit',
-  rose:
-    'bg-rose-300/40 dark:bg-rose-400/25 border-b-2 border-rose-400/80 text-inherit cursor-pointer rounded-xs px-0.5 transition-colors hover:bg-rose-300/60 dark:hover:bg-rose-400/40 selection:bg-rose-300/70 dark:selection:bg-rose-400/50 selection:text-inherit',
-};
-
 function renderContentWithAnnotations(
   text: string,
   annotations: Annotation[],
@@ -453,6 +443,8 @@ function renderContentWithAnnotations(
       );
     }
 
+    const colorConfig = ANNOTATION_COLOR_CONFIG[span.annotation.color] || ANNOTATION_COLOR_CONFIG.yellow;
+
     elements.push(
       <mark
         key={`ann-${span.annotation.id}-${i}`}
@@ -467,7 +459,7 @@ function renderContentWithAnnotations(
             left: rect.left + rect.width / 2,
           });
         }}
-        className={HIGHLIGHT_COLOR_CLASSES[span.annotation.color] || HIGHLIGHT_COLOR_CLASSES.yellow}
+        className={colorConfig.surfaceHighlightClass}
       >
         {text.slice(span.start, span.end)}
       </mark>

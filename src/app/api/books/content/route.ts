@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SITE_CONFIG } from '@/config/site-config';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
+import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
 
 const ALLOWED_HOSTS = new Set(['www.gutenberg.org', 'gutenberg.org']);
 
@@ -48,24 +49,11 @@ export function sanitizeUpstreamUrl(rawUrl: string): string | null {
 }
 
 export async function GET(request: NextRequest) {
-  const clientIp =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    '127.0.0.1';
+  const clientIp = getClientIp(request);
 
   const rateLimit = bookContentRateLimiter.check(clientIp);
   if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please slow down and try again.' },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': String(Math.max(1, Math.ceil(rateLimit.resetMs / 1000))),
-          'X-RateLimit-Limit': String(rateLimit.limit),
-          'X-RateLimit-Remaining': String(rateLimit.remaining),
-        },
-      }
-    );
+    return createRateLimitErrorResponse(rateLimit);
   }
 
   const { searchParams } = new URL(request.url);

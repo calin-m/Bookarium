@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.9.9] - 2026-09-06
+### *Enterprise Polymorphism, Encapsulation & Code Redundancy Elimination*
+
+### Added
+- Domain Cloud Row Adapters & Normalized Inserts (`book.adapter.ts`): Bidirectional transformation between Supabase PostgreSQL schema rows and GutendexBook domain models (`toGutendexBookFromCloudRow`), with type overloads ensuring compatibility with `RejectExcessProperties` in Supabase inserts (`toCloudBookInsert`).
+- Declarative View Configuration & Main View Strategy (`views.config.ts`): Unified application views (`NAV_ITEMS`, `NAVBAR_VIEW_CONFIG`) and content metadata (`VIEW_CONTENT_CONFIG`), eliminating 12+ nested ternaries across view headers, search placeholders, and collection empty states.
+- Canonical Annotation Token Registry (`annotation-tokens.ts`): Centralized single source of truth for annotation colors (`yellow`, `amber`, `mint`, `rose`), surface highlight classes, dot/border styling, and filter badges across Reader Surface, Drawers, Popovers, and Notebooks.
+- Polymorphic Email Confirmation Presenter (`EmailSentView.tsx`): Extracted repeated authentication email confirmation cards (sign-up, magic link, password reset) into a unified presenter component with full cooldown and resend action bindings.
+- Cloud Sync Orchestration Engine (`sync-utils.ts`): Isolated parallel store synchronization (`syncAllStoresWithCloud`) coordinating Bookshelf, Annotation, and Reader stores via `Promise.allSettled` on auth transitions and network reconnection.
+- Shared API Route Utilities & Standalone Domain LRU Cache (`api-utils.ts`, `cache.ts`): Deduplicated client IP resolution (`getClientIp`) and HTTP 429 rate limit responses (`createRateLimitErrorResponse`), and extracted generic `SimpleLRUCache<K, V>` into a standalone module with backward-compatible re-exports.
+- Reader SSR Hydration & Active Reading Count Hooks (`useReaderStore.ts`): Introduced `useHydratedReader()` to encapsulate reader store SSR hydration, and canonicalized `getActiveReadingCount(state)` as the unified selector across Navbar and Account statistics.
+- Architecture Decision Record (`ADR-026`): Formally ratified enterprise polymorphism, encapsulation, and code redundancy elimination in `docs/DECISIONS.md`.
+
+### Refactored
+- Polymorphic Outbox Command Dispatcher (`useBookshelfStore.ts`): Replaced 40-line `if-else` ladder in `flushOutbox` with a polymorphic command dispatcher dictionary `OUTBOX_DISPATCHERS`.
+- Data-Driven Navigation Architecture (`Navbar.tsx`): Migrated hardcoded static `<button>` elements to declarative `NAV_ITEMS.map(...)` iteration with dynamic active styling, responsive badges, and canonical reading count.
+- Main View Nested Ternary Elimination (`src/app/page.tsx`): Streamlined `SectionHeader`, `CollectionSearchBar`, and `BookGrid` empty states by querying `VIEW_CONTENT_CONFIG` strategy mappings.
+- Annotation Palette Deduplication (`ReaderSurface.tsx`, `ReaderAnnotationsDrawer.tsx`, `TextHighlightPopover.tsx`, `NotebookView.tsx`): Replaced 6 duplicate local color dictionaries with derived tokens from `ANNOTATION_COLOR_CONFIG`.
+- Auth Modal Header & Action Label Declarative Mapping (`AuthModal.tsx`): Replaced view switching ternaries with `AUTH_VIEW_CONFIG` and unified confirmation markup with `<EmailSentView />`.
+- DOM Blob Download Encapsulation (`utils.ts`, `library-backup.ts`): Deduplicated imperative anchor creation and object URL lifecycle management across JSON and CSV exports via `triggerBlobDownload(blob, filename)`.
+- API Proxy Rate Limiter Deduplication (`api/books/route.ts`, `api/books/content/route.ts`, `api/translate/route.ts`): Replaced duplicated proxy IP parsing and HTTP 429 response formatting with `api-utils.ts`.
+- Reading Count Unification (`Navbar.tsx`, `account/page.tsx`): Replaced duplicate manual set aggregations and loops with canonical `useReaderStore(getActiveReadingCount)`.
+
+### Fixed
+- Reader SSR Hydration Parity (`src/app/read/[id]/page.tsx`): Guarded all 10 reader settings against SSR hydration mismatches through unified `useHydratedReader()` hook.
+
+
 ## [1.9.8] - 2026-09-06
 ### *Completed Reading State Latch, Native Inset Search Architecture & Library Navigation Streamlining*
 
@@ -402,3 +429,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-023: Library Data Sovereignty, Schema Validation & Headless Backup Engine**
 - **ADR-024: Zero-Latency Client Navigation Fast-Path & Decoupled Crawler Metadata**
 - **ADR-025: Completed Reading State Latch, Native Inset Search Architecture & Library Navigation Streamlining**
+- **ADR-026: Enterprise Polymorphism, Encapsulation & Code Redundancy Elimination**

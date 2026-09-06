@@ -39,70 +39,52 @@ import {
 import { formatAuthorNames } from '@/lib/utils';
 import type { GutendexBook } from '@/types/book.types';
 
+import {
+  ANNOTATION_COLOR_CONFIG,
+  ANNOTATION_COLOR_LIST,
+  ALL_COLORS_FILTER_BADGE,
+} from '@/config/annotation-tokens';
+
 export interface NotebookViewProps {
   onBrowseCatalog?: () => void;
 }
 
-const HIGHLIGHT_COLOR_SWATCHES: Array<{
-  id: HighlightColor;
-  label: string;
-  pillClass: string;
-  activeRing: string;
-}> = [
-  {
-    id: 'yellow',
-    label: 'Yellow',
-    pillClass: 'bg-amber-300 border-amber-400 dark:bg-amber-400/80',
-    activeRing: 'ring-2 ring-offset-2 ring-amber-500',
-  },
-  {
-    id: 'amber',
-    label: 'Amber',
-    pillClass: 'bg-orange-300 border-orange-400 dark:bg-orange-400/80',
-    activeRing: 'ring-2 ring-offset-2 ring-orange-500',
-  },
-  {
-    id: 'mint',
-    label: 'Mint',
-    pillClass: 'bg-emerald-300 border-emerald-400 dark:bg-emerald-400/80',
-    activeRing: 'ring-2 ring-offset-2 ring-emerald-500',
-  },
-  {
-    id: 'rose',
-    label: 'Rose',
-    pillClass: 'bg-rose-300 border-rose-400 dark:bg-rose-400/80',
-    activeRing: 'ring-2 ring-offset-2 ring-rose-500',
-  },
-];
+const HIGHLIGHT_COLOR_SWATCHES = ANNOTATION_COLOR_LIST.map((c) => ({
+  id: c.id,
+  label: c.label,
+  pillClass: c.notebookSwatchClass,
+  activeRing: c.notebookActiveRing,
+}));
 
 const COLOR_FILTERS: Array<{ id: HighlightColor | 'all'; label: string; badgeClass: string }> = [
-  { id: 'all', label: 'All Colors', badgeClass: 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-border' },
-  { id: 'yellow', label: 'Yellow', badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60' },
-  { id: 'amber', label: 'Amber', badgeClass: 'bg-orange-100 text-orange-900 border border-orange-300 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800/60' },
-  { id: 'mint', label: 'Mint', badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60' },
-  { id: 'rose', label: 'Rose', badgeClass: 'bg-rose-100 text-rose-900 border border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60' },
+  { id: 'all', label: 'All Colors', badgeClass: ALL_COLORS_FILTER_BADGE },
+  ...ANNOTATION_COLOR_LIST.map((c) => ({
+    id: c.id,
+    label: c.label,
+    badgeClass: c.filterBadgeClass,
+  })),
 ];
 
 const HIGHLIGHT_CARD_COLORS: Record<HighlightColor, { border: string; bg: string; text: string }> = {
   yellow: {
-    border: 'border-l-amber-400 dark:border-l-amber-500',
-    bg: 'bg-amber-50/60 dark:bg-amber-950/15',
-    text: 'text-amber-900 dark:text-amber-200',
+    border: ANNOTATION_COLOR_CONFIG.yellow.cardBorderClass,
+    bg: ANNOTATION_COLOR_CONFIG.yellow.cardBgClass,
+    text: ANNOTATION_COLOR_CONFIG.yellow.cardTextClass,
   },
   amber: {
-    border: 'border-l-orange-400 dark:border-l-orange-500',
-    bg: 'bg-orange-50/60 dark:bg-orange-950/15',
-    text: 'text-orange-900 dark:text-orange-200',
+    border: ANNOTATION_COLOR_CONFIG.amber.cardBorderClass,
+    bg: ANNOTATION_COLOR_CONFIG.amber.cardBgClass,
+    text: ANNOTATION_COLOR_CONFIG.amber.cardTextClass,
   },
   mint: {
-    border: 'border-l-emerald-400 dark:border-l-emerald-500',
-    bg: 'bg-emerald-50/60 dark:bg-emerald-950/15',
-    text: 'text-emerald-900 dark:text-emerald-200',
+    border: ANNOTATION_COLOR_CONFIG.mint.cardBorderClass,
+    bg: ANNOTATION_COLOR_CONFIG.mint.cardBgClass,
+    text: ANNOTATION_COLOR_CONFIG.mint.cardTextClass,
   },
   rose: {
-    border: 'border-l-rose-400 dark:border-l-rose-500',
-    bg: 'bg-rose-50/60 dark:bg-rose-950/15',
-    text: 'text-rose-900 dark:text-rose-200',
+    border: ANNOTATION_COLOR_CONFIG.rose.cardBorderClass,
+    bg: ANNOTATION_COLOR_CONFIG.rose.cardBgClass,
+    text: ANNOTATION_COLOR_CONFIG.rose.cardTextClass,
   },
 };
 

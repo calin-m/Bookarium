@@ -257,6 +257,8 @@ function generateMarkdown() {
     '* **`GENRE_FACETS`** (`src/config/catalog-filters.ts`): Curated genre tags (Gothic & Horror, Philosophy, Adventure, Sci-Fi, Poetry, Drama, Detective & Mystery, History).',
     '* **`READER_THEMES`** (`src/config/reader-themes.ts`): 3 reading themes (Day Paper, Sepia Parchment, Obsidian Dark) with color tokens for background, text, borders, and accents.',
     '* **`LITERARY_QUOTES`** (`src/config/literary-quotes.ts`): 12 literary passages and opening lines from immortal masterworks.',
+    '* **`ANNOTATION_COLOR_CONFIG` & `ANNOTATION_COLOR_LIST`** (`src/config/annotation-tokens.ts`): Canonical single source of truth for scholar annotation color tokens (`yellow`, `amber`, `mint`, `rose`), text highlight surface classes, dot/border styling, human-readable labels, and filter badges.',
+    '* **`NAV_ITEMS`, `NAVBAR_VIEW_CONFIG` & `VIEW_CONTENT_CONFIG`** (`src/config/views.config.ts`): Declarative polymorphic strategy configurations defining application view IDs, navigation badges, section eyebrows, titles, search placeholders, and collection clear action descriptors.',
     '* **`ROUTES`** (`src/config/routes.ts`): Centralized single-source route registry defining clean path targets and dynamic route builders.',
     '* **`SITE_CONFIG`** (`src/config/site-config.ts`): Canonical site metadata, storage key registry, and public domain policy declarations.',
     '',

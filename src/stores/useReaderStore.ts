@@ -6,6 +6,7 @@ import { useAuthStore } from './useAuthStore';
 import { createClient } from '@/lib/supabase/client';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
@@ -338,4 +339,89 @@ export const useReaderStore = create<ReaderState>()(
     }
   )
 );
+
+/**
+ * Computes the count of distinct active reading volumes across positions and progress.
+ */
+export function getActiveReadingCount(
+  state: Pick<ReaderState, 'readingPositions' | 'readingProgress'> | null | undefined
+): number {
+  if (!state) return 0;
+  const activeIds = new Set<number>();
+  Object.keys(state.readingPositions || {}).forEach((id) => {
+    const num = Number(id);
+    if (!Number.isNaN(num)) activeIds.add(num);
+  });
+  Object.entries(state.readingProgress || {}).forEach(([id, progress]) => {
+    const num = Number(id);
+    if (!Number.isNaN(num) && progress > 0) activeIds.add(num);
+  });
+  return activeIds.size;
+}
+
+/**
+ * SSR-safe, hydration-guarded hook for accessing reader state without hydration mismatches.
+ */
+export function useHydratedReader() {
+  const hasMounted = useHasMounted();
+  const currentBook = useReaderStore((s) => s.currentBook);
+  const isOpen = useReaderStore((s) => s.isOpen);
+  const fontSize = useReaderStore((s) => s.fontSize);
+  const lineHeight = useReaderStore((s) => s.lineHeight);
+  const fontFamily = useReaderStore((s) => s.fontFamily);
+  const theme = useReaderStore((s) => s.theme);
+  const readingProgress = useReaderStore((s) => s.readingProgress);
+  const readingPositions = useReaderStore((s) => s.readingPositions);
+  const isMobileTrayOpen = useReaderStore((s) => s.isMobileTrayOpen);
+
+  const openReader = useReaderStore((s) => s.openReader);
+  const closeReader = useReaderStore((s) => s.closeReader);
+  const setFontSize = useReaderStore((s) => s.setFontSize);
+  const setLineHeight = useReaderStore((s) => s.setLineHeight);
+  const setFontFamily = useReaderStore((s) => s.setFontFamily);
+  const setTheme = useReaderStore((s) => s.setTheme);
+  const setMobileTrayOpen = useReaderStore((s) => s.setMobileTrayOpen);
+  const toggleMobileTray = useReaderStore((s) => s.toggleMobileTray);
+  const setProgress = useReaderStore((s) => s.setProgress);
+  const getProgress = useReaderStore((s) => s.getProgress);
+  const saveReadingPosition = useReaderStore((s) => s.saveReadingPosition);
+  const getReadingPosition = useReaderStore((s) => s.getReadingPosition);
+  const clearReadingPosition = useReaderStore((s) => s.clearReadingPosition);
+  const clearAllVolumes = useReaderStore((s) => s.clearAllVolumes);
+  const syncWithCloud = useReaderStore((s) => s.syncWithCloud);
+
+  const activeReadingCount = hasMounted
+    ? getActiveReadingCount({ readingPositions, readingProgress })
+    : 0;
+
+  return {
+    hasMounted,
+    currentBook: hasMounted ? currentBook : null,
+    isOpen: hasMounted ? isOpen : false,
+    fontSize: hasMounted ? fontSize : 18,
+    lineHeight: hasMounted ? lineHeight : 1.75,
+    fontFamily: hasMounted ? fontFamily : 'serif',
+    theme: hasMounted ? theme : 'light',
+    readingProgress: hasMounted ? readingProgress : {},
+    readingPositions: hasMounted ? readingPositions : {},
+    isMobileTrayOpen: hasMounted ? isMobileTrayOpen : false,
+    activeReadingCount,
+
+    openReader,
+    closeReader,
+    setFontSize,
+    setLineHeight,
+    setFontFamily,
+    setTheme,
+    setMobileTrayOpen,
+    toggleMobileTray,
+    setProgress,
+    getProgress,
+    saveReadingPosition,
+    getReadingPosition,
+    clearReadingPosition,
+    clearAllVolumes,
+    syncWithCloud,
+  };
+}
 

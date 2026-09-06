@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/Button';
 import { CollectionSearchBar } from '@/components/presentation/CollectionSearchBar';
 import { filterBooksSmart } from '@/lib/smart-search';
 import { ROUTES } from '@/config/routes';
+import { VIEW_CONTENT_CONFIG } from '@/config/views.config';
 
 function HomeContent() {
   const router = useRouter();
@@ -201,6 +202,19 @@ function HomeContent() {
     isDisplayError = false;
   }
 
+  const viewConfig =
+    VIEW_CONTENT_CONFIG[activeView as 'catalog' | 'bookshelf' | 'favorites'] ||
+    VIEW_CONTENT_CONFIG.catalog;
+
+  const isShelf = activeView === 'bookshelf';
+  const isFavorites = activeView === 'favorites';
+  const collectionCount = isShelf ? savedBooks.length : isFavorites ? favoriteBookIds.length : 0;
+  const filteredCollectionBooks = isShelf
+    ? filteredSavedBooks
+    : isFavorites
+    ? filteredFavoriteBooks
+    : [];
+
   return (
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
       <Navbar activeView={activeView} onViewChange={setActiveView} isVisible={isHeaderVisible} />
@@ -280,81 +294,38 @@ function HomeContent() {
             <div key={`view-page-turn-${activeView}`} className="animate-page-turn">
               {/* Booksaw Centered Section Header */}
               <SectionHeader
-                eyebrow={
-                  activeView === 'catalog'
-                    ? 'SOME QUALITY BOOKS • ZERO COPYRIGHT'
-                    : activeView === 'bookshelf'
-                    ? 'PERSONAL ARCHIVE • PRESERVED LOCALLY'
-                    : 'CURATED FAVORITES'
-                }
-                title={
-                  activeView === 'catalog'
-                    ? search || topic || era
-                      ? 'Search Catalog'
-                      : 'Public Domain Books'
-                    : activeView === 'bookshelf'
-                    ? 'Personal Reading Shelf'
-                    : 'Favorite Works'
-                }
-                subtitle={
-                  activeView === 'catalog'
-                    ? booksData
-                      ? `Displaying ${displayedBooks.length} of ${booksData.count.toString()} public domain volumes`
-                      : 'Searching Project Gutenberg catalog...'
-                    : activeView === 'bookshelf'
-                    ? `You have ${savedBooks.length} titles preserved on your personal shelf`
-                    : `You have ${favoriteBookIds.length} titles in your favorites`
-                }
+                eyebrow={viewConfig.eyebrow}
+                title={viewConfig.getTitle({ search, topic, era })}
+                subtitle={viewConfig.getSubtitle({
+                  count: collectionCount,
+                  booksData,
+                  displayedCount: displayedBooks.length,
+                })}
               >
-                {activeView === 'bookshelf' && savedBooks.length > 0 && (
+                {viewConfig.clearType && collectionCount > 0 && (
                   <div className="pt-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setConfirmClearType('shelf')}
+                      onClick={() => setConfirmClearType(viewConfig.clearType!)}
                       className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      Clear Shelf
-                    </Button>
-                  </div>
-                )}
-
-                {activeView === 'favorites' && favoriteBookIds.length > 0 && (
-                  <div className="pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setConfirmClearType('favorites')}
-                      className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Clear Favorites
+                      {viewConfig.clearButtonText}
                     </Button>
                   </div>
                 )}
               </SectionHeader>
 
               {/* Smart Collection Search Bar for Bookshelf & Favorites */}
-              {activeView === 'bookshelf' && savedBooks.length > 0 && (
+              {viewConfig.collectionName && collectionCount > 0 && (
                 <CollectionSearchBar
                   query={collectionSearchQuery}
                   onQueryChange={setCollectionSearchQuery}
-                  placeholder="Search your bookshelf by title, author, or subject..."
-                  totalCount={savedBooks.length}
-                  filteredCount={filteredSavedBooks.length}
-                  collectionName="bookshelf"
-                />
-              )}
-
-              {activeView === 'favorites' && favoriteBookIds.length > 0 && (
-                <CollectionSearchBar
-                  query={collectionSearchQuery}
-                  onQueryChange={setCollectionSearchQuery}
-                  placeholder="Search your favorites by title, author, or subject..."
-                  totalCount={favoriteBookIds.length}
-                  filteredCount={filteredFavoriteBooks.length}
-                  collectionName="favorites"
+                  placeholder={viewConfig.searchPlaceholder!}
+                  totalCount={collectionCount}
+                  filteredCount={filteredCollectionBooks.length}
+                  collectionName={viewConfig.collectionName}
                 />
               )}
 
@@ -385,20 +356,12 @@ function HomeContent() {
                 emptyTitle={
                   collectionSearchQuery.trim()
                     ? `No volumes found matching "${collectionSearchQuery}"`
-                    : activeView === 'bookshelf'
-                    ? 'Your personal shelf is currently empty'
-                    : activeView === 'favorites'
-                    ? 'No favorite books yet'
-                    : 'No matching public domain works found'
+                    : viewConfig.emptyTitle
                 }
                 emptyDescription={
                   collectionSearchQuery.trim()
                     ? 'Try adjusting your search terms, author name, or clear the search query.'
-                    : activeView === 'bookshelf'
-                    ? 'Click the bookmark ribbon on any volume to place it on your shelf for offline access.'
-                    : activeView === 'favorites'
-                    ? 'Click the heart icon on any work to save it to your favorites.'
-                    : 'Try adjusting your search keywords, collection facets, or clearing the language/era filter.'
+                    : viewConfig.emptyDescription
                 }
               />
             </div>

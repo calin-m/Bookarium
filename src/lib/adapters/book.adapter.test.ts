@@ -4,6 +4,8 @@ import {
   extractFormatUrl,
   isCanonicalBook,
   toCanonicalBook,
+  toGutendexBookFromCloudRow,
+  toCloudBookInsert,
 } from './book.adapter';
 import type { GutendexBook, Book } from '@/types/book.types';
 
@@ -178,6 +180,94 @@ describe('book.adapter', () => {
       const result = toCanonicalBook(rawGutenberg as any);
       expect(result.title).toBe('Frankenstein; Or, The Modern Prometheus');
       expect(result.authors).toEqual(['Mary Wollstonecraft Shelley']);
+    });
+  });
+
+  describe('toGutendexBookFromCloudRow', () => {
+    it('reconstructs GutendexBook with Gutenberg format URLs and normalized author objects', () => {
+      const row = {
+        book_id: 1342,
+        book_title: 'Pride and Prejudice',
+        book_authors: ['Jane Austen'],
+        cover_url: 'https://example.com/cover.jpg',
+      };
+
+      const result = toGutendexBookFromCloudRow(row);
+      expect(result.id).toBe(1342);
+      expect(result.title).toBe('Pride and Prejudice');
+      expect(result.authors).toEqual([{ name: 'Jane Austen', birth_year: null, death_year: null }]);
+      expect(result.copyright).toBe(false);
+      expect(result.media_type).toBe('Text');
+      expect(result.download_count).toBe(1000);
+      expect(result.formats['image/jpeg']).toBe('https://example.com/cover.jpg');
+      expect(result.formats['application/epub+zip']).toBe('https://www.gutenberg.org/ebooks/1342.epub3.images');
+      expect(result.formats['text/html']).toBe('https://www.gutenberg.org/ebooks/1342.html.images');
+      expect(result.formats['text/plain; charset=utf-8']).toBe('https://www.gutenberg.org/ebooks/1342.txt.utf-8');
+      expect(result.formats['application/x-mobipocket-ebook']).toBe('https://www.gutenberg.org/ebooks/1342.kindle.images');
+    });
+
+    it('handles null cover_url and empty authors gracefully', () => {
+      const row = {
+        book_id: 99,
+        book_title: 'A Tale of Two Cities',
+        book_authors: null,
+        cover_url: null,
+      };
+
+      const result = toGutendexBookFromCloudRow(row);
+      expect(result.id).toBe(99);
+      expect(result.authors).toEqual([]);
+      expect(result.formats['image/jpeg']).toBeUndefined();
+    });
+  });
+
+  describe('toCloudBookInsert', () => {
+    it('formats a GutendexBook into a standardized Supabase insert payload', () => {
+      const book: GutendexBook = {
+        id: 84,
+        title: 'Frankenstein',
+        authors: [{ name: 'Mary Wollstonecraft Shelley', birth_year: null, death_year: null }],
+        translators: [],
+        subjects: ['Science fiction'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {
+          'image/jpeg': 'https://example.com/cover.jpg',
+        },
+        download_count: 500,
+      };
+
+      const result = toCloudBookInsert(book, 'user-123', 'shelf-456');
+      expect(result).toEqual({
+        user_id: 'user-123',
+        book_id: 84,
+        book_title: 'Frankenstein',
+        book_authors: ['Mary Wollstonecraft Shelley'],
+        cover_url: 'https://example.com/cover.jpg',
+        bookshelf_id: 'shelf-456',
+      });
+    });
+
+    it('omits bookshelf_id when not provided', () => {
+      const book: GutendexBook = {
+        id: 11,
+        title: 'Alice in Wonderland',
+        authors: [{ name: 'Lewis Carroll', birth_year: null, death_year: null }],
+        translators: [],
+        subjects: [],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 100,
+      };
+
+      const result = toCloudBookInsert(book, 'user-123');
+      expect('bookshelf_id' in result).toBe(false);
+      expect(result.cover_url).toBeNull();
     });
   });
 });

@@ -3,12 +3,36 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, Eye, EyeOff, KeyRound, Check } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuthStore, type AuthModalView } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrength } from '@/lib/password';
+import { EmailSentView } from './EmailSentView';
+
+export const AUTH_VIEW_CONFIG: Record<AuthModalView, { title: string; description: string; submitLabel: string }> = {
+  sign_in: {
+    title: 'Welcome Back',
+    description: 'Sign in to access your custom bookshelves and sync reading progress across devices.',
+    submitLabel: 'Sign In to Bookarium',
+  },
+  sign_up: {
+    title: 'Create Your Bookshelf',
+    description: 'Join Bookarium to organize personal reading lists and sync public domain masterworks.',
+    submitLabel: 'Create Account',
+  },
+  forgot_password: {
+    title: 'Reset Your Password',
+    description: 'Enter your account email and we will send you a secure link to reset your password.',
+    submitLabel: 'Send Password Reset Link',
+  },
+  magic_link: {
+    title: 'Sign In via Magic Link',
+    description: 'We will email you a secure login link with zero password required.',
+    submitLabel: 'Send Magic Link',
+  },
+};
 
 export const AuthModal: React.FC = () => {
   const {
@@ -175,22 +199,10 @@ export const AuthModal: React.FC = () => {
               <span>Bookarium Cloud</span>
             </div>
             <h2 id="auth-modal-title" className="text-xl sm:text-2xl font-serif font-bold text-foreground">
-              {authModalView === 'sign_in'
-                ? 'Welcome Back'
-                : authModalView === 'sign_up'
-                ? 'Create Your Bookshelf'
-                : authModalView === 'forgot_password'
-                ? 'Reset Your Password'
-                : 'Sign In via Magic Link'}
+              {AUTH_VIEW_CONFIG[authModalView].title}
             </h2>
             <p className="text-xs text-muted-foreground font-sans">
-              {authModalView === 'sign_in'
-                ? 'Sign in to access your custom bookshelves and sync reading progress across devices.'
-                : authModalView === 'sign_up'
-                ? 'Join Bookarium to organize personal reading lists and sync public domain masterworks.'
-                : authModalView === 'forgot_password'
-                ? 'Enter your account email and we will send you a secure link to reset your password.'
-                : 'We will email you a secure login link with zero password required.'}
+              {AUTH_VIEW_CONFIG[authModalView].description}
             </p>
           </div>
 
@@ -237,100 +249,41 @@ export const AuthModal: React.FC = () => {
 
         {/* Verification Email Sent Screen (Sign Up) */}
         {verificationEmailSent && authModalView === 'sign_up' ? (
-          <div className="space-y-4 text-center py-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 text-primary flex items-center justify-center mx-auto">
-              <Mail className="w-6 h-6" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="font-serif font-bold text-lg">Check your email</h3>
-              <p className="text-xs text-muted-foreground font-mono leading-relaxed">
-                We sent a verification link to <strong className="text-foreground">{email}</strong>.
-              </p>
-              <p className="text-[11px] text-muted-foreground font-sans">
-                Please click the link in your email to activate your account. Verification links expire in 1 hour.
-              </p>
-              {resendSuccess && (
-                <p className="text-xs font-mono text-success pt-1">
-                  Fresh verification link sent! Please check your inbox.
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleResendVerification}
-                disabled={isResending || resendCooldown > 0}
-                className="font-mono text-xs cursor-pointer w-full sm:w-auto"
-              >
-                {isResending
-                  ? 'Sending...'
-                  : resendCooldown > 0
-                  ? `Resend in ${resendCooldown}s`
-                  : 'Resend Email'}
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setVerificationEmailSent(false);
-                  setAuthModalView('sign_in');
-                }}
-                className="font-mono text-xs cursor-pointer w-full sm:w-auto"
-              >
-                Go to Sign In
-              </Button>
-            </div>
-          </div>
+          <EmailSentView
+            email={email}
+            messagePrefix="We sent a verification link to"
+            subtitle="Please click the link in your email to activate your account. Verification links expire in 1 hour."
+            resendSuccess={resendSuccess}
+            onResend={handleResendVerification}
+            isResending={isResending}
+            resendCooldown={resendCooldown}
+            onBackToSignIn={() => {
+              setVerificationEmailSent(false);
+              setAuthModalView('sign_in');
+            }}
+            backButtonLabel="Go to Sign In"
+          />
         ) : /* Magic Link Sent Success */
         magicLinkSent && authModalView === 'magic_link' ? (
-          <div className="space-y-4 text-center py-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 text-primary flex items-center justify-center mx-auto">
-              <Mail className="w-6 h-6" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="font-serif font-bold text-base">Check your email</h3>
-              <p className="text-xs text-muted-foreground font-mono">
-                We sent a magic sign-in link to <strong className="text-foreground">{email}</strong>.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setMagicLinkSent(false);
-                setAuthModalView('sign_in');
-              }}
-            >
-              Back to Sign In
-            </Button>
-          </div>
+          <EmailSentView
+            email={email}
+            messagePrefix="We sent a magic sign-in link to"
+            onBackToSignIn={() => {
+              setMagicLinkSent(false);
+              setAuthModalView('sign_in');
+            }}
+          />
         ) : /* Password Reset Email Sent Success */
         resetPasswordSent && authModalView === 'forgot_password' ? (
-          <div className="space-y-4 text-center py-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 text-primary flex items-center justify-center mx-auto">
-              <Mail className="w-6 h-6" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="font-serif font-bold text-base">Check your email</h3>
-              <p className="text-xs text-muted-foreground font-mono">
-                We sent a password reset link to <strong className="text-foreground">{email}</strong>.
-              </p>
-              <p className="text-[11px] text-muted-foreground font-sans mt-2">
-                Click the link in your email to set a new password.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setResetPasswordSent(false);
-                setAuthModalView('sign_in');
-              }}
-            >
-              Back to Sign In
-            </Button>
-          </div>
+          <EmailSentView
+            email={email}
+            messagePrefix="We sent a password reset link to"
+            subtitle="Click the link in your email to set a new password."
+            onBackToSignIn={() => {
+              setResetPasswordSent(false);
+              setAuthModalView('sign_in');
+            }}
+          />
         ) : (
           /* Form */
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -461,15 +414,7 @@ export const AuthModal: React.FC = () => {
               isLoading={isSubmitting}
               className="w-full font-mono text-xs uppercase tracking-wider font-bold"
             >
-              <span>
-                {authModalView === 'sign_in'
-                  ? 'Sign In to Bookarium'
-                  : authModalView === 'sign_up'
-                  ? 'Create Account'
-                  : authModalView === 'forgot_password'
-                  ? 'Send Password Reset Link'
-                  : 'Send Magic Link'}
-              </span>
+              <span>{AUTH_VIEW_CONFIG[authModalView].submitLabel}</span>
               <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </form>

@@ -197,4 +197,63 @@ describe('BookCard component', () => {
     expect(screen.getByText(/Add to Bookshelf/i)).toBeInTheDocument();
     vi.useRealTimers();
   });
+
+  it('requires two clicks on favorite button to remove from favorites when activeView="favorites"', () => {
+    const book = mockBooks[0];
+    useBookshelfStore.getState().toggleFavoriteBook(book);
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(true);
+
+    render(<BookCard book={book} activeView="favorites" />);
+
+    const removeBtn = screen.getByRole('button', { name: /Remove from favorites/i });
+    
+    // Click 1: arms confirmation, does NOT remove yet
+    fireEvent.click(removeBtn);
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(true);
+    expect(screen.getByRole('button', { name: /Click again to confirm removal from favorites/i })).toBeInTheDocument();
+
+    // Click 2: confirms removal and removes from favorites
+    const confirmBtn = screen.getByRole('button', { name: /Click again to confirm removal from favorites/i });
+    fireEvent.click(confirmBtn);
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(false);
+  });
+
+  it('auto-disarms favorite removal confirmation after timeout when activeView="favorites"', () => {
+    vi.useFakeTimers();
+    const book = mockBooks[0];
+    useBookshelfStore.getState().toggleFavoriteBook(book);
+
+    render(<BookCard book={book} activeView="favorites" />);
+
+    const removeBtn = screen.getByRole('button', { name: /Remove from favorites/i });
+    fireEvent.click(removeBtn);
+
+    expect(screen.getByRole('button', { name: /Click again to confirm removal from favorites/i })).toBeInTheDocument();
+
+    // Advance past 3500ms timeout
+    act(() => {
+      vi.advanceTimersByTime(3600);
+    });
+
+    expect(screen.getByRole('button', { name: /Remove from favorites/i })).toBeInTheDocument();
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it('disarms favorite removal confirmation on mouse leave or blur when activeView="favorites"', () => {
+    const book = mockBooks[0];
+    useBookshelfStore.getState().toggleFavoriteBook(book);
+
+    render(<BookCard book={book} activeView="favorites" />);
+
+    const removeBtn = screen.getByRole('button', { name: /Remove from favorites/i });
+    fireEvent.click(removeBtn);
+
+    const armedBtn = screen.getByRole('button', { name: /Click again to confirm removal from favorites/i });
+    expect(armedBtn).toBeInTheDocument();
+
+    fireEvent.mouseLeave(armedBtn);
+    expect(screen.getByRole('button', { name: /Remove from favorites/i })).toBeInTheDocument();
+    expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(true);
+  });
 });

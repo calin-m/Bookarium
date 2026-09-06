@@ -23,37 +23,19 @@ export interface TextHighlightPopoverProps {
   theme?: ReaderTheme;
 }
 
+import { ANNOTATION_COLOR_LIST } from '@/config/annotation-tokens';
+
 export const HIGHLIGHT_COLORS: Array<{
   id: HighlightColor;
   label: string;
   pillClass: string;
   activeRing: string;
-}> = [
-  {
-    id: 'yellow',
-    label: 'Canary Yellow',
-    pillClass: 'bg-amber-300 hover:bg-amber-400 border-amber-400 text-amber-950',
-    activeRing: 'ring-2 ring-amber-500 ring-offset-1',
-  },
-  {
-    id: 'amber',
-    label: 'Vintage Amber',
-    pillClass: 'bg-orange-300 hover:bg-orange-400 border-orange-400 text-orange-950',
-    activeRing: 'ring-2 ring-orange-500 ring-offset-1',
-  },
-  {
-    id: 'mint',
-    label: 'Calm Mint',
-    pillClass: 'bg-emerald-300 hover:bg-emerald-400 border-emerald-400 text-emerald-950',
-    activeRing: 'ring-2 ring-emerald-500 ring-offset-1',
-  },
-  {
-    id: 'rose',
-    label: 'Soft Rose',
-    pillClass: 'bg-rose-300 hover:bg-rose-400 border-rose-400 text-rose-950',
-    activeRing: 'ring-2 ring-rose-500 ring-offset-1',
-  },
-];
+}> = ANNOTATION_COLOR_LIST.map((c) => ({
+  id: c.id,
+  label: c.detailedLabel,
+  pillClass: c.popoverPillClass,
+  activeRing: c.popoverActiveRing,
+}));
 
 export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
   isOpen,

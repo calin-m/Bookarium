@@ -12,7 +12,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
-import { useReaderStore } from '@/stores/useReaderStore';
+import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
 import { useThemeStore, type AppTheme } from '@/stores/useThemeStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
@@ -56,20 +56,7 @@ export default function AccountPage() {
   const { savedCount, favoriteCount, cloudBookshelves } = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
   const annotationCount = annotations.length;
-  const readingPositions = useReaderStore((s) => s.readingPositions);
-  const readingProgress = useReaderStore((s) => s.readingProgress);
-  const bookmarksCount = useMemo(() => {
-    const activeIds = new Set<number>();
-    Object.keys(readingPositions || {}).forEach((id) => {
-      const num = Number(id);
-      if (!Number.isNaN(num)) activeIds.add(num);
-    });
-    Object.entries(readingProgress || {}).forEach(([id, progress]) => {
-      const num = Number(id);
-      if (!Number.isNaN(num) && progress > 0) activeIds.add(num);
-    });
-    return activeIds.size;
-  }, [readingPositions, readingProgress]);
+  const bookmarksCount = useReaderStore(getActiveReadingCount);
   const customShelvesCount = useMemo(
     () => cloudBookshelves.filter((s) => !s.is_default).length,
     [cloudBookshelves]

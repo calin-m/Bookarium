@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { useReaderStore } from './useReaderStore';
+import { renderHook, act } from '@testing-library/react';
+import { useReaderStore, getActiveReadingCount, useHydratedReader } from './useReaderStore';
 import { useAuthStore } from './useAuthStore';
 import { mockBooks } from '@/mocks/handlers';
 
@@ -375,6 +376,53 @@ describe('useReaderStore', () => {
       expect(mockFrom).toHaveBeenCalledWith('reading_progress');
       expect(mockDelete).toHaveBeenCalled();
       expect(mockEqUser).toHaveBeenCalledWith('user_id', 'test-user-123');
+    });
+  });
+
+  describe('getActiveReadingCount', () => {
+    it('returns 0 for null, undefined, or empty state', () => {
+      expect(getActiveReadingCount(null)).toBe(0);
+      expect(getActiveReadingCount(undefined)).toBe(0);
+      expect(getActiveReadingCount({ readingPositions: {}, readingProgress: {} })).toBe(0);
+    });
+
+    it('returns unique volume count across positions and progress', () => {
+      const state = {
+        readingPositions: {
+          1342: { chapterIndex: 0, chapterPage: 1, globalPage: 1, lastReadAt: '2026-09-01' },
+          84: { chapterIndex: 1, chapterPage: 2, globalPage: 2, lastReadAt: '2026-09-02' },
+        },
+        readingProgress: {
+          1342: 40,
+          11: 15,
+          2701: 0,
+        },
+      };
+
+      expect(getActiveReadingCount(state)).toBe(3);
+    });
+  });
+
+  describe('useHydratedReader', () => {
+    it('provides hydration-safe reader defaults and activeReadingCount', () => {
+      useReaderStore.setState({
+        fontSize: 22,
+        readingPositions: {
+          1342: { chapterIndex: 0, chapterPage: 1, globalPage: 1, lastReadAt: '2026-09-01' },
+        },
+      });
+
+      const { result } = renderHook(() => useHydratedReader());
+
+      expect(result.current.hasMounted).toBe(true);
+      expect(result.current.fontSize).toBe(22);
+      expect(result.current.activeReadingCount).toBe(1);
+
+      act(() => {
+        result.current.setFontSize(24);
+      });
+
+      expect(result.current.fontSize).toBe(24);
     });
   });
 });
