@@ -7,7 +7,13 @@ import {
   CATALOG_LANGUAGES,
   FORMAT_FILTERS,
 } from './catalog-filters';
-import { FEATURED_HERO_BOOK, FEATURED_HERO_BOOKS, getBookPassages } from './featured-books';
+import {
+  FEATURED_HERO_BOOK,
+  FEATURED_HERO_BOOKS,
+  getBookPassages,
+  getHourlyHeroBook,
+  getDailyEditorialBook,
+} from './featured-books';
 import { LITERARY_QUOTES } from './literary-quotes';
 import { READER_THEMES, getReaderTheme } from './reader-themes';
 
@@ -81,6 +87,48 @@ describe('src/config configuration modules', () => {
       });
       expect(genericPassages.length).toBe(3);
       expect(genericPassages[0].openingLine).toContain('Unknown Volume');
+    });
+
+    it('getHourlyHeroBook returns deterministic book based on hourly index', () => {
+      const hourMs = 3600000;
+      const bookHour0 = getHourlyHeroBook(0);
+      const bookHour1 = getHourlyHeroBook(1 * hourMs);
+      const bookHour10 = getHourlyHeroBook(10 * hourMs);
+
+      expect(bookHour0).toBe(FEATURED_HERO_BOOKS[0]);
+      expect(bookHour1).toBe(FEATURED_HERO_BOOKS[1]);
+      expect(bookHour10).toBe(FEATURED_HERO_BOOKS[0]);
+      expect(getHourlyHeroBook()).toBeDefined();
+    });
+
+    it('getDailyEditorialBook rotates daily and avoids collision with heroBookId', () => {
+      const dayMs = 86400000;
+      const day0 = getDailyEditorialBook(undefined, 0);
+      const day1 = getDailyEditorialBook(undefined, 1 * dayMs);
+      const day10 = getDailyEditorialBook(undefined, 10 * dayMs);
+
+      expect(day0).toBe(FEATURED_HERO_BOOKS[0]);
+      expect(day1).toBe(FEATURED_HERO_BOOKS[1]);
+      expect(day10).toBe(FEATURED_HERO_BOOKS[0]);
+
+      // When collision occurs with heroBookId, advance to subsequent book
+      const collidingHeroId = FEATURED_HERO_BOOKS[0].id;
+      const avoidedDay0 = getDailyEditorialBook(collidingHeroId, 0);
+      expect(avoidedDay0).toBe(FEATURED_HERO_BOOKS[1]);
+      expect(avoidedDay0.id).not.toBe(collidingHeroId);
+
+      // When no collision, returns standard candidate
+      const nonCollidingHeroId = 999999;
+      const standardDay0 = getDailyEditorialBook(nonCollidingHeroId, 0);
+      expect(standardDay0).toBe(FEATURED_HERO_BOOKS[0]);
+
+      // When candidate is last element (index 9) and collides, wraps to index 0
+      const day9CandidateId = FEATURED_HERO_BOOKS[9].id;
+      const wrappedDay9 = getDailyEditorialBook(day9CandidateId, 9 * dayMs);
+      expect(wrappedDay9).toBe(FEATURED_HERO_BOOKS[0]);
+
+      // Default timestamp works
+      expect(getDailyEditorialBook()).toBeDefined();
     });
   });
 

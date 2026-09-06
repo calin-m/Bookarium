@@ -203,4 +203,18 @@ describe('CollectionSearchBar', () => {
     expect(screen.getByRole('textbox', { name: /search bookmarks/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /clear bookmarks search/i })).toBeInTheDocument();
   });
+
+  it('should apply crisp focus-ring styling matching the Notebooks search bar effect', () => {
+    render(
+      <CollectionSearchBar
+        query=""
+        onQueryChange={vi.fn()}
+        totalCount={5}
+        filteredCount={5}
+      />
+    );
+
+    const input = screen.getByRole('textbox');
+    expect(input).toHaveClass('focus:ring-1', 'focus:ring-primary', 'focus:border-primary');
+  });
 });

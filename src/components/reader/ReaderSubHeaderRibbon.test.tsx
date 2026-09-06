@@ -56,5 +56,23 @@ describe('ReaderSubHeaderRibbon', () => {
     fireEvent.click(dismissBtn);
     expect(handleDismiss).toHaveBeenCalled();
   });
+
+  it('renders clean completed notice without Resumed prefix when chapterTitle includes Completed', () => {
+    render(
+      <ReaderSubHeaderRibbon
+        bookId={1342}
+        progress={100}
+        totalChapters={20}
+        currentChapterIndex={0}
+        resumeNotice={{
+          chapterTitle: 'Completed Volume (100%)',
+          page: 1,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('resume-notice')).toBeInTheDocument();
+    expect(screen.getByText('Completed Volume (100%) • Page 1')).toBeInTheDocument();
+  });
 });
 

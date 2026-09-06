@@ -434,3 +434,35 @@ export function getBookPassages(book: {
     },
   ];
 }
+
+/**
+ * Deterministically returns the hourly spotlighted hero book from FEATURED_HERO_BOOKS.
+ * Changes every hour (3,600,000 ms).
+ */
+export function getHourlyHeroBook(timestamp: number = Date.now()): FeaturedHeroBook {
+  const hourlyIndex = Math.floor(timestamp / (1000 * 60 * 60));
+  const normalizedIndex =
+    ((hourlyIndex % FEATURED_HERO_BOOKS.length) + FEATURED_HERO_BOOKS.length) % FEATURED_HERO_BOOKS.length;
+  return FEATURED_HERO_BOOKS[normalizedIndex] || FEATURED_HERO_BOOKS[0];
+}
+
+/**
+ * Deterministically returns the daily editorial classic from FEATURED_HERO_BOOKS.
+ * Rotates once per calendar day (86,400,000 ms).
+ * If the candidate matches the spotlighted heroBookId, it automatically advances
+ * to the next book in the circular list to guarantee zero duplication on the page.
+ */
+export function getDailyEditorialBook(
+  heroBookId?: number,
+  timestamp: number = Date.now()
+): FeaturedHeroBook {
+  const dayIndex = Math.floor(timestamp / (1000 * 60 * 60 * 24));
+  let candidateIndex =
+    ((dayIndex % FEATURED_HERO_BOOKS.length) + FEATURED_HERO_BOOKS.length) % FEATURED_HERO_BOOKS.length;
+
+  if (heroBookId !== undefined && FEATURED_HERO_BOOKS[candidateIndex]?.id === heroBookId) {
+    candidateIndex = (candidateIndex + 1) % FEATURED_HERO_BOOKS.length;
+  }
+
+  return FEATURED_HERO_BOOKS[candidateIndex] || FEATURED_HERO_BOOKS[0];
+}

@@ -85,7 +85,7 @@ export const ReaderSearchDrawer: React.FC<ReaderSearchDrawerProps> = ({
                 placeholder="Search phrase, character, or quote..."
                 className={`w-full h-9 pl-9 pr-8 py-2 text-xs font-mono rounded-lg border ${activeTheme.border} ${
                   theme === 'sepia' ? activeTheme.pill : 'bg-background/50'
-                } focus:outline-hidden focus:ring-2 focus:ring-primary/40 transition-all leading-normal placeholder:text-muted-foreground`}
+                } focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all leading-normal placeholder:text-muted-foreground`}
                 data-testid="in-book-search-input"
                 aria-label="Search book text"
               />

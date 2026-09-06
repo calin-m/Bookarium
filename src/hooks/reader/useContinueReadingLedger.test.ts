@@ -160,6 +160,69 @@ describe('useContinueReadingLedger', () => {
     expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
   });
 
+  it('allows transitioning completed volume back to in_progress with clean progress reset for re-reading', async () => {
+    act(() => {
+      useBookshelfStore.setState({
+        savedBooks: [mockBook],
+        bookStatuses: { 1342: 'finished' },
+      });
+      useReaderStore.getState().setProgress(1342, 100);
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 10,
+        chapterPage: 5,
+        globalPage: 120,
+        lastReadAt: new Date().toISOString(),
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    expect(result.current.volumes[0].status).toBe('completed');
+
+    await act(async () => {
+      await result.current.updateVolumeStatus(1342, 'in_progress');
+    });
+
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('currently_reading');
+    expect(useReaderStore.getState().readingProgress[1342]).toBe(0);
+    expect(result.current.volumes[0].status).toBe('in_progress');
+  });
+
+  it('allows transitioning completed volume to on_hold without getting trapped in completed', async () => {
+    act(() => {
+      useBookshelfStore.setState({
+        savedBooks: [mockBook],
+        bookStatuses: { 1342: 'finished' },
+      });
+      useReaderStore.getState().setProgress(1342, 100);
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 10,
+        chapterPage: 5,
+        globalPage: 120,
+        lastReadAt: new Date().toISOString(),
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    expect(result.current.volumes[0].status).toBe('completed');
+
+    await act(async () => {
+      await result.current.updateVolumeStatus(1342, 'on_hold');
+    });
+
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('want_to_read');
+    expect(result.current.volumes[0].status).toBe('on_hold');
+  });
+
+  it('infers completed status when progress is 100% on uncurated volume', () => {
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [mockBook], bookStatuses: {} });
+      useReaderStore.getState().setProgress(1342, 100);
+    });
+
+    const { result } = renderLedgerHook();
+    expect(result.current.volumes[0].status).toBe('completed');
+  });
+
   it('clears volume progress, coordinates, and recentBooks via clearVolumeProgress', () => {
     act(() => {
       useBookshelfStore.setState({ savedBooks: [mockBook], recentBooks: [mockBook] });

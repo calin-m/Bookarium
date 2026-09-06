@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon } from 'lucide-react';
+import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw } from 'lucide-react';
 import type { ActiveReadingVolume, LedgerItemStatus } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
@@ -183,11 +183,24 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           variant="primary"
           size="sm"
           onClick={handleResume}
-          aria-label={`Resume reading ${book.title}`}
+          aria-label={
+            status === 'completed'
+              ? `Read ${book.title} again from beginning`
+              : `Resume reading ${book.title}`
+          }
           className="flex-1 gap-1.5 font-mono text-xs uppercase tracking-wider font-bold"
         >
-          <BookOpen className="w-3.5 h-3.5" />
-          <span>Resume</span>
+          {status === 'completed' ? (
+            <>
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Read Again</span>
+            </>
+          ) : (
+            <>
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Resume</span>
+            </>
+          )}
         </Button>
 
         {onStatusChange && (

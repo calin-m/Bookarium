@@ -50,7 +50,9 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse shrink-0" />
           <span className="truncate font-medium">
-            Resumed at {resumeNotice.chapterTitle}, Page {resumeNotice.page}
+            {resumeNotice.chapterTitle.includes('Completed')
+              ? `${resumeNotice.chapterTitle} • Page ${resumeNotice.page}`
+              : `Resumed at ${resumeNotice.chapterTitle}, Page ${resumeNotice.page}`}
           </span>
         </div>
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">

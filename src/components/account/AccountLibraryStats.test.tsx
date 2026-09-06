@@ -24,7 +24,8 @@ describe('AccountLibraryStats', () => {
     expect(screen.getByTestId('bookmarks-count')).toHaveTextContent('4');
 
     const links = screen.getAllByRole('link');
-    expect(links.length).toBe(6); // Open Bookshelf, Shelved, Favorites, Notes & Quotes, Custom Shelves, Bookmarks
+    expect(links.length).toBe(5); // Shelved, Favorites, Notes & Quotes, Custom Shelves, Bookmarks
+    expect(screen.queryByText(/Open Bookshelf/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText('View Saved Notes & Quotes in Notebook')).toHaveAttribute(
       'href',
       ROUTES.NOTEBOOK

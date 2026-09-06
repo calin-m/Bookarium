@@ -231,41 +231,47 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
             {/* Booksaw Spotlight Search Input */}
             <form onSubmit={handleSubmit} className="relative max-w-xl pt-1">
-              <div
-                className={`relative flex items-center shadow-booksaw rounded-lg overflow-hidden border bg-card focus-within:ring-2 transition-all ${
-                  searchError
-                    ? 'border-destructive focus-within:ring-destructive/40'
-                    : 'border-border focus-within:ring-primary/40'
-                }`}
-              >
-                <Search className="w-4 h-4 text-muted-foreground ml-4 shrink-0" />
+              <div className="relative flex items-center">
+                <div className="absolute left-4 pointer-events-none flex items-center justify-center text-muted-foreground">
+                  <Search className="w-4 h-4" aria-hidden="true" />
+                </div>
+
                 <input
                   type="text"
                   value={query}
                   onChange={(e) => handleInputChange(e.target.value)}
                   placeholder="Search 70,000+ classics by title or author (e.g. Austen, Plato)..."
-                  className="w-full py-3.5 pl-3 pr-10 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden"
+                  className={`w-full h-12 pl-11 ${
+                    query ? 'pr-32' : 'pr-24'
+                  } text-xs sm:text-sm font-sans rounded-xl bg-card border shadow-booksaw hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground transition-all duration-150 ${
+                    searchError
+                      ? 'border-destructive focus:border-destructive focus:ring-destructive'
+                      : 'border-border'
+                  }`}
                   data-testid="search-input"
                   aria-invalid={Boolean(searchError)}
                   aria-describedby={searchError ? 'search-validation-error' : undefined}
                 />
-                {query && (
-                  <button
-                    type="button"
-                    onClick={handleClear}
-                    className="p-1.5 mr-2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Clear search"
+
+                <div className="absolute right-2 flex items-center gap-1.5">
+                  {query && (
+                    <button
+                      type="button"
+                      onClick={handleClear}
+                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="px-5 py-2 font-mono text-xs uppercase tracking-wider rounded-lg bg-foreground hover:opacity-90 text-background font-bold shrink-0"
                   >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="mr-2 px-6 py-2.5 font-mono text-xs uppercase tracking-wider rounded bg-foreground hover:opacity-90 text-background font-bold shrink-0"
-                >
-                  Search
-                </Button>
+                    Search
+                  </Button>
+                </div>
               </div>
               {searchError && (
                 <p

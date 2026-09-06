@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Library, Heart, Highlighter, Layers, Bookmark, ArrowUpRight } from 'lucide-react';
-import { ROUTES } from '@/config/routes';
 import { LIBRARY_THEMES } from '@/config/library-tokens';
 
 export interface AccountLibraryStatsProps {
@@ -167,12 +166,6 @@ export const AccountLibraryStats: React.FC<AccountLibraryStatsProps> = ({
         <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
           Library
         </h2>
-        <Link
-          href={ROUTES.BOOKSHELF}
-          className="text-xs font-mono text-primary hover:underline font-bold"
-        >
-          Open Bookshelf →
-        </Link>
       </div>
 
       <div

@@ -161,5 +161,19 @@ describe('ReaderSearchDrawer', () => {
     fireEvent.click(backdrop);
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it('applies crisp focus ring styling to search input', () => {
+    render(
+      <ReaderSearchDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        chapters={mockChapters}
+        onSelectMatch={vi.fn()}
+      />
+    );
+
+    const input = screen.getByTestId('in-book-search-input');
+    expect(input).toHaveClass('focus:outline-none', 'focus:ring-1', 'focus:ring-primary', 'focus:border-primary');
+  });
 });
 

@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-125%20Suites%20%7C%20971%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.21%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-126%20Suites%20%7C%20989%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.35%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,13 +38,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v1.9.7)
+## 🛠️ Latest Improvements (v1.9.8)
 
-- **Semantic Gutenberg Heading Normalization (`segmentation.ts`)**: Replaced brittle fixed-length string slicing with canonical keyword and numeral extraction (`normalizeHeadingId`), matching single-digit and multi-digit chapter identifiers consistently across front-matter TOCs and body text.
-- **Multi-Pattern TOC Subtitle & Body Subtitle Harvesting (`segmentation.ts`)**: Added Roman/Arabic numeral TOC extraction (`I. THE HIRED CAR 1`) and standalone body subtitle heuristics for books without front-matter TOCs or completing wrapped entries (`read/31472`), formatting Roman numerals strictly uppercase in reader navigation.
-- **AST-Driven Gutenberg Parser Living Reference (`docs/GUTENBERG_PARSER.md`)**: Implemented `scripts/generate-parser-docs.js` using Babel AST traversal to compile parser configurations, API contracts, and regex heuristics directly from TypeScript AST, wired into `npm run docs:sync` and Pass 4 of `npm run verify`.
-- **Server-Side Fetch Deduplication & Timeout Hardening (`src/app/read/[id]/layout.tsx`)**: Wrapped reader layout metadata fetching with React `cache()` and an `AbortSignal.timeout(2500)` guard, collapsing redundant server requests into a single call and preventing slow upstream API queries from blocking page transitions.
-- **Gutenberg Phantom Chapter Leakage (`segmentation.ts`)**: Resolved bug where single-digit chapters in front-matter TOC clusters (Chapters 1–9) failed duplicate detection due to trailing space mismatches in naive `slice(0, 10)`, eliminating 9 empty ghost chapters on Jules Verne's *A Journey to the Centre of the Earth* (`read/18857`) and similar books.
+- **Completed Reading Progress Latch & "Read Again" Flow (`useReaderSession.ts`, `BookmarkCard.tsx`)**: Guarded 100% completed status and progress coordinates when resuming finished books from bookmarks or the catalog. Added a dedicated "Read Again" button on completed volumes allowing readers to restart from Page 1 without prematurely destroying their ledger completion status.
+- **Classic of the Day Editorial Showcase (`EditorialQuoteSection.tsx`)**: Dedicated curated literary quote section under the Catalog search bar, featuring deterministic hourly rotation with anti-collision filtering to ensure candidate books never duplicate the active Hero volume.
+- **Native `<input>` Architecture for Catalog Hero Search (`HeroSearch.tsx`)**: Refactored the Catalog search bar to a native `<input>`-centric structure with inset floating submit and clear buttons, matching `CollectionSearchBar.tsx` and unlocking authentic 150ms outward focus ring bloom and `hover:border-primary/40` state.
+- **Architecture Decision Record (`ADR-025`)**: Formally ratified the completed reading state latch, "Read Again" flow, native inset search architecture, and library navigation streamlining in `docs/DECISIONS.md`.
+- **Reading Status Latch in Bookmarks Ledger (`useContinueReadingLedger.ts`)**: Resolved issue where resuming a completed volume erroneously reset the reading status badge to "In Progress" in the Bookmarks ledger.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -74,6 +74,7 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **Hourly Rotating 3D Featured Book**: Curated pool of iconic public domain classics rotated every UTC hour with zero-cron deterministic synchronization.
   * **Interactive Open-Cover Physics**: On desktop hover, the hardbound volume smoothly elevates and opens 180° on its spine hinge, displaying opening reflections on the Left Page and notable excerpts on the Right Page. Clicking pins the volume open or closed.
   * **Physical 60–120 FPS Page Turn**: Shuffling passages flips a physical 3D leaf across the spine with synchronized ink reveals.
+* **Daily Rotating Editorial Classic of the Day**: Dedicated editorial showcase positioned beneath the catalog grid, presenting a unified public domain masterpiece with authentic title, author, publication year, verbatim literary quote, and 1-click reader handoff. Powered by client-cached fixtures (`FEATURED_HERO_BOOKS`) with dynamic anti-collision intelligence that automatically skips candidate books matching the current Hero spotlight to guarantee two unique masterworks on every visit.
 * **Interactive 3D Book Preview Modal**: Clicking or tapping any book card cover launches a 3D hardcover preview modal with fluid FLIP geometry transitions, subpixel return landing, chapter shuffling, and 1-click reader handoff.
 * **Studio Bookshelf Bookcase**: Hardwood shelf alcove with 8 authentic spine binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), convex specular curvature, gilded lettering, and pull-forward hover scaling.
 * **Directional Stepped Scroll Navigation**: Dynamic scroll detection (`useScrollDirection`) smoothly hides the top header on scroll down, docks the catalog filter toolbar to `top-0`, and instantly reveals navigation on upward scroll gestures. Configurable in Account Settings between **Smart Auto-Hide** and **Always Fixed**.
@@ -81,6 +82,7 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **Streamlined Single-Row Sticky Catalog Toolbar**: Ultra-compact ~44px mobile toolbar unifying search filter triggers, real-time API health status, view mode toggling (Grid vs. Spine Shelf), and deep-archive pagination in a single horizontal row, maximizing vertical screen real estate for book covers.
 * **Windowed Chunk Sub-Pagination & Predictive Prefetching**: Seamlessly reconciles upstream API batching with responsive client layouts by sub-slicing Gutendex's native 32-volume cache into viewport-optimized pages (8 books/page on mobile `grid-cols-2`, 16 books/page on desktop `md:grid-cols-4`). Sub-page turns execute in 0ms directly from client memory without network delay. A widened predictive prefetch buffer triggers background loading on Sub-page 3 (mobile) or Sub-page 1 (desktop), providing a 15–25 second network lead time before reaching batch boundaries.
 * **Explicit Catalog Search Activation & 2-Character Guardrail**: Replaced keystroke debouncing with intentional search submission (<kbd>Enter</kbd> or clicking "Search") to eliminate redundant API spam against public upstream servers. Enforces a client-side and server-side 2-character minimum guardrail with accessible inline validation (`aria-live="polite"`), preventing heavy 1-character full-table scans while fully permitting classical two-character literary titles (*It*, *Oz*, *Up*, *Po*).
+* **Unified Native Input Architecture & Search Focus Harmonization**: Standardized all search bars across Catalog, Bookshelf, Favorites, Bookmarks, Notebooks, and Reader Search Drawer to a native `<input>` architecture with `rounded-xl` curvature, subtle pre-hover warming (`hover:border-primary/40`), and a crisp 150ms outward primary ring bloom. The Catalog hero bar integrates floating inset controls (Search button and clear `X`) directly within the input's padding, delivering authentic native focus without enclosing action buttons inside the glow.
 
 ### 2. 📖 Dedicated Focus Reader & Typography Engine
 * **Unabridged Reading Canvas (`/read/[id]`)**: Full-screen, distraction-free reading with exact chapter and page coordinate auto-resume toasts and 1-click restart option.
@@ -106,6 +108,7 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: Dedicated reading ledger tracking active volumes with tactile bookmark cards, ribbon accents, live progress percentages, last-read coordinates, status filters (All, In Progress, Completed, On Hold), and 1-click chapter resume.
   * **Authentic Reading Telemetry**: Strictly enrolls volumes with active coordinates or progress, eliminating unopened placeholder clutter.
   * **Two-Way Dynamic Hydration**: Resolves un-shelved book identities via TanStack React Query and automatically pre-seeds warm reader state for instant 0ms transitions.
+  * **Completed Reading Progress Latch & "Read Again" Flow**: Resuming a finished volume safely locks 100% progress and the "Completed" badge without regressions. Completed bookmark cards feature a dedicated "Read Again" action allowing readers to restart reading from Page 1 without destroying historical ledger completion achievements.
 * **In-Reader Highlighting & Literary Commonplace Notebook (`/notebook`)**:
   * 4 editorial pastel highlighters (Canary Yellow, Vintage Amber, Calm Mint, Soft Rose) with coarse-pointer touch dismissal and chapter-scoped annotation drawer.
   * Comprehensive reading journal organizing highlighted excerpts, personal reflections, pastel color filters, full-text search, volume grouping, and 1-click academic citation copying.
@@ -508,13 +511,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 971 tests across 125 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 989 tests across 126 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 24 validated ADRs (ADR-001 through ADR-024) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, and 0ms client-navigation fast-paths. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 25 validated ADRs (ADR-001 through ADR-025) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, 0ms fast-paths, and completed reading state latches. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

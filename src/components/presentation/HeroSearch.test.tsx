@@ -280,4 +280,22 @@ describe('HeroSearch component', () => {
     const coverShuffleBtn = screen.queryByRole('button', { name: /Shuffle Passage/i });
     expect(coverShuffleBtn).not.toBeInTheDocument();
   });
+
+  it('should apply native focus ring classes directly to input with inset action button', () => {
+    renderWithClient(<HeroSearch search="" />);
+    const input = screen.getByTestId('search-input');
+    expect(input).toHaveClass(
+      'rounded-xl',
+      'hover:border-primary/40',
+      'focus:outline-none',
+      'focus:border-primary',
+      'focus:ring-1',
+      'focus:ring-primary',
+      'shadow-booksaw',
+      'transition-all'
+    );
+
+    const submitBtn = screen.getByRole('button', { name: /^Search$/i });
+    expect(submitBtn).toHaveClass('rounded-lg');
+  });
 });

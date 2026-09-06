@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useReaderStore, type BookReadingPosition } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import type { ReadingStatus } from '@/types/book.types';
 import {
   getCharsPerPage,
   paginateChapterContent,
@@ -21,6 +23,7 @@ export interface UseReaderSessionOptions {
   totalVolumePages: number;
   fontSize: number;
   readingMode: 'paginated' | 'scroll';
+  readingStatus?: ReadingStatus | null;
 }
 
 export interface UseReaderSessionReturn {
@@ -54,6 +57,7 @@ export function useReaderSession({
   totalVolumePages,
   fontSize,
   readingMode,
+  readingStatus,
 }: UseReaderSessionOptions): UseReaderSessionReturn {
   const setProgress = useReaderStore((s) => s.setProgress);
   const saveReadingPosition = useReaderStore((s) => s.saveReadingPosition);
@@ -75,6 +79,23 @@ export function useReaderSession({
       return;
     }
     hasRestoredPositionRef.current = true;
+
+    // When volume is completed/finished, start fresh from Chapter 0, Page 1 with archival completion notice
+    if (readingStatus === 'finished') {
+      queueMicrotask(() => {
+        setActiveChapterIndex(0);
+        setCurrentChapterPage(1);
+        setResumeNotice({
+          chapterTitle: 'Completed Volume (100%)',
+          page: 1,
+        });
+      });
+
+      const timer = setTimeout(() => {
+        setResumeNotice(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
 
     const applyPosition = (savedPos: BookReadingPosition) => {
       if (savedPos && (savedPos.chapterIndex > 0 || savedPos.chapterPage > 1)) {
@@ -124,7 +145,7 @@ export function useReaderSession({
           }
         });
     }
-  }, [hasMounted, numericId, chaptersWithPagination, getReadingPosition]);
+  }, [hasMounted, numericId, chaptersWithPagination, getReadingPosition, readingStatus]);
 
   const activeChapter = chaptersWithPagination[activeChapterIndex] || chaptersWithPagination[0];
   const activeChapterPageCount = activeChapter?.pageCount || 1;
@@ -156,7 +177,9 @@ export function useReaderSession({
   // Sync Progress & Exact Position to Store
   useEffect(() => {
     if (numericId > 0 && totalVolumePages > 0) {
-      setProgress(numericId, volumeProgress);
+      if (readingStatus !== 'finished') {
+        setProgress(numericId, volumeProgress);
+      }
       if (hasRestoredPositionRef.current) {
         const currentUserId = useAuthStore.getState().user?.id;
         saveReadingPosition(
@@ -173,6 +196,7 @@ export function useReaderSession({
     }
   }, [
     numericId,
+    readingStatus,
     volumeProgress,
     totalVolumePages,
     activeChapterIndex,
@@ -213,12 +237,20 @@ export function useReaderSession({
     setCurrentChapterPage(1);
     setResumeNotice(null);
     if (numericId > 0) {
-      saveReadingPosition(numericId, {
-        chapterIndex: 0,
-        chapterPage: 1,
-        globalPage: 1,
-        lastReadAt: new Date().toISOString(),
-      });
+      const currentUserId = useAuthStore.getState().user?.id;
+      useBookshelfStore
+        .getState()
+        .setReadingStatus(numericId, 'currently_reading', currentUserId);
+      saveReadingPosition(
+        numericId,
+        {
+          chapterIndex: 0,
+          chapterPage: 1,
+          globalPage: 1,
+          lastReadAt: new Date().toISOString(),
+        },
+        currentUserId
+      );
       setProgress(numericId, 0);
     }
   }, [numericId, saveReadingPosition, setProgress]);
