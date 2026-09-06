@@ -231,11 +231,11 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
               <span className="inline-block text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-primary-600 dark:text-primary-400 font-bold mb-3 px-2.5 py-0.5 rounded-full border border-primary-500/30">
                 Project Gutenberg Public Domain Edition
               </span>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold tracking-tight text-inherit mb-3">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-inherit mb-3">
                 {bookTitle || chapter?.displayTitle || chapter?.title}
               </h1>
               {bookAuthor && (
-                <p className="text-base sm:text-lg font-serif italic text-muted-foreground">
+                <p className="text-base sm:text-lg italic text-muted-foreground">
                   by {bookAuthor}
                 </p>
               )}
@@ -246,7 +246,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
               <span className="text-[11px] font-mono uppercase tracking-widest text-primary-600 dark:text-primary-400 font-bold block mb-2">
                 Section {activeChapterIndex + 1} of {totalChapters}
               </span>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold tracking-tight text-inherit">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-inherit">
                 {chapter.displayTitle || chapter.title}
               </h2>
             </header>
@@ -291,7 +291,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
                       )}
                     </p>
                     {seg.original && (
-                      <p className={`text-[0.85em] italic ${activeTheme.textMuted} font-serif leading-normal`}>
+                      <p className={`text-[0.85em] italic ${activeTheme.textMuted} leading-normal`}>
                         {renderContentWithAnnotations(
                           seg.original,
                           annotations,

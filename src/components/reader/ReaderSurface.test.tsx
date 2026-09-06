@@ -222,20 +222,28 @@ describe('ReaderSurface', () => {
     const { rerender } = render(
       <ReaderSurface
         {...defaultProps}
+        bookTitle="Moby Dick"
+        bookAuthor="Herman Melville"
         columnWidth="narrow"
         fontFamily="mono"
       />
     );
     expect(screen.getByRole('article')).toHaveClass('max-w-xl font-mono');
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(heading).not.toHaveClass('font-serif');
+    expect(screen.getByText('by Herman Melville')).not.toHaveClass('font-serif');
 
     rerender(
       <ReaderSurface
         {...defaultProps}
+        bookTitle="Moby Dick"
+        bookAuthor="Herman Melville"
         columnWidth="wide"
         fontFamily="sans"
       />
     );
     expect(screen.getByRole('article')).toHaveClass('max-w-5xl font-sans');
+    expect(heading).not.toHaveClass('font-serif');
   });
 
   it('scales up font size and displays HUD pill on pinch-out gesture', () => {
