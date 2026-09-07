@@ -163,14 +163,14 @@ export const AccountLibraryStats: React.FC<AccountLibraryStatsProps> = ({
   }, []);
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-4">
+    <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-4 h-full flex flex-col justify-between">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
           Library
         </h2>
         {readingStreak !== undefined && readingStreak > 0 && (
           <span
-            className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+            className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-border"
             title={`Active reading streak: ${readingStreak} ${readingStreak === 1 ? 'day' : 'days'}`}
             data-testid="account-library-streak-badge"
           >
@@ -182,7 +182,7 @@ export const AccountLibraryStats: React.FC<AccountLibraryStatsProps> = ({
       <div
         ref={containerRef}
         data-testid="account-library-stack"
-        className="flex flex-col gap-2.5 sm:gap-3"
+        className="flex flex-col gap-2.5 sm:gap-3 flex-1 justify-between"
       >
         {libraryCards.map((card, idx) => {
           const isActive = idx === activeIndex;

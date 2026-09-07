@@ -77,6 +77,28 @@ function generateId(): string {
   return `ann-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+type AnnotationOutboxDispatcher = (
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  payload: any
+) => PromiseLike<{ error: unknown }>;
+
+const ANNOTATION_OUTBOX_DISPATCHERS: Record<
+  AnnotationOutboxAction['type'],
+  AnnotationOutboxDispatcher
+> = {
+  DELETE_ANNOTATION: (sb, userId, p) =>
+    sb.from('user_annotations').delete().eq('id', p.id).eq('user_id', userId),
+  UPSERT_ANNOTATION: (sb, userId, p) =>
+    sb.from('user_annotations').upsert(
+      {
+        ...p,
+        user_id: userId,
+      },
+      { onConflict: 'id' }
+    ),
+};
+
 export const useAnnotationStore = create<AnnotationState>()(
   persist(
     (set, get) => ({
@@ -103,23 +125,9 @@ export const useAnnotationStore = create<AnnotationState>()(
 
         for (const action of outbox) {
           try {
-            if (action.type === 'DELETE_ANNOTATION') {
-              const { error } = await supabase
-                .from('user_annotations')
-                .delete()
-                .eq('id', action.payload.id)
-                .eq('user_id', userId);
-              if (error) throw error;
-            } else if (action.type === 'UPSERT_ANNOTATION') {
-              const { error } = await supabase
-                .from('user_annotations')
-                .upsert(
-                  {
-                    ...action.payload,
-                    user_id: userId,
-                  } as any,
-                  { onConflict: 'id' }
-                );
+            const dispatcher = ANNOTATION_OUTBOX_DISPATCHERS[action.type];
+            if (dispatcher) {
+              const { error } = await dispatcher(supabase, userId, action.payload);
               if (error) throw error;
             }
           } catch {

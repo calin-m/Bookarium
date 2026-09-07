@@ -14,26 +14,28 @@ import {
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { cleanVoiceName } from '@/lib/speech-utils';
+import type { UseReaderSpeechReturn } from '@/hooks/reader/useReaderSpeech';
 
 export interface ReaderSpeechBarProps {
+  speech?: UseReaderSpeechReturn;
   isOpen: boolean;
   onClose: () => void;
-  isPlaying: boolean;
-  isPaused: boolean;
-  currentSentenceIndex: number;
-  totalSentences: number;
-  rate: number;
-  availableVoices: SpeechSynthesisVoice[];
+  isPlaying?: boolean;
+  isPaused?: boolean;
+  currentSentenceIndex?: number;
+  totalSentences?: number;
+  rate?: number;
+  availableVoices?: SpeechSynthesisVoice[];
   naturalVoices?: SpeechSynthesisVoice[];
   standardVoices?: SpeechSynthesisVoice[];
-  selectedVoice: SpeechSynthesisVoice | null;
-  onPlay: () => void;
-  onPause: () => void;
-  onResume: () => void;
-  onSkipNext: () => void;
-  onSkipPrev: () => void;
-  onRateChange: (rate: number) => void;
-  onVoiceChange: (voiceURI: string) => void;
+  selectedVoice?: SpeechSynthesisVoice | null;
+  onPlay?: () => void;
+  onPause?: () => void;
+  onResume?: () => void;
+  onSkipNext?: () => void;
+  onSkipPrev?: () => void;
+  onRateChange?: (rate: number) => void;
+  onVoiceChange?: (voiceURI: string) => void;
   theme?: ReaderTheme;
   bookTitle?: string;
   currentPage?: number;
@@ -45,24 +47,25 @@ export interface ReaderSpeechBarProps {
 const SPEED_PRESETS = [0.85, 1.0, 1.15, 1.25, 1.5, 2.0] as const;
 
 export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
+  speech,
   isOpen,
   onClose,
-  isPlaying,
-  isPaused,
-  currentSentenceIndex,
-  totalSentences,
-  rate,
-  availableVoices,
-  naturalVoices = [],
-  standardVoices = [],
-  selectedVoice,
-  onPlay,
-  onPause,
-  onResume,
-  onSkipNext,
-  onSkipPrev,
-  onRateChange,
-  onVoiceChange,
+  isPlaying = speech?.isPlaying ?? false,
+  isPaused = speech?.isPaused ?? false,
+  currentSentenceIndex = speech?.currentSentenceIndex ?? 0,
+  totalSentences = speech?.totalSentences ?? 0,
+  rate = speech?.rate ?? 1.0,
+  availableVoices = speech?.availableVoices ?? [],
+  naturalVoices = speech?.naturalVoices ?? [],
+  standardVoices = speech?.standardVoices ?? [],
+  selectedVoice = speech?.selectedVoice ?? null,
+  onPlay = () => speech?.play(),
+  onPause = () => speech?.pause(),
+  onResume = () => speech?.resume(),
+  onSkipNext = () => speech?.skipNext(),
+  onSkipPrev = () => speech?.skipPrev(),
+  onRateChange = (r) => speech?.setRate(r),
+  onVoiceChange = (v) => speech?.setVoice(v),
   theme = 'light',
   bookTitle,
   currentPage,

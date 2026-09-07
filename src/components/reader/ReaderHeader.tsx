@@ -17,9 +17,23 @@ import {
   Headphones,
   Highlighter,
   Sparkles,
+  type LucideIcon,
 } from 'lucide-react';
+
+interface ReaderHeaderToolAction {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  ariaLabel: string;
+  title?: string;
+  isOpen: boolean;
+  onClick: () => void;
+  desktopTestId?: string;
+  mobileTestId?: string;
+  desktopBadge?: React.ReactNode;
+}
 import { useReaderStore, type ReaderTheme } from '@/stores/useReaderStore';
-import { getReaderTheme } from '@/config/reader-themes';
+import { getReaderTheme, NEXT_READER_THEME } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
@@ -167,6 +181,78 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   const resolvedAuthor = (!isPlaceholderAuthor(author) ? author : '') || featuredFixture?.author || '';
   const displayAuthor = resolvedAuthor.replace(/\s+/g, ' ').trim();
 
+  const toolActions: ReaderHeaderToolAction[] = [
+    {
+      id: 'toc',
+      label: 'Contents',
+      icon: List,
+      ariaLabel: 'Table of Contents',
+      isOpen: isTocOpen,
+      onClick: onToggleToc,
+      desktopBadge:
+        totalChapters > 1 ? (
+          <span className="text-[10px] opacity-70">
+            ({currentChapterIndex + 1}/{totalChapters})
+          </span>
+        ) : undefined,
+    },
+    ...(onToggleSearch
+      ? [
+          {
+            id: 'search',
+            label: 'Search',
+            icon: Search,
+            ariaLabel: 'Search in Book',
+            title: 'Search phrase, character, or quote (Ctrl+F)',
+            isOpen: isSearchOpen,
+            onClick: onToggleSearch,
+          },
+        ]
+      : []),
+    ...(onToggleSpeech
+      ? [
+          {
+            id: 'speech',
+            label: 'Listen',
+            icon: Headphones,
+            ariaLabel: 'Read Aloud Narration',
+            title: 'Listen to book with Read Aloud text-to-speech',
+            isOpen: isSpeechOpen,
+            onClick: onToggleSpeech,
+          },
+        ]
+      : []),
+    ...(onToggleAnnotations
+      ? [
+          {
+            id: 'annotations',
+            label: 'Notes',
+            icon: Highlighter,
+            ariaLabel: 'Notes & Highlights',
+            title: 'View notes and highlighted passages',
+            isOpen: isAnnotationsOpen,
+            onClick: onToggleAnnotations,
+            desktopTestId: 'reader-annotations-toggle-btn',
+            mobileTestId: 'mobile-annotations-toggle-btn',
+            desktopBadge:
+              annotationsCount > 0 ? (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-primary/10 text-primary">
+                  {annotationsCount}
+                </span>
+              ) : undefined,
+          },
+        ]
+      : []),
+    {
+      id: 'controls',
+      label: 'Aa',
+      icon: Sliders,
+      ariaLabel: 'Typography & Theme Controls',
+      isOpen: isControlsOpen,
+      onClick: onToggleControls,
+    },
+  ];
+
   return (
     <>
       <header
@@ -204,95 +290,25 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           {/* Right: Desktop Direct Tool Row (Hidden on small mobile screens) */}
           <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 shrink-0">
             
-            {/* Table of Contents Drawer Toggle */}
-            <button
-              type="button"
-              onClick={onToggleToc}
-              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
-                isTocOpen ? activeTheme.activePill : activeTheme.button
-              }`}
-              aria-label="Table of Contents"
-              aria-expanded={isTocOpen}
-            >
-              <List className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Contents</span>
-              {totalChapters > 1 && (
-                <span className="text-[10px] opacity-70">
-                  ({currentChapterIndex + 1}/{totalChapters})
-                </span>
-              )}
-            </button>
-
-            {/* In-Book Search Drawer Toggle */}
-            {onToggleSearch && (
+            {/* Standard Tool Drawer Toggles */}
+            {toolActions.map((action) => (
               <button
+                key={action.id}
                 type="button"
-                onClick={onToggleSearch}
+                data-testid={action.desktopTestId}
+                onClick={action.onClick}
                 className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
-                  isSearchOpen ? activeTheme.activePill : activeTheme.button
+                  action.isOpen ? activeTheme.activePill : activeTheme.button
                 }`}
-                aria-label="Search in Book"
-                aria-expanded={isSearchOpen}
-                title="Search phrase, character, or quote (Ctrl+F)"
+                aria-label={action.ariaLabel}
+                aria-expanded={action.isOpen}
+                title={action.title}
               >
-                <Search className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Search</span>
+                <action.icon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{action.label}</span>
+                {action.desktopBadge}
               </button>
-            )}
-
-            {/* Read Aloud Narration Trigger */}
-            {onToggleSpeech && (
-              <button
-                type="button"
-                onClick={onToggleSpeech}
-                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
-                  isSpeechOpen ? activeTheme.activePill : activeTheme.button
-                }`}
-                aria-label="Read Aloud Narration"
-                aria-expanded={isSpeechOpen}
-                title="Listen to book with Read Aloud text-to-speech"
-              >
-                <Headphones className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Listen</span>
-              </button>
-            )}
-
-            {/* Notes & Highlights Trigger */}
-            {onToggleAnnotations && (
-              <button
-                type="button"
-                data-testid="reader-annotations-toggle-btn"
-                onClick={onToggleAnnotations}
-                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
-                  isAnnotationsOpen ? activeTheme.activePill : activeTheme.button
-                }`}
-                aria-label="Notes & Highlights"
-                aria-expanded={isAnnotationsOpen}
-                title="View notes and highlighted passages"
-              >
-                <Highlighter className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Notes</span>
-                {annotationsCount > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-primary/10 text-primary">
-                    {annotationsCount}
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* Detailed Typography & Appearance Controls Popover */}
-            <button
-              type="button"
-              onClick={onToggleControls}
-              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
-                isControlsOpen ? activeTheme.activePill : activeTheme.button
-              }`}
-              aria-label="Typography & Theme Controls"
-              aria-expanded={isControlsOpen}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Aa</span>
-            </button>
+            ))}
 
             {/* Language & Translations Drawer Trigger */}
             {((translations && translations.length > 0) || isDynamicActive) && onToggleTranslations && (
@@ -354,11 +370,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             {onThemeChange && (
               <button
                 type="button"
-                onClick={() => {
-                  if (theme === 'light') onThemeChange('sepia');
-                  else if (theme === 'sepia') onThemeChange('dark');
-                  else onThemeChange('light');
-                }}
+                onClick={() => onThemeChange(NEXT_READER_THEME[theme])}
                 aria-label={`Current theme: ${theme}. Click to switch theme.`}
                 title={`Current theme: ${theme === 'light' ? 'Light' : theme === 'sepia' ? 'Sepia' : 'Dark'}. Click to cycle theme.`}
                 className={`p-2 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 shadow-2xs ${activeTheme.button}`}
@@ -424,78 +436,23 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                 />
               </button>
 
-              {/* 1. Contents button */}
-              <button
-                type="button"
-                onClick={onToggleToc}
-                className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 ${
-                  isTocOpen ? activeTheme.activePill : activeTheme.button
-                }`}
-                aria-label="Table of Contents"
-                aria-expanded={isTocOpen}
-              >
-                <List className="w-4 h-4" />
-              </button>
-
-              {/* 2. Search button */}
-              {onToggleSearch && (
+              {/* Standard Tool Drawer Toggles */}
+              {toolActions.map((action) => (
                 <button
+                  key={action.id}
                   type="button"
-                  onClick={onToggleSearch}
+                  data-testid={action.mobileTestId}
+                  onClick={action.onClick}
                   className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 ${
-                    isSearchOpen ? activeTheme.activePill : activeTheme.button
+                    action.isOpen ? activeTheme.activePill : activeTheme.button
                   }`}
-                  aria-label="Search in Book"
-                  aria-expanded={isSearchOpen}
+                  aria-label={action.ariaLabel}
+                  aria-expanded={action.isOpen}
+                  title={action.title}
                 >
-                  <Search className="w-4 h-4" />
+                  <action.icon className="w-4 h-4" />
                 </button>
-              )}
-
-              {/* 2.5 Read Aloud Narration button */}
-              {onToggleSpeech && (
-                <button
-                  type="button"
-                  onClick={onToggleSpeech}
-                  className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 ${
-                    isSpeechOpen ? activeTheme.activePill : activeTheme.button
-                  }`}
-                  aria-label="Read Aloud Narration"
-                  aria-expanded={isSpeechOpen}
-                  title="Listen to book with Read Aloud text-to-speech"
-                >
-                  <Headphones className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* 2.6 Notes & Highlights button */}
-              {onToggleAnnotations && (
-                <button
-                  type="button"
-                  data-testid="mobile-annotations-toggle-btn"
-                  onClick={onToggleAnnotations}
-                  className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 ${
-                    isAnnotationsOpen ? activeTheme.activePill : activeTheme.button
-                  }`}
-                  aria-label="Notes & Highlights"
-                  aria-expanded={isAnnotationsOpen}
-                >
-                  <Highlighter className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* 3. Typography Aa button */}
-              <button
-                type="button"
-                onClick={onToggleControls}
-                className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 ${
-                  isControlsOpen ? activeTheme.activePill : activeTheme.button
-                }`}
-                aria-label="Typography & Theme Controls"
-                aria-expanded={isControlsOpen}
-              >
-                <Sliders className="w-4 h-4" />
-              </button>
+              ))}
 
               {/* 4. Language button */}
               {((translations && translations.length > 0) || isDynamicActive) && onToggleTranslations && (
@@ -532,11 +489,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               {onThemeChange && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (theme === 'light') onThemeChange('sepia');
-                    else if (theme === 'sepia') onThemeChange('dark');
-                    else onThemeChange('light');
-                  }}
+                  onClick={() => onThemeChange(NEXT_READER_THEME[theme])}
                   aria-label={`Current theme: ${theme}. Click to switch theme.`}
                   className={`p-1.5 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 ${activeTheme.button}`}
                 >

@@ -1,15 +1,13 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Highlighter, Search, Trash2, Edit3, ArrowRight, BookOpen, Check, X, AlertTriangle } from 'lucide-react';
+import { Highlighter, Search, Trash2, Edit3, ArrowRight, BookOpen, Check, X } from 'lucide-react';
 import { ReaderDrawerShell } from './ReaderDrawerShell';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
 import type { Annotation, HighlightColor } from '@/stores/useAnnotationStore';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { ANNOTATION_COLOR_CONFIG, ANNOTATION_COLOR_LIST } from '@/config/annotation-tokens';
-import { QuoteDeletePreview } from './QuoteDeletePreview';
+import { DeleteAnnotationModal } from './DeleteAnnotationModal';
 
 export interface ReaderAnnotationsDrawerProps {
   isOpen: boolean;
@@ -276,59 +274,19 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
     </ReaderDrawerShell>
 
     {/* Delete Single Annotation Confirmation Modal (Rendered outside drawer transform hierarchy) */}
-    <Modal
+    <DeleteAnnotationModal
       isOpen={itemToDelete !== null}
       onClose={() => setItemToDelete(null)}
+      onConfirm={() => {
+        if (itemToDelete) {
+          onDeleteAnnotation(itemToDelete.id);
+          setItemToDelete(null);
+        }
+      }}
+      annotation={itemToDelete}
       title="Delete Saved Highlight & Note?"
-      maxWidth="md"
-    >
-      <div className="p-6 space-y-5" data-testid="delete-single-note-dialog">
-        <div className="flex items-start gap-3.5">
-          <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-            <AlertTriangle className="w-5 h-5" />
-          </div>
-          <div className="space-y-2">
-            <p className="font-semibold text-foreground text-sm sm:text-base">
-              Are you sure you want to delete this saved quote?
-            </p>
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              This will remove the highlight and any attached personal reflection from your saved notes. This action cannot be undone.
-            </p>
-            {itemToDelete && (
-              <QuoteDeletePreview
-                selectedText={itemToDelete.selectedText}
-                note={itemToDelete.note}
-              />
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setItemToDelete(null)}
-            className="text-xs font-mono uppercase"
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              if (itemToDelete) {
-                onDeleteAnnotation(itemToDelete.id);
-                setItemToDelete(null);
-              }
-            }}
-            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Delete Note
-          </Button>
-        </div>
-      </div>
-    </Modal>
+      description="This will remove the highlight and any attached personal reflection from your saved notes. This action cannot be undone."
+    />
   </>
 );
 };

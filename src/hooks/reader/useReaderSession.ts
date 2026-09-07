@@ -10,6 +10,7 @@ import {
   paginateChapterContent,
   type ChapterSection,
 } from '@/lib/gutenberg-parser';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface ResumeNotice {
   chapterTitle: string;
@@ -18,7 +19,7 @@ export interface ResumeNotice {
 
 export interface UseReaderSessionOptions {
   numericId: number;
-  hasMounted: boolean;
+  hasMounted?: boolean;
   chaptersWithPagination: ChapterSection[];
   totalVolumePages: number;
   fontSize: number;
@@ -42,6 +43,7 @@ export interface UseReaderSessionReturn {
   handleNextPage: () => void;
   handleSelectChapter: (index: number) => void;
   handlePageJump: (targetPage: number) => void;
+  jumpTo: (chapterIndex: number, page: number) => void;
   handleRestart: () => void;
 }
 
@@ -63,6 +65,9 @@ export function useReaderSession({
   const saveReadingPosition = useReaderStore((s) => s.saveReadingPosition);
   const getReadingPosition = useReaderStore((s) => s.getReadingPosition);
 
+  const internalHasMounted = useHasMounted();
+  const isMounted = hasMounted ?? internalHasMounted;
+
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [currentChapterPage, setCurrentChapterPage] = useState(1);
   const [resumeNotice, setResumeNotice] = useState<ResumeNotice | null>(null);
@@ -72,7 +77,7 @@ export function useReaderSession({
   useEffect(() => {
     if (
       hasRestoredPositionRef.current ||
-      !hasMounted ||
+      !isMounted ||
       numericId <= 0 ||
       chaptersWithPagination.length === 0
     ) {
@@ -145,7 +150,7 @@ export function useReaderSession({
           }
         });
     }
-  }, [hasMounted, numericId, chaptersWithPagination, getReadingPosition, readingStatus]);
+  }, [isMounted, numericId, chaptersWithPagination, getReadingPosition, readingStatus]);
 
   const activeChapter = chaptersWithPagination[activeChapterIndex] || chaptersWithPagination[0];
   const activeChapterPageCount = activeChapter?.pageCount || 1;
@@ -272,6 +277,11 @@ export function useReaderSession({
     setResumeNotice(null);
   }, []);
 
+  const jumpTo = useCallback((chapterIndex: number, page: number) => {
+    setActiveChapterIndex(chapterIndex);
+    setCurrentChapterPage(page);
+  }, []);
+
   return {
     activeChapterIndex,
     setActiveChapterIndex,
@@ -288,6 +298,7 @@ export function useReaderSession({
     handleNextPage,
     handleSelectChapter,
     handlePageJump,
+    jumpTo,
     handleRestart,
   };
 }

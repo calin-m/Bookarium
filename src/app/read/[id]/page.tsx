@@ -25,7 +25,7 @@ import { ReaderSpeechBar } from '@/components/reader/ReaderSpeechBar';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
 import { TextHighlightPopover } from '@/components/reader/TextHighlightPopover';
 import { ReaderAnnotationsDrawer } from '@/components/reader/ReaderAnnotationsDrawer';
-import { QuoteDeletePreview } from '@/components/reader/QuoteDeletePreview';
+import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
 import { useReaderSession } from '@/hooks/reader/useReaderSession';
@@ -38,7 +38,7 @@ import { useBookshelfStore, useBookRating, useReadingStatus } from '@/stores/use
 import { StarRating } from '@/components/ui/StarRating';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { AlertTriangle, Trash2, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 
@@ -269,6 +269,7 @@ export default function BookReaderPage() {
     handleNextPage,
     handleSelectChapter,
     handlePageJump,
+    jumpTo,
     handleRestart,
   } = useReaderSession({
     numericId,
@@ -285,10 +286,9 @@ export default function BookReaderPage() {
   }, [bookAnnotations, activeChapterIndex]);
 
   const handleSelectSearchMatch = useCallback((chapterIndex: number, page: number) => {
-    setActiveChapterIndex(chapterIndex);
-    setCurrentChapterPage(page);
+    jumpTo(chapterIndex, page);
     closeDrawer();
-  }, [closeDrawer, setActiveChapterIndex, setCurrentChapterPage]);
+  }, [closeDrawer, jumpTo]);
 
   // Keyboard Navigation
   useEffect(() => {
@@ -660,27 +660,12 @@ export default function BookReaderPage() {
 
       {/* Floating Read Aloud Audio Narration Mini-Bar */}
       <ReaderSpeechBar
+        speech={speech}
         isOpen={isSpeechOpen}
         onClose={() => {
           speech.stop();
           setIsSpeechOpen(false);
         }}
-        isPlaying={speech.isPlaying}
-        isPaused={speech.isPaused}
-        currentSentenceIndex={speech.currentSentenceIndex}
-        totalSentences={speech.totalSentences}
-        rate={speech.rate}
-        availableVoices={speech.availableVoices}
-        naturalVoices={speech.naturalVoices}
-        standardVoices={speech.standardVoices}
-        selectedVoice={speech.selectedVoice}
-        onPlay={() => speech.play()}
-        onPause={() => speech.pause()}
-        onResume={() => speech.resume()}
-        onSkipNext={() => speech.skipNext()}
-        onSkipPrev={() => speech.skipPrev()}
-        onRateChange={speech.setRate}
-        onVoiceChange={speech.setVoice}
         theme={theme}
         bookTitle={bookTitle}
         currentPage={currentChapterPage}
@@ -720,59 +705,17 @@ export default function BookReaderPage() {
       />
 
       {/* Delete Single Annotation Confirmation Modal */}
-      <Modal
+      <DeleteAnnotationModal
         isOpen={annotationToDelete !== null}
         onClose={() => setAnnotationToDelete(null)}
-        title="Delete Saved Note & Highlight?"
-        maxWidth="md"
-      >
-        <div className="p-6 space-y-5" data-testid="delete-single-note-dialog">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="space-y-2">
-              <p className="font-semibold text-foreground text-sm sm:text-base">
-                Are you sure you want to delete this saved quote?
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                This will remove this highlight and any attached personal reflection from your library. This action cannot be undone.
-              </p>
-              {annotationToDelete && (
-                <QuoteDeletePreview
-                  selectedText={annotationToDelete.selectedText}
-                  note={annotationToDelete.note}
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAnnotationToDelete(null)}
-              className="text-xs font-mono uppercase"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={async () => {
-                if (annotationToDelete) {
-                  await deleteAnnotation(annotationToDelete.id, user?.id);
-                  setAnnotationToDelete(null);
-                }
-              }}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete Note
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onConfirm={async () => {
+          if (annotationToDelete) {
+            await deleteAnnotation(annotationToDelete.id, user?.id);
+            setAnnotationToDelete(null);
+          }
+        }}
+        annotation={annotationToDelete}
+      />
 
       {/* Volume Completion Modal */}
       <Modal

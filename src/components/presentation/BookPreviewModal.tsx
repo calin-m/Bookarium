@@ -10,6 +10,7 @@ import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { BookCard } from './BookCard';
+import { NotablePassagesSpread } from './NotablePassagesSpread';
 
 export interface ElementRect {
   top: number;
@@ -257,61 +258,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               isCoverOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}>
               <div key={`right-page-base-${book.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
-                {(() => {
-                  const rightQuotesCount = 1 + (currentPassage.rightPageQuote2 ? 1 : 0) + (currentPassage.tertiaryQuote ? 1 : 0);
-                  return (
-                    <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
-                      <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border shrink-0">
-                        <span>Notable Passages</span>
-                        <span className="text-success font-bold uppercase">CC0 / Free</span>
-                      </div>
-
-                      <div className="flex-1 min-h-0 flex flex-col justify-around gap-2.5 py-1">
-                        {/* Primary Quote Box */}
-                        <div className={`rounded-lg bg-card/60 border border-border shadow-xs ${
-                          rightQuotesCount === 1 ? 'p-4 sm:p-4.5' : 'p-2.5 sm:p-3'
-                        }`}>
-                          <Quote className={`${rightQuotesCount === 1 ? 'w-4 h-4' : 'w-3.5 h-3.5'} text-primary/60 mb-1.5 shrink-0`} />
-                          <p className={`font-serif italic text-foreground leading-relaxed text-pretty ${
-                            rightQuotesCount === 1
-                              ? 'text-xs sm:text-sm line-clamp-8 sm:line-clamp-9'
-                              : rightQuotesCount === 2
-                              ? 'text-xs sm:text-[13px] line-clamp-5'
-                              : 'text-xs sm:text-[13px] line-clamp-4'
-                          }`}>
-                            {currentPassage.quoteExcerpt}
-                          </p>
-                        </div>
-
-                        {/* Secondary Book Quote Box */}
-                        {currentPassage.rightPageQuote2 && (
-                          <div className={`rounded-lg bg-card/60 border border-border shadow-xs ${
-                            rightQuotesCount === 2 ? 'p-3 sm:p-3.5' : 'p-2.5 sm:p-3'
-                          }`}>
-                            <Quote className="w-3.5 h-3.5 text-primary/60 mb-1.5 shrink-0" />
-                            <p className={`font-serif italic text-foreground leading-relaxed text-pretty ${
-                              rightQuotesCount === 2
-                                ? 'text-xs sm:text-[13px] line-clamp-5'
-                                : 'text-xs sm:text-[13px] line-clamp-3'
-                            }`}>
-                              {currentPassage.rightPageQuote2}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Tertiary Book Quote Box */}
-                        {currentPassage.tertiaryQuote && (
-                          <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
-                            <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
-                            <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2 text-pretty">
-                              {currentPassage.tertiaryQuote}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
+                <NotablePassagesSpread passage={currentPassage} />
 
                 {/* Right Page Footer Actions */}
                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2 mt-2 shrink-0">
@@ -359,58 +306,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               >
                 {/* Front Face of Turning Leaf: Outgoing Right Page quotes lifting away */}
                 <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
-                  {(() => {
-                    const rightQuotesCount = 1 + (prevPassage.rightPageQuote2 ? 1 : 0) + (prevPassage.tertiaryQuote ? 1 : 0);
-                    return (
-                      <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
-                        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border shrink-0">
-                          <span>Notable Passages</span>
-                          <span className="text-success font-bold uppercase">CC0 / Free</span>
-                        </div>
-
-                        <div className="flex-1 min-h-0 flex flex-col justify-around gap-2.5 py-1">
-                          <div className={`rounded-lg bg-card/60 border border-border shadow-xs ${
-                            rightQuotesCount === 1 ? 'p-4 sm:p-4.5' : 'p-2.5 sm:p-3'
-                          }`}>
-                            <Quote className={`${rightQuotesCount === 1 ? 'w-4 h-4' : 'w-3.5 h-3.5'} text-primary/60 mb-1.5 shrink-0`} />
-                            <p className={`font-serif italic text-foreground leading-relaxed ${
-                              rightQuotesCount === 1
-                                ? 'text-xs sm:text-sm line-clamp-8 sm:line-clamp-9'
-                                : rightQuotesCount === 2
-                                ? 'text-xs sm:text-[13px] line-clamp-5'
-                                : 'text-xs sm:text-[13px] line-clamp-4'
-                            }`}>
-                              {prevPassage.quoteExcerpt}
-                            </p>
-                          </div>
-
-                          {prevPassage.rightPageQuote2 && (
-                            <div className={`rounded-lg bg-card/60 border border-border shadow-xs ${
-                              rightQuotesCount === 2 ? 'p-3 sm:p-3.5' : 'p-2.5 sm:p-3'
-                            }`}>
-                              <Quote className="w-3.5 h-3.5 text-primary/60 mb-1.5 shrink-0" />
-                              <p className={`font-serif italic text-foreground leading-relaxed ${
-                                rightQuotesCount === 2
-                                  ? 'text-xs sm:text-[13px] line-clamp-5'
-                                  : 'text-xs sm:text-[13px] line-clamp-3'
-                              }`}>
-                                {prevPassage.rightPageQuote2}
-                              </p>
-                            </div>
-                          )}
-
-                          {prevPassage.tertiaryQuote && (
-                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
-                              <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
-                              <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2">
-                                {prevPassage.tertiaryQuote}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  <NotablePassagesSpread passage={prevPassage} />
 
                   <div className="pt-2 flex items-center justify-end text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
                     <span className="opacity-60">p. 2</span>

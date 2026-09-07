@@ -120,7 +120,7 @@ export function ExLibrisBookplate({
       className={`relative group rounded-xl border p-4 transition-all duration-200 select-none overflow-hidden ${
         isUnlocked
           ? `bg-card shadow-sm hover:shadow-lg ${tierConfig.cardBorder}`
-          : 'bg-muted/30 border-dashed border-border/70 opacity-75'
+          : 'bg-muted/30 border-dashed border-border opacity-75'
       }`}
       style={{
         perspective: '1000px',
@@ -141,7 +141,7 @@ export function ExLibrisBookplate({
       )}
 
       {/* Classical Woodcut Inner Border Frame */}
-      <div className="border border-border/40 rounded-lg p-3.5 relative flex flex-col justify-between h-full min-h-[220px]">
+      <div className="border border-border rounded-lg p-3.5 relative flex flex-col justify-between h-full min-h-[220px]">
         {/* Top Header Row: Tier Ribbon & Pin Action */}
         <div className="flex items-center justify-between gap-2 mb-2">
           <span
@@ -195,7 +195,7 @@ export function ExLibrisBookplate({
             className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 relative transition-transform duration-300 group-hover:scale-105 border ${
               isUnlocked
                 ? `${tierConfig.badgeBg} ${tierConfig.badgeBorder}`
-                : 'bg-muted border-border/60 text-muted-foreground'
+                : 'bg-muted border-border text-muted-foreground'
             }`}
           >
             <IconComponent
@@ -222,7 +222,7 @@ export function ExLibrisBookplate({
         </div>
 
         {/* Bottom Progression & Status Footer */}
-        <div className="mt-3 pt-2.5 border-t border-border/40">
+        <div className="mt-3 pt-2.5 border-t border-border">
           {isUnlocked ? (
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
               <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">

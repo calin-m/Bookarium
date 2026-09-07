@@ -46,7 +46,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
   );
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6">
+    <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6 h-full flex flex-col justify-between">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-serif font-bold text-foreground truncate">
@@ -81,7 +81,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
       {/* Unverified Email Warning & Resend Banner */}
       {!isEmailVerified && (
-        <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+        <div className="p-4 rounded-xl border border-amber-500/40 dark:border-amber-500/50 bg-amber-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
           <div className="space-y-1 min-w-0">
             <p className="font-bold text-foreground flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-amber-500 shrink-0" />

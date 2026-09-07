@@ -107,5 +107,25 @@ describe('ExLibrisBookplate', () => {
     fireEvent.mouseMove(card, { clientX: 100, clientY: 100 });
     fireEvent.mouseLeave(card);
   });
+
+  it('applies theme-aware solid borders on woodcut frame and dividers without vanishing fractional opacities', () => {
+    const { container: unlockedContainer } = render(
+      <ExLibrisBookplate definition={sampleDef} progress={unlockedProgress} />
+    );
+
+    const html = unlockedContainer.innerHTML;
+    expect(html).not.toContain('border-border/40');
+    expect(html).not.toContain('border-border/60');
+    expect(html).not.toContain('border-border/70');
+
+    // Locked bookplate verification
+    const { container: lockedContainer } = render(
+      <ExLibrisBookplate definition={sampleDef} progress={lockedProgress} />
+    );
+    const lockedHtml = lockedContainer.innerHTML;
+    expect(lockedHtml).not.toContain('border-border/70');
+    expect(lockedHtml).not.toContain('border-border/60');
+    expect(lockedHtml).not.toContain('border-border/40');
+  });
 });
 

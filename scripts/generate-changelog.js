@@ -9,6 +9,29 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.2.0',
+    date: '2026-09-07',
+    title: 'Global Encapsulation, Polymorphic Strategy Dispatching & Subsystem Architecture',
+    sections: {
+      Added: [
+        'Single-Responsibility Notebook Quote Presenter (`NotebookQuoteCard.tsx`): Extracted full quote card presentation, inline color popover, citation copy feedback, and draft reflection editing with render-time state adjustment out of `NotebookView.tsx`, reducing file length by 302 lines with co-located unit test coverage (`NotebookQuoteCard.test.tsx`).',
+        'Unified Delete Annotation Modal (`DeleteAnnotationModal.tsx`): Replaced triplicated delete confirmation modals across `ReaderAnnotationsDrawer`, `NotebookView`, and `read/[id]/page.tsx` with a shared dialog composing `@/components/ui/Modal` and `QuoteDeletePreview`.',
+        'Notable Passages Book Spread Component (`NotablePassagesSpread.tsx`): Extracted dual-face quote spread out of `BookPreviewModal.tsx`, reducing modal length by 104 lines while ensuring 100% layout and quote stack parity across stationary base and 3D flipping leaf.',
+        'Computational Reader Annotation Partitioning Engine (`reader-annotator.ts`): Extracted pure computational string search and collision-free interval partition algorithm out of `ReaderSurface.tsx` into `computeAnnotationSpans()`, fully covered by unit tests (`reader-annotator.test.ts`).',
+        'Architecture Decision Record (`ADR-031`): Formally ratified global encapsulation, polymorphic strategy dispatching, and layout DRY refactoring in `docs/DECISIONS.md`.',
+      ],
+      Refactored: [
+        'Polymorphic Outbox Dispatcher in Annotation Store (`useAnnotationStore.ts`): Replaced procedural switch ladder in `flushOutbox` with declarative `ANNOTATION_OUTBOX_DISPATCHERS` strategy map matching the pattern in `useBookshelfStore.ts`.',
+        'Declarative Reader Theme Cycling & Tokens (`reader-themes.ts`): Implemented `NEXT_READER_THEME` transition cycle map and added `speechHighlight` token to `ReaderThemeConfig`, eliminating repeated ternary cascades across desktop/mobile headers and `ReaderSurface.tsx`.',
+        'Unified Action Matrices in Reader Header (`ReaderHeader.tsx`): Consolidated desktop and mobile navigation buttons into declarative `ReaderHeaderToolAction[]` configuration, eliminating ~150 lines of duplicate JSX while preserving all accessibility roles and test attributes.',
+        'Facade Prop in Reader Speech Bar (`ReaderSpeechBar.tsx`): Added `speech?: UseReaderSpeechReturn` facade prop, reducing 16 individual prop bindings down to a single prop in `read/[id]/page.tsx` with backward-compatible unit test support.',
+        'Navigation & Hydration Encapsulation (`useReaderSession.ts`): Integrated `jumpTo(chapterIndex, page)` and internalized hydration detection with `useHasMounted()`, simplifying search jump handlers in reader view.',
+        'Polymorphic Dialog Composition (`Modal.tsx`, `GutenbergInfoModal.tsx`, `BookshelfManageModals.tsx`): Standardized `GutenbergInfoModal` and all 4 bookshelf management dialogs to compose UI primitive `@/components/ui/Modal`.',
+        'Account Page Spatial Rhythm & Contrast Harmonization (`AccountSecuritySection.tsx`, `page.tsx`): Enhanced vertical separation between Security & Password, Account Session, and Danger Zone cards with comfortable gap spacing and high-contrast solid borders across Sepia and Dark modes.',
+      ],
+    },
+  },
+  {
     version: '2.1.0',
     date: '2026-09-07',
     title: 'Deterministic Literary Accolades & Tactile Ex-Libris Bookplates (Milestone 4, Point 1)',

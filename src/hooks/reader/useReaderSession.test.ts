@@ -275,4 +275,39 @@ describe('useReaderSession', () => {
     expect(result.current.currentChapterPage).toBe(1);
     expect(result.current.resumeNotice).toBeNull();
   });
+
+  it('jumps directly to a specified chapter and page using jumpTo', () => {
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 100,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 3,
+        fontSize: 18,
+        readingMode: 'paginated',
+      })
+    );
+
+    act(() => {
+      result.current.jumpTo(1, 1);
+    });
+
+    expect(result.current.activeChapterIndex).toBe(1);
+    expect(result.current.currentChapterPage).toBe(1);
+  });
+
+  it('works with default internalized hasMounted when not explicitly passed', () => {
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 100,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 3,
+        fontSize: 18,
+        readingMode: 'paginated',
+      })
+    );
+
+    expect(result.current.activeChapterIndex).toBe(0);
+    expect(result.current.currentChapterPage).toBe(1);
+  });
 });

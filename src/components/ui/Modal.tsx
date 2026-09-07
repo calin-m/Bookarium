@@ -13,6 +13,8 @@ export interface ModalProps {
   className?: string;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | 'full';
   showCloseButton?: boolean;
+  backdropTestId?: string;
+  testId?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -23,6 +25,8 @@ export const Modal: React.FC<ModalProps> = ({
   className,
   maxWidth = '2xl',
   showCloseButton = true,
+  backdropTestId = 'modal-backdrop',
+  testId,
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -58,6 +62,7 @@ export const Modal: React.FC<ModalProps> = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby={title ? 'modal-title' : undefined}
+          data-testid={testId}
         >
           {/* Fluid Backdrop */}
           <motion.div
@@ -67,7 +72,7 @@ export const Modal: React.FC<ModalProps> = ({
             transition={{ duration: 0.15 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-2xs"
             onClick={onClose}
-            data-testid="modal-backdrop"
+            data-testid={backdropTestId}
           />
 
           {/* Fluid Modal Surface */}

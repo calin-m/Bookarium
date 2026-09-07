@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-142%20Suites%20%7C%201144%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.64%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-147%20Suites%20%7C%201176%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.79%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,11 +38,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.1.0)
+## 🛠️ Latest Improvements (v2.2.0)
 
-- **Deterministic Literary Accolades Engine (`accolades-engine.ts`, `accolades-config.ts`)**: Pure evaluation algorithms calculating literary honors across 5 categories (Streaks, Immersion, Exploration, Scholarship, Curation) and 4 tiers (Parchment Bronze, Specular Silver, Gilded Gold, Obsidian Masterwork) with authentic Latin mottos.
-- **Historical Era Detection & Classical Antiquity Exploration (`accolades-engine.ts`)**: Mathematical mapper evaluating author birth/death years and Gutenberg subjects to classify works into Antiquity, Middle Ages, Renaissance, Enlightenment, Victorian, and Early 20th Century eras.
-- **Local-First Accolades Store with Cloud Sync (`useAccoladesStore.ts`)**: Zustand persistent store managing unlocked accolades, celebration queues, personal showcase pinning (max 3 bookplates), and bi-directional Supabase synchronization merging records idempotently into `public.user_accolades`.
+- **Single-Responsibility Notebook Quote Presenter (`NotebookQuoteCard.tsx`)**: Extracted full quote card presentation, inline color popover, citation copy feedback, and draft reflection editing with render-time state adjustment out of `NotebookView.tsx`, reducing file length by 302 lines with co-located unit test coverage (`NotebookQuoteCard.test.tsx`).
+- **Unified Delete Annotation Modal (`DeleteAnnotationModal.tsx`)**: Replaced triplicated delete confirmation modals across `ReaderAnnotationsDrawer`, `NotebookView`, and `read/[id]/page.tsx` with a shared dialog composing `@/components/ui/Modal` and `QuoteDeletePreview`.
+- **Notable Passages Book Spread Component (`NotablePassagesSpread.tsx`)**: Extracted dual-face quote spread out of `BookPreviewModal.tsx`, reducing modal length by 104 lines while ensuring 100% layout and quote stack parity across stationary base and 3D flipping leaf.
+- **Polymorphic Outbox Dispatcher in Annotation Store (`useAnnotationStore.ts`)**: Replaced procedural switch ladder in `flushOutbox` with declarative `ANNOTATION_OUTBOX_DISPATCHERS` strategy map matching the pattern in `useBookshelfStore.ts`.
+- **Declarative Reader Theme Cycling & Tokens (`reader-themes.ts`)**: Implemented `NEXT_READER_THEME` transition cycle map and added `speechHighlight` token to `ReaderThemeConfig`, eliminating repeated ternary cascades across desktop/mobile headers and `ReaderSurface.tsx`.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -520,7 +522,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1144 tests across 142 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1176 tests across 147 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

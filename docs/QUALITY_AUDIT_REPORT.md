@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 07 Sep 2026 09:35:26 GMT  
+**Last Generated**: Mon, 07 Sep 2026 10:53:32 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 142 passed  
-**Total Verified Tests**: 1144 passed  
+**Total Test Suites**: 147 passed  
+**Total Verified Tests**: 1176 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **142/142 test suites passed** (1144 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **147/147 test suites passed** (1176 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 30 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 31 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.64%** (5759/6216) — *Target: $ge$ 80%*
-- **Statements**: **90.98%** (6264/6885) — *Target: $ge$ 80%*
-- **Functions**: **88.7%** (1437/1620) — *Target: $ge$ 80%*
-- **Branches**: **81.22%** (5221/6428) — *Target: $ge$ 80%*
+- **Lines**: **92.79%** (5792/6242) — *Target: $ge$ 80%*
+- **Statements**: **91.16%** (6295/6905) — *Target: $ge$ 80%*
+- **Functions**: **88.94%** (1448/1628) — *Target: $ge$ 80%*
+- **Branches**: **81.43%** (5216/6405) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (142 Suites / 1144 Tests)
+## 🧪 Comprehensive Test Suite Catalog (147 Suites / 1176 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 104 Tests)
 
@@ -206,7 +206,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (21 Suites · 221 Tests)
+### 🎨 Catalog & Presentation (23 Suites · 233 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -508,6 +508,30 @@
 </details>
 
 <details>
+<summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders primary quote with CC0 header badge`
+- ✔ `renders secondary and tertiary quotes when provided`
+- ✔ `adjusts padding and line clamp when there are 2 quotes`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (9 tests)</summary>
+
+- ✔ `renders book metadata, quote excerpt, and note`
+- ✔ `toggles color swatch popover and updates color on click`
+- ✔ `dismisses color popover when pressing Escape`
+- ✔ `enters edit mode and handles saving modified note and color shade`
+- ✔ `calls onCancelEdit when cancelling editing`
+- ✔ `triggers delete reflection from editor and from note header`
+- ✔ `triggers delete annotation and jump to reader from card footer`
+- ✔ `copies formatted citation to clipboard and displays Copied state`
+- ✔ `displays Add a personal note prompt when annotation has no note`
+
+</details>
+
+<details>
 <summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
@@ -555,7 +579,17 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (16 Suites · 131 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 136 Tests)
+
+<details>
+<summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `renders correctly when open with quote text and note preview`
+- ✔ `calls onClose when Cancel button is clicked`
+- ✔ `calls onConfirm when Delete Note button is clicked`
+- ✔ `supports custom title and description overrides`
+
+</details>
 
 <details>
 <summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
@@ -698,7 +732,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `renders null when isOpen is false`
 - ✔ `renders narration metadata, page coordinates, and progress percentage`
@@ -711,6 +745,7 @@
 - ✔ `calls onClose when clicking close button`
 - ✔ `adapts properly to sepia and dark themes`
 - ✔ `renders with mobile-responsive positioning and WCAG touch target classes`
+- ✔ `correctly uses UseReaderSpeechReturn facade prop when provided`
 
 </details>
 
@@ -817,7 +852,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (8 Suites · 119 Tests)
+### ⚡ Zustand State Stores (8 Suites · 121 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -834,7 +869,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -854,6 +889,8 @@
 - ✔ `clamps oversized text and note payloads to prevent localStorage quota exhaustion`
 - ✔ `updates book metadata for annotations with missing or placeholder metadata`
 - ✔ `ignores invalid or placeholder titles when calling updateBookMetadata`
+- ✔ `flushes outbox with polymorphic dispatchers for UPSERT and DELETE actions`
+- ✔ `retains failing actions in outbox when dispatcher throws error`
 
 </details>
 
@@ -986,7 +1023,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (22 Suites · 205 Tests)
+### 📚 Gutenberg Parsers & Metadata (23 Suites · 211 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (11 tests)</summary>
@@ -1217,6 +1254,18 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (6 tests)</summary>
+
+- ✔ `returns empty array when text or annotations are empty`
+- ✔ `returns empty array when no annotations match the text`
+- ✔ `matches single annotation with exact coordinates`
+- ✔ `sorts multiple disjoint annotations in start order`
+- ✔ `resolves overlapping annotations by prioritizing earlier non-overlapping spans`
+- ✔ `captures multiple occurrences of the same phrase`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/reading-analytics.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `formats a date to YYYY-MM-DD`
@@ -1325,7 +1374,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (19 Suites · 160 Tests)
+### 🔄 Hooks & React Query (19 Suites · 162 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
@@ -1460,7 +1509,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -1470,6 +1519,8 @@
 - ✔ `restores position from cloud when authenticated and local is empty`
 - ✔ `does not overwrite readingProgress with 0 and shows completed notice when readingStatus is finished`
 - ✔ `handleRestart resets progress to 0 and transitions readingStatus to currently_reading`
+- ✔ `jumps directly to a specified chapter and page using jumpTo`
+- ✔ `works with default internalized hasMounted when not explicitly passed`
 
 </details>
 
@@ -1601,7 +1652,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (43 Suites · 185 Tests)
+### 🧩 UI Primitives & Motion (44 Suites · 190 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1713,7 +1764,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/accolades/ExLibrisBookplate.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/accolades/ExLibrisBookplate.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders title, Latin motto, and description`
 - ✔ `displays unlocked state with date and interactive pin button`
@@ -1721,11 +1772,12 @@
 - ✔ `displays locked state with progress indicator and lock icon`
 - ✔ `disables pinning when isPinningDisabled is true and item is not already pinned`
 - ✔ `handles mouse interactions for 3D perspective sheen without crashing`
+- ✔ `applies theme-aware solid borders on woodcut frame and dividers without vanishing fractional opacities`
 
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountAccoladesCard.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/account/AccountAccoladesCard.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders card title, subtitle, and category tabs`
 - ✔ `shows empty showcase message when no bookplates are pinned`
@@ -1733,6 +1785,7 @@
 - ✔ `renders pinned bookplate in showcase when pinned`
 - ✔ `displays warning when trying to pin more than 3 bookplates`
 - ✔ `invokes cloud sync on mount if userId is provided`
+- ✔ `applies theme-aware solid borders without vanishing fractional opacities`
 
 </details>
 
@@ -2000,6 +2053,15 @@
 </details>
 
 <details>
+<summary><b><code>src/config/reader-themes.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `returns valid config tokens for all supported themes`
+- ✔ `falls back gracefully to light theme for null, undefined, or invalid theme`
+- ✔ `correctly cycles through themes with NEXT_READER_THEME`
+
+</details>
+
+<details>
 <summary><b><code>src/config/routes.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `provides static canonical routes`
@@ -2050,7 +2112,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **3 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

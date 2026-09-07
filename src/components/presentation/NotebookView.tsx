@@ -6,18 +6,14 @@ import {
   Highlighter,
   Search,
   BookOpen,
-  Copy,
-  Check,
   Trash2,
-  Edit3,
-  ExternalLink,
-  MessageSquare,
   X,
   Layers,
   Clock,
   AlertTriangle,
-  Palette,
 } from 'lucide-react';
+import { NotebookQuoteCard } from './NotebookQuoteCard';
+import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
 import {
   useAnnotationStore,
   useHydratedAnnotations,
@@ -40,7 +36,6 @@ import { formatAuthorNames } from '@/lib/utils';
 import type { GutendexBook } from '@/types/book.types';
 
 import {
-  ANNOTATION_COLOR_CONFIG,
   ANNOTATION_COLOR_LIST,
   ALL_COLORS_FILTER_BADGE,
 } from '@/config/annotation-tokens';
@@ -48,13 +43,6 @@ import {
 export interface NotebookViewProps {
   onBrowseCatalog?: () => void;
 }
-
-const HIGHLIGHT_COLOR_SWATCHES = ANNOTATION_COLOR_LIST.map((c) => ({
-  id: c.id,
-  label: c.label,
-  pillClass: c.notebookSwatchClass,
-  activeRing: c.notebookActiveRing,
-}));
 
 const COLOR_FILTERS: Array<{ id: HighlightColor | 'all'; label: string; badgeClass: string }> = [
   { id: 'all', label: 'All Colors', badgeClass: ALL_COLORS_FILTER_BADGE },
@@ -64,29 +52,6 @@ const COLOR_FILTERS: Array<{ id: HighlightColor | 'all'; label: string; badgeCla
     badgeClass: c.filterBadgeClass,
   })),
 ];
-
-const HIGHLIGHT_CARD_COLORS: Record<HighlightColor, { border: string; bg: string; text: string }> = {
-  yellow: {
-    border: ANNOTATION_COLOR_CONFIG.yellow.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.yellow.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.yellow.cardTextClass,
-  },
-  amber: {
-    border: ANNOTATION_COLOR_CONFIG.amber.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.amber.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.amber.cardTextClass,
-  },
-  mint: {
-    border: ANNOTATION_COLOR_CONFIG.mint.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.mint.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.mint.cardTextClass,
-  },
-  rose: {
-    border: ANNOTATION_COLOR_CONFIG.rose.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.rose.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.rose.cardTextClass,
-  },
-};
 
 export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
@@ -148,34 +113,6 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [reflectionToDelete, setReflectionToDelete] = useState<Annotation | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
-  const [editNoteText, setEditNoteText] = useState('');
-  const [editColor, setEditColor] = useState<HighlightColor>('yellow');
-  const [activeColorPickerId, setActiveColorPickerId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Dismiss quick color swatch popover when clicking outside or pressing Escape
-  useEffect(() => {
-    if (!activeColorPickerId) return;
-
-    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target?.closest('[data-testid^="color-badge-container-"]')) return;
-      setActiveColorPickerId(null);
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setActiveColorPickerId(null);
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [activeColorPickerId]);
 
   const colorTabsRef = useRef<HTMLDivElement>(null);
 
@@ -298,30 +235,21 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   }, [annotations]);
 
   // Handlers
-  const handleCopyCitation = (ann: Annotation) => {
-    const { title, author } = resolveBookDetails(ann);
-    const citation = `"${ann.selectedText}"\n— ${author}, ${title} (Section ${ann.chapterIndex + 1}, Page ${ann.chapterPage})`;
-
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(citation).catch(() => {});
+  const handleSaveNote = async (
+    id: string,
+    noteText: string,
+    color: HighlightColor,
+    originalColor: HighlightColor
+  ) => {
+    if (color !== originalColor) {
+      await updateAnnotationColor(id, color, user?.id);
     }
-    setCopiedId(ann.id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleStartEditNote = (ann: Annotation) => {
-    setEditingAnnotationId(ann.id);
-    setEditNoteText(ann.note || '');
-    setEditColor(ann.color);
-    setActiveColorPickerId(null);
-  };
-
-  const handleSaveNote = async (id: string, originalColor: HighlightColor) => {
-    if (editColor !== originalColor) {
-      await updateAnnotationColor(id, editColor, user?.id);
-    }
-    await updateAnnotationNote(id, editNoteText, user?.id);
+    await updateAnnotationNote(id, noteText, user?.id);
     setEditingAnnotationId(null);
+  };
+
+  const handleUpdateColor = async (id: string, color: HighlightColor) => {
+    await updateAnnotationColor(id, color, user?.id);
   };
 
   const handleDelete = async (id: string) => {
@@ -598,66 +526,19 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       </Modal>
 
       {/* Delete Single Annotation Confirmation Modal */}
-      <Modal
+      <DeleteAnnotationModal
         isOpen={annotationToDelete !== null}
         onClose={() => setAnnotationToDelete(null)}
+        onConfirm={async () => {
+          if (annotationToDelete) {
+            await handleDelete(annotationToDelete.id);
+            setAnnotationToDelete(null);
+          }
+        }}
+        annotation={annotationToDelete}
         title="Delete Saved Note & Highlight?"
-        maxWidth="md"
-      >
-        <div className="p-6 space-y-5" data-testid="delete-single-note-dialog">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="space-y-2">
-              <p className="font-semibold text-foreground text-sm sm:text-base">
-                Are you sure you want to delete this saved passage?
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                This will remove the highlight and any attached personal reflections from your commonplace book. This action cannot be undone.
-              </p>
-              {annotationToDelete && (
-                <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border text-xs">
-                  <p className="font-serif italic text-foreground/90 line-clamp-3">
-                    &ldquo;{annotationToDelete.selectedText}&rdquo;
-                  </p>
-                  {annotationToDelete.note && (
-                    <p className="mt-1.5 pt-1.5 border-t border-border font-sans text-muted-foreground line-clamp-2">
-                      <span className="font-mono text-[10px] uppercase text-primary mr-1">Note:</span>
-                      {annotationToDelete.note}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAnnotationToDelete(null)}
-              className="text-xs font-mono uppercase"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={async () => {
-                if (annotationToDelete) {
-                  await handleDelete(annotationToDelete.id);
-                  setAnnotationToDelete(null);
-                }
-              }}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete Note
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        description="This will remove the highlight and any attached personal reflections from your commonplace book. This action cannot be undone."
+      />
 
       {/* Delete Single Personal Reflection Confirmation Modal */}
       <Modal
@@ -719,251 +600,22 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   // Quote Card Renderer
   function renderQuoteCard(ann: Annotation) {
     const { title, author } = resolveBookDetails(ann);
-    const isEditing = editingAnnotationId === ann.id;
-    // Live Preview: If currently editing, preview the draft editColor; otherwise use saved ann.color
-    const activeColor = isEditing ? editColor : ann.color;
-    const colorStyle = HIGHLIGHT_CARD_COLORS[activeColor] || HIGHLIGHT_CARD_COLORS.yellow;
-    const isCopied = copiedId === ann.id;
 
     return (
-      <article
+      <NotebookQuoteCard
         key={ann.id}
-        data-testid={`notebook-quote-card-${ann.id}`}
-        className={`relative flex flex-col justify-between p-4 sm:p-5 rounded-xl border border-border bg-card shadow-booksaw hover:shadow-booksaw-hover hover:border-primary/40 transition-all border-l-4 ${colorStyle.border}`}
-      >
-        <div className="space-y-3">
-          {/* Metadata Topline */}
-          <div className="flex items-center justify-between gap-2 text-[11px] font-mono text-muted-foreground">
-            <div className="flex items-center gap-1.5 truncate">
-              <span className="font-semibold text-foreground truncate" title={`${title} by ${author}`}>
-                {title}
-              </span>
-              <span className="text-muted-foreground hidden sm:inline truncate">by {author}</span>
-              <span>•</span>
-              <span className="truncate">Section {ann.chapterIndex + 1}, p. {ann.chapterPage}</span>
-            </div>
-            {/* Quick Color Swatch Badge & Popover */}
-            <div className="relative shrink-0" data-testid={`color-badge-container-${ann.id}`}>
-              <button
-                type="button"
-                onClick={() => setActiveColorPickerId((prev) => (prev === ann.id ? null : ann.id))}
-                data-testid={`color-badge-btn-${ann.id}`}
-                aria-label={`Highlight color: ${activeColor}. Click to change color.`}
-                aria-expanded={activeColorPickerId === ann.id}
-                title="Click to change highlight color"
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer select-none border border-transparent hover:border-current/30 ${colorStyle.bg} ${colorStyle.text}`}
-              >
-                <span>{activeColor}</span>
-                <Palette className="w-2.5 h-2.5 opacity-70" />
-              </button>
-
-              {activeColorPickerId === ann.id && (
-                <div
-                  data-testid={`quick-color-popover-${ann.id}`}
-                  className="absolute right-0 top-full mt-1.5 z-20 p-1.5 rounded-xl border border-border bg-card shadow-booksaw flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
-                >
-                  {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
-                    const isSelected = ann.color === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        aria-label={`Change highlight color to ${c.label}`}
-                        title={`Change to ${c.label}`}
-                        onClick={async () => {
-                          await updateAnnotationColor(ann.id, c.id, user?.id);
-                          setActiveColorPickerId(null);
-                        }}
-                        data-testid={`quick-color-btn-${ann.id}-${c.id}`}
-                        className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
-                          isSelected ? c.activeRing : ''
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Highlight Quote */}
-          <blockquote className="font-serif italic text-sm sm:text-base text-foreground leading-relaxed">
-            &ldquo;{ann.selectedText}&rdquo;
-          </blockquote>
-
-          {/* Personal Note Box */}
-          {isEditing ? (
-            <div className="space-y-2.5 pt-1">
-              {/* Highlight Shade Picker in Edit Mode */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-border">
-                <span className="text-[11px] font-mono text-muted-foreground">Highlight Shade:</span>
-                <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Highlight color">
-                  {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
-                    const isSelected = editColor === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={isSelected}
-                        aria-label={c.label}
-                        title={c.label}
-                        onClick={() => setEditColor(c.id)}
-                        data-testid={`edit-color-btn-${ann.id}-${c.id}`}
-                        className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
-                          isSelected ? c.activeRing : ''
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-
-              <textarea
-                data-testid={`edit-note-textarea-${ann.id}`}
-                value={editNoteText}
-                onChange={(e) => setEditNoteText(e.target.value)}
-                placeholder="Write your reflection or personal note..."
-                rows={3}
-                className="w-full text-xs p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary font-sans leading-relaxed resize-none"
-              />
-              <div className="flex items-center justify-between gap-2 pt-1">
-                {ann.note ? (
-                  <button
-                    type="button"
-                    onClick={() => setReflectionToDelete(ann)}
-                    aria-label="Delete note"
-                    data-testid={`delete-reflection-editor-btn-${ann.id}`}
-                    className="text-[11px] font-mono text-destructive/80 hover:text-destructive hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span>Delete Note</span>
-                  </button>
-                ) : (
-                  <div />
-                )}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingAnnotationId(null)}
-                    className="px-2.5 py-1 text-xs font-mono rounded text-muted-foreground hover:text-foreground cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleSaveNote(ann.id, ann.color)}
-                    className="text-xs font-mono uppercase h-7 px-3"
-                  >
-                    Save Note
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : ann.note ? (
-            <div className="p-2.5 rounded-lg bg-muted/60 border border-border text-xs font-sans text-foreground/90 space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <MessageSquare className="w-3 h-3 text-primary" />
-                  Personal Reflection
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleStartEditNote(ann)}
-                    aria-label="Edit personal reflection"
-                    className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
-                  >
-                    Edit
-                  </button>
-                  <span className="text-border select-none" aria-hidden="true">·</span>
-                  <button
-                    type="button"
-                    onClick={() => setReflectionToDelete(ann)}
-                    aria-label="Delete personal reflection"
-                    data-testid={`delete-reflection-btn-${ann.id}`}
-                    className="text-muted-foreground hover:text-destructive hover:underline cursor-pointer transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-              <p className="leading-relaxed whitespace-pre-wrap">{ann.note}</p>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => handleStartEditNote(ann)}
-              className="inline-flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors pt-1 cursor-pointer"
-            >
-              <Edit3 className="w-3 h-3" />
-              <span>Add a personal note...</span>
-            </button>
-          )}
-        </div>
-
-        {/* Card Action Footer */}
-        <div className="flex items-center justify-between gap-2 pt-4 mt-3 border-t border-border text-xs font-mono">
-          <div className="flex items-center gap-1 text-muted-foreground">
-            {/* Copy Citation */}
-            <button
-              type="button"
-              onClick={() => handleCopyCitation(ann)}
-              data-testid={`copy-citation-btn-${ann.id}`}
-              className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1 text-[11px] cursor-pointer"
-              title="Copy quote with full academic citation"
-            >
-              {isCopied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy</span>
-                </>
-              )}
-            </button>
-
-            {/* Edit Note & Color */}
-            <button
-              type="button"
-              onClick={() => handleStartEditNote(ann)}
-              data-testid={`edit-quote-btn-${ann.id}`}
-              className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1 text-[11px] cursor-pointer"
-              title="Edit personal reflection and color"
-              aria-label="Edit personal reflection and color"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit</span>
-            </button>
-
-            {/* Delete Annotation */}
-            <button
-              type="button"
-              onClick={() => setAnnotationToDelete(ann)}
-              data-testid={`delete-quote-btn-${ann.id}`}
-              className="p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
-              title="Delete passage"
-              aria-label="Delete passage"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Jump to Reader */}
-          <button
-            type="button"
-            onClick={() => handleJumpToReader(ann)}
-            data-testid={`jump-reader-btn-${ann.id}`}
-            className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer font-medium text-[11px]"
-          >
-            <span>Read Passage</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
-        </div>
-      </article>
+        annotation={ann}
+        bookTitle={title}
+        bookAuthor={author}
+        isEditing={editingAnnotationId === ann.id}
+        onStartEdit={(target) => setEditingAnnotationId(target.id)}
+        onCancelEdit={() => setEditingAnnotationId(null)}
+        onSaveNote={handleSaveNote}
+        onUpdateColor={handleUpdateColor}
+        onRequestDeleteReflection={(target) => setReflectionToDelete(target)}
+        onRequestDeleteAnnotation={(target) => setAnnotationToDelete(target)}
+        onJumpToReader={handleJumpToReader}
+      />
     );
   }
 };
