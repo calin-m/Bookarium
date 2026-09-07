@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 07 Sep 2026 08:30:36 GMT  
+**Last Generated**: Mon, 07 Sep 2026 09:35:26 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 137 passed  
-**Total Verified Tests**: 1107 passed  
+**Total Test Suites**: 142 passed  
+**Total Verified Tests**: 1144 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **137/137 test suites passed** (1107 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **142/142 test suites passed** (1144 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 29 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 30 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.75%** (5521/5952) — *Target: $ge$ 80%*
-- **Statements**: **91.09%** (6006/6593) — *Target: $ge$ 80%*
-- **Functions**: **88.42%** (1368/1547) — *Target: $ge$ 80%*
-- **Branches**: **81.18%** (5017/6180) — *Target: $ge$ 80%*
+- **Lines**: **92.64%** (5759/6216) — *Target: $ge$ 80%*
+- **Statements**: **90.98%** (6264/6885) — *Target: $ge$ 80%*
+- **Functions**: **88.7%** (1437/1620) — *Target: $ge$ 80%*
+- **Branches**: **81.22%** (5221/6428) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (137 Suites / 1107 Tests)
+## 🧪 Comprehensive Test Suite Catalog (142 Suites / 1144 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 104 Tests)
 
@@ -817,7 +817,21 @@
 
 </details>
 
-### ⚡ Zustand State Stores (7 Suites · 111 Tests)
+### ⚡ Zustand State Stores (8 Suites · 119 Tests)
+
+<details>
+<summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `initializes with clean default state`
+- ✔ `evaluates and unlocks accolades when context meets criteria`
+- ✔ `dismisses active celebration and shifts next pending celebration`
+- ✔ `toggles pinning of unlocked accolades up to MAX_PINNED_ACCOLADES`
+- ✔ `rejects pinning locked accolades`
+- ✔ `enforces maximum pinned limit of 3 accolades`
+- ✔ `retrieves pinned accolade definitions via selector`
+- ✔ `syncs with cloud by merging remote accolades and pushing local ones`
+
+</details>
 
 <details>
 <summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
@@ -972,7 +986,24 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (21 Suites · 194 Tests)
+### 📚 Gutenberg Parsers & Metadata (22 Suites · 205 Tests)
+
+<details>
+<summary><b><code>src/lib/accolades-engine.test.ts</code></b> (11 tests)</summary>
+
+- ✔ `determines antiquity from author years`
+- ✔ `determines victorian/19th century from author years`
+- ✔ `determines renaissance from author years`
+- ✔ `falls back to subjects and languages when author years are null`
+- ✔ `returns null if no era markers can be inferred`
+- ✔ `identifies antiquity and middle-ages works as ancient`
+- ✔ `builds a comprehensive context from store state slices`
+- ✔ `finds definitions by ID`
+- ✔ `formats progress with correct units`
+- ✔ `accurately unlocks accolades and reports newly unlocked`
+- ✔ `does not include already unlocked accolades in newlyUnlocked`
+
+</details>
 
 <details>
 <summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (16 tests)</summary>
@@ -1258,7 +1289,7 @@
 <details>
 <summary><b><code>src/lib/sync-utils.test.ts</code></b> (3 tests)</summary>
 
-- ✔ `triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, and Habits stores`
+- ✔ `triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, Habits, and Accolades stores`
 - ✔ `safely exits without calling stores if userId is empty`
 - ✔ `gracefully settles and does not throw if one store encounters a network rejection`
 
@@ -1570,7 +1601,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (40 Suites · 167 Tests)
+### 🧩 UI Primitives & Motion (43 Suites · 185 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1581,7 +1612,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated`
 - ✔ `renders authenticated profile and handles saving display name`
@@ -1599,6 +1630,7 @@
 - ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
 - ✔ `handles resending email verification on unverified account`
 - ✔ `renders notes & quotes count in library statistics`
+- ✔ `renders Ex-Libris Bookplates & Accolades section on authenticated dashboard`
 
 </details>
 
@@ -1666,6 +1698,41 @@
 - ✔ `generates canonical sitemap entries for root and privacy routes`
 - ✔ `indexes featured public domain classic books`
 - ✔ `provides valid timestamps across all entries`
+
+</details>
+
+<details>
+<summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
+
+- ✔ `renders nothing when activeAccolade is null`
+- ✔ `renders celebration details when an accolade is provided`
+- ✔ `dismisses when close button is clicked`
+- ✔ `dismisses when backdrop is clicked`
+- ✔ `dismisses when Escape key is pressed`
+
+</details>
+
+<details>
+<summary><b><code>src/components/accolades/ExLibrisBookplate.test.tsx</code></b> (6 tests)</summary>
+
+- ✔ `renders title, Latin motto, and description`
+- ✔ `displays unlocked state with date and interactive pin button`
+- ✔ `displays pinned state when isPinned is true`
+- ✔ `displays locked state with progress indicator and lock icon`
+- ✔ `disables pinning when isPinningDisabled is true and item is not already pinned`
+- ✔ `handles mouse interactions for 3D perspective sheen without crashing`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountAccoladesCard.test.tsx</code></b> (6 tests)</summary>
+
+- ✔ `renders card title, subtitle, and category tabs`
+- ✔ `shows empty showcase message when no bookplates are pinned`
+- ✔ `filters bookplates when clicking category tabs`
+- ✔ `renders pinned bookplate in showcase when pinned`
+- ✔ `displays warning when trying to pin more than 3 bookplates`
+- ✔ `invokes cloud sync on mount if userId is provided`
 
 </details>
 
@@ -1983,7 +2050,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **3 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

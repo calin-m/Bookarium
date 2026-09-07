@@ -30,6 +30,7 @@ function extractDatabaseCatalog(rootDirPath) {
     user_annotations: '`useAnnotationStore`',
     user_book_curation: '`useBookshelfStore`',
     user_reading_habits: '`useHabitsStore`',
+    user_accolades: '`useAccoladesStore`',
   };
 
   const descMap = {
@@ -41,6 +42,7 @@ function extractDatabaseCatalog(rootDirPath) {
     user_annotations: 'Passage text highlights (4 pastel palettes) and scholarly marginalia notes.',
     user_book_curation: 'Personal 1–5 star ratings and reading status classification.',
     user_reading_habits: 'Reading streaks (5-min threshold), daily activity dates, annual challenge goals, and dual immersion telemetry.',
+    user_accolades: 'Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata.',
   };
 
   while ((match = tableRegex.exec(content)) !== null) {
@@ -120,6 +122,7 @@ function generateMarkdown() {
     '            StorePref[("⚙️ usePreferencesStore\\n(sticky scroll, layout choices)")]',
     '            StoreAnnot[("🖍️ useAnnotationStore\\n(pastel highlights, notes, tags)")]',
     '            StoreHabits[("🔥 useHabitsStore\\n(streak, 5m threshold, dual immersion, cloud)")]',
+    '            StoreAccolades[("🎖️ useAccoladesStore\\n(accolades, showcase pinning, celebrations, cloud)")]',
     '            StoreOffline[("📦 IndexedDB Engine\\n(unabridged offline volume cache)")]',
     '        end',
     '        ',
@@ -147,7 +150,7 @@ function generateMarkdown() {
     '        Gutendex["🌐 Gutendex Search API\\n(70,000+ Zero-Copyright Volumes)"]',
     '        GutenbergCDN["🌐 Project Gutenberg CDN\\n(Official EPUB & Raw Plain-Text)"]',
     '        GoogleNMT["🌐 Google Neural MT\\n(Serverless AI Translation)"]',
-    '        SupabaseCloud[("⚡ Supabase Cloud\\n(Postgres RLS: profiles, shelves, progress, habits)")]',
+    '        SupabaseCloud[("⚡ Supabase Cloud\\n(Postgres RLS: profiles, shelves, progress, habits, accolades)")]',
     '        VercelEdge["⚡ Vercel Edge Platform\\n(Cookie-less Analytics & Speed Insights)"]',
     '    end',
     '',
@@ -158,6 +161,7 @@ function generateMarkdown() {
     '    Toolbar --> Grid',
     '    Nav --> Views',
     '    AccView --> HabitsCard',
+    '    AccView --> AccoladesCard',
     '    ',
     '    Grid --> QueryBooks',
     '    QueryBooks --> ProxyBooks',
@@ -176,12 +180,14 @@ function generateMarkdown() {
     '    ',
     '    Views --> StateStores',
     '    HabitsCard --> StoreHabits',
+    '    AccoladesCard --> StoreAccolades',
     '    TimerHook --> StoreHabits',
     '    ReaderEngine --> StateStores',
     '    StoreShelf -->|Cloud Sync via RLS| SupabaseCloud',
     '    StoreReader -->|Progress Sync| SupabaseCloud',
     '    StoreAuth -->|Session Auth| SupabaseCloud',
     '    StoreHabits -->|Habits Sync via RLS| SupabaseCloud',
+    '    StoreAccolades -->|Accolades Sync via RLS| SupabaseCloud',
     '    Telemetry -.->|Anonymous Metrics| VercelEdge',
     '```',
     '',
@@ -213,6 +219,8 @@ function generateMarkdown() {
   );
 
   const storeDescriptions = {
+    useAccoladesStore:
+      'Deterministic literary accolades evaluation, celebration queues, personal showcase pinning (max 3 bookplates), and bi-directional Supabase cloud synchronization.',
     useAnnotationStore:
       'Scholar marginalia, categorical pastel highlights (Amber, Emerald, Rose, Sky, Violet), reflections, tags, and commonplace book exports.',
     useAuthStore:

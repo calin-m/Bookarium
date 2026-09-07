@@ -40,4 +40,5 @@ export const STORAGE_KEYS = {
   THEME: 'bookarium-theme-preference',
   ANNOTATIONS: 'bookarium-annotations-storage',
   HABITS: 'bookarium-habits-storage',
+  ACCOLADES: 'bookarium-accolades-storage',
 } as const;

@@ -267,6 +267,39 @@ export interface Database {
         };
         Relationships: [];
       };
+      user_accolades: {
+        Row: {
+          id: string;
+          user_id: string;
+          accolade_id: string;
+          unlocked_at: string;
+          is_pinned: boolean;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          accolade_id: string;
+          unlocked_at?: string;
+          is_pinned?: boolean;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          accolade_id?: string;
+          unlocked_at?: string;
+          is_pinned?: boolean;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -288,3 +321,4 @@ export type ReadingProgress = Database['public']['Tables']['reading_progress']['
 export type UserAnnotation = Database['public']['Tables']['user_annotations']['Row'];
 export type UserBookCuration = Database['public']['Tables']['user_book_curation']['Row'];
 export type UserReadingHabits = Database['public']['Tables']['user_reading_habits']['Row'];
+export type UserAccolade = Database['public']['Tables']['user_accolades']['Row'];

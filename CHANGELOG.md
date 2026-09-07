@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-09-07
+### *Deterministic Literary Accolades & Tactile Ex-Libris Bookplates (Milestone 4, Point 1)*
+
+### Added
+- Deterministic Literary Accolades Engine (`accolades-engine.ts`, `accolades-config.ts`): Pure evaluation algorithms calculating literary honors across 5 categories (Streaks, Immersion, Exploration, Scholarship, Curation) and 4 tiers (Parchment Bronze, Specular Silver, Gilded Gold, Obsidian Masterwork) with authentic Latin mottos.
+- Historical Era Detection & Classical Antiquity Exploration (`accolades-engine.ts`): Mathematical mapper evaluating author birth/death years and Gutenberg subjects to classify works into Antiquity, Middle Ages, Renaissance, Enlightenment, Victorian, and Early 20th Century eras.
+- Local-First Accolades Store with Cloud Sync (`useAccoladesStore.ts`): Zustand persistent store managing unlocked accolades, celebration queues, personal showcase pinning (max 3 bookplates), and bi-directional Supabase synchronization merging records idempotently into `public.user_accolades`.
+- Tactile Ex-Libris Bookplate Cards (`ExLibrisBookplate.tsx`): Classical woodcut-bordered bookplates with desktop 3D perspective tilt and specular sheen gradient tracking mouse position, and mobile spring physics tap interactions.
+- Wax-Seal Accolade Celebration Modal (`AccoladeCelebrationModal.tsx`): Accessible celebratory modal dialog displaying bestowed bookplates with animated wax-seal stamps, classical typography, escape key dismissal, and mobile haptic vibration feedback (`navigator.vibrate`).
+- Account Accolades Compendium & Showcase Card (`AccountAccoladesCard.tsx`): Interactive Account dashboard card featuring a 3-plate personal showcase, category filter tabs, live unlocked counter, and compendium grid.
+- Idempotent Database Schema & RLS Co-Evolution (`supabase/schema.sql`, `database.types.ts`): Provisioned `public.user_accolades` table with unique constraint on `(user_id, accolade_id)` and granular authenticated user isolation policies (`auth.uid() = user_id`).
+- Architecture Decision Record (`ADR-030`): Formally ratified deterministic literary accolades, tactile ex-libris bookplates, and showcase architecture in `docs/DECISIONS.md`.
+
+
 ## [2.0.0] - 2026-09-07
 ### *Reading Habit Telemetry, Annual Challenges & Reading Analytics (Milestone 3 Completion)*
 
@@ -456,3 +470,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-027: Reading Habit Telemetry, Annual Goals, and Extensible Accolade Architecture**
 - **ADR-028: Analytical Table of Contents Deduplication & Cross-Reference Protection Invariants**
 - **ADR-029: Dual Immersion Telemetry (Reading vs. Listening) & 5-Minute Active Streak Threshold**
+- **ADR-030: Deterministic Literary Accolades, Tactile Ex-Libris Bookplates & Showcase Architecture**

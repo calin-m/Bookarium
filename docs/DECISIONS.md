@@ -296,3 +296,22 @@
   - Reading habit streak integrity is dramatically strengthened with a meaningful 5-minute immersion threshold, eliminating false streaks from accidental page opens.
   - Complete transparency and granularity in reading habits with distinct visual reading vs. audio listening metrics and badges.
   - 100% backward-compatible, offline-first, and zero-error test suite co-evolution across stores, hooks, cards, and types.
+
+## ADR-030: Deterministic Literary Accolades, Tactile Ex-Libris Bookplates & Showcase Architecture
+- **Status**: Accepted
+- **Context**: Milestone 4, Point 1 specifies the creation of a deterministic Literary Accolades & Ex-Libris Bookplate system. Bookarium readers need tangible, classical recognition for reading milestones, streaks, temporal era exploration, scholarship, and audio immersion. The system must operate 100% offline-first for guest readers, sync seamlessly to Supabase with granular Row Level Security (Rule 9) when authenticated, and embody Bookarium's tactile skeuomorphic design language (classical woodcut borders, Latin mottos, wax-seal stamp celebrations, 3D perspective mouse tilt, and mobile haptic feedback).
+- **Decision**:
+  1. **Canonical Accolade Catalog (`src/config/accolades-config.ts`, `src/types/accolades.types.ts`)**: Define 10 literary accolades across 5 thematic categories (Streaks, Immersion, Exploration, Scholarship, Curation) and 4 visual tiers (Parchment Bronze, Specular Silver, Gilded Gold, Obsidian Masterwork), each equipped with authentic Latin mottos (e.g. *Nulla Dies Sine Linea*, *Per Aspera Ad Astra*, *Labor Omnia Vincit*, *Ex Oriente Lux*, *Tempus Fugit*).
+  2. **Deterministic Evaluation Engine (`src/lib/accolades-engine.ts`)**: Implement pure mathematical and historical evaluation algorithms mapping author birth/death years and Gutenberg metadata to historical literary eras (Antiquity, Middle Ages, Renaissance, Enlightenment, Victorian, Early 20th Century). Unify telemetry from `useHabitsStore`, `useBookshelfStore`, and `useAnnotationStore` via `buildAccoladeContext`. Compute clamped progress maps and identify newly unlocked accolades without false-positive re-triggers.
+  3. **Local-First Accolades Store with Cloud Sync (`src/stores/useAccoladesStore.ts`)**: Create `useAccoladesStore` with Zustand persist (`STORAGE_KEYS.ACCOLADES`). Provide celebration queues, personal showcase pinning (max 3 bookplates), and bi-directional cloud synchronization merging local and remote records idempotently into `public.user_accolades`. Integrate store into `syncAllStoresWithCloud` (`src/lib/sync-utils.ts`).
+  4. **Tactile Skeuomorphic UI Presentation (`ExLibrisBookplate.tsx`, `AccoladeCelebrationModal.tsx`, `AccountAccoladesCard.tsx`)**:
+     - Desktop: 3D perspective tilt (`rotateX`/`rotateY`) and dynamic specular sheen gradient tracking mouse movements.
+     - Mobile/Tablet: Spring physics tap feedback and subtle device vibration haptic feedback (`navigator.vibrate`) on pin toggles and modal bestowment.
+     - Wax-seal celebration modal for newly unlocked accolades featuring classical medallions, escape key support, and accessible dialog semantics.
+     - Compendium grid with category filter tabs and personal 3-plate showcase in the Account dashboard.
+  5. **Idempotent Database Schema Co-Evolution & RLS (Rule 9)**: Synchronize `supabase/schema.sql` (Section 9) and `src/types/database.types.ts` with `public.user_accolades` table, unique index on `(user_id, accolade_id)`, and granular authenticated Row Level Security policies (`auth.uid() = user_id`).
+- **Consequences**:
+  - Readers receive immediate, tangible, tactile feedback on literary accomplishments and habit milestones.
+  - 100% offline-first capability for guest readers; seamless multi-device persistence for authenticated accounts.
+  - Zero performance regressions; fully co-located unit and component test suite.
+  - Milestone 4 Point 1 fully achieved and verified on the living roadmap.

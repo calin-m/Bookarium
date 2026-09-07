@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-137%20Suites%20%7C%201107%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.75%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-142%20Suites%20%7C%201144%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.64%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,12 +38,11 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.0.0)
+## 🛠️ Latest Improvements (v2.1.0)
 
-- **Reading Streaks & Habit Telemetry Engine (`reading-analytics.ts`, `useHabitsStore.ts`)**: Pure mathematical consecutive streak calculations with 1-day grace period, longest streak tracking, 7-day visual week activity indicators, and total literary immersion duration tracking.
-- **Dual Immersion Telemetry & Background Audio Narration (`useReadingTimer.ts`, `useHabitsStore.ts`)**: Disentangled literary immersion into reading time (`totalReadingSeconds`) and listening time (`totalListeningSeconds`). Added background tab and idle bypass exception for active Text-to-Speech narration (`isPlayingTTS`), preserving immersion seconds when listening with the browser in the background.
-- **5-Minute Active Streak Threshold Standard (`useHabitsStore.ts`, `AccountHabitsCard.tsx`)**: Elevated daily streak qualification from 1 second to 5 minutes (`300s`) of combined active immersion, eliminating false streaks from accidental page opens and providing dynamic progress prompts (`Xm / 5m logged today`).
-- **Reading Telemetry Background Audio Retention (`useReadingTimer.ts`)**: Resolved issue where switching tabs during Text-to-Speech playback paused telemetry, ensuring uninterrupted listening time accumulation.
+- **Deterministic Literary Accolades Engine (`accolades-engine.ts`, `accolades-config.ts`)**: Pure evaluation algorithms calculating literary honors across 5 categories (Streaks, Immersion, Exploration, Scholarship, Curation) and 4 tiers (Parchment Bronze, Specular Silver, Gilded Gold, Obsidian Masterwork) with authentic Latin mottos.
+- **Historical Era Detection & Classical Antiquity Exploration (`accolades-engine.ts`)**: Mathematical mapper evaluating author birth/death years and Gutenberg subjects to classify works into Antiquity, Middle Ages, Renaissance, Enlightenment, Victorian, and Early 20th Century eras.
+- **Local-First Accolades Store with Cloud Sync (`useAccoladesStore.ts`)**: Zustand persistent store managing unlocked accolades, celebration queues, personal showcase pinning (max 3 bookplates), and bi-directional Supabase synchronization merging records idempotently into `public.user_accolades`.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -411,6 +410,7 @@ Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-devi
 | `public.user_annotations` | Table (RLS) | Passage highlights (yellow, amber, mint, rose) and personal scholarly notes |
 | `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status classification |
 | `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, and dual immersion duration (reading & listening) |
+| `public.user_accolades` | Table (RLS) | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata |
 | `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation |
 | `public.delete_current_user()` | RPC Function | Cascade user data erasure and complete self-service account deletion |
 
@@ -520,7 +520,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1107 tests across 137 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1144 tests across 142 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

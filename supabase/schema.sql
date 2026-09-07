@@ -377,4 +377,51 @@ CREATE POLICY "Users can delete their own reading habits"
 CREATE INDEX IF NOT EXISTS idx_user_reading_habits_user 
   ON public.user_reading_habits(user_id);
 
+-- ============================================================================
+-- 9. User Accolades Table (Literary Accolades & Ex-Libris Bookplates)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.user_accolades (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  accolade_id TEXT NOT NULL,
+  unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_pinned BOOLEAN NOT NULL DEFAULT false,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_accolade 
+  ON public.user_accolades(user_id, accolade_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_accolades_user 
+  ON public.user_accolades(user_id);
+
+ALTER TABLE public.user_accolades ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own accolades" ON public.user_accolades;
+CREATE POLICY "Users can view their own accolades"
+  ON public.user_accolades FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own accolades" ON public.user_accolades;
+CREATE POLICY "Users can insert their own accolades"
+  ON public.user_accolades FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own accolades" ON public.user_accolades;
+CREATE POLICY "Users can update their own accolades"
+  ON public.user_accolades FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own accolades" ON public.user_accolades;
+CREATE POLICY "Users can delete their own accolades"
+  ON public.user_accolades FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
 

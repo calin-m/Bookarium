@@ -20,5 +20,7 @@ describe('SITE_CONFIG & STORAGE_KEYS', () => {
     expect(STORAGE_KEYS.READER_SETTINGS).toBe('bookarium-reader-preferences');
     expect(STORAGE_KEYS.PREFERENCES).toBe('bookarium-navigation-preferences');
     expect(STORAGE_KEYS.THEME).toBe('bookarium-theme-preference');
+    expect(STORAGE_KEYS.HABITS).toBe('bookarium-habits-storage');
+    expect(STORAGE_KEYS.ACCOLADES).toBe('bookarium-accolades-storage');
   });
 });

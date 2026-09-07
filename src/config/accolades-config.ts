@@ -1,0 +1,189 @@
+import { AccoladeDefinition, AccoladeTier, AccoladeCategory } from '@/types/accolades.types';
+
+export interface TierVisualTokens {
+  name: string;
+  badgeBg: string;
+  badgeBorder: string;
+  badgeText: string;
+  cardBorder: string;
+  ribbonBg: string;
+  sealColor: string;
+  glowEffect: string;
+}
+
+export const ACCOLADE_TIER_CONFIG: Record<AccoladeTier, TierVisualTokens> = {
+  bronze: {
+    name: 'Parchment Bronze',
+    badgeBg: 'bg-amber-950/10 dark:bg-amber-900/20',
+    badgeBorder: 'border-amber-800/30 dark:border-amber-700/40',
+    badgeText: 'text-amber-800 dark:text-amber-300',
+    cardBorder: 'border-border hover:border-amber-700/40',
+    ribbonBg: 'bg-amber-800/15 text-amber-900 dark:text-amber-200 border-amber-800/30',
+    sealColor: '#92400e',
+    glowEffect: 'shadow-amber-900/10',
+  },
+  silver: {
+    name: 'Specular Silver',
+    badgeBg: 'bg-slate-500/10 dark:bg-slate-400/15',
+    badgeBorder: 'border-slate-400/30 dark:border-slate-400/40',
+    badgeText: 'text-slate-700 dark:text-slate-200',
+    cardBorder: 'border-border hover:border-slate-400/40',
+    ribbonBg: 'bg-slate-500/15 text-slate-800 dark:text-slate-200 border-slate-400/30',
+    sealColor: '#64748b',
+    glowEffect: 'shadow-slate-500/10',
+  },
+  gold: {
+    name: 'Gilded Gold',
+    badgeBg: 'bg-amber-500/15 dark:bg-amber-500/20',
+    badgeBorder: 'border-amber-500/40 dark:border-amber-400/40',
+    badgeText: 'text-amber-700 dark:text-amber-300',
+    cardBorder: 'border-border hover:border-amber-500/50',
+    ribbonBg: 'bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-500/40',
+    sealColor: '#d97706',
+    glowEffect: 'shadow-amber-500/15',
+  },
+  masterwork: {
+    name: 'Obsidian Masterwork',
+    badgeBg: 'bg-purple-950/15 dark:bg-purple-900/25',
+    badgeBorder: 'border-purple-600/40 dark:border-purple-500/50',
+    badgeText: 'text-purple-700 dark:text-purple-300',
+    cardBorder: 'border-border hover:border-purple-500/50',
+    ribbonBg: 'bg-purple-950/20 text-purple-900 dark:text-purple-200 border-purple-600/40',
+    sealColor: '#7e22ce',
+    glowEffect: 'shadow-purple-950/20',
+  },
+};
+
+export const ACCOLADE_CATEGORIES: { id: AccoladeCategory; label: string }[] = [
+  { id: 'all', label: 'All Bookplates' },
+  { id: 'streaks', label: 'Streaks' },
+  { id: 'immersion', label: 'Immersion' },
+  { id: 'exploration', label: 'Exploration' },
+  { id: 'scholarship', label: 'Scholarship' },
+  { id: 'curation', label: 'Curation' },
+];
+
+export const ACCOLADES_CATALOG: AccoladeDefinition[] = [
+  {
+    id: 'seven-day-sage',
+    title: 'Seven-Day Sage',
+    latinMotto: 'Nulla Dies Sine Linea',
+    description: 'Maintain a 7-day active reading streak with at least 5 minutes of immersion each day.',
+    tier: 'bronze',
+    category: 'streaks',
+    iconName: 'Flame',
+    target: 7,
+    unit: 'days',
+    evaluate: (ctx) => Math.max(ctx.currentStreak || 0, ctx.longestStreak || 0),
+  },
+  {
+    id: 'equinox-scholar',
+    title: 'Equinox Scholar',
+    latinMotto: 'Per Aspera Ad Astra',
+    description: 'Sustain a 30-day continuous daily reading streak.',
+    tier: 'silver',
+    category: 'streaks',
+    iconName: 'Calendar',
+    target: 30,
+    unit: 'days',
+    evaluate: (ctx) => Math.max(ctx.currentStreak || 0, ctx.longestStreak || 0),
+  },
+  {
+    id: 'centurion-of-letters',
+    title: 'Centurion of Letters',
+    latinMotto: 'Labor Omnia Vincit',
+    description: 'Reach an extraordinary 100-day literary reading streak.',
+    tier: 'gold',
+    category: 'streaks',
+    iconName: 'Sparkles',
+    target: 100,
+    unit: 'days',
+    evaluate: (ctx) => Math.max(ctx.currentStreak || 0, ctx.longestStreak || 0),
+  },
+  {
+    id: 'the-marathon-reader',
+    title: 'The Marathon Reader',
+    latinMotto: 'Vivere Est Cogitare',
+    description: 'Accumulate 25 hours of total literary immersion across reading and listening.',
+    tier: 'silver',
+    category: 'immersion',
+    iconName: 'BookOpen',
+    target: 25,
+    unit: 'hours',
+    evaluate: (ctx) =>
+      Math.floor(((ctx.totalReadingSeconds || 0) + (ctx.totalListeningSeconds || 0)) / 3600),
+  },
+  {
+    id: 'audio-ascetic',
+    title: 'Audio Ascetic',
+    latinMotto: 'Vox Clamantis',
+    description: 'Complete 5 hours of Text-to-Speech audio narration.',
+    tier: 'bronze',
+    category: 'immersion',
+    iconName: 'Headphones',
+    target: 5,
+    unit: 'hours',
+    evaluate: (ctx) => Math.floor((ctx.totalListeningSeconds || 0) / 3600),
+  },
+  {
+    id: 'ancient-antiquarian',
+    title: 'Ancient Antiquarian',
+    latinMotto: 'Ex Oriente Lux',
+    description: 'Complete an unabridged classical volume from Antiquity or the Middle Ages.',
+    tier: 'gold',
+    category: 'exploration',
+    iconName: 'Scroll',
+    target: 1,
+    unit: 'volume',
+    evaluate: (ctx) => (ctx.hasCompletedAncientBook ? 1 : 0),
+  },
+  {
+    id: 'century-voyager',
+    title: 'Century Voyager',
+    latinMotto: 'Tempus Fugit',
+    description: 'Read literature spanning at least 3 distinct historical literary eras.',
+    tier: 'silver',
+    category: 'exploration',
+    iconName: 'Compass',
+    target: 3,
+    unit: 'eras',
+    evaluate: (ctx) => (ctx.historicalErasExplored ? ctx.historicalErasExplored.length : 0),
+  },
+  {
+    id: 'commonplace-scholar',
+    title: 'Commonplace Scholar',
+    latinMotto: 'Florilegium',
+    description: 'Preserve 15 or more highlighted quotes or marginalia reflections in your Notebook.',
+    tier: 'bronze',
+    category: 'scholarship',
+    iconName: 'Feather',
+    target: 15,
+    unit: 'notes',
+    evaluate: (ctx) => ctx.totalAnnotationsCount || 0,
+  },
+  {
+    id: 'palette-virtuoso',
+    title: 'Palette Virtuoso',
+    latinMotto: 'Quattuor Colores',
+    description: 'Employ all 4 archival highlighter colors (Canary, Amber, Mint, Rose) in your scholarship.',
+    tier: 'silver',
+    category: 'scholarship',
+    iconName: 'Palette',
+    target: 4,
+    unit: 'colors',
+    evaluate: (ctx) => (ctx.highlightColorsUsed ? new Set(ctx.highlightColorsUsed).size : 0),
+  },
+  {
+    id: 'the-laureates-crown',
+    title: "The Laureate's Crown",
+    latinMotto: 'Coronam Accipere',
+    description: 'Achieve 100% completion of your Annual Reading Challenge.',
+    tier: 'masterwork',
+    category: 'curation',
+    iconName: 'Crown',
+    target: 100,
+    unit: '%',
+    evaluate: (ctx) => Math.min(100, Math.round(ctx.annualGoalPercent || 0)),
+  },
+];
+
