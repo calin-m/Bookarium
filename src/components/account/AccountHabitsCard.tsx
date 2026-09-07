@@ -1,43 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { Flame, Clock, Trophy, Edit3, Plus, Minus, CheckCircle, Calendar, Check, AlertCircle } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Flame, Clock, Trophy, Calendar, Check, AlertCircle, Sparkles } from 'lucide-react';
 import { useHydratedHabits, useHabitsStore } from '@/stores/useHabitsStore';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
 
 export interface AccountHabitsCardProps {
   userId?: string;
   completedBooksCount?: number;
 }
 
-function getReadingPaceHint(books: number): string {
-  if (books <= 0) return 'Set an annual target to see your reading pace.';
-  if (books === 12) return '~1.0 volume per month';
-  if (books === 24) return '~2.0 volumes per month (1 every 2 weeks)';
-  if (books === 52) return '~1.0 volume per week';
-  const perMonth = (books / 12).toFixed(1);
-  return `~${perMonth} volumes per month`;
+export interface ChallengeTier {
+  id: string;
+  title: string;
+  latinMotto: string;
+  tier: 'bronze' | 'silver' | 'gold' | 'masterwork';
+  target: number;
+  badgeLabel: string;
+  pace: string;
 }
+
+export const CANONICAL_CHALLENGE_TIERS: ChallengeTier[] = [
+  {
+    id: 'bibliophile-novice',
+    title: 'Bibliophile Novice',
+    latinMotto: 'Ad Initium',
+    tier: 'bronze',
+    target: 6,
+    badgeLabel: 'Bronze • 6 Volumes',
+    pace: '~1 vol every 2 months',
+  },
+  {
+    id: 'canonical-scholar',
+    title: 'Canonical Scholar',
+    latinMotto: 'Annus Mirabilis',
+    tier: 'silver',
+    target: 12,
+    badgeLabel: 'Silver • 12 Volumes',
+    pace: '~1 vol per month',
+  },
+  {
+    id: 'master-of-the-canon',
+    title: 'Master of the Canon',
+    latinMotto: 'Litterarum Magister',
+    tier: 'gold',
+    target: 24,
+    badgeLabel: 'Gold • 24 Volumes',
+    pace: '~2 vols per month',
+  },
+  {
+    id: 'the-laureates-crown',
+    title: "The Laureate's Crown",
+    latinMotto: 'Coronam Accipere',
+    tier: 'masterwork',
+    target: 52,
+    badgeLabel: 'Masterwork • 52 Volumes',
+    pace: '~1 vol per week',
+  },
+];
 
 export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
   userId,
   completedBooksCount = 0,
 }) => {
   const {
-    annualGoal,
     annualGoalYear,
     activeDates,
     totalReadingSeconds,
     totalListeningSeconds,
-    setAnnualGoal,
     getStreakStats,
     getStreakProgress,
-    getAnnualProgress,
     getFormattedDurationBreakdown,
     isHydrated,
   } = useHydratedHabits();
-
-  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [rawGoalInput, setRawGoalInput] = useState<string>(String(annualGoal));
 
   // Pull latest cloud habits on mount when authenticated user is present
   useEffect(() => {
@@ -48,31 +80,19 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
 
   const streakStats = getStreakStats();
   const streakProgress = getStreakProgress();
-  const annualProgress = getAnnualProgress(completedBooksCount);
   const durationBreakdown = getFormattedDurationBreakdown();
 
-  const numericGoal = parseInt(rawGoalInput, 10);
-  const currentGoalValue = !isNaN(numericGoal) ? numericGoal : 0;
-
-  const handleOpenGoalModal = () => {
-    setRawGoalInput(String(annualGoal));
-    setIsGoalModalOpen(true);
-  };
-
-  const handleSaveGoal = () => {
-    const finalTarget = Math.min(Math.max(currentGoalValue || 1, 1), 365);
-    setAnnualGoal(finalTarget, annualGoalYear, userId);
-    setIsGoalModalOpen(false);
-  };
-
-  const handleAdjustGoal = (delta: number) => {
-    const nextVal = Math.min(Math.max(currentGoalValue + delta, 1), 365);
-    setRawGoalInput(String(nextVal));
-  };
-
-  const handleSetPreset = (preset: number) => {
-    setRawGoalInput(String(preset));
-  };
+  // Canonical milestone progression
+  const currentCompleted = Math.max(0, completedBooksCount);
+  const nextTier =
+    CANONICAL_CHALLENGE_TIERS.find((t) => currentCompleted < t.target) ||
+    CANONICAL_CHALLENGE_TIERS[CANONICAL_CHALLENGE_TIERS.length - 1];
+  const isMasterworkCompleted = currentCompleted >= 52;
+  const currentTarget = nextTier.target;
+  const tierPercent = isMasterworkCompleted
+    ? 100
+    : Math.min(100, Math.round((currentCompleted / currentTarget) * 100));
+  const remainingBooks = Math.max(0, currentTarget - currentCompleted);
 
   return (
     <section
@@ -247,48 +267,45 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
           </div>
         </div>
 
-        {/* Strip 3: Annual Reading Challenge (Full Width Banner) */}
+        {/* Strip 3: Annual Reading Challenge (Canonical 4-Tier Milestone Ladder) */}
         <div
           className="bg-muted/30 border border-border rounded-xl p-4 sm:p-5 space-y-4 transition-colors hover:border-primary/40 hover:bg-muted/50"
           data-testid="annual-goal-metric"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-500" />
+              <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
               <span className="text-xs font-mono uppercase text-muted-foreground tracking-wider font-semibold">
                 {annualGoalYear} Reading Challenge
               </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-border">
+                {isMasterworkCompleted ? 'Masterwork Attained' : `${nextTier.title} in sight`}
+              </span>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenGoalModal}
-              className="h-7 px-2.5 text-xs font-mono text-foreground hover:text-primary gap-1.5"
-              aria-label="Edit annual reading goal"
-            >
-              <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
-              <span>Edit Goal</span>
-            </Button>
+            <div className="text-[11px] font-mono text-muted-foreground flex items-center gap-1.5 self-start sm:self-auto">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>4 Canonical Accolade Tiers</span>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl sm:text-3xl font-serif font-bold text-foreground">
-                {annualProgress.completedBooks}{' '}
+                {currentCompleted}{' '}
                 <span className="text-sm font-sans font-normal text-muted-foreground">
-                  / {annualProgress.targetBooks} Volumes
+                  / {currentTarget} Volumes
                 </span>
               </span>
               <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-border">
-                {annualProgress.percent}%
+                {tierPercent}%
               </span>
             </div>
 
             <p className="text-xs text-muted-foreground font-sans">
-              {annualProgress.isCompleted
-                ? 'Challenge completed! 🎉 You reached your annual reading target.'
-                : `${annualProgress.remainingBooks} ${annualProgress.remainingBooks === 1 ? 'volume' : 'volumes'} remaining to complete goal`}
+              {isMasterworkCompleted
+                ? "The Laureate's Crown achieved! 🎉 All 52 canonical volumes completed."
+                : `${remainingBooks} ${remainingBooks === 1 ? 'volume' : 'volumes'} remaining to unlock ${nextTier.title}`}
             </p>
           </div>
 
@@ -297,129 +314,77 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
             <div className="w-full h-2.5 rounded-full bg-secondary overflow-hidden border border-border">
               <div
                 className="h-full bg-primary rounded-full transition-all duration-500 shadow-xs"
-                style={{ width: `${annualProgress.percent}%` }}
+                style={{ width: `${tierPercent}%` }}
                 role="progressbar"
-                aria-valuenow={annualProgress.percent}
+                aria-valuenow={tierPercent}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label={`Annual reading goal: ${annualProgress.percent}% completed`}
+                aria-label={`Annual reading challenge: ${tierPercent}% completed towards ${nextTier.title}`}
               />
             </div>
             <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
               <span>0 Volumes</span>
-              <span>{annualProgress.targetBooks} Volumes Goal</span>
+              <span>Next Milestone: {currentTarget} Volumes ({nextTier.title})</span>
+            </div>
+          </div>
+
+          {/* 4 Canonical Milestone Ladder Cards */}
+          <div className="pt-2 border-t border-border">
+            <span className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider block mb-2.5">
+              Canonical Milestone Ladder
+            </span>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+              {CANONICAL_CHALLENGE_TIERS.map((tier) => {
+                const isAttained = currentCompleted >= tier.target;
+                const isCurrentTarget = !isAttained && nextTier.id === tier.id;
+
+                return (
+                  <div
+                    key={tier.id}
+                    className={`rounded-lg p-2.5 border transition-all ${
+                      isAttained
+                        ? 'bg-primary/5 border-primary/30 text-foreground'
+                        : isCurrentTarget
+                        ? 'bg-muted/60 border-primary/40 shadow-xs'
+                        : 'bg-muted/20 border-border opacity-65 text-muted-foreground'
+                    }`}
+                    data-testid={`milestone-tier-${tier.id}`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                        {tier.tier}
+                      </span>
+                      {isAttained ? (
+                        <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                          <Check className="w-3 h-3" />
+                          <span>Attained</span>
+                        </span>
+                      ) : isCurrentTarget ? (
+                        <span className="text-[10px] font-mono font-semibold text-primary px-1.5 py-0.5 rounded-full bg-primary/10 border border-border">
+                          In Sight
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {tier.target} vols
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-serif font-bold text-xs text-foreground line-clamp-1">
+                      {tier.title}
+                    </div>
+                    <div className="text-[10px] font-serif italic text-muted-foreground line-clamp-1">
+                      &ldquo;{tier.latinMotto}&rdquo;
+                    </div>
+                    <div className="text-[10px] font-mono text-muted-foreground mt-1.5">
+                      {tier.pace}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Goal Edit Modal */}
-      <Modal
-        isOpen={isGoalModalOpen}
-        onClose={() => setIsGoalModalOpen(false)}
-        title={`Set ${annualGoalYear} Reading Challenge`}
-        maxWidth="sm"
-      >
-        <div className="p-6 space-y-6">
-          <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-            Choose how many public domain volumes you aspire to read in {annualGoalYear}.
-          </p>
-
-          {/* Input & Stepper Controls */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-center gap-4 py-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => handleAdjustGoal(-1)}
-                disabled={currentGoalValue <= 1}
-                aria-label="Decrease target"
-              >
-                <Minus className="w-4 h-4" />
-              </Button>
-
-              <div className="w-28 text-center">
-                <input
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={rawGoalInput}
-                  onChange={(e) => setRawGoalInput(e.target.value)}
-                  onBlur={() => {
-                    const parsed = parseInt(rawGoalInput, 10);
-                    if (isNaN(parsed) || parsed < 1) {
-                      setRawGoalInput('1');
-                    } else if (parsed > 365) {
-                      setRawGoalInput('365');
-                    }
-                  }}
-                  className="w-full text-center text-3xl font-serif font-bold text-foreground bg-transparent border-b-2 border-primary focus:outline-hidden [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  aria-label="Annual reading target number"
-                />
-                <span className="text-[11px] font-mono text-muted-foreground block mt-1">
-                  volumes
-                </span>
-              </div>
-
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => handleAdjustGoal(1)}
-                disabled={currentGoalValue >= 365}
-                aria-label="Increase target"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Dynamic Reading Pace Hint */}
-            <p className="text-xs font-mono text-primary text-center font-medium">
-              {getReadingPaceHint(currentGoalValue)}
-            </p>
-          </div>
-
-          {/* Quick Preset Chips */}
-          <div className="space-y-2">
-            <span className="text-[11px] font-mono text-muted-foreground uppercase block text-center">
-              Quick Suggestions
-            </span>
-            <div className="flex items-center justify-center gap-2">
-              {[12, 24, 52].map((preset) => (
-                <Button
-                  key={preset}
-                  type="button"
-                  variant={currentGoalValue === preset ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => handleSetPreset(preset)}
-                  className="text-xs font-mono h-8 px-3"
-                >
-                  {preset} {preset === 12 ? '(1/mo)' : preset === 24 ? '(2/mo)' : '(1/wk)'}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Modal Action Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsGoalModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSaveGoal}
-              className="gap-1.5"
-            >
-              <CheckCircle className="w-4 h-4" />
-              <span>Save Challenge</span>
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </section>
   );
 };

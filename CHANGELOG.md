@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.0] - 2026-09-07
+### *Canonical 4-Tier Reading Challenge Ladder, Anti-Tamper Progression & Accolade Visual Stabilization*
+
+### Added
+- Canonical 4-Tier Milestone Accolades Ladder (`accolades-config.ts`, `accolades.types.ts`): Expanded the single curation accolade into a four-tier progressive compendium ladder evaluated deterministically against `completedBooksCount`: Bibliophile Novice (6 volumes, Bronze), Canonical Scholar (12 volumes, Silver), Master of the Canon (24 volumes, Gold), and The Laureate's Crown (52 volumes, Masterwork).
+- Dynamic Milestone Ladder Presentation (`AccountHabitsCard.tsx`): Added an interactive 4-card milestone track to the Reading Challenge dashboard strip displaying tier badges, Latin mottos, pace indicators, and real-time status badges (Attained with checkmark, In Sight, or locked with volume targets).
+- Architecture Decision Record (`ADR-032`): Formally ratified the canonical 4-tier challenge ladder, anti-tamper progression, and vector stroke stabilization in `docs/DECISIONS.md`.
+
+### Security
+- Supabase Function Search Path & RPC Privileges Hardening (`supabase/schema.sql`, `README.md`): Enforced immutable `SET search_path = ''` on `handle_new_user()` and `delete_current_user()` to eliminate search-path injection vulnerabilities. Revoked `EXECUTE` on `handle_new_user()` across all public and authenticated roles, and restricted `delete_current_user()` to authenticated sessions with active `auth.uid()` null guards.
+
+### Refactored
+- Anti-Tamper Challenge Tracking (`AccountHabitsCard.tsx`): Retired the arbitrary goal edit modal, input stepper, and "Edit Goal" button to prevent gamification exploits (e.g. setting goal = 1 to trivially trigger Masterwork accolades), calibrating progress bars directly to the active milestone target.
+- Accolade Symbol Vector Stroke Stabilization (`ExLibrisBookplate.tsx`): Eliminated stroke thickness throbbing on earned bookplate hover by removing conflicting `group-hover:scale-105` transforms, promoting SVG icons to dedicated GPU compositor layers via `[transform:translateZ(0)]`, `[backface-visibility:hidden]`, and `[shape-rendering:geometricPrecision]`, and isolating specular sheen gradients to `z-0` behind foreground content `relative z-10`.
+
+
 ## [2.2.0] - 2026-09-07
 ### *Global Encapsulation, Polymorphic Strategy Dispatching & Subsystem Architecture*
 
@@ -492,3 +508,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-029: Dual Immersion Telemetry (Reading vs. Listening) & 5-Minute Active Streak Threshold**
 - **ADR-030: Deterministic Literary Accolades, Tactile Ex-Libris Bookplates & Showcase Architecture**
 - **ADR-031: Global Encapsulation, Polymorphic Strategy Dispatching & Layout DRY Refactoring**
+- **ADR-032: Canonical 4-Tier Reading Challenge Ladder, Anti-Tamper Progression & Accolade Visual Stabilization**

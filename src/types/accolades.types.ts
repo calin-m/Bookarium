@@ -13,6 +13,9 @@ export type AccoladeId =
   | 'century-voyager'
   | 'commonplace-scholar'
   | 'palette-virtuoso'
+  | 'bibliophile-novice'
+  | 'canonical-scholar'
+  | 'master-of-the-canon'
   | 'the-laureates-crown';
 
 export type AccoladeTier = 'bronze' | 'silver' | 'gold' | 'masterwork';

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 07 Sep 2026 11:35:55 GMT  
+**Last Generated**: Mon, 07 Sep 2026 19:32:41 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 147 passed  
-**Total Verified Tests**: 1177 passed  
+**Total Verified Tests**: 1179 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **147/147 test suites passed** (1177 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **147/147 test suites passed** (1179 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 31 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 32 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.84%** (5797/6244) — *Target: $ge$ 80%*
-- **Statements**: **91.22%** (6301/6907) — *Target: $ge$ 80%*
-- **Functions**: **89.01%** (1450/1629) — *Target: $ge$ 80%*
-- **Branches**: **81.48%** (5219/6405) — *Target: $ge$ 80%*
+- **Lines**: **92.79%** (5774/6222) — *Target: $ge$ 80%*
+- **Statements**: **91.16%** (6274/6882) — *Target: $ge$ 80%*
+- **Functions**: **89.08%** (1444/1621) — *Target: $ge$ 80%*
+- **Branches**: **81.46%** (5216/6403) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (147 Suites / 1177 Tests)
+## 🧪 Comprehensive Test Suite Catalog (147 Suites / 1179 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 104 Tests)
 
@@ -1024,10 +1024,10 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (23 Suites · 211 Tests)
+### 📚 Gutenberg Parsers & Metadata (23 Suites · 212 Tests)
 
 <details>
-<summary><b><code>src/lib/accolades-engine.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `determines antiquity from author years`
 - ✔ `determines victorian/19th century from author years`
@@ -1039,6 +1039,7 @@
 - ✔ `finds definitions by ID`
 - ✔ `formats progress with correct units`
 - ✔ `accurately unlocks accolades and reports newly unlocked`
+- ✔ `evaluates progressive tiers of curation ladder based on completedBooksCount`
 - ✔ `does not include already unlocked accolades in newlyUnlocked`
 
 </details>
@@ -1653,7 +1654,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (44 Suites · 190 Tests)
+### 🧩 UI Primitives & Motion (44 Suites · 191 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1765,7 +1766,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/accolades/ExLibrisBookplate.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/accolades/ExLibrisBookplate.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders title, Latin motto, and description`
 - ✔ `displays unlocked state with date and interactive pin button`
@@ -1774,6 +1775,7 @@
 - ✔ `disables pinning when isPinningDisabled is true and item is not already pinned`
 - ✔ `handles mouse interactions for 3D perspective sheen without crashing`
 - ✔ `applies theme-aware solid borders on woodcut frame and dividers without vanishing fractional opacities`
+- ✔ `applies GPU-stabilized vector rendering and z-index isolation without conflicting scale-105`
 
 </details>
 
@@ -1800,15 +1802,15 @@
 <details>
 <summary><b><code>src/components/account/AccountHabitsCard.test.tsx</code></b> (10 tests)</summary>
 
-- ✔ `renders reading habits card with streak, duration, and challenge horizontal strips`
+- ✔ `renders reading habits card with streak, duration, and canonical challenge horizontal strips`
 - ✔ `renders 7-day activity indicators in the streak strip`
 - ✔ `displays today 5-minute reading logged indicator when read today`
 - ✔ `displays remaining streak progress prompt when partially read today`
 - ✔ `renders dual immersion breakdown badges for reading and listening time`
-- ✔ `opens edit modal and allows backspacing, presets, pace hints, and saving goal`
-- ✔ `displays completion message when annual target is met`
+- ✔ `renders canonical 4-tier milestone ladder cards with titles, Latin mottos, and paces`
+- ✔ `elevates milestone target dynamically as reader completes books`
+- ✔ `does not expose arbitrary user edit buttons or input fields (anti-tamper integrity)`
 - ✔ `triggers cloud sync on mount when authenticated userId is provided`
-- ✔ `allows user to enter arbitrary custom goal, clamps on blur, updates pace hint, and reflects changes on the card UI`
 - ✔ `applies theme-aware solid borders and surfaces without fractional opacity variants that vanish in Sepia or Dark mode`
 
 </details>
