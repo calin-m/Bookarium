@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-137%20Suites%20%7C%201096%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.69%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-137%20Suites%20%7C%201107%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.75%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -41,9 +41,9 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ## 🛠️ Latest Improvements (v2.0.0)
 
 - **Reading Streaks & Habit Telemetry Engine (`reading-analytics.ts`, `useHabitsStore.ts`)**: Pure mathematical consecutive streak calculations with 1-day grace period, longest streak tracking, 7-day visual week activity indicators, and total literary immersion duration tracking.
-- **Annual Reading Challenge & Progress Tracking (`AccountHabitsCard.tsx`, `reading-analytics.ts`)**: Interactive annual volume challenge with customizable goal targets, real-time pace indicators (on pace, ahead, behind), and smooth progress bar updates.
-- **Idle-Aware Reading Session Telemetry (`useReadingTimer.ts`)**: Unobtrusive reading session timer in `/read/[id]` with a 2-minute inactivity guard, pausing on reader idle and flushing on page visibility transitions (`visibilitychange`).
-- **Border Harmonization across Themes (`AccountHabitsCard.tsx`, `AdvancedFilterDrawer.tsx`)**: Harmonized all fractional border tokens (`border-border/60`, `border-border/50`, `border-primary/20`) to standard `border-border` and canonical surfaces, resolving vanishing border lines in Sepia and Dark Obsidian modes.
+- **Dual Immersion Telemetry & Background Audio Narration (`useReadingTimer.ts`, `useHabitsStore.ts`)**: Disentangled literary immersion into reading time (`totalReadingSeconds`) and listening time (`totalListeningSeconds`). Added background tab and idle bypass exception for active Text-to-Speech narration (`isPlayingTTS`), preserving immersion seconds when listening with the browser in the background.
+- **5-Minute Active Streak Threshold Standard (`useHabitsStore.ts`, `AccountHabitsCard.tsx`)**: Elevated daily streak qualification from 1 second to 5 minutes (`300s`) of combined active immersion, eliminating false streaks from accidental page opens and providing dynamic progress prompts (`Xm / 5m logged today`).
+- **Reading Telemetry Background Audio Retention (`useReadingTimer.ts`)**: Resolved issue where switching tabs during Text-to-Speech playback paused telemetry, ensuring uninterrupted listening time accumulation.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -114,7 +114,7 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **Native IndexedDB Offline Book Storage**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading in airplane mode.
 * **Auto-Healing Cloud Sync & Deletion Tombstones**: Optional Supabase PostgreSQL cloud sync with Row Level Security (RLS). Persistent deletion tombstones (`deletedBookIds`) prevent zombie volumes from resurrecting during cross-device synchronization.
 * **Bi-Directional Cloud Reading Progress**: 2000ms debounced upsert to `public.reading_progress`, restoring chapter and scroll coordinates across devices for authenticated accounts while remaining 0ms/zero-network for guest readers.
-* **Reading Streaks, Habit Telemetry & Annual Reading Challenges (`/account`)**: Offline-first reading activity tracking calculating consecutive daily streaks (with 1-day grace period), longest streaks, 7-day calendar activity indicators, and total literary immersion duration. Includes an interactive annual reading challenge progress bar with user-adjustable volume targets, real-time pace tracking, and multi-device Supabase cloud synchronization with Last-Write-Wins (LWW) conflict resolution.
+* **Reading Streaks, Dual Immersion Telemetry & Annual Reading Challenges (`/account`)**: Offline-first literary activity tracking calculating consecutive daily streaks with a **5-minute active immersion threshold** (`300s`), longest streaks, 7-day calendar activity indicators, and total literary immersion duration. Disentangles telemetry into distinct **Reading Time** (visual focus with 2-minute idle guard) and **Listening Time** (uninterrupted Text-to-Speech audio narration retaining time in background tabs). Includes an interactive annual reading challenge progress bar with user-adjustable volume targets, real-time pace tracking, dynamic countdown prompts (`Xm / 5m logged today`), and multi-device Supabase cloud synchronization with Last-Write-Wins (LWW) conflict resolution.
 * **Full Data Sovereignty & Portability**: Single-click RFC 4180 CSV export and portable JSON backup (`src/lib/library-backup.ts`) with defensive schema validation and merge/replace restore strategies.
 * **Zero-Tracking Privacy Architecture (`/privacy`)**: Zero third-party trackers, zero advertising beacons, cookie-less operation (Art. 5(3) exempt), privacy-first anonymous aggregate telemetry (Vercel Web Analytics & Speed Insights), and self-service account data deletion in User Settings (`/account`).
 * **Technical SEO, Social OpenGraph & Upstream Rate-Shielding**: Native Next.js 16 crawl directives (`robots.ts`) explicitly disallow search query parameters (`?search=*`, `?topic=*`) to protect public Gutendex servers from bot query exhaustion. Dynamic server layouts (`/read/[id]/layout.tsx`) fetch book identities with 24-hour Next.js edge caching (`revalidate: 86400`) to generate rich OpenGraph and Twitter cards (`summary_large_image`) featuring authentic book covers, while injecting safe Schema.org `Book`, `WebSite`, and `WebApplication` (`isAccessibleForFree: true`) JSON-LD structured data.
@@ -147,7 +147,7 @@ flowchart TD
         StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• deletedBookIds: [] (Tombstones)\n• bookRatings: {}\n• bookStatuses: {}")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
         StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• readingPositions: {}\n• readingProgress: {}\n• syncReadingPositionToCloud()")]
-        StoreHabits[("🔥 Habits Store\n• currentStreak & longestStreak\n• activeDates: []\n• annualGoal & annualGoalYear\n• totalReadingSeconds\n• syncWithCloud()")]
+        StoreHabits[("🔥 Habits Store\n• currentStreak & longestStreak (5-min threshold)\n• activeDates: []\n• annualGoal & annualGoalYear\n• totalReadingSeconds & totalListeningSeconds\n• syncWithCloud()")]
         StoreTheme[("🎨 Theme Store\n• theme: day | sepia | obsidian")]
         StoreAnnot[("🖍️ Annotation Store\n• highlights: []\n• 4 pastel palettes")]
         StoreOffline[("📦 IndexedDB (useOfflineBooks)\n• downloaded volumes\n• offline text & EPUBs")]
@@ -155,7 +155,7 @@ flowchart TD
         
         ScrollHook["📜 useScrollDirection\n(3-State Gesture Stepping)"]
         LedgerHook["🔖 useContinueReadingLedger\n(Authentic Telemetry & Two-Way Hydration)"]
-        TimerHook["⏱️ useReadingTimer\n(Idle-Aware 2-min Inactivity Guard)"]
+        TimerHook["⏱️ useReadingTimer\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]
         QueryBooks["🔄 useBooks & usePrefetchNextPage\n(Chunked sub-pages & 15-25s prefetch)"]
         QueryContent["🔄 useBookContent(textUrl, bookId)"]
         QueryTranslate["🌐 useBookTranslation(targetLang)\n(Dynamic In-Reader NMT)"]
@@ -410,7 +410,7 @@ Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-devi
 | `public.reading_progress` | Table (RLS) | Chapter coordinates, progress %, scroll offset, and cached volume metadata |
 | `public.user_annotations` | Table (RLS) | Passage highlights (yellow, amber, mint, rose) and personal scholarly notes |
 | `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status classification |
-| `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, and literary immersion duration |
+| `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, and dual immersion duration (reading & listening) |
 | `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation |
 | `public.delete_current_user()` | RPC Function | Cascade user data erasure and complete self-service account deletion |
 
@@ -520,7 +520,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1096 tests across 137 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1107 tests across 137 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

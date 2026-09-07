@@ -146,8 +146,8 @@ const ROADMAP_MILESTONES = [
         check: () => fileContains('src/stores/useBookshelfStore.ts', 'rating') || fileContains('src/types/database.types.ts', 'reading_status'),
       },
       {
-        title: 'Reading Streaks & Annual Goal Tracking',
-        description: 'Track daily reading activity timestamps to display consecutive reading streaks, estimated hours read, and annual reading challenge goals in the Account dashboard.',
+        title: 'Reading Streaks, Dual Immersion Telemetry & Annual Goal Tracking',
+        description: 'Track daily reading and listening timestamps with a 5-minute active streak threshold, idle detection, background TTS audio narration tracking, estimated hours read, and annual reading challenge goals in the Account dashboard.',
         check: () => fileContains('src/components/account/AccountLibraryStats.tsx', 'readingStreak') || fileExists('src/lib/reading-analytics.ts'),
       },
     ],

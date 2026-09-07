@@ -263,4 +263,36 @@
   - Zero performance overhead or UI obstruction in the reader surface.
   - Extensible event foundation ready to unlock Milestone 4 literary accolades and Milestone 5 community sharing without database rewrites.
 
+## ADR-028: Analytical Table of Contents Deduplication & Cross-Reference Protection Invariants
+- **Status**: Accepted
+- **Context**: 19th-century Victorian literature on Project Gutenberg (e.g. Austin Bidwell's *Bidwell's Travels, from Wall Street to London Prison*, `read/24739`) often features extensive "Analytical" or "Descriptive" Tables of Contents where each chapter entry contains a detailed 200–600 character narrative synopsis ending with a printed original book page number. Because these synopses exceed standard heading lengths (`TOC_MAX_HEADING_LENGTH: 180`), and because 50+ chapter analytical TOCs span up to 25,000–30,000 bytes (exceeding previous `TOC_SEARCH_WINDOW_BYTES: 9000`), the parser previously treated each TOC entry as an independent 1-page chapter, resulting in double-chapter parsing (50 synopsis chapters + 50 real chapters = 100 chapters). Furthermore, any fix in the chapter segmentation engine had to guarantee 100% non-breaking safety for all existing books and strictly protect against false-positive suppression from in-body chapter cross-references.
+- **Decision**:
+  1. **Expanded TOC Search Window**: Expand `TOC_SEARCH_WINDOW_BYTES` in `GUTENBERG_PARSER_CONFIG` from `9000` to `45000` bytes to fully encompass large analytical tables of contents across Victorian and multi-volume masterworks.
+  2. **Analytical Synopsis Threshold (`TOC_ANALYTICAL_MAX_LENGTH: 2000`)**: Define a safe upper-bound character limit distinguishing analytical chapter synopses from genuine story chapters.
+  3. **Multi-Constraint Deduplication Guard**: In Step 3 of `parseGutenbergChapters`, identify an analytical TOC entry strictly when:
+     - The item falls within the detected front-matter TOC window (`item.index >= tocMatch.index && item.index < tocMatch.index + TOC_SEARCH_WINDOW_BYTES`).
+     - The item's body length is small (`item.bodyLength < TOC_ANALYTICAL_MAX_LENGTH`).
+     - A subsequent duplicate chapter with an identical normalized identifier exists later in the book (`rawMatches.some(...)`).
+     - The subsequent candidate is a full-length chapter: `other.bodyLength > item.bodyLength * 2` and `other.bodyLength >= 2000`.
+  4. **Suppression Immunity Invariant**: Any chapter whose body length is $\ge 2,000$ characters is mathematically immune to suppression. In-body cross-references (e.g. an author citing "as seen in Chapter 1" on page 85) can never suppress or drop the authentic narrative chapter.
+- **Consequences**:
+  - Clean, accurate chapter segmentation for `read/24739` (from 101 split sections down to 50 real narrative chapters + Title/Preamble + Colophon = 52 total).
+  - 100% backward compatibility and test parity across all existing books and styles (*Moby Dick*, *The Great Gatsby*, *Four Arthurian Romances*, *Twenty-Five Ghost Stories*, *Journey to the Centre of the Earth*, *The Secret Agent*).
+  - Guaranteed mathematical immunity protecting authentic narrative chapters from suppression when referenced in subsequent body text, footnotes, or appendices.
 
+## ADR-029: Dual Immersion Telemetry (Reading vs. Listening) & 5-Minute Active Streak Threshold
+- **Status**: Accepted
+- **Context**: In ADR-027, reading session telemetry was established with a 2-minute idle detection guard and visibility change flush. However, two behavioral and qualitative gaps were identified:
+  1. Background Tab Reading vs. Narration: When a user left the reader tab to work or browse in another tab, the browser tab became hidden (`document.visibilityState === 'hidden'`), immediately pausing reading time tracking. While this is correct for visual reading (preventing phantom reading time accumulation), it disrupted the user journey for Text-to-Speech (TTS) narration (`useReaderSpeech`). Users listening to audio narration naturally switch tabs or keep the reader in the background while listening, causing their listening immersion time to be completely discarded.
+  2. Streak Qualification Standard: Previously, any positive reading activity (even 1 second) instantly qualified the daily streak. Opening a book for a split second accidentally granted a daily streak badge without any genuine literary immersion, diluting habit formation and streak integrity.
+- **Decision**:
+  1. **Dual Immersion Metric Telemetry (`totalReadingSeconds` vs `totalListeningSeconds`)**: Disentangle reader telemetry into two distinct persistent counters in `useHabitsStore`: visual reading time (`totalReadingSeconds`) and audio narration listening time (`totalListeningSeconds`).
+  2. **Background TTS Audio Exception (`useReadingTimer.ts`)**: In the reader telemetry ticker, evaluate `isPlayingTTS`. When audio speech is active (`isPlayingTTS === true`), timer accumulation continues regardless of document visibility (`document.visibilityState === 'hidden'`) or keyboard/mouse idle state, correctly recording audio immersion into `totalListeningSeconds`. When audio narration is inactive, timer accumulation strictly requires the tab to be visible and active, recording visual immersion into `totalReadingSeconds` with the 2-minute idle protection guard intact.
+  3. **5-Minute Active Immersion Streak Qualification Standard (`MIN_STREAK_DURATION_SECONDS = 300`)**: Elevate the daily streak threshold from 1 second to 5 minutes (300 seconds) of combined immersion (reading + listening). Track daily accumulated seconds in `dailyActivitySeconds[dateStr]`. Only append `today` to `activeDates` once `dailyActivitySeconds[todayStr] >= 300`.
+  4. **Dynamic Streak Progress Feedback (`AccountHabitsCard.tsx`, `useHabitsStore.ts`)**: In the Account dashboard, render granular feedback showing `Today's 5-minute reading logged` when completed, or progress prompts: `Xm / 5m logged today (Ym left to keep streak!)` or `(Ym to start streak)` when partially completed. Present dual immersion badges (`📖 X reading • 🎧 Y listening`) with combined reading/listening hours and pace calculations.
+  5. **Idempotent Database Schema Co-Evolution (Rule 9)**: Co-evolve Supabase schema (`supabase/schema.sql`) and TypeScript types (`src/types/database.types.ts`) with `total_listening_seconds BIGINT NOT NULL DEFAULT 0` and update `syncWithCloud` to merge and upsert both metrics idempotently via Last-Write-Wins and local/remote maximum resolution.
+- **Consequences**:
+  - Readers can listen to audiobooks and TTS narration in background tabs without losing a single second of immersion time.
+  - Reading habit streak integrity is dramatically strengthened with a meaningful 5-minute immersion threshold, eliminating false streaks from accidental page opens.
+  - Complete transparency and granularity in reading habits with distinct visual reading vs. audio listening metrics and badges.
+  - 100% backward-compatible, offline-first, and zero-error test suite co-evolution across stores, hooks, cards, and types.

@@ -39,12 +39,36 @@ describe('AccountHabitsCard', () => {
     expect(weekGroup.children.length).toBe(7);
   });
 
-  it('displays today reading logged indicator when read today', () => {
+  it('displays today 5-minute reading logged indicator when read today', () => {
     useHabitsStore.getState().recordDailyActivity();
 
     render(<AccountHabitsCard completedBooksCount={0} />);
 
-    expect(screen.getByText(/Today's reading logged/i)).toBeInTheDocument();
+    expect(screen.getByText(/Today's 5-minute reading logged/i)).toBeInTheDocument();
+  });
+
+  it('displays remaining streak progress prompt when partially read today', () => {
+    useHabitsStore.getState().addReadingDuration(120); // 2 minutes
+
+    render(<AccountHabitsCard completedBooksCount={0} />);
+
+    expect(screen.getByText(/2m \/ 5m logged today \(3m to start streak\)/i)).toBeInTheDocument();
+  });
+
+  it('renders dual immersion breakdown badges for reading and listening time', () => {
+    useHabitsStore.getState().addReadingDuration(3600); // 1.0 hr
+    useHabitsStore.getState().addListeningDuration(1800); // 30 min
+
+    render(<AccountHabitsCard completedBooksCount={0} />);
+
+    const readingBadge = screen.getByTestId('reading-duration-badge');
+    const listeningBadge = screen.getByTestId('listening-duration-badge');
+
+    expect(readingBadge).toBeInTheDocument();
+    expect(readingBadge).toHaveTextContent(/1.0 hrs/i);
+
+    expect(listeningBadge).toBeInTheDocument();
+    expect(listeningBadge).toHaveTextContent(/30 min/i);
   });
 
   it('opens edit modal and allows backspacing, presets, pace hints, and saving goal', () => {

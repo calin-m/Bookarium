@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 06 Sep 2026 21:39:28 GMT  
+**Last Generated**: Mon, 07 Sep 2026 08:30:36 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 137 passed  
-**Total Verified Tests**: 1096 passed  
+**Total Verified Tests**: 1107 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **137/137 test suites passed** (1096 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **137/137 test suites passed** (1107 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 27 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 29 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.69%** (5468/5899) — *Target: $ge$ 80%*
-- **Statements**: **91.03%** (5951/6537) — *Target: $ge$ 80%*
-- **Functions**: **88.48%** (1360/1537) — *Target: $ge$ 80%*
-- **Branches**: **81.19%** (4951/6098) — *Target: $ge$ 80%*
+- **Lines**: **92.75%** (5521/5952) — *Target: $ge$ 80%*
+- **Statements**: **91.09%** (6006/6593) — *Target: $ge$ 80%*
+- **Functions**: **88.42%** (1368/1547) — *Target: $ge$ 80%*
+- **Branches**: **81.18%** (5017/6180) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (137 Suites / 1096 Tests)
+## 🧪 Comprehensive Test Suite Catalog (137 Suites / 1107 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 104 Tests)
 
@@ -817,7 +817,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (7 Suites · 107 Tests)
+### ⚡ Zustand State Stores (7 Suites · 111 Tests)
 
 <details>
 <summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (18 tests)</summary>
@@ -908,16 +908,20 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `initializes with default values`
 - ✔ `records daily activity without duplicates`
-- ✔ `accumulates reading duration and logs today date`
+- ✔ `accumulates reading duration and logs today date once 5-minute threshold is met`
+- ✔ `accumulates listening duration independently and contributes to daily streak threshold`
 - ✔ `updates annual reading target clamped between 1 and 365`
 - ✔ `resets habits back to defaults`
 - ✔ `provides computed selectors for streaks, progress, and duration`
 - ✔ `preserves freshly set local goal over older Supabase goal via Last-Write-Wins`
 - ✔ `adopts remote Supabase goal on fresh device where local goal was never modified`
+- ✔ `provides computed immersion selectors and breakdown strings`
+- ✔ `computes partial streak progress correctly when under 5 minutes`
+- ✔ `synchronizes and merges total_listening_seconds with Supabase cloud`
 
 </details>
 
@@ -968,7 +972,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (21 Suites · 192 Tests)
+### 📚 Gutenberg Parsers & Metadata (21 Suites · 194 Tests)
 
 <details>
 <summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (16 tests)</summary>
@@ -1069,7 +1073,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `returns empty array on null or undefined input`
 - ✔ `falls back cleanly to Complete Volume for unformatted single-block text`
@@ -1084,6 +1088,8 @@
 - ✔ `preserves repeated chapter numbers across multi-part books`
 - ✔ `harvests subtitles from Roman and Arabic numeral front-matter TOC lists and attaches them to chapters`
 - ✔ `harvests body subtitles when chapter headings have standalone subtitle lines without a TOC`
+- ✔ `deduplicates analytical/descriptive front-matter TOC entries with multi-line synopses`
+- ✔ `protects real chapters from suppression when referenced elsewhere in body narrative or footnotes`
 
 </details>
 
@@ -1288,7 +1294,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (19 Suites · 157 Tests)
+### 🔄 Hooks & React Query (19 Suites · 160 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
@@ -1535,14 +1541,17 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useReadingTimer.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/hooks/useReadingTimer.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `does nothing when disabled or bookId is missing`
-- ✔ `records daily activity immediately upon active mounting`
+- ✔ `does not grant daily streak on mounting until 5 minutes of immersion are completed`
 - ✔ `accumulates reading seconds and flushes on interval`
 - ✔ `flushes uncommitted seconds on unmount`
 - ✔ `stops accumulating seconds when user is idle beyond idleTimeoutMs`
 - ✔ `resets idle guard when registerInteraction is invoked`
+- ✔ `tracks listening duration when isPlayingTTS is true, even in background tab`
+- ✔ `pauses visual reading time when tab is hidden but resumes when visible`
+- ✔ `qualifies 5-minute daily streak when 300 seconds of immersion are accumulated`
 
 </details>
 
@@ -1561,7 +1570,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (40 Suites · 165 Tests)
+### 🧩 UI Primitives & Motion (40 Suites · 167 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1668,11 +1677,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountHabitsCard.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/account/AccountHabitsCard.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders reading habits card with streak, duration, and challenge horizontal strips`
 - ✔ `renders 7-day activity indicators in the streak strip`
-- ✔ `displays today reading logged indicator when read today`
+- ✔ `displays today 5-minute reading logged indicator when read today`
+- ✔ `displays remaining streak progress prompt when partially read today`
+- ✔ `renders dual immersion breakdown badges for reading and listening time`
 - ✔ `opens edit modal and allows backspacing, presets, pace hints, and saving goal`
 - ✔ `displays completion message when annual target is met`
 - ✔ `triggers cloud sync on mount when authenticated userId is provided`
@@ -1972,7 +1983,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

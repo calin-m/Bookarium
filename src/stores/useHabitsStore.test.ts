@@ -49,18 +49,39 @@ describe('useHabitsStore', () => {
     expect(useHabitsStore.getState().activeDates).toEqual(['2026-09-05', '2026-09-06']);
   });
 
-  it('accumulates reading duration and logs today date', () => {
+  it('accumulates reading duration and logs today date once 5-minute threshold is met', () => {
     useHabitsStore.getState().addReadingDuration(120);
     expect(useHabitsStore.getState().totalReadingSeconds).toBe(120);
-    expect(useHabitsStore.getState().activeDates.length).toBe(1);
+    // Under 300 seconds (5 mins), streak date is not logged yet
+    expect(useHabitsStore.getState().activeDates.length).toBe(0);
 
     useHabitsStore.getState().addReadingDuration(180);
     expect(useHabitsStore.getState().totalReadingSeconds).toBe(300);
+    // Combined today activity reached 300s, so activeDates is logged
+    expect(useHabitsStore.getState().activeDates.length).toBe(1);
 
     // Negative or zero duration ignored
     useHabitsStore.getState().addReadingDuration(0);
     useHabitsStore.getState().addReadingDuration(-50);
     expect(useHabitsStore.getState().totalReadingSeconds).toBe(300);
+  });
+
+  it('accumulates listening duration independently and contributes to daily streak threshold', () => {
+    useHabitsStore.getState().addListeningDuration(150);
+    expect(useHabitsStore.getState().totalListeningSeconds).toBe(150);
+    expect(useHabitsStore.getState().totalReadingSeconds).toBe(0);
+    expect(useHabitsStore.getState().activeDates.length).toBe(0);
+
+    // Add reading duration to reach combined 300 seconds
+    useHabitsStore.getState().addReadingDuration(150);
+    expect(useHabitsStore.getState().totalListeningSeconds).toBe(150);
+    expect(useHabitsStore.getState().totalReadingSeconds).toBe(150);
+    expect(useHabitsStore.getState().activeDates.length).toBe(1);
+
+    // Negative or zero duration ignored
+    useHabitsStore.getState().addListeningDuration(0);
+    useHabitsStore.getState().addListeningDuration(-100);
+    expect(useHabitsStore.getState().totalListeningSeconds).toBe(150);
   });
 
   it('updates annual reading target clamped between 1 and 365', () => {
@@ -167,6 +188,73 @@ describe('useHabitsStore', () => {
     expect(useHabitsStore.getState().annualGoal).toBe(24);
     expect(useHabitsStore.getState().activeDates).toEqual(['2026-09-02']);
     expect(useHabitsStore.getState().totalReadingSeconds).toBe(2000);
+  });
+
+  it('provides computed immersion selectors and breakdown strings', () => {
+    const store = useHabitsStore.getState();
+    store.addReadingDuration(3600); // 1.0 hr
+    store.addListeningDuration(1800); // 0.5 hr
+
+    expect(store.getTotalImmersionSeconds()).toBe(5400); // 1.5 hrs
+    expect(store.getFormattedDuration()).toBe('1.5 hrs');
+
+    const breakdown = store.getFormattedDurationBreakdown();
+    expect(breakdown.reading).toBe('1.0 hrs');
+    expect(breakdown.listening).toBe('30 min');
+
+    const progress = store.getStreakProgress();
+    expect(progress.targetSeconds).toBe(300);
+    expect(progress.isCompleted).toBe(true);
+    expect(progress.percent).toBe(100);
+  });
+
+  it('computes partial streak progress correctly when under 5 minutes', () => {
+    const store = useHabitsStore.getState();
+    store.addReadingDuration(120); // 2 minutes
+
+    const progress = store.getStreakProgress();
+    expect(progress.todaySeconds).toBe(120);
+    expect(progress.targetSeconds).toBe(300);
+    expect(progress.remainingSeconds).toBe(180);
+    expect(progress.remainingMinutes).toBe(3);
+    expect(progress.isCompleted).toBe(false);
+    expect(progress.percent).toBe(40);
+  });
+
+  it('synchronizes and merges total_listening_seconds with Supabase cloud', async () => {
+    // Local has 1200 reading, 500 listening
+    useHabitsStore.getState().addReadingDuration(1200);
+    useHabitsStore.getState().addListeningDuration(500);
+
+    // Remote has 1000 reading, 800 listening
+    mockMaybeSingle.mockResolvedValue({
+      data: {
+        user_id: 'user-3',
+        annual_goal: 15,
+        annual_goal_year: 2026,
+        active_dates: ['2026-09-03'],
+        total_reading_seconds: 1000,
+        total_listening_seconds: 800,
+        updated_at: '2026-09-03T10:00:00.000Z',
+      },
+      error: null,
+    });
+
+    await useHabitsStore.getState().syncWithCloud('user-3');
+
+    // Both should take the maximum (local vs remote)
+    expect(useHabitsStore.getState().totalReadingSeconds).toBe(1200);
+    expect(useHabitsStore.getState().totalListeningSeconds).toBe(800);
+
+    // Upsert sends merged maximums
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: 'user-3',
+        total_reading_seconds: 1200,
+        total_listening_seconds: 800,
+      }),
+      { onConflict: 'user_id' }
+    );
   });
 });
 

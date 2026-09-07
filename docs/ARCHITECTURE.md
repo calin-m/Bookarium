@@ -1,7 +1,7 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-09-06`  
+> **Last Synchronized**: `2026-09-07`  
 > **Topology Health**: `147` Modules Analyzed • `463` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
@@ -27,6 +27,7 @@ flowchart TD
             MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger & Telemetry)"]
             NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections & Tags)"]
             AccView["Account Hub (/account)\n(Library Stats, Cloud Sync & JSON Backup)"]
+            HabitsCard["AccountHabitsCard.tsx\n(Reading Streaks, Daily Progress, Annual Challenge)"]
             ReaderPage["Focus Reader Page (/read/[id])\n(Continuous Pagination, Subtitles, AST)"]
         end
         
@@ -45,11 +46,13 @@ flowchart TD
             StoreAuth[("🔐 useAuthStore\n(session, cloud migration, profile)")]
             StorePref[("⚙️ usePreferencesStore\n(sticky scroll, layout choices)")]
             StoreAnnot[("🖍️ useAnnotationStore\n(pastel highlights, notes, tags)")]
+            StoreHabits[("🔥 useHabitsStore\n(streak, 5m threshold, dual immersion, cloud)")]
             StoreOffline[("📦 IndexedDB Engine\n(unabridged offline volume cache)")]
         end
         
         subgraph ReaderEngine ["Reader Runtime & Web Speech Subsystem"]
             SpeechHook["🔊 useReaderSpeech\n(SpeechSynthesis, Boundary Sync, Auto-Flip)"]
+            TimerHook["⏱️ useReadingTimer\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]
             WorkerHook["⚙️ useGutenbergParserWorker\n(Persistent Worker Chapter AST)"]
             LedgerHook["🔖 useContinueReadingLedger\n(Two-Way Hydration & 0ms Resume)"]
         end
@@ -71,7 +74,7 @@ flowchart TD
         Gutendex["🌐 Gutendex Search API\n(70,000+ Zero-Copyright Volumes)"]
         GutenbergCDN["🌐 Project Gutenberg CDN\n(Official EPUB & Raw Plain-Text)"]
         GoogleNMT["🌐 Google Neural MT\n(Serverless AI Translation)"]
-        SupabaseCloud[("⚡ Supabase Cloud\n(Postgres RLS, Auth, reading_progress)")]
+        SupabaseCloud[("⚡ Supabase Cloud\n(Postgres RLS: profiles, shelves, progress, habits)")]
         VercelEdge["⚡ Vercel Edge Platform\n(Cookie-less Analytics & Speed Insights)"]
     end
 
@@ -81,6 +84,7 @@ flowchart TD
     Toolbar --> FilterDrawer
     Toolbar --> Grid
     Nav --> Views
+    AccView --> HabitsCard
     
     Grid --> QueryBooks
     QueryBooks --> ProxyBooks
@@ -90,6 +94,7 @@ flowchart TD
     ReaderPage --> QueryContent
     ReaderPage --> ReaderDrawers
     ReaderPage --> ReaderEngine
+    ReaderPage --> TimerHook
     QueryContent --> ProxyContent
     ProxyContent --> GutenbergCDN
     ReaderPage --> QueryTranslate
@@ -97,10 +102,13 @@ flowchart TD
     ProxyTranslate --> GoogleNMT
     
     Views --> StateStores
+    HabitsCard --> StoreHabits
+    TimerHook --> StoreHabits
     ReaderEngine --> StateStores
     StoreShelf -->|Cloud Sync via RLS| SupabaseCloud
     StoreReader -->|Progress Sync| SupabaseCloud
     StoreAuth -->|Session Auth| SupabaseCloud
+    StoreHabits -->|Habits Sync via RLS| SupabaseCloud
     Telemetry -.->|Anonymous Metrics| VercelEdge
 ```
 
@@ -194,7 +202,7 @@ Zustand client-side state stores programmatically verified across **7 Persistent
 
 ### 4. `useHabitsStore` ([`src/stores/useHabitsStore.ts`](src/stores/useHabitsStore.ts))
 * **Storage Key**: `STORAGE_KEYS.HABITS` (localStorage)
-* **Role & State**: Application state store.
+* **Role & State**: Reading streaks with 5-minute active immersion threshold, daily calendar activity dates, annual volume challenge goals, dual immersion telemetry (reading vs listening), and multi-device Supabase cloud synchronization.
 
 ### 5. `usePreferencesStore` ([`src/stores/usePreferencesStore.ts`](src/stores/usePreferencesStore.ts))
 * **Storage Key**: `STORAGE_KEYS.PREFERENCES` (localStorage)
@@ -230,7 +238,7 @@ Zustand client-side state stores programmatically verified across **7 Persistent
 | **`useHasMounted`** | Hooks | [`src/hooks/useHasMounted.ts`](src/hooks/useHasMounted.ts) | SSR hydration barrier hook preventing client-server markup mismatches. |
 | **`useOfflineBooks`** | Hooks | [`src/hooks/useOfflineBooks.ts`](src/hooks/useOfflineBooks.ts) | IndexedDB cache enumeration and local offline book deletion management. |
 | **`usePerformanceTier`** | Hooks | [`src/hooks/usePerformanceTier.ts`](src/hooks/usePerformanceTier.ts) | Hardware concurrency and memory heuristic detection for fluid 60fps animations. |
-| **`useReadingTimer`** | Hooks | [`src/hooks/useReadingTimer.ts`](src/hooks/useReadingTimer.ts) | Application custom hook. |
+| **`useReadingTimer`** | Hooks | [`src/hooks/useReadingTimer.ts`](src/hooks/useReadingTimer.ts) | Reader session telemetry tracking visual reading with 2-minute idle guard and TTS narration audio bypass. |
 | **`useScrollDirection`** | Hooks | [`src/hooks/useScrollDirection.ts`](src/hooks/useScrollDirection.ts) | Stepped directional scroll detection with user auto-hide preference persistence. |
 | **`useBookContent`** | Queries | [`src/hooks/queries/useBookContent.ts`](src/hooks/queries/useBookContent.ts) | TanStack Query fetching book plain text with IndexedDB offline-first check. |
 | **`useBooks`** | Queries | [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) | TanStack Query fetching catalog volumes with sub-pagination and client failover. |
@@ -242,6 +250,23 @@ Zustand client-side state stores programmatically verified across **7 Persistent
 | **`useReaderGestures`** | Reader | [`src/hooks/reader/useReaderGestures.ts`](src/hooks/reader/useReaderGestures.ts) | Touch swipe detection, keyboard shortcuts, and selection gesture conflict guards. |
 | **`useReaderSession`** | Reader | [`src/hooks/reader/useReaderSession.ts`](src/hooks/reader/useReaderSession.ts) | Reading coordinates restoration, resume ribbons, and cloud session synchronization. |
 | **`useReaderSpeech`** | Reader | [`src/hooks/reader/useReaderSpeech.ts`](src/hooks/reader/useReaderSpeech.ts) | Browser-native Web Speech synthesis with boundary word highlighting and auto-flip. |
+
+---
+
+## 🗄️ Database Architecture & Row Level Security (RLS) Policies
+
+Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **8 Database Tables** with strict Row Level Security (Rule 9):
+
+| Table Name | RLS Governance | Client State Store | Domain Role & Security Description |
+| :--- | :--- | :--- | :--- |
+| **`public.profiles`** | Enabled (`auth.uid()`) | `useAuthStore` | User profile display name, theme preferences, and typography choices (auto-created on signup). |
+| **`public.bookshelves`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Default master "General" shelf and custom user-created named shelves. |
+| **`public.bookshelf_items`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Books filed in specific shelves with user-scoped uniqueness constraints. |
+| **`public.user_favorites`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Cross-device synchronized favorited titles. |
+| **`public.reading_progress`** | Enabled (`auth.uid()`) | `useReaderStore` | Chapter index, progress %, scroll offsets, and cached volume metadata. |
+| **`public.user_annotations`** | Enabled (`auth.uid()`) | `useAnnotationStore` | Passage text highlights (4 pastel palettes) and scholarly marginalia notes. |
+| **`public.user_book_curation`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Personal 1–5 star ratings and reading status classification. |
+| **`public.user_reading_habits`** | Enabled (`auth.uid()`) | `useHabitsStore` | Reading streaks (5-min threshold), daily activity dates, annual challenge goals, and dual immersion telemetry. |
 
 ---
 
@@ -423,6 +448,23 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 4. **Edge SWR Caching**: Common queries are cached with `s-maxage=120, stale-while-revalidate=600` for sub-10ms response times on repeated visits.
 5. **On-Demand Text Streaming**: Large book texts (2MB–5MB) are fetched strictly when the focus reader opens.
 6. **Native IndexedDB Offline Cache**: Downloaded unabridged texts are cached in browser IndexedDB for 100% offline access.
+
+---
+
+## 🛡️ 7-Gateway Quality Engine Architecture
+
+Bookarium enforces a deterministic 7-stage quality assurance pipeline (`scripts/verify-build.js` via `npm run verify`) gating all releases and commits:
+
+| Gateway Pass | Stage Name | Target & Tooling | Enforcement & Governance |
+| :--- | :--- | :--- | :--- |
+| **Pass 0.5** | Secrets & Credentials Scanner | Regex scan across all files | Zero live API keys, private keys, or tokens committed |
+| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |
+| **Pass 2** | Contract & Interface Validation | AST structural analysis | Validates export signatures and component prop invariants |
+| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 80% coverage on lines, functions, statements, branches |
+| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md |
+| **Pass 5** | ADR Schema & Ledger Validation | Markdown AST verification | Validates all ADRs conform to Status, Context, Decision, Consequences |
+| **Pass 6** | Code Quality & Dead Code Audit | ESLint 9 & Knip | Zero linter warnings/errors, zero unreferenced dead files/exports |
+| **Pass 7** | Production Application Build | `next build` | Optimized production bundle compilation within byte budget |
 
 ---
 

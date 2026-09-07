@@ -204,6 +204,9 @@ function generateMarkdown() {
       case 'TOC_MAX_HEADING_LENGTH':
         purpose = 'Maximum character length of a heading candidate before discarding as prose';
         break;
+      case 'TOC_ANALYTICAL_MAX_LENGTH':
+        purpose = 'Safety threshold for analytical TOC entries containing multi-line plot synopses';
+        break;
       case 'TOC_SEARCH_WINDOW_BYTES':
         purpose = 'Byte offset window from start of text to search for front-matter Table of Contents';
         break;

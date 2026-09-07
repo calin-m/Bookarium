@@ -75,8 +75,8 @@
   Dedicated reading ledger displaying all books in progress with tactile bookmark cards, last-read passage snippets, completion percentages, filtering (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.
 - [x] **1–5 Star Personal Ratings & Reading Statuses** `✅ VERIFIED`
   Assign 1–5 star ratings and reading statuses ("Want to Read", "Currently Reading", "Finished") to volumes across book cards and shelf management modals.
-- [x] **Reading Streaks & Annual Goal Tracking** `✅ VERIFIED`
-  Track daily reading activity timestamps to display consecutive reading streaks, estimated hours read, and annual reading challenge goals in the Account dashboard.
+- [x] **Reading Streaks, Dual Immersion Telemetry & Annual Goal Tracking** `✅ VERIFIED`
+  Track daily reading and listening timestamps with a 5-minute active streak threshold, idle detection, background TTS audio narration tracking, estimated hours read, and annual reading challenge goals in the Account dashboard.
 
 ---
 

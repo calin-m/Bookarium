@@ -158,9 +158,27 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
       (other, idx) => idx > i && normalizeHeadingId(other.title) === currentNorm
     );
 
+    // Check if item is an analytical TOC synopsis with a later full-length chapter
+    const isAnalyticalTocEntry =
+      Boolean(
+        tocMatch &&
+          item.index >= tocMatch.index &&
+          item.index < tocMatch.index + GUTENBERG_PARSER_CONFIG.TOC_SEARCH_WINDOW_BYTES &&
+          item.bodyLength < GUTENBERG_PARSER_CONFIG.TOC_ANALYTICAL_MAX_LENGTH &&
+          hasLaterDuplicate &&
+          rawMatches.some(
+            (other, idx) =>
+              idx > i &&
+              normalizeHeadingId(other.title) === currentNorm &&
+              other.bodyLength > item.bodyLength * 2 &&
+              other.bodyLength >= 2000
+          )
+      );
+
     // If it has a duplicate later and short body, or is inside a TOC cluster before main body
     if (
       (isVeryShort && hasLaterDuplicate) ||
+      isAnalyticalTocEntry ||
       (isInsideTOCCluster &&
         isVeryShort &&
         tocMatch &&

@@ -1,7 +1,7 @@
 # Project Gutenberg Text Processing & Segmentation Engine — Bookarium
 
 > **Auto-Generated Living Reference**: Programmatically compiled from Source AST via `scripts/generate-parser-docs.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-09-06`  
+> **Last Synchronized**: `2026-09-07`  
 > **Target Subsystem**: `src/lib/gutenberg/` (100% Client/Worker Compatible, Zero Node.js Dependencies)
 
 ---
@@ -36,7 +36,8 @@ All limits, thresholds, and window sizes are centralized in `src/lib/gutenberg/t
 | `CHARS_PER_PAGE_BASE` | `5600` | Baseline character count per virtual page at 18px font size (~850 words) |
 | `MIN_CHARS_PER_PAGE` | `1200` | Safety floor preventing pages from becoming too small on large typography |
 | `TOC_MAX_HEADING_LENGTH` | `180` | Maximum character length of a heading candidate before discarding as prose |
-| `TOC_SEARCH_WINDOW_BYTES` | `9000` | Byte offset window from start of text to search for front-matter Table of Contents |
+| `TOC_ANALYTICAL_MAX_LENGTH` | `2000` | Safety threshold for analytical TOC entries containing multi-line plot synopses |
+| `TOC_SEARCH_WINDOW_BYTES` | `45000` | Byte offset window from start of text to search for front-matter Table of Contents |
 | `TOC_CLUSTER_BODY_THRESHOLD` | `25000` | Minimum distance from text start to avoid confusing body chapters with TOC listings |
 | `ESTIMATED_WORDS_PER_MINUTE` | `200` | Average reading speed used to calculate chapter read times |
 | `HEADER_SCAN_BYTES` | `5000` | Initial byte window scanned for Project Gutenberg title, author, and language metadata |
