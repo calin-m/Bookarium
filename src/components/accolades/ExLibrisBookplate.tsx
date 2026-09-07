@@ -16,6 +16,7 @@ import {
   Pin,
   Lock,
   CheckCircle2,
+  Library,
 } from 'lucide-react';
 import {
   AccoladeDefinition,
@@ -44,6 +45,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Palette,
   Crown,
   Award,
+  Library,
 };
 
 export function ExLibrisBookplate({
@@ -68,9 +70,9 @@ export function ExLibrisBookplate({
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
 
-    // Max 10deg rotation for tactile physical paper tilt
-    const rotX = (y - 0.5) * -12;
-    const rotY = (x - 0.5) * 12;
+    // Subtle 4deg rotation for tactile physical paper tilt without vector stroke jitter
+    const rotX = (y - 0.5) * -4;
+    const rotY = (x - 0.5) * 4;
 
     setRotate({ x: rotX, y: rotY });
     setSheenPos({ x: Math.round(x * 100), y: Math.round(y * 100) });
@@ -117,7 +119,7 @@ export function ExLibrisBookplate({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       data-testid={`accolade-card-${definition.id}`}
-      className={`relative group rounded-xl border p-4 transition-all duration-200 select-none overflow-hidden ${
+      className={`relative group rounded-xl border p-4 transition-all duration-200 select-none overflow-hidden transform-gpu [backface-visibility:hidden] ${
         isUnlocked
           ? `bg-card shadow-sm hover:shadow-lg ${tierConfig.cardBorder}`
           : 'bg-muted/30 border-dashed border-border opacity-75'
@@ -130,10 +132,10 @@ export function ExLibrisBookplate({
         transition: isHovered ? 'transform 0.05s ease-out' : 'transform 0.3s ease-in-out',
       }}
     >
-      {/* Specular sheen overlay */}
+      {/* Specular sheen overlay (isolated beneath foreground content) */}
       {isHovered && isUnlocked && (
         <div
-          className="pointer-events-none absolute inset-0 transition-opacity duration-150"
+          className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-150"
           style={{
             background: `radial-gradient(circle at ${sheenPos.x}% ${sheenPos.y}%, rgba(255,255,255,0.18) 0%, transparent 60%)`,
           }}
@@ -141,7 +143,7 @@ export function ExLibrisBookplate({
       )}
 
       {/* Classical Woodcut Inner Border Frame */}
-      <div className="border border-border rounded-lg p-3.5 relative flex flex-col justify-between h-full min-h-[220px]">
+      <div className="border border-border rounded-lg p-3.5 relative z-10 flex flex-col justify-between h-full min-h-[220px]">
         {/* Top Header Row: Tier Ribbon & Pin Action */}
         <div className="flex items-center justify-between gap-2 mb-2">
           <span
@@ -192,14 +194,16 @@ export function ExLibrisBookplate({
         {/* Central Bookplate Medallion & Vignette */}
         <div className="flex flex-col items-center text-center my-auto py-2">
           <div
-            className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 relative transition-transform duration-300 group-hover:scale-105 border ${
+            className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 relative transition-all duration-200 group-hover:shadow-md border ${
               isUnlocked
                 ? `${tierConfig.badgeBg} ${tierConfig.badgeBorder}`
                 : 'bg-muted border-border text-muted-foreground'
             }`}
           >
             <IconComponent
-              className={`w-7 h-7 ${isUnlocked ? tierConfig.badgeText : 'text-muted-foreground'}`}
+              className={`w-7 h-7 shrink-0 [transform:translateZ(0)] [backface-visibility:hidden] [shape-rendering:geometricPrecision] ${
+                isUnlocked ? tierConfig.badgeText : 'text-muted-foreground'
+              }`}
             />
             {!isUnlocked && (
               <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 border border-border shadow-xs">

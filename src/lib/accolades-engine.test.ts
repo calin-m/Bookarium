@@ -162,6 +162,7 @@ describe('accolades-engine', () => {
     it('formats progress with correct units', () => {
       const sage = getAccoladeById('seven-day-sage')!;
       const crown = getAccoladeById('the-laureates-crown')!;
+      const novice = getAccoladeById('bibliophile-novice')!;
 
       expect(
         formatAccoladeProgress(
@@ -172,10 +173,17 @@ describe('accolades-engine', () => {
 
       expect(
         formatAccoladeProgress(
-          { id: 'the-laureates-crown', current: 100, target: 100, percent: 100, isUnlocked: true, isPinned: false },
+          { id: 'bibliophile-novice', current: 3, target: 6, percent: 50, isUnlocked: false, isPinned: false },
+          novice
+        )
+      ).toBe('3 / 6 volumes');
+
+      expect(
+        formatAccoladeProgress(
+          { id: 'the-laureates-crown', current: 52, target: 52, percent: 100, isUnlocked: true, isPinned: false },
           crown
         )
-      ).toBe('100%');
+      ).toBe('52 / 52 volumes');
     });
   });
 
@@ -190,7 +198,7 @@ describe('accolades-engine', () => {
         historicalErasExplored: ['antiquity', 'middle-ages', 'renaissance'],
         totalAnnotationsCount: 15,
         highlightColorsUsed: ['yellow', 'amber', 'mint', 'rose'],
-        annualGoalPercent: 100,
+        completedBooksCount: 52,
       };
 
       const result = evaluateAccolades(context);
@@ -202,6 +210,9 @@ describe('accolades-engine', () => {
       expect(result.progressMap['century-voyager'].isUnlocked).toBe(true);
       expect(result.progressMap['commonplace-scholar'].isUnlocked).toBe(true);
       expect(result.progressMap['palette-virtuoso'].isUnlocked).toBe(true);
+      expect(result.progressMap['bibliophile-novice'].isUnlocked).toBe(true);
+      expect(result.progressMap['canonical-scholar'].isUnlocked).toBe(true);
+      expect(result.progressMap['master-of-the-canon'].isUnlocked).toBe(true);
       expect(result.progressMap['the-laureates-crown'].isUnlocked).toBe(true);
 
       // Centurion is 100 days, so should not be unlocked
@@ -209,6 +220,28 @@ describe('accolades-engine', () => {
       expect(result.progressMap['centurion-of-letters'].percent).toBe(7);
 
       expect(result.newlyUnlocked.length).toBeGreaterThan(0);
+    });
+
+    it('evaluates progressive tiers of curation ladder based on completedBooksCount', () => {
+      // 15 completed books: Novice (6) and Scholar (12) unlocked, Master (24) and Laureate (52) locked
+      const context = {
+        completedBooksCount: 15,
+      };
+
+      const result = evaluateAccolades(context);
+
+      expect(result.progressMap['bibliophile-novice'].isUnlocked).toBe(true);
+      expect(result.progressMap['canonical-scholar'].isUnlocked).toBe(true);
+
+      expect(result.progressMap['master-of-the-canon'].isUnlocked).toBe(false);
+      expect(result.progressMap['master-of-the-canon'].current).toBe(15);
+      expect(result.progressMap['master-of-the-canon'].target).toBe(24);
+      expect(result.progressMap['master-of-the-canon'].percent).toBe(63);
+
+      expect(result.progressMap['the-laureates-crown'].isUnlocked).toBe(false);
+      expect(result.progressMap['the-laureates-crown'].current).toBe(15);
+      expect(result.progressMap['the-laureates-crown'].target).toBe(52);
+      expect(result.progressMap['the-laureates-crown'].percent).toBe(29);
     });
 
     it('does not include already unlocked accolades in newlyUnlocked', () => {

@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-09-07`  
-> **Topology Health**: `158` Modules Analyzed • `505` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `158` Modules Analyzed • `503` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -370,7 +370,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`ExLibrisBookplate.tsx`](src/components/accolades/ExLibrisBookplate.tsx) | `types/accolades.types`, `config/accolades-config`, `lib/accolades-engine` | `AccountAccoladesCard.tsx` | Production Module |
 | [`AccountAccoladesCard.tsx`](src/components/account/AccountAccoladesCard.tsx) | `config/accolades-config`, `types/accolades.types`, `stores/useAccoladesStore`, `stores/useHabitsStore`, `stores/useBookshelfStore`, `stores/useAnnotationStore`, `lib/accolades-engine`, `components/accolades/ExLibrisBookplate`, `components/accolades/AccoladeCelebrationModal` | `page.tsx` | Production Module |
 | [`AccountDeleteModal.tsx`](src/components/account/AccountDeleteModal.tsx) | `components/ui/Modal`, `components/ui/Button` | `page.tsx` | Production Module |
-| [`AccountHabitsCard.tsx`](src/components/account/AccountHabitsCard.tsx) | `stores/useHabitsStore`, `components/ui/Button`, `components/ui/Modal` | `page.tsx` | Production Module |
+| [`AccountHabitsCard.tsx`](src/components/account/AccountHabitsCard.tsx) | `stores/useHabitsStore` | `page.tsx` | Production Module |
 | [`AccountIdentityCard.tsx`](src/components/account/AccountIdentityCard.tsx) | `types/database.types`, `components/ui/Button`, `components/ui/Input` | `page.tsx` | Production Module |
 | [`AccountLibraryStats.tsx`](src/components/account/AccountLibraryStats.tsx) | `config/library-tokens` | `page.tsx` | Production Module |
 | [`AccountPreferencesSection.tsx`](src/components/account/AccountPreferencesSection.tsx) | `stores/useThemeStore`, `lib/speech-utils`, `lib/library-backup`, `./AccountRestoreModal` | `page.tsx` | Production Module |
@@ -425,11 +425,11 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`TextHighlightPopover.tsx`](src/components/reader/TextHighlightPopover.tsx) | `stores/useAnnotationStore`, `stores/useReaderStore`, `hooks/useHasMounted`, `config/annotation-tokens` | `page.tsx` | Production Module |
 | [`BackToTop.tsx`](src/components/ui/BackToTop.tsx) | _Root Primitive_ | `page.tsx`, `page.tsx` | Production Module |
 | [`Badge.tsx`](src/components/ui/Badge.tsx) | `lib/utils` | `BookCard.tsx`, `DownloadDrawer.tsx` | Production Module |
-| [`Button.tsx`](src/components/ui/Button.tsx) | `lib/utils` | `page.tsx`, `page.tsx`, `error.tsx`, `not-found.tsx`, `page.tsx`, `page.tsx`, `AccountDeleteModal.tsx`, `AccountHabitsCard.tsx`, `AccountIdentityCard.tsx`, `AccountRestoreModal.tsx`, `AccountSecuritySection.tsx`, `AuthModal.tsx`, `EmailSentView.tsx`, `AdvancedFilterDrawer.tsx`, `BookCard.tsx`, `BookGrid.tsx`, `BookmarkCard.tsx`, `BookmarksView.tsx`, `BookPreviewModal.tsx`, `BookshelfManageModals.tsx`, `BookshelfMobileModal.tsx`, `BookshelfRack.tsx`, `DownloadDrawer.tsx`, `EditorialQuoteSection.tsx`, `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `Navbar.tsx`, `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `StickyCatalogToolbar.tsx`, `DeleteAnnotationModal.tsx` | Production Module |
+| [`Button.tsx`](src/components/ui/Button.tsx) | `lib/utils` | `page.tsx`, `page.tsx`, `error.tsx`, `not-found.tsx`, `page.tsx`, `page.tsx`, `AccountDeleteModal.tsx`, `AccountIdentityCard.tsx`, `AccountRestoreModal.tsx`, `AccountSecuritySection.tsx`, `AuthModal.tsx`, `EmailSentView.tsx`, `AdvancedFilterDrawer.tsx`, `BookCard.tsx`, `BookGrid.tsx`, `BookmarkCard.tsx`, `BookmarksView.tsx`, `BookPreviewModal.tsx`, `BookshelfManageModals.tsx`, `BookshelfMobileModal.tsx`, `BookshelfRack.tsx`, `DownloadDrawer.tsx`, `EditorialQuoteSection.tsx`, `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `Navbar.tsx`, `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `StickyCatalogToolbar.tsx`, `DeleteAnnotationModal.tsx` | Production Module |
 | [`Card.tsx`](src/components/ui/Card.tsx) | `lib/utils` | `BookCard.tsx` | Production Module |
 | [`CursorTooltip.tsx`](src/components/ui/CursorTooltip.tsx) | _Root Primitive_ | `BookCard.tsx`, `BookshelfSpine.tsx` | Production Module |
 | [`Input.tsx`](src/components/ui/Input.tsx) | `lib/utils` | `AccountIdentityCard.tsx`, `AccountSecuritySection.tsx`, `AuthModal.tsx`, `BookshelfManageModals.tsx` | Production Module |
-| [`Modal.tsx`](src/components/ui/Modal.tsx) | `lib/utils` | `page.tsx`, `page.tsx`, `AccountDeleteModal.tsx`, `AccountHabitsCard.tsx`, `AccountRestoreModal.tsx`, `BookmarksView.tsx`, `BookshelfManageModals.tsx`, `DownloadDrawer.tsx`, `NotebookView.tsx`, `DeleteAnnotationModal.tsx`, `GutenbergInfoModal.tsx` | Production Module |
+| [`Modal.tsx`](src/components/ui/Modal.tsx) | `lib/utils` | `page.tsx`, `page.tsx`, `AccountDeleteModal.tsx`, `AccountRestoreModal.tsx`, `BookmarksView.tsx`, `BookshelfManageModals.tsx`, `DownloadDrawer.tsx`, `NotebookView.tsx`, `DeleteAnnotationModal.tsx`, `GutenbergInfoModal.tsx` | Production Module |
 | [`PasswordStrengthMeter.tsx`](src/components/ui/PasswordStrengthMeter.tsx) | `lib/password` | `AccountSecuritySection.tsx`, `AuthModal.tsx` | Production Module |
 | [`SectionHeader.tsx`](src/components/ui/SectionHeader.tsx) | `lib/utils` | `page.tsx`, `BookmarksView.tsx`, `NotebookView.tsx` | Production Module |
 | [`StarRating.tsx`](src/components/ui/StarRating.tsx) | _Root Primitive_ | `page.tsx`, `BookCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx` | Production Module |

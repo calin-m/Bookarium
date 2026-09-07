@@ -13,6 +13,7 @@ import {
   Palette,
   Crown,
   Award,
+  Library,
   X,
   Check,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Palette,
   Crown,
   Award,
+  Library,
 };
 
 export interface AccoladeCelebrationModalProps {

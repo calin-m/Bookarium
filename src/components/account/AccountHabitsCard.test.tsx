@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AccountHabitsCard } from './AccountHabitsCard';
 import { useHabitsStore } from '@/stores/useHabitsStore';
@@ -10,10 +10,9 @@ describe('AccountHabitsCard', () => {
     useHabitsStore.getState().resetHabits();
   });
 
-  it('renders reading habits card with streak, duration, and challenge horizontal strips', () => {
+  it('renders reading habits card with streak, duration, and canonical challenge horizontal strips', () => {
     useHabitsStore.getState().recordDailyActivity('2026-09-06');
     useHabitsStore.getState().addReadingDuration(3600); // 1.0 hrs
-    useHabitsStore.getState().setAnnualGoal(20, 2026);
 
     render(<AccountHabitsCard completedBooksCount={5} />);
 
@@ -22,11 +21,13 @@ describe('AccountHabitsCard', () => {
     expect(screen.getByTestId('reading-time-metric')).toBeInTheDocument();
     expect(screen.getByTestId('annual-goal-metric')).toBeInTheDocument();
 
-    // Challenge shows 5 / 20 Volumes (25%)
+    // Challenge shows 5 / 6 Volumes (83%) toward Bibliophile Novice
     const goalMetric = screen.getByTestId('annual-goal-metric');
     expect(goalMetric).toHaveTextContent('5');
-    expect(goalMetric).toHaveTextContent('/ 20 Volumes');
-    expect(goalMetric).toHaveTextContent('25%');
+    expect(goalMetric).toHaveTextContent('/ 6 Volumes');
+    expect(goalMetric).toHaveTextContent('83%');
+    expect(goalMetric).toHaveTextContent(/1 volume remaining to unlock Bibliophile Novice/i);
+    expect(goalMetric).toHaveTextContent(/Bibliophile Novice in sight/i);
   });
 
   it('renders 7-day activity indicators in the streak strip', () => {
@@ -71,59 +72,51 @@ describe('AccountHabitsCard', () => {
     expect(listeningBadge).toHaveTextContent(/30 min/i);
   });
 
-  it('opens edit modal and allows backspacing, presets, pace hints, and saving goal', () => {
-    useHabitsStore.getState().setAnnualGoal(12, 2026);
+  it('renders canonical 4-tier milestone ladder cards with titles, Latin mottos, and paces', () => {
+    render(<AccountHabitsCard completedBooksCount={0} />);
 
-    render(<AccountHabitsCard completedBooksCount={2} />);
+    expect(screen.getByText('Canonical Milestone Ladder')).toBeInTheDocument();
+    expect(screen.getByTestId('milestone-tier-bibliophile-novice')).toBeInTheDocument();
+    expect(screen.getByTestId('milestone-tier-canonical-scholar')).toBeInTheDocument();
+    expect(screen.getByTestId('milestone-tier-master-of-the-canon')).toBeInTheDocument();
+    expect(screen.getByTestId('milestone-tier-the-laureates-crown')).toBeInTheDocument();
 
-    const editBtn = screen.getByRole('button', { name: /Edit annual reading goal/i });
-    fireEvent.click(editBtn);
-
-    // Modal opens
-    expect(screen.getByRole('heading', { level: 2, name: /Set 2026 Reading Challenge/i })).toBeInTheDocument();
-
-    // Default pace hint for 12 volumes
-    expect(screen.getByText(/~1.0 volume per month/i)).toBeInTheDocument();
-
-    const getInput = () => screen.getByLabelText('Annual reading target number') as HTMLInputElement;
-    expect(getInput().value).toBe('12');
-
-    // Test backspacing: clearing input to empty string does not get stuck
-    fireEvent.change(getInput(), { target: { value: '' } });
-    expect(getInput().value).toBe('');
-    expect(screen.getByText(/Set an annual target to see your reading pace/i)).toBeInTheDocument();
-
-    // Type 24
-    fireEvent.change(getInput(), { target: { value: '24' } });
-    expect(getInput().value).toBe('24');
-    expect(screen.getByText(/~2.0 volumes per month/i)).toBeInTheDocument();
-
-    // Click preset 52
-    const preset52Btn = screen.getByRole('button', { name: /52 \(1\/wk\)/i });
-    fireEvent.click(preset52Btn);
-    expect(getInput().value).toBe('52');
-    expect(screen.getByText(/~1.0 volume per week/i)).toBeInTheDocument();
-
-    // Adjust target with + button
-    const increaseBtn = screen.getByRole('button', { name: /Increase target/i });
-    fireEvent.click(increaseBtn);
-    expect(getInput().value).toBe('53');
-
-    // Save challenge
-    const saveBtn = screen.getByRole('button', { name: /Save Challenge/i });
-    fireEvent.click(saveBtn);
-
-    // Goal in store updated
-    expect(useHabitsStore.getState().annualGoal).toBe(53);
+    expect(screen.getByText('“Ad Initium”')).toBeInTheDocument();
+    expect(screen.getByText('“Annus Mirabilis”')).toBeInTheDocument();
+    expect(screen.getByText('“Litterarum Magister”')).toBeInTheDocument();
+    expect(screen.getByText('“Coronam Accipere”')).toBeInTheDocument();
   });
 
-  it('displays completion message when annual target is met', () => {
-    useHabitsStore.getState().setAnnualGoal(5, 2026);
+  it('elevates milestone target dynamically as reader completes books', () => {
+    // 3 books completed: In sight of Bibliophile Novice (target: 6)
+    const { rerender } = render(<AccountHabitsCard completedBooksCount={3} />);
+    expect(screen.getByText(/3 volumes remaining to unlock Bibliophile Novice/i)).toBeInTheDocument();
+    expect(screen.getByText('50%')).toBeInTheDocument();
 
+    // 8 books completed: Novice attained, in sight of Canonical Scholar (target: 12)
+    rerender(<AccountHabitsCard completedBooksCount={8} />);
+    expect(screen.getByText(/4 volumes remaining to unlock Canonical Scholar/i)).toBeInTheDocument();
+    expect(screen.getByText('67%')).toBeInTheDocument();
+    const noviceCard = screen.getByTestId('milestone-tier-bibliophile-novice');
+    expect(noviceCard).toHaveTextContent(/Attained/i);
+
+    // 20 books completed: Scholar attained, in sight of Master of the Canon (target: 24)
+    rerender(<AccountHabitsCard completedBooksCount={20} />);
+    expect(screen.getByText(/4 volumes remaining to unlock Master of the Canon/i)).toBeInTheDocument();
+    expect(screen.getByText('83%')).toBeInTheDocument();
+
+    // 52 books completed: Masterwork achieved
+    rerender(<AccountHabitsCard completedBooksCount={52} />);
+    expect(screen.getByText("The Laureate's Crown achieved! 🎉 All 52 canonical volumes completed.")).toBeInTheDocument();
+    expect(screen.getByText('100%')).toBeInTheDocument();
+    expect(screen.getByText('Masterwork Attained')).toBeInTheDocument();
+  });
+
+  it('does not expose arbitrary user edit buttons or input fields (anti-tamper integrity)', () => {
     render(<AccountHabitsCard completedBooksCount={5} />);
 
-    expect(screen.getByText('100%')).toBeInTheDocument();
-    expect(screen.getByText(/Challenge completed! 🎉/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Annual reading target number/i)).not.toBeInTheDocument();
   });
 
   it('triggers cloud sync on mount when authenticated userId is provided', () => {
@@ -133,53 +126,6 @@ describe('AccountHabitsCard', () => {
     render(<AccountHabitsCard userId="user-sync-1" completedBooksCount={3} />);
 
     expect(syncMock).toHaveBeenCalledWith('user-sync-1');
-  });
-
-  it('allows user to enter arbitrary custom goal, clamps on blur, updates pace hint, and reflects changes on the card UI', () => {
-    useHabitsStore.getState().setAnnualGoal(12, 2026);
-
-    render(<AccountHabitsCard completedBooksCount={6} />);
-
-    // Initially 12 volumes goal, 6 completed = 50%
-    expect(screen.getByText('50%')).toBeInTheDocument();
-    expect(screen.getByText(/6 volumes remaining/i)).toBeInTheDocument();
-    expect(screen.getByText(/12 Volumes Goal/i)).toBeInTheDocument();
-
-    // Open edit modal
-    const editBtn = screen.getByRole('button', { name: /Edit annual reading goal/i });
-    fireEvent.click(editBtn);
-
-    const getInput = () => screen.getByLabelText('Annual reading target number') as HTMLInputElement;
-
-    // Test typing an arbitrary custom value: 30 volumes
-    fireEvent.change(getInput(), { target: { value: '30' } });
-    expect(getInput().value).toBe('30');
-    // 30 / 12 = 2.5
-    expect(screen.getByText(/~2.5 volumes per month/i)).toBeInTheDocument();
-
-    // Test onBlur clamping with out-of-range value > 365
-    fireEvent.change(getInput(), { target: { value: '999' } });
-    fireEvent.blur(getInput());
-    expect(getInput().value).toBe('365');
-
-    // Test onBlur clamping with empty input
-    fireEvent.change(getInput(), { target: { value: '' } });
-    fireEvent.blur(getInput());
-    expect(getInput().value).toBe('1');
-
-    // Set custom target to 30 and save
-    fireEvent.change(getInput(), { target: { value: '30' } });
-    const saveBtn = screen.getByRole('button', { name: /Save Challenge/i });
-    fireEvent.click(saveBtn);
-
-    // Modal closed
-    expect(screen.queryByRole('heading', { name: /Set 2026 Reading Challenge/i })).not.toBeInTheDocument();
-
-    // Card UI updated to new custom goal: 6 of 30 = 20%, 24 remaining
-    expect(screen.getByText('20%')).toBeInTheDocument();
-    expect(screen.getByText(/24 volumes remaining/i)).toBeInTheDocument();
-    expect(screen.getByText(/30 Volumes Goal/i)).toBeInTheDocument();
-    expect(useHabitsStore.getState().annualGoal).toBe(30);
   });
 
   it('applies theme-aware solid borders and surfaces without fractional opacity variants that vanish in Sepia or Dark mode', () => {

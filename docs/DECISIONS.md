@@ -348,3 +348,35 @@
   - High degree of polymorphism, maintainability, and clean single-responsibility boundaries.
   - 100% backward-compatible, non-breaking changes across all existing components, stores, and route handlers.
   - Zero test regressions; test suite expanded to 147 test suites, 1,176 tests, maintaining >92% test coverage.
+
+## ADR-032: Canonical 4-Tier Reading Challenge Ladder, Anti-Tamper Progression & Accolade Visual Stabilization
+- **Status**: Accepted
+- **Context**: 
+  1. The previous Annual Reading Challenge in `AccountHabitsCard.tsx` allowed arbitrary user editing of the annual target (e.g. setting goal = 1), enabling readers to trivially trigger the highest Masterwork accolade (*The Laureate's Crown*) without genuine literary reading effort.
+  2. The Ex-Libris Accolades compendium lacked intermediate curation honors between starting the library and the pinnacle 52-volume Masterwork award.
+  3. Earned Ex-Libris bookplates exhibited vector stroke thickness throbbing on hover due to compound scaling transforms (`scale3d(1.02, 1.02, 1.02)` on the card container combined with `group-hover:scale-105` on the inner medallion), aggressive 3D perspective mouse tilt ($\pm 12^\circ$), and unisolated specular sheen alpha-blending across SVG stroke boundaries.
+  4. Supabase database linter detected missing immutable search paths and overly permissive default PostgREST RPC execution on `handle_new_user()` and `delete_current_user()`.
+- **Decision**:
+  1. **Canonical 4-Tier Curation Ladder (`src/config/accolades-config.ts`, `src/types/accolades.types.ts`)**:
+     Expand the curation accolades into an objective, non-editable 4-tier milestone hierarchy evaluated deterministically against authentic completed books (`completedBooksCount`):
+     - **Bronze (6 volumes)**: `bibliophile-novice` (*Bibliophile Novice*, &ldquo;Ad Initium&rdquo;, `BookOpen`, bi-monthly pace)
+     - **Silver (12 volumes)**: `canonical-scholar` (*Canonical Scholar*, &ldquo;Annus Mirabilis&rdquo;, `Library`, 1 volume/month)
+     - **Gold (24 volumes)**: `master-of-the-canon` (*Master of the Canon*, &ldquo;Litterarum Magister&rdquo;, `Award`, 2 volumes/month)
+     - **Masterwork (52 volumes)**: `the-laureates-crown` (*The Laureate's Crown*, &ldquo;Coronam Accipere&rdquo;, `Crown`, 1 volume/week)
+  2. **Anti-Tamper Challenge Tracking (`AccountHabitsCard.tsx`)**:
+     Retire the edit goal modal, input stepper, and "Edit Goal" button. Display dynamic next-tier milestone progress (`completed / currentTarget Volumes`), remaining volume countdown, and an interactive 4-card milestone track indicating attained status (with checkmarks), in-sight active goals, and upcoming tiers with Latin mottos.
+  3. **Vector Stroke Stabilization & GPU Hardware Layer Promotion (`ExLibrisBookplate.tsx`, `AccoladeCelebrationModal.tsx`)**:
+     - Remove `group-hover:scale-105` on the inner medallion, replacing it with elevation shadow (`transition-all duration-200 group-hover:shadow-md`) while preserving native 1:1 physical pixel stroke rasterization.
+     - Promote SVG icons to dedicated GPU compositor layers via `[transform:translateZ(0)]`, `[backface-visibility:hidden]`, and `[shape-rendering:geometricPrecision]`.
+     - Soften desktop 3D perspective tilt to $\pm 4^\circ$, and isolate dynamic specular sheen gradients to `z-0 pointer-events-none` behind `relative z-10` content.
+     - Register `Library` icon from `lucide-react` into `ICON_MAP` across bookplates and celebration modals.
+  4. **Database Security Hardening (`supabase/schema.sql`, `README.md`)**:
+     - Enforce `SET search_path = ''` on `handle_new_user()` and `delete_current_user()`.
+     - Revoke `EXECUTE` on `handle_new_user()` across `PUBLIC`, `anon`, and `authenticated` roles.
+     - Guard `delete_current_user()` with null session check (`IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;`) and restrict execution to authenticated users.
+- **Consequences**:
+  - Eliminates gamification exploits and guarantees 100% integrity for literary accolades.
+  - Provides readers with structured, achievable milestones (6, 12, 24, 52 volumes) with classical Latin identities.
+  - Zero icon stroke flickering or jitter across all 13 accolade bookplates in Light, Sepia, and Dark modes.
+  - 100% resolution of database security linter warnings.
+  - All 147 test suites (1,179 tests) passing with >92% test coverage.

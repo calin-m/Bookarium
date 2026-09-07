@@ -127,5 +127,20 @@ describe('ExLibrisBookplate', () => {
     expect(lockedHtml).not.toContain('border-border/60');
     expect(lockedHtml).not.toContain('border-border/40');
   });
+
+  it('applies GPU-stabilized vector rendering and z-index isolation without conflicting scale-105', () => {
+    const { container } = render(
+      <ExLibrisBookplate definition={sampleDef} progress={unlockedProgress} />
+    );
+
+    const html = container.innerHTML;
+    // Should not contain conflicting inner scale that causes stroke thickness flickering
+    expect(html).not.toContain('group-hover:scale-105');
+    // Should contain hardware acceleration and geometric precision hints
+    expect(html).toContain('[shape-rendering:geometricPrecision]');
+    expect(html).toContain('[backface-visibility:hidden]');
+    // Should isolate content with relative z-10
+    expect(html).toContain('relative z-10');
+  });
 });
 

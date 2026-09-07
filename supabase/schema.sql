@@ -289,13 +289,17 @@ CREATE INDEX IF NOT EXISTS idx_user_book_curation_user_book
 -- 8. Auto-Provisioning User Trigger (Profile + Default General Shelf)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 BEGIN
   -- 1. Create user profile
   INSERT INTO public.profiles (id, display_name, preferred_theme)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'display_name', 'Reader'),
+    pg_catalog.coalesce(NEW.raw_user_meta_data->>'display_name', 'Reader'),
     'light'
   )
   ON CONFLICT (id) DO NOTHING;
@@ -311,7 +315,12 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
+-- Security hardening: Trigger functions should never be executable via PostgREST RPC
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM authenticated;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -322,11 +331,38 @@ CREATE TRIGGER on_auth_user_created
 -- 9. RPC Function: Delete Current User Account
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.delete_current_user()
-RETURNS VOID AS $$
+RETURNS VOID 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 BEGIN
+  -- Enforce active authenticated session
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
   DELETE FROM auth.users WHERE id = auth.uid();
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
+-- Security hardening: Disallow anonymous execution; allow authenticated users to self-delete
+REVOKE EXECUTE ON FUNCTION public.delete_current_user() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.delete_current_user() FROM anon;
+GRANT EXECUTE ON FUNCTION public.delete_current_user() TO authenticated;
+
+-- Security hardening: Protect rls_auto_enable if provisioned on remote database
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public' AND p.proname = 'rls_auto_enable'
+  ) THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;';
+    EXECUTE 'ALTER FUNCTION public.rls_auto_enable() SET search_path = ''''';
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 10. User Reading Habits Table (Streaks, Active Days & Annual Goals)
