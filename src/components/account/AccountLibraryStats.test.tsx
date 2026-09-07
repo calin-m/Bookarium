@@ -348,6 +348,8 @@ describe('AccountLibraryStats', () => {
     const badge = screen.getByTestId('account-library-streak-badge');
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveTextContent('5 days');
+    expect(badge).toHaveClass('border-border');
+    expect(badge.className).not.toContain('border-amber-500/20');
 
     rerender(
       <AccountLibraryStats

@@ -11,6 +11,7 @@ import { ANNOTATION_COLOR_CONFIG } from '@/config/annotation-tokens';
 import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
 import { ReaderLoadingView } from './ReaderLoadingView';
 import { ReaderErrorView } from './ReaderErrorView';
+import { computeAnnotationSpans } from '@/lib/reader-annotator';
 
 export interface ReaderSurfaceProps {
   theme: ReaderTheme;
@@ -348,6 +349,8 @@ function renderContentWithAnnotations(
     return text;
   }
 
+  const speechHighlightClass = getReaderTheme(theme).speechHighlight;
+
   const matchingAnnotations = (annotations || []).filter(
     (a) => a.selectedText && text.includes(a.selectedText)
   );
@@ -362,13 +365,7 @@ function renderContentWithAnnotations(
               {index < arr.length - 1 && (
                 <mark
                   data-testid="speech-highlight"
-                  className={`rounded-xs px-1 transition-colors duration-200 ${
-                    theme === 'sepia'
-                      ? 'bg-amber-500/30 text-[#fef6eb]'
-                      : theme === 'dark'
-                      ? 'bg-amber-400/30 text-amber-200'
-                      : 'bg-primary-500/25 text-inherit'
-                  }`}
+                  className={`rounded-xs px-1 transition-colors duration-200 ${speechHighlightClass}`}
                 >
                   {highlightedSentence}
                 </mark>
@@ -381,32 +378,7 @@ function renderContentWithAnnotations(
     return text;
   }
 
-  interface Span {
-    start: number;
-    end: number;
-    annotation: Annotation;
-  }
-  const spans: Span[] = [];
-  for (const ann of matchingAnnotations) {
-    let searchStart = 0;
-    while (searchStart < text.length) {
-      const idx = text.indexOf(ann.selectedText, searchStart);
-      if (idx === -1) break;
-      spans.push({ start: idx, end: idx + ann.selectedText.length, annotation: ann });
-      searchStart = idx + ann.selectedText.length;
-    }
-  }
-
-  spans.sort((a, b) => a.start - b.start);
-
-  const cleanSpans: Span[] = [];
-  let lastEnd = 0;
-  for (const span of spans) {
-    if (span.start >= lastEnd) {
-      cleanSpans.push(span);
-      lastEnd = span.end;
-    }
-  }
+  const cleanSpans = computeAnnotationSpans(text, matchingAnnotations);
 
   const elements: React.ReactNode[] = [];
   let currentIndex = 0;
@@ -423,13 +395,7 @@ function renderContentWithAnnotations(
                 {pIdx < pArr.length - 1 && (
                   <mark
                     data-testid="speech-highlight"
-                    className={`rounded-xs px-1 transition-colors duration-200 ${
-                      theme === 'sepia'
-                        ? 'bg-amber-500/30 text-[#fef6eb]'
-                        : theme === 'dark'
-                        ? 'bg-amber-400/30 text-amber-200'
-                        : 'bg-primary-500/25 text-inherit'
-                    }`}
+                    className={`rounded-xs px-1 transition-colors duration-200 ${speechHighlightClass}`}
                   >
                     {highlightedSentence}
                   </mark>
@@ -479,13 +445,7 @@ function renderContentWithAnnotations(
               {pIdx < pArr.length - 1 && (
                 <mark
                   data-testid="speech-highlight"
-                  className={`rounded-xs px-1 transition-colors duration-200 ${
-                    theme === 'sepia'
-                      ? 'bg-amber-500/30 text-[#fef6eb]'
-                      : theme === 'dark'
-                      ? 'bg-amber-400/30 text-amber-200'
-                      : 'bg-primary-500/25 text-inherit'
-                  }`}
+                  className={`rounded-xs px-1 transition-colors duration-200 ${speechHighlightClass}`}
                 >
                   {highlightedSentence}
                 </mark>

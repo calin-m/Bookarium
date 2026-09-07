@@ -114,7 +114,7 @@ export function AccoladeCelebrationModal({
         </button>
 
         {/* Ornate Classical Frame */}
-        <div className="border border-border/50 rounded-xl p-6 text-center flex flex-col items-center">
+        <div className="border border-border rounded-xl p-6 text-center flex flex-col items-center">
           {/* Ribbon Header */}
           <div className="mb-4">
             <span

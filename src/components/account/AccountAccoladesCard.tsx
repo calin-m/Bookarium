@@ -6,7 +6,6 @@ import { ACCOLADES_CATALOG, ACCOLADE_CATEGORIES } from '@/config/accolades-confi
 import { AccoladeCategory, AccoladeId } from '@/types/accolades.types';
 import {
   useHydratedAccolades,
-  useAccoladesStore,
   MAX_PINNED_ACCOLADES,
 } from '@/stores/useAccoladesStore';
 import { useHydratedHabits } from '@/stores/useHabitsStore';
@@ -170,7 +169,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
       {pinLimitWarning && (
         <div
           role="alert"
-          className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs animate-in fade-in"
+          className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 dark:border-amber-500/50 text-amber-800 dark:text-amber-200 text-xs animate-in fade-in"
         >
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <span>{pinLimitWarning}</span>
@@ -190,7 +189,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
         </div>
 
         {pinnedDefinitions.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {pinnedDefinitions.map((def) => (
               <ExLibrisBookplate
                 key={`showcase-${def.id}`}
@@ -201,7 +200,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-border/80 p-5 text-center bg-muted/20">
+          <div className="rounded-xl border border-dashed border-border p-5 text-center bg-muted/20">
             <p className="text-xs text-muted-foreground font-serif italic">
               No bookplates pinned yet. Unlock achievements and click the pin icon to curate your personal 3-plate showcase.
             </p>
@@ -217,7 +216,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
           </h3>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-b border-border/60 pb-3" role="tablist">
+        <div className="flex flex-wrap gap-1.5 border-b border-border pb-3" role="tablist">
           {ACCOLADE_CATEGORIES.map((category) => {
             const isActive = activeCategory === category.id;
             return (
@@ -240,7 +239,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
         </div>
 
         {/* Bookplate Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pt-2">
           {filteredCatalog.map((def) => (
             <ExLibrisBookplate
               key={def.id}

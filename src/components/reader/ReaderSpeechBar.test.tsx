@@ -237,4 +237,60 @@ describe('ReaderSpeechBar', () => {
     expect(prevBtn).toHaveClass('min-w-[40px]');
     expect(prevBtn).toHaveClass('min-h-[40px]');
   });
+
+  it('correctly uses UseReaderSpeechReturn facade prop when provided', () => {
+    const play = vi.fn();
+    const pause = vi.fn();
+    const resume = vi.fn();
+    const skipNext = vi.fn();
+    const skipPrev = vi.fn();
+    const setRate = vi.fn();
+    const setVoice = vi.fn();
+    const stop = vi.fn();
+
+    const mockSpeechFacade = {
+      isSupported: true,
+      isPlaying: false,
+      isPaused: false,
+      currentSentenceIndex: 2,
+      totalSentences: 10,
+      sentences: [],
+      currentSentence: '',
+      rate: 1.0,
+      availableVoices: [],
+      naturalVoices: [],
+      standardVoices: [],
+      selectedVoice: null,
+      play,
+      pause,
+      resume,
+      stop,
+      skipNext,
+      skipPrev,
+      setRate,
+      setVoice,
+    };
+
+    render(
+      <ReaderSpeechBar
+        speech={mockSpeechFacade}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/Sentence 3\s*\/\s*10/)).toBeInTheDocument();
+
+    const playBtn = screen.getByRole('button', { name: 'Play narration' });
+    fireEvent.click(playBtn);
+    expect(play).toHaveBeenCalledTimes(1);
+
+    const nextBtn = screen.getByRole('button', { name: 'Next sentence' });
+    fireEvent.click(nextBtn);
+    expect(skipNext).toHaveBeenCalledTimes(1);
+
+    const prevBtn = screen.getByRole('button', { name: 'Previous sentence' });
+    fireEvent.click(prevBtn);
+    expect(skipPrev).toHaveBeenCalledTimes(1);
+  });
 });

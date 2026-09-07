@@ -3,7 +3,6 @@ import { Flame, Clock, Trophy, Edit3, Plus, Minus, CheckCircle, Calendar, Check,
 import { useHydratedHabits, useHabitsStore } from '@/stores/useHabitsStore';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { formatReadingDuration } from '@/lib/reading-analytics';
 
 export interface AccountHabitsCardProps {
   userId?: string;

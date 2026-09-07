@@ -4,7 +4,6 @@ import { AccountAccoladesCard } from './AccountAccoladesCard';
 import { useAccoladesStore } from '@/stores/useAccoladesStore';
 import { useHabitsStore } from '@/stores/useHabitsStore';
 
-const mockSyncWithCloud = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(() => ({
@@ -102,6 +101,17 @@ describe('AccountAccoladesCard', () => {
     await waitFor(() => {
       expect(syncSpy).toHaveBeenCalledWith('user-999');
     });
+  });
+
+  it('applies theme-aware solid borders without vanishing fractional opacities', () => {
+    const { container } = render(<AccountAccoladesCard />);
+    const html = container.innerHTML;
+
+    expect(html).not.toContain('border-border/80');
+    expect(html).not.toContain('border-border/70');
+    expect(html).not.toContain('border-border/60');
+    expect(html).not.toContain('border-border/50');
+    expect(html).not.toContain('border-border/40');
   });
 });
 

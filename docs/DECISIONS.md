@@ -315,3 +315,36 @@
   - 100% offline-first capability for guest readers; seamless multi-device persistence for authenticated accounts.
   - Zero performance regressions; fully co-located unit and component test suite.
   - Milestone 4 Point 1 fully achieved and verified on the living roadmap.
+
+## ADR-031: Global Encapsulation, Polymorphic Strategy Dispatching & Layout DRY Refactoring
+- **Status**: Accepted
+- **Context**: As Bookarium expanded with interactive annotations, multiple reading themes, 3D preview physics, and complex account analytics, several subsystems exhibited code bloat and tight coupling:
+  1. `NotebookView.tsx` exceeded 970 lines, mixing catalog filtering, pagination, citation clipboard writing, color swatch popovers, reflection draft editing, and deletion modals in a monolithic component.
+  2. The delete annotation confirmation dialog was duplicated with identical logic across `ReaderAnnotationsDrawer.tsx`, `NotebookView.tsx`, and `read/[id]/page.tsx`.
+  3. `useAnnotationStore.ts` dispatched outbox synchronization via an imperative `switch(item.type)` statement, diverging from the polymorphic strategy pattern established in `useBookshelfStore.ts`.
+  4. Reader theme cycling and speech highlight styling relied on ternary cascades across `ReaderHeader.tsx` and `ReaderSurface.tsx`.
+  5. `BookPreviewModal.tsx` duplicated dual-face notable passage layouts between the stationary right base and the 3D flipping leaf.
+  6. `ReaderHeader.tsx` repeated nearly ~150 lines of button JSX between desktop and mobile headers.
+  7. In the Account dashboard, the Security & Password, Account Session, and Danger Zone cards were visually crammed vertically without distinct separation on Sepia and Dark modes.
+- **Decision**:
+  1. **Single-Responsibility Component Extraction (`NotebookQuoteCard.tsx`, `DeleteAnnotationModal.tsx`, `NotablePassagesSpread.tsx`)**:
+     - Extract `NotebookQuoteCard` with isolated local state, citation copying, quick color swatches, and render-time draft reflection state adjustments, pruning 302 lines from `NotebookView`.
+     - Extract `DeleteAnnotationModal` wrapping `@/components/ui/Modal` and `QuoteDeletePreview` to unify annotation deletion across Reader and Notebook.
+     - Extract `NotablePassagesSpread` to eliminate duplicated quote stacks in `BookPreviewModal`.
+  2. **Polymorphic Strategy Dispatching (`useAnnotationStore.ts`, `reader-themes.ts`)**:
+     - Introduce `ANNOTATION_OUTBOX_DISPATCHERS: Record<AnnotationOutboxAction['type'], AnnotationOutboxDispatcher>` matching the architecture in `useBookshelfStore.ts`.
+     - Introduce `NEXT_READER_THEME: Record<ReaderTheme, ReaderTheme>` transition cycle map and `speechHighlight` token in `ReaderThemeConfig`.
+  3. **Action Matrix Unification (`ReaderHeader.tsx`)**:
+     - Consolidate desktop and mobile header button trees into a single declarative `toolActions: ReaderHeaderToolAction[]` array.
+  4. **Reader Subsystem Architecture & Computational Partitioning (`useReaderSession.ts`, `ReaderSpeechBar.tsx`, `reader-annotator.ts`)**:
+     - Implement `jumpTo(chapterIndex, page)` and internalized `useHasMounted()` in `useReaderSession`.
+     - Add `speech?: UseReaderSpeechReturn` facade prop to `ReaderSpeechBar`.
+     - Extract pure computational interval partitioning and collision-free text search into `computeAnnotationSpans()` in `reader-annotator.ts`.
+  5. **Dialog Modal Standardization & Account Visual Rhythm**:
+     - Re-skin `GutenbergInfoModal` and all 4 bookshelf management modals to compose `@/components/ui/Modal`.
+     - Harmonize vertical rhythm (`space-y-6`) and high-contrast solid borders across Security & Password, Account Session, and Danger Zone cards on the Account page.
+- **Consequences**:
+  - Dramatic reduction in monolithic file sizes: `NotebookView.tsx` (-302 lines), `BookPreviewModal.tsx` (-104 lines), `ReaderHeader.tsx` (-107 lines), `BookshelfManageModals.tsx` (-59 lines).
+  - High degree of polymorphism, maintainability, and clean single-responsibility boundaries.
+  - 100% backward-compatible, non-breaking changes across all existing components, stores, and route handlers.
+  - Zero test regressions; test suite expanded to 147 test suites, 1,176 tests, maintaining >92% test coverage.

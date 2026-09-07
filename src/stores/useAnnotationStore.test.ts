@@ -515,5 +515,66 @@ describe('useAnnotationStore', () => {
     expect(stored?.bookTitle).toBeUndefined();
     expect(stored?.bookAuthor).toBeUndefined();
   });
+
+  it('flushes outbox with polymorphic dispatchers for UPSERT and DELETE actions', async () => {
+    useAnnotationStore.setState({
+      outbox: [
+        {
+          id: 'outbox-1',
+          type: 'UPSERT_ANNOTATION',
+          payload: {
+            id: 'ann-sync-1',
+            book_id: 1342,
+            selected_text: 'Synced text',
+            color: 'mint',
+          },
+          timestamp: new Date().toISOString(),
+        },
+        {
+          id: 'outbox-2',
+          type: 'DELETE_ANNOTATION',
+          payload: {
+            id: 'ann-del-1',
+          },
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    });
+
+    await useAnnotationStore.getState().flushOutbox('user-123');
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'ann-sync-1',
+        book_id: 1342,
+        user_id: 'user-123',
+      }),
+      { onConflict: 'id' }
+    );
+
+    expect(mockDelete).toHaveBeenCalled();
+    expect(useAnnotationStore.getState().outbox).toHaveLength(0);
+  });
+
+  it('retains failing actions in outbox when dispatcher throws error', async () => {
+    mockUpsert.mockResolvedValueOnce({ error: new Error('Network timeout') });
+
+    useAnnotationStore.setState({
+      outbox: [
+        {
+          id: 'outbox-fail',
+          type: 'UPSERT_ANNOTATION',
+          payload: { id: 'ann-fail' },
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    });
+
+    await useAnnotationStore.getState().flushOutbox('user-123');
+
+    expect(useAnnotationStore.getState().outbox).toHaveLength(1);
+    expect(useAnnotationStore.getState().outbox[0].id).toBe('outbox-fail');
+  });
 });
+
 

@@ -290,7 +290,7 @@ export default function AccountPage() {
         }}
       />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+      <main className="flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">
           <Link
@@ -336,90 +336,94 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* Authenticated View: 2-Column Responsive Dashboard */}
+        {/* Authenticated View: Executive Modular Dashboard */}
         {user && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left Column (Reader Dossier & Library Stats) */}
-            <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
-              {/* Account Hero Card */}
-              <AccountIdentityCard
-                user={user}
-                profile={profile}
-                formattedDate={formattedDate}
-                displayName={displayName}
-                onDisplayNameChange={setCustomName}
-                onSaveProfile={handleSaveProfile}
-                isSaving={isSaving}
-                saveSuccess={saveSuccess}
-                saveError={saveError}
-                onResendVerification={handleResendVerification}
-                isResendingVerification={isResendingVerification}
-                resendSuccess={resendSuccess}
-                resendError={resendError}
-                resendCooldown={resendCooldown}
-              />
+          <div className="space-y-8">
+            {/* Tier 1: Reader Identity & Library Statistics (Side-by-Side on Desktop/Laptop) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              <div className="lg:col-span-7 h-full">
+                <AccountIdentityCard
+                  user={user}
+                  profile={profile}
+                  formattedDate={formattedDate}
+                  displayName={displayName}
+                  onDisplayNameChange={setCustomName}
+                  onSaveProfile={handleSaveProfile}
+                  isSaving={isSaving}
+                  saveSuccess={saveSuccess}
+                  saveError={saveError}
+                  onResendVerification={handleResendVerification}
+                  isResendingVerification={isResendingVerification}
+                  resendSuccess={resendSuccess}
+                  resendError={resendError}
+                  resendCooldown={resendCooldown}
+                />
+              </div>
 
-              {/* Library Statistics Card */}
-              <AccountLibraryStats
-                savedCount={savedCount}
-                favoriteCount={favoriteCount}
-                customShelvesCount={customShelvesCount}
-                annotationCount={annotationCount}
-                bookmarksCount={bookmarksCount}
-                readingStreak={readingStreak}
-              />
+              <div className="lg:col-span-5 h-full">
+                <AccountLibraryStats
+                  savedCount={savedCount}
+                  favoriteCount={favoriteCount}
+                  customShelvesCount={customShelvesCount}
+                  annotationCount={annotationCount}
+                  bookmarksCount={bookmarksCount}
+                  readingStreak={readingStreak}
+                />
+              </div>
             </div>
 
-            {/* Right Column (Habits, Preferences & Security) */}
-            <div className="lg:col-span-7 space-y-6">
-              {/* Reading Habits & Annual Challenge Card */}
-              <AccountHabitsCard
-                userId={user?.id}
-                completedBooksCount={completedBooksCount}
-              />
+            {/* Tier 2: Literary Immersion & Reading Habits Card (Full Width) */}
+            <AccountHabitsCard
+              userId={user?.id}
+              completedBooksCount={completedBooksCount}
+            />
 
-              {/* Literary Accolades & Ex-Libris Bookplates */}
-              <AccountAccoladesCard userId={user?.id} />
+            {/* Tier 3: Ex-Libris Bookplates & Accolades Compendium (Full Width) */}
+            <AccountAccoladesCard userId={user?.id} />
 
-              {/* Reading & Navigation Preferences Card */}
-              <AccountPreferencesSection
-                theme={theme}
-                onThemeChange={handleThemeChange}
-                stickyScrollEnabled={stickyScrollEnabled}
-                onStickyScrollChange={setStickyScrollEnabled}
-                speechRate={speechRate}
-                onSpeechRateChange={setSpeechRate}
-                speechVoiceURI={speechVoiceURI}
-                onSpeechVoiceChange={setSpeechVoiceURI}
-                speechAutoPageAdvance={speechAutoPageAdvance}
-                onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
-                speechHighlightEnabled={speechHighlightEnabled}
-                onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
-                onResetSpeechPreferences={resetSpeechPreferences}
-                userId={user?.id}
-              />
+            {/* Tier 4: Reader Atmosphere & Security Settings (Side-by-Side on Desktop/Laptop) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-6">
+                <AccountPreferencesSection
+                  theme={theme}
+                  onThemeChange={handleThemeChange}
+                  stickyScrollEnabled={stickyScrollEnabled}
+                  onStickyScrollChange={setStickyScrollEnabled}
+                  speechRate={speechRate}
+                  onSpeechRateChange={setSpeechRate}
+                  speechVoiceURI={speechVoiceURI}
+                  onSpeechVoiceChange={setSpeechVoiceURI}
+                  speechAutoPageAdvance={speechAutoPageAdvance}
+                  onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
+                  speechHighlightEnabled={speechHighlightEnabled}
+                  onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
+                  onResetSpeechPreferences={resetSpeechPreferences}
+                  userId={user?.id}
+                />
+              </div>
 
-              {/* Security & Password Card */}
-              <AccountSecuritySection
-                newPassword={newPassword}
-                confirmPassword={confirmPassword}
-                showPassword={showPassword}
-                copiedPassword={copiedPassword}
-                isUpdatingPassword={isUpdatingPassword}
-                passwordSuccess={passwordSuccess}
-                passwordError={passwordError}
-                strength={strength}
-                onNewPasswordChange={setNewPassword}
-                onConfirmPasswordChange={setConfirmPassword}
-                onToggleShowPassword={() => setShowPassword(!showPassword)}
-                onGeneratePassword={generateStrongPassword}
-                onUpdatePassword={handleUpdatePassword}
-                onSignOut={async () => {
-                  await signOut();
-                  router.push(ROUTES.HOME);
-                }}
-                onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
-              />
+              <div className="lg:col-span-6">
+                <AccountSecuritySection
+                  newPassword={newPassword}
+                  confirmPassword={confirmPassword}
+                  showPassword={showPassword}
+                  copiedPassword={copiedPassword}
+                  isUpdatingPassword={isUpdatingPassword}
+                  passwordSuccess={passwordSuccess}
+                  passwordError={passwordError}
+                  strength={strength}
+                  onNewPasswordChange={setNewPassword}
+                  onConfirmPasswordChange={setConfirmPassword}
+                  onToggleShowPassword={() => setShowPassword(!showPassword)}
+                  onGeneratePassword={generateStrongPassword}
+                  onUpdatePassword={handleUpdatePassword}
+                  onSignOut={async () => {
+                    await signOut();
+                    router.push(ROUTES.HOME);
+                  }}
+                  onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
+                />
+              </div>
             </div>
 
             {/* Delete Account Confirmation Modal */}
