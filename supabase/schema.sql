@@ -338,10 +338,14 @@ CREATE TABLE IF NOT EXISTS public.user_reading_habits (
   annual_goal_year INTEGER NOT NULL DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
   active_dates JSONB NOT NULL DEFAULT '[]'::jsonb,
   total_reading_seconds BIGINT NOT NULL DEFAULT 0,
+  total_listening_seconds BIGINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   UNIQUE(user_id)
 );
+
+ALTER TABLE public.user_reading_habits
+  ADD COLUMN IF NOT EXISTS total_listening_seconds BIGINT NOT NULL DEFAULT 0;
 
 ALTER TABLE public.user_reading_habits ENABLE ROW LEVEL SECURITY;
 

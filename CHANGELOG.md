@@ -12,13 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Reading Streaks & Habit Telemetry Engine (`reading-analytics.ts`, `useHabitsStore.ts`): Pure mathematical consecutive streak calculations with 1-day grace period, longest streak tracking, 7-day visual week activity indicators, and total literary immersion duration tracking.
+- Dual Immersion Telemetry & Background Audio Narration (`useReadingTimer.ts`, `useHabitsStore.ts`): Disentangled literary immersion into reading time (`totalReadingSeconds`) and listening time (`totalListeningSeconds`). Added background tab and idle bypass exception for active Text-to-Speech narration (`isPlayingTTS`), preserving immersion seconds when listening with the browser in the background.
+- 5-Minute Active Streak Threshold Standard (`useHabitsStore.ts`, `AccountHabitsCard.tsx`): Elevated daily streak qualification from 1 second to 5 minutes (`300s`) of combined active immersion, eliminating false streaks from accidental page opens and providing dynamic progress prompts (`Xm / 5m logged today`).
 - Annual Reading Challenge & Progress Tracking (`AccountHabitsCard.tsx`, `reading-analytics.ts`): Interactive annual volume challenge with customizable goal targets, real-time pace indicators (on pace, ahead, behind), and smooth progress bar updates.
 - Idle-Aware Reading Session Telemetry (`useReadingTimer.ts`): Unobtrusive reading session timer in `/read/[id]` with a 2-minute inactivity guard, pausing on reader idle and flushing on page visibility transitions (`visibilitychange`).
 - Multi-Device Cloud Habit Sync & LWW Reconciliation (`sync-utils.ts`, `providers.tsx`): Synchronizes habit state with Supabase `public.user_reading_habits` using Last-Write-Wins (LWW) conflict resolution via `goalUpdatedAt` timestamps and a 15-second debounced visibilitychange sync trigger.
-- Idempotent Reading Habits Database Schema (`supabase/schema.sql`, `database.types.ts`): Added `public.user_reading_habits` table with strict Row Level Security (RLS) policies and automatic trigger execution for new users.
+- Idempotent Reading Habits Database Schema (`supabase/schema.sql`, `database.types.ts`): Added `public.user_reading_habits` table with `total_listening_seconds` column, strict Row Level Security (RLS) policies, and automatic trigger execution for new users.
 - Architecture Decision Record (`ADR-027`): Formally ratified reading habit telemetry, annual goals, and extensible accolade architecture in `docs/DECISIONS.md`.
+- Architecture Decision Record (`ADR-028`): Formally ratified analytical table of contents deduplication and cross-reference protection invariants in `docs/DECISIONS.md`.
+- Architecture Decision Record (`ADR-029`): Formally ratified dual immersion telemetry (reading vs. listening) and 5-minute active streak threshold in `docs/DECISIONS.md`.
 
 ### Fixed
+- Reading Telemetry Background Audio Retention (`useReadingTimer.ts`): Resolved issue where switching tabs during Text-to-Speech playback paused telemetry, ensuring uninterrupted listening time accumulation.
+- Analytical Table of Contents Deduplication (`segmentation.ts`, `types.ts`): Resolved double-chapter parsing on 19th-century descriptive TOCs (e.g. Austin Bidwell's `read/24739`) by recognizing multi-line chapter synopses within the front-matter TOC window (`TOC_SEARCH_WINDOW_BYTES: 45000`) and suppressing them when full-length narrative chapters exist later, while preserving strict immunity for in-body chapter cross-references.
 - Border Harmonization across Themes (`AccountHabitsCard.tsx`, `AdvancedFilterDrawer.tsx`): Harmonized all fractional border tokens (`border-border/60`, `border-border/50`, `border-primary/20`) to standard `border-border` and canonical surfaces, resolving vanishing border lines in Sepia and Dark Obsidian modes.
 - Catalog View Mode Toggle Scroll Coordinate (`src/app/page.tsx`): Implemented smooth scroll into view on `#catalog-section` when switching between Cards (`grid`) and Bookshelves (`shelf`) display modes, matching the behavior of catalog pagination.
 - React Hooks Purity & ESLint 9 Hygiene (`useReadingTimer.ts`, `AccountHabitsCard.tsx`, `useHabitsStore.ts`): Resolved render-time impurity in `useReadingTimer` by initializing interaction refs to 0 and stabilizing effect cleanup, escaped JSX HTML entities in `AccountHabitsCard`, and pruned unused type imports across `views.config.ts` and `ReaderSurface.tsx`.
@@ -448,3 +454,5 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-025: Completed Reading State Latch, Native Inset Search Architecture & Library Navigation Streamlining**
 - **ADR-026: Enterprise Polymorphism, Encapsulation & Code Redundancy Elimination**
 - **ADR-027: Reading Habit Telemetry, Annual Goals, and Extensible Accolade Architecture**
+- **ADR-028: Analytical Table of Contents Deduplication & Cross-Reference Protection Invariants**
+- **ADR-029: Dual Immersion Telemetry (Reading vs. Listening) & 5-Minute Active Streak Threshold**

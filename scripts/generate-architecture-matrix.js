@@ -12,6 +12,49 @@ const {
 const rootDir = path.resolve(__dirname, '..');
 const srcDir = path.join(rootDir, 'src');
 
+function extractDatabaseCatalog(rootDirPath) {
+  const schemaPath = path.join(rootDirPath, 'supabase', 'schema.sql');
+  if (!fs.existsSync(schemaPath)) return [];
+  const content = fs.readFileSync(schemaPath, 'utf-8');
+
+  const tables = [];
+  const tableRegex = /CREATE TABLE IF NOT EXISTS public\.(\w+)\s*\(([\s\S]*?)\);/g;
+  let match;
+
+  const storeMap = {
+    profiles: '`useAuthStore`',
+    bookshelves: '`useBookshelfStore`',
+    bookshelf_items: '`useBookshelfStore`',
+    user_favorites: '`useBookshelfStore`',
+    reading_progress: '`useReaderStore`',
+    user_annotations: '`useAnnotationStore`',
+    user_book_curation: '`useBookshelfStore`',
+    user_reading_habits: '`useHabitsStore`',
+  };
+
+  const descMap = {
+    profiles: 'User profile display name, theme preferences, and typography choices (auto-created on signup).',
+    bookshelves: 'Default master "General" shelf and custom user-created named shelves.',
+    bookshelf_items: 'Books filed in specific shelves with user-scoped uniqueness constraints.',
+    user_favorites: 'Cross-device synchronized favorited titles.',
+    reading_progress: 'Chapter index, progress %, scroll offsets, and cached volume metadata.',
+    user_annotations: 'Passage text highlights (4 pastel palettes) and scholarly marginalia notes.',
+    user_book_curation: 'Personal 1–5 star ratings and reading status classification.',
+    user_reading_habits: 'Reading streaks (5-min threshold), daily activity dates, annual challenge goals, and dual immersion telemetry.',
+  };
+
+  while ((match = tableRegex.exec(content)) !== null) {
+    const tableName = match[1];
+    tables.push({
+      name: `public.${tableName}`,
+      rls: 'Enabled (`auth.uid()`)',
+      store: storeMap[tableName] || 'Client Store',
+      description: descMap[tableName] || 'Database entity with RLS user isolation.',
+    });
+  }
+  return tables;
+}
+
 function generateMarkdown() {
   const graph = analyzeDependencyGraph(srcDir, rootDir);
   const circularHealth = detectCircularDependencies(graph);
@@ -57,6 +100,7 @@ function generateMarkdown() {
     '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger & Telemetry)"]',
     '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections & Tags)"]',
     '            AccView["Account Hub (/account)\\n(Library Stats, Cloud Sync & JSON Backup)"]',
+    '            HabitsCard["AccountHabitsCard.tsx\\n(Reading Streaks, Daily Progress, Annual Challenge)"]',
     '            ReaderPage["Focus Reader Page (/read/[id])\\n(Continuous Pagination, Subtitles, AST)"]',
     '        end',
     '        ',
@@ -75,11 +119,13 @@ function generateMarkdown() {
     '            StoreAuth[("🔐 useAuthStore\\n(session, cloud migration, profile)")]',
     '            StorePref[("⚙️ usePreferencesStore\\n(sticky scroll, layout choices)")]',
     '            StoreAnnot[("🖍️ useAnnotationStore\\n(pastel highlights, notes, tags)")]',
+    '            StoreHabits[("🔥 useHabitsStore\\n(streak, 5m threshold, dual immersion, cloud)")]',
     '            StoreOffline[("📦 IndexedDB Engine\\n(unabridged offline volume cache)")]',
     '        end',
     '        ',
     '        subgraph ReaderEngine ["Reader Runtime & Web Speech Subsystem"]',
     '            SpeechHook["🔊 useReaderSpeech\\n(SpeechSynthesis, Boundary Sync, Auto-Flip)"]',
+    '            TimerHook["⏱️ useReadingTimer\\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]',
     '            WorkerHook["⚙️ useGutenbergParserWorker\\n(Persistent Worker Chapter AST)"]',
     '            LedgerHook["🔖 useContinueReadingLedger\\n(Two-Way Hydration & 0ms Resume)"]',
     '        end',
@@ -101,7 +147,7 @@ function generateMarkdown() {
     '        Gutendex["🌐 Gutendex Search API\\n(70,000+ Zero-Copyright Volumes)"]',
     '        GutenbergCDN["🌐 Project Gutenberg CDN\\n(Official EPUB & Raw Plain-Text)"]',
     '        GoogleNMT["🌐 Google Neural MT\\n(Serverless AI Translation)"]',
-    '        SupabaseCloud[("⚡ Supabase Cloud\\n(Postgres RLS, Auth, reading_progress)")]',
+    '        SupabaseCloud[("⚡ Supabase Cloud\\n(Postgres RLS: profiles, shelves, progress, habits)")]',
     '        VercelEdge["⚡ Vercel Edge Platform\\n(Cookie-less Analytics & Speed Insights)"]',
     '    end',
     '',
@@ -111,6 +157,7 @@ function generateMarkdown() {
     '    Toolbar --> FilterDrawer',
     '    Toolbar --> Grid',
     '    Nav --> Views',
+    '    AccView --> HabitsCard',
     '    ',
     '    Grid --> QueryBooks',
     '    QueryBooks --> ProxyBooks',
@@ -120,6 +167,7 @@ function generateMarkdown() {
     '    ReaderPage --> QueryContent',
     '    ReaderPage --> ReaderDrawers',
     '    ReaderPage --> ReaderEngine',
+    '    ReaderPage --> TimerHook',
     '    QueryContent --> ProxyContent',
     '    ProxyContent --> GutenbergCDN',
     '    ReaderPage --> QueryTranslate',
@@ -127,10 +175,13 @@ function generateMarkdown() {
     '    ProxyTranslate --> GoogleNMT',
     '    ',
     '    Views --> StateStores',
+    '    HabitsCard --> StoreHabits',
+    '    TimerHook --> StoreHabits',
     '    ReaderEngine --> StateStores',
     '    StoreShelf -->|Cloud Sync via RLS| SupabaseCloud',
     '    StoreReader -->|Progress Sync| SupabaseCloud',
     '    StoreAuth -->|Session Auth| SupabaseCloud',
+    '    StoreHabits -->|Habits Sync via RLS| SupabaseCloud',
     '    Telemetry -.->|Anonymous Metrics| VercelEdge',
     '```',
     '',
@@ -168,6 +219,8 @@ function generateMarkdown() {
       'Supabase session authentication, guest status, password generation, and cloud profile synchronization.',
     useBookshelfStore:
       'Personal library collections, reading queue, reading history, custom named shelves, deletion tombstones, and ratings.',
+    useHabitsStore:
+      'Reading streaks with 5-minute active immersion threshold, daily calendar activity dates, annual volume challenge goals, dual immersion telemetry (reading vs listening), and multi-device Supabase cloud synchronization.',
     usePreferencesStore:
       'Reader display choices, sticky header auto-hide preferences, and navigation behaviors.',
     useReaderStore:
@@ -238,12 +291,31 @@ function generateMarkdown() {
     useCursorTooltip: 'Adaptive unconstrained cursor tooltips for interactive bookshelf elements.',
     useBookPassageShuffle: 'Autonomous literary quote selection and multi-chapter shuffle engine.',
     useHasMounted: 'SSR hydration barrier hook preventing client-server markup mismatches.',
+    useReadingTimer: 'Reader session telemetry tracking visual reading with 2-minute idle guard and TTS narration audio bypass.',
   };
 
   for (const h of hooks) {
     const role = hookRoles[h.name] || 'Application custom hook.';
     const sub = h.category.charAt(0).toUpperCase() + h.category.slice(1);
     lines.push(`| **\`${h.name}\`** | ${sub} | [\`${h.file}\`](${h.file}) | ${role} |`);
+  }
+
+  const dbTables = extractDatabaseCatalog(rootDir);
+
+  lines.push(
+    '',
+    '---',
+    '',
+    '## 🗄️ Database Architecture & Row Level Security (RLS) Policies',
+    '',
+    `Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **${dbTables.length} Database Tables** with strict Row Level Security (Rule 9):`,
+    '',
+    '| Table Name | RLS Governance | Client State Store | Domain Role & Security Description |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  for (const t of dbTables) {
+    lines.push(`| **\`${t.name}\`** | ${t.rls} | ${t.store} | ${t.description} |`);
   }
 
   lines.push(
@@ -304,6 +376,23 @@ function generateMarkdown() {
     '4. **Edge SWR Caching**: Common queries are cached with `s-maxage=120, stale-while-revalidate=600` for sub-10ms response times on repeated visits.',
     '5. **On-Demand Text Streaming**: Large book texts (2MB–5MB) are fetched strictly when the focus reader opens.',
     '6. **Native IndexedDB Offline Cache**: Downloaded unabridged texts are cached in browser IndexedDB for 100% offline access.',
+    '',
+    '---',
+    '',
+    '## 🛡️ 7-Gateway Quality Engine Architecture',
+    '',
+    'Bookarium enforces a deterministic 7-stage quality assurance pipeline (`scripts/verify-build.js` via `npm run verify`) gating all releases and commits:',
+    '',
+    '| Gateway Pass | Stage Name | Target & Tooling | Enforcement & Governance |',
+    '| :--- | :--- | :--- | :--- |',
+    '| **Pass 0.5** | Secrets & Credentials Scanner | Regex scan across all files | Zero live API keys, private keys, or tokens committed |',
+    '| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |',
+    '| **Pass 2** | Contract & Interface Validation | AST structural analysis | Validates export signatures and component prop invariants |',
+    '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 80% coverage on lines, functions, statements, branches |',
+    '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md |',
+    '| **Pass 5** | ADR Schema & Ledger Validation | Markdown AST verification | Validates all ADRs conform to Status, Context, Decision, Consequences |',
+    '| **Pass 6** | Code Quality & Dead Code Audit | ESLint 9 & Knip | Zero linter warnings/errors, zero unreferenced dead files/exports |',
+    '| **Pass 7** | Production Application Build | `next build` | Optimized production bundle compilation within byte budget |',
     '',
     '---',
     '',

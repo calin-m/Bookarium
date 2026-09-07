@@ -239,6 +239,7 @@ export interface Database {
           annual_goal_year: number;
           active_dates: Json;
           total_reading_seconds: number;
+          total_listening_seconds: number;
           created_at: string;
           updated_at: string;
         };
@@ -249,6 +250,7 @@ export interface Database {
           annual_goal_year?: number;
           active_dates?: Json;
           total_reading_seconds?: number;
+          total_listening_seconds?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -259,6 +261,7 @@ export interface Database {
           annual_goal_year?: number;
           active_dates?: Json;
           total_reading_seconds?: number;
+          total_listening_seconds?: number;
           created_at?: string;
           updated_at?: string;
         };

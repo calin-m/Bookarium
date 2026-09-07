@@ -22,9 +22,9 @@ describe('useReadingTimer', () => {
     expect(useHabitsStore.getState().activeDates).toHaveLength(0);
   });
 
-  it('records daily activity immediately upon active mounting', () => {
+  it('does not grant daily streak on mounting until 5 minutes of immersion are completed', () => {
     renderHook(() => useReadingTimer({ enabled: true, bookId: 456 }));
-    expect(useHabitsStore.getState().activeDates.length).toBe(1);
+    expect(useHabitsStore.getState().activeDates).toHaveLength(0);
   });
 
   it('accumulates reading seconds and flushes on interval', () => {
@@ -129,5 +129,91 @@ describe('useReadingTimer', () => {
     });
 
     expect(useHabitsStore.getState().totalReadingSeconds).toBe(5);
+  });
+
+  it('tracks listening duration when isPlayingTTS is true, even in background tab', () => {
+    const { unmount } = renderHook(() =>
+      useReadingTimer({
+        enabled: true,
+        bookId: 999,
+        isPlayingTTS: true,
+        flushIntervalMs: 60000,
+      })
+    );
+
+    // Simulate tab hidden (user switched to another tab)
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', writable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    act(() => {
+      vi.advanceTimersByTime(10000); // 10 seconds of TTS listening in background
+    });
+
+    unmount();
+
+    expect(useHabitsStore.getState().totalListeningSeconds).toBe(10);
+    expect(useHabitsStore.getState().totalReadingSeconds).toBe(0);
+  });
+
+  it('pauses visual reading time when tab is hidden but resumes when visible', () => {
+    const { unmount } = renderHook(() =>
+      useReadingTimer({
+        enabled: true,
+        bookId: 888,
+        isPlayingTTS: false,
+        flushIntervalMs: 60000,
+      })
+    );
+
+    // Visible for 5 seconds
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    // Switch tab to hidden for 10 seconds
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', writable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+
+    // Switch tab back to visible for 5 seconds
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    unmount();
+
+    // Total should be 5s + 5s = 10s, excluding the 10s hidden
+    expect(useHabitsStore.getState().totalReadingSeconds).toBe(10);
+  });
+
+  it('qualifies 5-minute daily streak when 300 seconds of immersion are accumulated', () => {
+    const { unmount } = renderHook(() =>
+      useReadingTimer({
+        enabled: true,
+        bookId: 777,
+        flushIntervalMs: 15000,
+        idleTimeoutMs: 600000, // 10 min idle guard
+      })
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(290000); // 290 seconds (under 5 minutes)
+    });
+    expect(useHabitsStore.getState().activeDates).toHaveLength(0);
+
+    act(() => {
+      vi.advanceTimersByTime(15000); // Crosses 305 seconds (>= 300s)
+    });
+
+    unmount();
+
+    expect(useHabitsStore.getState().activeDates.length).toBe(1);
+    expect(useHabitsStore.getState().getStreakStats().hasReadToday).toBe(true);
   });
 });

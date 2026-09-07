@@ -185,13 +185,6 @@ export default function BookReaderPage() {
     }
   }, [numericId, resolvedIdentity.title, resolvedIdentity.author, updateBookMetadata]);
 
-  // Idle-aware authentic reading telemetry (Milestone 3 Habits & Streaks)
-  useReadingTimer({
-    bookId: numericId > 0 ? numericId : undefined,
-    enabled: !isContentLoading && !isContentError && !!contentText,
-    userId: user?.id,
-  });
-
   // Synchronize document.title with authentic resolved book identity for client transitions
   useEffect(() => {
     if (resolvedIdentity.title && !isPlaceholderTitle(resolvedIdentity.title)) {
@@ -381,6 +374,14 @@ export default function BookReaderPage() {
     },
     onNextPage: handleNextPage,
     onPreviousPage: handlePrevPage,
+  });
+
+  // Idle-aware authentic reading & listening telemetry (Milestone 3 Habits & Streaks)
+  useReadingTimer({
+    bookId: numericId > 0 ? numericId : undefined,
+    enabled: !isContentLoading && !isContentError && !!contentText,
+    userId: user?.id,
+    isPlayingTTS: speech.isPlaying,
   });
 
   const handleTextSelected = useCallback(

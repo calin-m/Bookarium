@@ -28,9 +28,12 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
     annualGoalYear,
     activeDates,
     totalReadingSeconds,
+    totalListeningSeconds,
     setAnnualGoal,
     getStreakStats,
+    getStreakProgress,
     getAnnualProgress,
+    getFormattedDurationBreakdown,
     isHydrated,
   } = useHydratedHabits();
 
@@ -45,8 +48,9 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
   }, [userId]);
 
   const streakStats = getStreakStats();
+  const streakProgress = getStreakProgress();
   const annualProgress = getAnnualProgress(completedBooksCount);
-  const readingDurationFormatted = formatReadingDuration(totalReadingSeconds);
+  const durationBreakdown = getFormattedDurationBreakdown();
 
   const numericGoal = parseInt(rawGoalInput, 10);
   const currentGoalValue = !isNaN(numericGoal) ? numericGoal : 0;
@@ -138,15 +142,21 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
               {streakStats.hasReadToday ? (
                 <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                   <Check className="w-3.5 h-3.5" />
-                  Today&apos;s reading logged
+                  Today&apos;s 5-minute reading logged
                 </span>
               ) : streakStats.currentStreak > 0 ? (
                 <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
                   <AlertCircle className="w-3.5 h-3.5" />
-                  Read today to maintain streak!
+                  {streakProgress.todaySeconds > 0
+                    ? `${Math.floor(streakProgress.todaySeconds / 60)}m / 5m logged today (${Math.ceil(streakProgress.remainingSeconds / 60)}m left to keep streak!)`
+                    : 'Read 5 minutes today to maintain streak!'}
                 </span>
               ) : (
-                <span>Open any volume to start a new streak</span>
+                <span>
+                  {streakProgress.todaySeconds > 0
+                    ? `${Math.floor(streakProgress.todaySeconds / 60)}m / 5m logged today (${Math.ceil(streakProgress.remainingSeconds / 60)}m to start streak)`
+                    : 'Read 5 minutes to start a new streak'}
+                </span>
               )}
             </div>
           </div>
@@ -185,12 +195,12 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
           </div>
         </div>
 
-        {/* Strip 2: Total Time Read */}
+        {/* Strip 2: Total Time Immersed (Reading + Listening) */}
         <div
           className="bg-muted/30 border border-border rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors hover:border-primary/40 hover:bg-muted/50"
           data-testid="reading-time-metric"
         >
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono uppercase text-muted-foreground tracking-wider font-semibold">
                 Time Immersed
@@ -199,10 +209,27 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
             </div>
 
             <div className="text-2xl sm:text-3xl font-serif font-bold text-foreground">
-              {isHydrated ? readingDurationFormatted : '0 min'}
+              {isHydrated ? durationBreakdown.total : '0 min'}
             </div>
 
-            <p className="text-xs text-muted-foreground font-sans">
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-primary/10 text-primary border border-border"
+                data-testid="reading-duration-badge"
+              >
+                <span>📖</span>
+                <span>{isHydrated ? durationBreakdown.reading : '0 min'} reading</span>
+              </span>
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-secondary text-secondary-foreground border border-border"
+                data-testid="listening-duration-badge"
+              >
+                <span>🎧</span>
+                <span>{isHydrated ? durationBreakdown.listening : '0 min'} listening</span>
+              </span>
+            </div>
+
+            <p className="text-xs text-muted-foreground font-sans pt-1">
               Recorded across <strong className="text-foreground">{isHydrated ? activeDates.length : 0}</strong> active {activeDates.length === 1 ? 'day' : 'days'}
             </p>
           </div>
@@ -213,10 +240,10 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
             </span>
             {activeDates.length > 0 ? (
               <span className="text-foreground font-medium block">
-                Avg ~{Math.round(totalReadingSeconds / (activeDates.length || 1) / 60)} min per active day
+                Avg ~{Math.round(((totalReadingSeconds || 0) + (totalListeningSeconds || 0)) / (activeDates.length || 1) / 60)} min per active day
               </span>
             ) : (
-              <span className="block">Time accumulates automatically as you turn pages</span>
+              <span className="block">Time accumulates automatically as you read or listen</span>
             )}
           </div>
         </div>

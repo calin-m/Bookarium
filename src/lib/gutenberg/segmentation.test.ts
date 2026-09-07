@@ -451,6 +451,80 @@ Two weeks had elapsed since our departure... ${'content '.repeat(100)}
     expect(ch2).toBeDefined();
     expect(ch2?.displayTitle).toBe('Chapter 2: Across the Wilderness');
   });
+
+  it('deduplicates analytical/descriptive front-matter TOC entries with multi-line synopses', () => {
+    const analyticalTocText = `
+*** START OF THE PROJECT GUTENBERG EBOOK BIDWELL'S TRAVELS ***
+
+BIDWELL'S TRAVELS, FROM WALL STREET TO LONDON PRISON
+By Austin Bidwell
+
+CONTENTS.
+
+CHAPTER I.
+Early Life--I Arrive in London--West End Financiers--A Strange Character--I
+Depart for South America--A Fortune Made--An Innocent Leaves Home. 19
+
+CHAPTER II.
+My Early Adventures--Meeting with Friends--Crossing the Atlantic Ocean--A
+Remarkable Journey Across Continents. 42
+
+CHAPTER I.
+
+HAD THERE BEEN WISDOM THERE?
+
+It was in the early spring of eighteen hundred and seventy-two that I first
+set foot in the great metropolis of London... ${'narrative prose '.repeat(200)}
+
+CHAPTER II.
+
+THE VOYAGE CONTINUES
+
+The morning after our departure from Liverpool broke bright and fair over the
+rolling swells of the North Atlantic... ${'voyage prose '.repeat(200)}
+
+*** END OF THE PROJECT GUTENBERG EBOOK BIDWELL'S TRAVELS ***
+`;
+
+    const chapters = parseGutenbergChapters(analyticalTocText);
+    const ch1Instances = chapters.filter((c) => /\bCHAPTER I\b/i.test(c.title));
+    expect(ch1Instances.length).toBe(1);
+    expect(ch1Instances[0].content).toContain('HAD THERE BEEN WISDOM THERE?');
+
+    const ch2Instances = chapters.filter((c) => /\bCHAPTER II\b/i.test(c.title));
+    expect(ch2Instances.length).toBe(1);
+    expect(ch2Instances[0].content).toContain('THE VOYAGE CONTINUES');
+  });
+
+  it('protects real chapters from suppression when referenced elsewhere in body narrative or footnotes', () => {
+    const narrativeWithCrossReference = `
+*** START OF THE PROJECT GUTENBERG EBOOK THE HISTORY ***
+
+A HISTORICAL COMPENDIUM
+
+CHAPTER 1. THE FOUNDING ERA
+
+The earliest settlers arrived on the coast in the autumn of sixteen hundred and twenty.
+${'They built sturdy dwellings and established lasting institutions. '.repeat(150)}
+
+CHAPTER 2. THE EXPANSION
+
+As we observed earlier in Chapter 1, the settlers faced insurmountable odds during
+their initial winter season. Yet they persevered.
+${'New settlements flourished across the inland valleys. '.repeat(150)}
+
+*** END OF THE PROJECT GUTENBERG EBOOK THE HISTORY ***
+`;
+
+    const chapters = parseGutenbergChapters(narrativeWithCrossReference);
+    const ch1 = chapters.find((c) => c.title.includes('CHAPTER 1'));
+    const ch2 = chapters.find((c) => c.title.includes('CHAPTER 2'));
+
+    expect(ch1).toBeDefined();
+    expect(ch2).toBeDefined();
+    expect(ch1?.content).toContain('The earliest settlers arrived');
+    expect(ch2?.content).toContain('As we observed earlier in Chapter 1');
+  });
 });
 
 
