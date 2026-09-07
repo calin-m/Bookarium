@@ -24,6 +24,7 @@ import { BackToTop } from '@/components/ui/BackToTop';
 import { AccountIdentityCard } from '@/components/account/AccountIdentityCard';
 import { AccountLibraryStats } from '@/components/account/AccountLibraryStats';
 import { AccountHabitsCard } from '@/components/account/AccountHabitsCard';
+import { AccountAccoladesCard } from '@/components/account/AccountAccoladesCard';
 import { AccountSecuritySection } from '@/components/account/AccountSecuritySection';
 import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
@@ -376,6 +377,9 @@ export default function AccountPage() {
                 userId={user?.id}
                 completedBooksCount={completedBooksCount}
               />
+
+              {/* Literary Accolades & Ex-Libris Bookplates */}
+              <AccountAccoladesCard userId={user?.id} />
 
               {/* Reading & Navigation Preferences Card */}
               <AccountPreferencesSection

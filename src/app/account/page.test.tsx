@@ -406,5 +406,18 @@ describe('AccountPage', () => {
     expect(screen.getByTestId('notes-quotes-count')).toHaveTextContent('1');
     useAnnotationStore.getState().clearAllAnnotations();
   });
+
+  it('renders Ex-Libris Bookplates & Accolades section on authenticated dashboard', () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Avid Reader' } as any,
+      isLoading: false,
+    });
+
+    render(<AccountPage />);
+
+    expect(screen.getByText('Ex-Libris Bookplates & Accolades')).toBeInTheDocument();
+    expect(screen.getByTestId('account-accolades-card')).toBeInTheDocument();
+  });
 });
 

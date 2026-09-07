@@ -4,22 +4,25 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useHabitsStore } from '@/stores/useHabitsStore';
+import { useAccoladesStore } from '@/stores/useAccoladesStore';
 
 describe('syncAllStoresWithCloud', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, and Habits stores', async () => {
+  it('triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, Habits, and Accolades stores', async () => {
     const bookshelfMock = vi.fn().mockResolvedValue(undefined);
     const annotationMock = vi.fn().mockResolvedValue(undefined);
     const readerMock = vi.fn().mockResolvedValue(undefined);
     const habitsMock = vi.fn().mockResolvedValue(undefined);
+    const accoladesMock = vi.fn().mockResolvedValue(undefined);
 
     useBookshelfStore.setState({ syncWithCloud: bookshelfMock });
     useAnnotationStore.setState({ syncWithCloud: annotationMock });
     useReaderStore.setState({ syncWithCloud: readerMock });
     useHabitsStore.setState({ syncWithCloud: habitsMock });
+    useAccoladesStore.setState({ syncWithCloud: accoladesMock });
 
     await syncAllStoresWithCloud('user-456');
 
@@ -27,18 +30,22 @@ describe('syncAllStoresWithCloud', () => {
     expect(annotationMock).toHaveBeenCalledWith('user-456');
     expect(readerMock).toHaveBeenCalledWith('user-456');
     expect(habitsMock).toHaveBeenCalledWith('user-456');
+    expect(accoladesMock).toHaveBeenCalledWith('user-456');
   });
 
   it('safely exits without calling stores if userId is empty', async () => {
     const bookshelfMock = vi.fn().mockResolvedValue(undefined);
     const habitsMock = vi.fn().mockResolvedValue(undefined);
+    const accoladesMock = vi.fn().mockResolvedValue(undefined);
     useBookshelfStore.setState({ syncWithCloud: bookshelfMock });
     useHabitsStore.setState({ syncWithCloud: habitsMock });
+    useAccoladesStore.setState({ syncWithCloud: accoladesMock });
 
     await syncAllStoresWithCloud('');
 
     expect(bookshelfMock).not.toHaveBeenCalled();
     expect(habitsMock).not.toHaveBeenCalled();
+    expect(accoladesMock).not.toHaveBeenCalled();
   });
 
   it('gracefully settles and does not throw if one store encounters a network rejection', async () => {
@@ -46,11 +53,13 @@ describe('syncAllStoresWithCloud', () => {
     const annotationMock = vi.fn().mockResolvedValue(undefined);
     const readerMock = vi.fn().mockResolvedValue(undefined);
     const habitsMock = vi.fn().mockResolvedValue(undefined);
+    const accoladesMock = vi.fn().mockResolvedValue(undefined);
 
     useBookshelfStore.setState({ syncWithCloud: bookshelfMock });
     useAnnotationStore.setState({ syncWithCloud: annotationMock });
     useReaderStore.setState({ syncWithCloud: readerMock });
     useHabitsStore.setState({ syncWithCloud: habitsMock });
+    useAccoladesStore.setState({ syncWithCloud: accoladesMock });
 
     await expect(syncAllStoresWithCloud('user-789')).resolves.toBeUndefined();
 
@@ -58,6 +67,7 @@ describe('syncAllStoresWithCloud', () => {
     expect(annotationMock).toHaveBeenCalledWith('user-789');
     expect(readerMock).toHaveBeenCalledWith('user-789');
     expect(habitsMock).toHaveBeenCalledWith('user-789');
+    expect(accoladesMock).toHaveBeenCalledWith('user-789');
   });
 });
 
