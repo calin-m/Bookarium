@@ -36,6 +36,11 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
     return getDailyEditorialBook(activeHeroId);
   }, [hasMounted, heroBookId]);
 
+  // Defensive sanitization: trim outer quotes or whitespace so quotes are never doubled
+  const displayQuote = useMemo(() => {
+    return book.quoteExcerpt.replace(/^[“"'\s]+|[”"'\s]+$/g, '');
+  }, [book.quoteExcerpt]);
+
   const handleStartReading = () => {
     const bookPayload: GutendexBook = {
       id: book.id,
@@ -88,7 +93,7 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
           <div className="md:col-span-8 space-y-4 text-left">
             <Quote className="w-8 h-8 text-primary-500/40" aria-hidden="true" />
             <blockquote className="text-xl sm:text-2xl font-serif italic text-stone-900 dark:text-stone-100 leading-snug">
-              &ldquo;{book.quoteExcerpt}&rdquo;
+              &ldquo;{displayQuote}&rdquo;
             </blockquote>
             <p className="text-xs font-mono uppercase tracking-widest text-stone-500">
               {book.author} • Preserved for Public Humanity

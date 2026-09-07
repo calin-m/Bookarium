@@ -28,6 +28,7 @@ flowchart TD
             NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections & Tags)"]
             AccView["Account Hub (/account)\n(Library Stats, Cloud Sync & JSON Backup)"]
             HabitsCard["AccountHabitsCard.tsx\n(Reading Streaks, Daily Progress, Annual Challenge)"]
+            AccoladesCard["AccountAccoladesCard.tsx\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]
             ReaderPage["Focus Reader Page (/read/[id])\n(Continuous Pagination, Subtitles, AST)"]
         end
         
@@ -56,6 +57,7 @@ flowchart TD
             TimerHook["⏱️ useReadingTimer\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]
             WorkerHook["⚙️ useGutenbergParserWorker\n(Persistent Worker Chapter AST)"]
             LedgerHook["🔖 useContinueReadingLedger\n(Two-Way Hydration & 0ms Resume)"]
+            AnnotatorEngine["🖍️ reader-annotator.ts\n(Computational Interval Partitioning & Highlighter)"]
         end
         
         QueryBooks["🔄 useBooks & usePrefetchNextPage\n(Windowed Sub-Pages & Predictive Prefetch)"]
@@ -97,6 +99,8 @@ flowchart TD
     ReaderPage --> ReaderDrawers
     ReaderPage --> ReaderEngine
     ReaderPage --> TimerHook
+    ReaderPage --> AnnotatorEngine
+    AnnotatorEngine --> StoreAnnot
     QueryContent --> ProxyContent
     ProxyContent --> GutenbergCDN
     ReaderPage --> QueryTranslate
@@ -267,6 +271,42 @@ Zustand client-side state stores programmatically verified across **8 Persistent
 
 ---
 
+## 🧠 Domain Engines & Pure Computational Utilities
+
+Pure business logic, historical engines, and layout algorithms verified across **27 Domain Modules** using Babel AST:
+
+| Engine / Utility | Subsystem / Layer | Source File | Primary Exported Primitives | Architectural Responsibility |
+| :--- | :--- | :--- | :--- | :--- |
+| **`accolades-engine`** | Core Domain | [`src/lib/accolades-engine.ts`](src/lib/accolades-engine.ts) | `determineBookEra`, `isAncientBook`, `BuildAccoladeContextParams`, `buildAccoladeContext`, `getAccoladeById` _(+2 more)_ | Historical literary accolades evaluation engine, criteria matching, milestone progress calculation, and era determination. |
+| **`book.adapter`** | Adapters | [`src/lib/adapters/book.adapter.ts`](src/lib/adapters/book.adapter.ts) | `normalizeAuthorName`, `extractFormatUrl`, `isCanonicalBook`, `toCanonicalBook`, `CloudBookRow` _(+5 more)_ | Bidirectional domain transformation between Gutendex API schemas, canonical Book models, and Supabase cloud persistence payloads. |
+| **`api-utils`** | Core Domain | [`src/lib/api-utils.ts`](src/lib/api-utils.ts) | `RateLimitInfo`, `getClientIp`, `createRateLimitErrorResponse` | Server-side API route helpers, IP address extraction, and standardized rate limit error response generation. |
+| **`book-metadata`** | Core Domain | [`src/lib/book-metadata.ts`](src/lib/book-metadata.ts) | `ResolvedBookIdentity`, `ResolveBookMetadataParams`, `cleanBookTitle`, `isPlaceholderAuthor`, `isPlaceholderTitle` _(+1 more)_ | Author and title cleaning, placeholder author heuristics, and defensive editorial metadata normalization. |
+| **`cache`** | Core Domain | [`src/lib/cache.ts`](src/lib/cache.ts) | `SimpleLRUCache` | Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions. |
+| **`gutenberg-parser`** | Core Domain | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | `* (./gutenberg)` | Root domain facade barrel re-exporting all Gutenberg segmentation, pagination, reflow, and passage extraction subsystems. |
+| **`index`** | Gutenberg | [`src/lib/gutenberg/index.ts`](src/lib/gutenberg/index.ts) | `* (./types)`, `* (./reflow)`, `* (./pagination)`, `* (./metadata)`, `* (./segmentation)` _(+1 more)_ | Gutenberg subsystem barrel aggregating types, reflow, pagination, metadata, segmentation, and passage algorithms. |
+| **`metadata`** | Gutenberg | [`src/lib/gutenberg/metadata.ts`](src/lib/gutenberg/metadata.ts) | `LANGUAGE_NAME_TO_CODE_MAP`, `normalizeLanguageToCode`, `extractGutenbergHeaderMetadata` | Gutenberg plain-text header/footer metadata extraction, author/title/language detection, and ISO code normalization. |
+| **`pagination`** | Gutenberg | [`src/lib/gutenberg/pagination.ts`](src/lib/gutenberg/pagination.ts) | `clearPaginationCache`, `paginateChapterContent`, `getCharsPerPage`, `calculateReadingTime`, `calculateVolumePageSpread` | Continuous chapter pagination algorithms, character-per-page geometry calculations, and reading time estimation. |
+| **`passages`** | Gutenberg | [`src/lib/gutenberg/passages.ts`](src/lib/gutenberg/passages.ts) | `extractDynamicBookPassages` | Dynamic book passage and quote extraction engine identifying compelling prose segments with dialogue and character markers. |
+| **`reflow`** | Gutenberg | [`src/lib/gutenberg/reflow.ts`](src/lib/gutenberg/reflow.ts) | `reflowGutenbergParagraphs` | Typography text-reflow heuristics repairing Project Gutenberg hard line wraps and paragraph boundaries. |
+| **`segmentation`** | Gutenberg | [`src/lib/gutenberg/segmentation.ts`](src/lib/gutenberg/segmentation.ts) | `parseGutenbergChapters` | Robust chapter and section boundary detection with Roman numeral, spelled-word, and structural heading patterns. |
+| **`types`** | Gutenberg | [`src/lib/gutenberg/types.ts`](src/lib/gutenberg/types.ts) | `ChapterSection`, `GUTENBERG_PARSER_CONFIG`, `DynamicBookPassage` | Canonical TypeScript interfaces and configurations for the Project Gutenberg parsing engine and AST nodes. |
+| **`in-book-search`** | Core Domain | [`src/lib/in-book-search.ts`](src/lib/in-book-search.ts) | `BookSearchMatch`, `InBookSearchResult`, `searchInBook` | Full-text in-volume search algorithm with context snippet generation and matched coordinate navigation. |
+| **`library-backup`** | Core Domain | [`src/lib/library-backup.ts`](src/lib/library-backup.ts) | `LibraryBackupShelf`, `LibraryBackupPayload`, `ValidationResult`, `RestoreSummary`, `createLibraryBackup` _(+4 more)_ | Complete library export and import engine handling JSON backup schemas, CSV export, validation, and merge restoration. |
+| **`offline-storage`** | Core Domain | [`src/lib/offline-storage.ts`](src/lib/offline-storage.ts) | `OfflineBookMetadata`, `StorageQuotaInfo`, `OfflineBookRecord`, `getStorageQuota`, `evictOldestBooksToFreeSpace` _(+7 more)_ | IndexedDB storage abstraction providing offline book content caching, quota calculation, and LRU eviction. |
+| **`password`** | Core Domain | [`src/lib/password.ts`](src/lib/password.ts) | `PasswordStrength`, `generateStrongPassword`, `evaluatePasswordStrength` | Cryptographically secure password generation and multi-factor entropy evaluation engine. |
+| **`rate-limiter`** | Core Domain | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) | `RateLimitOptions`, `RateLimitResult`, `InMemoryRateLimiter`, `booksApiRateLimiter`, `bookContentRateLimiter` | In-memory sliding-window rate limiter with burst mitigation for API routes. |
+| **`reader-annotator`** | Core Domain | [`src/lib/reader-annotator.ts`](src/lib/reader-annotator.ts) | `AnnotationSpan`, `computeAnnotationSpans` | Scholarly marginalia interval partitioning and non-destructive HTML text-node highlighter. |
+| **`reading-analytics`** | Core Domain | [`src/lib/reading-analytics.ts`](src/lib/reading-analytics.ts) | `DayActivity`, `StreakStats`, `AnnualGoalProgress`, `ReadingSessionTelemetry`, `formatLocalDate` _(+3 more)_ | Streak calculation, 5-minute immersion thresholds, reading speed metrics, and annual reading goal progress. |
+| **`smart-search`** | Core Domain | [`src/lib/smart-search.ts`](src/lib/smart-search.ts) | `normalizeSearchText`, `extractSearchTokens`, `matchesSmartSearch`, `getBookSearchHaystack`, `filterBooksSmart` | Fuzzy multi-token search engine querying titles, authors, and subjects with punctuation normalization. |
+| **`speech-utils`** | Core Domain | [`src/lib/speech-utils.ts`](src/lib/speech-utils.ts) | `isNaturalVoice`, `cleanVoiceName` | Web Speech API voice selection heuristics identifying natural/neural synthesis voices. |
+| **`client`** | Supabase | [`src/lib/supabase/client.ts`](src/lib/supabase/client.ts) | `sanitizeSupabaseUrl`, `createClient` | Browser-side Supabase client initialization with credential sanitization and local session persistence. |
+| **`middleware`** | Supabase | [`src/lib/supabase/middleware.ts`](src/lib/supabase/middleware.ts) | `updateSession` | Next.js edge middleware helper managing Supabase auth tokens and cookie refresh cycles. |
+| **`server`** | Supabase | [`src/lib/supabase/server.ts`](src/lib/supabase/server.ts) | `createClient` | Server-side Supabase client initialization using Next.js cookies for authenticated route handlers. |
+| **`sync-utils`** | Core Domain | [`src/lib/sync-utils.ts`](src/lib/sync-utils.ts) | `CloudSyncable`, `syncAllStoresWithCloud` | Unified bidirectional cloud synchronization coordinator coordinating local Zustand stores with Supabase tables. |
+| **`utils`** | Core Domain | [`src/lib/utils.ts`](src/lib/utils.ts) | `cn`, `BookFormatInfo`, `extractBookFormats`, `formatDownloadCount`, `calculateReadingTime` _(+7 more)_ | Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, format badges, and blob downloads. |
+
+---
+
 ## 🗄️ Database Architecture & Row Level Security (RLS) Policies
 
 Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **9 Database Tables** with strict Row Level Security (Rule 9):
@@ -288,9 +328,10 @@ Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified 
 ## 📚 Curated Configurations & Design Token Registry
 
 * **`FEATURED_HERO_BOOKS`** (`src/config/featured-books.ts`): 10 curated classic masterpieces (*Pride and Prejudice, Frankenstein, Moby Dick, The Great Gatsby, Alice in Wonderland, Dorian Gray, Sherlock Holmes, Dracula, A Tale of Two Cities, The Time Machine*) with verified volume numbers and quotes.
+* **`ACCOLADES_CATALOG` & `ACCOLADE_TIER_CONFIG`** (`src/config/accolades-config.ts`): 10 curated literary achievement accolades across 4 prestige visual tiers (*Parchment Bronze, Specular Silver, Gilded Gold, Obsidian Masterwork*) with badges, mottoes, criteria, and bookplates.
 * **`LITERARY_ERAS`** (`src/config/catalog-filters.ts`): 6 historical eras spanning from Antiquity (-800 to 500) to Mid-20th Century (1914 to 1960).
 * **`GENRE_FACETS`** (`src/config/catalog-filters.ts`): Curated genre tags (Gothic & Horror, Philosophy, Adventure, Sci-Fi, Poetry, Drama, Detective & Mystery, History).
-* **`READER_THEMES`** (`src/config/reader-themes.ts`): 3 reading themes (Day Paper, Sepia Parchment, Obsidian Dark) with color tokens for background, text, borders, and accents.
+* **`READER_THEMES` & `NEXT_READER_THEME`** (`src/config/reader-themes.ts`): 3 reading themes (Day Paper, Sepia Parchment, Obsidian Dark) with color tokens for background, text, borders, accents, theme cycling order, and high-contrast Web Speech boundary highlight classes (`speechHighlight`).
 * **`LITERARY_QUOTES`** (`src/config/literary-quotes.ts`): 12 literary passages and opening lines from immortal masterworks.
 * **`ANNOTATION_COLOR_CONFIG` & `ANNOTATION_COLOR_LIST`** (`src/config/annotation-tokens.ts`): Canonical single source of truth for scholar annotation color tokens (`yellow`, `amber`, `mint`, `rose`), text highlight surface classes, dot/border styling, human-readable labels, and filter badges.
 * **`NAV_ITEMS`, `NAVBAR_VIEW_CONFIG` & `VIEW_CONTENT_CONFIG`** (`src/config/views.config.ts`): Declarative polymorphic strategy configurations defining application view IDs, navigation badges, section eyebrows, titles, search placeholders, and collection clear action descriptors.
@@ -484,6 +525,7 @@ Bookarium enforces a deterministic 7-stage quality assurance pipeline (`scripts/
 | Gateway Pass | Stage Name | Target & Tooling | Enforcement & Governance |
 | :--- | :--- | :--- | :--- |
 | **Pass 0.5** | Secrets & Credentials Scanner | Regex scan across all files | Zero live API keys, private keys, or tokens committed |
+| **Pass 0.75** | Pre-Commit SAST & OWASP Security Suite | `npm audit`, SSRF AST & XSS AST guards | Audits dependencies for high/critical CVEs, prevents dynamic fetch SSRF taint flows and dangerous client-side injection |
 | **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |
 | **Pass 2** | Contract & Interface Validation | AST structural analysis | Validates export signatures and component prop invariants |
 | **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 80% coverage on lines, functions, statements, branches |

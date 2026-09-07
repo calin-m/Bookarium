@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 07 Sep 2026 10:53:32 GMT  
+**Last Generated**: Mon, 07 Sep 2026 11:35:55 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 147 passed  
-**Total Verified Tests**: 1176 passed  
+**Total Verified Tests**: 1177 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **147/147 test suites passed** (1176 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **147/147 test suites passed** (1177 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 31 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.79%** (5792/6242) — *Target: $ge$ 80%*
-- **Statements**: **91.16%** (6295/6905) — *Target: $ge$ 80%*
-- **Functions**: **88.94%** (1448/1628) — *Target: $ge$ 80%*
-- **Branches**: **81.43%** (5216/6405) — *Target: $ge$ 80%*
+- **Lines**: **92.84%** (5797/6244) — *Target: $ge$ 80%*
+- **Statements**: **91.22%** (6301/6907) — *Target: $ge$ 80%*
+- **Functions**: **89.01%** (1450/1629) — *Target: $ge$ 80%*
+- **Branches**: **81.48%** (5219/6405) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (147 Suites / 1176 Tests)
+## 🧪 Comprehensive Test Suite Catalog (147 Suites / 1177 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 104 Tests)
 
@@ -206,7 +206,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (23 Suites · 233 Tests)
+### 🎨 Catalog & Presentation (23 Suites · 234 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -411,12 +411,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders section landmark, Classic of the Day badge, and book details`
 - ✔ `navigates to reader and dispatches openReader on button click`
 - ✔ `dynamically avoids collision when heroBookId matches candidate book`
 - ✔ `accepts custom className and applies it to root section`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
 
 </details>
 

@@ -420,6 +420,98 @@ function extractApiAndHookCatalog(srcDir) {
   };
 }
 
+/**
+ * Extracts domain utilities and computational engines from src/lib/.
+ */
+function extractDomainUtilitiesCatalog(srcDir) {
+  const libDir = path.join(srcDir, 'lib');
+  const utilities = [];
+
+  function scanLib(dir, relPath = 'src/lib') {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== '__tests__' && entry.name !== 'mocks' && entry.name !== 'test') {
+          scanLib(full, `${relPath}/${entry.name}`);
+        }
+      } else if (
+        (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) &&
+        !entry.name.endsWith('.test.ts') &&
+        !entry.name.endsWith('.test.tsx') &&
+        !entry.name.endsWith('.d.ts')
+      ) {
+        const fileRel = `${relPath}/${entry.name}`;
+        const content = fs.readFileSync(full, 'utf-8');
+        const exportedItems = [];
+
+        try {
+          const ast = parser.parse(content, {
+            sourceType: 'module',
+            plugins: ['typescript', 'jsx'],
+          });
+
+          traverse(ast, {
+            ExportNamedDeclaration({ node }) {
+              if (node.declaration) {
+                if (node.declaration.declarations) {
+                  for (const dec of node.declaration.declarations) {
+                    if (dec.id && dec.id.name) exportedItems.push(dec.id.name);
+                  }
+                } else if (node.declaration.id && node.declaration.id.name) {
+                  exportedItems.push(node.declaration.id.name);
+                }
+              }
+              if (node.specifiers) {
+                for (const spec of node.specifiers) {
+                  if (spec.exported && spec.exported.name) exportedItems.push(spec.exported.name);
+                }
+              }
+            },
+            ExportDefaultDeclaration({ node }) {
+              if (node.declaration && node.declaration.id && node.declaration.id.name) {
+                exportedItems.push(node.declaration.id.name);
+              } else {
+                exportedItems.push('default');
+              }
+            },
+            ExportAllDeclaration({ node }) {
+              if (node.source && node.source.value) {
+                exportedItems.push(`* (${node.source.value})`);
+              }
+            },
+          });
+        } catch (_err) {
+          const exportRegex = /export\s+(?:async\s+)?(?:function|const|class|type|interface)\s+([A-Za-z0-9_]+)/g;
+          let match;
+          while ((match = exportRegex.exec(content)) !== null) {
+            exportedItems.push(match[1]);
+          }
+          const starRegex = /export\s+\*\s+from\s+['"]([^'"]+)['"]/g;
+          while ((match = starRegex.exec(content)) !== null) {
+            exportedItems.push(`* (${match[1]})`);
+          }
+        }
+
+        const utilityName = entry.name.replace(/\.(ts|tsx)$/, '');
+        const subfolder = path.basename(dir) === 'lib' ? 'Core Domain' : path.basename(dir);
+
+        utilities.push({
+          name: utilityName,
+          filename: entry.name,
+          file: fileRel,
+          subsystem: subfolder.charAt(0).toUpperCase() + subfolder.slice(1),
+          exports: Array.from(new Set(exportedItems)),
+        });
+      }
+    }
+  }
+
+  scanLib(libDir);
+  return utilities.sort((a, b) => a.file.localeCompare(b.file));
+}
+
 module.exports = {
   getAllSourceFiles,
   resolveImportPath,
@@ -429,5 +521,6 @@ module.exports = {
   extractComponentCatalog,
   extractStoreCatalog,
   extractApiAndHookCatalog,
+  extractDomainUtilitiesCatalog,
 };
 
