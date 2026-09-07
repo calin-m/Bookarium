@@ -7,6 +7,7 @@ const {
   extractComponentCatalog,
   extractStoreCatalog,
   extractApiAndHookCatalog,
+  extractDomainUtilitiesCatalog,
 } = require('./lib/ast-parser');
 
 const rootDir = path.resolve(__dirname, '..');
@@ -64,6 +65,7 @@ function generateMarkdown() {
   const components = extractComponentCatalog(graph);
   const stores = extractStoreCatalog(srcDir);
   const { routes, hooks } = extractApiAndHookCatalog(srcDir);
+  const utilities = extractDomainUtilitiesCatalog(srcDir);
 
   const timestamp = new Date().toISOString().split('T')[0];
 
@@ -103,6 +105,7 @@ function generateMarkdown() {
     '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections & Tags)"]',
     '            AccView["Account Hub (/account)\\n(Library Stats, Cloud Sync & JSON Backup)"]',
     '            HabitsCard["AccountHabitsCard.tsx\\n(Reading Streaks, Daily Progress, Annual Challenge)"]',
+    '            AccoladesCard["AccountAccoladesCard.tsx\\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]',
     '            ReaderPage["Focus Reader Page (/read/[id])\\n(Continuous Pagination, Subtitles, AST)"]',
     '        end',
     '        ',
@@ -131,6 +134,7 @@ function generateMarkdown() {
     '            TimerHook["⏱️ useReadingTimer\\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]',
     '            WorkerHook["⚙️ useGutenbergParserWorker\\n(Persistent Worker Chapter AST)"]',
     '            LedgerHook["🔖 useContinueReadingLedger\\n(Two-Way Hydration & 0ms Resume)"]',
+    '            AnnotatorEngine["🖍️ reader-annotator.ts\\n(Computational Interval Partitioning & Highlighter)"]',
     '        end',
     '        ',
     '        QueryBooks["🔄 useBooks & usePrefetchNextPage\\n(Windowed Sub-Pages & Predictive Prefetch)"]',
@@ -172,6 +176,8 @@ function generateMarkdown() {
     '    ReaderPage --> ReaderDrawers',
     '    ReaderPage --> ReaderEngine',
     '    ReaderPage --> TimerHook',
+    '    ReaderPage --> AnnotatorEngine',
+    '    AnnotatorEngine --> StoreAnnot',
     '    QueryContent --> ProxyContent',
     '    ProxyContent --> GutenbergCDN',
     '    ReaderPage --> QueryTranslate',
@@ -308,6 +314,87 @@ function generateMarkdown() {
     lines.push(`| **\`${h.name}\`** | ${sub} | [\`${h.file}\`](${h.file}) | ${role} |`);
   }
 
+  lines.push(
+    '',
+    '---',
+    '',
+    '## 🧠 Domain Engines & Pure Computational Utilities',
+    '',
+    `Pure business logic, historical engines, and layout algorithms verified across **${utilities.length} Domain Modules** using Babel AST:`,
+    '',
+    '| Engine / Utility | Subsystem / Layer | Source File | Primary Exported Primitives | Architectural Responsibility |',
+    '| :--- | :--- | :--- | :--- | :--- |'
+  );
+
+  const utilityDescriptions = {
+    'accolades-engine':
+      'Historical literary accolades evaluation engine, criteria matching, milestone progress calculation, and era determination.',
+    'book.adapter':
+      'Bidirectional domain transformation between Gutendex API schemas, canonical Book models, and Supabase cloud persistence payloads.',
+    'api-utils':
+      'Server-side API route helpers, IP address extraction, and standardized rate limit error response generation.',
+    'book-metadata':
+      'Author and title cleaning, placeholder author heuristics, and defensive editorial metadata normalization.',
+    cache:
+      'Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions.',
+    'gutenberg-parser':
+      'Root domain facade barrel re-exporting all Gutenberg segmentation, pagination, reflow, and passage extraction subsystems.',
+    index:
+      'Gutenberg subsystem barrel aggregating types, reflow, pagination, metadata, segmentation, and passage algorithms.',
+    metadata:
+      'Gutenberg plain-text header/footer metadata extraction, author/title/language detection, and ISO code normalization.',
+    pagination:
+      'Continuous chapter pagination algorithms, character-per-page geometry calculations, and reading time estimation.',
+    passages:
+      'Dynamic book passage and quote extraction engine identifying compelling prose segments with dialogue and character markers.',
+    reflow:
+      'Typography text-reflow heuristics repairing Project Gutenberg hard line wraps and paragraph boundaries.',
+    segmentation:
+      'Robust chapter and section boundary detection with Roman numeral, spelled-word, and structural heading patterns.',
+    types:
+      'Canonical TypeScript interfaces and configurations for the Project Gutenberg parsing engine and AST nodes.',
+    'in-book-search':
+      'Full-text in-volume search algorithm with context snippet generation and matched coordinate navigation.',
+    'library-backup':
+      'Complete library export and import engine handling JSON backup schemas, CSV export, validation, and merge restoration.',
+    'offline-storage':
+      'IndexedDB storage abstraction providing offline book content caching, quota calculation, and LRU eviction.',
+    password:
+      'Cryptographically secure password generation and multi-factor entropy evaluation engine.',
+    'rate-limiter':
+      'In-memory sliding-window rate limiter with burst mitigation for API routes.',
+    'reader-annotator':
+      'Scholarly marginalia interval partitioning and non-destructive HTML text-node highlighter.',
+    'reading-analytics':
+      'Streak calculation, 5-minute immersion thresholds, reading speed metrics, and annual reading goal progress.',
+    'smart-search':
+      'Fuzzy multi-token search engine querying titles, authors, and subjects with punctuation normalization.',
+    'speech-utils':
+      'Web Speech API voice selection heuristics identifying natural/neural synthesis voices.',
+    client:
+      'Browser-side Supabase client initialization with credential sanitization and local session persistence.',
+    middleware:
+      'Next.js edge middleware helper managing Supabase auth tokens and cookie refresh cycles.',
+    server:
+      'Server-side Supabase client initialization using Next.js cookies for authenticated route handlers.',
+    'sync-utils':
+      'Unified bidirectional cloud synchronization coordinator coordinating local Zustand stores with Supabase tables.',
+    utils:
+      'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, format badges, and blob downloads.',
+  };
+
+  for (const u of utilities) {
+    const desc = utilityDescriptions[u.name] || 'Domain utility module.';
+    const exportsSummary =
+      u.exports.length > 0
+        ? u.exports.slice(0, 5).map((e) => `\`${e}\``).join(', ') +
+          (u.exports.length > 5 ? ` _(+${u.exports.length - 5} more)_` : '')
+        : '_Internal Module Primitives_';
+    lines.push(
+      `| **\`${u.name}\`** | ${u.subsystem} | [\`${u.file}\`](${u.file}) | ${exportsSummary} | ${desc} |`
+    );
+  }
+
   const dbTables = extractDatabaseCatalog(rootDir);
 
   lines.push(
@@ -333,9 +420,10 @@ function generateMarkdown() {
     '## 📚 Curated Configurations & Design Token Registry',
     '',
     '* **`FEATURED_HERO_BOOKS`** (`src/config/featured-books.ts`): 10 curated classic masterpieces (*Pride and Prejudice, Frankenstein, Moby Dick, The Great Gatsby, Alice in Wonderland, Dorian Gray, Sherlock Holmes, Dracula, A Tale of Two Cities, The Time Machine*) with verified volume numbers and quotes.',
+    '* **`ACCOLADES_CATALOG` & `ACCOLADE_TIER_CONFIG`** (`src/config/accolades-config.ts`): 10 curated literary achievement accolades across 4 prestige visual tiers (*Parchment Bronze, Specular Silver, Gilded Gold, Obsidian Masterwork*) with badges, mottoes, criteria, and bookplates.',
     '* **`LITERARY_ERAS`** (`src/config/catalog-filters.ts`): 6 historical eras spanning from Antiquity (-800 to 500) to Mid-20th Century (1914 to 1960).',
     '* **`GENRE_FACETS`** (`src/config/catalog-filters.ts`): Curated genre tags (Gothic & Horror, Philosophy, Adventure, Sci-Fi, Poetry, Drama, Detective & Mystery, History).',
-    '* **`READER_THEMES`** (`src/config/reader-themes.ts`): 3 reading themes (Day Paper, Sepia Parchment, Obsidian Dark) with color tokens for background, text, borders, and accents.',
+    '* **`READER_THEMES` & `NEXT_READER_THEME`** (`src/config/reader-themes.ts`): 3 reading themes (Day Paper, Sepia Parchment, Obsidian Dark) with color tokens for background, text, borders, accents, theme cycling order, and high-contrast Web Speech boundary highlight classes (`speechHighlight`).',
     '* **`LITERARY_QUOTES`** (`src/config/literary-quotes.ts`): 12 literary passages and opening lines from immortal masterworks.',
     '* **`ANNOTATION_COLOR_CONFIG` & `ANNOTATION_COLOR_LIST`** (`src/config/annotation-tokens.ts`): Canonical single source of truth for scholar annotation color tokens (`yellow`, `amber`, `mint`, `rose`), text highlight surface classes, dot/border styling, human-readable labels, and filter badges.',
     '* **`NAV_ITEMS`, `NAVBAR_VIEW_CONFIG` & `VIEW_CONTENT_CONFIG`** (`src/config/views.config.ts`): Declarative polymorphic strategy configurations defining application view IDs, navigation badges, section eyebrows, titles, search placeholders, and collection clear action descriptors.',
@@ -394,6 +482,7 @@ function generateMarkdown() {
     '| Gateway Pass | Stage Name | Target & Tooling | Enforcement & Governance |',
     '| :--- | :--- | :--- | :--- |',
     '| **Pass 0.5** | Secrets & Credentials Scanner | Regex scan across all files | Zero live API keys, private keys, or tokens committed |',
+    '| **Pass 0.75** | Pre-Commit SAST & OWASP Security Suite | `npm audit`, SSRF AST & XSS AST guards | Audits dependencies for high/critical CVEs, prevents dynamic fetch SSRF taint flows and dangerous client-side injection |',
     '| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |',
     '| **Pass 2** | Contract & Interface Validation | AST structural analysis | Validates export signatures and component prop invariants |',
     '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 80% coverage on lines, functions, statements, branches |',

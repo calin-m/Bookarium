@@ -6,6 +6,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import {
   getHourlyHeroBook,
   getDailyEditorialBook,
+  FEATURED_HERO_BOOKS,
 } from '@/config/featured-books';
 
 const mockPush = vi.fn();
@@ -18,7 +19,7 @@ vi.mock('next/navigation', () => ({
 
 describe('EditorialQuoteSection component', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     useReaderStore.setState({ currentBook: null, isOpen: false });
   });
 
@@ -35,7 +36,8 @@ describe('EditorialQuoteSection component', () => {
 
     expect(screen.getByText(expectedBook.title)).toBeInTheDocument();
     expect(screen.getAllByText(new RegExp(expectedBook.author, 'i')).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(new RegExp(expectedBook.quoteExcerpt, 'i'))).toBeInTheDocument();
+    const cleanExcerpt = expectedBook.quoteExcerpt.replace(/^[“"'\s]+|[”"'\s]+$/g, '');
+    expect(screen.getByText((content) => content.includes(cleanExcerpt))).toBeInTheDocument();
   });
 
   it('navigates to reader and dispatches openReader on button click', () => {
@@ -77,4 +79,23 @@ describe('EditorialQuoteSection component', () => {
     const section = container.querySelector('section');
     expect(section).toHaveClass('custom-test-class');
   });
+
+  describe.each(FEATURED_HERO_BOOKS)(
+    'universal rendering for "$title"',
+    (targetBook) => {
+      it(`renders title, author, and quote without punctuation or regex issues`, () => {
+        const targetIndex = FEATURED_HERO_BOOKS.findIndex((b) => b.id === targetBook.id);
+        vi.spyOn(Date, 'now').mockReturnValue(targetIndex * 86400000);
+
+        render(<EditorialQuoteSection heroBookId={-1} />);
+
+        expect(screen.getByText(targetBook.title)).toBeInTheDocument();
+        expect(screen.getAllByText(new RegExp(targetBook.author, 'i')).length).toBeGreaterThanOrEqual(1);
+        const cleanExcerpt = targetBook.quoteExcerpt.replace(/^[“"'\s]+|[”"'\s]+$/g, '');
+        expect(
+          screen.getByText((content) => content.includes(cleanExcerpt))
+        ).toBeInTheDocument();
+      });
+    }
+  );
 });

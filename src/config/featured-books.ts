@@ -79,7 +79,7 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     openingLine:
       'Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, "and what is the use of a book," thought Alice "without pictures or conversation?"',
     quoteExcerpt:
-      '“Curiouser and curiouser!” cried Alice (she was so much surprised, that for the moment she quite forgot how to speak good English). "It’s no use going back to yesterday, because I was a different person then. Why, sometimes I’ve believed as many as six impossible things before breakfast."',
+      'Curiouser and curiouser!” cried Alice (she was so much surprised, that for the moment she quite forgot how to speak good English). "It’s no use going back to yesterday, because I was a different person then. Why, sometimes I’ve believed as many as six impossible things before breakfast."',
     license: 'CC0 / Public Domain',
     primarySubject: 'Literary Nonsense & Fantasy',
   },
