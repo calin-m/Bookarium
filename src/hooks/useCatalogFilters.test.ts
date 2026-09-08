@@ -26,6 +26,7 @@ describe('useCatalogFilters', () => {
     expect(result.current.viewMode).toBe('grid');
     expect(result.current.activeFilterChips).toEqual([]);
     expect(result.current.queryParams.copyright).toBe(false);
+    expect(typeof result.current.isMobile).toBe('boolean');
   });
 
   it('updates search and resets page to 1', () => {
@@ -312,6 +313,181 @@ describe('windowed chunk sub-pagination in useCatalogFilters', () => {
 
     const { result } = renderHook(() => useCatalogFilters());
     expect(result.current.pageSize).toBe(8);
+
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('normalizes page coordinates and prevents redundant API query changes when resizing from mobile to desktop', () => {
+    const originalMatchMedia = window.matchMedia;
+    let isMobile = true;
+    let listeners: Array<() => void> = [];
+
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 767px)' ? isMobile : !isMobile,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: (_event: string, cb: () => void) => {
+        listeners.push(cb);
+      },
+      removeEventListener: (_event: string, cb: () => void) => {
+        listeners = listeners.filter((l) => l !== cb);
+      },
+      dispatchEvent: vi.fn(),
+    }));
+
+    const { result } = renderHook(() => useCatalogFilters());
+    expect(result.current.pageSize).toBe(8);
+
+    // Navigate to mobile page 3 (first book index: (3 - 1) * 8 = 16)
+    act(() => {
+      result.current.setPage(3);
+    });
+    expect(result.current.page).toBe(3);
+    expect(result.current.queryParams.page).toBe(1);
+
+    // Simulate device rotation / window resize to desktop (>=768px)
+    act(() => {
+      isMobile = false;
+      listeners.forEach((cb) => cb());
+    });
+
+    // Book 16 on desktop (pageSize = 16) maps to desktop page 2: Math.floor(16 / 16) + 1 = 2
+    expect(result.current.pageSize).toBe(16);
+    expect(result.current.page).toBe(2);
+    // Crucially: queryParams.page remains 1 (no extraneous network fetch)
+    expect(result.current.queryParams.page).toBe(1);
+
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('normalizes page coordinates and preserves batch index when resizing from desktop to mobile', () => {
+    const originalMatchMedia = window.matchMedia;
+    let isMobile = false;
+    let listeners: Array<() => void> = [];
+
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 767px)' ? isMobile : !isMobile,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: (_event: string, cb: () => void) => {
+        listeners.push(cb);
+      },
+      removeEventListener: (_event: string, cb: () => void) => {
+        listeners = listeners.filter((l) => l !== cb);
+      },
+      dispatchEvent: vi.fn(),
+    }));
+
+    const { result } = renderHook(() => useCatalogFilters());
+    expect(result.current.pageSize).toBe(16);
+
+    // Navigate to desktop page 2 (first book index: (2 - 1) * 16 = 16)
+    act(() => {
+      result.current.setPage(2);
+    });
+    expect(result.current.page).toBe(2);
+    expect(result.current.queryParams.page).toBe(1);
+
+    // Simulate resize to mobile (<768px)
+    act(() => {
+      isMobile = true;
+      listeners.forEach((cb) => cb());
+    });
+
+    // Book 16 on mobile (pageSize = 8) maps to mobile page 3: Math.floor(16 / 8) + 1 = 3
+    expect(result.current.pageSize).toBe(8);
+    expect(result.current.page).toBe(3);
+    expect(result.current.queryParams.page).toBe(1);
+
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('preserves higher batch coordinates (batch 2) across mobile-to-desktop resize', () => {
+    const originalMatchMedia = window.matchMedia;
+    let isMobile = true;
+    let listeners: Array<() => void> = [];
+
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 767px)' ? isMobile : !isMobile,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: (_event: string, cb: () => void) => {
+        listeners.push(cb);
+      },
+      removeEventListener: (_event: string, cb: () => void) => {
+        listeners = listeners.filter((l) => l !== cb);
+      },
+      dispatchEvent: vi.fn(),
+    }));
+
+    const { result } = renderHook(() => useCatalogFilters());
+
+    // Mobile page 5 is in batch 2: subPagesPerBatch = 4, apiPage = Math.floor((5 - 1) / 4) + 1 = 2
+    act(() => {
+      result.current.setPage(5);
+    });
+    expect(result.current.page).toBe(5);
+    expect(result.current.queryParams.page).toBe(2);
+
+    // Resize to desktop
+    act(() => {
+      isMobile = false;
+      listeners.forEach((cb) => cb());
+    });
+
+    // First book index is (5 - 1) * 8 = 32. On desktop: Math.floor(32 / 16) + 1 = 3
+    expect(result.current.pageSize).toBe(16);
+    expect(result.current.page).toBe(3);
+    // Desktop page 3 apiPage: Math.floor((3 - 1) / 2) + 1 = 2 (still batch 2!)
+    expect(result.current.queryParams.page).toBe(2);
+
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('does not alter page or pageSize when explicit size override is set', () => {
+    const originalMatchMedia = window.matchMedia;
+    let isMobile = true;
+    let listeners: Array<() => void> = [];
+
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 767px)' ? isMobile : !isMobile,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: (_event: string, cb: () => void) => {
+        listeners.push(cb);
+      },
+      removeEventListener: (_event: string, cb: () => void) => {
+        listeners = listeners.filter((l) => l !== cb);
+      },
+      dispatchEvent: vi.fn(),
+    }));
+
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.setPageSize(32);
+      result.current.setPage(2);
+    });
+    expect(result.current.pageSize).toBe(32);
+    expect(result.current.page).toBe(2);
+
+    // Resize from mobile to desktop
+    act(() => {
+      isMobile = false;
+      listeners.forEach((cb) => cb());
+    });
+
+    // Explicit size remains 32 and page remains 2
+    expect(result.current.pageSize).toBe(32);
+    expect(result.current.page).toBe(2);
 
     window.matchMedia = originalMatchMedia;
   });

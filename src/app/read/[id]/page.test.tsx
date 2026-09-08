@@ -324,7 +324,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.queryByRole('dialog', { name: /Search in Volume/i })).not.toBeInTheDocument();
   });
 
-  it('enforces mutual exclusivity between all 4 reader modals (TOC, Search, Controls, Language)', () => {
+  it('enforces mutual exclusivity between all 5 reader drawers (TOC, Search, Controls, Language, Annotations)', () => {
     render(<BookReaderPage />);
 
     // 1. Open TOC
@@ -350,9 +350,49 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.queryByRole('region', { name: /Reading Controls/i })).not.toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: /Language Editions & Translations/i })).toBeInTheDocument();
 
-    // 5. Re-click Language Drawer -> closes Language Drawer
-    fireEvent.click(langBtn);
+    // 5. Open Annotations & Notes Drawer -> closes Language Drawer
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    fireEvent.click(notesBtn);
     expect(screen.queryByRole('dialog', { name: /Language Editions & Translations/i })).not.toBeInTheDocument();
+    expect(screen.getByTestId('annotations-drawer-panel')).toBeInTheDocument();
+
+    // 6. Switch back to TOC -> closes Annotations Drawer
+    fireEvent.click(tocBtn);
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
+
+    // 7. Close TOC via re-click
+    fireEvent.click(tocBtn);
+    expect(screen.queryByRole('dialog', { name: /Table of Contents/i })).not.toBeInTheDocument();
+  });
+
+  it('automatically dismisses text selection popover when any reader drawer is opened', () => {
+    const originalGetSelection = window.getSelection;
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'Pride and Prejudice',
+      getRangeAt: () => ({
+        getBoundingClientRect: () => ({ top: 200, left: 300, width: 150, height: 24 }),
+      }),
+    });
+
+    try {
+      render(<BookReaderPage />);
+
+      const article = screen.getByRole('article');
+      fireEvent.mouseUp(article);
+      expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+
+      // Open Table of Contents drawer
+      const tocBtns = screen.getAllByLabelText('Table of Contents');
+      fireEvent.click(tocBtns[0]);
+
+      // Popover automatically dismisses
+      expect(screen.queryByTestId('text-highlight-popover')).not.toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
+    } finally {
+      window.getSelection = originalGetSelection;
+    }
   });
 
   it('toggles Read Aloud audio bar and triggers speech controls', () => {
@@ -372,6 +412,23 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     // Close speech bar
     fireEvent.click(screen.getByRole('button', { name: 'Close Read Aloud' }));
     expect(screen.queryByTestId('reader-speech-bar')).not.toBeInTheDocument();
+  });
+
+  it('automatically closes any open side drawer when Read Aloud narration is opened from the header', () => {
+    render(<BookReaderPage />);
+
+    // Open Annotations drawer first
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    fireEvent.click(notesBtn);
+    expect(screen.getByTestId('annotations-drawer-panel')).toBeInTheDocument();
+
+    // Click Read Aloud button in header
+    const speechBtn = screen.getAllByLabelText('Read Aloud Narration')[0];
+    fireEvent.click(speechBtn);
+
+    // Annotations drawer should close and Speech Bar should open
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
   });
 
   it('toggles Annotations & Notes drawer from reader header', () => {

@@ -48,6 +48,13 @@ describe('ReaderSpeechBar', () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it('renders with elevated z-[10001] stacking context to remain interactive above drawer backdrops', () => {
+    render(<ReaderSpeechBar {...defaultProps} />);
+    const bar = screen.getByTestId('reader-speech-bar');
+    expect(bar).toBeInTheDocument();
+    expect(bar.className).toContain('z-[10001]');
+  });
+
   it('renders narration metadata, page coordinates, and progress percentage', () => {
     render(
       <ReaderSpeechBar
@@ -224,7 +231,7 @@ describe('ReaderSpeechBar', () => {
     render(<ReaderSpeechBar {...defaultProps} />);
     const container = screen.getByTestId('reader-speech-bar');
     expect(container).toHaveClass('fixed');
-    expect(container).toHaveClass('z-50');
+    expect(container).toHaveClass('z-[10001]');
     expect(container).toHaveClass('left-0');
     expect(container).toHaveClass('right-0');
     expect(container).toHaveClass('mx-auto');

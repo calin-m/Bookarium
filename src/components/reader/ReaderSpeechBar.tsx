@@ -106,7 +106,7 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
             onClose();
           }
         }}
-        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] landscape:bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 mx-auto z-50 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] max-w-xl pointer-events-auto touch-pan-y"
+        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] landscape:bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 mx-auto z-[10001] w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] max-w-xl pointer-events-auto touch-pan-y"
         aria-label="Read Aloud Narration Controls"
         data-testid="reader-speech-bar"
       >

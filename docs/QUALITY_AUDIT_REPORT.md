@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 07 Sep 2026 19:32:41 GMT  
+**Last Generated**: Tue, 08 Sep 2026 08:15:31 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 147 passed  
-**Total Verified Tests**: 1179 passed  
+**Total Test Suites**: 148 passed  
+**Total Verified Tests**: 1200 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **147/147 test suites passed** (1179 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **148/148 test suites passed** (1200 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 32 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.79%** (5774/6222) — *Target: $ge$ 80%*
-- **Statements**: **91.16%** (6274/6882) — *Target: $ge$ 80%*
-- **Functions**: **89.08%** (1444/1621) — *Target: $ge$ 80%*
-- **Branches**: **81.46%** (5216/6403) — *Target: $ge$ 80%*
+- **Lines**: **92.79%** (5835/6288) — *Target: $ge$ 80%*
+- **Statements**: **91.19%** (6337/6949) — *Target: $ge$ 80%*
+- **Functions**: **89.17%** (1450/1626) — *Target: $ge$ 80%*
+- **Branches**: **81.51%** (5279/6476) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (147 Suites / 1179 Tests)
+## 🧪 Comprehensive Test Suite Catalog (148 Suites / 1200 Tests)
 
-### 🚀 App Routes & Pages (11 Suites · 104 Tests)
+### 🚀 App Routes & Pages (11 Suites · 108 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -128,7 +128,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -138,6 +138,7 @@
 - ✔ `should open download hub and close it`
 - ✔ `should open 3D book preview modal when book cover is clicked and close it on desktop`
 - ✔ `renders Bookshelf and Favorites when views are switched via Navbar`
+- ✔ `navigates to /account when swiping left on mobile while on Bookmarks view`
 - ✔ `allows user to toggle between 8 and 16 books per page via toolbar`
 - ✔ `prevents search execution on 1-character query in HeroSearch on catalog page`
 - ✔ `triggers predictive prefetching when approaching batch end on sub-page 3 (size 8)`
@@ -147,6 +148,7 @@
 - ✔ `should switch to Notebook view when Notebook tab in Navbar is clicked`
 - ✔ `switches to Bookmarks view and renders reading ledger when Bookmarks nav tab is clicked`
 - ✔ `smoothly scrolls to catalog-section and updates display mode when toggling between Cards and Bookshelves`
+- ✔ `switches views when swiping horizontally across main on mobile`
 
 </details>
 
@@ -174,7 +176,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (27 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (29 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -191,8 +193,10 @@
 - ✔ `renders language and translation dropdown in reader and navigates on translation selection`
 - ✔ `opens In-Book Search Drawer, finds matching phrase, and jumps to chapter on selection`
 - ✔ `toggles In-Book Search Drawer using Ctrl+F keyboard shortcut`
-- ✔ `enforces mutual exclusivity between all 4 reader modals (TOC, Search, Controls, Language)`
+- ✔ `enforces mutual exclusivity between all 5 reader drawers (TOC, Search, Controls, Language, Annotations)`
+- ✔ `automatically dismisses text selection popover when any reader drawer is opened`
 - ✔ `toggles Read Aloud audio bar and triggers speech controls`
+- ✔ `automatically closes any open side drawer when Read Aloud narration is opened from the header`
 - ✔ `toggles Annotations & Notes drawer from reader header`
 - ✔ `renders selection popover on mouseUp and applies chosen highlight color`
 - ✔ `attaches and saves a personal reflection note to an existing highlight`
@@ -580,7 +584,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 136 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 137 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -733,9 +737,10 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders null when isOpen is false`
+- ✔ `renders with elevated z-[10001] stacking context to remain interactive above drawer backdrops`
 - ✔ `renders narration metadata, page coordinates, and progress percentage`
 - ✔ `handles play, pause, and resume actions accurately`
 - ✔ `disables previous sentence button and skips to next sentence at start of text`
@@ -1376,7 +1381,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (19 Suites · 162 Tests)
+### 🔄 Hooks & React Query (20 Suites · 177 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
@@ -1486,12 +1491,13 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderDrawers.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderDrawers.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `initializes with all drawers closed`
 - ✔ `opens a drawer via openDrawer`
 - ✔ `toggles a drawer open and closed`
 - ✔ `switches between drawers maintaining mutual exclusivity`
+- ✔ `supports annotations drawer with strict mutual exclusivity`
 - ✔ `closes active drawer via closeDrawer`
 
 </details>
@@ -1563,7 +1569,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -1584,6 +1590,10 @@
 - ✔ `maps client sub-pages to upstream 32-batch apiPage`
 - ✔ `translates reading position when switching pageSize between 8 and 16`
 - ✔ `defaults to pageSize 8 on mobile viewports (<768px)`
+- ✔ `normalizes page coordinates and prevents redundant API query changes when resizing from mobile to desktop`
+- ✔ `normalizes page coordinates and preserves batch index when resizing from desktop to mobile`
+- ✔ `preserves higher batch coordinates (batch 2) across mobile-to-desktop resize`
+- ✔ `does not alter page or pageSize when explicit size override is set`
 
 </details>
 
@@ -1601,6 +1611,22 @@
 <summary><b><code>src/hooks/useHasMounted.test.ts</code></b> (1 tests)</summary>
 
 - ✔ `returns true after mounting on client`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useMobileViewSwipe.test.ts</code></b> (10 tests)</summary>
+
+- ✔ `advances to next view on valid swipe left`
+- ✔ `navigates to previous view on valid swipe right`
+- ✔ `clamps at boundaries (no-op when swiping right on catalog or left on account)`
+- ✔ `ignores swipe if touch starts within 25px edge dead-zone (native Safari/Android back-forward)`
+- ✔ `ignores swipe originating on interactive controls or inputs`
+- ✔ `ignores diagonal or vertical scroll gestures failing dominance ratio`
+- ✔ `ignores gestures exceeding max duration or below min distance`
+- ✔ `does nothing when disabled`
+- ✔ `supports custom config overrides`
+- ✔ `cycles across all 6 views in sequence`
 
 </details>
 
@@ -1654,7 +1680,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (44 Suites · 191 Tests)
+### 🧩 UI Primitives & Motion (44 Suites · 192 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1665,7 +1691,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated`
 - ✔ `renders authenticated profile and handles saving display name`
@@ -1684,6 +1710,7 @@
 - ✔ `handles resending email verification on unverified account`
 - ✔ `renders notes & quotes count in library statistics`
 - ✔ `renders Ex-Libris Bookplates & Accolades section on authenticated dashboard`
+- ✔ `navigates back to bookmarks when swiping right on mobile`
 
 </details>
 

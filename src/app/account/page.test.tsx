@@ -419,5 +419,36 @@ describe('AccountPage', () => {
     expect(screen.getByText('Ex-Libris Bookplates & Accolades')).toBeInTheDocument();
     expect(screen.getByTestId('account-accolades-card')).toBeInTheDocument();
   });
+
+  it('navigates back to bookmarks when swiping right on mobile', () => {
+    vi.useFakeTimers();
+    try {
+      useAuthStore.setState({
+        user: null,
+        profile: null,
+        isLoading: false,
+      });
+
+      render(<AccountPage />);
+      const mainEl = screen.getByRole('main');
+
+      // Swipe right: touchStart at 400, touchEnd at 500 (distance = 100px)
+      fireEvent.touchStart(mainEl, {
+        touches: [{ clientX: 400, clientY: 300 }],
+        changedTouches: [{ clientX: 400, clientY: 300 }],
+      });
+
+      vi.advanceTimersByTime(100);
+
+      fireEvent.touchEnd(mainEl, {
+        touches: [],
+        changedTouches: [{ clientX: 500, clientY: 300 }],
+      });
+
+      expect(mockPush).toHaveBeenCalledWith(ROUTES.VIEW('bookmarks'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
