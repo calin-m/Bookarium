@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 08 Sep 2026 08:15:31 GMT  
+**Last Generated**: Tue, 08 Sep 2026 10:59:44 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 148 passed  
-**Total Verified Tests**: 1200 passed  
+**Total Test Suites**: 153 passed  
+**Total Verified Tests**: 1239 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **148/148 test suites passed** (1200 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **153/153 test suites passed** (1239 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 32 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 33 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.79%** (5835/6288) — *Target: $ge$ 80%*
-- **Statements**: **91.19%** (6337/6949) — *Target: $ge$ 80%*
-- **Functions**: **89.17%** (1450/1626) — *Target: $ge$ 80%*
-- **Branches**: **81.51%** (5279/6476) — *Target: $ge$ 80%*
+- **Lines**: **92.59%** (6054/6538) — *Target: $ge$ 80%*
+- **Statements**: **90.96%** (6563/7215) — *Target: $ge$ 80%*
+- **Functions**: **88.68%** (1489/1679) — *Target: $ge$ 80%*
+- **Branches**: **81.17%** (5531/6814) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (148 Suites / 1200 Tests)
+## 🧪 Comprehensive Test Suite Catalog (153 Suites / 1239 Tests)
 
 ### 🚀 App Routes & Pages (11 Suites · 108 Tests)
 
@@ -210,7 +210,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (23 Suites · 234 Tests)
+### 🎨 Catalog & Presentation (23 Suites · 237 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -320,11 +320,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfManageModals.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfManageModals.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders create modal and submits new shelf`
 - ✔ `renders rename and delete modals`
 - ✔ `renders clear offline shelf confirmation modal and handles cancel and confirm`
+- ✔ `toggles shelf privacy in create and rename modals`
 
 </details>
 
@@ -352,7 +353,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (31 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (33 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -368,6 +369,7 @@
 - ✔ `opens rename shelf modal and submits new shelf name`
 - ✔ `opens delete shelf modal and confirms custom shelf deletion`
 - ✔ `opens create shelf modal and submits a new custom shelf`
+- ✔ `displays private shelf indicator on shelf pills when is_public is false`
 - ✔ `renders empty shelf state and allows browsing catalog`
 - ✔ `calls onBrowseCatalog callback when clicking Browse Catalog in empty state`
 - ✔ `allows moving a book between shelves when user has multiple shelves`
@@ -385,6 +387,7 @@
 - ✔ `renders offline download button and triggers download all`
 - ✔ `renders individual offline download button on book spine and triggers toggle`
 - ✔ `renders All Saved for Offline notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll`
+- ✔ `renders Edit and Delete buttons to the left of Download Shelf Offline button on custom shelves`
 
 </details>
 
@@ -858,7 +861,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (8 Suites · 121 Tests)
+### ⚡ Zustand State Stores (8 Suites · 130 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -901,7 +904,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (26 tests)</summary>
 
 - ✔ `manages modal open, close, and view state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -921,11 +924,19 @@
 - ✔ `handles updatePassword success and failure`
 - ✔ `handles requestAccountDeletion success and failure`
 - ✔ `handles deleteAccount success and failure`
+- ✔ `rejects empty or whitespace-only username`
+- ✔ `rejects username shorter than 3 characters`
+- ✔ `rejects username longer than 30 characters`
+- ✔ `rejects invalid characters like spaces or special symbols`
+- ✔ `accepts valid alphanumeric handles with underscores and hyphens`
+- ✔ `rejects update when username is invalid`
+- ✔ `normalizes username to lowercase and updates public profile preferences`
+- ✔ `normalizes empty string username to null`
 
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (34 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (35 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -939,6 +950,7 @@
 - ✔ `bidirectionally pushes unsynced local books and favorites to Supabase during syncWithCloud`
 - ✔ `handles createCloudBookshelf and migrateLocalBooksToCloud`
 - ✔ `updates cloud bookshelf name and updates local store state`
+- ✔ `updates bookshelf privacy status via updateBookshelfPrivacy`
 - ✔ `deletes cloud bookshelf and falls back activeBookshelfId to default shelf`
 - ✔ `handles moveBookToShelf properly`
 - ✔ `creates a new bookshelf item if book is not in cloudBookshelfItems yet`
@@ -1680,7 +1692,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (44 Suites · 192 Tests)
+### 🧩 UI Primitives & Motion (49 Suites · 219 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1691,7 +1703,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (18 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated`
 - ✔ `renders authenticated profile and handles saving display name`
@@ -1711,6 +1723,7 @@
 - ✔ `renders notes & quotes count in library statistics`
 - ✔ `renders Ex-Libris Bookplates & Accolades section on authenticated dashboard`
 - ✔ `navigates back to bookmarks when swiping right on mobile`
+- ✔ `renders Public Scholar Profile section and handles saving public preferences`
 
 </details>
 
@@ -1778,6 +1791,17 @@
 - ✔ `generates canonical sitemap entries for root and privacy routes`
 - ✔ `indexes featured public domain classic books`
 - ✔ `provides valid timestamps across all entries`
+
+</details>
+
+<details>
+<summary><b><code>src/app/u/[username]/page.test.tsx</code></b> (5 tests)</summary>
+
+- ✔ `renders public scholar profile with habits, accolades, and bookshelves`
+- ✔ `renders PrivateProfileNotice when profile does not exist in Supabase`
+- ✔ `renders PrivateProfileNotice when profile has is_public = false`
+- ✔ `resolves authenticated user profile from local store fallback when viewing own public profile`
+- ✔ `filters out private bookshelves and respects show_saved_books and show_custom_shelves toggles`
 
 </details>
 
@@ -1888,6 +1912,20 @@
 </details>
 
 <details>
+<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (8 tests)</summary>
+
+- ✔ `renders public scholar profile section with profile data`
+- ✔ `toggles master public profile switch and updates badge`
+- ✔ `validates username format and displays descriptive error`
+- ✔ `copies shareable link to clipboard when clicked`
+- ✔ `submits updated profile settings and handles success`
+- ✔ `blocks submission and displays error when public is enabled without username`
+- ✔ `displays error message if update fails`
+- ✔ `allows toggling Saved Works and Custom Shelves independently`
+
+</details>
+
+<details>
 <summary><b><code>src/components/account/AccountRestoreModal.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders nothing when closed or no backupData and no success`
@@ -1929,6 +1967,36 @@
 <summary><b><code>src/components/motion/StaggerGroup.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `should render staggered child nodes`
+
+</details>
+
+<details>
+<summary><b><code>src/components/profile/PinnedAccoladesShelf.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders pinned bookplate items and badge count`
+- ✔ `renders empty showcase state when no bookplates are pinned`
+
+</details>
+
+<details>
+<summary><b><code>src/components/profile/PrivateProfileNotice.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders private sanctuary title and classical description`
+- ✔ `renders catalog navigation buttons with proper hrefs`
+- ✔ `renders gracefully without username parameter`
+
+</details>
+
+<details>
+<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (7 tests)</summary>
+
+- ✔ `renders public scholar view with profile info, telemetry, and bookshelves`
+- ✔ `renders PrivateProfileNotice when is_public is false`
+- ✔ `enforces strict Zero-PII guarantee (no email or sensitive fields)`
+- ✔ `respects granular privacy toggles by omitting telemetry and bookshelves`
+- ✔ `falls back to username handle when display_name is missing`
+- ✔ `falls back to Bookarium Scholar when both display_name and username are missing`
+- ✔ `copies public profile link when share button is clicked`
 
 </details>
 
@@ -2092,10 +2160,11 @@
 </details>
 
 <details>
-<summary><b><code>src/config/routes.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/config/routes.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `provides static canonical routes`
 - ✔ `builds dynamic reader route with id`
+- ✔ `builds dynamic public profile route with sanitized username`
 - ✔ `builds clean view path route correctly`
 
 </details>

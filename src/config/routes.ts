@@ -20,6 +20,7 @@ export const ROUTES = {
 
   // Dynamic Route Builders
   READ: (id: number | string) => `/read/${id}` as const,
+  PUBLIC_PROFILE: (username: string) => `/u/${encodeURIComponent(username.toLowerCase().trim())}` as const,
   VIEW: (view: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks') =>
     (view === 'catalog' ? '/' : (`/${view}` as const)),
 

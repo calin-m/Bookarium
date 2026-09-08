@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AccountPage from './page';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -186,7 +186,7 @@ describe('AccountPage', () => {
 
     const customShelvesLink = screen.getByRole('link', { name: /View Custom Shelves in Bookshelf/i });
     expect(customShelvesLink).toHaveAttribute('href', ROUTES.BOOKSHELF);
-    expect(screen.getByText('Custom Shelves')).toBeInTheDocument();
+    expect(within(customShelvesLink).getByText('Custom Shelves')).toBeInTheDocument();
     expect(screen.getByTestId('custom-shelves-count')).toHaveTextContent('2');
   });
 
@@ -449,6 +449,44 @@ describe('AccountPage', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('renders Public Scholar Profile section and handles saving public preferences', async () => {
+    const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'scholar@bookarium.test' } as any,
+      profile: {
+        id: 'u1',
+        display_name: 'Scholar Reader',
+        username: 'scholar_one',
+        bio: 'Devoted scholar of classical literature.',
+        is_public: true,
+        show_streak: true,
+        show_challenge: true,
+        show_bookshelves: true,
+      } as any,
+      isLoading: false,
+      updateProfile: mockUpdateProfile,
+    });
+
+    render(<AccountPage />);
+
+    expect(screen.getByRole('region', { name: /public scholar profile settings/i })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('scholar_one')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Devoted scholar of classical literature.')).toBeInTheDocument();
+
+    const submitBtn = screen.getByRole('button', { name: /save public settings/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: 'scholar_one',
+          is_public: true,
+        })
+      );
+    });
   });
 });
 

@@ -25,6 +25,7 @@ import { AccountIdentityCard } from '@/components/account/AccountIdentityCard';
 import { AccountLibraryStats } from '@/components/account/AccountLibraryStats';
 import { AccountHabitsCard } from '@/components/account/AccountHabitsCard';
 import { AccountAccoladesCard } from '@/components/account/AccountAccoladesCard';
+import { AccountPublicProfileSection } from '@/components/account/AccountPublicProfileSection';
 import { AccountSecuritySection } from '@/components/account/AccountSecuritySection';
 import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
@@ -399,7 +400,14 @@ export default function AccountPage() {
             {/* Tier 3: Ex-Libris Bookplates & Accolades Compendium (Full Width) */}
             <AccountAccoladesCard userId={user?.id} />
 
-            {/* Tier 4: Reader Atmosphere & Security Settings (Side-by-Side on Desktop/Laptop) */}
+            {/* Tier 4: Opt-In Public Scholar Profile & Sanctuary Settings (Full Width) */}
+            <AccountPublicProfileSection
+              user={user}
+              profile={profile}
+              onUpdateProfile={updateProfile}
+            />
+
+            {/* Tier 5: Reader Atmosphere & Security Settings (Side-by-Side on Desktop/Laptop) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-6">
                 <AccountPreferencesSection

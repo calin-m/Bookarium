@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Sparkles, Plus, Edit2, Trash2, CheckCircle2, HardDriveDownload } from 'lucide-react';
+import { BookOpen, Sparkles, Plus, Edit2, Trash2, CheckCircle2, HardDriveDownload, Lock } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -69,8 +69,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
   const [isCreatingShelf, setIsCreatingShelf] = useState(false);
   const [newShelfName, setNewShelfName] = useState('');
+  const [newShelfIsPublic, setNewShelfIsPublic] = useState(true);
   const [editingShelfId, setEditingShelfId] = useState<string | null>(null);
   const [editingShelfName, setEditingShelfName] = useState('');
+  const [editingShelfIsPublic, setEditingShelfIsPublic] = useState(true);
   const [deletingShelfId, setDeletingShelfId] = useState<string | null>(null);
   const [isClearingOfflineShelf, setIsClearingOfflineShelf] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,10 +120,11 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
     try {
       setIsSubmitting(true);
-      const newShelf = await createCloudBookshelf(newShelfName.trim(), user?.id || '');
+      const newShelf = await createCloudBookshelf(newShelfName.trim(), user?.id || '', newShelfIsPublic);
       if (newShelf) {
         setActiveBookshelfId(newShelf.id);
         setNewShelfName('');
+        setNewShelfIsPublic(true);
         setIsCreatingShelf(false);
       }
     } finally {
@@ -135,9 +138,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
     try {
       setIsSubmitting(true);
-      await updateCloudBookshelf(editingShelfId, editingShelfName.trim(), user?.id || '');
+      await updateCloudBookshelf(editingShelfId, editingShelfName.trim(), user?.id || '', editingShelfIsPublic);
       setEditingShelfId(null);
       setEditingShelfName('');
+      setEditingShelfIsPublic(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -219,6 +223,9 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     }`}
                   >
                     <span>{shelfDisplayName}</span>
+                    {!shelf.is_default && shelf.is_public === false && (
+                      <Lock className="w-2.5 h-2.5 text-amber-500 inline ml-1 shrink-0" data-testid="private-shelf-badge" />
+                    )}
                     {shelf.is_default && (
                       <span className="ml-1.5 opacity-70 text-[10px]">({books.length})</span>
                     )}
@@ -268,92 +275,98 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
           </div>
         )}
 
-        {/* Offline Download All / Clear Shelf Button */}
-        {effectiveShelfBooks.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            {isDownloadingOffline ? (
-              <Button
-                variant="outline"
-                size="chip"
-                disabled
-                className="text-xs font-mono gap-1.5"
-                title="Downloading shelf offline"
-                aria-label="Downloading shelf offline"
-              >
-                <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
-                <span>
-                  {offlineProgress
-                    ? `Saving ${offlineProgress.current}/${offlineProgress.total}`
-                    : 'Downloading...'}
-                </span>
-              </Button>
-            ) : effectiveShelfBooks.every((b) => isBookOffline(b.id)) ? (
+        {/* Actions Cluster: Shelf Management (Edit/Delete) & Offline Downloads */}
+        {((user && activeShelf && !activeShelf.is_default) || effectiveShelfBooks.length > 0) && (
+          <div className="flex items-center gap-2 flex-wrap" data-testid="shelf-action-controls">
+            {/* Action Controls for Non-Default Custom Shelves */}
+            {user && activeShelf && !activeShelf.is_default && (
               <div className="flex items-center gap-1.5">
-                <div
-                  role="status"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 select-none cursor-default"
-                  title="All books on this shelf are saved for offline reading"
-                  aria-label="All Saved for Offline"
-                  data-testid="all-saved-offline-notice"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingShelfId(activeShelf.id);
+                    setEditingShelfName(activeShelf.name);
+                    setEditingShelfIsPublic(activeShelf.is_public ?? true);
+                  }}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors cursor-pointer"
+                  title={`Rename ${activeShelf.name}`}
+                  aria-label={`Rename ${activeShelf.name}`}
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span className="hidden sm:inline font-medium">All Saved for Offline</span>
-                  <span className="sm:hidden font-medium">Saved</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="chip"
-                  onClick={() => setIsClearingOfflineShelf(true)}
-                  className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
-                  title="Clear all downloaded offline books on this shelf"
-                  aria-label="Clear Offline Shelf"
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeletingShelfId(activeShelf.id)}
+                  className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 border border-destructive/20 transition-colors cursor-pointer"
+                  title={`Delete ${activeShelf.name}`}
+                  aria-label={`Delete ${activeShelf.name}`}
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                  <span className="hidden sm:inline">Clear Offline Shelf</span>
-                  <span className="sm:hidden">Clear</span>
-                </Button>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="chip"
-                onClick={() => downloadAll(effectiveShelfBooks)}
-                className="text-xs font-mono gap-1.5"
-                title="Download all books on this shelf for offline reading"
-                aria-label="Download all books on this shelf for offline reading"
-              >
-                <HardDriveDownload className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span className="hidden sm:inline">Download Shelf Offline</span>
-                <span className="sm:hidden">Download All</span>
-              </Button>
             )}
-          </div>
-        )}
 
-        {/* Action Controls for Non-Default Custom Shelves */}
-        {user && activeShelf && !activeShelf.is_default && (
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                setEditingShelfId(activeShelf.id);
-                setEditingShelfName(activeShelf.name);
-              }}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors cursor-pointer"
-              title={`Rename ${activeShelf.name}`}
-              aria-label={`Rename ${activeShelf.name}`}
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeletingShelfId(activeShelf.id)}
-              className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 border border-destructive/20 transition-colors cursor-pointer"
-              title={`Delete ${activeShelf.name}`}
-              aria-label={`Delete ${activeShelf.name}`}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {/* Offline Download All / Clear Shelf Button */}
+            {effectiveShelfBooks.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                {isDownloadingOffline ? (
+                  <Button
+                    variant="outline"
+                    size="chip"
+                    disabled
+                    className="text-xs font-mono gap-1.5"
+                    title="Downloading shelf offline"
+                    aria-label="Downloading shelf offline"
+                  >
+                    <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span>
+                      {offlineProgress
+                        ? `Saving ${offlineProgress.current}/${offlineProgress.total}`
+                        : 'Downloading...'}
+                    </span>
+                  </Button>
+                ) : effectiveShelfBooks.every((b) => isBookOffline(b.id)) ? (
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      role="status"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 select-none cursor-default"
+                      title="All books on this shelf are saved for offline reading"
+                      aria-label="All Saved for Offline"
+                      data-testid="all-saved-offline-notice"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span className="hidden sm:inline font-medium">All Saved for Offline</span>
+                      <span className="sm:hidden font-medium">Saved</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="chip"
+                      onClick={() => setIsClearingOfflineShelf(true)}
+                      className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
+                      title="Clear all downloaded offline books on this shelf"
+                      aria-label="Clear Offline Shelf"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span className="hidden sm:inline">Clear Offline Shelf</span>
+                      <span className="sm:hidden">Clear</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="chip"
+                    onClick={() => downloadAll(effectiveShelfBooks)}
+                    className="text-xs font-mono gap-1.5"
+                    title="Download all books on this shelf for offline reading"
+                    aria-label="Download all books on this shelf for offline reading"
+                  >
+                    <HardDriveDownload className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="hidden sm:inline">Download Shelf Offline</span>
+                    <span className="sm:hidden">Download All</span>
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -488,18 +501,24 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       <BookshelfManageModals
         isCreatingShelf={isCreatingShelf}
         newShelfName={newShelfName}
+        newShelfIsPublic={newShelfIsPublic}
         onNewShelfNameChange={setNewShelfName}
+        onNewShelfIsPublicChange={setNewShelfIsPublic}
         onCloseCreateShelf={() => {
           setIsCreatingShelf(false);
           setNewShelfName('');
+          setNewShelfIsPublic(true);
         }}
         onCreateShelf={handleCreateShelf}
         editingShelfId={editingShelfId}
         editingShelfName={editingShelfName}
+        editingShelfIsPublic={editingShelfIsPublic}
         onEditingShelfNameChange={setEditingShelfName}
+        onEditingShelfIsPublicChange={setEditingShelfIsPublic}
         onCloseRenameShelf={() => {
           setEditingShelfId(null);
           setEditingShelfName('');
+          setEditingShelfIsPublic(true);
         }}
         onRenameShelf={handleRenameShelf}
         deletingShelfId={deletingShelfId}

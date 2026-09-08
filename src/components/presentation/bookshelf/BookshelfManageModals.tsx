@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BookOpen, Edit2, Trash2, X } from 'lucide-react';
+import { BookOpen, Edit2, Trash2, X, Globe, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
@@ -9,12 +9,16 @@ import { Modal } from '@/components/ui/Modal';
 export interface BookshelfManageModalsProps {
   isCreatingShelf: boolean;
   newShelfName: string;
+  newShelfIsPublic?: boolean;
   onNewShelfNameChange: (name: string) => void;
+  onNewShelfIsPublicChange?: (isPublic: boolean) => void;
   onCloseCreateShelf: () => void;
   onCreateShelf: (e: React.FormEvent) => void;
   editingShelfId: string | null;
   editingShelfName: string;
+  editingShelfIsPublic?: boolean;
   onEditingShelfNameChange: (name: string) => void;
+  onEditingShelfIsPublicChange?: (isPublic: boolean) => void;
   onCloseRenameShelf: () => void;
   onRenameShelf: (e: React.FormEvent) => void;
   deletingShelfId: string | null;
@@ -29,12 +33,16 @@ export interface BookshelfManageModalsProps {
 export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
   isCreatingShelf,
   newShelfName,
+  newShelfIsPublic = true,
   onNewShelfNameChange,
+  onNewShelfIsPublicChange,
   onCloseCreateShelf,
   onCreateShelf,
   editingShelfId,
   editingShelfName,
+  editingShelfIsPublic = true,
   onEditingShelfNameChange,
+  onEditingShelfIsPublicChange,
   onCloseRenameShelf,
   onRenameShelf,
   deletingShelfId,
@@ -85,6 +93,37 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
               autoFocus
               required
             />
+          </div>
+
+          <div className="pt-2 border-t border-border">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={newShelfIsPublic}
+                onChange={(e) => onNewShelfIsPublicChange?.(e.target.checked)}
+                className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
+              />
+              <div className="space-y-0.5 min-w-0">
+                <span className="text-xs font-mono font-bold text-foreground flex items-center gap-1.5">
+                  {newShelfIsPublic ? (
+                    <>
+                      <Globe className="w-3.5 h-3.5 text-success" />
+                      <span>Public Shelf</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Private Shelf</span>
+                    </>
+                  )}
+                </span>
+                <p className="text-[11px] text-muted-foreground font-sans leading-tight">
+                  {newShelfIsPublic
+                    ? 'Visible on your public scholar profile when custom shelves are enabled.'
+                    : 'Private to you only. Never visible to visitors on your public profile.'}
+                </p>
+              </div>
+            </label>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">
@@ -147,6 +186,37 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
               autoFocus
               required
             />
+          </div>
+
+          <div className="pt-2 border-t border-border">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={editingShelfIsPublic}
+                onChange={(e) => onEditingShelfIsPublicChange?.(e.target.checked)}
+                className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
+              />
+              <div className="space-y-0.5 min-w-0">
+                <span className="text-xs font-mono font-bold text-foreground flex items-center gap-1.5">
+                  {editingShelfIsPublic ? (
+                    <>
+                      <Globe className="w-3.5 h-3.5 text-success" />
+                      <span>Public Shelf</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Private Shelf</span>
+                    </>
+                  )}
+                </span>
+                <p className="text-[11px] text-muted-foreground font-sans leading-tight">
+                  {editingShelfIsPublic
+                    ? 'Visible on your public scholar profile when custom shelves are enabled.'
+                    : 'Private to you only. Never visible to visitors on your public profile.'}
+                </p>
+              </div>
+            </label>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">

@@ -13,6 +13,14 @@ export interface Database {
         Row: {
           id: string;
           display_name: string | null;
+          username: string | null;
+          bio: string | null;
+          is_public: boolean;
+          show_streak: boolean;
+          show_challenge: boolean;
+          show_bookshelves: boolean;
+          show_saved_books?: boolean;
+          show_custom_shelves?: boolean;
           preferred_theme: string | null;
           font_size: number | null;
           created_at: string;
@@ -21,6 +29,14 @@ export interface Database {
         Insert: {
           id: string;
           display_name?: string | null;
+          username?: string | null;
+          bio?: string | null;
+          is_public?: boolean;
+          show_streak?: boolean;
+          show_challenge?: boolean;
+          show_bookshelves?: boolean;
+          show_saved_books?: boolean;
+          show_custom_shelves?: boolean;
           preferred_theme?: string | null;
           font_size?: number | null;
           created_at?: string;
@@ -29,6 +45,14 @@ export interface Database {
         Update: {
           id?: string;
           display_name?: string | null;
+          username?: string | null;
+          bio?: string | null;
+          is_public?: boolean;
+          show_streak?: boolean;
+          show_challenge?: boolean;
+          show_bookshelves?: boolean;
+          show_saved_books?: boolean;
+          show_custom_shelves?: boolean;
           preferred_theme?: string | null;
           font_size?: number | null;
           created_at?: string;
@@ -42,6 +66,7 @@ export interface Database {
           user_id: string;
           name: string;
           is_default: boolean;
+          is_public?: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -50,6 +75,7 @@ export interface Database {
           user_id: string;
           name: string;
           is_default?: boolean;
+          is_public?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -58,6 +84,7 @@ export interface Database {
           user_id?: string;
           name?: string;
           is_default?: boolean;
+          is_public?: boolean;
           created_at?: string;
           updated_at?: string;
         };

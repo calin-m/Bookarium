@@ -377,6 +377,33 @@
 - **Consequences**:
   - Eliminates gamification exploits and guarantees 100% integrity for literary accolades.
   - Provides readers with structured, achievable milestones (6, 12, 24, 52 volumes) with classical Latin identities.
-  - Zero icon stroke flickering or jitter across all 13 accolade bookplates in Light, Sepia, and Dark modes.
   - 100% resolution of database security linter warnings.
   - All 147 test suites (1,179 tests) passing with >92% test coverage.
+
+## ADR-033: Opt-In Public Scholar Profiles, Zero-PII Privacy Architecture & Dynamic Social Metadata
+- **Status**: Accepted
+- **Context**:
+  1. Bookarium previously restricted all reading milestones, streaks, and Ex-Libris bookplates to private local sessions. Readers lacked a dignified, classical way to share their reading journeys, literary mottos, and curated public domain bookshelves (Milestone 4, Point 2).
+  2. Publicly discoverable profiles present privacy and account enumeration risks if not strictly governed by an opt-in model and zero-PII data isolation.
+  3. Readers require granular autonomy over which telemetry metrics (daily streaks, annual challenge progress, and bookshelves) are visible to the public.
+- **Decision**:
+  1. **Canonical Schema Co-Evolution & Public RLS Policies (`supabase/schema.sql`, `src/types/database.types.ts`, `README.md`)**:
+     - Extended `public.profiles` with `username TEXT UNIQUE`, `bio TEXT`, `is_public BOOLEAN DEFAULT false`, `show_streak BOOLEAN DEFAULT true`, `show_challenge BOOLEAN DEFAULT true`, and `show_bookshelves BOOLEAN DEFAULT true`.
+     - Created case-insensitive unique index `unique_profile_username_lower ON public.profiles (lower(trim(username)))`.
+     - Updated Row Level Security (RLS) `SELECT` policies across `profiles`, `bookshelves`, `bookshelf_items`, `user_reading_habits`, and `user_accolades` to permit public reads strictly when `is_public = true` and the corresponding privacy toggle is active, maintaining strict user-isolated mutations (`auth.uid() = user_id`).
+  2. **Account Dashboard Public Profile Section (`src/components/account/AccountPublicProfileSection.tsx`)**:
+     - Provisioned an executive settings card mounted on `/account` enabling users to configure unique handles (3–30 chars with live validation via `validateUsername`), scholar bio/motto (max 200 chars), master public switch (`Public Scholar` vs. `Private Sanctuary`), and granular telemetry toggles.
+     - Provided 1-click clipboard link copying with instant tactile visual feedback and direct profile preview linking.
+  3. **Zero-PII Public Scholar Route (`src/app/u/[username]/page.tsx`) & Presentation View (`src/components/profile/PublicProfileView.tsx`)**:
+     - Engineered a dynamic public route fetching scholar profiles via case-insensitive matching (`.ilike('username', normalizedUsername)`).
+     - Strictly queries and renders public attributes (`display_name`, `username`, `bio`, `created_at`). Under no condition are email addresses, password hashes, or sensitive auth tokens exposed to the client DOM.
+     - Fallbacks for display names default safely to `@username` or `"Bookarium Scholar"`, strictly avoiding email fallbacks.
+  4. **Classical Private Sanctuary Fallback (`src/components/profile/PrivateProfileNotice.tsx`)**:
+     - Visiting `/u/[username]` for private accounts or non-existent handles displays a classical Emerson-inscribed "Private Scholar Sanctuary" card rather than a 404, eliminating username enumeration vectors.
+  5. **Pinned Accolades Shelf Showcase (`src/components/profile/PinnedAccoladesShelf.tsx`)**:
+     - Renders up to 3 pinned Ex-Libris bookplates on a classical woodcut scholar shelf with 3D hover physics.
+- **Consequences**:
+  - Successfully satisfies and verifies Milestone 4, Point 2 on the living roadmap.
+  - Zero PII leakage across all public data flows and UI views.
+  - Full test co-location and anti-regression coverage maintained across all new components, stores, and route handlers.
+

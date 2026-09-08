@@ -123,5 +123,66 @@ describe('BookshelfManageModals Component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear Offline Downloads' }));
     expect(handleConfirm).toHaveBeenCalled();
   });
+
+  it('toggles shelf privacy in create and rename modals', () => {
+    const handleNewPrivacyChange = vi.fn();
+    const handleEditPrivacyChange = vi.fn();
+
+    const { rerender } = render(
+      <BookshelfManageModals
+        isCreatingShelf={true}
+        newShelfName="Secret Collection"
+        newShelfIsPublic={true}
+        onNewShelfNameChange={vi.fn()}
+        onNewShelfIsPublicChange={handleNewPrivacyChange}
+        onCloseCreateShelf={vi.fn()}
+        onCreateShelf={vi.fn()}
+        editingShelfId={null}
+        editingShelfName=""
+        onEditingShelfNameChange={vi.fn()}
+        onCloseRenameShelf={vi.fn()}
+        onRenameShelf={vi.fn()}
+        deletingShelfId={null}
+        onCloseDeleteShelf={vi.fn()}
+        onDeleteShelf={vi.fn()}
+        isSubmitting={false}
+      />
+    );
+
+    expect(screen.getByText('Public Shelf')).toBeInTheDocument();
+    const createCheckbox = screen.getByRole('checkbox');
+    expect(createCheckbox).toBeChecked();
+
+    fireEvent.click(createCheckbox);
+    expect(handleNewPrivacyChange).toHaveBeenCalledWith(false);
+
+    rerender(
+      <BookshelfManageModals
+        isCreatingShelf={false}
+        newShelfName=""
+        onNewShelfNameChange={vi.fn()}
+        onCloseCreateShelf={vi.fn()}
+        onCreateShelf={vi.fn()}
+        editingShelfId="shelf-2"
+        editingShelfName="Private Memoirs"
+        editingShelfIsPublic={false}
+        onEditingShelfNameChange={vi.fn()}
+        onEditingShelfIsPublicChange={handleEditPrivacyChange}
+        onCloseRenameShelf={vi.fn()}
+        onRenameShelf={vi.fn()}
+        deletingShelfId={null}
+        onCloseDeleteShelf={vi.fn()}
+        onDeleteShelf={vi.fn()}
+        isSubmitting={false}
+      />
+    );
+
+    expect(screen.getByText('Private Shelf')).toBeInTheDocument();
+    const editCheckbox = screen.getByRole('checkbox');
+    expect(editCheckbox).not.toBeChecked();
+
+    fireEvent.click(editCheckbox);
+    expect(handleEditPrivacyChange).toHaveBeenCalledWith(true);
+  });
 });
 

@@ -509,3 +509,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-030: Deterministic Literary Accolades, Tactile Ex-Libris Bookplates & Showcase Architecture**
 - **ADR-031: Global Encapsulation, Polymorphic Strategy Dispatching & Layout DRY Refactoring**
 - **ADR-032: Canonical 4-Tier Reading Challenge Ladder, Anti-Tamper Progression & Accolade Visual Stabilization**
+- **ADR-033: Opt-In Public Scholar Profiles, Zero-PII Privacy Architecture & Dynamic Social Metadata**

@@ -1,0 +1,84 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { Lock, BookOpen, ArrowLeft, Shield } from 'lucide-react';
+import { ROUTES } from '@/config/routes';
+import { Button } from '@/components/ui/Button';
+
+export interface PrivateProfileNoticeProps {
+  username?: string;
+}
+
+export const PrivateProfileNotice: React.FC<PrivateProfileNoticeProps> = ({ username }) => {
+  return (
+    <div
+      role="region"
+      aria-label="Private Scholar Sanctuary"
+      className="max-w-xl mx-auto my-12 px-4 text-center"
+    >
+      <div className="bg-card border border-border rounded-3xl p-8 sm:p-12 shadow-booksaw space-y-6 relative overflow-hidden">
+        {/* Subtle background decoration */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Lock Medallion */}
+        <div className="relative mx-auto w-16 h-16 rounded-2xl bg-muted/60 border border-border text-muted-foreground flex items-center justify-center shadow-inner">
+          <Lock className="w-8 h-8 text-primary/80" />
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+            <Shield className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
+        {/* Text Content */}
+        <div className="space-y-2">
+          {username && (
+            <p className="font-mono text-xs text-primary font-bold tracking-wider uppercase">
+              @{username}
+            </p>
+          )}
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground">
+            Private Scholar Sanctuary
+          </h1>
+          <p className="text-sm text-muted-foreground font-sans leading-relaxed max-w-md mx-auto">
+            This reader has chosen to keep their reading sanctuary private, or this scholar profile does not exist.
+          </p>
+        </div>
+
+        {/* Classical Epigraph */}
+        <div className="border-t border-b border-border/60 py-3.5 my-2">
+          <p className="font-serif italic text-xs text-muted-foreground">
+            &ldquo;In a library we are surrounded by many hundreds of dear friends, imprisoned by an enchanter in their paper and leathern boxes.&rdquo;
+          </p>
+          <span className="block text-[10px] font-mono uppercase tracking-widest text-muted-foreground/80 mt-1">
+            — Ralph Waldo Emerson
+          </span>
+        </div>
+
+        {/* Action CTAs */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <Link href={ROUTES.HOME} className="w-full sm:w-auto">
+            <Button
+              variant="primary"
+              size="md"
+              className="w-full font-mono text-xs uppercase flex items-center gap-2"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Explore Public Domain Library</span>
+            </Button>
+          </Link>
+          <Link href={ROUTES.HOME} className="w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="md"
+              className="w-full font-mono text-xs uppercase flex items-center gap-2"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Catalog</span>
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};

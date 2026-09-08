@@ -14,18 +14,43 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name TEXT,
+  username TEXT UNIQUE,
+  bio TEXT,
+  is_public BOOLEAN NOT NULL DEFAULT false,
+  show_streak BOOLEAN NOT NULL DEFAULT true,
+  show_challenge BOOLEAN NOT NULL DEFAULT true,
+  show_bookshelves BOOLEAN NOT NULL DEFAULT true,
+  show_saved_books BOOLEAN NOT NULL DEFAULT true,
+  show_custom_shelves BOOLEAN NOT NULL DEFAULT true,
   preferred_theme TEXT DEFAULT 'light',
   font_size INTEGER DEFAULT 18,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Idempotent column additions for existing installations
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS username TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS bio TEXT,
+  ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS show_streak BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS show_challenge BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS show_bookshelves BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS show_saved_books BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS show_custom_shelves BOOLEAN NOT NULL DEFAULT true;
+
+-- Case-insensitive unique index for public scholar handles
+CREATE UNIQUE INDEX IF NOT EXISTS unique_profile_username_lower
+  ON public.profiles (lower(trim(username)))
+  WHERE username IS NOT NULL;
+
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
-CREATE POLICY "Users can view their own profile"
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone when is_public is true" ON public.profiles;
+CREATE POLICY "Public profiles are viewable by everyone when is_public is true"
   ON public.profiles FOR SELECT
-  USING (auth.uid() = id);
+  USING (is_public = true OR auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
@@ -50,9 +75,14 @@ CREATE TABLE IF NOT EXISTS public.bookshelves (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   is_default BOOLEAN NOT NULL DEFAULT false,
+  is_public BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Idempotent column additions for existing installations
+ALTER TABLE public.bookshelves
+  ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT true;
 
 -- Unique constraints per user
 CREATE UNIQUE INDEX IF NOT EXISTS unique_user_default_bookshelf 
@@ -65,9 +95,24 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_user_shelf_name
 ALTER TABLE public.bookshelves ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own bookshelves" ON public.bookshelves;
-CREATE POLICY "Users can view their own bookshelves"
+DROP POLICY IF EXISTS "Public bookshelves viewable when owner profile is public" ON public.bookshelves;
+CREATE POLICY "Public bookshelves viewable when owner profile is public"
   ON public.bookshelves FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (
+    (
+      EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE profiles.id = bookshelves.user_id
+          AND profiles.is_public = true
+          AND (
+            (bookshelves.is_default = true AND profiles.show_saved_books = true AND bookshelves.is_public = true)
+            OR
+            (bookshelves.is_default = false AND profiles.show_custom_shelves = true AND bookshelves.is_public = true)
+          )
+      )
+    )
+    OR auth.uid() = user_id
+  );
 
 DROP POLICY IF EXISTS "Users can insert their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can insert their own bookshelves"
@@ -93,18 +138,35 @@ CREATE TABLE IF NOT EXISTS public.bookshelf_items (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   book_id INTEGER NOT NULL,
   book_title TEXT NOT NULL,
-  book_authors TEXT[] NOT NULL DEFAULT '{}',
-  cover_url TEXT,
-  added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  book_authors JSONB NOT NULL DEFAULT '[]'::jsonb,
+  book_formats JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(bookshelf_id, book_id)
 );
 
 ALTER TABLE public.bookshelf_items ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own bookshelf items" ON public.bookshelf_items;
-CREATE POLICY "Users can view their own bookshelf items"
+DROP POLICY IF EXISTS "Public bookshelf items viewable when owner profile is public" ON public.bookshelf_items;
+CREATE POLICY "Public bookshelf items viewable when owner profile is public"
   ON public.bookshelf_items FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (
+    (
+      EXISTS (
+        SELECT 1 FROM public.bookshelves
+        JOIN public.profiles ON profiles.id = bookshelves.user_id
+        WHERE bookshelves.id = bookshelf_items.bookshelf_id
+          AND profiles.is_public = true
+          AND bookshelves.is_public = true
+          AND (
+            (bookshelves.is_default = true AND profiles.show_saved_books = true)
+            OR
+            (bookshelves.is_default = false AND profiles.show_custom_shelves = true)
+          )
+      )
+    )
+    OR auth.uid() = user_id
+  );
 
 DROP POLICY IF EXISTS "Users can insert their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can insert their own bookshelf items"
@@ -386,10 +448,20 @@ ALTER TABLE public.user_reading_habits
 ALTER TABLE public.user_reading_habits ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own reading habits" ON public.user_reading_habits;
-CREATE POLICY "Users can view their own reading habits"
+DROP POLICY IF EXISTS "Public reading habits viewable when owner profile is public" ON public.user_reading_habits;
+CREATE POLICY "Public reading habits viewable when owner profile is public"
   ON public.user_reading_habits FOR SELECT
-  TO authenticated
-  USING (auth.uid() = user_id);
+  USING (
+    (
+      EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE profiles.id = user_reading_habits.user_id
+          AND profiles.is_public = true
+          AND (profiles.show_streak = true OR profiles.show_challenge = true)
+      )
+    )
+    OR auth.uid() = user_id
+  );
 
 DROP POLICY IF EXISTS "Users can insert their own reading habits" ON public.user_reading_habits;
 CREATE POLICY "Users can insert their own reading habits"
@@ -436,10 +508,19 @@ CREATE INDEX IF NOT EXISTS idx_user_accolades_user
 ALTER TABLE public.user_accolades ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own accolades" ON public.user_accolades;
-CREATE POLICY "Users can view their own accolades"
+DROP POLICY IF EXISTS "Public pinned accolades viewable when owner profile is public" ON public.user_accolades;
+CREATE POLICY "Public pinned accolades viewable when owner profile is public"
   ON public.user_accolades FOR SELECT
-  TO authenticated
-  USING (auth.uid() = user_id);
+  USING (
+    (
+      is_pinned = true AND EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE profiles.id = user_accolades.user_id
+          AND profiles.is_public = true
+      )
+    )
+    OR auth.uid() = user_id
+  );
 
 DROP POLICY IF EXISTS "Users can insert their own accolades" ON public.user_accolades;
 CREATE POLICY "Users can insert their own accolades"

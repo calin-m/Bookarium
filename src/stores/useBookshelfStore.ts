@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook, ReadingStatus } from '@/types/book.types';
@@ -109,8 +110,9 @@ export interface BookshelfState {
   // Cloud Actions
   syncWithCloud: (userId: string) => Promise<void>;
   migrateLocalBooksToCloud: (userId: string) => Promise<void>;
-  createCloudBookshelf: (name: string, userId: string) => Promise<Bookshelf | null>;
-  updateCloudBookshelf: (shelfId: string, name: string, userId: string) => Promise<boolean>;
+  createCloudBookshelf: (name: string, userId: string, isPublic?: boolean) => Promise<Bookshelf | null>;
+  updateCloudBookshelf: (shelfId: string, name: string, userId: string, isPublic?: boolean) => Promise<boolean>;
+  updateBookshelfPrivacy: (shelfId: string, isPublic: boolean, userId: string) => Promise<boolean>;
   deleteCloudBookshelf: (shelfId: string, userId: string) => Promise<boolean>;
   moveBookToShelf: (bookId: number, targetShelfId: string, userId: string) => Promise<boolean>;
   setActiveBookshelfId: (id: string | null) => void;
@@ -859,7 +861,7 @@ export const useBookshelfStore = create<BookshelfState>()(
         }
       },
 
-      createCloudBookshelf: async (name: string, userId: string) => {
+      createCloudBookshelf: async (name: string, userId: string, isPublic = true) => {
         const trimmed = name.trim();
         if (!trimmed || !userId || trimmed.toLowerCase() === 'general') return null;
 
@@ -871,6 +873,7 @@ export const useBookshelfStore = create<BookshelfState>()(
               user_id: userId,
               name: name.trim(),
               is_default: false,
+              is_public: isPublic,
             })
             .select()
             .single();
@@ -889,21 +892,52 @@ export const useBookshelfStore = create<BookshelfState>()(
         return null;
       },
 
-      updateCloudBookshelf: async (shelfId: string, name: string, userId: string) => {
+      updateCloudBookshelf: async (shelfId: string, name: string, userId: string, isPublic?: boolean) => {
         if (!shelfId || !name.trim() || !userId) return false;
 
         try {
           const supabase = createClient();
+          const payload: { name: string; is_public?: boolean } = { name: name.trim() };
+          if (isPublic !== undefined) {
+            payload.is_public = isPublic;
+          }
           const { error } = await supabase
             .from('bookshelves')
-            .update({ name: name.trim() })
+            .update(payload)
             .eq('id', shelfId)
             .eq('user_id', userId);
 
           if (!error) {
             set({
               cloudBookshelves: get().cloudBookshelves.map((s) =>
-                s.id === shelfId ? { ...s, name: name.trim() } : s
+                s.id === shelfId
+                  ? { ...s, name: name.trim(), ...(isPublic !== undefined ? { is_public: isPublic } : {}) }
+                  : s
+              ),
+            });
+            return true;
+          }
+        } catch {
+          // Non-blocking fallback
+        }
+        return false;
+      },
+
+      updateBookshelfPrivacy: async (shelfId: string, isPublic: boolean, userId: string) => {
+        if (!shelfId || !userId) return false;
+
+        try {
+          const supabase = createClient();
+          const { error } = await supabase
+            .from('bookshelves')
+            .update({ is_public: isPublic })
+            .eq('id', shelfId)
+            .eq('user_id', userId);
+
+          if (!error) {
+            set({
+              cloudBookshelves: get().cloudBookshelves.map((s) =>
+                s.id === shelfId ? { ...s, is_public: isPublic } : s
               ),
             });
             return true;
@@ -1062,9 +1096,17 @@ export function useHydratedBookshelf() {
   const syncWithCloud = useBookshelfStore((s) => s.syncWithCloud);
   const createCloudBookshelf = useBookshelfStore((s) => s.createCloudBookshelf);
   const updateCloudBookshelf = useBookshelfStore((s) => s.updateCloudBookshelf);
+  const updateBookshelfPrivacy = useBookshelfStore((s) => s.updateBookshelfPrivacy);
   const deleteCloudBookshelf = useBookshelfStore((s) => s.deleteCloudBookshelf);
   const moveBookToShelf = useBookshelfStore((s) => s.moveBookToShelf);
   const setActiveBookshelfId = useBookshelfStore((s) => s.setActiveBookshelfId);
+  const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    if (hasMounted && user?.id) {
+      syncWithCloud(user.id).catch(() => {});
+    }
+  }, [hasMounted, user?.id, syncWithCloud]);
 
   return {
     hasMounted,
@@ -1098,6 +1140,7 @@ export function useHydratedBookshelf() {
     syncWithCloud,
     createCloudBookshelf,
     updateCloudBookshelf,
+    updateBookshelfPrivacy,
     deleteCloudBookshelf,
     moveBookToShelf,
     setActiveBookshelfId,

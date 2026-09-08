@@ -7,6 +7,28 @@ import { ROUTES } from '@/config/routes';
 
 export type AuthModalView = 'sign_in' | 'sign_up' | 'magic_link' | 'forgot_password';
 
+export interface UsernameValidationResult {
+  isValid: boolean;
+  error: string | null;
+}
+
+export function validateUsername(username: string): UsernameValidationResult {
+  const trimmed = username.trim();
+  if (!trimmed) {
+    return { isValid: false, error: 'Username cannot be empty.' };
+  }
+  if (trimmed.length < 3) {
+    return { isValid: false, error: 'Username must be at least 3 characters long.' };
+  }
+  if (trimmed.length > 30) {
+    return { isValid: false, error: 'Username cannot exceed 30 characters.' };
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    return { isValid: false, error: 'Username can only contain letters, numbers, underscores, and hyphens.' };
+  }
+  return { isValid: true, error: null };
+}
+
 export interface AuthState {
   user: User | null;
   profile: Profile | null;
@@ -37,6 +59,14 @@ export interface AuthState {
     display_name?: string;
     preferred_theme?: string;
     font_size?: number;
+    username?: string | null;
+    bio?: string | null;
+    is_public?: boolean;
+    show_streak?: boolean;
+    show_challenge?: boolean;
+    show_bookshelves?: boolean;
+    show_saved_books?: boolean;
+    show_custom_shelves?: boolean;
   }) => Promise<{ error: Error | null }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
@@ -226,14 +256,31 @@ export const useAuthStore = create<AuthState>()(
     const { user } = get();
     if (!user) return { error: new Error('User not logged in') };
 
+    let normalizedUsername = updates.username;
+    if (updates.username !== undefined) {
+      if (updates.username === null || updates.username.trim() === '') {
+        normalizedUsername = null;
+      } else {
+        const trimmed = updates.username.trim().toLowerCase();
+        const validation = validateUsername(trimmed);
+        if (!validation.isValid) {
+          return { error: new Error(validation.error || 'Invalid username') };
+        }
+        normalizedUsername = trimmed;
+      }
+    }
+
+    const payload = {
+      ...updates,
+      ...(updates.username !== undefined ? { username: normalizedUsername } : {}),
+      updated_at: new Date().toISOString(),
+    };
+
     try {
       const supabase = createClient();
       const { error } = await supabase
         .from('profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq('id', user.id);
 
       if (error) {
@@ -242,7 +289,7 @@ export const useAuthStore = create<AuthState>()(
       }
 
       set((state) => ({
-        profile: state.profile ? ({ ...state.profile, ...updates } as Profile) : null,
+        profile: state.profile ? ({ ...state.profile, ...payload } as Profile) : null,
       }));
       return { error: null };
     } catch (err: any) {

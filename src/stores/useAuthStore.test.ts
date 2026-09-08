@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAuthStore } from './useAuthStore';
+import { useAuthStore, validateUsername } from './useAuthStore';
 
 const mockSignInWithPassword = vi.fn();
 const mockSignUp = vi.fn();
@@ -340,5 +340,114 @@ describe('useAuthStore', () => {
     expect(res2.error).toBeNull();
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().profile).toBeNull();
+  });
+
+  describe('validateUsername', () => {
+    it('rejects empty or whitespace-only username', () => {
+      expect(validateUsername('').isValid).toBe(false);
+      expect(validateUsername('   ').isValid).toBe(false);
+      expect(validateUsername('').error).toContain('cannot be empty');
+    });
+
+    it('rejects username shorter than 3 characters', () => {
+      expect(validateUsername('ab').isValid).toBe(false);
+      expect(validateUsername('a').isValid).toBe(false);
+      expect(validateUsername('ab').error).toContain('at least 3 characters');
+    });
+
+    it('rejects username longer than 30 characters', () => {
+      const longUsername = 'a'.repeat(31);
+      expect(validateUsername(longUsername).isValid).toBe(false);
+      expect(validateUsername(longUsername).error).toContain('cannot exceed 30');
+    });
+
+    it('rejects invalid characters like spaces or special symbols', () => {
+      expect(validateUsername('john doe').isValid).toBe(false);
+      expect(validateUsername('scholar@book').isValid).toBe(false);
+      expect(validateUsername('user!name').isValid).toBe(false);
+    });
+
+    it('accepts valid alphanumeric handles with underscores and hyphens', () => {
+      expect(validateUsername('jane_austen').isValid).toBe(true);
+      expect(validateUsername('book-lover-42').isValid).toBe(true);
+      expect(validateUsername('Scholar123').isValid).toBe(true);
+      expect(validateUsername('jane_austen').error).toBeNull();
+    });
+  });
+
+  describe('updateProfile with public scholar settings', () => {
+    it('rejects update when username is invalid', async () => {
+      useAuthStore.setState({ user: { id: 'u1' } as any });
+      const res = await useAuthStore.getState().updateProfile({ username: 'ab' });
+      expect(res.error).toBeDefined();
+      expect(res.error?.message).toContain('at least 3 characters');
+    });
+
+    it('normalizes username to lowercase and updates public profile preferences', async () => {
+      useAuthStore.setState({
+        user: { id: 'user-scholar' } as any,
+        profile: { id: 'user-scholar', display_name: 'Scholar One' } as any,
+      });
+
+      const mockUpdate = vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      });
+      mockFrom.mockReturnValue({
+        update: mockUpdate,
+      });
+
+      const res = await useAuthStore.getState().updateProfile({
+        username: '  Jane_Austen  ',
+        bio: 'Passionate reader of 19th-century classics.',
+        is_public: true,
+        show_streak: true,
+        show_challenge: false,
+        show_bookshelves: true,
+      });
+
+      expect(res.error).toBeNull();
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: 'jane_austen',
+          bio: 'Passionate reader of 19th-century classics.',
+          is_public: true,
+          show_streak: true,
+          show_challenge: false,
+          show_bookshelves: true,
+        })
+      );
+
+      const state = useAuthStore.getState();
+      expect(state.profile?.username).toBe('jane_austen');
+      expect(state.profile?.bio).toBe('Passionate reader of 19th-century classics.');
+      expect(state.profile?.is_public).toBe(true);
+      expect(state.profile?.show_challenge).toBe(false);
+    });
+
+    it('normalizes empty string username to null', async () => {
+      useAuthStore.setState({
+        user: { id: 'user-scholar' } as any,
+        profile: { id: 'user-scholar', username: 'old_handle' } as any,
+      });
+
+      const mockUpdate = vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      });
+      mockFrom.mockReturnValue({
+        update: mockUpdate,
+      });
+
+      const res = await useAuthStore.getState().updateProfile({
+        username: '',
+      });
+
+      expect(res.error).toBeNull();
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: null,
+        })
+      );
+      expect(useAuthStore.getState().profile?.username).toBeNull();
+    });
   });
 });

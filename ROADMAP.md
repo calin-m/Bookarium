@@ -2,15 +2,15 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-77%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-17_of_22-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-82%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-18_of_22-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[███████████████░░░░░]` **17/22 (77%)**
+`[████████████████░░░░]` **18/22 (82%)**
 
 ---
 
@@ -81,13 +81,13 @@
 ---
 
 ### Milestone 4: Literary Accolades & Public Profiles (`Target: v2.1.0`)
-`[███████░░░░░░░░░░░░░]` **1/3 (33%)**
+`[█████████████░░░░░░░]` **2/3 (67%)**
 
 > Gamified ex-libris accolades, tactile bookplate achievements, and opt-in public scholar profile pages.
 
 - [x] **Deterministic Literary Accolades & Badge Engine** `✅ VERIFIED`
   Ex-libris bookplate badges (Seven-Day Sage, Ancient Antiquarian, Century Voyager, Commonplace Scholar) unlocked via pure client-side reading telemetry with tactile unlock celebrations.
-- [ ] **Opt-In Public Scholar Profiles (`/u/[username]`)** `⏳ PLANNED`
+- [x] **Opt-In Public Scholar Profiles (`/u/[username]`)** `✅ VERIFIED`
   Dedicated public profile page showcasing reader biography, public bookshelves, reading challenge progress, and pinned accolade badges with strict privacy toggles (Public vs Private).
 - [ ] **Shareable Reading Cards & OpenGraph Export** `⏳ PLANNED`
   Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.

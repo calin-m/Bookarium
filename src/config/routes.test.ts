@@ -22,6 +22,11 @@ describe('ROUTES Configuration', () => {
     expect(ROUTES.READ('84')).toBe('/read/84');
   });
 
+  it('builds dynamic public profile route with sanitized username', () => {
+    expect(ROUTES.PUBLIC_PROFILE('Jane_Austen')).toBe('/u/jane_austen');
+    expect(ROUTES.PUBLIC_PROFILE('  BookWorm99  ')).toBe('/u/bookworm99');
+  });
+
   it('builds clean view path route correctly', () => {
     expect(ROUTES.VIEW('catalog')).toBe('/');
     expect(ROUTES.VIEW('bookshelf')).toBe('/bookshelf');
