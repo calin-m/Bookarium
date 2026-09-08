@@ -397,6 +397,38 @@ describe('useBookshelfStore', () => {
       expect(useBookshelfStore.getState().cloudBookshelves.find((s) => s.id === 'shelf-2')?.name).toBe('Greek Philosophy');
     });
 
+    it('updates bookshelf privacy status via updateBookshelfPrivacy', async () => {
+      useBookshelfStore.setState({
+        cloudBookshelves: [
+          { id: 'shelf-1', user_id: 'user-1', name: 'Main', is_default: true, is_public: true, created_at: '', updated_at: '' },
+          { id: 'shelf-2', user_id: 'user-1', name: 'Secret Notes', is_default: false, is_public: true, created_at: '', updated_at: '' },
+        ],
+        activeBookshelfId: 'shelf-2',
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            update: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                eq: vi.fn().mockResolvedValueOnce({ error: null }),
+              }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      const { result } = renderHook(() => useHydratedBookshelf());
+
+      let success = false;
+      await act(async () => {
+        success = await result.current.updateBookshelfPrivacy('shelf-2', false, 'user-1');
+      });
+      expect(success).toBe(true);
+      expect(useBookshelfStore.getState().cloudBookshelves.find((s) => s.id === 'shelf-2')?.is_public).toBe(false);
+    });
+
     it('deletes cloud bookshelf and falls back activeBookshelfId to default shelf', async () => {
       useBookshelfStore.setState({
         cloudBookshelves: [

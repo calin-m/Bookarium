@@ -192,7 +192,7 @@ describe('BookshelfRack Component', () => {
       fireEvent.click(screen.getByText('Save'));
     });
 
-    expect(updateMock).toHaveBeenCalledWith('shelf-2', 'Greek Philosophy', 'user-1');
+    expect(updateMock).toHaveBeenCalledWith('shelf-2', 'Greek Philosophy', 'user-1', true);
     expect(screen.queryByText('Rename Bookshelf')).not.toBeInTheDocument();
   });
 
@@ -253,8 +253,23 @@ describe('BookshelfRack Component', () => {
       fireEvent.click(screen.getByText('Create Shelf'));
     });
 
-    expect(createMock).toHaveBeenCalledWith('Poetry', 'user-1');
+    expect(createMock).toHaveBeenCalledWith('Poetry', 'user-1', true);
     expect(screen.queryByText('Create New Bookshelf')).not.toBeInTheDocument();
+  });
+
+  it('displays private shelf indicator on shelf pills when is_public is false', () => {
+    useAuthStore.setState({ user: { id: 'user-1', email: 'test@example.com' } as any });
+    useBookshelfStore.setState({
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 'shelf-2', user_id: 'user-1', name: 'Secret Philosophy', is_default: false, is_public: false, created_at: '', updated_at: '' },
+      ],
+      activeBookshelfId: 'shelf-1',
+    });
+
+    render(<BookshelfRack books={mockBooks} />);
+
+    expect(screen.getByTestId('private-shelf-badge')).toBeInTheDocument();
   });
 
   it('renders empty shelf state and allows browsing catalog', () => {
@@ -640,6 +655,49 @@ describe('BookshelfRack Component', () => {
     await waitFor(() => {
       expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
     });
+  });
+
+  it('renders Edit and Delete buttons to the left of Download Shelf Offline button on custom shelves', () => {
+    useAuthStore.setState({ user: { id: 'user-1', email: 'scholar@example.com' } as any });
+    useBookshelfStore.setState({
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 'shelf-2', user_id: 'user-1', name: 'Philosophy', is_default: false, is_public: true, created_at: '', updated_at: '' },
+      ],
+      cloudBookshelfItems: [
+        {
+          id: 'item-1',
+          bookshelf_id: 'shelf-2',
+          user_id: 'user-1',
+          book_id: mockBooks[0].id,
+          book_title: mockBooks[0].title,
+          book_authors: mockBooks[0].authors.map((a) => a.name),
+          cover_url: null,
+          added_at: '',
+        },
+      ],
+      activeBookshelfId: 'shelf-2',
+    });
+
+    render(<BookshelfRack books={mockBooks} />);
+
+    const actionContainer = screen.getByTestId('shelf-action-controls');
+    expect(actionContainer).toBeInTheDocument();
+
+    const editBtn = within(actionContainer).getByRole('button', { name: 'Rename Philosophy' });
+    const deleteBtn = within(actionContainer).getByRole('button', { name: 'Delete Philosophy' });
+    const downloadShelfBtn = within(actionContainer).getByRole('button', {
+      name: 'Download all books on this shelf for offline reading',
+    });
+
+    expect(editBtn).toBeInTheDocument();
+    expect(deleteBtn).toBeInTheDocument();
+    expect(downloadShelfBtn).toBeInTheDocument();
+
+    const buttons = within(actionContainer).getAllByRole('button');
+    expect(buttons[0]).toBe(editBtn);
+    expect(buttons[1]).toBe(deleteBtn);
+    expect(buttons[2]).toBe(downloadShelfBtn);
   });
 });
 
