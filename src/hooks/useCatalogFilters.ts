@@ -143,6 +143,17 @@ export function useCatalogFilters() {
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   const pageSize = explicitPageSize ?? (isMobile ? 8 : 16);
+  const [prevPageSize, setPrevPageSize] = useState(pageSize);
+
+  // Translate page coordinates upon responsive breakpoint change to prevent redundant API fetches and preserve reading position
+  if (hasMounted && prevPageSize !== pageSize) {
+    setPrevPageSize(pageSize);
+    const currentFirstBookIndex = (page - 1) * prevPageSize;
+    const newPage = Math.max(1, Math.floor(currentFirstBookIndex / pageSize) + 1);
+    setPage(newPage);
+  } else if (!hasMounted && prevPageSize !== pageSize) {
+    setPrevPageSize(pageSize);
+  }
 
   // Sync state to URL search parameters and clean path without page reload (after hydration)
   useEffect(() => {
@@ -326,8 +337,9 @@ export function useCatalogFilters() {
   const handlePageSizeChange = useCallback((newSize: number) => {
     if (newSize === pageSize) return;
     const currentFirstBookIndex = (page - 1) * pageSize;
-    const newPage = Math.floor(currentFirstBookIndex / newSize) + 1;
+    const newPage = Math.max(1, Math.floor(currentFirstBookIndex / newSize) + 1);
     setExplicitPageSize(newSize);
+    setPrevPageSize(newSize);
     setPage(newPage);
   }, [page, pageSize]);
 
@@ -347,6 +359,7 @@ export function useCatalogFilters() {
     selectedEraObj,
     queryParams,
     activeFilterChips,
+    isMobile,
 
     // Actions & Setters
     setActiveView,

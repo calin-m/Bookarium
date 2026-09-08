@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 
-export type ReaderDrawerType = 'toc' | 'search' | 'controls' | 'translations';
+export type ReaderDrawerType = 'toc' | 'search' | 'controls' | 'translations' | 'annotations';
 
 export interface UseReaderDrawersReturn {
   activeDrawer: ReaderDrawerType | null;
@@ -10,14 +10,15 @@ export interface UseReaderDrawersReturn {
   isSearchOpen: boolean;
   isControlsOpen: boolean;
   isTranslationsOpen: boolean;
+  isAnnotationsOpen: boolean;
   toggleDrawer: (drawer: ReaderDrawerType) => void;
   closeDrawer: () => void;
   openDrawer: (drawer: ReaderDrawerType) => void;
 }
 
 /**
- * Headless hook to manage the 4 mutually-exclusive reader drawers
- * (TOC, Search, Controls, Translations) with guaranteed single active drawer state.
+ * Headless hook to manage the 5 mutually-exclusive reader drawers
+ * (TOC, Search, Controls, Translations, Annotations) with guaranteed single active drawer state.
  */
 export function useReaderDrawers(): UseReaderDrawersReturn {
   const [activeDrawer, setActiveDrawer] = useState<ReaderDrawerType | null>(null);
@@ -40,6 +41,7 @@ export function useReaderDrawers(): UseReaderDrawersReturn {
     isSearchOpen: activeDrawer === 'search',
     isControlsOpen: activeDrawer === 'controls',
     isTranslationsOpen: activeDrawer === 'translations',
+    isAnnotationsOpen: activeDrawer === 'annotations',
     toggleDrawer,
     closeDrawer,
     openDrawer,

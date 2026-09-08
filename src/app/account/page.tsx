@@ -29,6 +29,8 @@ import { AccountSecuritySection } from '@/components/account/AccountSecuritySect
 import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
 import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrength } from '@/lib/password';
+import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
+import type { NavViewId } from '@/config/views.config';
 import { ROUTES } from '@/config/routes';
 
 export default function AccountPage() {
@@ -280,6 +282,18 @@ export default function AccountPage() {
       })
     : 'Member';
 
+  const { handleTouchStart, handleTouchEnd } = useMobileViewSwipe({
+    activeView: 'account',
+    onViewChange: (view) => {
+      if (view === 'bookmarks') {
+        router.push(ROUTES.VIEW('bookmarks'));
+      } else if (view !== 'account') {
+        router.push(ROUTES.VIEW(view as NavViewId));
+      }
+    },
+    enabled: !isDeleteModalOpen,
+  });
+
   return (
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
       <Navbar
@@ -290,7 +304,11 @@ export default function AccountPage() {
         }}
       />
 
-      <main className="flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+      <main
+        className="flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">
           <Link

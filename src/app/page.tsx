@@ -19,7 +19,8 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Footer } from '@/components/presentation/Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
-import { useCatalogFilters } from '@/hooks/useCatalogFilters';
+import { useCatalogFilters, type CatalogView } from '@/hooks/useCatalogFilters';
+import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -100,6 +101,7 @@ function HomeContent() {
     isFilterDrawerOpen,
     queryParams,
     activeFilterChips,
+    isMobile,
     setActiveView,
     setPage,
     setPageSize,
@@ -114,6 +116,26 @@ function HomeContent() {
     handleResetAllFilters,
     removeFilterChip,
   } = useCatalogFilters();
+
+  // Full-page mobile horizontal swipe navigation between header views
+  const isAnyModalActive = Boolean(
+    isFilterDrawerOpen ||
+    selectedDownloadBook ||
+    selectedPreviewBook ||
+    confirmClearType
+  );
+
+  const { handleTouchStart, handleTouchEnd } = useMobileViewSwipe({
+    activeView,
+    onViewChange: (view) => {
+      if (view === 'account') {
+        router.push(ROUTES.ACCOUNT);
+      } else {
+        setActiveView(view as CatalogView);
+      }
+    },
+    enabled: isMobile && !isAnyModalActive,
+  });
 
   // Reset collection search query when switching views
   const [prevActiveView, setPrevActiveView] = useState(activeView);
@@ -229,7 +251,11 @@ function HomeContent() {
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
       <Navbar activeView={activeView} onViewChange={setActiveView} isVisible={isHeaderVisible} />
 
-      <main className={`flex-1 transition-all duration-300 ${isFilterDrawerOpen ? 'xl:pl-96' : 'xl:pl-0'}`}>
+      <main
+        className={`flex-1 transition-all duration-300 ${isFilterDrawerOpen ? 'xl:pl-96' : 'xl:pl-0'}`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {activeView === 'catalog' && (
           <HeroSearch
             search={search}

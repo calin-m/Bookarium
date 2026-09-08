@@ -6,10 +6,13 @@ import Home from './page';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { mockBooks } from '@/mocks/handlers';
+import { ROUTES } from '@/config/routes';
+
+export const mockPush = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: (...args: any[]) => mockPush(...args),
     replace: vi.fn(),
   }),
   usePathname: () => (typeof window !== 'undefined' ? window.location.pathname : '/'),
@@ -85,6 +88,7 @@ function renderHome() {
 
 describe('Home page integration', () => {
   beforeEach(() => {
+    mockPush.mockClear();
     testQueryClient.clear();
     useBookshelfStore.getState().clearBookshelf();
     useReaderStore.setState({ isOpen: false, currentBook: null });
@@ -254,6 +258,53 @@ describe('Home page integration', () => {
     const catalogBtn = screen.getByRole('button', { name: /^Catalog$/i });
     fireEvent.click(catalogBtn);
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
+  });
+
+  it('navigates to /account when swiping left on mobile while on Bookmarks view', () => {
+    vi.useFakeTimers();
+    const originalInnerWidth = window.innerWidth;
+    const originalMatchMedia = window.matchMedia;
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 500 });
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === '(max-width: 767px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    try {
+      renderHome();
+
+      // Switch to Bookmarks view
+      const bookmarksBtn = screen.getByRole('button', { name: /Bookmarks/i });
+      fireEvent.click(bookmarksBtn);
+
+      const mainEl = screen.getByRole('main');
+
+      // Swipe left: touchStart at 450, touchEnd at 350 (|deltaX| = 100px)
+      fireEvent.touchStart(mainEl, {
+        touches: [{ clientX: 450, clientY: 300 }],
+        changedTouches: [{ clientX: 450, clientY: 300 }],
+      });
+
+      vi.advanceTimersByTime(100);
+
+      fireEvent.touchEnd(mainEl, {
+        touches: [],
+        changedTouches: [{ clientX: 350, clientY: 300 }],
+      });
+
+      expect(mockPush).toHaveBeenCalledWith(ROUTES.ACCOUNT);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth });
+      window.matchMedia = originalMatchMedia;
+      vi.useRealTimers();
+    }
   });
 
   it('allows user to toggle between 8 and 16 books per page via toolbar', () => {
@@ -466,6 +517,78 @@ describe('Home page integration', () => {
     expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
     expect(gridBtn).toHaveAttribute('aria-pressed', 'true');
     expect(shelfBtn).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('switches views when swiping horizontally across main on mobile', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 767px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    try {
+      renderHome();
+
+      const main = screen.getByRole('main');
+      expect(main).toBeInTheDocument();
+
+      // Initially on Catalog
+      expect(screen.getByPlaceholderText(/search 70,000\+ classics/i)).toBeInTheDocument();
+
+      // Swipe left on main (move from 500px to 400px)
+      act(() => {
+        fireEvent.touchStart(main, {
+          touches: [{ clientX: 500, clientY: 300 }],
+          changedTouches: [{ clientX: 500, clientY: 300 }],
+        });
+        fireEvent.touchEnd(main, {
+          touches: [],
+          changedTouches: [{ clientX: 400, clientY: 300 }],
+        });
+      });
+
+      // Switches to Bookshelf
+      expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
+      expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
+
+      // Swipe left again
+      act(() => {
+        fireEvent.touchStart(main, {
+          touches: [{ clientX: 500, clientY: 300 }],
+          changedTouches: [{ clientX: 500, clientY: 300 }],
+        });
+        fireEvent.touchEnd(main, {
+          touches: [],
+          changedTouches: [{ clientX: 400, clientY: 300 }],
+        });
+      });
+
+      // Switches to Favorites
+      expect(screen.getByText('Favorite Works')).toBeInTheDocument();
+
+      // Swipe right (move from 400px to 500px)
+      act(() => {
+        fireEvent.touchStart(main, {
+          touches: [{ clientX: 400, clientY: 300 }],
+          changedTouches: [{ clientX: 400, clientY: 300 }],
+        });
+        fireEvent.touchEnd(main, {
+          touches: [],
+          changedTouches: [{ clientX: 500, clientY: 300 }],
+        });
+      });
+
+      // Switches back to Bookshelf
+      expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 });
 

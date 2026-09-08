@@ -84,10 +84,12 @@ export default function BookReaderPage() {
 
   // Local Reader State
   const {
+    activeDrawer,
     isTocOpen,
     isSearchOpen,
     isControlsOpen,
     isTranslationsOpen,
+    isAnnotationsOpen,
     toggleDrawer,
     closeDrawer,
   } = useReaderDrawers();
@@ -115,7 +117,6 @@ export default function BookReaderPage() {
     }
   }, [user?.id, syncWithCloud]);
 
-  const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false);
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [selectionPopover, setSelectionPopover] = useState<{
     isOpen: boolean;
@@ -128,6 +129,15 @@ export default function BookReaderPage() {
     position: null,
     activeAnnotation: null,
   });
+
+  // Dismiss floating text selection popover whenever a reader drawer is toggled
+  const handleToggleDrawer = useCallback(
+    (drawer: Parameters<typeof toggleDrawer>[0]) => {
+      setSelectionPopover((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev));
+      toggleDrawer(drawer);
+    },
+    [toggleDrawer]
+  );
 
   const bookAnnotations = useMemo(() => {
     return annotations.filter((a) => a.bookId === numericId);
@@ -152,13 +162,13 @@ export default function BookReaderPage() {
 
       if ((e.key === 'f' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !isInput)) {
         e.preventDefault();
-        toggleDrawer('search');
+        handleToggleDrawer('search');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleDrawer]);
+  }, [handleToggleDrawer]);
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, refetch } = useBookContent(undefined, numericId);
@@ -514,17 +524,20 @@ export default function BookReaderPage() {
           }
         }}
         isTocOpen={isTocOpen}
-        onToggleToc={() => toggleDrawer('toc')}
+        onToggleToc={() => handleToggleDrawer('toc')}
         isSearchOpen={isSearchOpen}
-        onToggleSearch={() => toggleDrawer('search')}
+        onToggleSearch={() => handleToggleDrawer('search')}
         isControlsOpen={isControlsOpen}
-        onToggleControls={() => toggleDrawer('controls')}
+        onToggleControls={() => handleToggleDrawer('controls')}
         isTranslationsOpen={isTranslationsOpen}
-        onToggleTranslations={() => toggleDrawer('translations')}
+        onToggleTranslations={() => handleToggleDrawer('translations')}
         isSpeechOpen={isSpeechOpen}
         onToggleSpeech={() => {
           setIsSpeechOpen((prev) => {
             const next = !prev;
+            if (next) {
+              closeDrawer();
+            }
             if (!next && speech.isPlaying) {
               speech.stop();
             } else if (next && !speech.isPlaying) {
@@ -534,7 +547,7 @@ export default function BookReaderPage() {
           });
         }}
         isAnnotationsOpen={isAnnotationsOpen}
-        onToggleAnnotations={() => setIsAnnotationsOpen((prev) => !prev)}
+        onToggleAnnotations={() => handleToggleDrawer('annotations')}
         annotationsCount={bookAnnotations.length}
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
@@ -676,7 +689,7 @@ export default function BookReaderPage() {
 
       {/* Text Highlight & Annotations Floating Contextual Popover */}
       <TextHighlightPopover
-        isOpen={selectionPopover.isOpen}
+        isOpen={selectionPopover.isOpen && !activeDrawer}
         selectedText={selectionPopover.selectedText}
         position={selectionPopover.position}
         activeColor={selectionPopover.activeAnnotation?.color}
@@ -692,7 +705,7 @@ export default function BookReaderPage() {
       {/* Slide-out Annotations & Highlights Drawer */}
       <ReaderAnnotationsDrawer
         isOpen={isAnnotationsOpen}
-        onClose={() => setIsAnnotationsOpen(false)}
+        onClose={closeDrawer}
         annotations={bookAnnotations}
         bookTitle={bookTitle}
         theme={theme}
