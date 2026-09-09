@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-153%20Suites%20%7C%201239%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.59%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-154%20Suites%20%7C%201230%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.52%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,13 +38,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.3.0)
+## 🛠️ Latest Improvements (v2.4.0)
 
-- **Canonical 4-Tier Milestone Accolades Ladder (`accolades-config.ts`, `accolades.types.ts`)**: Expanded the single curation accolade into a four-tier progressive compendium ladder evaluated deterministically against `completedBooksCount`: Bibliophile Novice (6 volumes, Bronze), Canonical Scholar (12 volumes, Silver), Master of the Canon (24 volumes, Gold), and The Laureate's Crown (52 volumes, Masterwork).
-- **Dynamic Milestone Ladder Presentation (`AccountHabitsCard.tsx`)**: Added an interactive 4-card milestone track to the Reading Challenge dashboard strip displaying tier badges, Latin mottos, pace indicators, and real-time status badges (Attained with checkmark, In Sight, or locked with volume targets).
-- **Architecture Decision Record (`ADR-032`)**: Formally ratified the canonical 4-tier challenge ladder, anti-tamper progression, and vector stroke stabilization in `docs/DECISIONS.md`.
-- **Anti-Tamper Challenge Tracking (`AccountHabitsCard.tsx`)**: Retired the arbitrary goal edit modal, input stepper, and "Edit Goal" button to prevent gamification exploits (e.g. setting goal = 1 to trivially trigger Masterwork accolades), calibrating progress bars directly to the active milestone target.
-- **Accolade Symbol Vector Stroke Stabilization (`ExLibrisBookplate.tsx`)**: Eliminated stroke thickness throbbing on earned bookplate hover by removing conflicting `group-hover:scale-105` transforms, promoting SVG icons to dedicated GPU compositor layers via `[transform:translateZ(0)]`, `[backface-visibility:hidden]`, and `[shape-rendering:geometricPrecision]`, and isolating specular sheen gradients to `z-0` behind foreground content `relative z-10`.
+- **SSRF & Upstream URL Validation Engine (`src/app/api/books/content/url-validator.ts`)**: Extracted pure upstream URL validation and sanitization out of the Content API route into a modular, single-responsibility module with co-located unit test coverage (`url-validator.test.ts`).
+- **Architecture Decision Record (`ADR-034`)**: Formally ratified Next.js 16 App Router route handler strict typing, SSRF validation separation, and Vitest performance architecture in `docs/DECISIONS.md`.
+- **Vitest Test Suite Performance Architecture (`AccountPage.test.tsx`, `HeroSearch.test.tsx`)**: Consolidated redundant composite page and 3D hero remount cycles into authentic user journeys, cutting `AccountPage.test.tsx` execution by 69% (11.22s to 3.46s) and `HeroSearch.test.tsx` by 81% (18.38s to 3.49s) with 100% authentic assertions and zero synthetic mocks.
+- **Zero-Latency Node Environment for Pure Algorithm Suites (`src/lib/gutenberg/*`, `password.test.ts`)**: Configured `// @vitest-environment node` docblock directives on pure algorithm and server test files, reducing environment bootstrap time from ~350ms to 0ms.
+- **Next.js 16 Route Handler Typing Conformance (`src/app/api/books/content/route.ts`)**: Cleaned route exports to strictly export standard HTTP `GET`, satisfying Next.js 16 App Router route type generation (`tsc --noEmit`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -523,7 +523,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1239 tests across 153 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1230 tests across 154 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

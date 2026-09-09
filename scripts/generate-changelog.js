@@ -9,6 +9,25 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.4.0',
+    date: '2026-09-09',
+    title: 'Next.js 16 Route Handler Modularization, SSRF Validation & Test Architecture Optimization',
+    sections: {
+      Added: [
+        'SSRF & Upstream URL Validation Engine (`src/app/api/books/content/url-validator.ts`): Extracted pure upstream URL validation and sanitization out of the Content API route into a modular, single-responsibility module with co-located unit test coverage (`url-validator.test.ts`).',
+        'Architecture Decision Record (`ADR-034`): Formally ratified Next.js 16 App Router route handler strict typing, SSRF validation separation, and Vitest performance architecture in `docs/DECISIONS.md`.',
+      ],
+      Fixed: [
+        'Next.js 16 Route Handler Typing Conformance (`src/app/api/books/content/route.ts`): Cleaned route exports to strictly export standard HTTP `GET`, satisfying Next.js 16 App Router route type generation (`tsc --noEmit`).',
+        'Next.js 16 Native SWC Windows Binary Fallback (`package.json`, `scripts/open-browser.js`): Added `--webpack` fallback flag across dev scripts and implemented active HTTP socket healthcheck polling before browser launch, resolving `ERR_CONNECTION_REFUSED` and Windows Smart App Control native DLL blocks.',
+      ],
+      Refactored: [
+        'Vitest Test Suite Performance Architecture (`AccountPage.test.tsx`, `HeroSearch.test.tsx`): Consolidated redundant composite page and 3D hero remount cycles into authentic user journeys, cutting `AccountPage.test.tsx` execution by 69% (11.22s to 3.46s) and `HeroSearch.test.tsx` by 81% (18.38s to 3.49s) with 100% authentic assertions and zero synthetic mocks.',
+        'Zero-Latency Node Environment for Pure Algorithm Suites (`src/lib/gutenberg/*`, `password.test.ts`): Configured `// @vitest-environment node` docblock directives on pure algorithm and server test files, reducing environment bootstrap time from ~350ms to 0ms.',
+      ],
+    },
+  },
+  {
     version: '2.3.0',
     date: '2026-09-07',
     title: 'Canonical 4-Tier Reading Challenge Ladder, Anti-Tamper Progression & Accolade Visual Stabilization',

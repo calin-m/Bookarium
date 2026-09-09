@@ -1,8 +1,8 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-09-08`  
-> **Topology Health**: `164` Modules Analyzed • `532` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Last Synchronized**: `2026-09-09`  
+> **Topology Health**: `165` Modules Analyzed • `533` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -353,7 +353,8 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | :--- | :--- | :--- | :--- |
 | [`layout.tsx`](src/app/account/layout.tsx) | _Root Primitive_ | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/account/page.tsx) | `stores/useAuthStore`, `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useThemeStore`, `stores/usePreferencesStore`, `stores/useHabitsStore`, `hooks/useScrollDirection`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `components/ui/BackToTop`, `components/account/AccountIdentityCard`, `components/account/AccountLibraryStats`, `components/account/AccountHabitsCard`, `components/account/AccountAccoladesCard`, `components/account/AccountPublicProfileSection`, `components/account/AccountSecuritySection`, `components/account/AccountPreferencesSection`, `components/account/AccountDeleteModal`, `lib/password`, `hooks/useMobileViewSwipe`, `config/views.config`, `config/routes` | _App Route Entry_ | Production Module |
-| [`route.ts`](src/app/api/books/content/route.ts) | `config/site-config`, `lib/rate-limiter`, `lib/api-utils` | _App Route Entry_ | Production Module |
+| [`route.ts`](src/app/api/books/content/route.ts) | `config/site-config`, `lib/rate-limiter`, `lib/api-utils`, `./url-validator` | _App Route Entry_ | Production Module |
+| [`url-validator.ts`](src/app/api/books/content/url-validator.ts) | _Root Primitive_ | `route.ts` | Production Module |
 | [`route.ts`](src/app/api/books/route.ts) | `config/api-endpoints`, `types/book.types`, `lib/rate-limiter`, `lib/api-utils` | _App Route Entry_ | Production Module |
 | [`route.ts`](src/app/api/translate/route.ts) | `lib/rate-limiter`, `config/site-config`, `lib/cache`, `lib/api-utils` | `usePageTranslation.ts` | Production Module |
 | [`route.ts`](src/app/auth/callback/route.ts) | `lib/supabase/server` | _App Route Entry_ | Production Module |

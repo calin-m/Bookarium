@@ -632,12 +632,11 @@ describe('Dedicated Reader Page (/read/[id])', () => {
 
     render(<BookReaderPage />);
 
-    // On last chapter and last page, completion modal appears
+    // On last chapter and last page, completion modal appears and status transitions to finished
     await waitFor(() => {
       expect(screen.getByTestId('volume-completion-modal')).toBeInTheDocument();
+      expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('finished');
     });
-
-    expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('finished');
 
     // Rate 5 stars via completion modal
     const star5 = screen.getByRole('radio', { name: 'Rate 5 of 5 stars' });
