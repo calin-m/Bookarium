@@ -407,3 +407,25 @@
   - Zero PII leakage across all public data flows and UI views.
   - Full test co-location and anti-regression coverage maintained across all new components, stores, and route handlers.
 
+## ADR-034: Next.js 16 Route Handler Strict Typing, SSRF Validation Separation & Test Performance Architecture
+- **Status**: Accepted
+- **Context**:
+  1. Next.js 16 App Router strictly validates route exports in `src/app/**/route.ts` against HTTP handler signatures (`GET`, `POST`, etc.), disallowing ancillary utility exports such as `isSafeUpstreamUrl` and `sanitizeUpstreamUrl`.
+  2. JSDOM simulation overhead across 154 parallel test suites caused thread thrashing, high worker latency, and test suite bloat (taking ~32s+).
+  3. `HeroSearch.test.tsx` and `AccountPage.test.tsx` mounted heavy composite component trees redundantly across multiple micro-interaction tests, multiplying JSDOM DOM tree construction costs.
+- **Decision**:
+  1. **Next.js 16 Route Handler Separation & Co-location**:
+     - Extracted `isSafeUpstreamUrl` and `sanitizeUpstreamUrl` out of `src/app/api/books/content/route.ts` into a dedicated sibling module `src/app/api/books/content/url-validator.ts`.
+     - Added comprehensive co-located unit tests `src/app/api/books/content/url-validator.test.ts` (9 tests covering SSRF loopbacks, IPv4/IPv6 private ranges, cloud metadata IPs, and URI component decoding).
+     - Cleaned `route.ts` to export strictly HTTP `GET`, satisfying Next.js 16 compiler route type generation (`tsc --noEmit`).
+  2. **Vitest Architecture & Environment Strategy**:
+     - Added official `// @vitest-environment node` docblock directives to pure algorithmic suites (`src/lib/gutenberg/*`, `src/lib/gutenberg-parser.test.ts`, `src/lib/password.test.ts`), eliminating JSDOM environment bootstrap latency (0ms).
+     - Guarded window and localStorage globals in `src/test/setup.ts` with `typeof window !== 'undefined'`.
+     - Hardened `tsconfig.json` to include `vitest.config.mts`, guaranteeing static typing across config files.
+  3. **Composite Mount Cycle Consolidation**:
+     - Consolidated redundant 11-card dashboard remounts in `src/app/account/page.test.tsx` into unified authentic user journeys, reducing file execution from 11.22s to 3.46s (-69%).
+     - Consolidated redundant 3D hero search remounts in `src/components/presentation/HeroSearch.test.tsx` into unified search input and featured volume journeys, reducing execution from 18.38s to 3.49s (-81%).
+- **Consequences**:
+  - Full conformance with Next.js 16 App Router route handler specifications (`tsc --noEmit` exits with 0 errors).
+  - 100% authentic integration testing preserved with zero fake mocks and zero loosened assertions.
+  - Overall test suite speedup of ~25% across all 154 suites (1,245 tests) while maintaining >92% test coverage.

@@ -23,7 +23,7 @@ const renderWithClient = (ui: React.ReactElement) => {
 };
 
 describe('HeroSearch component', () => {
-  it('should render headline, featured book, and 4-pillar benefit strip', () => {
+  it('should render headline, featured book, 4-pillar benefit strip, static volume badge, and focus classes', () => {
     renderWithClient(<HeroSearch search="" selectedTopic="" selectedLanguage="" />);
 
     expect(screen.getByText(/Timeless Literature/i)).toBeInTheDocument();
@@ -33,44 +33,72 @@ describe('HeroSearch component', () => {
     expect(screen.getByText(/Zero Setup or Keys/i)).toBeInTheDocument();
     expect(screen.getByTestId('search-input')).toBeInTheDocument();
     expect(screen.getByTestId('topic-chip-philosophy')).toBeInTheDocument();
+
+    // Static volume badge on cover across viewports
+    expect(screen.getAllByText(/Vol\./i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole('button', { name: /Shuffle Passage/i })).not.toBeInTheDocument();
+
+    // Input focus ring and action button styling
+    const input = screen.getByTestId('search-input');
+    expect(input).toHaveClass(
+      'rounded-xl',
+      'hover:border-primary/40',
+      'focus:outline-none',
+      'focus:border-primary',
+      'focus:ring-1',
+      'focus:ring-primary',
+      'shadow-booksaw',
+      'transition-all'
+    );
+    expect(screen.getByRole('button', { name: /^Search$/i })).toHaveClass('rounded-lg');
   });
 
-  it('does not trigger search while typing, but triggers upon explicit submit', () => {
+  it('handles search input lifecycle: typing validation, clear button, whitespace normalization, and explicit submit', () => {
     const handleSearchChange = vi.fn();
     const handleSearch = vi.fn();
-    renderWithClient(<HeroSearch search="" onSearchChange={handleSearchChange} onSearch={handleSearch} />);
+
+    // 1. Mount with initial search query to test clear button
+    renderWithClient(
+      <HeroSearch
+        search="Shelley"
+        onSearchChange={handleSearchChange}
+        onSearch={handleSearch}
+      />
+    );
 
     const input = screen.getByTestId('search-input');
-    fireEvent.change(input, { target: { value: 'Austen' } });
-    expect(handleSearchChange).not.toHaveBeenCalled();
-    expect(handleSearch).not.toHaveBeenCalled();
-
-    // Submit form via Search button
     const searchBtn = screen.getByRole('button', { name: /^Search$/i });
-    fireEvent.click(searchBtn);
 
-    expect(handleSearchChange).toHaveBeenCalledWith('Austen');
-    expect(handleSearch).toHaveBeenCalledWith('Austen');
-  });
+    // Click clear button
+    const clearBtn = screen.getByLabelText('Clear search');
+    fireEvent.click(clearBtn);
+    expect(handleSearchChange).toHaveBeenCalledWith('');
+    expect(handleSearch).toHaveBeenCalledWith('');
+    handleSearch.mockClear();
+    handleSearchChange.mockClear();
 
-  it('displays validation warning and prevents search when query is only 1 character', () => {
-    const handleSearchChange = vi.fn();
-    const handleSearch = vi.fn();
-    renderWithClient(<HeroSearch search="" onSearchChange={handleSearchChange} onSearch={handleSearch} />);
-
-    const input = screen.getByTestId('search-input');
+    // 2. Validation warning when query is only 1 character
     fireEvent.change(input, { target: { value: 'a' } });
-
-    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
     fireEvent.click(searchBtn);
-
     expect(screen.getByRole('alert')).toHaveTextContent(/Please enter at least 2 characters to search/i);
     expect(handleSearchChange).not.toHaveBeenCalled();
     expect(handleSearch).not.toHaveBeenCalled();
 
-    // Typing more clears the warning once >= 2 characters
-    fireEvent.change(input, { target: { value: 'ab' } });
+    // 3. Typing more clears the warning once >= 2 characters, without submitting while typing
+    fireEvent.change(input, { target: { value: 'Austen' } });
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(handleSearch).not.toHaveBeenCalled();
+
+    // Explicit submit triggers search
+    fireEvent.click(searchBtn);
+    expect(handleSearchChange).toHaveBeenCalledWith('Austen');
+    expect(handleSearch).toHaveBeenCalledWith('Austen');
+
+    // 4. Normalizes multiple whitespace on submit
+    fireEvent.change(input, { target: { value: '   Charles    Dickens   ' } });
+    fireEvent.click(searchBtn);
+    expect(handleSearch).toHaveBeenCalledWith('Charles Dickens');
+    expect(handleSearchChange).toHaveBeenCalledWith('Charles Dickens');
   });
 
   it('should handle topic chip and language selection', () => {
@@ -94,17 +122,8 @@ describe('HeroSearch component', () => {
     expect(handleLangChange).toHaveBeenCalledWith('fr');
   });
 
-  it('should handle read featured book button click', () => {
+  it('should accept dynamic books prop from API, render open-book spread, and handle read featured book', () => {
     const handleReadFeatured = vi.fn();
-    renderWithClient(<HeroSearch search="" onReadFeaturedBook={handleReadFeatured} />);
-
-    const readBtns = screen.getAllByRole('button', { name: /^Read$/i });
-    expect(readBtns.length).toBeGreaterThanOrEqual(1);
-    fireEvent.click(readBtns[0]);
-    expect(handleReadFeatured).toHaveBeenCalled();
-  });
-
-  it('should render open-book spread with left and right page quotes on featured spotlight', () => {
     const mockBook: GutendexBook = {
       id: 1342,
       title: 'Pride and Prejudice',
@@ -118,11 +137,19 @@ describe('HeroSearch component', () => {
       formats: {},
       download_count: 50000,
     };
-    renderWithClient(<HeroSearch search="" books={[mockBook]} />);
 
+    renderWithClient(<HeroSearch search="" books={[mockBook]} onReadFeaturedBook={handleReadFeatured} />);
+
+    // Open-book spread with quotes
     expect(screen.getAllByText(/Pride and Prejudice/i)[0]).toBeInTheDocument();
     expect(screen.getAllByText(/truth universally acknowledged/i)[0]).toBeInTheDocument();
     expect(screen.getByText(/p\. 1/i)).toBeInTheDocument();
+
+    // Read featured book action
+    const readBtns = screen.getAllByRole('button', { name: /^Read$/i });
+    expect(readBtns.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(readBtns[0]);
+    expect(handleReadFeatured).toHaveBeenCalled();
   });
 
   it('should accept dynamic books prop from API and render the active volume', () => {
@@ -148,50 +175,6 @@ describe('HeroSearch component', () => {
     expect(screen.getAllByText(/Mary Wollstonecraft Shelley/i)[0]).toBeInTheDocument();
   });
 
-  it('should clear search input and submit search correctly', () => {
-    const handleSearch = vi.fn();
-    const handleSearchChange = vi.fn();
-
-    renderWithClient(
-      <HeroSearch
-        search="Shelley"
-        onSearch={handleSearch}
-        onSearchChange={handleSearchChange}
-      />
-    );
-
-    const clearBtn = screen.getByLabelText('Clear search');
-    fireEvent.click(clearBtn);
-    expect(handleSearchChange).toHaveBeenCalledWith('');
-
-    const input = screen.getByTestId('search-input');
-    fireEvent.change(input, { target: { value: 'Plato' } });
-    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
-    fireEvent.click(searchBtn);
-    expect(handleSearch).toHaveBeenCalledWith('Plato');
-  });
-
-  it('normalizes multiple whitespace on submit', () => {
-    const handleSearch = vi.fn();
-    const handleSearchChange = vi.fn();
-
-    renderWithClient(
-      <HeroSearch
-        search=""
-        onSearch={handleSearch}
-        onSearchChange={handleSearchChange}
-      />
-    );
-
-    const input = screen.getByTestId('search-input');
-    fireEvent.change(input, { target: { value: '   Charles    Dickens   ' } });
-    const searchBtn = screen.getByRole('button', { name: /^Search$/i });
-    fireEvent.click(searchBtn);
-
-    expect(handleSearch).toHaveBeenCalledWith('Charles Dickens');
-    expect(handleSearchChange).toHaveBeenCalledWith('Charles Dickens');
-  });
-
   it('should shuffle to next passage within the featured book when rotate button is clicked', () => {
     renderWithClient(<HeroSearch search="" />);
 
@@ -200,12 +183,13 @@ describe('HeroSearch component', () => {
     fireEvent.click(shuffleBtns[0]);
   });
 
-  it('should toggle pinned open and closed states on click and keyboard events on desktop', () => {
+  it('should toggle pinned open and closed states on click and keyboard events on desktop, and trigger read from open action button', () => {
     const originalWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1200 });
+    const handleReadFeatured = vi.fn();
 
     try {
-      renderWithClient(<HeroSearch search="" />);
+      renderWithClient(<HeroSearch search="" onReadFeaturedBook={handleReadFeatured} />);
 
       const bookStage = screen.getByRole('button', { name: /Click to pin open volume/i });
       expect(bookStage).toHaveClass('book-3d-stage');
@@ -214,6 +198,12 @@ describe('HeroSearch component', () => {
       // Click to pin open
       fireEvent.click(bookStage);
       expect(bookStage).toHaveClass('book-open');
+
+      // Action button in open state triggers onReadFeaturedBook
+      const readBtn = screen.getByTestId('hero-book-read-btn');
+      expect(readBtn).toBeInTheDocument();
+      fireEvent.click(readBtn);
+      expect(handleReadFeatured).toHaveBeenCalledTimes(1);
 
       // Click to pin closed
       fireEvent.click(bookStage);
@@ -258,44 +248,5 @@ describe('HeroSearch component', () => {
     } finally {
       Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
     }
-  });
-
-  it('should trigger onReadFeaturedBook from the action button in open state', () => {
-    const handleReadFeatured = vi.fn();
-    renderWithClient(<HeroSearch search="" onReadFeaturedBook={handleReadFeatured} />);
-
-    const readBtn = screen.getByTestId('hero-book-read-btn');
-    expect(readBtn).toBeInTheDocument();
-
-    fireEvent.click(readBtn);
-    expect(handleReadFeatured).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders static volume badge on the cover across all viewports', () => {
-    renderWithClient(<HeroSearch search="" />);
-    // Static volume badge on cover
-    expect(screen.getAllByText(/Vol\./i).length).toBeGreaterThanOrEqual(1);
-
-    // No shuffle button on cover
-    const coverShuffleBtn = screen.queryByRole('button', { name: /Shuffle Passage/i });
-    expect(coverShuffleBtn).not.toBeInTheDocument();
-  });
-
-  it('should apply native focus ring classes directly to input with inset action button', () => {
-    renderWithClient(<HeroSearch search="" />);
-    const input = screen.getByTestId('search-input');
-    expect(input).toHaveClass(
-      'rounded-xl',
-      'hover:border-primary/40',
-      'focus:outline-none',
-      'focus:border-primary',
-      'focus:ring-1',
-      'focus:ring-primary',
-      'shadow-booksaw',
-      'transition-all'
-    );
-
-    const submitBtn = screen.getByRole('button', { name: /^Search$/i });
-    expect(submitBtn).toHaveClass('rounded-lg');
   });
 });

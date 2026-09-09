@@ -5,9 +5,9 @@
   "description": "High-performance frontend for discovering, reading, and downloading 100% legal, public domain books.",
   "license": "MIT",
   "scripts": {
-    "dev": "next dev",
-    "dev:open": "concurrently -n next,browser -c blue,green \"next dev\" \"node scripts/open-browser.js http://localhost:3000 2000\"",
-    "dev:all": "concurrently -n next,test,browser -c blue,magenta,green \"next dev\" \"vitest\" \"node scripts/open-browser.js http://localhost:3000 2500\"",
+    "dev": "next dev --webpack",
+    "dev:open": "concurrently -n next,browser -c blue,green \"next dev --webpack\" \"node scripts/open-browser.js http://localhost:3000 2500\"",
+    "dev:all": "concurrently -n next,test,browser -c blue,magenta,green \"next dev --webpack\" \"vitest\" \"node scripts/open-browser.js http://localhost:3000 3000\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

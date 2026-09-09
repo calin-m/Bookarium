@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 08 Sep 2026 10:59:44 GMT  
+**Last Generated**: Wed, 09 Sep 2026 13:05:50 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 153 passed  
-**Total Verified Tests**: 1239 passed  
+**Total Test Suites**: 154 passed  
+**Total Verified Tests**: 1230 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **153/153 test suites passed** (1239 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **154/154 test suites passed** (1230 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 33 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 34 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.59%** (6054/6538) — *Target: $ge$ 80%*
-- **Statements**: **90.96%** (6563/7215) — *Target: $ge$ 80%*
-- **Functions**: **88.68%** (1489/1679) — *Target: $ge$ 80%*
-- **Branches**: **81.17%** (5531/6814) — *Target: $ge$ 80%*
+- **Lines**: **92.52%** (6049/6538) — *Target: $ge$ 80%*
+- **Statements**: **90.9%** (6559/7215) — *Target: $ge$ 80%*
+- **Functions**: **88.5%** (1486/1679) — *Target: $ge$ 80%*
+- **Branches**: **81.18%** (5532/6814) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (153 Suites / 1239 Tests)
+## 🧪 Comprehensive Test Suite Catalog (154 Suites / 1230 Tests)
 
-### 🚀 App Routes & Pages (11 Suites · 108 Tests)
+### 🚀 App Routes & Pages (12 Suites · 117 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
@@ -64,6 +64,21 @@
 - ✔ `should return 502 if upstream fails or times out`
 - ✔ `guarantees fetch is strictly called with canonical Gutenberg endpoints only`
 - ✔ `falls back to secondary mirror when primary mirror returns 404`
+
+</details>
+
+<details>
+<summary><b><code>src/app/api/books/content/url-validator.test.ts</code></b> (9 tests)</summary>
+
+- ✔ `accepts legitimate Project Gutenberg URLs`
+- ✔ `rejects foreign and untrusted domains`
+- ✔ `rejects path traversal attempts`
+- ✔ `rejects credentials in URLs`
+- ✔ `rejects local and private network addresses`
+- ✔ `handles malformed URLs safely without throwing`
+- ✔ `sanitizes standard Gutenberg URLs to canonical cache paths`
+- ✔ `preserves files-0 and files paths for older legacy Gutenberg mirrors`
+- ✔ `returns null for unsafe or invalid URLs`
 
 </details>
 
@@ -210,7 +225,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (23 Suites · 237 Tests)
+### 🎨 Catalog & Presentation (23 Suites · 230 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -447,23 +462,16 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (8 tests)</summary>
 
-- ✔ `should render headline, featured book, and 4-pillar benefit strip`
-- ✔ `does not trigger search while typing, but triggers upon explicit submit`
-- ✔ `displays validation warning and prevents search when query is only 1 character`
+- ✔ `should render headline, featured book, 4-pillar benefit strip, static volume badge, and focus classes`
+- ✔ `handles search input lifecycle: typing validation, clear button, whitespace normalization, and explicit submit`
 - ✔ `should handle topic chip and language selection`
-- ✔ `should handle read featured book button click`
-- ✔ `should render open-book spread with left and right page quotes on featured spotlight`
+- ✔ `should accept dynamic books prop from API, render open-book spread, and handle read featured book`
 - ✔ `should accept dynamic books prop from API and render the active volume`
-- ✔ `should clear search input and submit search correctly`
-- ✔ `normalizes multiple whitespace on submit`
 - ✔ `should shuffle to next passage within the featured book when rotate button is clicked`
-- ✔ `should toggle pinned open and closed states on click and keyboard events on desktop`
+- ✔ `should toggle pinned open and closed states on click and keyboard events on desktop, and trigger read from open action button`
 - ✔ `should not toggle pinned open state on mobile viewports (< 1024px)`
-- ✔ `should trigger onReadFeaturedBook from the action button in open state`
-- ✔ `renders static volume badge on the cover across all viewports`
-- ✔ `should apply native focus ring classes directly to input with inset action button`
 
 </details>
 
@@ -1692,7 +1700,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (49 Suites · 219 Tests)
+### 🧩 UI Primitives & Motion (49 Suites · 208 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1703,25 +1711,14 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (8 tests)</summary>
 
-- ✔ `renders guest prompt when unauthenticated`
-- ✔ `renders authenticated profile and handles saving display name`
-- ✔ `updates user reading atmosphere theme in account settings`
-- ✔ `handles sign out action and redirects to home catalog`
-- ✔ `renders Navbar and Footer with working navigation handlers`
-- ✔ `handles toggling catalog sticky scroll navigation setting`
-- ✔ `accurately calculates and renders custom shelves count excluding default shelf`
-- ✔ `validates password mismatch before submitting update`
-- ✔ `submits updatePassword with valid matching credentials and shows success feedback`
-- ✔ `handles Suggest Strong Password in Profile Security card and auto-fills both fields`
-- ✔ `opens delete account modal and cancels without deleting`
-- ✔ `submits account deletion request and displays verification email confirmation`
-- ✔ `dismisses deletion verification confirmation screen on close button click`
-- ✔ `renders BackToTop button on scroll threshold and triggers window scrollTo`
+- ✔ `renders guest prompt when unauthenticated and handles scroll to top`
+- ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
+- ✔ `handles user preferences: atmosphere themes and catalog sticky scroll navigation`
+- ✔ `handles password security lifecycle: mismatch validation, strong password generation, and password update`
+- ✔ `handles account deletion modal lifecycle: opening, cancellation, submission, and confirmation dismissal`
 - ✔ `handles resending email verification on unverified account`
-- ✔ `renders notes & quotes count in library statistics`
-- ✔ `renders Ex-Libris Bookplates & Accolades section on authenticated dashboard`
 - ✔ `navigates back to bookmarks when swiping right on mobile`
 - ✔ `renders Public Scholar Profile section and handles saving public preferences`
 

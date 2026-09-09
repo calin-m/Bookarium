@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, isSafeUpstreamUrl, sanitizeUpstreamUrl } from './route';
+import { GET } from './route';
+import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
 import { sampleBookText } from '@/mocks/handlers';
 
