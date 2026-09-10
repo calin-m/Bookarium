@@ -30,10 +30,12 @@ describe('AccountSecuritySection', () => {
         onUpdatePassword={handleUpdatePassword}
         onSignOut={handleSignOut}
         onOpenDeleteModal={handleOpenDeleteModal}
+        userEmail="scholar@bookarium.test"
       />
     );
 
     expect(screen.getByText('Security & Password')).toBeInTheDocument();
+    expect(screen.getByText('scholar@bookarium.test')).toBeInTheDocument();
     expect(screen.getByText('Moderate')).toBeInTheDocument();
 
     const generateBtn = screen.getByRole('button', { name: /Suggest Strong Password/i });
