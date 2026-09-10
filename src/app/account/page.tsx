@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   User as UserIcon,
   Sparkles,
   ArrowLeft,
+  Trophy,
+  Globe,
+  Sliders,
+  ShieldCheck,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -34,11 +38,47 @@ import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
 import type { NavViewId } from '@/config/views.config';
 import { ROUTES } from '@/config/routes';
 
-export default function AccountPage() {
+type AccountTabId = 'habits' | 'profile' | 'preferences' | 'security';
+
+interface AccountTabConfig {
+  id: AccountTabId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+}
+
+const ACCOUNT_TABS: readonly AccountTabConfig[] = [
+  {
+    id: 'habits',
+    label: 'Habits & Accolades',
+    icon: Trophy,
+    description: 'Reading streaks, immersion metrics & bookplates',
+  },
+  {
+    id: 'profile',
+    label: 'Public Scholar',
+    icon: Globe,
+    description: 'Public bio, sanctuary showcase & privacy',
+  },
+  {
+    id: 'preferences',
+    label: 'Preferences',
+    icon: Sliders,
+    description: 'Atmosphere themes, speech narration & backups',
+  },
+  {
+    id: 'security',
+    label: 'Security',
+    icon: ShieldCheck,
+    description: 'Password, session & danger zone',
+  },
+] as const;
+
+function AccountDashboardContent() {
   const router = useRouter();
   const {
-    user,
-    profile,
+    user: authUser,
+    profile: authProfile,
     isLoading,
     updateProfile,
     updatePassword,
@@ -59,6 +99,30 @@ export default function AccountPage() {
       resendVerificationEmail: s.resendVerificationEmail,
     }))
   );
+
+  const searchParams = useSearchParams();
+  const isPreviewMode = searchParams.get('preview') === 'true';
+
+  const user =
+    authUser ||
+    (isPreviewMode
+      ? ({
+          id: 'preview-scholar',
+          email: 'scholar@bookarium.test',
+          user_metadata: { display_name: 'Scholar Reader' },
+          created_at: '2024-01-01T00:00:00Z',
+        } as any)
+      : null);
+
+  const profile =
+    authProfile ||
+    (isPreviewMode
+      ? ({
+          id: 'preview-scholar',
+          display_name: 'Scholar Reader',
+          created_at: '2024-01-01T00:00:00Z',
+        } as any)
+      : null);
   const { savedCount, favoriteCount, cloudBookshelves, bookStatuses } = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
   const { getStreakStats } = useHydratedHabits();
@@ -111,6 +175,49 @@ export default function AccountPage() {
   );
   const { isHeaderVisible } = useScrollDirection({ enabled: stickyScrollEnabled });
 
+  // Segmented Sub-Tabs Navigation State
+  const tabParam = searchParams.get('tab');
+  const validTab: AccountTabId =
+    tabParam === 'profile' || tabParam === 'preferences' || tabParam === 'security'
+      ? tabParam
+      : 'habits';
+
+  const [activeTab, setActiveTab] = useState<AccountTabId>(validTab);
+  const [prevTabParam, setPrevTabParam] = useState<string | null>(tabParam);
+
+  if (tabParam !== prevTabParam) {
+    setPrevTabParam(tabParam);
+    setActiveTab(validTab);
+  }
+
+  const handleTabChange = (tabId: AccountTabId) => {
+    setActiveTab(tabId);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (tabId === 'habits') {
+        url.searchParams.delete('tab');
+      } else {
+        url.searchParams.set('tab', tabId);
+      }
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
+
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const currentIndex = ACCOUNT_TABS.findIndex((t) => t.id === activeTab);
+      const nextIndex =
+        e.key === 'ArrowRight'
+          ? (currentIndex + 1) % ACCOUNT_TABS.length
+          : (currentIndex - 1 + ACCOUNT_TABS.length) % ACCOUNT_TABS.length;
+      const nextTab = ACCOUNT_TABS[nextIndex];
+      handleTabChange(nextTab.id);
+      const nextBtn = document.getElementById(`account-tab-${nextTab.id}`);
+      nextBtn?.focus();
+    }
+  };
+
   const defaultName = profile?.display_name || user?.user_metadata?.display_name || '';
   const [customName, setCustomName] = useState<string | null>(null);
   const displayName = customName !== null ? customName : defaultName;
@@ -126,7 +233,7 @@ export default function AccountPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   // Verification cooldown effect
-  React.useEffect(() => {
+  useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setInterval(() => {
       setResendCooldown((prev) => Math.max(0, prev - 1));
@@ -391,66 +498,135 @@ export default function AccountPage() {
               </div>
             </div>
 
-            {/* Tier 2: Literary Immersion & Reading Habits Card (Full Width) */}
-            <AccountHabitsCard
-              userId={user?.id}
-              completedBooksCount={completedBooksCount}
-            />
-
-            {/* Tier 3: Ex-Libris Bookplates & Accolades Compendium (Full Width) */}
-            <AccountAccoladesCard userId={user?.id} />
-
-            {/* Tier 4: Opt-In Public Scholar Profile & Sanctuary Settings (Full Width) */}
-            <AccountPublicProfileSection
-              user={user}
-              profile={profile}
-              onUpdateProfile={updateProfile}
-            />
-
-            {/* Tier 5: Reader Atmosphere & Security Settings (Side-by-Side on Desktop/Laptop) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              <div className="lg:col-span-6">
-                <AccountPreferencesSection
-                  theme={theme}
-                  onThemeChange={handleThemeChange}
-                  stickyScrollEnabled={stickyScrollEnabled}
-                  onStickyScrollChange={setStickyScrollEnabled}
-                  speechRate={speechRate}
-                  onSpeechRateChange={setSpeechRate}
-                  speechVoiceURI={speechVoiceURI}
-                  onSpeechVoiceChange={setSpeechVoiceURI}
-                  speechAutoPageAdvance={speechAutoPageAdvance}
-                  onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
-                  speechHighlightEnabled={speechHighlightEnabled}
-                  onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
-                  onResetSpeechPreferences={resetSpeechPreferences}
-                  userId={user?.id}
-                />
-              </div>
-
-              <div className="lg:col-span-6">
-                <AccountSecuritySection
-                  newPassword={newPassword}
-                  confirmPassword={confirmPassword}
-                  showPassword={showPassword}
-                  copiedPassword={copiedPassword}
-                  isUpdatingPassword={isUpdatingPassword}
-                  passwordSuccess={passwordSuccess}
-                  passwordError={passwordError}
-                  strength={strength}
-                  onNewPasswordChange={setNewPassword}
-                  onConfirmPasswordChange={setConfirmPassword}
-                  onToggleShowPassword={() => setShowPassword(!showPassword)}
-                  onGeneratePassword={generateStrongPassword}
-                  onUpdatePassword={handleUpdatePassword}
-                  onSignOut={async () => {
-                    await signOut();
-                    router.push(ROUTES.HOME);
-                  }}
-                  onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
-                />
+            {/* Segmented Sub-Tabs Navigation Strip */}
+            <div className="pt-2">
+              <div
+                role="tablist"
+                aria-label="Account sections"
+                onKeyDown={handleTabKeyDown}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="flex items-center gap-1.5 sm:gap-2 p-1.5 bg-card border border-border rounded-2xl shadow-booksaw w-full"
+              >
+                {ACCOUNT_TABS.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      id={`account-tab-${tab.id}`}
+                      role="tab"
+                      type="button"
+                      aria-selected={isActive}
+                      aria-controls={`account-tabpanel-${tab.id}`}
+                      aria-label={tab.label}
+                      title={tab.label}
+                      tabIndex={isActive ? 0 : -1}
+                      onClick={() => handleTabChange(tab.id)}
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
+                        isActive
+                          ? 'flex-1 min-w-0 px-3 sm:px-4 bg-primary text-primary-foreground font-semibold shadow-xs'
+                          : 'shrink-0 px-2.5 sm:flex-1 sm:px-4 text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+                      <span className={`truncate min-w-0 ${isActive ? 'inline' : 'hidden sm:inline'}`}>
+                        {tab.label}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Tab Panel 1: Habits & Accolades */}
+            <section
+              id="account-tabpanel-habits"
+              role="tabpanel"
+              aria-labelledby="account-tab-habits"
+              tabIndex={0}
+              className={activeTab === 'habits' ? 'space-y-8 animate-in fade-in duration-150' : 'hidden'}
+            >
+              {/* Tier 2: Literary Immersion & Reading Habits Card (Full Width) */}
+              <AccountHabitsCard
+                userId={user?.id}
+                completedBooksCount={completedBooksCount}
+              />
+
+              {/* Tier 3: Ex-Libris Bookplates & Accolades Compendium (Full Width) */}
+              <AccountAccoladesCard userId={user?.id} />
+            </section>
+
+            {/* Tab Panel 2: Public Scholar Profile */}
+            <section
+              id="account-tabpanel-profile"
+              role="tabpanel"
+              aria-labelledby="account-tab-profile"
+              tabIndex={0}
+              className={activeTab === 'profile' ? 'space-y-8 animate-in fade-in duration-150' : 'hidden'}
+            >
+              <AccountPublicProfileSection
+                user={user}
+                profile={profile}
+                onUpdateProfile={updateProfile}
+              />
+            </section>
+
+            {/* Tab Panel 3: Reading Preferences */}
+            <section
+              id="account-tabpanel-preferences"
+              role="tabpanel"
+              aria-labelledby="account-tab-preferences"
+              tabIndex={0}
+              className={activeTab === 'preferences' ? 'space-y-8 animate-in fade-in duration-150' : 'hidden'}
+            >
+              <AccountPreferencesSection
+                theme={theme}
+                onThemeChange={handleThemeChange}
+                stickyScrollEnabled={stickyScrollEnabled}
+                onStickyScrollChange={setStickyScrollEnabled}
+                speechRate={speechRate}
+                onSpeechRateChange={setSpeechRate}
+                speechVoiceURI={speechVoiceURI}
+                onSpeechVoiceChange={setSpeechVoiceURI}
+                speechAutoPageAdvance={speechAutoPageAdvance}
+                onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
+                speechHighlightEnabled={speechHighlightEnabled}
+                onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
+                onResetSpeechPreferences={resetSpeechPreferences}
+                userId={user?.id}
+              />
+            </section>
+
+            {/* Tab Panel 4: Account & Security */}
+            <section
+              id="account-tabpanel-security"
+              role="tabpanel"
+              aria-labelledby="account-tab-security"
+              tabIndex={0}
+              className={activeTab === 'security' ? 'space-y-8 animate-in fade-in duration-150' : 'hidden'}
+            >
+              <AccountSecuritySection
+                newPassword={newPassword}
+                confirmPassword={confirmPassword}
+                showPassword={showPassword}
+                copiedPassword={copiedPassword}
+                isUpdatingPassword={isUpdatingPassword}
+                passwordSuccess={passwordSuccess}
+                passwordError={passwordError}
+                strength={strength}
+                onNewPasswordChange={setNewPassword}
+                onConfirmPasswordChange={setConfirmPassword}
+                onToggleShowPassword={() => setShowPassword(!showPassword)}
+                onGeneratePassword={generateStrongPassword}
+                onUpdatePassword={handleUpdatePassword}
+                onSignOut={async () => {
+                  await signOut();
+                  router.push(ROUTES.HOME);
+                }}
+                onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
+                userEmail={user.email ?? ''}
+              />
+            </section>
 
             {/* Delete Account Confirmation Modal */}
             <AccountDeleteModal
@@ -473,6 +649,14 @@ export default function AccountPage() {
       <Footer />
       <BackToTop />
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <AccountDashboardContent />
+    </Suspense>
   );
 }
 

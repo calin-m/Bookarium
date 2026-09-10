@@ -8,12 +8,14 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { ROUTES } from '@/config/routes';
 
 const mockPush = vi.fn();
+let mockSearchParams = new URLSearchParams();
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
   usePathname: () => '/account',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
 }));
 
 vi.mock('@/components/presentation/Footer', () => ({
@@ -27,6 +29,7 @@ vi.mock('@/components/presentation/Footer', () => ({
 describe('AccountPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
     useThemeStore.setState({ theme: 'light' });
   });
 
@@ -88,7 +91,7 @@ describe('AccountPage', () => {
 
     // Profile Identity
     expect(screen.getAllByText('Jane Austen').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('austen@bookarium.test')).toBeInTheDocument();
+    expect(screen.getAllByText('austen@bookarium.test').length).toBeGreaterThanOrEqual(1);
 
     // Display Name edit
     const input = screen.getByLabelText('Display Name');
@@ -119,6 +122,153 @@ describe('AccountPage', () => {
     useAnnotationStore.getState().clearAllAnnotations();
   });
 
+  it('renders segmented sub-tabs navigation and switches active tabs', () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+    });
+
+    render(<AccountPage />);
+
+    // Check tablist exists with accessible label and single-row container
+    const tablist = screen.getByRole('tablist', { name: /Account sections/i });
+    expect(tablist).toBeInTheDocument();
+    expect(tablist).toHaveClass('flex', 'w-full');
+
+    const habitsTab = screen.getByRole('tab', { name: /Habits & Accolades/i });
+    const profileTab = screen.getByRole('tab', { name: /Public Scholar/i });
+    const preferencesTab = screen.getByRole('tab', { name: /Preferences/i });
+    const securityTab = screen.getByRole('tab', { name: /Security/i });
+
+    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
+    expect(profileTab).toHaveAttribute('aria-selected', 'false');
+    expect(preferencesTab).toHaveAttribute('aria-selected', 'false');
+    expect(securityTab).toHaveAttribute('aria-selected', 'false');
+
+    // Verify title tooltips for mobile/desktop discovery
+    expect(habitsTab).toHaveAttribute('title', 'Habits & Accolades');
+    expect(profileTab).toHaveAttribute('title', 'Public Scholar');
+    expect(preferencesTab).toHaveAttribute('title', 'Preferences');
+    expect(securityTab).toHaveAttribute('title', 'Security');
+
+    // Verify adaptive mobile classes: active tab expands with text, inactive tabs collapse to icons
+    expect(habitsTab).toHaveClass('flex-1', 'min-w-0');
+    expect(profileTab).toHaveClass('shrink-0');
+    expect(preferencesTab).toHaveClass('shrink-0');
+    expect(securityTab).toHaveClass('shrink-0');
+
+    // Verify truncation and visibility contracts on the text labels
+    const habitsLabel = habitsTab.querySelector('span');
+    const profileLabel = profileTab.querySelector('span');
+    expect(habitsLabel).toHaveClass('truncate', 'min-w-0', 'inline');
+    expect(profileLabel).toHaveClass('truncate', 'min-w-0', 'hidden', 'sm:inline');
+
+    // Tab panels
+    expect(document.getElementById('account-tabpanel-habits')).not.toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-profile')).toHaveClass('hidden');
+
+    // Switch to Public Scholar
+    fireEvent.click(profileTab);
+    expect(profileTab).toHaveAttribute('aria-selected', 'true');
+    expect(habitsTab).toHaveAttribute('aria-selected', 'false');
+    expect(profileTab).toHaveClass('flex-1', 'min-w-0');
+    expect(habitsTab).toHaveClass('shrink-0');
+    expect(profileTab.querySelector('span')).toHaveClass('inline');
+    expect(habitsTab.querySelector('span')).toHaveClass('hidden', 'sm:inline');
+    expect(document.getElementById('account-tabpanel-profile')).not.toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-habits')).toHaveClass('hidden');
+
+    // Switch to Preferences
+    fireEvent.click(preferencesTab);
+    expect(preferencesTab).toHaveAttribute('aria-selected', 'true');
+    expect(preferencesTab).toHaveClass('flex-1', 'min-w-0');
+    expect(profileTab).toHaveClass('shrink-0');
+    expect(document.getElementById('account-tabpanel-preferences')).not.toHaveClass('hidden');
+
+    // Switch to Security
+    fireEvent.click(securityTab);
+    expect(securityTab).toHaveAttribute('aria-selected', 'true');
+    expect(securityTab).toHaveClass('flex-1', 'min-w-0');
+    expect(preferencesTab).toHaveClass('shrink-0');
+    expect(document.getElementById('account-tabpanel-security')).not.toHaveClass('hidden');
+  });
+
+  it('supports keyboard navigation across sub-tabs with ArrowRight and ArrowLeft', () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+    });
+
+    render(<AccountPage />);
+
+    const tablist = screen.getByRole('tablist', { name: /Account sections/i });
+    const habitsTab = screen.getByRole('tab', { name: /Habits & Accolades/i });
+    const profileTab = screen.getByRole('tab', { name: /Public Scholar/i });
+    const securityTab = screen.getByRole('tab', { name: /Security/i });
+
+    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
+
+    // ArrowRight -> Public Scholar
+    fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+    expect(profileTab).toHaveAttribute('aria-selected', 'true');
+
+    // ArrowLeft -> Habits & Accolades
+    fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
+
+    // ArrowLeft wraps around to Security
+    fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    expect(securityTab).toHaveAttribute('aria-selected', 'true');
+
+    // Non-arrow key should be ignored
+    fireEvent.keyDown(tablist, { key: 'Enter' });
+    expect(securityTab).toHaveAttribute('aria-selected', 'true');
+
+    // Touch isolation stops propagation
+    const touchEvent = new CustomEvent('touchstart', { bubbles: true, cancelable: true });
+    const stopPropagationSpy = vi.spyOn(touchEvent, 'stopPropagation');
+    tablist.dispatchEvent(touchEvent);
+    expect(stopPropagationSpy).toHaveBeenCalled();
+  });
+
+  it('initializes active tab from URL search parameters (?tab=preferences) and handles tab delete when switching back to habits', () => {
+    mockSearchParams = new URLSearchParams('tab=preferences');
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+    });
+
+    render(<AccountPage />);
+
+    const preferencesTab = screen.getByRole('tab', { name: /Preferences/i });
+    expect(preferencesTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
+
+    // Switch back to habits
+    const habitsTab = screen.getByRole('tab', { name: /Habits & Accolades/i });
+    fireEvent.click(habitsTab);
+    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('falls back to habits tab when search param has invalid value', () => {
+    mockSearchParams = new URLSearchParams('tab=invalid_tab_name');
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+    });
+
+    render(<AccountPage />);
+
+    const habitsTab = screen.getByRole('tab', { name: /Habits & Accolades/i });
+    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('handles user preferences: atmosphere themes and catalog sticky scroll navigation', async () => {
     const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
 
@@ -130,6 +280,9 @@ describe('AccountPage', () => {
     });
 
     render(<AccountPage />);
+
+    // Switch to Preferences sub-tab
+    fireEvent.click(screen.getByRole('tab', { name: /Preferences/i }));
 
     // Theme Switcher
     const sepiaBtn = screen.getByRole('button', { name: /Sepia/i });
@@ -160,6 +313,9 @@ describe('AccountPage', () => {
     });
 
     render(<AccountPage />);
+
+    // Switch to Security sub-tab
+    fireEvent.click(screen.getByRole('tab', { name: /Security/i }));
 
     const newPwdInput = screen.getByLabelText('New Password') as HTMLInputElement;
     const confirmPwdInput = screen.getByLabelText('Confirm New Password') as HTMLInputElement;
@@ -202,6 +358,9 @@ describe('AccountPage', () => {
     });
 
     render(<AccountPage />);
+
+    // Switch to Security sub-tab
+    fireEvent.click(screen.getByRole('tab', { name: /Security/i }));
 
     expect(screen.getByText(/Danger Zone: Delete Account/i)).toBeInTheDocument();
 
@@ -307,6 +466,9 @@ describe('AccountPage', () => {
     });
 
     render(<AccountPage />);
+
+    // Switch to Public Scholar sub-tab
+    fireEvent.click(screen.getByRole('tab', { name: /Public Scholar/i }));
 
     expect(screen.getByRole('region', { name: /public scholar profile settings/i })).toBeInTheDocument();
     expect(screen.getByDisplayValue('scholar_one')).toBeInTheDocument();

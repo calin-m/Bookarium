@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 10 Sep 2026 11:11:02 GMT  
+**Last Generated**: Thu, 10 Sep 2026 12:29:57 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 154 passed  
-**Total Verified Tests**: 1241 passed  
+**Total Verified Tests**: 1245 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **154/154 test suites passed** (1241 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **154/154 test suites passed** (1245 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 35 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.65%** (6110/6594) — *Target: $ge$ 80%*
-- **Statements**: **91.06%** (6623/7273) — *Target: $ge$ 80%*
-- **Functions**: **88.75%** (1492/1681) — *Target: $ge$ 80%*
-- **Branches**: **81.2%** (5561/6848) — *Target: $ge$ 80%*
+- **Lines**: **92.66%** (6143/6629) — *Target: $ge$ 80%*
+- **Statements**: **91.07%** (6657/7309) — *Target: $ge$ 80%*
+- **Functions**: **88.8%** (1499/1688) — *Target: $ge$ 80%*
+- **Branches**: **81.25%** (5601/6893) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (154 Suites / 1241 Tests)
+## 🧪 Comprehensive Test Suite Catalog (154 Suites / 1245 Tests)
 
 ### 🚀 App Routes & Pages (12 Suites · 119 Tests)
 
@@ -1710,7 +1710,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (49 Suites · 209 Tests)
+### 🧩 UI Primitives & Motion (49 Suites · 213 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1721,10 +1721,14 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top`
 - ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
+- ✔ `renders segmented sub-tabs navigation and switches active tabs`
+- ✔ `supports keyboard navigation across sub-tabs with ArrowRight and ArrowLeft`
+- ✔ `initializes active tab from URL search parameters (?tab=preferences) and handles tab delete when switching back to habits`
+- ✔ `falls back to habits tab when search param has invalid value`
 - ✔ `handles user preferences: atmosphere themes and catalog sticky scroll navigation`
 - ✔ `handles password security lifecycle: mismatch validation, strong password generation, and password update`
 - ✔ `handles account deletion modal lifecycle: opening, cancellation, submission, and confirmation dismissal`
