@@ -161,10 +161,10 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     render(<PublicScholarProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: /private scholar sanctuary/i })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByText('@jane_austen')).toBeInTheDocument();
+    expect(screen.queryByText('@jane_austen')).not.toBeInTheDocument();
   });
 
   it('renders PrivateProfileNotice when profile has is_public = false', async () => {
@@ -189,8 +189,10 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     render(<PublicScholarProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: /private scholar sanctuary/i })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
     });
+
+    expect(screen.queryByText('@jane_austen')).not.toBeInTheDocument();
   });
 
   it('resolves authenticated user profile from local store fallback when viewing own public profile', async () => {

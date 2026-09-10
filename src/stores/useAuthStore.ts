@@ -227,9 +227,26 @@ export const useAuthStore = create<AuthState>()(
   },
 
   signOut: async () => {
+    const { user } = get();
+    if (user?.id) {
+      try {
+        const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+        await useBookshelfStore.getState().flushOutbox(user.id);
+      } catch {
+        // Non-blocking fallback
+      }
+    }
+
     const supabase = createClient();
     await supabase.auth.signOut();
     set({ user: null, profile: null, isAuthModalOpen: false, error: null });
+
+    try {
+      const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+      useBookshelfStore.getState().clearBookshelf();
+    } catch {
+      // Non-blocking fallback
+    }
   },
 
   fetchProfile: async () => {

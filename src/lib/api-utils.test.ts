@@ -3,20 +3,40 @@ import { getClientIp, createRateLimitErrorResponse } from './api-utils';
 
 describe('api-utils', () => {
   describe('getClientIp', () => {
-    it('extracts client IP from the first entry of x-forwarded-for', () => {
+    it('prioritizes x-vercel-forwarded-for when present', () => {
+      const headers = new Headers();
+      headers.set('x-vercel-forwarded-for', '198.51.100.1');
+      headers.set('x-forwarded-for', '203.0.113.195, 70.41.3.18');
+      headers.set('x-real-ip', '198.51.100.99');
+
+      const ip = getClientIp({ headers });
+      expect(ip).toBe('198.51.100.1');
+    });
+
+    it('prioritizes cf-connecting-ip when vercel header is missing', () => {
+      const headers = new Headers();
+      headers.set('cf-connecting-ip', '198.51.100.2');
+      headers.set('x-forwarded-for', '203.0.113.195, 70.41.3.18');
+
+      const ip = getClientIp({ headers });
+      expect(ip).toBe('198.51.100.2');
+    });
+
+    it('prioritizes x-real-ip when cloud provider headers are missing', () => {
+      const headers = new Headers();
+      headers.set('x-real-ip', '198.51.100.42');
+      headers.set('x-forwarded-for', '203.0.113.195, 70.41.3.18');
+
+      const ip = getClientIp({ headers });
+      expect(ip).toBe('198.51.100.42');
+    });
+
+    it('extracts rightmost edge client IP from x-forwarded-for to prevent client spoofing', () => {
       const headers = new Headers();
       headers.set('x-forwarded-for', '203.0.113.195, 70.41.3.18, 150.172.238.178');
 
       const ip = getClientIp({ headers });
-      expect(ip).toBe('203.0.113.195');
-    });
-
-    it('extracts client IP from x-real-ip when x-forwarded-for is missing', () => {
-      const headers = new Headers();
-      headers.set('x-real-ip', '198.51.100.42');
-
-      const ip = getClientIp({ headers });
-      expect(ip).toBe('198.51.100.42');
+      expect(ip).toBe('150.172.238.178');
     });
 
     it('falls back to 127.0.0.1 when no IP headers are present', () => {

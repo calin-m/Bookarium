@@ -5,6 +5,8 @@ import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
 
 import { isSafeUpstreamUrl } from './url-validator';
 
+const MAX_BOOK_BYTES = 15 * 1024 * 1024; // 15 MB threshold for Gutenberg plain text volumes
+
 export async function GET(request: NextRequest) {
   const clientIp = getClientIp(request);
 
@@ -76,7 +78,42 @@ export async function GET(request: NextRequest) {
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        const text = await response.text();
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && parseInt(contentLength, 10) > MAX_BOOK_BYTES) {
+          continue;
+        }
+
+        let text = '';
+        if (response.body && typeof response.body.getReader === 'function') {
+          const reader = response.body.getReader();
+          const chunks: Uint8Array[] = [];
+          let totalBytes = 0;
+          let oversized = false;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) {
+              totalBytes += value.length;
+              if (totalBytes > MAX_BOOK_BYTES) {
+                oversized = true;
+                controller.abort();
+                break;
+              }
+              chunks.push(value);
+            }
+          }
+
+          if (oversized) {
+            continue;
+          }
+
+          const decoder = new TextDecoder('utf-8');
+          text = chunks.map((c) => decoder.decode(c, { stream: true })).join('') + decoder.decode();
+        } else {
+          text = await response.text();
+        }
+
         // Verify it's not a redirect HTML page
         if (text && !text.trim().startsWith('<p>The document has moved')) {
           textContent = text;

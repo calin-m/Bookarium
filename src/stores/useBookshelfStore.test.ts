@@ -328,6 +328,59 @@ describe('useBookshelfStore', () => {
       );
     });
 
+    it('treats Supabase as authoritative for savedBooks on subsequent syncs and does not re-upload missing books', async () => {
+      const itemsUpsertMock = vi.fn().mockResolvedValue({ error: null });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({
+                  data: [{ id: 'shelf-gen', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' }],
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockResolvedValueOnce({
+                data: [], // cloud is empty (item was deleted on another device)
+              }),
+            }),
+            upsert: itemsUpsertMock,
+          };
+        }
+        if (table === 'user_favorites') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({ data: [] }),
+              }),
+            }),
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
+        return {};
+      });
+
+      // Local store has previously synced (anchor exists) and still has mockBooks[0]
+      useBookshelfStore.setState({
+        savedBooks: [mockBooks[0]],
+        lastBookshelfSyncAt: '2026-09-01T00:00:00.000Z',
+      });
+
+      await act(async () => {
+        await useBookshelfStore.getState().syncWithCloud('user-1');
+      });
+
+      // Supabase is authoritative: local savedBooks becomes empty, no re-upload
+      expect(itemsUpsertMock).not.toHaveBeenCalled();
+      expect(useBookshelfStore.getState().savedBooks).toHaveLength(0);
+    });
+
     it('handles createCloudBookshelf and migrateLocalBooksToCloud', async () => {
       mockFrom.mockImplementation((table: string) => {
         if (table === 'bookshelves') {

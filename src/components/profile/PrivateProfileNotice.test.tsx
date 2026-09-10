@@ -5,16 +5,16 @@ import { PrivateProfileNotice } from './PrivateProfileNotice';
 import { ROUTES } from '@/config/routes';
 
 describe('PrivateProfileNotice', () => {
-  it('renders private sanctuary title and classical description', () => {
+  it('renders neutral not-found sanctuary title and classical description without echoing username', () => {
     render(<PrivateProfileNotice username="secret_scholar" />);
 
     expect(
-      screen.getByRole('region', { name: /private scholar sanctuary/i })
+      screen.getByRole('region', { name: /scholar sanctuary not found/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /private scholar sanctuary/i })).toBeInTheDocument();
-    expect(screen.getByText('@secret_scholar')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /scholar sanctuary not found/i })).toBeInTheDocument();
+    expect(screen.queryByText('@secret_scholar')).not.toBeInTheDocument();
     expect(
-      screen.getByText(/this reader has chosen to keep their reading sanctuary private/i)
+      screen.getByText(/this scholar sanctuary does not exist or has not been made public by its owner/i)
     ).toBeInTheDocument();
     expect(screen.getByText(/Ralph Waldo Emerson/i)).toBeInTheDocument();
   });
@@ -35,7 +35,7 @@ describe('PrivateProfileNotice', () => {
   it('renders gracefully without username parameter', () => {
     render(<PrivateProfileNotice />);
 
-    expect(screen.getByRole('heading', { level: 1, name: /private scholar sanctuary/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /scholar sanctuary not found/i })).toBeInTheDocument();
     expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
   });
 });

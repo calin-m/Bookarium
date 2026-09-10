@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-154%20Suites%20%7C%201230%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.52%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-154%20Suites%20%7C%201241%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.65%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -38,13 +38,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.4.0)
+## 🛠️ Latest Improvements (v2.5.0)
 
-- **SSRF & Upstream URL Validation Engine (`src/app/api/books/content/url-validator.ts`)**: Extracted pure upstream URL validation and sanitization out of the Content API route into a modular, single-responsibility module with co-located unit test coverage (`url-validator.test.ts`).
-- **Architecture Decision Record (`ADR-034`)**: Formally ratified Next.js 16 App Router route handler strict typing, SSRF validation separation, and Vitest performance architecture in `docs/DECISIONS.md`.
-- **Vitest Test Suite Performance Architecture (`AccountPage.test.tsx`, `HeroSearch.test.tsx`)**: Consolidated redundant composite page and 3D hero remount cycles into authentic user journeys, cutting `AccountPage.test.tsx` execution by 69% (11.22s to 3.46s) and `HeroSearch.test.tsx` by 81% (18.38s to 3.49s) with 100% authentic assertions and zero synthetic mocks.
-- **Zero-Latency Node Environment for Pure Algorithm Suites (`src/lib/gutenberg/*`, `password.test.ts`)**: Configured `// @vitest-environment node` docblock directives on pure algorithm and server test files, reducing environment bootstrap time from ~350ms to 0ms.
-- **Next.js 16 Route Handler Typing Conformance (`src/app/api/books/content/route.ts`)**: Cleaned route exports to strictly export standard HTTP `GET`, satisfying Next.js 16 App Router route type generation (`tsc --noEmit`).
+- **Zero-CLS Floating Overlay Sync Badge (`src/components/presentation/BookshelfRack.tsx`)**: Decoupled the cloud syncing indicator from the document layout flow into an absolutely positioned floating pill (`top-0 right-2 sm:right-4 z-20 pointer-events-none`) with `AnimatePresence` and subtle fade transitions, guaranteeing 0.00 Cumulative Layout Shift during cloud synchronization.
+- **Authoritative Cloud Synchronization Anchor (`src/stores/useBookshelfStore.ts`)**: Introduced `lastBookshelfSyncAt` sync anchor, making Supabase the authoritative source of truth on subsequent syncs to eliminate multi-device ghost resurrections while pre-sync outbox draining (`flushOutbox`) safeguards offline additions.
+- **Architecture Decision Record (`ADR-035`)**: Formally ratified authoritative cloud state reconciliation, Next.js 16 edge proxy migration, and zero-CLS floating sync badge architecture in `docs/DECISIONS.md`.
+- **Next.js 16 Edge Proxy Migration (`src/proxy.ts`, `src/proxy.test.ts`)**: Fully decommissioned legacy `src/middleware.ts` in favor of Next.js 16 native `src/proxy.ts` with 100% co-located unit test coverage.
+- **Sanitized Sign-Out & Outbox Drain (`src/stores/useAuthStore.ts`)**: Enhanced `signOut()` to drain pending offline mutations before logout and wipe in-memory state via `clearBookshelf()`, preventing cross-account contamination while preserving downloaded offline books in IndexedDB.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -76,7 +76,7 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
   * **Physical 60–120 FPS Page Turn**: Shuffling passages flips a physical 3D leaf across the spine with synchronized ink reveals.
 * **Daily Rotating Editorial Classic of the Day**: Dedicated editorial showcase positioned beneath the catalog grid, presenting a unified public domain masterpiece with authentic title, author, publication year, verbatim literary quote, and 1-click reader handoff. Powered by client-cached fixtures (`FEATURED_HERO_BOOKS`) with dynamic anti-collision intelligence that automatically skips candidate books matching the current Hero spotlight to guarantee two unique masterworks on every visit.
 * **Interactive 3D Book Preview Modal**: Clicking or tapping any book card cover launches a 3D hardcover preview modal with fluid FLIP geometry transitions, subpixel return landing, chapter shuffling, and 1-click reader handoff.
-* **Studio Bookshelf Bookcase**: Hardwood shelf alcove with 8 authentic spine binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), convex specular curvature, gilded lettering, and pull-forward hover scaling.
+* **Studio Bookshelf Bookcase**: Hardwood shelf alcove with 8 authentic spine binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), convex specular curvature, gilded lettering, pull-forward hover scaling, and a **Zero-CLS Floating Cloud Sync Badge** that smoothly overlays real-time sync status without triggering vertical content shifts.
 * **Directional Stepped Scroll Navigation**: Dynamic scroll detection (`useScrollDirection`) smoothly hides the top header on scroll down, docks the catalog filter toolbar to `top-0`, and instantly reveals navigation on upward scroll gestures. Configurable in Account Settings between **Smart Auto-Hide** and **Always Fixed**.
 * **Responsive Filter Drawer & Push-Content Layout**: Persistent left-docked drawer on desktop & ultrawide viewports (≥ 1280px / `xl:`) shifting main content to the right (`xl:pl-96`) for non-blocking catalog browsing; smoothly adapts to a focused slide-out overlay with soft backdrop blur (`backdrop-blur-xs`) on laptops, vertical monitors, and mobile devices—guaranteeing 100% unclipped facet typography with zero text truncation.
 * **Streamlined Single-Row Sticky Catalog Toolbar**: Ultra-compact ~44px mobile toolbar unifying search filter triggers, real-time API health status, view mode toggling (Grid vs. Spine Shelf), and deep-archive pagination in a single horizontal row, maximizing vertical screen real estate for book covers.
@@ -112,8 +112,9 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **In-Reader Highlighting & Literary Commonplace Notebook (`/notebook`)**:
   * 4 editorial pastel highlighters (Canary Yellow, Vintage Amber, Calm Mint, Soft Rose) with coarse-pointer touch dismissal and chapter-scoped annotation drawer.
   * Comprehensive reading journal organizing highlighted excerpts, personal reflections, pastel color filters, full-text search, volume grouping, and 1-click academic citation copying.
-* **Native IndexedDB Offline Book Storage**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading in airplane mode.
-* **Auto-Healing Cloud Sync & Deletion Tombstones**: Optional Supabase PostgreSQL cloud sync with Row Level Security (RLS). Persistent deletion tombstones (`deletedBookIds`) prevent zombie volumes from resurrecting during cross-device synchronization.
+* **Native IndexedDB Offline Book Storage**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading in airplane mode. Downloading a volume automatically links it to the user's personal bookshelf.
+* **Authoritative Cloud State Reconciliation (`lastBookshelfSyncAt`)**: Optional Supabase PostgreSQL cloud sync with Row Level Security (RLS). Initial sync migrates local guest books to the cloud; subsequent syncs treat Supabase as the authoritative source of truth, gracefully pruning titles deleted on another device while pre-sync outbox flushing (`flushOutbox`) safeguards offline additions.
+* **Sanitized Sign-Out & Account Isolation**: Pre-logout outbox drain and clean state wipe (`clearBookshelf()`) prevent cross-account contamination while raw downloaded texts in IndexedDB are preserved on device.
 * **Bi-Directional Cloud Reading Progress**: 2000ms debounced upsert to `public.reading_progress`, restoring chapter and scroll coordinates across devices for authenticated accounts while remaining 0ms/zero-network for guest readers.
 * **Reading Streaks, Dual Immersion Telemetry & Annual Reading Challenges (`/account`)**: Offline-first literary activity tracking calculating consecutive daily streaks with a **5-minute active immersion threshold** (`300s`), longest streaks, 7-day calendar activity indicators, and total literary immersion duration. Disentangles telemetry into distinct **Reading Time** (visual focus with 2-minute idle guard) and **Listening Time** (uninterrupted Text-to-Speech audio narration retaining time in background tabs). Includes an interactive annual reading challenge progress bar with user-adjustable volume targets, real-time pace tracking, dynamic countdown prompts (`Xm / 5m logged today`), and multi-device Supabase cloud synchronization with Last-Write-Wins (LWW) conflict resolution.
 * **Full Data Sovereignty & Portability**: Single-click RFC 4180 CSV export and portable JSON backup (`src/lib/library-backup.ts`) with defensive schema validation and merge/replace restore strategies.
@@ -145,7 +146,7 @@ flowchart TD
         HabitsCard["Reading Habits & Challenge (AccountHabitsCard.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• deletedBookIds: [] (Tombstones)\n• bookRatings: {}\n• bookStatuses: {}")]
+        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• lastBookshelfSyncAt: string | null\n• bookRatings: {}\n• bookStatuses: {}")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
         StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• readingPositions: {}\n• readingProgress: {}\n• syncReadingPositionToCloud()")]
         StoreHabits[("🔥 Habits Store\n• currentStreak & longestStreak (5-min threshold)\n• activeDates: []\n• annualGoal & annualGoalYear\n• totalReadingSeconds & totalListeningSeconds\n• syncWithCloud()")]
@@ -373,29 +374,40 @@ flowchart TD
 
 ## ⚡ Quick Start
 
-### Prerequisites
+### 1. Prerequisites
 - **Node.js**: `>= 20.0.0` (Node 22 LTS recommended)
 - **npm**: `>= 10.0.0`
 
-### Environment Configuration (Optional - for Cloud Bookshelf Sync)
-Create a `.env.local` file in the project root with your public Supabase project credentials:
+### 2. Installation & Local Development
+
+```bash
+# 1. Clone the repository and install dependencies
+npm install
+
+# 2. Start local development server (automatically launches browser)
+npm run dev:open
+
+# 3. Or launch full development environment with background test watcher
+npm run dev:all
+```
+
+The application will be accessible at [http://localhost:3000](http://localhost:3000). *(Bookarium operates seamlessly in 100% offline-first mode using browser storage with zero environment setup required).*
+
+---
+
+## 🗄️ Supabase Cloud Database & Authentication Setup (Optional)
+
+Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-device bookshelf & favorites synchronization, and reading progress tracking. Follow these steps to provision your database in under 2 minutes:
+
+### Step 1: Create a Free Supabase Project & Configure Environment
+1. Go to [supabase.com](https://supabase.com/) and create a new project.
+2. Note your **Project URL** and **anon public API Key** from **Project Settings $\to$ API**.
+3. Create a `.env.local` file in the project root:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
-
-*(If no Supabase credentials are provided, Bookarium operates seamlessly in 100% offline-first mode using browser storage).*
-
----
-
-## 🗄️ Supabase Cloud Database & Authentication Setup
-
-Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-device bookshelf & favorites synchronization, and reading progress tracking. Follow these steps to provision your database in under 2 minutes:
-
-### Step 1: Create a Free Supabase Project
-1. Go to [supabase.com](https://supabase.com/) and create a new project.
-2. Note your **Project URL** and **anon public API Key** from **Project Settings $\to$ API**.
 
 ### Step 2: Run Database Schema Script
 1. In your Supabase Dashboard, open the **SQL Editor** from the left sidebar.
@@ -404,17 +416,17 @@ Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-devi
 
 | Database Object | Type | Purpose & Security Governance |
 |---|---|---|
-| `public.profiles` | Table (RLS) | User display name, unique @username handle, scholar bio, opt-in public switch, saved books and custom shelf visibility toggles (`show_saved_books`, `show_custom_shelves`), and telemetry visibility with zero-PII public RLS reads (`is_public = true`) |
-| `public.bookshelves` | Table (RLS) | Master default 'General' shelf and custom user-created collection shelves with granular public/private privacy enforcement (`is_public = true`) |
-| `public.bookshelf_items` | Table (RLS) | Volumes filed in specific bookshelves with uniqueness constraints and public shelf isolation |
-| `public.user_favorites` | Table (RLS) | Cross-device synchronized favorited titles |
-| `public.reading_progress` | Table (RLS) | Chapter coordinates, progress %, scroll offset, and cached volume metadata |
-| `public.user_annotations` | Table (RLS) | Passage highlights (yellow, amber, mint, rose) and personal scholarly notes |
-| `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status classification |
-| `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, and dual immersion duration (reading & listening) |
-| `public.user_accolades` | Table (RLS) | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata |
-| `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`) |
-| `public.delete_current_user()` | RPC Function | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable `search_path`) |
+| `public.profiles` | Table (RLS) | User display name, unique @username handle, scholar bio, opt-in public switch, saved books and custom shelf visibility toggles (`show_saved_books`, `show_custom_shelves`), and telemetry visibility with zero-PII public RLS reads (`is_public = true`) and authenticated-only mutations with `WITH CHECK` integrity. |
+| `public.bookshelves` | Table (RLS) | Master default 'General' shelf and custom user-created collection shelves with granular public/private privacy enforcement (`is_public = true`) and authenticated-only mutations with `WITH CHECK` integrity. |
+| `public.bookshelf_items` | Table (RLS) | Volumes filed in specific bookshelves with uniqueness constraints, parent bookshelf ownership verification on insert/update/delete, public shelf isolation, and cascade-optimized foreign key index on `user_id`. |
+| `public.user_favorites` | Table (RLS) | Cross-device synchronized favorited titles with authenticated-only user isolation. |
+| `public.reading_progress` | Table (RLS) | Chapter coordinates, progress %, scroll offset, and cached volume metadata with authenticated-only `WITH CHECK` integrity. |
+| `public.user_annotations` | Table (RLS) | Passage highlights (yellow, amber, mint, rose) and personal scholarly notes. |
+| `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status classification. |
+| `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, and dual immersion duration (reading & listening). |
+| `public.user_accolades` | Table (RLS) | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
+| `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
+| `public.delete_current_user()` | RPC Function | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable `search_path`). |
 
 ### Step 3: Configure Authentication Redirect URLs
 1. In your Supabase Dashboard, navigate to **Authentication $\to$ URL Configuration**.
@@ -429,21 +441,6 @@ Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-devi
    - `https://your-app.vercel.app/account`
 
 ---
-
-### Installation & Local Development
-
-```bash
-# 1. Clone the repository and install dependencies
-npm install
-
-# 2. Start local development server (automatically launches browser)
-npm run dev:open
-
-# 3. Or launch full development environment with background test watcher
-npm run dev:all
-```
-
-The application will be accessible at [http://localhost:3000](http://localhost:3000).
 
 ### 🚀 Production Deployment on Vercel
 
@@ -463,14 +460,15 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 
 | Security Vector | Implementation & File Path | Protection Mechanism |
 |---|---|---|
-| **Sliding-Window Rate Limiting** | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) | Zero-dependency in-memory sliding-window rate limiter protecting upstream Project Gutenberg APIs (60 req/min on `/api/books`, 30 req/min on `/api/books/content`) with automatic 30s garbage collection, `X-RateLimit-*` headers, and `429 Too Many Requests` status with `Retry-After`. |
-| **HTTP Security Headers** | [`next.config.ts`](next.config.ts) | Enforces HSTS (`max-age=63072000; includeSubDomains; preload`), Clickjacking defense (`X-Frame-Options: SAMEORIGIN`), MIME-type sniffing prevention (`X-Content-Type-Options: nosniff`), Referrer Policy (`strict-origin-when-cross-origin`), and Permissions Policy (`camera=(), microphone=(), geolocation=()`). |
-| **SSRF & Path Traversal Immunity** | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) | Upstream URL whitelisting (`isSafeUpstreamUrl`) restricting fetches strictly to official Project Gutenberg domains (`gutenberg.org`, `www.gutenberg.org`), strict numeric ID regex verification (`^\d{1,8}$`), and `redirect: 'manual'` preventing open redirect hops. |
+| **Sliding-Window Rate Limiting** | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) & [`src/lib/api-utils.ts`](src/lib/api-utils.ts) | Zero-dependency in-memory sliding-window rate limiter protecting upstream Project Gutenberg APIs (60 req/min on `/api/books`, 30 req/min on `/api/books/content`) with automatic 30s garbage collection, anti-spoofing IP resolution (prioritizing edge platform headers and rightmost hop extraction), and `429 Too Many Requests` status with `Retry-After`. |
+| **HTTP Security Headers** | [`next.config.ts`](next.config.ts) | Enforces Content-Security-Policy (`default-src 'self'`, `frame-ancestors 'none'`), Cross-Origin-Opener-Policy (`same-origin`), HSTS (`max-age=63072000; includeSubDomains; preload`), Clickjacking defense (`X-Frame-Options: SAMEORIGIN`), MIME-type sniffing prevention (`X-Content-Type-Options: nosniff`), Referrer Policy (`strict-origin-when-cross-origin`), and Permissions Policy (`camera=(), microphone=(), geolocation=()`). |
+| **SSRF & Upstream Stream Bounding** | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) & [`src/app/api/books/content/url-validator.ts`](src/app/api/books/content/url-validator.ts) | Upstream URL whitelisting (`isSafeUpstreamUrl`) restricting fetches strictly to official Project Gutenberg domains (`gutenberg.org`, `www.gutenberg.org`), strict numeric ID regex verification (`^\d{1,8}$`), `redirect: 'manual'` preventing open redirect hops, and a 15MB payload streaming threshold preventing memory exhaustion DoS. |
 | **Open Redirect Defense** | [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) | Path sanitization (`sanitizeRedirectPath`) guaranteeing OAuth and magic-link redirect paths strictly originate from trusted relative roots (`/^\/[^\/\\]/`) preventing off-site phishing redirects. |
+| **Next.js Edge Session Proxy** | [`src/proxy.ts`](src/proxy.ts) & [`src/lib/supabase/middleware.ts`](src/lib/supabase/middleware.ts) | Lightweight edge proxy invoking `@supabase/ssr` `updateSession` to seamlessly refresh auth tokens and cookies across route transitions with non-blocking fallback handling. |
 | **ReDoS & Main Thread Protection** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | Non-backtracking regular expressions (`[^\n]{0,80}`) and bounded passage analysis window (capped at 120,000 characters) eliminating regular expression denial of service (ReDoS) and event loop freezing on massive multi-megabyte classical tomes. |
 | **LRU Pagination Memory Cache** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | 500-entry memory cache (`Map<string, string[]>`) for paginated chapter views, delivering instant sub-millisecond virtual page turns with zero redundant recalculation. |
 | **Relational Data Purge & Account Deletion** | [`src/stores/useAuthStore.ts`](src/stores/useAuthStore.ts) | Comprehensive cascading cleanup across PostgreSQL tables (`reading_progress`, `bookshelf_items`, `bookshelves`, `profiles`) with fallback RPC `delete_current_user` execution and session revocation. |
-| **Zero-PII Public Scholar Profiles** | [`src/components/profile/PublicProfileView.tsx`](src/components/profile/PublicProfileView.tsx) | Strict opt-in privacy default (`is_public = false`), classical Private Sanctuary shield preventing username enumeration, case-insensitive unique handle indexing, and zero-PII exposure ensuring emails and auth credentials are never queried or rendered. |
+| **Anti-Enumeration Scholar Sanctuaries** | [`src/components/profile/PrivateProfileNotice.tsx`](src/components/profile/PrivateProfileNotice.tsx) & [`src/app/u/[username]/page.tsx`](src/app/u/[username]/page.tsx) | Strict opt-in privacy default (`is_public = false`), unified "Scholar Sanctuary Not Found" state preventing user enumeration across private and non-existent profiles, and zero-PII exposure ensuring emails and auth credentials are never queried or rendered. |
 | **Datacenter Proximity & Edge Optimization** | [`vercel.json`](vercel.json) | Pins serverless execution to `iad1` (Washington D.C. / US-East) directly adjacent to Gutenberg/Gutendex nodes with dedicated memory and payload compression (`gzip, deflate, br`). |
 
 ---
@@ -523,13 +521,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1230 tests across 154 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1241 tests across 154 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 26 validated ADRs (ADR-001 through ADR-026) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, and enterprise polymorphism/encapsulation. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 34 validated ADRs (ADR-001 through ADR-034) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, and Vitest performance architecture. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

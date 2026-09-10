@@ -51,20 +51,69 @@ describe('Supabase Client Infrastructure', () => {
   });
 
   it('handles updateSession middleware for incoming requests and cookies', async () => {
-    let middlewareOpts: any;
-    const { createServerClient: mockCreateServerClient } = await import('@supabase/ssr');
-    (mockCreateServerClient as any).mockImplementationOnce((_url: string, _key: string, opts: any) => {
-      middlewareOpts = opts;
-      return { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }) } };
-    });
+    const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://xyz.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key';
 
-    const req = new NextRequest('http://localhost:3000/');
-    const res = await updateSession(req);
-    expect(res).toBeDefined();
+    try {
+      let middlewareOpts: any;
+      const { createServerClient: mockCreateServerClient } = await import('@supabase/ssr');
+      (mockCreateServerClient as any).mockImplementationOnce((_url: string, _key: string, opts: any) => {
+        middlewareOpts = opts;
+        return { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }) } };
+      });
 
-    if (middlewareOpts?.cookies) {
-      expect(middlewareOpts.cookies.getAll()).toBeDefined();
-      middlewareOpts.cookies.setAll([{ name: 'test', value: '123', options: {} }]);
+      const req = new NextRequest('http://localhost:3000/');
+      const res = await updateSession(req);
+      expect(res).toBeDefined();
+
+      if (middlewareOpts?.cookies) {
+        expect(middlewareOpts.cookies.getAll()).toBeDefined();
+        middlewareOpts.cookies.setAll([{ name: 'test', value: '123', options: {} }]);
+      }
+    } finally {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
+    }
+  });
+
+  it('gracefully handles updateSession when getUser rejects with an error', async () => {
+    const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://xyz.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key';
+
+    try {
+      const { createServerClient: mockCreateServerClient } = await import('@supabase/ssr');
+      (mockCreateServerClient as any).mockImplementationOnce(() => ({
+        auth: { getUser: vi.fn().mockRejectedValue(new Error('Network failure')) },
+      }));
+
+      const req = new NextRequest('http://localhost:3000/');
+      const res = await updateSession(req);
+      expect(res).toBeDefined();
+      expect(res.status).toBe(200);
+    } finally {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
+    }
+  });
+
+  it('returns next response early when Supabase environment variables are missing', async () => {
+    const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    try {
+      const req = new NextRequest('http://localhost:3000/');
+      const res = await updateSession(req);
+      expect(res).toBeDefined();
+      expect(res.status).toBe(200);
+    } finally {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
     }
   });
 

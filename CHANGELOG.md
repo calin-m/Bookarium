@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.5.0] - 2026-09-10
+### *Authoritative Cloud State Reconciliation, Next.js 16 Edge Proxy & Zero-CLS Bookshelf Sync*
+
+### Added
+- Zero-CLS Floating Overlay Sync Badge (`src/components/presentation/BookshelfRack.tsx`): Decoupled the cloud syncing indicator from the document layout flow into an absolutely positioned floating pill (`top-0 right-2 sm:right-4 z-20 pointer-events-none`) with `AnimatePresence` and subtle fade transitions, guaranteeing 0.00 Cumulative Layout Shift during cloud synchronization.
+- Authoritative Cloud Synchronization Anchor (`src/stores/useBookshelfStore.ts`): Introduced `lastBookshelfSyncAt` sync anchor, making Supabase the authoritative source of truth on subsequent syncs to eliminate multi-device ghost resurrections while pre-sync outbox draining (`flushOutbox`) safeguards offline additions.
+- Architecture Decision Record (`ADR-035`): Formally ratified authoritative cloud state reconciliation, Next.js 16 edge proxy migration, and zero-CLS floating sync badge architecture in `docs/DECISIONS.md`.
+
+### Fixed
+- Bookshelf Mount Layout Jitter (`src/components/presentation/BookshelfRack.tsx`, `BookshelfRack.test.tsx`): Eliminated ~58px vertical layout jump caused by conditional in-flow element insertion inside Tailwind `space-y-8` container, preserving static shelf rail coordinates throughout the sync lifecycle.
+- Next.js 16 Edge Proxy Routing Resilience (`src/proxy.ts`, `src/lib/supabase/middleware.ts`): Wrapped session token refresh in defensive non-blocking fallback (`try...catch`), preventing `TypeError: fetch failed` route transition crashes during offline browsing or network timeouts.
+
+### Refactored
+- Next.js 16 Edge Proxy Migration (`src/proxy.ts`, `src/proxy.test.ts`): Fully decommissioned legacy `src/middleware.ts` in favor of Next.js 16 native `src/proxy.ts` with 100% co-located unit test coverage.
+- Sanitized Sign-Out & Outbox Drain (`src/stores/useAuthStore.ts`): Enhanced `signOut()` to drain pending offline mutations before logout and wipe in-memory state via `clearBookshelf()`, preventing cross-account contamination while preserving downloaded offline books in IndexedDB.
+- Offline Download Bookshelf Linking (`src/hooks/useOfflineBooks.ts`): Linked `downloadBook()` to automatically save offline volumes to the user's bookshelf if not already saved.
+
+
 ## [2.4.0] - 2026-09-09
 ### *Next.js 16 Route Handler Modularization, SSRF Validation & Test Architecture Optimization*
 
@@ -527,3 +545,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-032: Canonical 4-Tier Reading Challenge Ladder, Anti-Tamper Progression & Accolade Visual Stabilization**
 - **ADR-033: Opt-In Public Scholar Profiles, Zero-PII Privacy Architecture & Dynamic Social Metadata**
 - **ADR-034: Next.js 16 Route Handler Strict Typing, SSRF Validation Separation & Test Performance Architecture**
+- **ADR-035: Authoritative Cloud Synchronization, Next.js 16 Edge Proxy Migration & Zero-CLS Syncing Indicator**

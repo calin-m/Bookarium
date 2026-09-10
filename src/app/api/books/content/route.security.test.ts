@@ -198,6 +198,52 @@ describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
       expect(res.headers.get('Content-Type')).toBe('text/plain; charset=utf-8');
       expect(res.headers.get('Cache-Control')).toBe('public, s-maxage=86400, stale-while-revalidate=604800');
     });
+
+    it('rejects oversized Content-Length headers exceeding 15MB threshold', async () => {
+      vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({
+          'Content-Length': String(20 * 1024 * 1024), // 20 MB
+        }),
+        text: async () => 'huge file',
+      } as any);
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(502);
+      const json = await res.json();
+      expect(json.error).toMatch(/failed to fetch unabridged text/i);
+    });
+
+    it('aborts upstream stream if payload chunks exceed 15MB limit', async () => {
+      const hugeChunk = new Uint8Array(16 * 1024 * 1024); // 16 MB chunk
+      let readCount = 0;
+      const mockReader = {
+        read: vi.fn().mockImplementation(async () => {
+          if (readCount === 0) {
+            readCount++;
+            return { done: false, value: hugeChunk };
+          }
+          return { done: true, value: undefined };
+        }),
+      };
+
+      vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        body: {
+          getReader: () => mockReader,
+        },
+      } as any);
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(502);
+    });
   });
 });
 

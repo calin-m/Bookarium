@@ -55,16 +55,20 @@ CREATE POLICY "Public profiles are viewable by everyone when is_public is true"
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
+  TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can delete their own profile" ON public.profiles;
 CREATE POLICY "Users can delete their own profile"
   ON public.profiles FOR DELETE
+  TO authenticated
   USING (auth.uid() = id);
 
 -- ============================================================================
@@ -117,16 +121,20 @@ CREATE POLICY "Public bookshelves viewable when owner profile is public"
 DROP POLICY IF EXISTS "Users can insert their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can insert their own bookshelves"
   ON public.bookshelves FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can update their own bookshelves"
   ON public.bookshelves FOR UPDATE
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can delete their own bookshelves"
   ON public.bookshelves FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- ============================================================================
@@ -143,6 +151,9 @@ CREATE TABLE IF NOT EXISTS public.bookshelf_items (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(bookshelf_id, book_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_bookshelf_items_user_id
+  ON public.bookshelf_items(user_id);
 
 ALTER TABLE public.bookshelf_items ENABLE ROW LEVEL SECURITY;
 
@@ -171,17 +182,49 @@ CREATE POLICY "Public bookshelf items viewable when owner profile is public"
 DROP POLICY IF EXISTS "Users can insert their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can insert their own bookshelf items"
   ON public.bookshelf_items FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  TO authenticated
+  WITH CHECK (
+    auth.uid() = user_id
+    AND EXISTS (
+      SELECT 1 FROM public.bookshelves
+      WHERE bookshelves.id = bookshelf_items.bookshelf_id
+        AND bookshelves.user_id = auth.uid()
+    )
+  );
 
 DROP POLICY IF EXISTS "Users can update their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can update their own bookshelf items"
   ON public.bookshelf_items FOR UPDATE
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING (
+    auth.uid() = user_id
+    AND EXISTS (
+      SELECT 1 FROM public.bookshelves
+      WHERE bookshelves.id = bookshelf_items.bookshelf_id
+        AND bookshelves.user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    auth.uid() = user_id
+    AND EXISTS (
+      SELECT 1 FROM public.bookshelves
+      WHERE bookshelves.id = bookshelf_items.bookshelf_id
+        AND bookshelves.user_id = auth.uid()
+    )
+  );
 
 DROP POLICY IF EXISTS "Users can delete their own bookshelf items" ON public.bookshelf_items;
 CREATE POLICY "Users can delete their own bookshelf items"
   ON public.bookshelf_items FOR DELETE
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM public.bookshelves
+      WHERE bookshelves.id = bookshelf_items.bookshelf_id
+        AND bookshelves.user_id = auth.uid()
+    )
+  );
 
 -- ============================================================================
 -- 4. User Favorites Table (Cross-Device Liked Books Sync)
@@ -206,11 +249,13 @@ CREATE POLICY "Users can view their own favorites"
 DROP POLICY IF EXISTS "Users can insert their own favorites" ON public.user_favorites;
 CREATE POLICY "Users can insert their own favorites"
   ON public.user_favorites FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own favorites" ON public.user_favorites;
 CREATE POLICY "Users can delete their own favorites"
   ON public.user_favorites FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- ============================================================================
@@ -245,16 +290,20 @@ CREATE POLICY "Users can view their own reading progress"
 DROP POLICY IF EXISTS "Users can insert their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can insert their own reading progress"
   ON public.reading_progress FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can update their own reading progress"
   ON public.reading_progress FOR UPDATE
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can delete their own reading progress"
   ON public.reading_progress FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- ============================================================================

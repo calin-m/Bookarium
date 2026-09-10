@@ -1,7 +1,7 @@
 # Project Gutenberg Text Processing & Segmentation Engine — Bookarium
 
 > **Auto-Generated Living Reference**: Programmatically compiled from Source AST via `scripts/generate-parser-docs.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-09-09`  
+> **Last Synchronized**: `2026-09-10`  
 > **Target Subsystem**: `src/lib/gutenberg/` (100% Client/Worker Compatible, Zero Node.js Dependencies)
 
 ---
