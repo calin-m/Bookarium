@@ -17,6 +17,18 @@ describe('Root Proxy (Next.js 16)', () => {
     expect(res).toBe(mockResponse);
   });
 
+  it('gracefully falls back to NextResponse.next when updateSession throws', async () => {
+    vi.spyOn(supabaseMiddleware, 'updateSession').mockRejectedValueOnce(
+      new Error('Middleware crash')
+    );
+
+    const req = new NextRequest('http://localhost:3000/account');
+    const res = await proxy(req);
+
+    expect(res).toBeDefined();
+    expect(res.status).toBe(200);
+  });
+
   it('exports valid matcher config', () => {
     expect(config.matcher).toBeDefined();
     expect(config.matcher.length).toBeGreaterThan(0);

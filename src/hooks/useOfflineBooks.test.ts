@@ -54,6 +54,9 @@ describe('useOfflineBooks hook', () => {
       'Full text content of the book...'
     );
 
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(true);
+
     fetchSpy.mockRestore();
   });
 

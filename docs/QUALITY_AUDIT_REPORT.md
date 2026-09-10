@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 09 Sep 2026 13:05:50 GMT  
+**Last Generated**: Thu, 10 Sep 2026 11:11:02 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 154 passed  
-**Total Verified Tests**: 1230 passed  
+**Total Verified Tests**: 1241 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **154/154 test suites passed** (1230 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **154/154 test suites passed** (1241 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 34 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 35 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,19 +25,19 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.52%** (6049/6538) — *Target: $ge$ 80%*
-- **Statements**: **90.9%** (6559/7215) — *Target: $ge$ 80%*
-- **Functions**: **88.5%** (1486/1679) — *Target: $ge$ 80%*
-- **Branches**: **81.18%** (5532/6814) — *Target: $ge$ 80%*
+- **Lines**: **92.65%** (6110/6594) — *Target: $ge$ 80%*
+- **Statements**: **91.06%** (6623/7273) — *Target: $ge$ 80%*
+- **Functions**: **88.75%** (1492/1681) — *Target: $ge$ 80%*
+- **Branches**: **81.2%** (5561/6848) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (154 Suites / 1230 Tests)
+## 🧪 Comprehensive Test Suite Catalog (154 Suites / 1241 Tests)
 
-### 🚀 App Routes & Pages (12 Suites · 117 Tests)
+### 🚀 App Routes & Pages (12 Suites · 119 Tests)
 
 <details>
-<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `blocks AWS and GCP cloud metadata IP endpoints`
 - ✔ `blocks loopback and private RFC 1918 IPv4/IPv6 addresses`
@@ -49,6 +49,8 @@
 - ✔ `protects backend from request flooding by enforcing 429 response`
 - ✔ `enforces redirect: manual and rejects 301/302 redirects to private link-local endpoints`
 - ✔ `strips all upstream server headers and sets explicit sanitized response headers`
+- ✔ `rejects oversized Content-Length headers exceeding 15MB threshold`
+- ✔ `aborts upstream stream if payload chunks exceed 15MB limit`
 
 </details>
 
@@ -225,7 +227,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (23 Suites · 230 Tests)
+### 🎨 Catalog & Presentation (23 Suites · 232 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -368,7 +370,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (33 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (35 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -403,6 +405,8 @@
 - ✔ `renders individual offline download button on book spine and triggers toggle`
 - ✔ `renders All Saved for Offline notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll`
 - ✔ `renders Edit and Delete buttons to the left of Download Shelf Offline button on custom shelves`
+- ✔ `does not render syncing indicator when isSyncing is false`
+- ✔ `renders floating syncing indicator with status role when isSyncing is true`
 
 </details>
 
@@ -869,7 +873,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (8 Suites · 130 Tests)
+### ⚡ Zustand State Stores (8 Suites · 132 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -912,7 +916,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (26 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (27 tests)</summary>
 
 - ✔ `manages modal open, close, and view state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -940,11 +944,12 @@
 - ✔ `rejects update when username is invalid`
 - ✔ `normalizes username to lowercase and updates public profile preferences`
 - ✔ `normalizes empty string username to null`
+- ✔ `signs out from Supabase, clears user profile, flushes outbox, and cleanses local bookshelf`
 
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (35 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (36 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -956,6 +961,7 @@
 - ✔ `handles activeBookshelfId selection and cloud bookshelf list`
 - ✔ `handles syncWithCloud fetching bookshelves and items`
 - ✔ `bidirectionally pushes unsynced local books and favorites to Supabase during syncWithCloud`
+- ✔ `treats Supabase as authoritative for savedBooks on subsequent syncs and does not re-upload missing books`
 - ✔ `handles createCloudBookshelf and migrateLocalBooksToCloud`
 - ✔ `updates cloud bookshelf name and updates local store state`
 - ✔ `updates bookshelf privacy status via updateBookshelfPrivacy`
@@ -1049,7 +1055,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (23 Suites · 212 Tests)
+### 📚 Gutenberg Parsers & Metadata (23 Suites · 216 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1092,10 +1098,12 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/api-utils.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/lib/api-utils.test.ts</code></b> (7 tests)</summary>
 
-- ✔ `extracts client IP from the first entry of x-forwarded-for`
-- ✔ `extracts client IP from x-real-ip when x-forwarded-for is missing`
+- ✔ `prioritizes x-vercel-forwarded-for when present`
+- ✔ `prioritizes cf-connecting-ip when vercel header is missing`
+- ✔ `prioritizes x-real-ip when cloud provider headers are missing`
+- ✔ `extracts rightmost edge client IP from x-forwarded-for to prevent client spoofing`
 - ✔ `falls back to 127.0.0.1 when no IP headers are present`
 - ✔ `returns a 429 response with default message and standard headers`
 - ✔ `merges custom message and additional body properties`
@@ -1353,11 +1361,13 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/supabase/supabase.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/lib/supabase/supabase.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `creates a browser Supabase client with environment variables`
 - ✔ `creates a server Supabase client with cookie store and invokes cookie helpers`
 - ✔ `handles updateSession middleware for incoming requests and cookies`
+- ✔ `gracefully handles updateSession when getUser rejects with an error`
+- ✔ `returns next response early when Supabase environment variables are missing`
 - ✔ `sanitizes Supabase URLs with trailing slashes, /rest/v1, or empty values`
 
 </details>
@@ -1700,7 +1710,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (49 Suites · 208 Tests)
+### 🧩 UI Primitives & Motion (49 Suites · 209 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -1978,7 +1988,7 @@
 <details>
 <summary><b><code>src/components/profile/PrivateProfileNotice.test.tsx</code></b> (3 tests)</summary>
 
-- ✔ `renders private sanctuary title and classical description`
+- ✔ `renders neutral not-found sanctuary title and classical description without echoing username`
 - ✔ `renders catalog navigation buttons with proper hrefs`
 - ✔ `renders gracefully without username parameter`
 
@@ -2197,9 +2207,10 @@
 </details>
 
 <details>
-<summary><b><code>src/proxy.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/proxy.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
+- ✔ `gracefully falls back to NextResponse.next when updateSession throws`
 - ✔ `exports valid matcher config`
 
 </details>

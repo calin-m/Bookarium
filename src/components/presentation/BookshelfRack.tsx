@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Sparkles, Plus, Edit2, Trash2, CheckCircle2, HardDriveDownload, Lock } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
@@ -201,8 +202,31 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   };
 
   return (
-    <div className="w-full space-y-8 py-6" data-testid="bookshelf-rack" ref={containerRef}>
-      {/* Cloud Bookshelf Header & Multi-Shelf Switcher */}
+    <div className="relative w-full py-6" data-testid="bookshelf-rack" ref={containerRef}>
+      {/* Sync Status Overlay Badge (Zero CLS Floating Pill) */}
+      <AnimatePresence>
+        {isSyncing && (
+          <motion.aside
+            initial={{ opacity: 0, y: -4, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="absolute top-0 right-2 sm:right-4 z-20 pointer-events-none"
+            role="status"
+            aria-live="polite"
+            aria-label="Cloud sync in progress"
+            data-testid="syncing-indicator"
+          >
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-background/90 dark:bg-card/90 backdrop-blur-md border border-primary/30 rounded-full shadow-xs text-[11px] font-mono text-primary animate-pulse">
+              <Sparkles className="w-3 h-3 text-primary shrink-0" />
+              <span>Syncing with Cloud Bookshelf...</span>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      <div className="w-full space-y-8">
+        {/* Cloud Bookshelf Header & Multi-Shelf Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-2">
         <div className="flex items-center gap-2 flex-wrap">
           {user && cloudBookshelves.length > 0 ? (
@@ -371,14 +395,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
         )}
       </div>
 
-      {/* Sync Status Badge */}
-      {isSyncing && (
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full w-fit text-[11px] font-mono text-primary animate-pulse">
-          <Sparkles className="w-3 h-3" />
-          <span>Syncing with Cloud Bookshelf...</span>
-        </div>
-      )}
-
       {/* Empty State vs Hardwood Shelf Rails */}
       {effectiveShelfBooks.length === 0 ? (
         <div className="text-center py-20 px-4 rounded-3xl border border-dashed border-border bg-card/40 backdrop-blur-xs max-w-lg mx-auto">
@@ -472,6 +488,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
           </div>
         ))
       )}
+      </div>
 
       {/* Mobile In-Shelf Quick-Action Centered Floating Modal */}
       {selectedMobileBook && (

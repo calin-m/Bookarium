@@ -92,7 +92,7 @@ describe('PublicProfileView', () => {
       />
     );
 
-    expect(screen.getByRole('region', { name: /private scholar sanctuary/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
     expect(screen.queryByText('Reading Consistency')).not.toBeInTheDocument();
   });
 

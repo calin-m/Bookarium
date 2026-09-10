@@ -84,6 +84,9 @@ export default function PublicScholarProfilePage() {
         if (!resolvedProfile || !resolvedProfile.is_public) {
           setProfile(null);
           setIsLoading(false);
+          if (typeof document !== 'undefined') {
+            document.title = 'Scholar Sanctuary Not Found • Bookarium';
+          }
           return;
         }
 
@@ -243,6 +246,9 @@ export default function PublicScholarProfilePage() {
       } catch {
         if (!isCancelled) {
           setProfile(null);
+          if (typeof document !== 'undefined') {
+            document.title = 'Scholar Sanctuary Not Found • Bookarium';
+          }
         }
       } finally {
         if (!isCancelled) {
@@ -287,7 +293,7 @@ export default function PublicScholarProfilePage() {
             bookshelves={bookshelves}
           />
         ) : (
-          <PrivateProfileNotice username={normalizedUsername} />
+          <PrivateProfileNotice />
         )}
       </main>
 

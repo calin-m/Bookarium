@@ -450,4 +450,25 @@ describe('useAuthStore', () => {
       expect(useAuthStore.getState().profile?.username).toBeNull();
     });
   });
+
+  describe('signOut', () => {
+    it('signs out from Supabase, clears user profile, flushes outbox, and cleanses local bookshelf', async () => {
+      const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+      const flushOutboxSpy = vi.spyOn(useBookshelfStore.getState(), 'flushOutbox').mockResolvedValue(undefined);
+      const clearBookshelfSpy = vi.spyOn(useBookshelfStore.getState(), 'clearBookshelf');
+
+      useAuthStore.setState({
+        user: { id: 'user-to-logout' } as any,
+        profile: { id: 'user-to-logout', display_name: 'Logged Out User' } as any,
+      });
+
+      await useAuthStore.getState().signOut();
+
+      expect(mockSignOut).toHaveBeenCalled();
+      expect(flushOutboxSpy).toHaveBeenCalledWith('user-to-logout');
+      expect(clearBookshelfSpy).toHaveBeenCalled();
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().profile).toBeNull();
+    });
+  });
 });

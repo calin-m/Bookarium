@@ -699,5 +699,26 @@ describe('BookshelfRack Component', () => {
     expect(buttons[1]).toBe(deleteBtn);
     expect(buttons[2]).toBe(downloadShelfBtn);
   });
+
+  describe('Syncing Status Overlay (Zero CLS)', () => {
+    it('does not render syncing indicator when isSyncing is false', () => {
+      useBookshelfStore.setState({ isSyncing: false });
+      render(<BookshelfRack books={mockBooks} />);
+
+      expect(screen.queryByTestId('syncing-indicator')).not.toBeInTheDocument();
+    });
+
+    it('renders floating syncing indicator with status role when isSyncing is true', () => {
+      useBookshelfStore.setState({ isSyncing: true });
+      render(<BookshelfRack books={mockBooks} />);
+
+      const indicator = screen.getByTestId('syncing-indicator');
+      expect(indicator).toBeInTheDocument();
+      expect(indicator).toHaveAttribute('role', 'status');
+      expect(indicator).toHaveTextContent(/syncing with cloud bookshelf/i);
+      expect(indicator.className).toContain('absolute');
+      expect(indicator.className).toContain('pointer-events-none');
+    });
+  });
 });
 

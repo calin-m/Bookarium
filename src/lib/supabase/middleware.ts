@@ -34,7 +34,11 @@ export const updateSession = async (request: NextRequest) => {
     },
   });
 
-  await supabase.auth.getUser();
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    // Non-blocking fallback: never fail route transitions if auth sync fails
+  }
 
   return supabaseResponse;
 };

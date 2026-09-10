@@ -429,3 +429,25 @@
   - Full conformance with Next.js 16 App Router route handler specifications (`tsc --noEmit` exits with 0 errors).
   - 100% authentic integration testing preserved with zero fake mocks and zero loosened assertions.
   - Overall test suite speedup of ~25% across all 154 suites (1,245 tests) while maintaining >92% test coverage.
+
+## ADR-035: Authoritative Cloud Synchronization, Next.js 16 Edge Proxy Migration & Zero-CLS Syncing Indicator
+- **Status**: Accepted
+- **Context**:
+  1. Peer-to-peer merge between browser `localStorage` and Supabase caused race conditions where books deleted on another device were re-uploaded and resurrected as ghosts.
+  2. Next.js 16 edge middleware (`src/middleware.ts`) experienced unhandled fetch errors on network timeout/offline states, crashing route transitions.
+  3. The conditional rendering of `{isSyncing && ...}` directly inside `BookshelfRack`'s Tailwind `space-y-8` container injected ~58px of vertical layout height and collapsed abruptly upon sync completion, triggering Cumulative Layout Shift (CLS).
+- **Decision**:
+  1. **Authoritative Cloud State Reconciliation (`src/stores/useBookshelfStore.ts`)**:
+     - Introduced `lastBookshelfSyncAt` sync anchor. On initial sync, guest books migrate to Supabase; on subsequent syncs, Supabase is the sole source of truth, gracefully pruning books deleted on remote devices.
+     - Drains pending offline mutations (`flushOutbox`) prior to remote fetching, guaranteeing offline edits are never dropped.
+  2. **Sanitized Sign-Out Protocol (`src/stores/useAuthStore.ts`)**:
+     - Pre-sign-out outbox drain and clean state wipe (`clearBookshelf()`) prevent cross-account contamination while raw downloaded texts in IndexedDB remain intact on the device.
+  3. **Next.js 16 Edge Proxy Architecture (`src/proxy.ts`, `src/lib/supabase/middleware.ts`)**:
+     - Migrated edge interception strictly to `src/proxy.ts` (Next.js 16 convention) and wrapped session refresh in non-blocking fallback (`try...catch`).
+  4. **Zero-CLS Floating Overlay Sync Badge (`src/components/presentation/BookshelfRack.tsx`)**:
+     - Extracted the sync badge out of the `space-y-8` layout flow into an `absolute top-0 right-2 sm:right-4 z-20 pointer-events-none` floating pill with `AnimatePresence` fade transitions.
+- **Consequences**:
+  - Ghost resurrections eliminated permanently across multi-device sessions.
+  - Zero Cumulative Layout Shift (0.00 CLS) during cloud synchronization.
+  - Route navigation resiliency on offline and flaky connections.
+

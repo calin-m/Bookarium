@@ -75,6 +75,17 @@ export function useOfflineBooks() {
         if (!text || text.trim().length === 0) throw new Error('Empty text received');
         await saveOfflineBook(book.id, book.title, text);
         await refreshOfflineIds();
+
+        try {
+          const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+          const store = useBookshelfStore.getState();
+          if (!store.isBookSaved(book.id)) {
+            await store.toggleSaveBook(book);
+          }
+        } catch {
+          // Non-blocking fallback
+        }
+
         return true;
       } catch {
         return false;

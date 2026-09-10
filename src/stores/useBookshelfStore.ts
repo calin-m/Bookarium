@@ -74,6 +74,7 @@ export interface BookshelfState {
   deletedBookIds: Record<number, string>;
   deletedFavoriteBookIds: Record<number, string>;
   lastFavoritesSyncAt: string | null;
+  lastBookshelfSyncAt: string | null;
 
   // Cloud State
   cloudBookshelves: Bookshelf[];
@@ -150,6 +151,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       deletedBookIds: {},
       deletedFavoriteBookIds: {},
       lastFavoritesSyncAt: null,
+      lastBookshelfSyncAt: null,
       cloudBookshelves: [],
       cloudBookshelfItems: [],
       activeBookshelfId: null,
@@ -398,6 +400,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           deletedBookIds: {},
           deletedFavoriteBookIds: {},
           lastFavoritesSyncAt: null,
+          lastBookshelfSyncAt: null,
           cloudBookshelves: [],
           activeBookshelfId: null,
           isSyncing: false,
@@ -588,21 +591,8 @@ export const useBookshelfStore = create<BookshelfState>()(
             const reconstructedBooks: GutendexBook[] = (items || []).map(toGutendexBookFromCloudRow);
 
             // Tombstone-aware merge: filter out remote items that have been deleted locally
-            const { deletedBookIds = {} } = get();
+            const { lastBookshelfSyncAt, deletedBookIds = {} } = get();
             const activeReconstructed = reconstructedBooks.filter((b) => !deletedBookIds[b.id]);
-
-            // Merge unique books (excluding any locally tombstoned items)
-            const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
-            const merged = [...activeReconstructed];
-            const unSyncedLocalBooks: GutendexBook[] = [];
-
-            for (const lb of localSaved) {
-              if (!merged.some((b) => b.id === lb.id)) {
-                merged.push(lb);
-                unSyncedLocalBooks.push(lb);
-              }
-            }
-            set({ savedBooks: merged });
 
             // Propagate deletions: if remote contains items that were tombstoned locally, remove them from cloud
             const itemsToDelete = (items || []).filter((item: BookshelfItem) => deletedBookIds[item.book_id]);
@@ -610,24 +600,51 @@ export const useBookshelfStore = create<BookshelfState>()(
               await supabase.from('bookshelf_items').delete().eq('id', delItem.id);
             }
 
-            // Bidirectional Sync: push local books missing from cloud to the database
-            if (unSyncedLocalBooks.length > 0 && currentDefaultShelf?.id) {
-              const inserts = unSyncedLocalBooks.map((b) =>
-                toCloudBookInsert(b, userId, currentDefaultShelf!.id)
-              );
+            let finalSavedBooks: GutendexBook[];
 
-              await supabase.from('bookshelf_items').upsert(inserts, {
-                onConflict: 'bookshelf_id,book_id',
-              });
+            if (!lastBookshelfSyncAt) {
+              // Initial sync (e.g. migrating guest session to authenticated account):
+              // Merge local guest books into remote books and upload unsynced ones
+              const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
+              const merged = [...activeReconstructed];
+              const unSyncedLocalBooks: GutendexBook[] = [];
 
-              const { data: updatedItems } = await supabase
-                .from('bookshelf_items')
-                .select('*')
-                .eq('user_id', userId);
-              if (updatedItems) {
-                set({ cloudBookshelfItems: updatedItems as BookshelfItem[] });
+              for (const lb of localSaved) {
+                if (!merged.some((b) => b.id === lb.id)) {
+                  merged.push(lb);
+                  unSyncedLocalBooks.push(lb);
+                }
               }
+              finalSavedBooks = merged;
+
+              // Bidirectional Sync: push local books missing from cloud to the database
+              if (unSyncedLocalBooks.length > 0 && currentDefaultShelf?.id) {
+                const inserts = unSyncedLocalBooks.map((b) =>
+                  toCloudBookInsert(b, userId, currentDefaultShelf!.id)
+                );
+
+                await supabase.from('bookshelf_items').upsert(inserts, {
+                  onConflict: 'bookshelf_id,book_id',
+                });
+
+                const { data: updatedItems } = await supabase
+                  .from('bookshelf_items')
+                  .select('*')
+                  .eq('user_id', userId);
+                if (updatedItems) {
+                  set({ cloudBookshelfItems: updatedItems as BookshelfItem[] });
+                }
+              }
+            } else {
+              // Device has previously synced: Cloud is authoritative for multi-device deletions.
+              // Items missing from cloud (and not tombstoned) were removed on another device.
+              finalSavedBooks = activeReconstructed;
             }
+
+            set({
+              savedBooks: finalSavedBooks,
+              lastBookshelfSyncAt: new Date().toISOString(),
+            });
           } else {
             // Create default 'General' shelf for user
             const { data: newDefault } = await supabase
@@ -648,25 +665,28 @@ export const useBookshelfStore = create<BookshelfState>()(
                 cloudBookshelfItems: [],
               });
 
-              const { deletedBookIds = {} } = get();
-              const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
-              if (localSaved.length > 0) {
-                const inserts = localSaved.map((b) =>
-                  toCloudBookInsert(b, userId, currentDefaultShelf!.id)
-                );
+              const { lastBookshelfSyncAt, deletedBookIds = {} } = get();
+              if (!lastBookshelfSyncAt) {
+                const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
+                if (localSaved.length > 0) {
+                  const inserts = localSaved.map((b) =>
+                    toCloudBookInsert(b, userId, currentDefaultShelf!.id)
+                  );
 
-                await supabase.from('bookshelf_items').upsert(inserts, {
-                  onConflict: 'bookshelf_id,book_id',
-                });
+                  await supabase.from('bookshelf_items').upsert(inserts, {
+                    onConflict: 'bookshelf_id,book_id',
+                  });
 
-                const { data: updatedItems } = await supabase
-                  .from('bookshelf_items')
-                  .select('*')
-                  .eq('user_id', userId);
-                if (updatedItems) {
-                  set({ cloudBookshelfItems: updatedItems as BookshelfItem[] });
+                  const { data: updatedItems } = await supabase
+                    .from('bookshelf_items')
+                    .select('*')
+                    .eq('user_id', userId);
+                  if (updatedItems) {
+                    set({ cloudBookshelfItems: updatedItems as BookshelfItem[] });
+                  }
                 }
               }
+              set({ lastBookshelfSyncAt: new Date().toISOString() });
             }
           }
 

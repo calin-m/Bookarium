@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Lock, BookOpen, ArrowLeft, Shield } from 'lucide-react';
+import { Compass, BookOpen, ArrowLeft } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { Button } from '@/components/ui/Button';
 
@@ -10,11 +10,11 @@ export interface PrivateProfileNoticeProps {
   username?: string;
 }
 
-export const PrivateProfileNotice: React.FC<PrivateProfileNoticeProps> = ({ username }) => {
+export const PrivateProfileNotice: React.FC<PrivateProfileNoticeProps> = () => {
   return (
     <div
       role="region"
-      aria-label="Private Scholar Sanctuary"
+      aria-label="Scholar Sanctuary Not Found"
       className="max-w-xl mx-auto my-12 px-4 text-center"
     >
       <div className="bg-card border border-border rounded-3xl p-8 sm:p-12 shadow-booksaw space-y-6 relative overflow-hidden">
@@ -22,26 +22,18 @@ export const PrivateProfileNotice: React.FC<PrivateProfileNoticeProps> = ({ user
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Lock Medallion */}
+        {/* Neutral Literary Medallion */}
         <div className="relative mx-auto w-16 h-16 rounded-2xl bg-muted/60 border border-border text-muted-foreground flex items-center justify-center shadow-inner">
-          <Lock className="w-8 h-8 text-primary/80" />
-          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-            <Shield className="w-3.5 h-3.5" />
-          </div>
+          <Compass className="w-8 h-8 text-primary/80" />
         </div>
 
         {/* Text Content */}
         <div className="space-y-2">
-          {username && (
-            <p className="font-mono text-xs text-primary font-bold tracking-wider uppercase">
-              @{username}
-            </p>
-          )}
           <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground">
-            Private Scholar Sanctuary
+            Scholar Sanctuary Not Found
           </h1>
           <p className="text-sm text-muted-foreground font-sans leading-relaxed max-w-md mx-auto">
-            This reader has chosen to keep their reading sanctuary private, or this scholar profile does not exist.
+            This scholar sanctuary does not exist or has not been made public by its owner.
           </p>
         </div>
 
