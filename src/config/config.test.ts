@@ -13,6 +13,7 @@ import {
   getBookPassages,
   getHourlyHeroBook,
   getDailyEditorialBook,
+  getJurisdictionSafeFeaturedBooks,
 } from './featured-books';
 import { LITERARY_QUOTES } from './literary-quotes';
 import { READER_THEMES, getReaderTheme } from './reader-themes';
@@ -129,6 +130,19 @@ describe('src/config configuration modules', () => {
 
       // Default timestamp works
       expect(getDailyEditorialBook()).toBeDefined();
+    });
+
+    it('filters out titles protected in Life + 100 countries (Mexico)', () => {
+      const mxBooks = getJurisdictionSafeFeaturedBooks('MX');
+      expect(mxBooks.some((b) => b.title === 'The Great Gatsby')).toBe(false);
+      expect(mxBooks.some((b) => b.title === 'The Adventures of Sherlock Holmes')).toBe(false);
+      expect(mxBooks.some((b) => b.title === 'Pride and Prejudice')).toBe(true);
+      expect(mxBooks.some((b) => b.title === 'Frankenstein')).toBe(true);
+    });
+
+    it('includes all featured books for US jurisdiction', () => {
+      const usBooks = getJurisdictionSafeFeaturedBooks('US');
+      expect(usBooks.length).toBe(FEATURED_HERO_BOOKS.length);
     });
   });
 

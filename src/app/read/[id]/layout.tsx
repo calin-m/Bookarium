@@ -7,7 +7,7 @@ import type { GutendexBook } from '@/types/book.types';
 
 interface ReaderLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ id: string }>;
+  params: Promise<any>;
 }
 
 const serverMetadataCache = new Map<number, GutendexBook>();

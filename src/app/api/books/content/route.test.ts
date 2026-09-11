@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
+import { clearBookMetadataCache } from './metadata-cache';
 import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
 import { sampleBookText } from '@/mocks/handlers';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
@@ -9,6 +10,7 @@ describe('GET /api/books/content', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     bookContentRateLimiter.reset();
+    clearBookMetadataCache();
   });
 
   it('should return 429 when client exceeds rate limits', async () => {
@@ -76,7 +78,88 @@ describe('GET /api/books/content', () => {
     expect(sanitizeUpstreamUrl('https://www.gutenberg.org/../../etc/passwd')).toBeNull();
   });
 
-  it('should fetch and return book text for valid id', async () => {
+  it('should return HTTP 451 Unavailable For Legal Reasons when book is protected in UK', async () => {
+    // Mock metadata for Agatha Christie
+    const christieMeta = {
+      id: 863,
+      title: 'The Mysterious Affair at Styles',
+      authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+      translators: [],
+      copyright: false,
+    };
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify(christieMeta), { status: 200 })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=863', {
+      headers: {
+        'x-vercel-ip-country': 'GB',
+      },
+    });
+
+    const res = await GET(req);
+    expect(res.status).toBe(451);
+    expect(res.headers.get('Vary')).toContain('x-vercel-ip-country');
+
+    const json = await res.json();
+    expect(json.country).toBe('GB');
+    expect(json.rule).toBe('LIFE_70');
+    expect(json.publicDomainYear).toBe(2047);
+    expect(json.restrictingDeathYear).toBe(1976);
+
+    fetchSpy.mockRestore();
+  });
+
+  it('should return HTTP 451 when book is protected in Mexico (Life + 100)', async () => {
+    const gatsbyMeta = {
+      id: 64317,
+      title: 'The Great Gatsby',
+      authors: [{ name: 'Fitzgerald, F. Scott', birth_year: 1896, death_year: 1940 }],
+      translators: [],
+      copyright: false,
+    };
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify(gatsbyMeta), { status: 200 })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=64317', {
+      headers: {
+        'x-vercel-ip-country': 'MX',
+      },
+    });
+
+    const res = await GET(req);
+    expect(res.status).toBe(451);
+    const json = await res.json();
+    expect(json.country).toBe('MX');
+    expect(json.rule).toBe('LIFE_100');
+    expect(json.publicDomainYear).toBe(2041);
+
+    fetchSpy.mockRestore();
+  });
+
+  it('should return HTTP 503 fail-closed when metadata cannot be retrieved for international user', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('Service Unavailable', { status: 503 })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=9999', {
+      headers: {
+        'x-vercel-ip-country': 'FR',
+      },
+    });
+
+    const res = await GET(req);
+    expect(res.status).toBe(503);
+    const json = await res.json();
+    expect(json.error).toContain('Unable to verify copyright clearance');
+
+    fetchSpy.mockRestore();
+  });
+
+  it('should fetch and return book text for valid public domain id in US', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValueOnce({
       ok: true,
       text: async () => sampleBookText,
@@ -87,11 +170,42 @@ describe('GET /api/books/content', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toContain('text/plain');
+    expect(res.headers.get('Vary')).toContain('x-vercel-ip-country');
     const text = await res.text();
     expect(text).toContain('Pride and Prejudice');
   });
 
-  it('should return 502 if upstream fails or times out', async () => {
+  it('should stream public domain book to GB user when metadata confirms death year <= 1955', async () => {
+    const austenMeta = {
+      id: 1342,
+      title: 'Pride and Prejudice',
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+      translators: [],
+      copyright: false,
+    };
+
+    const fetchSpy = vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify(austenMeta), { status: 200 })) // Metadata check
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => sampleBookText,
+      } as any); // Text stream
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
+      headers: {
+        'x-vercel-ip-country': 'GB',
+      },
+    });
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain('Pride and Prejudice');
+
+    fetchSpy.mockRestore();
+  });
+
+  it('should return 502 if upstream text mirrors fail or time out', async () => {
     vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Connection aborted'));
 
     const req = new NextRequest('http://localhost:3000/api/books/content?id=99999');
@@ -129,5 +243,3 @@ describe('GET /api/books/content', () => {
     expect(text).toContain('Pride and Prejudice');
   });
 });
-
-

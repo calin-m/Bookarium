@@ -81,12 +81,14 @@ export function toCanonicalBook(
     return { ...input };
   }
 
-  // Extract author list
+  // Extract author list and detailed lifespans
   let authors: string[] = [];
+  const authorDetails: Author[] = [];
   if (Array.isArray(input.authors)) {
     authors = input.authors.map((author: string | Author) => {
       if (typeof author === 'string') return normalizeAuthorName(author);
       if (author && typeof author === 'object' && 'name' in author) {
+        authorDetails.push(author as Author);
         return normalizeAuthorName(author.name);
       }
       return 'Anonymous';
@@ -95,6 +97,12 @@ export function toCanonicalBook(
   if (authors.length === 0) {
     authors = ['Anonymous'];
   }
+  if ('authorDetails' in input && Array.isArray(input.authorDetails)) {
+    authorDetails.push(...input.authorDetails);
+  }
+
+  const rawTranslators = 'translators' in input && Array.isArray(input.translators) ? input.translators : [];
+  const rawCopyright = 'copyright' in input ? input.copyright : undefined;
 
   const formats = 'formats' in input && input.formats ? input.formats : undefined;
 
@@ -125,6 +133,9 @@ export function toCanonicalBook(
     id: input.id ?? 0,
     title: cleanBookTitle(input.title) || 'Untitled',
     authors,
+    ...(authorDetails.length > 0 ? { authorDetails } : {}),
+    ...(rawTranslators.length > 0 ? { translators: rawTranslators } : {}),
+    ...(rawCopyright !== undefined ? { copyright: rawCopyright } : {}),
     subjects: Array.isArray(input.subjects) ? [...input.subjects] : [],
     languages: Array.isArray(input.languages) ? [...input.languages] : [],
     coverUrl,

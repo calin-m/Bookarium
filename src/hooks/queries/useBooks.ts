@@ -2,6 +2,8 @@ import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-quer
 import React, { useEffect } from 'react';
 import type { GutendexBook, GutendexResponse } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 
 export interface UseBooksParams {
   ids?: string | number;
@@ -23,10 +25,8 @@ export interface UseBooksOptions {
 export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexResponse> {
   const searchParams = new URLSearchParams();
 
-  // Only forward copyright if explicitly provided (rarely needed)
-  if (params.copyright !== undefined) {
-    searchParams.set('copyright', String(params.copyright));
-  }
+  // Always enforce upstream public domain clearance
+  searchParams.set('copyright', 'false');
 
   if (params.ids) {
     searchParams.set('ids', String(params.ids).trim());
@@ -101,11 +101,22 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
       throw new Error('Failed to fetch books: Invalid JSON response from server');
     }
 
-    const filteredResults = (data.results || []).filter((b: GutendexBook) => b.copyright !== true);
+    const clientCountry = useJurisdictionStore.getState().getEffectiveCountry() || 'US';
+    const originalResults = data.results || [];
+    const filteredResults = originalResults.filter((b: GutendexBook) => {
+      if (b.copyright !== true) {
+        const evaluation = isBookPublicDomainInJurisdiction(b, clientCountry);
+        return evaluation.isAllowed;
+      }
+      return false;
+    });
+    const totalFiltered = originalResults.length - filteredResults.length;
+    const adjustedCount = data.count !== undefined ? Math.max(0, data.count - totalFiltered) : filteredResults.length;
+
     return {
       ...data,
       results: filteredResults,
-      count: data.count !== undefined ? data.count : filteredResults.length,
+      count: adjustedCount,
       source: 'upstream',
     };
   } else {
@@ -132,7 +143,13 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
     } catch {
       throw new Error('Failed to fetch books: Invalid JSON response from server');
     }
-    const filteredResults = (data.results || []).filter((b: GutendexBook) => b.copyright !== true);
+    const filteredResults = (data.results || []).filter((b: GutendexBook) => {
+      if (b.copyright !== true) {
+        const evaluation = isBookPublicDomainInJurisdiction(b, 'US');
+        return evaluation.isAllowed;
+      }
+      return false;
+    });
     return {
       ...data,
       results: filteredResults,

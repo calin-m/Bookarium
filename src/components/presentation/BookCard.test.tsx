@@ -5,6 +5,7 @@ import { BookCard } from './BookCard';
 import { mockBooks } from '@/mocks/handlers';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -18,6 +19,11 @@ describe('BookCard component', () => {
     vi.clearAllMocks();
     useBookshelfStore.getState().clearBookshelf();
     useReaderStore.setState({ isOpen: false, currentBook: null });
+    useJurisdictionStore.setState({
+      country: 'US',
+      rule: 'US_PUBLIC_DOMAIN',
+      overrideCountry: null,
+    });
   });
 
   it('should render book title, author, and formats', () => {
@@ -255,5 +261,33 @@ describe('BookCard component', () => {
     fireEvent.mouseLeave(armedBtn);
     expect(screen.getByRole('button', { name: /Remove from favorites/i })).toBeInTheDocument();
     expect(useBookshelfStore.getState().isBookFavorite(book.id)).toBe(true);
+  });
+
+  it('renders Protected (GB) badge and disabled Restricted button when book is protected in UK', () => {
+    act(() => {
+      useJurisdictionStore.getState().setCountry('GB');
+    });
+
+    const christieBook: any = {
+      id: 863,
+      title: 'The Mysterious Affair at Styles',
+      authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+      translators: [],
+      subjects: ['Detective and mystery stories'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 500,
+    };
+
+    render(<BookCard book={christieBook} />);
+
+    expect(screen.getByText('Protected (GB)')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Read The Mysterious Affair at Styles/i })).not.toBeInTheDocument();
+    const restrictedBtn = screen.getByRole('button', { name: /is restricted in GB/i });
+    expect(restrictedBtn).toBeDisabled();
+    expect(restrictedBtn).toHaveTextContent('Restricted');
   });
 });

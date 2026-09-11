@@ -37,6 +37,103 @@ describe('GET /api/books route handler', () => {
     expect(json.count).toBeDefined();
     expect(json.source).toBe('upstream');
     expect(json.latencyMs).toBeDefined();
+    expect(json.clientCountry).toBe('US');
+    expect(json.jurisdictionRule).toBe('US_PUBLIC_DOMAIN');
+    expect(res.headers.get('Vary')).toContain('x-vercel-ip-country');
+  });
+
+  it('should forward copyright=false to upstream Gutendex API', async () => {
+    let capturedUrl = '';
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementationOnce(async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify({ count: 1, results: [] }), { status: 200 });
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/books?search=Austen');
+    await GET(req);
+
+    expect(capturedUrl).toContain('copyright=false');
+    fetchSpy.mockRestore();
+  });
+
+  it('should filter out authors who died within Life + 70 when requested from GB', async () => {
+    const mockResults = [
+      {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        copyright: false,
+      },
+      {
+        id: 863,
+        title: 'The Mysterious Affair at Styles',
+        authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+        translators: [],
+        copyright: false,
+      },
+    ];
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 2, results: mockResults }), { status: 200 })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/books?search=detective', {
+      headers: {
+        'x-vercel-ip-country': 'GB',
+      },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.clientCountry).toBe('GB');
+    expect(json.jurisdictionRule).toBe('LIFE_70');
+    expect(json.totalFiltered).toBe(1);
+    expect(json.results).toHaveLength(1);
+    expect(json.results[0].title).toBe('Pride and Prejudice');
+
+    fetchSpy.mockRestore();
+  });
+
+  it('should filter out authors who died within Life + 100 when requested from Mexico (MX)', async () => {
+    const mockResults = [
+      {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        copyright: false,
+      },
+      {
+        id: 64317,
+        title: 'The Great Gatsby',
+        authors: [{ name: 'Fitzgerald, F. Scott', birth_year: 1896, death_year: 1940 }],
+        translators: [],
+        copyright: false,
+      },
+    ];
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 2, results: mockResults }), { status: 200 })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/books?search=gatsby', {
+      headers: {
+        'x-vercel-ip-country': 'MX',
+      },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.clientCountry).toBe('MX');
+    expect(json.jurisdictionRule).toBe('LIFE_100');
+    expect(json.totalFiltered).toBe(1);
+    expect(json.results).toHaveLength(1);
+    expect(json.results[0].title).toBe('Pride and Prejudice');
+
+    fetchSpy.mockRestore();
   });
 
   it('should pass topic, language, page, era, sort, and mime_type query parameters', async () => {

@@ -3,6 +3,7 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { useBooks, fetchBooks, usePrefetchNextPage } from './useBooks';
+import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -207,5 +208,44 @@ describe('useBooks hook', () => {
 
     await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Invalid JSON response');
     fetchSpy.mockRestore();
+  });
+
+  it('should filter protected books during Strategy 2 fallback for international users', async () => {
+    useJurisdictionStore.getState().setCountry('GB');
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      if (String(url).includes('/api/books')) {
+        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
+      }
+      return new Response(
+        JSON.stringify({
+          count: 2,
+          results: [
+            {
+              id: 1342,
+              title: 'Pride and Prejudice',
+              authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+              translators: [],
+              copyright: false,
+            },
+            {
+              id: 863,
+              title: 'The Mysterious Affair at Styles',
+              authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+              translators: [],
+              copyright: false,
+            },
+          ],
+        }),
+        { status: 200 }
+      );
+    });
+
+    const data = await fetchBooks({ search: 'detective' });
+    expect(data.results).toHaveLength(1);
+    expect(data.results[0].title).toBe('Pride and Prejudice');
+
+    fetchSpy.mockRestore();
+    useJurisdictionStore.getState().resetOverride();
   });
 });

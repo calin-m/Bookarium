@@ -546,3 +546,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-033: Opt-In Public Scholar Profiles, Zero-PII Privacy Architecture & Dynamic Social Metadata**
 - **ADR-034: Next.js 16 Route Handler Strict Typing, SSRF Validation Separation & Test Performance Architecture**
 - **ADR-035: Authoritative Cloud Synchronization, Next.js 16 Edge Proxy Migration & Zero-CLS Syncing Indicator**
+- **ADR-036: Airtight Jurisdictional Copyright Governance, Regional Streaming Gatekeeper (HTTP 451) & Edge Geo-Context Architecture**
