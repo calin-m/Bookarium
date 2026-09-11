@@ -620,15 +620,21 @@ ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;
 CREATE OR REPLACE FUNCTION public.books_search_vector_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = ''
 AS $$
 BEGIN
-  NEW.search_vector := to_tsvector(
-    'english'::regconfig,
-    coalesce(NEW.title, '') || ' ' || coalesce(array_to_string(NEW.subjects, ' '), '')
+  NEW.search_vector := pg_catalog.to_tsvector(
+    'pg_catalog.english'::pg_catalog.regconfig,
+    pg_catalog.coalesce(NEW.title, '') || ' ' || pg_catalog.coalesce(pg_catalog.array_to_string(NEW.subjects, ' '), '')
   );
   RETURN NEW;
 END;
 $$;
+
+-- Security hardening: Trigger functions should never be executable via PostgREST RPC
+REVOKE EXECUTE ON FUNCTION public.books_search_vector_trigger() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.books_search_vector_trigger() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.books_search_vector_trigger() FROM authenticated;
 
 DROP TRIGGER IF EXISTS trigger_books_search_vector ON public.books;
 CREATE TRIGGER trigger_books_search_vector

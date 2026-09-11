@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-11T17:11:17.958Z",
+  "timestamp": "2026-09-11T17:19:10.342Z",
   "status": "PASSED",
   "testSummary": {
     "totalSuites": 161,
@@ -24,8 +24,8 @@
       "totalTests": 1378,
       "metrics": {
         "lines": 92.74,
-        "statements": 91.23,
-        "functions": 88.97,
+        "statements": 91.25,
+        "functions": 89.03,
         "branches": 81.68
       }
     },

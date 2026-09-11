@@ -376,7 +376,7 @@ Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified 
 
 | Database Object | Type | Target Table | Functionality & Security Scope |
 | :--- | :--- | :--- | :--- |
-| **`public.books_search_vector_trigger`** | Trigger / Function | `public.books` | Automatically generates and updates `search_vector tsvector` from book title and subjects on insert/update for fast GIN full-text search. |
+| **`public.books_search_vector_trigger`** | Trigger / Function | `public.books` | Automatically generates and updates `search_vector tsvector` from title and subjects on insert/update (execution revoked from public/anon/authenticated; immutable search path). |
 | **`idx_books_search_vector`** | GIN Index | `public.books` | Full-text search index over `search_vector` TSVECTOR for rapid multi-word search matching. |
 | **`idx_books_languages`** | GIN Index | `public.books` | Inverted index for array containment queries on ISO 639 language codes (`languages && ARRAY[...]`). |
 | **`idx_books_subjects`** | GIN Index | `public.books` | Inverted index for subject facet queries (`subjects && ARRAY[...]`). |
