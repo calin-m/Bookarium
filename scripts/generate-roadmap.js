@@ -154,16 +154,64 @@ const ROADMAP_MILESTONES = [
   },
   {
     id: 'm4',
-    title: 'Milestone 4: Literary Accolades & Public Profiles',
-    version: 'Target: v2.1.0',
-    badge: 'https://img.shields.io/badge/Milestone-v2.1.0-blueviolet?style=flat-square',
-    description: 'Gamified ex-libris accolades, tactile bookplate achievements, and opt-in public scholar profile pages.',
+    title: 'Milestone 4: Literary Accolades & Personal Honors',
+    version: 'v2.1.0 - v2.3.0 (Completed)',
+    badge: 'https://img.shields.io/badge/Milestone-v2.3.0-blueviolet?style=flat-square',
+    description: 'Gamified ex-libris accolades, tactile bookplate achievements, 4-tier challenge compendium, and personal showcase pinning.',
     features: [
       {
         title: 'Deterministic Literary Accolades & Badge Engine',
         description: 'Ex-libris bookplate badges (Seven-Day Sage, Ancient Antiquarian, Century Voyager, Commonplace Scholar) unlocked via pure client-side reading telemetry with tactile unlock celebrations.',
         check: () => fileExists('src/lib/accolades-engine.ts') || fileContains('src/components/account/AccountAccoladesCard.tsx', 'accolade'),
       },
+      {
+        title: 'Canonical 4-Tier Milestone Accolades Ladder',
+        description: 'Compendium ladder evaluated deterministically against completed volumes: Bibliophile Novice (Bronze), Canonical Scholar (Silver), Master of the Canon (Gold), and The Laureate\'s Crown (Masterwork).',
+        check: () => fileExists('src/config/accolades-config.ts') && fileContains('src/config/accolades-config.ts', 'ACCOLADE_TIER_CONFIG'),
+      },
+      {
+        title: 'Ex-Libris Bookplate Cards & Showcase Pinning',
+        description: 'Tactile woodcut-bordered bookplates with desktop 3D perspective tilt, specular sheen gradients, spring physics, and personal 3-plate showcase pinning synchronized to `public.user_accolades`.',
+        check: () => fileExists('src/components/accolades/ExLibrisBookplate.tsx') && fileExists('src/stores/useAccoladesStore.ts'),
+      },
+    ],
+  },
+  {
+    id: 'm5',
+    title: 'Milestone 5: Autonomous Gutenberg Catalog & Self-Hosted Search Engine',
+    version: 'v2.5.0 (Completed)',
+    badge: 'https://img.shields.io/badge/Milestone-v2.5.0-teal?style=flat-square',
+    description: 'Self-hosted PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, sub-50ms single-book lookups and ~1–2s catalog page queries, automated weekly synchronization, and multi-tier content streaming.',
+    features: [
+      {
+        title: 'Self-Hosted PostgreSQL Catalog (`public.books`) with GIN Search',
+        description: 'Dedicated database table storing 78,000+ public domain volumes with automated `search_vector` GIN indexing, author lifespan bounds for sub-50ms single-book international copyright filtering, and zero-egress catalog searches.',
+        check: () => fileContains('supabase/schema.sql', 'CREATE TABLE IF NOT EXISTS public.books') && fileExists('src/lib/catalog/supabase-provider.ts'),
+      },
+      {
+        title: 'Streaming Catalog Ingestion Engine (`scripts/sync-gutenberg-catalog.js`)',
+        description: 'Zero-dependency RFC 4180 streaming CSV gunzip pipeline streaming Project Gutenberg\'s official `pg_catalog.csv.gz` directly into Supabase with adaptive timeout division and idempotent batch upserts.',
+        check: () => fileExists('scripts/sync-gutenberg-catalog.js') && fileContains('scripts/sync-gutenberg-catalog.js', 'pg_catalog.csv.gz'),
+      },
+      {
+        title: 'Automated Scheduled Weekly Sync (`.github/workflows/catalog-sync.yml`)',
+        description: 'Scheduled GitHub Actions cron workflow updating newly added titles every Sunday at 02:00 UTC, acting as an automated keep-alive heartbeat for the Supabase database instance.',
+        check: () => fileExists('.github/workflows/catalog-sync.yml') && fileContains('.github/workflows/catalog-sync.yml', 'sync-gutenberg-catalog.js'),
+      },
+      {
+        title: 'Dual-Provider Catalog Seam & Strangler Fig Fallback',
+        description: 'Unified `ICatalogProvider` seam (`src/lib/catalog/`) probing Supabase PostgreSQL as primary provider (~1–2s catalog / <50ms single-book) with seamless fallback to Gutendex when unseeded, offline, or experiencing network errors.',
+        check: () => fileExists('src/lib/catalog/supabase-provider.ts') && fileContains('src/app/api/books/route.ts', 'supabaseCatalogProvider'),
+      },
+    ],
+  },
+  {
+    id: 'm6',
+    title: 'Milestone 6: Public Scholar Profiles & Social Portability',
+    version: 'Target: v2.6.0',
+    badge: 'https://img.shields.io/badge/Milestone-v2.6.0-blueviolet?style=flat-square',
+    description: 'Opt-in public scholar profile pages, reader biographies, and shareable reading cards for social platforms.',
+    features: [
       {
         title: 'Opt-In Public Scholar Profiles (`/u/[username]`)',
         description: 'Dedicated public profile page showcasing reader biography, public bookshelves, reading challenge progress, and pinned accolade badges with strict privacy toggles (Public vs Private).',
@@ -177,10 +225,10 @@ const ROADMAP_MILESTONES = [
     ],
   },
   {
-    id: 'm5',
-    title: 'Milestone 5: Community Hub & Collective Reading',
-    version: 'Target: v2.2.0',
-    badge: 'https://img.shields.io/badge/Milestone-v2.2.0-indigo?style=flat-square',
+    id: 'm7',
+    title: 'Milestone 7: Community Hub & Collective Reading',
+    version: 'Target: v2.7.0',
+    badge: 'https://img.shields.io/badge/Milestone-v2.7.0-indigo?style=flat-square',
     description: 'Shared literary agora, community volume reviews, public commonplace quote discussions, and reader circles.',
     features: [
       {
@@ -280,7 +328,7 @@ ${renderProgressBar(totalCompleted, totalFeatures)}
 
 | Proposed Vector | Status | Architectural Rationale |
 |---|---|---|
-| **Supabase \`api_cache\` Table** | 🚫 **Excluded (Redundant)** | Our **Vercel Edge Cache** (\`stale-while-revalidate\`) and in-memory rate limiter already deliver **15–40ms global cached responses** with zero database egress and zero schema migrations. Storing external API JSON in Postgres would introduce redundant queries and cloud costs. |
+| **Ephemeral Raw API JSON Cache** | 🚫 **Excluded (Architectural Decision ADR-038)** | Storing raw third-party JSON blobs in Postgres was rejected in favor of an authoritative, structured \`public.books\` PostgreSQL catalog with GIN indexing, precomputed author lifespans, and streaming bulk ingestion, backed by Vercel Edge caching (\`s-maxage=120, stale-while-revalidate=600\`). |
 | **Proprietary Third-Party TTS** | 🚫 **Excluded (Keyless Policy)** | Paid cloud TTS APIs (ElevenLabs, Google Cloud TTS) violate **Rule 4 (Zero API Key Requirement)**. We strictly use native browser \`window.speechSynthesis\` for zero-cost, privacy-first read-aloud functionality. |
 
 ---
