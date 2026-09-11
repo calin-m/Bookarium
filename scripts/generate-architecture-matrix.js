@@ -146,7 +146,8 @@ function generateMarkdown() {
     '',
     '    subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]',
     '        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Cookie Stamping)"]',
-    '        ProxyBooks["GET /api/books\\n(SWR 120s Cache, Latency Tracking, Rate Limit, Copyright Filter)"]',
+    '        ProxyBooks["GET /api/books\\n(SWR 120s Cache, Latency Tracking, Rate Limit, Seam Controller)"]',
+    '        CatalogSeam["Catalog Seam & Providers (src/lib/catalog/)\\n(query-parser.ts, gutendex-provider.ts)"]',
     '        ProxyContent["GET /api/books/content\\n(Unabridged Text Stream, Anti-SSRF, HTTP 451 Gatekeeper)"]',
     '        ProxyTranslate["POST /api/translate\\n(Neural MT Proxy, 40+ Languages)"]',
     '        LayoutServer["Server Layout (/read/[id])\\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]',
@@ -179,8 +180,9 @@ function generateMarkdown() {
     '    ',
     '    Grid --> QueryBooks',
     '    QueryBooks --> ProxyBooks',
-    '    ProxyBooks --> EngineCore',
-    '    ProxyBooks --> Gutendex',
+    '    ProxyBooks --> CatalogSeam',
+    '    CatalogSeam --> EngineCore',
+    '    CatalogSeam --> Gutendex',
     '    QueryBooks -.->|Client Failover on 504| Gutendex',
     '    ',
     '    ReaderPage --> QueryContent',
@@ -356,6 +358,8 @@ function generateMarkdown() {
       'Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions.',
     'copyright-engine':
       'Multi-jurisdictional copyright engine evaluating public domain status across US, EU/Berne (Life + 70), Mexico (Life + 100), and Colombia/Spain (Life + 80), with joint authorship (Art. 7bis), translator protection (Art. 2(3)), and longevity heuristics.',
+    'gutendex-provider':
+      'Upstream Gutendex REST catalog provider implementing ICatalogProvider with 15s timeout control, error mapping, and jurisdictional copyright filtering.',
     'gutenberg-parser':
       'Root domain facade barrel re-exporting all Gutenberg segmentation, pagination, reflow, and passage extraction subsystems.',
     index:
@@ -380,6 +384,8 @@ function generateMarkdown() {
       'IndexedDB storage abstraction providing offline book content caching, quota calculation, and LRU eviction.',
     password:
       'Cryptographically secure password generation and multi-factor entropy evaluation engine.',
+    'query-parser':
+      'Canonical query parameter extractor and sanitizer for catalog queries, normalizing whitespace, pagination, author lifespans, and edge geo-country fallback cascades.',
     'rate-limiter':
       'In-memory sliding-window rate limiter with burst mitigation for API routes.',
     'reader-annotator':

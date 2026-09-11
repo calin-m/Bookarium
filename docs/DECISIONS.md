@@ -477,3 +477,26 @@
   - 100% legal compliance across all global jurisdictions.
   - Zero cross-border cache leakage through IndexedDB offline storage or CDN poisoning.
   - Full conformance with Next.js 16 App Router compiler validation.
+
+## ADR-037: Self-Hosted Supabase PostgreSQL Catalog via Strangler Fig Pattern (Phase 1: Provider Seam Refactoring)
+- **Status**: Accepted
+- **Context**:
+  1. Bookarium currently relies on the public Gutendex REST API for catalog metadata queries, author lifespans, and book discovery. While open-source and free, external public API mirrors pose availability vulnerabilities (e.g. 504 gateway timeouts under peak load) and lack support for custom database indexes or direct SQL search capabilities.
+  2. The long-term architecture envisions a self-hosted Supabase PostgreSQL catalog (`public.books`) alongside Gutendex using the Strangler Fig pattern.
+  3. Mutating database schemas or writing bulk ingestion scripts before decoupling the API route handler introduces regression risks and risks breaking client-side data contracts.
+- **Decision**:
+  1. **Canonical Catalog Types (`src/types/catalog.types.ts`)**:
+     - Define `CatalogQueryOptions`, `CatalogQueryResult`, `CatalogProviderError`, and the swappable `ICatalogProvider` contract (`searchBooks`, `isHealthy`).
+  2. **Query Parsing & Normalization Seam (`src/lib/catalog/query-parser.ts`)**:
+     - Decouple parameter extraction, input sanitization (< 2 char query defense, whitespace collapse, numeric constraints), and edge geo-country fallback cascades (`x-vercel-ip-country` $\to$ cookie $\to$ dev query override) from the route handler into an isolated, unit-tested module.
+  3. **Gutendex Provider Implementation (`src/lib/catalog/gutendex-provider.ts`)**:
+     - Encapsulate upstream REST communication, 15-second AbortController timeout management, upstream error status mapping (400, 502, 504), and in-memory jurisdictional copyright evaluation (`isBookPublicDomainInJurisdiction`) behind `ICatalogProvider`.
+  4. **Route Handler Modernization (`src/app/api/books/route.ts`)**:
+     - Refactor the route into a lean controller (~70 lines) managing sliding-window rate limiting, delegating queries to `parseCatalogQuery` and `gutendexProvider.searchBooks`, and returning standardized cached JSON responses with regional `Vary` headers.
+  5. **100% Contract & Backward Compatibility Parity**:
+     - Retain exact JSON response shapes, error contracts, status codes, and HTTP cache headers (`Vary: x-vercel-ip-country, Accept-Encoding`, `Cache-Control: public, s-maxage=120, stale-while-revalidate=600`) across all 157 test suites.
+- **Consequences**:
+  - Full architectural decoupling of catalog query parsing, upstream transport, error translation, and HTTP delivery.
+  - Establishes a verified, swappable seam paving the way for Phase 2 (`public.books` table schema, seeding, and `SupabaseCatalogProvider`) with zero downtime and zero breaking changes.
+  - 100% test pass rate maintained across all unit and route integration test suites.
+

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 11 Sep 2026 10:02:14 GMT  
+**Last Generated**: Fri, 11 Sep 2026 11:07:59 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 157 passed  
-**Total Verified Tests**: 1301 passed  
+**Total Test Suites**: 160 passed  
+**Total Verified Tests**: 1328 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **157/157 test suites passed** (1301 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **160/160 test suites passed** (1328 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 36 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 37 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.67%** (6338/6839) — *Target: $ge$ 80%*
-- **Statements**: **91.1%** (6855/7524) — *Target: $ge$ 80%*
-- **Functions**: **88.86%** (1525/1716) — *Target: $ge$ 80%*
-- **Branches**: **81.43%** (5792/7112) — *Target: $ge$ 80%*
+- **Lines**: **92.7%** (6371/6872) — *Target: $ge$ 80%*
+- **Statements**: **91.17%** (6890/7557) — *Target: $ge$ 80%*
+- **Functions**: **88.9%** (1530/1721) — *Target: $ge$ 80%*
+- **Branches**: **81.57%** (5838/7157) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (157 Suites / 1301 Tests)
+## 🧪 Comprehensive Test Suite Catalog (160 Suites / 1328 Tests)
 
-### 🚀 App Routes & Pages (13 Suites · 134 Tests)
+### 🚀 App Routes & Pages (14 Suites · 146 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (5 tests)</summary>
@@ -245,6 +245,24 @@
 - ✔ `persists authentic resolved book metadata to recentBooks and warms reader store on load`
 - ✔ `synchronizes document.title with the authentic resolved book title and author`
 - ✔ `renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction`
+
+</details>
+
+<details>
+<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (12 tests)</summary>
+
+- ✔ `clears all cached items from serverMetadataCache`
+- ✔ `returns true when rsc header is 1`
+- ✔ `returns true when next-router-state-tree is present`
+- ✔ `returns true when next-router-prefetch is present`
+- ✔ `returns true when accept header includes text/x-component`
+- ✔ `returns false for standard SSR page loads`
+- ✔ `returns false when headers() throws`
+- ✔ `returns null for non-numeric or falsy book IDs`
+- ✔ `returns cached book immediately if present in serverMetadataCache`
+- ✔ `fetches upstream book and populates serverMetadataCache`
+- ✔ `returns null on upstream fetch error or 404`
+- ✔ `returns null on network failure / exception`
 
 </details>
 
@@ -1092,7 +1110,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (24 Suites · 239 Tests)
+### 📚 Gutenberg Parsers & Metadata (26 Suites · 254 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1170,6 +1188,33 @@
 - ✔ `evicts the least recently used item when maxEntries is exceeded`
 - ✔ `overwriting an existing key updates its value and recency without exceeding max size`
 - ✔ `supports has, delete, and clear operations`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/catalog/gutendex-provider.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `has name `
+- ✔ `searches books, enforces copyright=false, and calculates latency`
+- ✔ `applies jurisdictional filtering when queried from GB`
+- ✔ `throws CatalogProviderError with status 400 on upstream bad request`
+- ✔ `throws CatalogProviderError with status 502 on network failure`
+- ✔ `throws CatalogProviderError with status 504 on request timeout`
+- ✔ `throws CatalogProviderError with status 502 on invalid non-JSON body`
+- ✔ `checks isHealthy via HEAD request`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/catalog/query-parser.test.ts</code></b> (7 tests)</summary>
+
+- ✔ `defaults to safe base values when no query parameters are provided`
+- ✔ `normalizes whitespace in search query and trims input`
+- ✔ `drops single-character search queries to protect upstream API`
+- ✔ `parses valid numeric page and limit while defaulting invalid values`
+- ✔ `parses author year bounds, sort directions, and mime_type`
+- ✔ `parses comma-separated languages into string array`
+- ✔ `resolves country code through the priority cascade`
 
 </details>
 
