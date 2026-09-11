@@ -96,6 +96,45 @@ describe('GET /api/books route handler', () => {
     fetchSpy.mockRestore();
   });
 
+  it('should filter out protected authors in local development via ?country=GB query parameter without headers', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+
+    const mockResults = [
+      {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        copyright: false,
+      },
+      {
+        id: 863,
+        title: 'The Mysterious Affair at Styles',
+        authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+        translators: [],
+        copyright: false,
+      },
+    ];
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ count: 2, results: mockResults }), { status: 200 })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/books?search=detective&country=GB');
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.clientCountry).toBe('GB');
+    expect(json.jurisdictionRule).toBe('LIFE_70');
+    expect(json.totalFiltered).toBe(1);
+    expect(json.results).toHaveLength(1);
+    expect(json.results[0].title).toBe('Pride and Prejudice');
+
+    fetchSpy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
   it('should filter out authors who died within Life + 100 when requested from Mexico (MX)', async () => {
     const mockResults = [
       {

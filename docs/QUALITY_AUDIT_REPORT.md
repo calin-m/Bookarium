@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 11 Sep 2026 09:47:55 GMT  
+**Last Generated**: Fri, 11 Sep 2026 10:02:14 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 157 passed  
-**Total Verified Tests**: 1299 passed  
+**Total Verified Tests**: 1301 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **157/157 test suites passed** (1299 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **157/157 test suites passed** (1301 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 36 Architectural Decision Records validated |
@@ -32,9 +32,9 @@
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (157 Suites / 1299 Tests)
+## 🧪 Comprehensive Test Suite Catalog (157 Suites / 1301 Tests)
 
-### 🚀 App Routes & Pages (13 Suites · 132 Tests)
+### 🚀 App Routes & Pages (13 Suites · 134 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (5 tests)</summary>
@@ -66,7 +66,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -74,6 +74,7 @@
 - ✔ `should validate official Gutenberg upstream URLs as safe and sanitize them`
 - ✔ `should reject path traversal attempts in upstream URLs`
 - ✔ `should return HTTP 451 Unavailable For Legal Reasons when book is protected in UK`
+- ✔ `should return HTTP 451 in local development via ?country=GB query parameter without headers`
 - ✔ `should return HTTP 451 when book is protected in Mexico (Life + 100)`
 - ✔ `should return HTTP 503 fail-closed when metadata cannot be retrieved for international user`
 - ✔ `should fetch and return book text for valid public domain id in US`
@@ -100,12 +101,13 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `should return 429 when client exceeds max request rate limit`
 - ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
 - ✔ `should forward copyright=false to upstream Gutendex API`
 - ✔ `should filter out authors who died within Life + 70 when requested from GB`
+- ✔ `should filter out protected authors in local development via ?country=GB query parameter without headers`
 - ✔ `should filter out authors who died within Life + 100 when requested from Mexico (MX)`
 - ✔ `should pass topic, language, page, era, sort, and mime_type query parameters`
 - ✔ `should ignore single-character search queries to protect upstream API`
