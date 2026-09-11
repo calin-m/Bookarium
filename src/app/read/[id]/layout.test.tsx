@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { headers } from 'next/headers';
-import BookReaderLayout, {
-  generateMetadata,
+import BookReaderLayout, { generateMetadata } from './layout';
+import {
   clearServerMetadataCache,
   isClientSideNavigation,
-} from './layout';
+} from './reader-layout-utils';
 
 vi.mock('next/headers', () => ({
   headers: vi.fn().mockResolvedValue(new Headers()),

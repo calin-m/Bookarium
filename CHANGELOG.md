@@ -547,3 +547,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-034: Next.js 16 Route Handler Strict Typing, SSRF Validation Separation & Test Performance Architecture**
 - **ADR-035: Authoritative Cloud Synchronization, Next.js 16 Edge Proxy Migration & Zero-CLS Syncing Indicator**
 - **ADR-036: Airtight Jurisdictional Copyright Governance, Regional Streaming Gatekeeper (HTTP 451) & Edge Geo-Context Architecture**
+- **ADR-037: Self-Hosted Supabase PostgreSQL Catalog via Strangler Fig Pattern (Phase 1: Provider Seam Refactoring)**

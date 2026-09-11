@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-09-11`  
-> **Topology Health**: `168` Modules Analyzed • `556` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `172` Modules Analyzed • `567` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -69,7 +69,8 @@ flowchart TD
 
     subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]
         RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Cookie Stamping)"]
-        ProxyBooks["GET /api/books\n(SWR 120s Cache, Latency Tracking, Rate Limit, Copyright Filter)"]
+        ProxyBooks["GET /api/books\n(SWR 120s Cache, Latency Tracking, Rate Limit, Seam Controller)"]
+        CatalogSeam["Catalog Seam & Providers (src/lib/catalog/)\n(query-parser.ts, gutendex-provider.ts)"]
         ProxyContent["GET /api/books/content\n(Unabridged Text Stream, Anti-SSRF, HTTP 451 Gatekeeper)"]
         ProxyTranslate["POST /api/translate\n(Neural MT Proxy, 40+ Languages)"]
         LayoutServer["Server Layout (/read/[id])\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]
@@ -102,8 +103,9 @@ flowchart TD
     
     Grid --> QueryBooks
     QueryBooks --> ProxyBooks
-    ProxyBooks --> EngineCore
-    ProxyBooks --> Gutendex
+    ProxyBooks --> CatalogSeam
+    CatalogSeam --> EngineCore
+    CatalogSeam --> Gutendex
     QueryBooks -.->|Client Failover on 504| Gutendex
     
     ReaderPage --> QueryContent
@@ -297,7 +299,7 @@ Zustand client-side state stores programmatically verified across **9 Persistent
 
 ## 🧠 Domain Engines & Pure Computational Utilities
 
-Pure business logic, historical engines, and layout algorithms verified across **28 Domain Modules** using Babel AST:
+Pure business logic, historical engines, and layout algorithms verified across **30 Domain Modules** using Babel AST:
 
 | Engine / Utility | Subsystem / Layer | Source File | Primary Exported Primitives | Architectural Responsibility |
 | :--- | :--- | :--- | :--- | :--- |
@@ -306,6 +308,8 @@ Pure business logic, historical engines, and layout algorithms verified across *
 | **`api-utils`** | Core Domain | [`src/lib/api-utils.ts`](src/lib/api-utils.ts) | `RateLimitInfo`, `getClientIp`, `createRateLimitErrorResponse` | Server-side API route helpers, IP address extraction, and standardized rate limit error response generation. |
 | **`book-metadata`** | Core Domain | [`src/lib/book-metadata.ts`](src/lib/book-metadata.ts) | `ResolvedBookIdentity`, `ResolveBookMetadataParams`, `cleanBookTitle`, `isPlaceholderAuthor`, `isPlaceholderTitle` _(+1 more)_ | Author and title cleaning, placeholder author heuristics, and defensive editorial metadata normalization. |
 | **`cache`** | Core Domain | [`src/lib/cache.ts`](src/lib/cache.ts) | `SimpleLRUCache` | Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions. |
+| **`gutendex-provider`** | Catalog | [`src/lib/catalog/gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts) | `GutendexCatalogProvider`, `gutendexProvider` | Upstream Gutendex REST catalog provider implementing ICatalogProvider with 15s timeout control, error mapping, and jurisdictional copyright filtering. |
+| **`query-parser`** | Catalog | [`src/lib/catalog/query-parser.ts`](src/lib/catalog/query-parser.ts) | `parseCatalogQuery` | Canonical query parameter extractor and sanitizer for catalog queries, normalizing whitespace, pagination, author lifespans, and edge geo-country fallback cascades. |
 | **`copyright-engine`** | Core Domain | [`src/lib/copyright-engine.ts`](src/lib/copyright-engine.ts) | `JurisdictionRule`, `CopyrightEvaluationResult`, `EU_MEMBER_STATES`, `LIFE_70_COUNTRIES`, `LIFE_100_COUNTRIES` _(+7 more)_ | Multi-jurisdictional copyright engine evaluating public domain status across US, EU/Berne (Life + 70), Mexico (Life + 100), and Colombia/Spain (Life + 80), with joint authorship (Art. 7bis), translator protection (Art. 2(3)), and longevity heuristics. |
 | **`gutenberg-parser`** | Core Domain | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | `* (./gutenberg)` | Root domain facade barrel re-exporting all Gutenberg segmentation, pagination, reflow, and passage extraction subsystems. |
 | **`index`** | Gutenberg | [`src/lib/gutenberg/index.ts`](src/lib/gutenberg/index.ts) | `* (./types)`, `* (./reflow)`, `* (./pagination)`, `* (./metadata)`, `* (./segmentation)` _(+1 more)_ | Gutenberg subsystem barrel aggregating types, reflow, pagination, metadata, segmentation, and passage algorithms. |
@@ -376,7 +380,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts) | `config/api-endpoints`, `config/site-config`, `lib/copyright-engine` | `route.ts` | Production Module |
 | [`route.ts`](src/app/api/books/content/route.ts) | `config/site-config`, `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `proxy`, `config/api-endpoints`, `./url-validator`, `./metadata-cache` | _App Route Entry_ | Production Module |
 | [`url-validator.ts`](src/app/api/books/content/url-validator.ts) | _Root Primitive_ | `route.ts` | Production Module |
-| [`route.ts`](src/app/api/books/route.ts) | `config/api-endpoints`, `types/book.types`, `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `proxy` | _App Route Entry_ | Production Module |
+| [`route.ts`](src/app/api/books/route.ts) | `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `lib/catalog/query-parser`, `lib/catalog/gutendex-provider`, `types/catalog.types` | _App Route Entry_ | Production Module |
 | [`route.ts`](src/app/api/translate/route.ts) | `lib/rate-limiter`, `config/site-config`, `lib/cache`, `lib/api-utils` | `usePageTranslation.ts` | Production Module |
 | [`route.ts`](src/app/auth/callback/route.ts) | `lib/supabase/server` | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/auth/confirm-deletion/page.tsx) | `stores/useAuthStore`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `config/routes` | _App Route Entry_ | Production Module |
@@ -389,8 +393,9 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`layout.tsx`](src/app/privacy/layout.tsx) | _Root Primitive_ | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/privacy/page.tsx) | `components/presentation/Navbar`, `components/presentation/Footer`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
 | [`providers.tsx`](src/app/providers.tsx) | `stores/useAuthStore`, `lib/sync-utils`, `components/auth/AuthModal`, `components/pwa/ServiceWorkerRegister` | `layout.tsx` | Production Module |
-| [`layout.tsx`](src/app/read/[id]/layout.tsx) | `config/site-config`, `lib/book-metadata`, `types/book.types` | _App Route Entry_ | Production Module |
+| [`layout.tsx`](src/app/read/[id]/layout.tsx) | `config/site-config`, `lib/book-metadata`, `./reader-layout-utils` | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/read/[id]/page.tsx) | `hooks/queries/useBookContent`, `hooks/queries/useBooks`, `hooks/queries/useBookTranslations`, `hooks/queries/usePageTranslation`, `stores/useReaderStore`, `stores/useThemeStore`, `types/book.types`, `lib/gutenberg-parser`, `hooks/reader/useGutenbergParserWorker`, `config/reader-themes`, `lib/book-metadata`, `components/reader/ReaderHeader`, `components/reader/ReaderFooter`, `components/reader/ReaderTocDrawer`, `components/reader/ReaderSearchDrawer`, `components/reader/ReaderControls`, `components/reader/ReaderLanguageDrawer`, `components/reader/ReaderSpeechBar`, `components/reader/ReaderSurface`, `components/reader/TextHighlightPopover`, `components/reader/ReaderAnnotationsDrawer`, `components/reader/DeleteAnnotationModal`, `hooks/reader/useReaderDrawers`, `hooks/reader/useReaderSpeech`, `hooks/reader/useReaderSession`, `hooks/useReadingTimer`, `stores/usePreferencesStore`, `stores/useAnnotationStore`, `stores/useAuthStore`, `stores/useBookshelfStore`, `components/ui/StarRating`, `components/ui/Modal`, `components/ui/Button`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
+| [`reader-layout-utils.ts`](src/app/read/[id]/reader-layout-utils.ts) | `types/book.types` | `layout.tsx` | Production Module |
 | [`robots.ts`](src/app/robots.ts) | `config/site-config` | _Direct Root Consumer_ | Production Module |
 | [`sitemap.ts`](src/app/sitemap.ts) | `config/site-config` | _Direct Root Consumer_ | Production Module |
 | [`page.tsx`](src/app/u/[username]/page.tsx) | `lib/supabase/client`, `stores/useAuthStore`, `stores/useBookshelfStore`, `config/routes`, `config/accolades-config`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/BackToTop`, `components/profile/PrivateProfileNotice`, `components/profile/PublicProfileView`, `components/profile/PinnedAccoladesShelf` | _App Route Entry_ | Production Module |
@@ -467,7 +472,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`StarRating.tsx`](src/components/ui/StarRating.tsx) | _Root Primitive_ | `page.tsx`, `BookCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx` | Production Module |
 | [`accolades-config.ts`](src/config/accolades-config.ts) | `types/accolades.types` | `page.tsx`, `AccoladeCelebrationModal.tsx`, `ExLibrisBookplate.tsx`, `AccountAccoladesCard.tsx`, `accolades-engine.ts`, `useAccoladesStore.ts` | Production Module |
 | [`annotation-tokens.ts`](src/config/annotation-tokens.ts) | `stores/useAnnotationStore` | `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSurface.tsx`, `TextHighlightPopover.tsx` | Production Module |
-| [`api-endpoints.ts`](src/config/api-endpoints.ts) | _Root Primitive_ | `metadata-cache.ts`, `route.ts`, `route.ts`, `useBookContent.ts`, `useBooks.ts`, `useOfflineBooks.ts` | Production Module |
+| [`api-endpoints.ts`](src/config/api-endpoints.ts) | _Root Primitive_ | `metadata-cache.ts`, `route.ts`, `useBookContent.ts`, `useBooks.ts`, `useOfflineBooks.ts`, `gutendex-provider.ts` | Production Module |
 | [`catalog-filters.ts`](src/config/catalog-filters.ts) | _Root Primitive_ | `AdvancedFilterDrawer.tsx`, `HeroSearch.tsx`, `LanguageSelector.tsx`, `useBookTranslations.ts`, `useCatalogFilters.ts` | Production Module |
 | [`featured-books.ts`](src/config/featured-books.ts) | `lib/utils`, `lib/copyright-engine` | `EditorialQuoteSection.tsx`, `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `ReaderHeader.tsx`, `useBookPassageShuffle.ts`, `book-metadata.ts` | Production Module |
 | [`library-tokens.ts`](src/config/library-tokens.ts) | `config/routes` | `AccountLibraryStats.tsx`, `Navbar.tsx`, `views.config.ts` | Production Module |
@@ -502,7 +507,9 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`api-utils.ts`](src/lib/api-utils.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `route.ts` | Production Module |
 | [`book-metadata.ts`](src/lib/book-metadata.ts) | `types/book.types`, `config/featured-books`, `lib/utils` | `layout.tsx`, `page.tsx`, `NotebookView.tsx`, `ReaderHeader.tsx`, `useBookTranslations.ts`, `useContinueReadingLedger.ts`, `book.adapter.ts`, `useAnnotationStore.ts` | Production Module |
 | [`cache.ts`](src/lib/cache.ts) | _Root Primitive_ | `route.ts` | Production Module |
-| [`copyright-engine.ts`](src/lib/copyright-engine.ts) | `types/book.types` | `metadata-cache.ts`, `route.ts`, `route.ts`, `BookCard.tsx`, `DownloadDrawer.tsx`, `featured-books.ts`, `useBooks.ts`, `useJurisdictionStore.ts` | Production Module |
+| [`gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts) | `types/catalog.types`, `types/catalog.types`, `types/book.types`, `config/api-endpoints`, `lib/copyright-engine` | `route.ts` | Production Module |
+| [`query-parser.ts`](src/lib/catalog/query-parser.ts) | `types/catalog.types`, `lib/copyright-engine`, `proxy` | `route.ts` | Production Module |
+| [`copyright-engine.ts`](src/lib/copyright-engine.ts) | `types/book.types` | `metadata-cache.ts`, `route.ts`, `route.ts`, `BookCard.tsx`, `DownloadDrawer.tsx`, `featured-books.ts`, `useBooks.ts`, `gutendex-provider.ts`, `query-parser.ts`, `useJurisdictionStore.ts`, `catalog.types.ts` | Production Module |
 | [`gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | `./gutenberg` | `page.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx`, `useGutenbergParserWorker.ts`, `useReaderSession.ts`, `in-book-search.ts`, `gutenberg.worker.ts` | Production Module |
 | [`index.ts`](src/lib/gutenberg/index.ts) | `./types`, `./reflow`, `./pagination`, `./metadata`, `./segmentation`, `./passages` | `gutenberg-parser.ts` | Production Module |
 | [`metadata.ts`](src/lib/gutenberg/metadata.ts) | `./types` | `index.ts` | Production Module |
@@ -525,7 +532,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`server.ts`](src/lib/supabase/server.ts) | `types/database.types`, `./client` | `route.ts` | Production Module |
 | [`sync-utils.ts`](src/lib/sync-utils.ts) | `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useHabitsStore`, `stores/useAccoladesStore` | `providers.tsx` | Production Module |
 | [`utils.ts`](src/lib/utils.ts) | _Root Primitive_ | `BookCard.tsx`, `BookmarkCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `DownloadDrawer.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `GutenbergInfoModal.tsx`, `ReaderDrawerShell.tsx`, `Badge.tsx`, `Button.tsx`, `Card.tsx`, `Input.tsx`, `Modal.tsx`, `SectionHeader.tsx`, `featured-books.ts`, `book.adapter.ts`, `book-metadata.ts`, `library-backup.ts`, `useAnnotationStore.ts` | Production Module |
-| [`proxy.ts`](src/proxy.ts) | `lib/supabase/middleware` | `route.ts`, `route.ts`, `useJurisdictionStore.ts` | Production Module |
+| [`proxy.ts`](src/proxy.ts) | `lib/supabase/middleware` | `route.ts`, `query-parser.ts`, `useJurisdictionStore.ts` | Production Module |
 | [`useAccoladesStore.ts`](src/stores/useAccoladesStore.ts) | `config/site-config`, `lib/supabase/client`, `hooks/useHasMounted`, `types/accolades.types`, `config/accolades-config`, `lib/accolades-engine` | `AccoladeCelebrationModal.tsx`, `AccountAccoladesCard.tsx`, `sync-utils.ts` | Production Module |
 | [`useAnnotationStore.ts`](src/stores/useAnnotationStore.ts) | `config/site-config`, `lib/supabase/client`, `hooks/useHasMounted`, `lib/book-metadata`, `lib/utils` | `page.tsx`, `page.tsx`, `AccountAccoladesCard.tsx`, `Navbar.tsx`, `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSurface.tsx`, `TextHighlightPopover.tsx`, `annotation-tokens.ts`, `accolades-engine.ts`, `library-backup.ts`, `reader-annotator.ts`, `sync-utils.ts` | Production Module |
 | [`useAuthStore.ts`](src/stores/useAuthStore.ts) | `lib/supabase/client`, `types/database.types`, `config/routes` | `page.tsx`, `page.tsx`, `providers.tsx`, `page.tsx`, `page.tsx`, `AccountPublicProfileSection.tsx`, `AuthModal.tsx`, `BookshelfRack.tsx`, `Navbar.tsx`, `NotebookView.tsx`, `useReaderSession.ts`, `useBookshelfStore.ts`, `useReaderStore.ts` | Production Module |
@@ -536,7 +543,8 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`useReaderStore.ts`](src/stores/useReaderStore.ts) | `types/book.types`, `./useThemeStore`, `./useAuthStore`, `lib/supabase/client`, `config/site-config`, `config/reader-config`, `hooks/useHasMounted` | `page.tsx`, `page.tsx`, `page.tsx`, `BookCard.tsx`, `BookmarkCard.tsx`, `BookmarksView.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `EditorialQuoteSection.tsx`, `Navbar.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderControls.tsx`, `ReaderDrawerShell.tsx`, `ReaderFooter.tsx`, `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSpeechBar.tsx`, `ReaderSubHeaderRibbon.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx`, `TextHighlightPopover.tsx`, `reader-themes.ts`, `useContinueReadingLedger.ts`, `useReaderSession.ts`, `library-backup.ts`, `sync-utils.ts`, `useBookshelfStore.ts` | Production Module |
 | [`useThemeStore.ts`](src/stores/useThemeStore.ts) | `config/site-config` | `page.tsx`, `page.tsx`, `AccountPreferencesSection.tsx`, `Navbar.tsx`, `library-backup.ts`, `useReaderStore.ts` | Production Module |
 | [`accolades.types.ts`](src/types/accolades.types.ts) | _Root Primitive_ | `AccoladeCelebrationModal.tsx`, `ExLibrisBookplate.tsx`, `AccountAccoladesCard.tsx`, `PinnedAccoladesShelf.tsx`, `accolades-config.ts`, `accolades-engine.ts`, `useAccoladesStore.ts` | Production Module |
-| [`book.types.ts`](src/types/book.types.ts) | _Root Primitive_ | `route.ts`, `page.tsx`, `layout.tsx`, `page.tsx`, `ReadingStatusSelector.tsx`, `BookCard.tsx`, `BookGrid.tsx`, `BookmarkCard.tsx`, `BookmarksView.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `DownloadDrawer.tsx`, `EditorialQuoteSection.tsx`, `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `useBooks.ts`, `useBookTranslations.ts`, `useContinueReadingLedger.ts`, `useReaderSession.ts`, `useOfflineBooks.ts`, `accolades-engine.ts`, `book.adapter.ts`, `book-metadata.ts`, `copyright-engine.ts`, `library-backup.ts`, `smart-search.ts`, `useBookshelfStore.ts`, `useReaderStore.ts` | Production Module |
+| [`book.types.ts`](src/types/book.types.ts) | _Root Primitive_ | `page.tsx`, `page.tsx`, `reader-layout-utils.ts`, `ReadingStatusSelector.tsx`, `BookCard.tsx`, `BookGrid.tsx`, `BookmarkCard.tsx`, `BookmarksView.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `DownloadDrawer.tsx`, `EditorialQuoteSection.tsx`, `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `useBooks.ts`, `useBookTranslations.ts`, `useContinueReadingLedger.ts`, `useReaderSession.ts`, `useOfflineBooks.ts`, `accolades-engine.ts`, `book.adapter.ts`, `book-metadata.ts`, `gutendex-provider.ts`, `copyright-engine.ts`, `library-backup.ts`, `smart-search.ts`, `useBookshelfStore.ts`, `useReaderStore.ts`, `catalog.types.ts` | Production Module |
+| [`catalog.types.ts`](src/types/catalog.types.ts) | `./book.types`, `lib/copyright-engine` | `route.ts`, `gutendex-provider.ts`, `query-parser.ts` | Production Module |
 | [`database.types.ts`](src/types/database.types.ts) | _Root Primitive_ | `AccountIdentityCard.tsx`, `AccountPublicProfileSection.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `library-backup.ts`, `client.ts`, `middleware.ts`, `server.ts`, `useAuthStore.ts`, `useBookshelfStore.ts` | Production Module |
 | [`gutenberg.worker.ts`](src/workers/gutenberg.worker.ts) | `lib/gutenberg-parser` | `useGutenbergParserWorker.ts` | Production Module |
 
