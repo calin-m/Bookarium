@@ -39,7 +39,7 @@ const ROADMAP_MILESTONES = [
   {
     id: 'm0',
     title: 'Milestone 0: Core Architecture & Production Hardening',
-    version: 'v1.7.0 (Current Stable)',
+    version: 'v1.7.0 (Completed)',
     badge: 'https://img.shields.io/badge/Status-100%25%20Completed-brightgreen?style=flat-square',
     description: 'Foundational Next.js 16 App Router architecture, tactile skeuomorphic bookshelves, 3D spine physics, edge caching, and security hardening.',
     features: [
@@ -78,7 +78,7 @@ const ROADMAP_MILESTONES = [
   {
     id: 'm1',
     title: 'Milestone 1: Reader Mastery & Accessibility',
-    version: 'Target: v1.8.0',
+    version: 'v1.8.0 (Completed)',
     badge: 'https://img.shields.io/badge/Milestone-v1.8.0-blue?style=flat-square',
     description: 'Elevate the reading experience with instantaneous in-book phrase searching, zero-cost text-to-speech, and native standalone PWA installation.',
     features: [
@@ -102,7 +102,7 @@ const ROADMAP_MILESTONES = [
   {
     id: 'm2',
     title: 'Milestone 2: Scholar Annotations & Data Portability',
-    version: 'Target: v1.9.0',
+    version: 'v1.9.0 (Completed)',
     badge: 'https://img.shields.io/badge/Milestone-v1.9.0-purple?style=flat-square',
     description: 'Transform Bookarium into a tactile literary notebook with colored quote highlights, personal annotations, and full library export/import.',
     features: [
@@ -131,7 +131,7 @@ const ROADMAP_MILESTONES = [
   {
     id: 'm3',
     title: 'Milestone 3: Habits, Goals & Library Curation',
-    version: 'Target: v2.0.0',
+    version: 'v2.0.0 (Completed)',
     badge: 'https://img.shields.io/badge/Milestone-v2.0.0-orange?style=flat-square',
     description: 'Rich reader curation, Goodreads-style reading statuses, and daily habit tracking analytics.',
     features: [
@@ -232,10 +232,15 @@ function generateRoadmapMarkdown() {
 
   const overallPct = Math.round((totalCompleted / totalFeatures) * 100);
 
+  const pkgPath = path.join(rootDir, 'package.json');
+  const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) : {};
+  const currentVersion = pkg.version || '2.5.0';
+
   let md = `# 🗺️ Bookarium Product & Engineering Roadmap
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
+[![Current Release](https://img.shields.io/badge/Current%20Release-v${currentVersion}-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-${overallPct}%25-brightgreen?style=flat-square)](ROADMAP.md)
 [![Total Features](https://img.shields.io/badge/Features-${totalCompleted}_of_${totalFeatures}-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)

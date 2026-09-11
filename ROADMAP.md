@@ -2,6 +2,7 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.5.0-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-82%25-brightgreen?style=flat-square)](ROADMAP.md)
 [![Total Features](https://img.shields.io/badge/Features-18_of_22-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
@@ -16,7 +17,7 @@
 
 ## 🏛️ Strategic Engineering Milestones
 
-### Milestone 0: Core Architecture & Production Hardening (`v1.7.0 (Current Stable)`)
+### Milestone 0: Core Architecture & Production Hardening (`v1.7.0 (Completed)`)
 `[████████████████████]` **6/6 (100%)**
 
 > Foundational Next.js 16 App Router architecture, tactile skeuomorphic bookshelves, 3D spine physics, edge caching, and security hardening.
@@ -36,7 +37,7 @@
 
 ---
 
-### Milestone 1: Reader Mastery & Accessibility (`Target: v1.8.0`)
+### Milestone 1: Reader Mastery & Accessibility (`v1.8.0 (Completed)`)
 `[████████████████████]` **3/3 (100%)**
 
 > Elevate the reading experience with instantaneous in-book phrase searching, zero-cost text-to-speech, and native standalone PWA installation.
@@ -50,7 +51,7 @@
 
 ---
 
-### Milestone 2: Scholar Annotations & Data Portability (`Target: v1.9.0`)
+### Milestone 2: Scholar Annotations & Data Portability (`v1.9.0 (Completed)`)
 `[████████████████████]` **4/4 (100%)**
 
 > Transform Bookarium into a tactile literary notebook with colored quote highlights, personal annotations, and full library export/import.
@@ -66,7 +67,7 @@
 
 ---
 
-### Milestone 3: Habits, Goals & Library Curation (`Target: v2.0.0`)
+### Milestone 3: Habits, Goals & Library Curation (`v2.0.0 (Completed)`)
 `[████████████████████]` **3/3 (100%)**
 
 > Rich reader curation, Goodreads-style reading statuses, and daily habit tracking analytics.
