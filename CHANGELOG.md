@@ -549,3 +549,5 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-036: Airtight Jurisdictional Copyright Governance, Regional Streaming Gatekeeper (HTTP 451) & Edge Geo-Context Architecture**
 - **ADR-037: Self-Hosted Supabase PostgreSQL Catalog via Strangler Fig Pattern (Phase 1: Provider Seam Refactoring)**
 - **ADR-038: Self-Hosted Supabase PostgreSQL Catalog via Strangler Fig Pattern (Phase 2: Schema Co-Evolution, Ingestion Pipeline & Dual Provider Fallback)**
+- **ADR-039: Autonomous Public Domain Book Content Pipeline, Supabase Plain-Text Caching & Mirror Resiliency Architecture**
+- **ADR-040: Autonomous Full-Catalog Gutenberg Ingestion & Periodic GitHub Actions Synchronization**

@@ -1,0 +1,53 @@
+name: Gutenberg Catalog Sync
+
+on:
+  schedule:
+    # Run every Sunday at 02:00 UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Maximum titles to ingest (leave blank for all ~72,000)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (parse and validate without writing to database)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Stream & Sync Gutenberg Catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Gutenberg Catalog Sync
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          CMD_ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            CMD_ARGS="$CMD_ARGS --dry-run"
+          fi
+          if [ -n "${{ github.event.inputs.limit }}" ]; then
+            CMD_ARGS="$CMD_ARGS --limit=${{ github.event.inputs.limit }}"
+          fi
+          node scripts/sync-gutenberg-catalog.js $CMD_ARGS

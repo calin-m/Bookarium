@@ -271,4 +271,72 @@ describe('GET /api/books/content', () => {
     const text = await res.text();
     expect(text).toContain('Pride and Prejudice');
   });
+
+  it('streams content directly from Supabase (Tier 1) without external network fetch', async () => {
+    const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://valid-project.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'valid-anon-key-12345';
+
+    const mockMaybeSingle = vi.fn().mockResolvedValue({
+      data: { content: 'The Project Gutenberg eBook of Pride and Prejudice, by Jane Austen...' },
+      error: null,
+    });
+    const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: mockFrom,
+    } as any);
+
+    const fetchSpy = vi.spyOn(global, 'fetch');
+
+    try {
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('X-Bookarium-Source')).toBe('supabase');
+      expect(mockFrom).toHaveBeenCalledWith('books');
+      expect(mockSelect).toHaveBeenCalledWith('content');
+      expect(mockEq).toHaveBeenCalledWith('id', 1342);
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      const text = await res.text();
+      expect(text).toContain('Pride and Prejudice, by Jane Austen');
+    } finally {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
+      clientSpy.mockRestore();
+    }
+  });
+
+  it('safely follows redirects to trusted Gutenberg mirrors', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 301,
+          headers: new Headers({
+            Location: 'https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt',
+          }),
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(sampleBookText, {
+          status: 200,
+          headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' }),
+        })
+      );
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy.mock.calls[1][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
+    const text = await res.text();
+    expect(text).toContain('Pride and Prejudice');
+  });
 });

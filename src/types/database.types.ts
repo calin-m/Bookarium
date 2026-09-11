@@ -342,6 +342,7 @@ export interface Database {
           download_count: number;
           max_author_death_year: number | null;
           min_author_birth_year: number | null;
+          content?: string | null;
           search_vector?: string | null;
           created_at: string;
           updated_at: string;
@@ -360,6 +361,7 @@ export interface Database {
           download_count?: number;
           max_author_death_year?: number | null;
           min_author_birth_year?: number | null;
+          content?: string | null;
           search_vector?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -378,6 +380,7 @@ export interface Database {
           download_count?: number;
           max_author_death_year?: number | null;
           min_author_birth_year?: number | null;
+          content?: string | null;
           search_vector?: string | null;
           created_at?: string;
           updated_at?: string;

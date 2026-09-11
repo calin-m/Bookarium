@@ -1,4 +1,9 @@
-const ALLOWED_HOSTS = new Set(['www.gutenberg.org', 'gutenberg.org']);
+const ALLOWED_HOSTS = new Set([
+  'www.gutenberg.org',
+  'gutenberg.org',
+  'aleph.gutenberg.org',
+  'gutenberg.readingroo.ms',
+]);
 
 export function isSafeUpstreamUrl(rawUrl: string): boolean {
   try {

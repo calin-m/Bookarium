@@ -3,6 +3,7 @@ import {
   SupabaseCatalogProvider,
   isSupabaseConfigured,
   mapDatabaseBookToGutendexBook,
+  CATALOG_METADATA_COLUMNS,
 } from './supabase-provider';
 import type { DatabaseBook } from '@/types/database.types';
 import type { CatalogQueryOptions } from '@/types/catalog.types';
@@ -66,6 +67,7 @@ describe('SupabaseCatalogProvider', () => {
         download_count: 54321,
         max_author_death_year: 1817,
         min_author_birth_year: 1775,
+        content: null,
         search_vector: null,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -184,6 +186,7 @@ describe('SupabaseCatalogProvider', () => {
         download_count: 50000,
         max_author_death_year: 1817,
         min_author_birth_year: 1775,
+        content: null,
         search_vector: null,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -202,6 +205,7 @@ describe('SupabaseCatalogProvider', () => {
         download_count: 30000,
         max_author_death_year: 1976,
         min_author_birth_year: 1890,
+        content: null,
         search_vector: null,
         created_at: '2026-01-01T00:00:00Z',
         updated_at: '2026-01-01T00:00:00Z',
@@ -254,6 +258,8 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.results).toHaveLength(2);
       expect(result.clientCountry).toBe('US');
       expect(result.jurisdictionRule).toBe('US_PUBLIC_DOMAIN');
+      expect(client.from().select).toHaveBeenCalledWith(CATALOG_METADATA_COLUMNS, { count: 'exact' });
+      expect(CATALOG_METADATA_COLUMNS).not.toContain('content');
       expect(builder.eq).toHaveBeenCalledWith('copyright', false);
       expect(builder.textSearch).toHaveBeenCalledWith('search_vector', 'Jane Austen', {
         type: 'websearch',
