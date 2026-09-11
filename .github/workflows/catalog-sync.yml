@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
@@ -40,7 +40,7 @@ jobs:
 
       - name: Run Gutenberg Catalog Sync
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           CMD_ARGS=""
@@ -51,3 +51,4 @@ jobs:
             CMD_ARGS="$CMD_ARGS --limit=${{ github.event.inputs.limit }}"
           fi
           node scripts/sync-gutenberg-catalog.js $CMD_ARGS
+
