@@ -49,6 +49,7 @@ flowchart TD
             StoreAnnot[("🖍️ useAnnotationStore\n(pastel highlights, notes, tags)")]
             StoreHabits[("🔥 useHabitsStore\n(streak, 5m threshold, dual immersion, cloud)")]
             StoreAccolades[("🎖️ useAccoladesStore\n(accolades, showcase pinning, celebrations, cloud)")]
+            StoreJurisdiction[("🌐 useJurisdictionStore\n(country, rule, dev override, cookie sync)")]
             StoreOffline[("📦 IndexedDB Engine\n(unabridged offline volume cache)")]
         end
         
@@ -66,11 +67,19 @@ flowchart TD
         Telemetry["📊 Vercel Telemetry\n(Analytics & Speed Insights)"]
     end
 
-    subgraph ServerLayer ["Next.js Edge Proxy & Telemetry Layer"]
-        ProxyBooks["GET /api/books\n(SWR 120s Cache, Latency Tracking, Rate Limit)"]
-        ProxyContent["GET /api/books/content\n(Unabridged Text Stream, Anti-SSRF, SWR 24h)"]
+    subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]
+        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Cookie Stamping)"]
+        ProxyBooks["GET /api/books\n(SWR 120s Cache, Latency Tracking, Rate Limit, Copyright Filter)"]
+        ProxyContent["GET /api/books/content\n(Unabridged Text Stream, Anti-SSRF, HTTP 451 Gatekeeper)"]
         ProxyTranslate["POST /api/translate\n(Neural MT Proxy, 40+ Languages)"]
         LayoutServer["Server Layout (/read/[id])\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]
+    end
+
+    subgraph LegalLayer ["Jurisdictional Copyright Engine (src/lib/copyright-engine.ts)"]
+        EngineCore["isBookPublicDomainInJurisdiction\n(US 1930 Cutoff, Life+70, Life+100, Life+80)"]
+        JointAuthors["Joint Authorship Guard (Berne Art. 7bis)"]
+        Translators["Translator Protection (Berne Art. 2(3))"]
+        MetaCache["Metadata Lifespan Cache\n(metadata-cache.ts • 24h LRU)"]
     end
 
     subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]
@@ -81,9 +90,10 @@ flowchart TD
         VercelEdge["⚡ Vercel Edge Platform\n(Cookie-less Analytics & Speed Insights)"]
     end
 
-    User --> Nav
-    User --> Hero
-    User --> Toolbar
+    User --> RootProxy
+    RootProxy --> Nav
+    RootProxy --> Hero
+    RootProxy --> Toolbar
     Toolbar --> FilterDrawer
     Toolbar --> Grid
     Nav --> Views
@@ -92,6 +102,7 @@ flowchart TD
     
     Grid --> QueryBooks
     QueryBooks --> ProxyBooks
+    ProxyBooks --> EngineCore
     ProxyBooks --> Gutendex
     QueryBooks -.->|Client Failover on 504| Gutendex
     
@@ -102,6 +113,10 @@ flowchart TD
     ReaderPage --> AnnotatorEngine
     AnnotatorEngine --> StoreAnnot
     QueryContent --> ProxyContent
+    ProxyContent --> MetaCache
+    MetaCache --> EngineCore
+    EngineCore --> JointAuthors
+    EngineCore --> Translators
     ProxyContent --> GutenbergCDN
     ReaderPage --> QueryTranslate
     QueryTranslate --> ProxyTranslate
@@ -228,7 +243,7 @@ Zustand client-side state stores programmatically verified across **9 Persistent
 
 ### 6. `useJurisdictionStore` ([`src/stores/useJurisdictionStore.ts`](src/stores/useJurisdictionStore.ts))
 * **Storage Key**: In-Memory (Ephemeral)
-* **Role & State**: Application state store.
+* **Role & State**: Client-side geographic jurisdiction state, cookie synchronization (bookarium-geo-country), developer country overrides, and synchronous regional capability resolution.
 
 ### 7. `usePreferencesStore` ([`src/stores/usePreferencesStore.ts`](src/stores/usePreferencesStore.ts))
 * **Storage Key**: `STORAGE_KEYS.PREFERENCES` (localStorage)
@@ -291,7 +306,7 @@ Pure business logic, historical engines, and layout algorithms verified across *
 | **`api-utils`** | Core Domain | [`src/lib/api-utils.ts`](src/lib/api-utils.ts) | `RateLimitInfo`, `getClientIp`, `createRateLimitErrorResponse` | Server-side API route helpers, IP address extraction, and standardized rate limit error response generation. |
 | **`book-metadata`** | Core Domain | [`src/lib/book-metadata.ts`](src/lib/book-metadata.ts) | `ResolvedBookIdentity`, `ResolveBookMetadataParams`, `cleanBookTitle`, `isPlaceholderAuthor`, `isPlaceholderTitle` _(+1 more)_ | Author and title cleaning, placeholder author heuristics, and defensive editorial metadata normalization. |
 | **`cache`** | Core Domain | [`src/lib/cache.ts`](src/lib/cache.ts) | `SimpleLRUCache` | Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions. |
-| **`copyright-engine`** | Core Domain | [`src/lib/copyright-engine.ts`](src/lib/copyright-engine.ts) | `JurisdictionRule`, `CopyrightEvaluationResult`, `EU_MEMBER_STATES`, `LIFE_70_COUNTRIES`, `LIFE_100_COUNTRIES` _(+7 more)_ | Domain utility module. |
+| **`copyright-engine`** | Core Domain | [`src/lib/copyright-engine.ts`](src/lib/copyright-engine.ts) | `JurisdictionRule`, `CopyrightEvaluationResult`, `EU_MEMBER_STATES`, `LIFE_70_COUNTRIES`, `LIFE_100_COUNTRIES` _(+7 more)_ | Multi-jurisdictional copyright engine evaluating public domain status across US, EU/Berne (Life + 70), Mexico (Life + 100), and Colombia/Spain (Life + 80), with joint authorship (Art. 7bis), translator protection (Art. 2(3)), and longevity heuristics. |
 | **`gutenberg-parser`** | Core Domain | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | `* (./gutenberg)` | Root domain facade barrel re-exporting all Gutenberg segmentation, pagination, reflow, and passage extraction subsystems. |
 | **`index`** | Gutenberg | [`src/lib/gutenberg/index.ts`](src/lib/gutenberg/index.ts) | `* (./types)`, `* (./reflow)`, `* (./pagination)`, `* (./metadata)`, `* (./segmentation)` _(+1 more)_ | Gutenberg subsystem barrel aggregating types, reflow, pagination, metadata, segmentation, and passage algorithms. |
 | **`metadata`** | Gutenberg | [`src/lib/gutenberg/metadata.ts`](src/lib/gutenberg/metadata.ts) | `LANGUAGE_NAME_TO_CODE_MAP`, `normalizeLanguageToCode`, `extractGutenbergHeaderMetadata` | Gutenberg plain-text header/footer metadata extraction, author/title/language detection, and ISO code normalization. |
@@ -529,12 +544,13 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 
 ## ⚡ Data Pulling & Caching Strategy
 
-1. **100% Pure Live API Queries**: All catalog items are retrieved in real-time from Project Gutenberg (`https://gutendex.com/books/`).
+1. **100% Pure Live API Queries**: All catalog items are retrieved in real-time from Project Gutenberg (`https://gutendex.com/books/`) enforcing `copyright=false`.
 2. **2-Part Visible Telemetry**: `StickyCatalogToolbar.tsx` renders live API connectivity status alongside exact roundtrip latency in milliseconds.
 3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.
-4. **Edge SWR Caching**: Common queries are cached with `s-maxage=120, stale-while-revalidate=600` for sub-10ms response times on repeated visits.
-5. **On-Demand Text Streaming**: Large book texts (2MB–5MB) are fetched strictly when the focus reader opens.
-6. **Native IndexedDB Offline Cache**: Downloaded unabridged texts are cached in browser IndexedDB for 100% offline access.
+4. **Edge SWR Caching & Geographic Vary Partitioning**: Common queries are cached with `s-maxage=120, stale-while-revalidate=600` and partitioned across jurisdictions via `Vary: x-vercel-ip-country, Accept-Encoding` to prevent cross-border cache pollution.
+5. **Jurisdictional Copyright Gatekeeping**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles.
+6. **On-Demand Text Streaming**: Large book texts (2MB–5MB) are fetched strictly when the focus reader opens, guarded by an in-memory 24h contributor metadata cache.
+7. **Native IndexedDB Offline Cache**: Downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.
 
 ---
 

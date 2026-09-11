@@ -111,6 +111,35 @@ describe('GET /api/books/content', () => {
     fetchSpy.mockRestore();
   });
 
+  it('should return HTTP 451 in local development via ?country=GB query parameter without headers', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+
+    const christieMeta = {
+      id: 863,
+      title: 'The Mysterious Affair at Styles',
+      authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+      translators: [],
+      copyright: false,
+    };
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify(christieMeta), { status: 200 })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=863&country=GB');
+    const res = await GET(req);
+
+    expect(res.status).toBe(451);
+    const json = await res.json();
+    expect(json.country).toBe('GB');
+    expect(json.rule).toBe('LIFE_70');
+    expect(json.publicDomainYear).toBe(2047);
+    expect(json.restrictingDeathYear).toBe(1976);
+
+    fetchSpy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
   it('should return HTTP 451 when book is protected in Mexico (Life + 100)', async () => {
     const gatsbyMeta = {
       id: 64317,
