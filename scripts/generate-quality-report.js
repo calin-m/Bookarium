@@ -8,6 +8,7 @@ const covSummaryPath = path.join(rootDir, 'coverage', 'coverage-summary.json');
 const reportMdPath = path.join(rootDir, 'docs', 'QUALITY_AUDIT_REPORT.md');
 const resultsJsonPath = path.join(rootDir, 'docs', 'quality-audit-results.json');
 const adrPath = path.join(rootDir, 'docs', 'DECISIONS.md');
+const testResultsPath = path.join(rootDir, 'coverage', 'test-results.json');
 
 // 1. Coverage Metrics
 let coverage = {
@@ -115,18 +116,49 @@ function indexTestSuites() {
     '🧩 UI Primitives & Motion': [],
   };
 
+  const runtimeFileMap = new Map();
+  let runtimeTotalTests = null;
+
+  if (fs.existsSync(testResultsPath)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(testResultsPath, 'utf-8'));
+      if (typeof parsed.numPassedTests === 'number' && parsed.numPassedTests > 0) {
+        runtimeTotalTests = parsed.numPassedTests;
+      }
+      if (Array.isArray(parsed.testResults)) {
+        for (const tr of parsed.testResults) {
+          if (tr.name && Array.isArray(tr.assertionResults)) {
+            const rel = path.relative(rootDir, tr.name).replace(/\\/g, '/');
+            runtimeFileMap.set(rel, {
+              testCount: tr.assertionResults.length,
+              tests: tr.assertionResults.map((a) => a.title || a.fullName),
+            });
+          }
+        }
+      }
+    } catch (_e) {}
+  }
+
   let totalTestCount = 0;
 
   for (const filePath of testFiles) {
     const relPath = path.relative(rootDir, filePath).replace(/\\/g, '/');
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const runtimeInfo = runtimeFileMap.get(relPath);
 
-    // Extract test names
-    const testMatches = [...content.matchAll(/(?:it|test)(?:\.skip|\.only)?\s*\(\s*['"`](.*?)['"`]/g)].map(
-      (m) => m[1]
-    );
+    let testMatches;
+    let testCount;
 
-    const testCount = testMatches.length;
+    if (runtimeInfo) {
+      testMatches = runtimeInfo.tests;
+      testCount = runtimeInfo.testCount;
+    } else {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      testMatches = [...content.matchAll(/(?:it|test)(?:\.skip|\.only)?\s*\(\s*['"`](.*?)['"`]/g)].map(
+        (m) => m[1]
+      );
+      testCount = testMatches.length;
+    }
+
     totalTestCount += testCount;
 
     const suiteInfo = {
@@ -162,7 +194,8 @@ function indexTestSuites() {
     }
   }
 
-  return { domainMap, totalTestCount, totalSuitesCount: testFiles.length };
+  const effectiveTotalTests = runtimeTotalTests || totalTestCount;
+  return { domainMap, totalTestCount: effectiveTotalTests, totalSuitesCount: testFiles.length };
 }
 
 const { domainMap, totalTestCount, totalSuitesCount } = indexTestSuites();
