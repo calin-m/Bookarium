@@ -30,7 +30,8 @@
     "changelog:generate": "node scripts/generate-changelog.js",
     "adr:new": "node scripts/new-adr.js",
     "verify:build": "node scripts/verify-build.js",
-    "gate:approve": "node scripts/approval-gate.js"
+    "gate:approve": "node scripts/approval-gate.js",
+    "catalog:ingest": "node scripts/ingest-catalog.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

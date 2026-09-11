@@ -32,6 +32,7 @@ function extractDatabaseCatalog(rootDirPath) {
     user_book_curation: '`useBookshelfStore`',
     user_reading_habits: '`useHabitsStore`',
     user_accolades: '`useAccoladesStore`',
+    books: '`SupabaseCatalogProvider`',
   };
 
   const descMap = {
@@ -44,13 +45,14 @@ function extractDatabaseCatalog(rootDirPath) {
     user_book_curation: 'Personal 1–5 star ratings and reading status classification.',
     user_reading_habits: 'Reading streaks (5-min threshold), daily activity dates, annual challenge goals, and dual immersion telemetry.',
     user_accolades: 'Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata.',
+    books: 'Self-hosted public domain catalog with full-text search vector, GIN index, and jurisdictional author death year partitioning.',
   };
 
   while ((match = tableRegex.exec(content)) !== null) {
     const tableName = match[1];
     tables.push({
       name: `public.${tableName}`,
-      rls: 'Enabled (`auth.uid()`)',
+      rls: tableName === 'books' ? 'Enabled (`Public Read`)' : 'Enabled (`auth.uid()`)',
       store: storeMap[tableName] || 'Client Store',
       description: descMap[tableName] || 'Database entity with RLS user isolation.',
     });

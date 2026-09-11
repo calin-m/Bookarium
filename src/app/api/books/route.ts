@@ -4,7 +4,9 @@ import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
 import { getJurisdictionRule } from '@/lib/copyright-engine';
 import { parseCatalogQuery } from '@/lib/catalog/query-parser';
 import { gutendexProvider } from '@/lib/catalog/gutendex-provider';
+import { supabaseCatalogProvider } from '@/lib/catalog/supabase-provider';
 import { CatalogProviderError } from '@/types/catalog.types';
+import type { CatalogQueryResult } from '@/types/catalog.types';
 
 // Ensure Vercel runs this as a dynamic serverless function with extended timeout
 export const dynamic = 'force-dynamic';
@@ -31,7 +33,23 @@ export async function GET(request: NextRequest) {
   const queryOptions = parseCatalogQuery(request);
 
   try {
-    const result = await gutendexProvider.searchBooks(queryOptions);
+    let result: CatalogQueryResult | null = null;
+
+    // Strangler Fig Gateway: Query self-hosted Supabase PostgreSQL catalog first
+    try {
+      const isSupabaseHealthy = await supabaseCatalogProvider.isHealthy();
+      if (isSupabaseHealthy) {
+        result = await supabaseCatalogProvider.searchBooks(queryOptions);
+      }
+    } catch {
+      // Supabase query failure or network glitch: gracefully degrade to upstream Gutendex
+      result = null;
+    }
+
+    // Fall back to upstream Gutendex API if Supabase is unseeded, unhealthy, or throws
+    if (!result) {
+      result = await gutendexProvider.searchBooks(queryOptions);
+    }
 
     return NextResponse.json(result, {
       status: 200,
