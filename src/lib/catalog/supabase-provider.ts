@@ -14,6 +14,12 @@ import {
 } from '@/lib/copyright-engine';
 
 /**
+ * Columns explicitly selected for catalog search to prevent transferring large unabridged text.
+ */
+export const CATALOG_METADATA_COLUMNS =
+  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count, max_author_death_year, min_author_birth_year, created_at, updated_at' as const;
+
+/**
  * Checks if Supabase credentials are genuinely configured (non-empty, non-placeholder).
  */
 export function isSupabaseConfigured(): boolean {
@@ -100,7 +106,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     const currentYear = new Date().getFullYear();
 
     try {
-      let query = supabase.from('books').select('*', { count: 'exact' });
+      let query = supabase.from('books').select(CATALOG_METADATA_COLUMNS, { count: 'exact' });
 
       // Enforce zero-copyright
       query = query.eq('copyright', false);

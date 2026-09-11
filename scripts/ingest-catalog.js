@@ -15,12 +15,14 @@ const https = require('https');
 
 const rootDir = path.resolve(__dirname, '..');
 const seedSqlPath = path.join(rootDir, 'supabase', 'seed_books.sql');
+const seedContentSqlPath = path.join(rootDir, 'supabase', 'seed_books_content.sql');
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
 const isHelp = args.includes('--help') || args.includes('-h');
 const isDryRun = args.includes('--dry-run');
 const isCuratedOnly = args.includes('--curated');
+const isWithContent = args.includes('--with-content');
 const pagesArg = args.find((a) => a.startsWith('--pages='));
 const pagesToFetch = pagesArg ? Math.max(1, parseInt(pagesArg.split('=')[1], 10) || 1) : 3;
 
@@ -29,10 +31,11 @@ if (isHelp) {
 Bookarium Catalog Ingestion Engine
 ===================================
 Options:
-  --dry-run      Do not connect to remote Supabase; write SQL to supabase/seed_books.sql
-  --curated      Ingest curated hero classic masterpieces (Frankenstein, Austen, etc.)
-  --pages=N      Fetch N pages (32 books/page) of top public domain titles (default: 3)
-  --help         Show this help guide
+  --dry-run        Do not connect to remote Supabase; write SQL to supabase/seed_books.sql
+  --curated        Ingest curated hero classic masterpieces (Frankenstein, Austen, etc.)
+  --with-content   Download unabridged plain text and bundle into SQL (default for --curated)
+  --pages=N        Fetch N pages (32 books/page) of top public domain titles (default: 3)
+  --help           Show this help guide
 `);
   process.exit(0);
 }
@@ -242,6 +245,65 @@ function fetchJson(url) {
   });
 }
 
+// Helper: fetch plain text from Gutenberg mirrors with redirect following
+function fetchBookText(bookId) {
+  const mirrors = [
+    `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`,
+    `https://www.gutenberg.org/files/${bookId}/${bookId}-0.txt`,
+    `https://www.gutenberg.org/files/${bookId}/${bookId}.txt`,
+    `https://aleph.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`,
+    `https://gutenberg.readingroo.ms/cache/epub/${bookId}/pg${bookId}.txt`,
+  ];
+
+  function tryFetch(url, redirectCount = 0) {
+    if (redirectCount > 5) return Promise.reject(new Error('Too many redirects'));
+    return new Promise((resolve, reject) => {
+      https
+        .get(
+          url,
+          {
+            headers: {
+              'User-Agent': 'Bookarium-Catalog-Seeder/1.0',
+              Accept: 'text/plain; charset=utf-8',
+            },
+          },
+          (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              let redirectUrl = res.headers.location;
+              if (redirectUrl.startsWith('/')) {
+                const u = new URL(url);
+                redirectUrl = `${u.origin}${redirectUrl}`;
+              }
+              return resolve(tryFetch(redirectUrl, redirectCount + 1));
+            }
+            if (res.statusCode < 200 || res.statusCode >= 300) {
+              return reject(new Error(`HTTP ${res.statusCode}`));
+            }
+            let text = '';
+            res.setEncoding('utf8');
+            res.on('data', (chunk) => (text += chunk));
+            res.on('end', () => resolve(text));
+          }
+        )
+        .on('error', reject);
+    });
+  }
+
+  return (async () => {
+    for (const mirror of mirrors) {
+      try {
+        const txt = await tryFetch(mirror);
+        if (txt && !txt.trim().startsWith('<p>The document has moved') && txt.length > 1000) {
+          return txt;
+        }
+      } catch {
+        // try next mirror
+      }
+    }
+    return null;
+  })();
+}
+
 // Helper to build safe jsonb_build_object expressions for formats
 function formatFormatsJson(formats) {
   const entries = Object.entries(formats);
@@ -252,6 +314,15 @@ function formatFormatsJson(formats) {
 
 // Generate SQL statement for books
 function generateSql(books) {
+  const hasAnyContent = books.some((b) => Boolean(b.content));
+  const columns = [
+    '  id, title, authors, translators, subjects, bookshelves, languages,',
+    '  copyright, media_type, formats, download_count, max_author_death_year, min_author_birth_year',
+  ];
+  if (hasAnyContent) {
+    columns[1] += ', content';
+  }
+
   const lines = [
     '--',
     '-- Bookarium — Idempotent Gutenberg Book Catalog Seed',
@@ -259,9 +330,11 @@ function generateSql(books) {
     `-- Total Volumes: ${books.length}`,
     '--',
     '',
+    '-- Ensure content column exists on public.books',
+    'ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;',
+    '',
     'INSERT INTO public.books (',
-    '  id, title, authors, translators, subjects, bookshelves, languages,',
-    '  copyright, media_type, formats, download_count, max_author_death_year, min_author_birth_year',
+    ...columns,
     ') VALUES',
   ];
 
@@ -280,6 +353,10 @@ function generateSql(books) {
     const maxDeath = b.max_author_death_year !== null && b.max_author_death_year !== undefined ? b.max_author_death_year : 'NULL';
     const minBirth = b.min_author_birth_year !== null && b.min_author_birth_year !== undefined ? b.min_author_birth_year : 'NULL';
 
+    const contentField = hasAnyContent
+      ? `,\n    ${b.content ? `$bookarium_txt_${b.id}$${b.content}$bookarium_txt_${b.id}$` : 'NULL'}`
+      : '';
+
     return `  -- Volume #${b.id}: ${escapedTitle}
   (
     ${b.id},
@@ -294,7 +371,7 @@ function generateSql(books) {
     ${formatsSql},
     ${b.download_count || 0},
     ${maxDeath},
-    ${minBirth}
+    ${minBirth}${contentField}
   )`;
   });
 
@@ -312,8 +389,37 @@ function generateSql(books) {
   lines.push('  download_count = EXCLUDED.download_count,');
   lines.push('  max_author_death_year = EXCLUDED.max_author_death_year,');
   lines.push('  min_author_birth_year = EXCLUDED.min_author_birth_year,');
+  if (hasAnyContent) {
+    lines.push('  content = COALESCE(EXCLUDED.content, public.books.content),');
+  }
   lines.push('  updated_at = NOW();');
   lines.push('');
+
+  return lines.join('\n');
+}
+
+// Helper: generate standalone UPDATE script for book contents
+function generateContentUpdateSql(books) {
+  const booksWithContent = books.filter((b) => Boolean(b.content));
+  const lines = [
+    '--',
+    '-- Bookarium — Curated Book Content Seeder',
+    '-- Idempotent plain-text updates for offline and instant streaming',
+    `-- Generated: ${new Date().toISOString()}`,
+    `-- Total Volumes: ${booksWithContent.length}`,
+    '--',
+    '',
+    '-- Ensure content column exists on public.books',
+    'ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;',
+    '',
+  ];
+
+  for (const b of booksWithContent) {
+    const tag = `$bookarium_txt_${b.id}$`;
+    lines.push(`-- Volume #${b.id}: ${b.title.replace(/'/g, "''")}`);
+    lines.push(`UPDATE public.books SET content = ${tag}${b.content}${tag}, updated_at = NOW() WHERE id = ${b.id};`);
+    lines.push('');
+  }
 
   return lines.join('\n');
 }
@@ -378,15 +484,43 @@ async function main() {
 
   console.log(`✔ Successfully compiled metadata for ${books.length} volumes.`);
 
-  // Generate SQL file
+  // Download unabridged plain text if requested
+  if (isWithContent) {
+    console.log(`\n📥 Fetching unabridged plain text for ${books.length} volumes from Gutenberg mirrors...`);
+    for (let i = 0; i < books.length; i++) {
+      const b = books[i];
+      process.stdout.write(`  ↳ [${i + 1}/${books.length}] Downloading text for #${b.id} ("${b.title}")... `);
+      const text = await fetchBookText(b.id);
+      if (text) {
+        b.content = text;
+        console.log(`✔ (${(Buffer.byteLength(text) / 1024).toFixed(1)} KB)`);
+      } else {
+        console.log('⚠ (Mirror unavailable, skipping text)');
+      }
+    }
+  }
+
+  // Generate SQL files
   const sql = generateSql(books);
   fs.writeFileSync(seedSqlPath, sql, 'utf-8');
-  console.log(`💾 Idempotent seed SQL written to: ${path.relative(rootDir, seedSqlPath)} (${(Buffer.byteLength(sql) / 1024).toFixed(1)} KB)`);
+  console.log(`\n💾 Idempotent seed SQL written to: ${path.relative(rootDir, seedSqlPath)} (${(Buffer.byteLength(sql) / 1024).toFixed(1)} KB)`);
+
+  const hasAnyContent = books.some((b) => Boolean(b.content));
+  if (hasAnyContent) {
+    const contentSql = generateContentUpdateSql(books);
+    fs.writeFileSync(seedContentSqlPath, contentSql, 'utf-8');
+    console.log(`💾 Idempotent content update SQL written to: ${path.relative(rootDir, seedContentSqlPath)} (${(Buffer.byteLength(contentSql) / 1024).toFixed(1)} KB)`);
+  }
 
   console.log('\n✨ Ingestion complete!');
   console.log('Next Steps:');
   console.log('1. Open your Supabase Dashboard -> SQL Editor.');
-  console.log(`2. Paste and run supabase/seed_books.sql to populate public.books in your project.`);
+  if (hasAnyContent) {
+    console.log(`2. Paste and run supabase/seed_books_content.sql to populate content for existing books,`);
+    console.log(`   OR run supabase/seed_books.sql for a complete fresh database setup.`);
+  } else {
+    console.log(`2. Paste and run supabase/seed_books.sql to populate public.books in your project.`);
+  }
 }
 
 main().catch((err) => {

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 11 Sep 2026 12:52:23 GMT  
+**Last Generated**: Fri, 11 Sep 2026 14:46:30 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 161 passed  
-**Total Verified Tests**: 1355 passed  
+**Total Verified Tests**: 1372 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **161/161 test suites passed** (1355 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **161/161 test suites passed** (1372 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 38 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 40 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,23 +25,25 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.73%** (6461/6967) — *Target: $ge$ 80%*
-- **Statements**: **91.2%** (6982/7655) — *Target: $ge$ 80%*
+- **Lines**: **92.75%** (6480/6986) — *Target: $ge$ 80%*
+- **Statements**: **91.23%** (7001/7674) — *Target: $ge$ 80%*
 - **Functions**: **88.96%** (1540/1731) — *Target: $ge$ 80%*
-- **Branches**: **81.65%** (5930/7262) — *Target: $ge$ 80%*
+- **Branches**: **81.67%** (5951/7286) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (161 Suites / 1355 Tests)
+## 🧪 Comprehensive Test Suite Catalog (161 Suites / 1372 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 148 Tests)
+### 🚀 App Routes & Pages (14 Suites · 152 Tests)
 
 <details>
-<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `stores and retrieves cached metadata correctly`
 - ✔ `returns cached metadata if not expired without network fetch`
-- ✔ `fetches metadata from upstream when not cached`
+- ✔ `fetches metadata from upstream with trailing slash when not cached and Supabase is unconfigured`
+- ✔ `resolves metadata directly from Supabase when configured and present`
+- ✔ `falls back to upstream Gutendex when Supabase record is not found`
 - ✔ `returns null when upstream returns error status`
 - ✔ `returns null when network throws an error`
 
@@ -66,7 +68,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -82,6 +84,8 @@
 - ✔ `should return 502 if upstream text mirrors fail or time out`
 - ✔ `guarantees fetch is strictly called with canonical Gutenberg endpoints only`
 - ✔ `falls back to secondary mirror when primary mirror returns 404`
+- ✔ `streams content directly from Supabase (Tier 1) without external network fetch`
+- ✔ `safely follows redirects to trusted Gutenberg mirrors`
 
 </details>
 
@@ -2375,7 +2379,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **9 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **7 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

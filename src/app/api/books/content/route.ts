@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SITE_CONFIG } from '@/config/site-config';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
 import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
-import { isBookPublicDomainInJurisdiction, normalizeCountryCode, type GenericBookInput } from '@/lib/copyright-engine';
+import { isBookPublicDomainInJurisdiction, normalizeCountryCode } from '@/lib/copyright-engine';
 import { GEO_COOKIE_NAME } from '@/proxy';
-import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 import { isSafeUpstreamUrl } from './url-validator';
-
 import { resolveBookMetadata } from './metadata-cache';
+import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
+import { createClient } from '@/lib/supabase/client';
 
 const MAX_BOOK_BYTES = 15 * 1024 * 1024; // 15 MB threshold for Gutenberg plain text volumes
 
@@ -111,12 +111,44 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Explicitly encode sanitized numeric ID and anchor to hardcoded Gutenberg origin via new URL
+  // ==========================================================================
+  // Tier 1: Instant Streaming from Self-Hosted Supabase PostgreSQL Catalog
+  // ==========================================================================
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('books')
+        .select('content')
+        .eq('id', bookId)
+        .maybeSingle();
+
+      if (!error && data?.content && data.content.trim().length > 0) {
+        return new NextResponse(data.content, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+            'Vary': 'x-vercel-ip-country, Accept-Encoding',
+            'X-Bookarium-Source': 'supabase',
+          },
+        });
+      }
+    } catch {
+      // Degrade gracefully to external multi-mirror fetch
+    }
+  }
+
+  // ==========================================================================
+  // Tier 2: Resilient Multi-Mirror Upstream Fetching with Redirect Following
+  // ==========================================================================
   const safeId = encodeURIComponent(String(Math.trunc(bookId)));
   const targetUrls: string[] = [
     new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://www.gutenberg.org').toString(),
     new URL(`/files/${safeId}/${safeId}-0.txt`, 'https://www.gutenberg.org').toString(),
     new URL(`/files/${safeId}/${safeId}.txt`, 'https://www.gutenberg.org').toString(),
+    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://aleph.gutenberg.org').toString(),
+    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.readingroo.ms').toString(),
   ];
 
   let textContent = '';
@@ -127,7 +159,7 @@ export async function GET(request: NextRequest) {
     const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     try {
-      const response = await fetch(targetUrl, {
+      let response = await fetch(targetUrl, {
         signal: controller.signal,
         redirect: 'manual',
         headers: {
@@ -137,6 +169,23 @@ export async function GET(request: NextRequest) {
           Connection: 'keep-alive',
         },
       });
+
+      // Follow redirects only if the target location is verified safe (anti-SSRF)
+      if ((response.status === 301 || response.status === 302) && response.headers.get('location')) {
+        const redirectLocation = response.headers.get('location')!;
+        if (isSafeUpstreamUrl(redirectLocation)) {
+          response = await fetch(redirectLocation, {
+            signal: controller.signal,
+            redirect: 'manual',
+            headers: {
+              'User-Agent': `Bookarium-PublicDomain-Reader/1.0 (${SITE_CONFIG.GITHUB_REPO})`,
+              Accept: 'text/plain, text/html, */*',
+              'Accept-Encoding': 'gzip, deflate, br',
+              Connection: 'keep-alive',
+            },
+          });
+        }
+      }
 
       clearTimeout(timeoutId);
 

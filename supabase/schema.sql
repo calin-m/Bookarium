@@ -607,10 +607,14 @@ CREATE TABLE IF NOT EXISTS public.books (
   download_count INTEGER NOT NULL DEFAULT 0,
   max_author_death_year INTEGER,
   min_author_birth_year INTEGER,
+  content TEXT,
   search_vector TSVECTOR,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Idempotent column evolution for existing public.books tables
+ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;
 
 -- Trigger to automatically populate and maintain search_vector on insert/update
 CREATE OR REPLACE FUNCTION public.books_search_vector_trigger()

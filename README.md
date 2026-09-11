@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-161%20Suites%20%7C%201355%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.73%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-161%20Suites%20%7C%201372%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.75%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -441,17 +441,34 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 | `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status classification. |
 | `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, and dual immersion duration (reading & listening). |
 | `public.user_accolades` | Table (RLS) | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
-| `public.books` | Table (RLS) | High-performance self-hosted public domain catalog with GIN full-text search (`search_vector`), indexed languages, subjects, download metrics, pre-computed author lifespan bounds (`max_author_death_year`, `min_author_birth_year`) for sub-50ms jurisdictional copyright queries, and public read RLS (`FOR SELECT USING (true)`). |
+| `public.books` | Table (RLS) | High-performance self-hosted public domain catalog with GIN full-text search (`search_vector`), indexed languages, subjects, download metrics, pre-computed author lifespan bounds (`max_author_death_year`, `min_author_birth_year`) for sub-50ms jurisdictional copyright queries, optional full plain-text caching (`content`) for instant sub-30ms reader streaming, and public read RLS (`FOR SELECT USING (true)`). |
 | `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
 | `public.delete_current_user()` | RPC Function | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable `search_path`). |
 
-### Step 3: Seed Public Domain Book Catalog (Optional)
-To activate the self-hosted PostgreSQL book catalog and bypass third-party rate limits, run the catalog seeder:
+### Step 3: Populate Public Domain Book Catalog (Optional)
+To activate the self-hosted PostgreSQL book catalog and bypass third-party rate limits, you have two options:
+
+#### Option A: Autonomous Full-Catalog Sync (~72,000 Titles — Recommended)
+Stream Project Gutenberg's complete official catalog dump directly into Supabase without copy-pasting SQL:
 ```bash
-# Generate curated SQL seed file with 10 masterworks (or run with --pages=N)
+# 1. Quick test run (first 100 books, ~2 seconds):
+npm run catalog:sync -- --limit=100
+
+# 2. Full autonomous catalog population (~72,000 titles in ~2 minutes):
+npm run catalog:sync
+```
+> [!TIP]
+> **Hands-Free Weekly Sync**: Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your repository's **GitHub Secrets** (`Settings -> Secrets and variables -> Actions`). The scheduled GitHub Actions workflow (`.github/workflows/catalog-sync.yml`) will automatically update newly added titles every Sunday at 02:00 UTC and keep your Supabase free project active. You can also trigger it on-demand with 1 click from the GitHub **Actions** tab.
+
+#### Option B: Curated Masterworks Starter Seed (10 Books)
+If you prefer a quick starter seed for local development:
+```bash
+# Generate curated SQL seed file with 10 masterworks
 npm run catalog:ingest -- --curated --dry-run
 ```
-Paste and run the generated [`supabase/seed_books.sql`](supabase/seed_books.sql) in your Supabase SQL Editor. Once seeded, `/api/books` automatically switches from Gutendex upstream to your ultra-fast self-hosted Supabase database with sub-50ms query times.
+Paste and run [`supabase/seed_books.sql`](supabase/seed_books.sql) in your Supabase SQL Editor.
+
+Once seeded, `/api/books` automatically switches from Gutendex upstream to your ultra-fast self-hosted Supabase database with sub-50ms query times.
 
 ### Step 4: Configure Authentication Redirect URLs
 1. In your Supabase Dashboard, navigate to **Authentication $\to$ URL Configuration**.
@@ -514,6 +531,8 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 | `npm run lint` | Runs ESLint 9 rules and Core Web Vitals checks |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
 | `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
+| `npm run catalog:sync` | Streams Project Gutenberg's catalog dump (~72,000 titles) and batch-upserts into Supabase |
+| `npm run catalog:ingest` | Generates curated SQL seed files (`supabase/seed_books.sql`) for local setup |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 
@@ -546,7 +565,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1355 tests across 161 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1372 tests across 161 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
