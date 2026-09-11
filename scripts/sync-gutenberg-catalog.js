@@ -269,15 +269,15 @@ function streamGutenbergCatalog(onRecord, catalogUrl = 'https://www.gutenberg.or
   });
 }
 
-// 7. Safe Supabase Batch Upsert with Retry
-async function upsertBatch(supabase, batch, retries = 3) {
+// 7. Safe Supabase Batch Upsert with Adaptive Timeout Sub-Batching
+async function upsertBatch(supabase, batch, retries = 3, ignoreDuplicates = true) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const { error } = await supabase
         .from('books')
         .upsert(batch, {
           onConflict: 'id',
-          ignoreDuplicates: false,
+          ignoreDuplicates,
         });
 
       if (error) {
@@ -285,10 +285,19 @@ async function upsertBatch(supabase, batch, retries = 3) {
       }
       return;
     } catch (err) {
+      // Adaptive split-and-conquer on statement timeouts
+      const isTimeout = err.message && (err.message.includes('statement timeout') || err.message.includes('canceling statement'));
+      if (isTimeout && batch.length > 25) {
+        const mid = Math.floor(batch.length / 2);
+        await upsertBatch(supabase, batch.slice(0, mid), retries, ignoreDuplicates);
+        await upsertBatch(supabase, batch.slice(mid), retries, ignoreDuplicates);
+        return;
+      }
+
       if (attempt === retries) {
         throw new Error(`Failed to upsert batch after ${retries} attempts: ${err.message}`);
       }
-      const backoffMs = attempt * 1000;
+      const backoffMs = attempt * 1200;
       await new Promise((r) => setTimeout(r, backoffMs));
     }
   }
@@ -299,12 +308,13 @@ async function main() {
   const args = process.argv.slice(2);
   const isHelp = args.includes('--help') || args.includes('-h');
   const isDryRun = args.includes('--dry-run');
+  const shouldUpdateExisting = args.includes('--update-existing');
   const limitArg = args.find((a) => a.startsWith('--limit='));
   const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : null;
   const languagesArg = args.find((a) => a.startsWith('--languages='));
   const allowedLanguages = languagesArg ? new Set(languagesArg.split('=')[1].toLowerCase().split(',')) : null;
   const batchSizeArg = args.find((a) => a.startsWith('--batch-size='));
-  const batchSize = batchSizeArg ? parseInt(batchSizeArg.split('=')[1], 10) : 500;
+  const batchSize = batchSizeArg ? parseInt(batchSizeArg.split('=')[1], 10) : 200;
 
   if (isHelp) {
     console.log(`
@@ -316,7 +326,8 @@ Options:
   --dry-run             Stream and parse catalog without mutating Supabase
   --limit=N             Ingest only the first N valid books (e.g. --limit=100)
   --languages=en,fr     Filter by ISO languages (default: all languages)
-  --batch-size=N        Number of books per Supabase upsert (default: 500)
+  --batch-size=N        Number of books per Supabase upsert (default: 200)
+  --update-existing     Force overwrite existing records (default: skip existing)
   --help, -h            Show this help guide
 `);
     process.exit(0);
@@ -329,6 +340,7 @@ Options:
   console.log('📚 Bookarium Gutenberg Catalog Sync');
   console.log('====================================');
   console.log(`• Mode:        ${isDryRun ? 'DRY-RUN (No database writes)' : 'LIVE UPSERT'}`);
+  console.log(`• Strategy:    ${shouldUpdateExisting ? 'OVERWRITE (Update existing records)' : 'INCREMENTAL (Skip existing IDs)'}`);
   console.log(`• Batch Size:  ${batchSize} books/request`);
   if (limit) console.log(`• Limit:       ${limit} books`);
   if (allowedLanguages) console.log(`• Languages:   ${Array.from(allowedLanguages).join(', ')}`);
@@ -369,7 +381,7 @@ Options:
     currentBatch = [];
 
     if (!isDryRun && supabase) {
-      await upsertBatch(supabase, toSend);
+      await upsertBatch(supabase, toSend, 3, !shouldUpdateExisting);
     }
     totalUpserted += toSend.length;
 
@@ -378,7 +390,7 @@ Options:
     process.stdout.write(`\r  ↳ Upserted: ${totalUpserted.toLocaleString()} titles | ${speed} books/sec | ${elapsed}s elapsed`);
 
     // Anti-throttling micro-pause
-    await new Promise((r) => setTimeout(r, 40));
+    await new Promise((r) => setTimeout(r, 75));
   };
 
   try {
@@ -434,6 +446,7 @@ module.exports = {
   computeLifespanBounds,
   buildStandardFormats,
   normalizeCsvRow,
+  upsertBatch,
   loadEnv,
 };
 

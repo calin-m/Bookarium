@@ -10,6 +10,11 @@ on:
         description: 'Maximum titles to ingest (leave blank for all ~72,000)'
         required: false
         type: string
+      update_existing:
+        description: 'Force overwrite existing books (default: false / skip existing)'
+        required: false
+        type: boolean
+        default: false
       dry_run:
         description: 'Dry run (parse and validate without writing to database)'
         required: false
@@ -46,6 +51,9 @@ jobs:
           CMD_ARGS=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             CMD_ARGS="$CMD_ARGS --dry-run"
+          fi
+          if [ "${{ github.event.inputs.update_existing }}" = "true" ]; then
+            CMD_ARGS="$CMD_ARGS --update-existing"
           fi
           if [ -n "${{ github.event.inputs.limit }}" ]; then
             CMD_ARGS="$CMD_ARGS --limit=${{ github.event.inputs.limit }}"
