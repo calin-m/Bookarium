@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotebookView } from './NotebookView';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -124,7 +125,7 @@ describe('NotebookView component', () => {
 
   it('resolves authentic title and author for non-featured, non-saved book (e.g. 31635) via remote book query', async () => {
     testQueryClient.setQueryData(
-      ['books', { ids: '31635', page: 1, copyright: false }],
+      ['books', { ids: '31635', page: 1, copyright: false, includeRestrictedMetadata: true }],
       {
         count: 1,
         results: [
@@ -162,6 +163,46 @@ describe('NotebookView component', () => {
     const storeAnn = useAnnotationStore.getState().annotations.find((a) => a.bookId === 31635);
     expect(storeAnn?.bookTitle).toBe('The Silent Barrier');
     expect(storeAnn?.bookAuthor).toBe('Louis Tracy');
+  });
+
+  it('resolves authentic title, author, and Protected badge for restricted books', async () => {
+    useJurisdictionStore.getState().setCountry('GB');
+
+    testQueryClient.setQueryData(
+      ['books', { ids: '863', page: 1, copyright: false, includeRestrictedMetadata: true }],
+      {
+        count: 1,
+        results: [
+          {
+            id: 863,
+            title: 'The Mysterious Affair at Styles',
+            authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+            subjects: ['Detective and mystery stories'],
+            languages: ['en'],
+            copyright: false,
+            download_count: 1500,
+            formats: {},
+          },
+        ],
+      }
+    );
+
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 863,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Hastings, my friend, the little grey cells.',
+      color: 'amber',
+      note: 'Classic deduction',
+    });
+
+    render(<NotebookView />);
+
+    expect(screen.getAllByText('The Mysterious Affair at Styles').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/by Agatha Christie/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Protected/i).length).toBeGreaterThanOrEqual(1);
+
+    useJurisdictionStore.getState().resetOverride();
   });
 
   it('filters annotations by search query across quote, note, title, and author', async () => {

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BookPreviewModal } from './BookPreviewModal';
 import { mockBooks } from '@/mocks/handlers';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
 const createTestQueryClient = () =>
   new QueryClient({
@@ -26,6 +27,11 @@ describe('BookPreviewModal component', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    useJurisdictionStore.setState({
+      country: 'US',
+      rule: 'US_PUBLIC_DOMAIN',
+      overrideCountry: null,
+    });
     useBookshelfStore.setState({
       savedBooks: [],
       readingQueue: [],
@@ -386,6 +392,44 @@ describe('BookPreviewModal component', () => {
     expect(handleClose).not.toHaveBeenCalled();
     expect(useBookshelfStore.getState().bookRatings[defaultBook.id]).toBe(4);
     expect(useBookshelfStore.getState().bookStatuses[defaultBook.id]).toBe('want_to_read');
+  });
+
+  it('renders Protected (GB) badge and disabled Restricted button when book is restricted', () => {
+    act(() => {
+      useJurisdictionStore.getState().setCountry('GB');
+    });
+
+    const restrictedBook = {
+      ...defaultBook,
+      id: 8888,
+      title: 'Restricted Title in Preview',
+      authors: [{ name: 'Modern Author', birth_year: 1940, death_year: 1995 }],
+    };
+
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={restrictedBook}
+        isOpen={true}
+        onClose={vi.fn()}
+        onReadBook={vi.fn()}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    // Spread badges should show Protected (GB)
+    expect(screen.getByTestId('notable-passages-restricted-badge')).toHaveTextContent('Protected (GB)');
+    expect(screen.getByTestId(`preview-restricted-badge-left-${restrictedBook.id}`)).toHaveTextContent('Protected (GB)');
+
+    // Read buttons (on front cover card and inside spread) should be disabled and show Restricted
+    const restrictedBtns = screen.getAllByRole('button', { name: /Restricted Title in Preview is restricted in GB/i });
+    expect(restrictedBtns.length).toBeGreaterThanOrEqual(1);
+    restrictedBtns.forEach((btn) => {
+      expect(btn).toBeDisabled();
+      expect(btn).toHaveTextContent('Restricted');
+    });
   });
 });
 

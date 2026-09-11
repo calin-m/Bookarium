@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw } from 'lucide-react';
+import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle } from 'lucide-react';
 import type { ActiveReadingVolume, LedgerItemStatus } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { formatAuthorNames, formatRelativeTime } from '@/lib/utils';
 
 export interface BookmarkCardProps {
@@ -30,7 +32,12 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   const { book, progressPercent, chapterIndex, globalPage, lastReadAt, status } = volume;
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
+  const { country } = useJurisdiction();
+  const evaluation = isBookPublicDomainInJurisdiction(book, country);
+  const isRestricted = !evaluation.isAllowed;
+
   const handleResume = () => {
+    if (isRestricted) return;
     useReaderStore.getState().openReader(book);
     if (onResume) {
       onResume(book.id);
@@ -81,7 +88,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         <div className="flex items-start gap-4">
           <div
             role="button"
-            tabIndex={0}
+            tabIndex={isRestricted ? -1 : 0}
             onClick={handleResume}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -89,8 +96,14 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 handleResume();
               }
             }}
-            aria-label={`Resume reading ${book.title} (cover)`}
-            className="group/cover relative w-16 h-24 shrink-0 rounded overflow-hidden bg-muted border border-border shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+            aria-label={
+              isRestricted
+                ? `${book.title} is restricted in ${country}`
+                : `Resume reading ${book.title} (cover)`
+            }
+            className={`group/cover relative w-16 h-24 shrink-0 rounded overflow-hidden bg-muted border border-border shadow-2xs focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 ${
+              isRestricted ? 'cursor-not-allowed' : 'cursor-pointer'
+            }`}
           >
             {book.coverUrl && !imageError ? (
               <img
@@ -98,7 +111,11 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 alt={`Cover of ${book.title}`}
                 loading="lazy"
                 onError={() => setImageError(true)}
-                className="w-full h-full object-cover group-hover/cover:scale-105 transition-transform duration-300"
+                className={`w-full h-full object-cover transition-transform duration-300 ${
+                  isRestricted
+                    ? 'opacity-65 grayscale-[35%]'
+                    : 'group-hover/cover:scale-105'
+                }`}
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-primary-900/10 to-primary-800/20 text-center">
@@ -106,6 +123,16 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 <span className="text-[9px] font-mono uppercase text-muted-foreground line-clamp-2">
                   {book.title}
                 </span>
+              </div>
+            )}
+            {isRestricted && (
+              <div
+                className="absolute inset-0 bg-background/50 backdrop-blur-[1px] flex items-center justify-center"
+                title={evaluation.reason || `Protected by copyright in ${country}`}
+              >
+                <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 sepia:text-amber-400 shadow-xs">
+                  <Lock className="w-3.5 h-3.5" />
+                </div>
               </div>
             )}
           </div>
@@ -118,6 +145,16 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 {currentBadge.icon}
                 <span>{currentBadge.label}</span>
               </span>
+              {isRestricted && (
+                <span
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30"
+                  title={evaluation.reason || `Protected by copyright in ${country}`}
+                  aria-label={`Protected in ${country}`}
+                >
+                  <Lock className="w-2.5 h-2.5 shrink-0" />
+                  <span>Protected ({country})</span>
+                </span>
+              )}
               {isOffline && (
                 <span
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 border border-emerald-500/30"
@@ -130,8 +167,19 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               )}
             </div>
 
-            <h3 className="font-serif font-bold text-base text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
-              <Link href={ROUTES.READ(book.id)}>{book.title}</Link>
+            <h3 className="font-serif font-bold text-base text-foreground leading-snug line-clamp-2 transition-colors">
+              {isRestricted ? (
+                <span
+                  className="cursor-not-allowed opacity-85"
+                  title={evaluation.reason || `Protected by copyright in ${country}`}
+                >
+                  {book.title}
+                </span>
+              ) : (
+                <Link href={ROUTES.READ(book.id)} className="group-hover:text-primary">
+                  {book.title}
+                </Link>
+              )}
             </h3>
 
             <p className="font-sans text-xs text-muted-foreground truncate mt-1">
@@ -179,29 +227,43 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
       {/* Action Footer */}
       <div className="flex items-center gap-2 pt-5 mt-4 border-t border-border">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleResume}
-          aria-label={
-            status === 'completed'
-              ? `Read ${book.title} again from beginning`
-              : `Resume reading ${book.title}`
-          }
-          className="flex-1 gap-1.5 font-mono text-xs uppercase tracking-wider font-bold"
-        >
-          {status === 'completed' ? (
-            <>
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Read Again</span>
-            </>
-          ) : (
-            <>
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Resume</span>
-            </>
-          )}
-        </Button>
+        {isRestricted ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled
+            className="flex-1 gap-1.5 font-mono text-xs uppercase tracking-wider font-bold opacity-60 cursor-not-allowed border-amber-500/40 text-amber-700 dark:text-amber-400 sepia:text-amber-400"
+            aria-label={`Reading restricted for ${book.title} in ${country}`}
+            title={evaluation.reason || `Protected by copyright in ${country}`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>Restricted</span>
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleResume}
+            aria-label={
+              status === 'completed'
+                ? `Read ${book.title} again from beginning`
+                : `Resume reading ${book.title}`
+            }
+            className="flex-1 gap-1.5 font-mono text-xs uppercase tracking-wider font-bold"
+          >
+            {status === 'completed' ? (
+              <>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Read Again</span>
+              </>
+            ) : (
+              <>
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Resume</span>
+              </>
+            )}
+          </Button>
+        )}
 
         {onStatusChange && (
           <select

@@ -71,6 +71,44 @@ describe('ReaderErrorView Component', () => {
     expect(screen.getByText(/Protected under local copyright law in FR\./i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Return to Library/i })).toBeInTheDocument();
   });
+
+  it('renders authentic bookTitle and bookAuthor in legal restriction view when provided', () => {
+    const activeTheme = getReaderTheme('light');
+    const legalErr = new LegalRestrictionError({
+      country: 'RO',
+      rule: 'LIFE_70',
+      reason: 'Protected under Romanian copyright law.',
+    });
+
+    render(
+      <ReaderErrorView
+        activeTheme={activeTheme}
+        error={legalErr}
+        bookTitle="The Silent Barrier"
+        bookAuthor="Louis Tracy"
+      />
+    );
+
+    expect(screen.getByRole('heading', { level: 1, name: 'The Silent Barrier' })).toBeInTheDocument();
+    expect(screen.getByText(/by Louis Tracy/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /Protected by Copyright in Your Jurisdiction/i })).toBeInTheDocument();
+  });
+
+  it('renders authentic bookTitle and bookAuthor in generic error view when provided', () => {
+    const activeTheme = getReaderTheme('light');
+
+    render(
+      <ReaderErrorView
+        activeTheme={activeTheme}
+        bookTitle="The Silent Barrier"
+        bookAuthor="Louis Tracy"
+      />
+    );
+
+    expect(screen.getByRole('heading', { level: 1, name: 'The Silent Barrier' })).toBeInTheDocument();
+    expect(screen.getByText(/by Louis Tracy/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /Unable to Load Masterwork Text/i })).toBeInTheDocument();
+  });
 });
 
 

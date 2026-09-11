@@ -58,8 +58,10 @@ describe('Root Proxy (Next.js 16)', () => {
     vi.unstubAllEnvs();
   });
 
-  it('falls back to existing cookie when no IP headers are present', async () => {
-    const req = new NextRequest('http://localhost:3000/catalog', {
+  it('falls back to existing cookie when no IP headers are present in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const req = new NextRequest('https://bookarium.vercel.app/catalog', {
       headers: {
         cookie: `${GEO_COOKIE_NAME}=GB`,
       },
@@ -69,15 +71,38 @@ describe('Root Proxy (Next.js 16)', () => {
     const geoCookie = res.cookies.get(GEO_COOKIE_NAME);
     expect(geoCookie?.value).toBe('GB');
     expect(res.headers.get('x-bookarium-country')).toBe('GB');
+
+    vi.unstubAllEnvs();
   });
 
-  it('defaults to US when no geo signals exist', async () => {
+  it('infers country from system timezone in development when no override or edge header exists', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.spyOn(Intl, 'DateTimeFormat').mockReturnValue({
+      resolvedOptions: () => ({ timeZone: 'Europe/Bucharest' }),
+    } as unknown as Intl.DateTimeFormat);
+
     const req = new NextRequest('http://localhost:3000/catalog');
+    const res = await proxy(req);
+
+    const geoCookie = res.cookies.get(GEO_COOKIE_NAME);
+    expect(geoCookie?.value).toBe('RO');
+    expect(res.headers.get('x-bookarium-country')).toBe('RO');
+
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it('defaults to US when no geo signals exist in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const req = new NextRequest('https://bookarium.vercel.app/catalog');
     const res = await proxy(req);
 
     const geoCookie = res.cookies.get(GEO_COOKIE_NAME);
     expect(geoCookie?.value).toBe('US');
     expect(res.headers.get('x-bookarium-country')).toBe('US');
+
+    vi.unstubAllEnvs();
   });
 });
 

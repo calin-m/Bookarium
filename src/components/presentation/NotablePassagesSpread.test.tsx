@@ -51,5 +51,21 @@ describe('NotablePassagesSpread component', () => {
     expect(screen.getByTestId('notable-passage-secondary')).toBeInTheDocument();
     expect(screen.queryByTestId('notable-passage-tertiary')).not.toBeInTheDocument();
   });
+
+  it('renders Protected (RO) header badge when isRestricted is true', () => {
+    render(
+      <NotablePassagesSpread
+        passage={{
+          quoteExcerpt: 'Protected quote excerpt',
+        }}
+        isRestricted={true}
+        country="RO"
+      />
+    );
+
+    expect(screen.getByText('Notable Passages')).toBeInTheDocument();
+    expect(screen.queryByText('CC0 / Free')).not.toBeInTheDocument();
+    expect(screen.getByTestId('notable-passages-restricted-badge')).toHaveTextContent('Protected (RO)');
+  });
 });
 

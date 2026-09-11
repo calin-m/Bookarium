@@ -18,6 +18,7 @@ export interface CatalogQueryOptions {
   mimeType?: string;
   ids?: string;
   country: string; // ISO 3166-1 alpha-2, mandatory for legal jurisdiction
+  includeRestrictedMetadata?: boolean;
 }
 
 export interface CatalogQueryResult {

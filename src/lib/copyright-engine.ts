@@ -105,6 +105,46 @@ interface AuthorEvaluation {
 }
 
 /**
+ * Extracts birth and death years from author name strings when structured fields are missing
+ * e.g. "Austen, Jane, 1775-1817", "Wells, H. G., 1866-1946", "Author [1850-1920]", "Author, d. 1925"
+ */
+export function parseLifespansFromName(rawName?: string | null): { birthYear: number | null; deathYear: number | null } {
+  if (!rawName || typeof rawName !== 'string') {
+    return { birthYear: null, deathYear: null };
+  }
+
+  // Pattern 1: Standard YYYY-YYYY or YYYY–YYYY e.g. "1775-1817", "1890-1976", "[1835-1910]"
+  const rangeMatch = rawName.match(/(?:^|[(\[\,\s])(\d{3,4})\s*[-–—]\s*(\d{3,4})(?:$|[)\]\,\s])/);
+  if (rangeMatch) {
+    const b = parseInt(rangeMatch[1], 10);
+    const d = parseInt(rangeMatch[2], 10);
+    if (Number.isFinite(b) && Number.isFinite(d) && d >= b) {
+      return { birthYear: b, deathYear: d };
+    }
+  }
+
+  // Pattern 2: Died / d. YYYY e.g. "d. 1817", "died 1925"
+  const diedMatch = rawName.match(/(?:d\.|died|death)\s*(\d{3,4})/i);
+  if (diedMatch) {
+    const d = parseInt(diedMatch[1], 10);
+    if (Number.isFinite(d)) {
+      return { birthYear: null, deathYear: d };
+    }
+  }
+
+  // Pattern 3: Born / b. YYYY e.g. "b. 1775", "born 1850"
+  const bornMatch = rawName.match(/(?:b\.|born|birth)\s*(\d{3,4})/i);
+  if (bornMatch) {
+    const b = parseInt(bornMatch[1], 10);
+    if (Number.isFinite(b)) {
+      return { birthYear: b, deathYear: null };
+    }
+  }
+
+  return { birthYear: null, deathYear: null };
+}
+
+/**
  * Evaluates an individual contributor (author or translator) under a given term.
  */
 function evaluateContributor(
@@ -114,11 +154,34 @@ function evaluateContributor(
   role: 'author' | 'translator'
 ): AuthorEvaluation {
   const name = contributor.name || 'Anonymous';
-  const deathYear = contributor.death_year;
-  const birthYear = contributor.birth_year;
+  const rawDeath = (contributor as { death_year?: unknown }).death_year;
+  const rawBirth = (contributor as { birth_year?: unknown }).birth_year;
+
+  let deathYear: number | null = null;
+  if (typeof rawDeath === 'number' && Number.isFinite(rawDeath)) {
+    deathYear = rawDeath;
+  } else if (typeof rawDeath === 'string' && rawDeath.trim() !== '') {
+    const parsed = Number(rawDeath.trim());
+    if (Number.isFinite(parsed)) deathYear = parsed;
+  }
+
+  let birthYear: number | null = null;
+  if (typeof rawBirth === 'number' && Number.isFinite(rawBirth)) {
+    birthYear = rawBirth;
+  } else if (typeof rawBirth === 'string' && rawBirth.trim() !== '') {
+    const parsed = Number(rawBirth.trim());
+    if (Number.isFinite(parsed)) birthYear = parsed;
+  }
+
+  // Fallback: If lifespans are missing from structured fields, parse from name string
+  if (deathYear === null && birthYear === null && contributor.name) {
+    const parsed = parseLifespansFromName(contributor.name);
+    if (parsed.deathYear !== null) deathYear = parsed.deathYear;
+    if (parsed.birthYear !== null) birthYear = parsed.birthYear;
+  }
 
   // Case 1: Death year is explicitly known
-  if (deathYear !== null && deathYear !== undefined && Number.isFinite(deathYear)) {
+  if (deathYear !== null && Number.isFinite(deathYear)) {
     const publicDomainYear = deathYear + termYears + 1;
     const isCleared = currentYear >= publicDomainYear;
 
@@ -135,7 +198,7 @@ function evaluateContributor(
   }
 
   // Case 2: Death year is missing, but birth year is known
-  if (birthYear !== null && birthYear !== undefined && Number.isFinite(birthYear)) {
+  if (birthYear !== null && Number.isFinite(birthYear)) {
     // If born within: currentYear - termYears - MAX_HUMAN_LIFESPAN - 1
     // they could have lived MAX_HUMAN_LIFESPAN years and died within the protected period.
     const safeBirthCutoff = currentYear - termYears - MAX_HUMAN_LIFESPAN - 1;
@@ -171,25 +234,61 @@ export interface GenericBookInput {
   copyright?: boolean | null;
 }
 
+const NON_AUTHOR_CONTRIBUTOR_PATTERN = /(?:\[|\()(?:illustrator|photographer|engraver|artist|decorator|calligrapher|ill\.|photo\.)(?:\]|\))/i;
+
+export function isNonAuthorContributor(name?: string | null): boolean {
+  if (!name || typeof name !== 'string') return false;
+  return NON_AUTHOR_CONTRIBUTOR_PATTERN.test(name);
+}
+
 /**
  * Extracts structured Author objects from varying book representations.
+ * Excludes secondary non-literary contributors (e.g. [Illustrator], [Photographer])
+ * to prevent auxiliary artists from falsely blocking literary text works.
  */
 function extractAuthorObjects(book: GenericBookInput): Author[] {
+  let list: Author[] = [];
   if (Array.isArray(book.authorDetails) && book.authorDetails.length > 0) {
-    return book.authorDetails;
-  }
-  if (Array.isArray(book.authors)) {
-    const result: Author[] = [];
+    list = book.authorDetails.map((a) => {
+      if ((a.death_year === null || a.death_year === undefined) && (a.birth_year === null || a.birth_year === undefined) && a.name) {
+        const parsed = parseLifespansFromName(a.name);
+        return {
+          name: a.name,
+          birth_year: parsed.birthYear,
+          death_year: parsed.deathYear,
+        };
+      }
+      return a;
+    });
+  } else if (Array.isArray(book.authors)) {
     for (const item of book.authors) {
       if (item && typeof item === 'object' && 'name' in item) {
-        result.push(item as Author);
+        const a = item as Author;
+        if ((a.death_year === null || a.death_year === undefined) && (a.birth_year === null || a.birth_year === undefined) && a.name) {
+          const parsed = parseLifespansFromName(a.name);
+          list.push({
+            name: a.name,
+            birth_year: parsed.birthYear,
+            death_year: parsed.deathYear,
+          });
+        } else {
+          list.push(a);
+        }
       } else if (typeof item === 'string') {
-        result.push({ name: item, birth_year: null, death_year: null });
+        const parsed = parseLifespansFromName(item);
+        list.push({ name: item, birth_year: parsed.birthYear, death_year: parsed.deathYear });
       }
     }
-    return result;
   }
-  return [];
+
+  if (list.length > 1) {
+    const withoutNonAuthors = list.filter((a) => !isNonAuthorContributor(a.name));
+    if (withoutNonAuthors.length > 0) {
+      return withoutNonAuthors;
+    }
+  }
+
+  return list;
 }
 
 /**

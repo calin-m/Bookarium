@@ -159,6 +159,8 @@ function generateMarkdown() {
     '        EngineCore["isBookPublicDomainInJurisdiction\\n(US 1930 Cutoff, Life+70, Life+100, Life+80)"]',
     '        JointAuthors["Joint Authorship Guard (Berne Art. 7bis)"]',
     '        Translators["Translator Protection (Berne Art. 2(3))"]',
+    '        ContributorFilter["Contributor Role Filter\\n(Illustrator/Artist Non-Blocking Exclusion)"]',
+    '        CountryResolver["Country Resolver (src/lib/country-resolver.ts)\\n(Edge Geo-IP, Cookie Sync, Timezone Inference)"]',
     '        MetaCache["Metadata Lifespan Cache\\n(metadata-cache.ts • 24h LRU)"]',
     '    end',
     '',
@@ -333,6 +335,8 @@ function generateMarkdown() {
     useBookPassageShuffle: 'Autonomous literary quote selection and multi-chapter shuffle engine.',
     useHasMounted: 'SSR hydration barrier hook preventing client-server markup mismatches.',
     useReadingTimer: 'Reader session telemetry tracking visual reading with 2-minute idle guard and TTS narration audio bypass.',
+    useCollectionAutoHeal: 'Unified multi-collection auto-healing pipeline scanning and rehydrating missing author lifespans across Favorites and Bookshelves.',
+    useMobileViewSwipe: 'Tactile touch gesture navigation hook enabling horizontal view swiping across primary mobile navigation tabs.',
   };
 
   for (const h of hooks) {
@@ -366,6 +370,8 @@ function generateMarkdown() {
       'Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions.',
     'copyright-engine':
       'Multi-jurisdictional copyright engine evaluating public domain status across US, EU/Berne (Life + 70), Mexico (Life + 100), and Colombia/Spain (Life + 80), with joint authorship (Art. 7bis), translator protection (Art. 2(3)), and longevity heuristics.',
+    'country-resolver':
+      'Synchronous and edge geographic country resolution coordinating timezone mapping, geo-cookies, and developer overrides.',
     'gutendex-provider':
       'Upstream Gutendex REST catalog provider implementing ICatalogProvider with 15s timeout control, error mapping, and jurisdictional copyright filtering.',
     'gutenberg-parser':
@@ -535,7 +541,7 @@ function generateMarkdown() {
     '2. **2-Part Visible Telemetry**: `StickyCatalogToolbar.tsx` renders live API/database connectivity status alongside exact roundtrip latency in milliseconds.',
     '3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.',
     '4. **Edge SWR Caching & Geographic Vary Partitioning**: Common queries are cached with `s-maxage=120, stale-while-revalidate=600` and partitioned across jurisdictions via `Vary: x-vercel-ip-country, Accept-Encoding` to prevent cross-border cache pollution.',
-    '5. **Jurisdictional Copyright Gatekeeping**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles.',
+    '5. **Jurisdictional Copyright Gatekeeping & Bibliographic Preservation**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles. Concurrently, the catalog pipeline supports `includeRestrictedMetadata=true` for explicit IDs, ensuring personal collections (Notebook, Bookmarks) and reader error screens display authentic bibliographic citations (titles, authors, subjects) without opening prohibited full-text streams.',
     '6. **Multi-Tier Text Streaming & Multi-Mirror Failover**: Plain text is served on-demand from Tier 1 (self-hosted Supabase plain-text cache if present) or Tier 2 (multi-mirror fallback across `aleph.gutenberg.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.',
     '7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.',
     '8. **Autonomous Weekly Catalog Synchronization**: Project Gutenberg official catalog dump (`pg_catalog.csv.gz`, 78,000+ public domain titles) is streamed and decompressed on-the-fly via GitHub Actions (`.github/workflows/catalog-sync.yml`) or `npm run catalog:sync`, updating Supabase with zero manual SQL intervention and minimal storage footprint (~105 MB).',

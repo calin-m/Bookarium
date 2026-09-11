@@ -107,12 +107,14 @@ export class GutendexCatalogProvider implements ICatalogProvider {
         );
       }
 
-      // Apply strict jurisdictional copyright filtering
+      // Apply strict jurisdictional copyright filtering unless includeRestrictedMetadata is requested
       const originalResults = data.results || [];
-      const filteredResults = originalResults.filter((b: GutendexBook) => {
-        const evaluation = isBookPublicDomainInJurisdiction(b, country);
-        return evaluation.isAllowed;
-      });
+      const filteredResults = options.includeRestrictedMetadata
+        ? originalResults
+        : originalResults.filter((b: GutendexBook) => {
+            const evaluation = isBookPublicDomainInJurisdiction(b, country);
+            return evaluation.isAllowed;
+          });
 
       const totalFiltered = originalResults.length - filteredResults.length;
       const adjustedCount =

@@ -1,8 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { sampleBookText } from '@/mocks/handlers';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
-import { getOfflineBook } from '@/lib/offline-storage';
+import { getOfflineBook, getOfflineBookRecord } from '@/lib/offline-storage';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { useReaderStore } from '@/stores/useReaderStore';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import type { Author } from '@/types/book.types';
 
 export interface LegalRestrictionDetails {
   country: string;
@@ -29,15 +33,57 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
   const isBrowser = typeof window !== 'undefined';
   const clientCountry = isBrowser ? useJurisdictionStore.getState().getEffectiveCountry() : 'US';
 
-  // 1. Check local offline storage (IndexedDB) first for US users
-  // Non-US users must verify clearance through the gatekeeper to prevent cross-border leaks
-  if (bookId && clientCountry === 'US') {
+  // 1. Check local offline storage (IndexedDB)
+  if (bookId) {
     try {
-      const offlineText = await getOfflineBook(bookId);
+      const record = typeof getOfflineBookRecord === 'function' ? await getOfflineBookRecord(bookId) : null;
+      const offlineText = record ? record.text : await getOfflineBook(bookId);
+
       if (offlineText && offlineText.trim().length > 0) {
-        return offlineText;
+        if (clientCountry === 'US') {
+          return offlineText;
+        }
+
+        // For non-US jurisdictions, verify that the cached work is public domain in clientCountry
+        let authors: (Author | string)[] | undefined = record?.authors;
+        if (!authors || authors.length === 0) {
+          if (isBrowser) {
+            const currentBook = useReaderStore.getState().currentBook;
+            if (currentBook?.id === bookId && currentBook.authors) {
+              authors = currentBook.authors;
+            } else {
+              const shelfBook = useBookshelfStore.getState().savedBooks.find((b) => b.id === bookId);
+              if (shelfBook?.authors) {
+                authors = shelfBook.authors;
+              }
+            }
+          }
+        }
+
+        if (authors && authors.length > 0) {
+          const evaluation = isBookPublicDomainInJurisdiction({ authors }, clientCountry);
+          if (!evaluation.isAllowed) {
+            throw new LegalRestrictionError({
+              country: clientCountry,
+              rule: evaluation.rule,
+              restrictingAuthor: evaluation.restrictingAuthor,
+              restrictingDeathYear: evaluation.restrictingDeathYear,
+              publicDomainYear: evaluation.publicDomainYear,
+              reason: evaluation.reason,
+            });
+          }
+          return offlineText;
+        }
+
+        // Fallback for offline environments when metadata is absent
+        if (isBrowser && typeof navigator !== 'undefined' && !navigator.onLine) {
+          return offlineText;
+        }
       }
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof LegalRestrictionError) {
+        throw err;
+      }
       // Non-blocking fallback to network proxy
     }
   }
@@ -81,6 +127,23 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
   } catch (err: unknown) {
     if (err instanceof LegalRestrictionError) {
       throw err;
+    }
+    // Fallback on network disconnect/timeout for offline reading
+    if (bookId) {
+      try {
+        const record = typeof getOfflineBookRecord === 'function' ? await getOfflineBookRecord(bookId) : null;
+        const offlineText = record ? record.text : await getOfflineBook(bookId);
+        if (offlineText && offlineText.trim().length > 0) {
+          if (clientCountry === 'US') return offlineText;
+          const authors: (Author | string)[] | undefined = record?.authors || (isBrowser ? useReaderStore.getState().currentBook?.authors : undefined);
+          if (authors && authors.length > 0) {
+            const evaluation = isBookPublicDomainInJurisdiction({ authors }, clientCountry);
+            if (evaluation.isAllowed) return offlineText;
+          }
+        }
+      } catch {
+        // Ignore fallback errors and continue to original throw
+      }
     }
     if (err instanceof Error && err.name === 'AbortError') {
       throw new Error('Book content request timed out after 8000ms. Please check your connection.');

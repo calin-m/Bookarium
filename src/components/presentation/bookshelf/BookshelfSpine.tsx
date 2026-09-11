@@ -4,11 +4,13 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Bookmark, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star } from 'lucide-react';
+import { BookOpen, Download, Bookmark, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookRating } from '@/stores/useBookshelfStore';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction, getJurisdictionRuleDescription } from '@/lib/copyright-engine';
 import { StarRating } from '@/components/ui/StarRating';
 import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
@@ -69,6 +71,10 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   const rating = useBookRating(book.id);
   const palette = SPINE_PALETTES[(book.id + bookIndex) % SPINE_PALETTES.length];
 
+  const { country } = useJurisdiction();
+  const evaluation = isBookPublicDomainInJurisdiction(book, country);
+  const isRestricted = !evaluation.isAllowed;
+
   // Deterministic height and thickness variation based on book id
   const heightVariance = 235 + ((book.id * 17) % 45); // 235px to 280px
   const widthVariance = 42 + ((book.id * 13) % 18); // 42px to 60px
@@ -92,7 +98,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       case 'read':
         return {
           icon: <BookOpen className="w-3 h-3 text-primary shrink-0" />,
-          text: 'Open Reader',
+          text: isRestricted ? `Restricted in ${country}` : 'Open Reader',
         };
       case 'offline':
         return {
@@ -101,7 +107,11 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           ) : (
             <HardDriveDownload className="w-3 h-3 text-primary shrink-0" />
           ),
-          text: isOffline ? 'Remove Offline Copy' : 'Save for Offline Reading',
+          text: isRestricted
+            ? `Protected in ${country}`
+            : isOffline
+            ? 'Remove Offline Copy'
+            : 'Save for Offline Reading',
         };
       case 'download':
         return {
@@ -142,13 +152,29 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
     >
       {/* Classic Hardcover Spine */}
       <div
-        className={`relative w-full h-full rounded-t-sm bg-gradient-to-r ${palette.bg} shadow-md origin-bottom group-hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] group-hover:scale-105 transition-all duration-300 ease-out flex flex-col justify-between p-2 sm:p-2.5 border-t border-white/25 overflow-hidden`}
+        className={`relative w-full h-full rounded-t-sm bg-gradient-to-r ${palette.bg} shadow-md origin-bottom group-hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] group-hover:scale-105 transition-all duration-300 ease-out flex flex-col justify-between p-2 sm:p-2.5 border-t border-white/25 overflow-hidden ${
+          isRestricted
+            ? 'opacity-65 grayscale-[35%] group-hover:opacity-90 group-hover:grayscale-0 border-amber-500/40'
+            : ''
+        }`}
       >
         {/* Convex 3D Specular Lighting Overlay */}
         <div className="absolute inset-0 rounded-t-sm book-spine-convex pointer-events-none z-10" />
 
-        {/* Headcap Gilded Rule */}
-        <div className="w-full h-0.5 border-t border-b border-white/20 mb-1 shrink-0 z-20" />
+        {/* Headcap Gilded Rule & Regional Restriction Indicator */}
+        <div className="w-full flex flex-col items-center gap-0.5 mb-1 shrink-0 z-20">
+          <div className="w-full h-0.5 border-t border-b border-white/20" />
+          {isRestricted && (
+            <div
+              className="flex items-center justify-center gap-0.5 px-1 py-0.2 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[8px] font-mono mt-0.5"
+              title={`Protected by copyright in ${country}`}
+              data-testid={`spine-restricted-badge-${book.id}`}
+            >
+              <AlertTriangle className="w-2 h-2 text-amber-400 shrink-0" />
+              <span className="truncate">{country}</span>
+            </div>
+          )}
+        </div>
 
         {/* Embossed Gold Rating Stamp on Leather Spine */}
         {rating && (
@@ -185,9 +211,19 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         onMouseLeave={handleMouseLeave}
       >
         <div className="flex items-start justify-between gap-1 mb-1.5">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-primary flex items-center gap-1">
-            <Sparkles className="w-2.5 h-2.5" /> Public Domain
-          </span>
+          {isRestricted ? (
+            <span
+              className="text-[10px] uppercase font-mono tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold"
+              title={evaluation.reason || `Protected by copyright in ${country}`}
+              data-testid={`spine-card-restricted-${book.id}`}
+            >
+              <AlertTriangle className="w-2.5 h-2.5 shrink-0" /> Protected ({country})
+            </span>
+          ) : (
+            <span className="text-[10px] uppercase font-mono tracking-wider text-primary flex items-center gap-1">
+              <Sparkles className="w-2.5 h-2.5" /> Public Domain
+            </span>
+          )}
           <div className="flex items-center gap-1.5">
             {isOffline && (
               <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-semibold flex items-center gap-0.5" title="Saved offline">
@@ -215,55 +251,94 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           </div>
         )}
 
+        {isRestricted && (
+          <div
+            className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-[10px] mb-2 space-y-0.5"
+            data-testid={`spine-restricted-banner-${book.id}`}
+          >
+            <div className="font-semibold flex items-center gap-1 text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+              <span>Restricted in {country}</span>
+            </div>
+            <p className="line-clamp-2 text-muted-foreground font-sans">
+              {evaluation.reason || getJurisdictionRuleDescription(evaluation.rule, country)}
+            </p>
+          </div>
+        )}
 
         {/* Quick Action Buttons */}
         <div className="flex items-center gap-1.5 pt-2 border-t border-border">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              useReaderStore.getState().openReader(book);
-              if (onBookClick) onBookClick(book);
-              else router.push(ROUTES.READ(book.id));
-            }}
-            onMouseEnter={() => {
-              setHoveredAction('read');
-              setShowTooltip(true);
-            }}
-            onMouseLeave={() => {
-              setShowTooltip(false);
-              setHoveredAction(null);
-            }}
-            className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-[11px] font-medium transition-opacity"
-            aria-label={`Open reader for ${book.title}`}
-          >
-            <BookOpen className="w-3 h-3" />
-            <span>Read</span>
-          </button>
+          {isRestricted ? (
+            <button
+              type="button"
+              disabled
+              className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg border border-border bg-muted/50 text-muted-foreground text-[11px] font-medium opacity-60 cursor-not-allowed"
+              title={evaluation.reason || `Protected by copyright in ${country}`}
+              aria-label={`${book.title} is restricted in ${country}`}
+            >
+              <BookOpen className="w-3 h-3" />
+              <span>Restricted</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                useReaderStore.getState().openReader(book);
+                if (onBookClick) onBookClick(book);
+                else router.push(ROUTES.READ(book.id));
+              }}
+              onMouseEnter={() => {
+                setHoveredAction('read');
+                setShowTooltip(true);
+              }}
+              onMouseLeave={() => {
+                setShowTooltip(false);
+                setHoveredAction(null);
+              }}
+              className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-[11px] font-medium transition-opacity"
+              aria-label={`Open reader for ${book.title}`}
+            >
+              <BookOpen className="w-3 h-3" />
+              <span>Read</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleOffline?.(book);
-            }}
-            onMouseEnter={() => {
-              setHoveredAction('offline');
-              setShowTooltip(true);
-            }}
-            onMouseLeave={() => {
-              setShowTooltip(false);
-              setHoveredAction(null);
-            }}
-            className={`p-1 rounded-lg border transition-colors ${
-              isOffline
-                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
-                : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground'
-            }`}
-            aria-label={isOffline ? `Remove offline copy of ${book.title}` : `Download ${book.title} for offline reading`}
-          >
-            {isOffline ? <CheckCircle2 className="w-3 h-3" /> : <HardDriveDownload className="w-3 h-3" />}
-          </button>
+          {isRestricted ? (
+            <button
+              type="button"
+              disabled
+              className="p-1 rounded-lg border border-border text-muted-foreground/50 opacity-50 cursor-not-allowed"
+              title={`Offline storage unavailable for protected titles in ${country}`}
+              aria-label={`Offline storage unavailable for ${book.title}`}
+            >
+              <HardDriveDownload className="w-3 h-3" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleOffline?.(book);
+              }}
+              onMouseEnter={() => {
+                setHoveredAction('offline');
+                setShowTooltip(true);
+              }}
+              onMouseLeave={() => {
+                setShowTooltip(false);
+                setHoveredAction(null);
+              }}
+              className={`p-1 rounded-lg border transition-colors ${
+                isOffline
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
+                  : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+              aria-label={isOffline ? `Remove offline copy of ${book.title}` : `Download ${book.title} for offline reading`}
+            >
+              {isOffline ? <CheckCircle2 className="w-3 h-3" /> : <HardDriveDownload className="w-3 h-3" />}
+            </button>
+          )}
 
           <button
             type="button"

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Bookmark, Heart, Sparkles, Trash2 } from 'lucide-react';
+import { BookOpen, Download, Bookmark, Heart, Sparkles, Trash2, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount, extractBookTags } from '@/lib/utils';
 import { useHydratedBookshelf, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
@@ -183,7 +183,9 @@ export const BookCard: React.FC<BookCardProps> = ({
             <img
               src={formats.coverImage}
               alt={`Cover of ${book.title}`}
-              className="max-w-full max-h-full w-auto h-auto object-contain rounded-sm shadow-md"
+              className={`max-w-full max-h-full w-auto h-auto object-contain rounded-sm shadow-md transition-opacity duration-300 ${
+                isRestricted ? 'opacity-65 grayscale-[35%]' : ''
+              }`}
               loading="lazy"
               onError={() => setImageError(true)}
             />
@@ -191,8 +193,16 @@ export const BookCard: React.FC<BookCardProps> = ({
         ) : (
           <div className="w-full h-full rounded-md bg-gradient-to-br from-stone-900 via-stone-800 to-stone-950 text-white p-4 flex flex-col justify-between shadow-xs border border-stone-700">
             <div>
-              <div className="flex items-center gap-1 text-[10px] uppercase font-mono tracking-widest text-primary-400 font-semibold mb-2">
-                <Sparkles className="w-3 h-3" /> Public Domain
+              <div className="flex items-center gap-1 text-[10px] uppercase font-mono tracking-widest font-semibold mb-2">
+                {isRestricted ? (
+                  <span className="text-amber-400 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Protected ({country})
+                  </span>
+                ) : (
+                  <span className="text-primary-400 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Public Domain
+                  </span>
+                )}
               </div>
               <h4 className="font-serif font-bold text-sm sm:text-base line-clamp-4 leading-snug">
                 {book.title}
@@ -340,16 +350,16 @@ export const BookCard: React.FC<BookCardProps> = ({
             ) : (
               <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
             )}
-            {status ? (
-              <span className="text-[10px] font-mono font-bold uppercase text-primary">
-                {status === 'currently_reading' ? '📖 Reading' : status === 'finished' ? '✓ Finished' : '🔖 Want to Read'}
-              </span>
-            ) : isRestricted ? (
+            {isRestricted ? (
               <span
                 className="text-[10px] font-mono font-medium tracking-wider text-amber-600 dark:text-amber-400 uppercase"
                 title={evaluation.reason || `Protected in ${country} under local copyright law`}
               >
                 Protected ({country})
+              </span>
+            ) : status ? (
+              <span className="text-[10px] font-mono font-bold uppercase text-primary">
+                {status === 'currently_reading' ? '📖 Reading' : status === 'finished' ? '✓ Finished' : '🔖 Want to Read'}
               </span>
             ) : (
               <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
@@ -390,9 +400,19 @@ export const BookCard: React.FC<BookCardProps> = ({
             <Button
               variant="outline"
               size="chip"
+              disabled={isRestricted}
               onClick={() => onDownloadClick?.(book)}
-              className="w-full"
-              aria-label={`Download options for ${book.title}`}
+              className={`w-full ${isRestricted ? 'opacity-60 cursor-not-allowed' : ''}`}
+              aria-label={
+                isRestricted
+                  ? `Download unavailable for ${book.title} in ${country}`
+                  : `Download options for ${book.title}`
+              }
+              title={
+                isRestricted
+                  ? evaluation.reason || `Download unavailable in ${country}`
+                  : undefined
+              }
             >
               <Download className="w-3.5 h-3.5" />
               <span>Get</span>

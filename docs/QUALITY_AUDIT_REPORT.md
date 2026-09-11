@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 11 Sep 2026 17:19:10 GMT  
+**Last Generated**: Fri, 11 Sep 2026 21:21:19 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 161 passed  
-**Total Verified Tests**: 1378 passed  
+**Total Test Suites**: 163 passed  
+**Total Verified Tests**: 1429 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **161/161 test suites passed** (1378 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **163/163 test suites passed** (1429 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 40 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.74%** (6498/7006) — *Target: $ge$ 80%*
-- **Statements**: **91.25%** (7021/7694) — *Target: $ge$ 80%*
-- **Functions**: **89.03%** (1542/1732) — *Target: $ge$ 80%*
-- **Branches**: **81.68%** (5960/7296) — *Target: $ge$ 80%*
+- **Lines**: **92.47%** (6694/7239) — *Target: $ge$ 80%*
+- **Statements**: **90.88%** (7223/7947) — *Target: $ge$ 80%*
+- **Functions**: **89.06%** (1555/1746) — *Target: $ge$ 80%*
+- **Branches**: **81.49%** (6270/7694) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (161 Suites / 1378 Tests)
+## 🧪 Comprehensive Test Suite Catalog (163 Suites / 1429 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 153 Tests)
 
@@ -273,7 +273,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (23 Suites · 243 Tests)
+### 🎨 Catalog & Presentation (23 Suites · 254 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -293,7 +293,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -312,6 +312,7 @@
 - ✔ `auto-disarms favorite removal confirmation after timeout when activeView="favorites"`
 - ✔ `disarms favorite removal confirmation on mouse leave or blur when activeView="favorites"`
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is protected in UK`
+- ✔ `applies opacity and grayscale to cover image when book is restricted`
 
 </details>
 
@@ -329,7 +330,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -344,6 +345,7 @@
 - ✔ `displays relative time formatted via canonical formatRelativeTime`
 - ✔ `renders Start and global page coordinate when chapterIndex is 0`
 - ✔ `renders "Read Again" button with RotateCcw icon and accessible label when status is completed`
+- ✔ `renders Protected badge and disabled Restricted button when book is restricted under jurisdiction`
 
 </details>
 
@@ -364,7 +366,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false or book is null`
 - ✔ `renders book preview modal and triggers cover open animation`
@@ -380,6 +382,7 @@
 - ✔ `renders curation toolbar with solid bg-card and text-foreground modal styling`
 - ✔ `closes modal when clicking empty space in the viewport container outside the book`
 - ✔ `does not close modal when clicking inside the curation bar`
+- ✔ `renders Protected (GB) badge and disabled Restricted button when book is restricted`
 
 </details>
 
@@ -394,7 +397,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `returns null when selectedMobileBook is null`
 - ✔ `renders modal with formatted author names and triggers actions`
@@ -403,21 +406,23 @@
 - ✔ `calls onClose when clicking the backdrop or pressing Escape`
 - ✔ `hides personal curation section when activeView is catalog`
 - ✔ `shows personal curation section when activeView is favorites`
+- ✔ `renders regional copyright notice banner and disables read and offline actions for restricted books`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders spine title, author, and handles keyboard interaction`
 - ✔ `triggers quick actions from desktop hover card`
 - ✔ `renders offline indicator and fires onToggleOffline when clicked`
 - ✔ `renders cursor-following portal tooltip on hover card button hover`
+- ✔ `renders muted spine, restriction badge, banner, and disabled buttons for copyright-protected books`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (35 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (38 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -425,6 +430,7 @@
 - ✔ `supports keyboard navigation via Enter and Space keys`
 - ✔ `opens reader route using default handler if onBookClick is omitted`
 - ✔ `opens mobile modal when book spine is clicked on mobile screen (<640px)`
+- ✔ `opens modal on desktop when a copyright-restricted book spine is clicked without navigating to reader`
 - ✔ `handles quick action download and bookmark clicks`
 - ✔ `renders guest mode sync prompt and triggers auth modal`
 - ✔ `displays rounded integer percentage for reading progress`
@@ -452,6 +458,8 @@
 - ✔ `renders individual offline download button on book spine and triggers toggle`
 - ✔ `renders All Saved for Offline notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll`
 - ✔ `renders Edit and Delete buttons to the left of Download Shelf Offline button on custom shelves`
+- ✔ `skips restricted books when clicking Download Shelf Offline and displays All Available Saved status`
+- ✔ `renders All Restricted status notice when all books on shelf are protected in visitor jurisdiction`
 - ✔ `does not render syncing indicator when isSyncing is false`
 - ✔ `renders floating syncing indicator with status role when isSyncing is true`
 
@@ -585,18 +593,20 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders primary quote with CC0 header badge`
 - ✔ `renders secondary and tertiary quotes when provided`
 - ✔ `adjusts padding and line clamp when there are 2 quotes`
+- ✔ `renders Protected (RO) header badge when isRestricted is true`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders book metadata, quote excerpt, and note`
+- ✔ `renders Protected badge when isRestricted is true`
 - ✔ `toggles color swatch popover and updates color on click`
 - ✔ `dismisses color popover when pressing Escape`
 - ✔ `enters edit mode and handles saving modified note and color shade`
@@ -609,13 +619,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (26 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (27 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
 - ✔ `cleans raw Gutenberg preamble titles and resolves authentic metadata in Notebook`
 - ✔ `cleans raw preamble titles for non-featured books and falls back gracefully for placeholders`
 - ✔ `resolves authentic title and author for non-featured, non-saved book (e.g. 31635) via remote book query`
+- ✔ `resolves authentic title, author, and Protected badge for restricted books`
 - ✔ `filters annotations by search query across quote, note, title, and author`
 - ✔ `filters annotations by pastel color tabs`
 - ✔ `allows toggling between By Book grouping and Chronological stream`
@@ -656,7 +667,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 140 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 143 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -729,12 +740,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderErrorView.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/reader/ReaderErrorView.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `renders error message and retry button for generic errors`
 - ✔ `renders without retry button when onRetry is not provided`
 - ✔ `renders dedicated HTTP 451 legal restriction view when error is LegalRestrictionError`
 - ✔ `renders legal restriction view for plain object with isLegalRestriction: true`
+- ✔ `renders authentic bookTitle and bookAuthor in legal restriction view when provided`
+- ✔ `renders authentic bookTitle and bookAuthor in generic error view when provided`
 
 </details>
 
@@ -839,13 +852,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (26 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (27 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
 - ✔ `renders loading spinner and status message when isLoading is true`
 - ✔ `renders error alert with retry button when isError is true`
 - ✔ `renders legal restriction screen when isError is true with LegalRestrictionError`
+- ✔ `forwards bookTitle and bookAuthor to ReaderErrorView when isError is true`
 - ✔ `applies correct surface theme classes for Sepia and Dark themes`
 - ✔ `triggers next and previous page handlers on mobile horizontal swipe gestures`
 - ✔ `renders correctly in scroll reading mode and handles empty content fallback`
@@ -933,7 +947,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (9 Suites · 137 Tests)
+### ⚡ Zustand State Stores (9 Suites · 141 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -1009,13 +1023,14 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (36 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (37 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
 - ✔ `should manage reading queue`
 - ✔ `should toggle favorite status and store favoriteBooks`
 - ✔ `should sync and clear favorite books`
+- ✔ `should enrich saved books with fresh author lifespans`
 - ✔ `should call Supabase upsert and delete on toggleFavoriteBook with userId`
 - ✔ `returns live hydrated state and reactive actions`
 - ✔ `handles activeBookshelfId selection and cloud bookshelf list`
@@ -1069,13 +1084,16 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useJurisdictionStore.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/stores/useJurisdictionStore.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `initializes with default US public domain rule`
 - ✔ `updates country and switches jurisdiction rule to Life + 70 for GB`
 - ✔ `updates country and switches jurisdiction rule to Life + 100 for MX`
 - ✔ `supports developer country overrides`
 - ✔ `reads cookie value from document.cookie`
+- ✔ `resolves initial country from cookie when present`
+- ✔ `resolves initial country from timezone when cookie is absent in development`
+- ✔ `falls back to US when cookie and timezone are unknown`
 
 </details>
 
@@ -1126,7 +1144,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (27 Suites · 271 Tests)
+### 📚 Gutenberg Parsers & Metadata (28 Suites · 294 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1147,7 +1165,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `normalizes "LastName, FirstName" to "FirstName LastName"`
 - ✔ `returns single word or standard formatted names unchanged`
@@ -1164,6 +1182,7 @@
 - ✔ `reconstructs GutendexBook with Gutenberg format URLs and normalized author objects`
 - ✔ `handles null cover_url and empty authors gracefully`
 - ✔ `formats a GutendexBook into a standardized Supabase insert payload`
+- ✔ `preserves birth and death years in author strings when present`
 - ✔ `omits bookshelf_id when not provided`
 
 </details>
@@ -1208,7 +1227,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/gutendex-provider.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/lib/catalog/gutendex-provider.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `has name "gutendex"`
 - ✔ `searches books, enforces copyright=false, and calculates latency`
@@ -1216,26 +1235,28 @@
 - ✔ `throws CatalogProviderError with status 400 on upstream bad request`
 - ✔ `throws CatalogProviderError with status 502 on network failure`
 - ✔ `throws CatalogProviderError with status 504 on request timeout`
+- ✔ `bypasses jurisdictional filtering when includeRestrictedMetadata is true`
 - ✔ `throws CatalogProviderError with status 502 on invalid non-JSON body`
 - ✔ `checks isHealthy via HEAD request`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/query-parser.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/lib/catalog/query-parser.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `defaults to safe base values when no query parameters are provided`
 - ✔ `normalizes whitespace in search query and trims input`
 - ✔ `drops single-character search queries to protect upstream API`
 - ✔ `parses valid numeric page and limit while defaulting invalid values`
 - ✔ `parses author year bounds, sort directions, and mime_type`
+- ✔ `parses include_restricted_metadata flag`
 - ✔ `parses comma-separated languages into string array`
 - ✔ `resolves country code through the priority cascade`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -1255,11 +1276,12 @@
 - ✔ `filters by comma-delimited book IDs`
 - ✔ `applies ascending and descending sort directions`
 - ✔ `throws CatalogProviderError when Supabase returns an error`
+- ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/copyright-engine.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/lib/copyright-engine.test.ts</code></b> (26 tests)</summary>
 
 - ✔ `normalizes valid 2-letter codes to uppercase`
 - ✔ `defaults null, undefined, or empty values to US`
@@ -1284,6 +1306,31 @@
 - ✔ `evaluates canonical Book interface with string authors and authorDetails`
 - ✔ `withholds book if authors array is completely empty outside US`
 - ✔ `formats human-readable descriptions for all jurisdiction rules`
+- ✔ `coerces string birth and death years correctly`
+- ✔ `extracts embedded birth and death years from author name string when fields are null`
+- ✔ `ignores secondary illustrators and visual contributors with unlisted dates`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/country-resolver.test.ts</code></b> (16 tests)</summary>
+
+- ✔ `resolves European capitals to correct ISO country codes`
+- ✔ `resolves American and Asian timezones`
+- ✔ `returns null for unmapped, invalid, or empty timezones`
+- ✔ `prioritizes explicit ?country=XX URL query override`
+- ✔ `prioritizes searchParams argument if provided explicitly`
+- ✔ `respects DEV_COUNTRY environment variable when no query override is present`
+- ✔ `respects dev override cookie when no query param or env var is present`
+- ✔ `infers country from system timezone in development`
+- ✔ `falls back to US when timezone is unmapped and no other signals exist`
+- ✔ `strictly ignores ?country=XX query override in production`
+- ✔ `strictly ignores DEV_COUNTRY environment variable in production`
+- ✔ `prioritizes x-vercel-ip-country edge header`
+- ✔ `supports cf-ipcountry header if x-vercel-ip-country is absent`
+- ✔ `supports downstream x-bookarium-country header`
+- ✔ `falls back to cookie if no edge IP headers exist in production`
+- ✔ `defaults to US when zero signals exist in production`
 
 </details>
 
@@ -1561,10 +1608,10 @@
 
 </details>
 
-### 🔄 Hooks & React Query (20 Suites · 179 Tests)
+### 🔄 Hooks & React Query (21 Suites · 187 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
@@ -1572,11 +1619,13 @@
 - ✔ `should return offline cached content without calling fetch when available`
 - ✔ `should handle request abort on network timeout`
 - ✔ `should throw LegalRestrictionError when proxy returns HTTP 451`
+- ✔ `should allow non-US international visitors to read verified public domain books from offline cache`
+- ✔ `should block non-US visitors with LegalRestrictionError if cached offline book is protected in their country`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
@@ -1591,6 +1640,7 @@
 - ✔ `should respect enabled: false and not fetch books`
 - ✔ `should throw when upstream returns invalid non-JSON body`
 - ✔ `should filter protected books during Strategy 2 fallback for international users`
+- ✔ `should retain protected books during Strategy 2 fallback when includeRestrictedMetadata is true`
 
 </details>
 
@@ -1780,6 +1830,16 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `stays dormant with 0 query params when all collections are healthy`
+- ✔ `detects missing favorite IDs and queries /api/books`
+- ✔ `detects incomplete saved books and enriches author lifespans`
+- ✔ `deduplicates book IDs when a book is in both favorites and bookshelf`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/useCursorTooltip.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `initializes with default state`
@@ -1813,13 +1873,14 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `initializes and fetches offline book IDs on mount`
 - ✔ `downloads a single book and updates offline status`
 - ✔ `handles download failure gracefully`
 - ✔ `removes an offline book and refreshes ids`
 - ✔ `downloads all missing books in batch with progress updates`
+- ✔ `skips restricted books with HTTP 451 during batch download and saves remaining books`
 - ✔ `removes all books in batch`
 
 </details>
@@ -1862,7 +1923,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (49 Suites · 219 Tests)
+### 🧩 UI Primitives & Motion (49 Suites · 220 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2365,15 +2426,16 @@
 </details>
 
 <details>
-<summary><b><code>src/proxy.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/proxy.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
 - ✔ `gracefully falls back to NextResponse.next when updateSession throws`
 - ✔ `exports valid matcher config`
 - ✔ `detects country from x-vercel-ip-country and stamps cookie and header`
 - ✔ `respects development query parameter override ?country=DE`
-- ✔ `falls back to existing cookie when no IP headers are present`
-- ✔ `defaults to US when no geo signals exist`
+- ✔ `falls back to existing cookie when no IP headers are present in production`
+- ✔ `infers country from system timezone in development when no override or edge header exists`
+- ✔ `defaults to US when no geo signals exist in production`
 
 </details>
 
@@ -2381,7 +2443,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **7 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **10 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

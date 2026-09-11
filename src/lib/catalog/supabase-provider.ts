@@ -170,7 +170,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       }
 
       // Jurisdictional copyright filtering at query level (indexed B-Tree bounds)
-      if (jurisdictionRule !== 'US_PUBLIC_DOMAIN') {
+      if (!options.includeRestrictedMetadata && jurisdictionRule !== 'US_PUBLIC_DOMAIN') {
         let termYears = 70;
         if (jurisdictionRule === 'LIFE_100') {
           termYears = 100;
@@ -213,10 +213,12 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       const gutendexBooks = rawRows.map(mapDatabaseBookToGutendexBook);
 
       // Runtime jurisdictional verification pass (guarantees translator & joint author compliance)
-      const filteredResults = gutendexBooks.filter((b) => {
-        const evalResult = isBookPublicDomainInJurisdiction(b, country, currentYear);
-        return evalResult.isAllowed;
-      });
+      const filteredResults = options.includeRestrictedMetadata
+        ? gutendexBooks
+        : gutendexBooks.filter((b) => {
+            const evalResult = isBookPublicDomainInJurisdiction(b, country, currentYear);
+            return evalResult.isAllowed;
+          });
 
       // Filter by mimeType if specified
       const finalResults = options.mimeType

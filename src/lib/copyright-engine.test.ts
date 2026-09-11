@@ -401,5 +401,57 @@ describe('copyright-engine', () => {
       expect(getJurisdictionRuleDescription('LIFE_80', 'CO')).toContain('Life + 80 Years');
       expect(getJurisdictionRuleDescription('LIFE_70', 'GB')).toContain('Life + 70 Years');
     });
+
+    it('coerces string birth and death years correctly', () => {
+      const stringYearBook = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: '1775' as unknown as number, death_year: '1817' as unknown as number }],
+        translators: [],
+        copyright: false,
+      };
+
+      expect(isBookPublicDomainInJurisdiction(stringYearBook, 'RO', currentYear).isAllowed).toBe(true);
+    });
+
+    it('extracts embedded birth and death years from author name string when fields are null', () => {
+      const embeddedDatesBook = {
+        id: 21839,
+        title: 'Sense and Sensibility',
+        authors: [{ name: 'Austen, Jane, 1775-1817', birth_year: null, death_year: null }],
+        translators: [],
+        copyright: false,
+      };
+
+      expect(isBookPublicDomainInJurisdiction(embeddedDatesBook, 'RO', currentYear).isAllowed).toBe(true);
+
+      const plainStringAuthorBook = {
+        id: 21839,
+        title: 'Sense and Sensibility',
+        authors: ['Jane Austen (1775-1817)'],
+        translators: [],
+        copyright: false,
+      };
+
+      expect(isBookPublicDomainInJurisdiction(plainStringAuthorBook, 'RO', currentYear).isAllowed).toBe(true);
+    });
+
+    it('ignores secondary illustrators and visual contributors with unlisted dates', () => {
+      const illustratedBook = {
+        id: 31635,
+        title: 'The Silent Barrier',
+        authors: [
+          { name: 'Tracy, Louis', birth_year: 1863, death_year: 1928 },
+          { name: 'McFall, J. V. [Illustrator]', birth_year: null, death_year: null },
+          { name: 'Parsons, A. W. [Illustrator]', birth_year: null, death_year: null },
+        ],
+        translators: [],
+        copyright: false,
+      };
+
+      const result = isBookPublicDomainInJurisdiction(illustratedBook, 'RO', currentYear);
+      expect(result.isAllowed).toBe(true);
+    });
   });
 });
+

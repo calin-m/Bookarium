@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getJurisdictionRule, type JurisdictionRule, normalizeCountryCode } from '@/lib/copyright-engine';
+import { getCountryFromTimezone } from '@/lib/country-resolver';
 import { GEO_COOKIE_NAME } from '@/proxy';
 
 export interface JurisdictionState {
@@ -24,13 +25,31 @@ export function getCookieValue(cookieName: string): string | null {
 /**
  * Resolves initial country synchronously:
  * 1. Client cookie stamped by edge middleware (`bookarium-geo-country`)
- * 2. Defaults to 'US'
+ * 2. Developer/client timezone inference via IANA timezone
+ * 3. Defaults to 'US'
  */
-function resolveInitialCountry(): string {
+export function resolveInitialCountry(): string {
   const cookieVal = getCookieValue(GEO_COOKIE_NAME);
   if (cookieVal) {
     return normalizeCountryCode(cookieVal);
   }
+
+  if (
+    process.env.NODE_ENV === 'development' &&
+    typeof Intl !== 'undefined' &&
+    typeof Intl.DateTimeFormat === 'function'
+  ) {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const tzCountry = getCountryFromTimezone(tz);
+      if (tzCountry) {
+        return normalizeCountryCode(tzCountry);
+      }
+    } catch {
+      // Gracefully fall back
+    }
+  }
+
   return 'US';
 }
 

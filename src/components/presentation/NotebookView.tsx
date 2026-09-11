@@ -11,6 +11,7 @@ import {
   Layers,
   Clock,
   AlertTriangle,
+  Lock,
 } from 'lucide-react';
 import { NotebookQuoteCard } from './NotebookQuoteCard';
 import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
@@ -22,6 +23,8 @@ import {
 } from '@/stores/useAnnotationStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction, type GenericBookInput } from '@/lib/copyright-engine';
 import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { Button } from '@/components/ui/Button';
@@ -68,6 +71,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
   const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks || []);
   const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
+  const { country } = useJurisdiction();
 
   // Identify book IDs that lack resolved titles/authors and are not in local stores or static fixtures
   const missingMetadataBookIds = useMemo(() => {
@@ -92,7 +96,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   // Query Gutendex remote API / cache for any unindexed annotated books
   const { data: remoteBooksData } = useBooks(
-    { ids: missingMetadataBookIds.join(','), page: 1, copyright: false },
+    { ids: missingMetadataBookIds.join(','), page: 1, copyright: false, includeRestrictedMetadata: true },
     { enabled: missingMetadataBookIds.length > 0 }
   );
 
@@ -182,12 +186,29 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         fromFeatured?.author ||
         'Classic Literature';
 
+      const bookEntity: GenericBookInput | undefined =
+        fromSaved ||
+        fromFavorite ||
+        fromApi ||
+        (fromFeatured
+          ? {
+              id: fromFeatured.id,
+              title: fromFeatured.title,
+              authors: [{ name: fromFeatured.author, birth_year: null, death_year: null }],
+            }
+          : undefined);
+
+      const evaluation = bookEntity ? isBookPublicDomainInJurisdiction(bookEntity, country) : { isAllowed: true };
+      const isRestricted = !evaluation.isAllowed;
+
       return {
         title: finalTitle,
         author: finalAuthor,
+        isRestricted,
+        country,
       };
     },
-    [savedBooks, favoriteBooks, remoteBooksData]
+    [savedBooks, favoriteBooks, remoteBooksData, country]
   );
 
   // Filtered list of annotations
@@ -213,12 +234,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   // Grouped by Volume mapping
   const groupedByVolume = useMemo(() => {
-    const map = new Map<number, { title: string; author: string; items: Annotation[] }>();
+    const map = new Map<number, { title: string; author: string; isRestricted?: boolean; country?: string; items: Annotation[] }>();
 
     filteredAnnotations.forEach((ann) => {
       if (!map.has(ann.bookId)) {
-        const { title, author } = resolveBookDetails(ann);
-        map.set(ann.bookId, { title, author, items: [] });
+        const { title, author, isRestricted, country } = resolveBookDetails(ann);
+        map.set(ann.bookId, { title, author, isRestricted, country, items: [] });
       }
       map.get(ann.bookId)!.items.push(ann);
     });
@@ -447,7 +468,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                 <div key={group.bookId} className="space-y-3">
                   {/* Volume Header */}
                   <div className="flex items-center justify-between border-b border-border pb-2">
-                    <div className="flex items-baseline gap-2.5">
+                    <div className="flex items-baseline gap-2.5 flex-wrap">
                       <h2 className="text-lg sm:text-xl font-serif font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
                         onClick={() => router.push(`/read/${group.bookId}`)}
                       >
@@ -456,6 +477,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                       <span className="text-xs font-mono text-muted-foreground">
                         by {group.author}
                       </span>
+                      {group.isRestricted && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                          <Lock className="w-2.5 h-2.5" />
+                          Protected ({group.country || 'Jurisdiction'})
+                        </span>
+                      )}
                     </div>
                     <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
                       {group.items.length} quote{group.items.length === 1 ? '' : 's'}
@@ -599,7 +626,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   // Quote Card Renderer
   function renderQuoteCard(ann: Annotation) {
-    const { title, author } = resolveBookDetails(ann);
+    const { title, author, isRestricted, country } = resolveBookDetails(ann);
 
     return (
       <NotebookQuoteCard
@@ -607,6 +634,8 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         annotation={ann}
         bookTitle={title}
         bookAuthor={author}
+        isRestricted={isRestricted}
+        jurisdictionCountry={country}
         isEditing={editingAnnotationId === ann.id}
         onStartEdit={(target) => setEditingAnnotationId(target.id)}
         onCancelEdit={() => setEditingAnnotationId(null)}

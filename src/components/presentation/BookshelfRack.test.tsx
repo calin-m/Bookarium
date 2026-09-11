@@ -6,6 +6,7 @@ import { mockBooks } from '@/mocks/handlers';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -27,6 +28,11 @@ describe('BookshelfRack Component', () => {
     useAuthStore.setState({ user: null, profile: null });
     useBookshelfStore.getState().clearBookshelf();
     useReaderStore.getState().closeReader();
+    useJurisdictionStore.setState({
+      country: 'US',
+      rule: 'US_PUBLIC_DOMAIN',
+      overrideCountry: null,
+    });
   });
 
   it('renders shelf with books', () => {
@@ -94,6 +100,35 @@ describe('BookshelfRack Component', () => {
     } finally {
       window.innerWidth = originalInnerWidth;
     }
+  });
+
+  it('opens modal on desktop when a copyright-restricted book spine is clicked without navigating to reader', () => {
+    act(() => {
+      useJurisdictionStore.getState().setCountry('GB');
+    });
+
+    const restrictedBook = {
+      ...mockBooks[0],
+      id: 9999,
+      title: 'Restricted Modern Masterpiece',
+      authors: [{ name: 'Modern Author', birth_year: 1940, death_year: 1995 }],
+    };
+
+    render(<BookshelfRack books={[restrictedBook]} />);
+
+    const bookElem = screen.getByTestId(`shelf-book-${restrictedBook.id}`);
+    act(() => {
+      fireEvent.click(bookElem);
+    });
+
+    // Should NOT push to reader
+    expect(pushMock).not.toHaveBeenCalled();
+
+    // Should open modal
+    const actionSheet = screen.getByTestId('mobile-book-action-sheet');
+    expect(actionSheet).toBeInTheDocument();
+    expect(within(actionSheet).getByText('Restricted Modern Masterpiece')).toBeInTheDocument();
+    expect(screen.getByTestId(`mobile-restricted-badge-${restrictedBook.id}`)).toBeInTheDocument();
   });
 
   it('handles quick action download and bookmark clicks', () => {
@@ -617,7 +652,7 @@ describe('BookshelfRack Component', () => {
     });
 
     await waitFor(() => {
-      expect(saveOfflineBook).toHaveBeenCalledWith(book.id, book.title, 'Single book offline text');
+      expect(saveOfflineBook).toHaveBeenCalledWith(book.id, book.title, 'Single book offline text', book.authors);
     });
 
     fetchSpy.mockRestore();
@@ -698,6 +733,57 @@ describe('BookshelfRack Component', () => {
     expect(buttons[0]).toBe(editBtn);
     expect(buttons[1]).toBe(deleteBtn);
     expect(buttons[2]).toBe(downloadShelfBtn);
+  });
+
+  it('skips restricted books when clicking Download Shelf Offline and displays All Available Saved status', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    useJurisdictionStore.setState({ country: 'RO' });
+
+    const publicDomainBook = {
+      ...mockBooks[0],
+      id: 1342,
+      title: 'Pride and Prejudice',
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+    };
+
+    const restrictedBook = {
+      ...mockBooks[1],
+      id: 863,
+      title: 'The Mysterious Affair at Styles',
+      authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+    };
+
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([1342]);
+
+    render(<BookshelfRack books={[publicDomainBook, restrictedBook]} />);
+
+    const notice = await screen.findByTestId('all-saved-offline-notice');
+    expect(notice).toBeInTheDocument();
+    expect(within(notice).getByText('All Available Saved')).toBeInTheDocument();
+    expect(within(notice).getByText('(1 restricted)')).toBeInTheDocument();
+
+    useJurisdictionStore.setState({ country: 'US' });
+  });
+
+  it('renders All Restricted status notice when all books on shelf are protected in visitor jurisdiction', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    useJurisdictionStore.setState({ country: 'RO' });
+
+    const restrictedBook = {
+      ...mockBooks[0],
+      id: 863,
+      title: 'The Mysterious Affair at Styles',
+      authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+    };
+
+    render(<BookshelfRack books={[restrictedBook]} />);
+
+    const notice = await screen.findByTestId('all-restricted-offline-notice');
+    expect(notice).toBeInTheDocument();
+    expect(within(notice).getByText('All Restricted in RO')).toBeInTheDocument();
+
+    useJurisdictionStore.setState({ country: 'US' });
   });
 
   describe('Syncing Status Overlay (Zero CLS)', () => {

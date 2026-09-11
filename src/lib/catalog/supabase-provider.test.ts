@@ -385,6 +385,27 @@ describe('SupabaseCatalogProvider', () => {
         provider.searchBooks({ page: 1, limit: 32, country: 'US' })
       ).rejects.toThrow(CatalogProviderError);
     });
+
+    it('bypasses copyright filtering when includeRestrictedMetadata is true', async () => {
+      // sampleDbRows[1] is Agatha Christie (restricted in GB)
+      const { client, builder } = createMockQueryBuilder([sampleDbRows[1]], 1);
+      const provider = new SupabaseCatalogProvider(client as any);
+
+      const options: CatalogQueryOptions = {
+        ids: '863',
+        page: 1,
+        limit: 32,
+        country: 'GB',
+        includeRestrictedMetadata: true,
+      };
+
+      const result = await provider.searchBooks(options);
+      // B-tree bounds filtering was skipped:
+      expect(builder.lte).not.toHaveBeenCalled();
+      // Runtime pass did not strip the book:
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].id).toBe(863);
+    });
   });
 });
 

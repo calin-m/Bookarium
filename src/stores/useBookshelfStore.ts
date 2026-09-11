@@ -91,6 +91,7 @@ export interface BookshelfState {
   toggleSaveBook: (book: GutendexBook, userId?: string) => Promise<void>;
   isBookSaved: (id: number) => boolean;
   clearSavedBooks: () => void;
+  enrichSavedBooks: (books: GutendexBook[]) => Promise<void>;
   addToQueue: (book: GutendexBook) => void;
   removeFromQueue: (id: number) => void;
   isInQueue: (id: number) => boolean;
@@ -207,6 +208,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           if (exists) {
             nextItems = cloudBookshelfItems.filter((i) => !(i.book_id === book.id && i.bookshelf_id === targetShelfId));
           } else {
+            const insertPayload = toCloudBookInsert(book, currentUserId || '', targetShelfId);
             nextItems = [
               ...cloudBookshelfItems,
               {
@@ -215,8 +217,8 @@ export const useBookshelfStore = create<BookshelfState>()(
                 user_id: currentUserId || '',
                 book_id: book.id,
                 book_title: book.title,
-                book_authors: book.authors?.map((a) => a.name) || [],
-                cover_url: book.formats?.['image/jpeg'] || null,
+                book_authors: insertPayload.book_authors,
+                cover_url: insertPayload.cover_url,
                 added_at: new Date().toISOString(),
               },
             ];
@@ -237,14 +239,8 @@ export const useBookshelfStore = create<BookshelfState>()(
                 .eq('book_id', book.id);
               if (error) throw error;
             } else {
-              const { error } = await supabase.from('bookshelf_items').insert({
-                bookshelf_id: targetShelfId,
-                user_id: currentUserId,
-                book_id: book.id,
-                book_title: book.title,
-                book_authors: book.authors?.map((a) => a.name) || [],
-                cover_url: book.formats?.['image/jpeg'] || null,
-              });
+              const insertPayload = toCloudBookInsert(book, currentUserId, targetShelfId);
+              const { error } = await supabase.from('bookshelf_items').insert(insertPayload);
               if (error) throw error;
             }
           } catch {
@@ -255,16 +251,10 @@ export const useBookshelfStore = create<BookshelfState>()(
                 payload: { bookshelf_id: targetShelfId, book_id: book.id },
               });
             } else {
+              const insertPayload = toCloudBookInsert(book, currentUserId, targetShelfId);
               get().queueOutboxAction({
                 type: 'INSERT_BOOK',
-                payload: {
-                  bookshelf_id: targetShelfId,
-                  user_id: currentUserId,
-                  book_id: book.id,
-                  book_title: book.title,
-                  book_authors: book.authors?.map((a) => a.name) || [],
-                  cover_url: book.formats?.['image/jpeg'] || null,
-                },
+                payload: insertPayload,
               });
             }
           }
@@ -283,6 +273,75 @@ export const useBookshelfStore = create<BookshelfState>()(
           nextDeleted[b.id] = now;
         }
         set({ savedBooks: [], deletedBookIds: nextDeleted });
+      },
+
+      enrichSavedBooks: async (freshBooks) => {
+        const { savedBooks, cloudBookshelfItems } = get();
+        if (!freshBooks || freshBooks.length === 0 || savedBooks.length === 0) return;
+
+        const freshMap = new Map<number, GutendexBook>();
+        for (const fb of freshBooks) {
+          if (fb && typeof fb.id === 'number') {
+            freshMap.set(fb.id, fb);
+          }
+        }
+
+        let hasChanges = false;
+        const nextSaved = savedBooks.map((sb) => {
+          const fresh = freshMap.get(sb.id);
+          if (!fresh) return sb;
+
+          const isMissingLifespans =
+            !sb.authors ||
+            sb.authors.length === 0 ||
+            sb.authors.every((a) => a.birth_year == null && a.death_year == null);
+
+          if (isMissingLifespans && fresh.authors && fresh.authors.length > 0) {
+            hasChanges = true;
+            return {
+              ...sb,
+              authors: fresh.authors,
+              formats: { ...sb.formats, ...fresh.formats },
+            };
+          }
+          return sb;
+        });
+
+        if (!hasChanges) return;
+
+        const nextItems = cloudBookshelfItems.map((item) => {
+          const fresh = freshMap.get(item.book_id);
+          if (!fresh) return item;
+          const payload = toCloudBookInsert(fresh, item.user_id, item.bookshelf_id);
+          return {
+            ...item,
+            book_authors: payload.book_authors,
+            cover_url: payload.cover_url || item.cover_url,
+          };
+        });
+
+        set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems });
+
+        const userId = useAuthStore.getState().user?.id;
+        if (userId) {
+          try {
+            const supabase = createClient();
+            for (const item of nextItems) {
+              if (freshMap.has(item.book_id)) {
+                await supabase
+                  .from('bookshelf_items')
+                  .update({
+                    book_authors: item.book_authors,
+                    cover_url: item.cover_url,
+                  })
+                  .eq('id', item.id)
+                  .eq('user_id', userId);
+              }
+            }
+          } catch {
+            // Non-blocking background persistence
+          }
+        }
       },
 
       addToQueue: (book) => {
@@ -1029,6 +1088,16 @@ export const useBookshelfStore = create<BookshelfState>()(
             item.book_id === bookId ? { ...item, bookshelf_id: targetShelfId } : item
           );
         } else {
+          const insertPayload = bookObj
+            ? toCloudBookInsert(bookObj, userId || '', targetShelfId)
+            : {
+                book_authors: [],
+                cover_url: null,
+                book_title: '',
+                book_id: bookId,
+                bookshelf_id: targetShelfId,
+                user_id: userId || '',
+              };
           nextItems = [
             ...cloudBookshelfItems,
             {
@@ -1037,8 +1106,8 @@ export const useBookshelfStore = create<BookshelfState>()(
               user_id: userId || '',
               book_id: bookId,
               book_title: bookObj?.title || '',
-              book_authors: bookObj?.authors?.map((a) => a.name) || [],
-              cover_url: bookObj?.formats?.['image/jpeg'] || null,
+              book_authors: insertPayload.book_authors,
+              cover_url: insertPayload.cover_url,
               added_at: new Date().toISOString(),
             },
           ];
@@ -1056,15 +1125,9 @@ export const useBookshelfStore = create<BookshelfState>()(
               .eq('book_id', bookId)
               .eq('user_id', userId);
 
-            if (error) {
-              await supabase.from('bookshelf_items').insert({
-                bookshelf_id: targetShelfId,
-                user_id: userId,
-                book_id: bookId,
-                book_title: bookObj?.title || '',
-                book_authors: bookObj?.authors?.map((a) => a.name) || [],
-                cover_url: bookObj?.formats?.['image/jpeg'] || null,
-              });
+            if (error && bookObj) {
+              const insertPayload = toCloudBookInsert(bookObj, userId, targetShelfId);
+              await supabase.from('bookshelf_items').insert(insertPayload);
             }
           } catch {
             // Non-blocking fallback

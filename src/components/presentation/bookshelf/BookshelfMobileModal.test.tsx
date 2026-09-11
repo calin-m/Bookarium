@@ -170,6 +170,51 @@ describe('BookshelfMobileModal Component', () => {
     expect(screen.getByTestId('mobile-curation-section')).toBeInTheDocument();
     expect(screen.getByText('My Rating')).toBeInTheDocument();
   });
+
+  it('renders regional copyright notice banner and disables read and offline actions for restricted books', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    useJurisdictionStore.setState({ country: 'RO' });
+
+    const restrictedBook: GutendexBook = {
+      id: 863,
+      title: 'The Mysterious Affair at Styles',
+      authors: [{ name: 'Christie, Agatha (1890-1976)', birth_year: 1890, death_year: 1976 }],
+      translators: [],
+      subjects: ['Detective and mystery stories'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 25000,
+    };
+
+    render(
+      <BookshelfMobileModal
+        selectedMobileBook={restrictedBook}
+        onClose={vi.fn()}
+      />
+    );
+
+    // Header badge shows Protected (RO)
+    expect(screen.getByTestId('mobile-restricted-badge-863')).toBeInTheDocument();
+    expect(screen.getByText('Protected (RO)')).toBeInTheDocument();
+
+    // Regional copyright notice banner is displayed
+    const notice = screen.getByTestId('mobile-restricted-notice');
+    expect(notice).toBeInTheDocument();
+    expect(notice).toHaveTextContent(/restricted in ro/i);
+
+    // Read button is disabled
+    const readBtn = screen.getByRole('button', { name: `${restrictedBook.title} is restricted in RO` });
+    expect(readBtn).toBeDisabled();
+
+    // Offline button is disabled
+    const offlineBtn = screen.getByRole('button', { name: `Offline storage unavailable for ${restrictedBook.title}` });
+    expect(offlineBtn).toBeDisabled();
+
+    useJurisdictionStore.setState({ country: 'US' });
+  });
 });
 
 
