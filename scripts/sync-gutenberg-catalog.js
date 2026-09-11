@@ -48,6 +48,15 @@ function loadEnv() {
 }
 
 // 2. Author and Translator Lifespan Normalization
+function parseYear(val) {
+  if (!val) return null;
+  const clean = val.replace('?', '').trim();
+  const isBce = clean.toUpperCase().includes('BCE');
+  const num = parseInt(clean, 10);
+  if (!Number.isInteger(num) || isNaN(num)) return null;
+  return isBce ? -num : num;
+}
+
 function parseContributors(rawString) {
   if (!rawString || !rawString.trim()) return { authors: [], translators: [] };
 
@@ -66,28 +75,28 @@ function parseContributors(rawString) {
       }
     }
 
-    // Match year bounds: e.g. ", 1775-1817", ", 428? BCE-348? BCE"
-    const yearMatch = str.match(/,\s*(\d{1,4}\??(?:\s*BCE)?)\s*-\s*(\d{1,4}\??(?:\s*BCE)?)$/i);
     let name = str;
     let birth_year = null;
     let death_year = null;
 
-    if (yearMatch) {
-      name = str.substring(0, str.length - yearMatch[0].length).trim();
-      const birthStr = yearMatch[1].replace('?', '').trim();
-      const deathStr = yearMatch[2].replace('?', '').trim();
-      birth_year = birthStr.toUpperCase().includes('BCE') ? -parseInt(birthStr, 10) : parseInt(birthStr, 10);
-      death_year = deathStr.toUpperCase().includes('BCE') ? -parseInt(deathStr, 10) : parseInt(deathStr, 10);
+    // 1. Full span: ", 1775-1817" or ", 428? BCE-348? BCE"
+    const spanMatch = str.match(/,\s*(\d{1,4}\??(?:\s*BCE)?)\s*-\s*(\d{1,4}\??(?:\s*BCE)?)$/i);
+    if (spanMatch) {
+      name = str.substring(0, str.length - spanMatch[0].length).trim();
+      birth_year = parseYear(spanMatch[1]);
+      death_year = parseYear(spanMatch[2]);
     } else {
-      const deathOnly = str.match(/,\s*(?:d\.\s*|-\s*)(\d{1,4})$/i);
-      if (deathOnly) {
-        name = str.substring(0, str.length - deathOnly[0].length).trim();
-        death_year = parseInt(deathOnly[1], 10);
+      // 2. Death only: ", d. 1920", ", died 1920", ", -1920"
+      const deathMatch = str.match(/,\s*(?:d\.|died|-)\s*(\d{1,4}\??(?:\s*BCE)?)$/i);
+      if (deathMatch) {
+        name = str.substring(0, str.length - deathMatch[0].length).trim();
+        death_year = parseYear(deathMatch[1]);
       } else {
-        const birthOnly = str.match(/,\s*(?:b\.\s*|(\d{1,4})\s*-$)/i);
-        if (birthOnly) {
-          name = str.substring(0, str.length - birthOnly[0].length).trim();
-          birth_year = parseInt(birthOnly[1] || str.match(/\d{1,4}/)[0], 10);
+        // 3. Birth only: ", b. 1850", ", born 1850", ", 1850-"
+        const birthMatch = str.match(/,\s*(?:(?:b\.|born)\s*(\d{1,4}\??(?:\s*BCE)?)|(\d{1,4}\??(?:\s*BCE)?)\s*-)$/i);
+        if (birthMatch) {
+          name = str.substring(0, str.length - birthMatch[0].length).trim();
+          birth_year = parseYear(birthMatch[1] || birthMatch[2]);
         }
       }
     }
@@ -420,6 +429,7 @@ Options:
 
 // Export for unit tests
 module.exports = {
+  parseYear,
   parseContributors,
   computeLifespanBounds,
   buildStandardFormats,
