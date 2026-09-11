@@ -410,7 +410,7 @@ BEGIN
   INSERT INTO public.profiles (id, display_name, preferred_theme)
   VALUES (
     NEW.id,
-    pg_catalog.coalesce(NEW.raw_user_meta_data->>'display_name', 'Reader'),
+    COALESCE(NEW.raw_user_meta_data->>'display_name', 'Reader'),
     'light'
   )
   ON CONFLICT (id) DO NOTHING;
@@ -625,7 +625,7 @@ AS $$
 BEGIN
   NEW.search_vector := pg_catalog.to_tsvector(
     'pg_catalog.english'::pg_catalog.regconfig,
-    pg_catalog.coalesce(NEW.title, '') || ' ' || pg_catalog.coalesce(pg_catalog.array_to_string(NEW.subjects, ' '), '')
+    COALESCE(NEW.title, '') || ' ' || COALESCE(pg_catalog.array_to_string(NEW.subjects, ' '), '')
   );
   RETURN NEW;
 END;
