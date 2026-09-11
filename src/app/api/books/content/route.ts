@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SITE_CONFIG } from '@/config/site-config';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
 import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
-import { isBookPublicDomainInJurisdiction, normalizeCountryCode } from '@/lib/copyright-engine';
-import { GEO_COOKIE_NAME } from '@/proxy';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { resolveClientCountry } from '@/lib/country-resolver';
 
 import { isSafeUpstreamUrl } from './url-validator';
 import { resolveBookMetadata } from './metadata-cache';
@@ -53,16 +53,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Extract user jurisdiction
-  const devCountryOverride =
-    process.env.NODE_ENV !== 'production' ? searchParams.get('country') : null;
-  const rawCountry =
-    devCountryOverride ||
-    request.headers.get('x-vercel-ip-country') ||
-    request.headers.get('x-bookarium-country') ||
-    request.cookies.get(GEO_COOKIE_NAME)?.value ||
-    'US';
-  const country = normalizeCountryCode(rawCountry);
+  // Extract user jurisdiction through deterministic priority cascade
+  const country = resolveClientCountry(request, searchParams);
 
   // Jurisdictional Copyright Gatekeeper:
   // In international jurisdictions, verify book public domain status before streaming any bytes

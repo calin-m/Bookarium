@@ -16,6 +16,7 @@ export interface UseBooksParams {
   authorYearEnd?: number;
   sort?: 'popular' | 'descending' | 'ascending' | '';
   mimeType?: string;
+  includeRestrictedMetadata?: boolean;
 }
 
 export interface UseBooksOptions {
@@ -28,6 +29,9 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
   // Always enforce upstream public domain clearance
   searchParams.set('copyright', 'false');
 
+  if (params.includeRestrictedMetadata) {
+    searchParams.set('include_restricted_metadata', 'true');
+  }
   if (params.ids) {
     searchParams.set('ids', String(params.ids).trim());
   }
@@ -103,13 +107,15 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
 
     const clientCountry = useJurisdictionStore.getState().getEffectiveCountry() || 'US';
     const originalResults = data.results || [];
-    const filteredResults = originalResults.filter((b: GutendexBook) => {
-      if (b.copyright !== true) {
-        const evaluation = isBookPublicDomainInJurisdiction(b, clientCountry);
-        return evaluation.isAllowed;
-      }
-      return false;
-    });
+    const filteredResults = params.includeRestrictedMetadata
+      ? originalResults
+      : originalResults.filter((b: GutendexBook) => {
+          if (b.copyright !== true) {
+            const evaluation = isBookPublicDomainInJurisdiction(b, clientCountry);
+            return evaluation.isAllowed;
+          }
+          return false;
+        });
     const totalFiltered = originalResults.length - filteredResults.length;
     const adjustedCount = data.count !== undefined ? Math.max(0, data.count - totalFiltered) : filteredResults.length;
 
@@ -143,13 +149,15 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
     } catch {
       throw new Error('Failed to fetch books: Invalid JSON response from server');
     }
-    const filteredResults = (data.results || []).filter((b: GutendexBook) => {
-      if (b.copyright !== true) {
-        const evaluation = isBookPublicDomainInJurisdiction(b, 'US');
-        return evaluation.isAllowed;
-      }
-      return false;
-    });
+    const filteredResults = params.includeRestrictedMetadata
+      ? (data.results || [])
+      : (data.results || []).filter((b: GutendexBook) => {
+          if (b.copyright !== true) {
+            const evaluation = isBookPublicDomainInJurisdiction(b, 'US');
+            return evaluation.isAllowed;
+          }
+          return false;
+        });
     return {
       ...data,
       results: filteredResults,

@@ -3,6 +3,8 @@
  * Allows storing full text of classic literature beyond localStorage's 5MB quota.
  */
 
+import type { Author } from '@/types/book.types';
+
 const DB_NAME = 'BookariumOfflineDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'offline_books';
@@ -12,6 +14,7 @@ export interface OfflineBookMetadata {
   title: string;
   downloadedAt: string;
   byteSize: number;
+  authors?: Author[];
 }
 
 export interface StorageQuotaInfo {
@@ -93,7 +96,7 @@ function openDB(): Promise<IDBDatabase> {
  * Saves a book's full text to IndexedDB for offline reading.
  * Includes pre-emptive quota checks, LRU auto-eviction, and QuotaExceededError recovery.
  */
-export async function saveOfflineBook(bookId: number, title: string, text: string): Promise<void> {
+export async function saveOfflineBook(bookId: number, title: string, text: string, authors?: Author[]): Promise<void> {
   const db = await openDB();
   const byteSize = new Blob([text]).size;
 
@@ -114,6 +117,7 @@ export async function saveOfflineBook(bookId: number, title: string, text: strin
         text,
         downloadedAt: new Date().toISOString(),
         byteSize,
+        authors,
       };
 
       const request = store.put(record);
@@ -149,9 +153,9 @@ export async function saveOfflineBook(bookId: number, title: string, text: strin
 }
 
 /**
- * Retrieves the full text of an offline book if cached locally.
+ * Retrieves the complete offline book record (including authors metadata and text) if cached locally.
  */
-export async function getOfflineBook(bookId: number): Promise<string | null> {
+export async function getOfflineBookRecord(bookId: number): Promise<OfflineBookRecord | null> {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -160,14 +164,22 @@ export async function getOfflineBook(bookId: number): Promise<string | null> {
       const request = store.get(bookId);
 
       request.onsuccess = () => {
-        const record = request.result as OfflineBookRecord | undefined;
-        resolve(record ? record.text : null);
+        const record = (request.result as OfflineBookRecord | undefined) || null;
+        resolve(record);
       };
       request.onerror = () => reject(request.error || new Error(`Failed to read book ${bookId} from offline storage.`));
     });
   } catch {
     return null;
   }
+}
+
+/**
+ * Retrieves the full text of an offline book if cached locally.
+ */
+export async function getOfflineBook(bookId: number): Promise<string | null> {
+  const record = await getOfflineBookRecord(bookId);
+  return record ? record.text : null;
 }
 
 /**
@@ -243,11 +255,12 @@ export async function getAllOfflineBooks(): Promise<OfflineBookMetadata[]> {
 
       request.onsuccess = () => {
         const records = (request.result || []) as OfflineBookRecord[];
-        const metadataList: OfflineBookMetadata[] = records.map(({ bookId, title, downloadedAt, byteSize }) => ({
+        const metadataList: OfflineBookMetadata[] = records.map(({ bookId, title, downloadedAt, byteSize, authors }) => ({
           bookId,
           title,
           downloadedAt,
           byteSize,
+          authors,
         }));
         resolve(metadataList);
       };

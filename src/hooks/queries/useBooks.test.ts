@@ -248,4 +248,43 @@ describe('useBooks hook', () => {
     fetchSpy.mockRestore();
     useJurisdictionStore.getState().resetOverride();
   });
+
+  it('should retain protected books during Strategy 2 fallback when includeRestrictedMetadata is true', async () => {
+    useJurisdictionStore.getState().setCountry('GB');
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      if (String(url).includes('/api/books')) {
+        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
+      }
+      return new Response(
+        JSON.stringify({
+          count: 2,
+          results: [
+            {
+              id: 1342,
+              title: 'Pride and Prejudice',
+              authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+              translators: [],
+              copyright: false,
+            },
+            {
+              id: 863,
+              title: 'The Mysterious Affair at Styles',
+              authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+              translators: [],
+              copyright: false,
+            },
+          ],
+        }),
+        { status: 200 }
+      );
+    });
+
+    const data = await fetchBooks({ search: 'detective', includeRestrictedMetadata: true });
+    expect(data.results).toHaveLength(2);
+    expect(data.results.some((b) => b.title.includes('Mysterious Affair'))).toBe(true);
+
+    fetchSpy.mockRestore();
+    useJurisdictionStore.getState().resetOverride();
+  });
 });

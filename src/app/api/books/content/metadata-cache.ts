@@ -71,7 +71,7 @@ export async function resolveBookMetadata(bookId: number): Promise<GenericBookIn
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-    const res = await fetch(`${API_ENDPOINTS.GUTENDEX_BASE_URL}/books/${bookId}/`, {
+    const res = await fetch(`${API_ENDPOINTS.GUTENDEX_BASE_URL}/${bookId}/`, {
       headers: {
         Accept: 'application/json',
         'User-Agent': `Bookarium-Gatekeeper/1.0 (${SITE_CONFIG.GITHUB_REPO})`,

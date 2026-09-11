@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { BookmarkCard } from './BookmarkCard';
 import type { ActiveReadingVolume } from '@/types/book.types';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -37,6 +38,7 @@ describe('BookmarkCard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useReaderStore.setState({ currentBook: null });
+    useJurisdictionStore.setState({ country: 'US', overrideCountry: null });
   });
 
   it('renders book metadata, formatted author names, progress bar, and reading coordinates', () => {
@@ -180,6 +182,42 @@ describe('BookmarkCard', () => {
       screen.getByRole('button', { name: /^Read Pride and Prejudice again from beginning$/i })
     ).toBeInTheDocument();
     expect(screen.getByText('Read Again')).toBeInTheDocument();
+  });
+
+  it('renders Protected badge and disabled Restricted button when book is restricted under jurisdiction', () => {
+    // Agatha Christie (died 1976), restricted in Romania (Life + 70 until 2047)
+    useJurisdictionStore.setState({ country: 'RO', overrideCountry: 'RO' });
+
+    const restrictedVolume: ActiveReadingVolume = {
+      ...mockVolume,
+      book: {
+        ...mockVolume.book,
+        id: 99999,
+        title: 'The Mysterious Affair at Styles',
+        authors: ['Christie, Agatha, 1890-1976'],
+      },
+    };
+
+    const handleResume = vi.fn();
+    render(<BookmarkCard volume={restrictedVolume} onResume={handleResume} />);
+
+    expect(screen.getByText('Protected (RO)')).toBeInTheDocument();
+    const restrictedBtn = screen.getByRole('button', {
+      name: /Reading restricted for The Mysterious Affair at Styles in RO/i,
+    });
+    expect(restrictedBtn).toBeInTheDocument();
+    expect(restrictedBtn).toBeDisabled();
+
+    // Clicking restricted button or cover does not trigger resume
+    fireEvent.click(restrictedBtn);
+    expect(handleResume).not.toHaveBeenCalled();
+
+    const cover = screen.getByLabelText(/The Mysterious Affair at Styles is restricted in RO/i);
+    fireEvent.click(cover);
+    expect(handleResume).not.toHaveBeenCalled();
+
+    // Title is rendered as non-navigable text, not active link
+    expect(screen.queryByRole('link', { name: 'The Mysterious Affair at Styles' })).not.toBeInTheDocument();
   });
 });
 

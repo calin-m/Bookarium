@@ -7,6 +7,7 @@ import { sampleBookText } from '@/mocks/handlers';
 
 vi.mock('@/lib/offline-storage', () => ({
   getOfflineBook: vi.fn().mockResolvedValue(null),
+  getOfflineBookRecord: vi.fn().mockResolvedValue(null),
 }));
 
 function createWrapper() {
@@ -107,6 +108,62 @@ describe('useBookContent hook', () => {
       expect(err.details.country).toBe('GB');
     } finally {
       fetchSpy.mockRestore();
+    }
+  });
+
+  it('should allow non-US international visitors to read verified public domain books from offline cache', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    useJurisdictionStore.setState({ country: 'RO' });
+
+    const { getOfflineBookRecord } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce({
+      bookId: 1342,
+      title: 'Pride and Prejudice',
+      text: 'It is a truth universally acknowledged...',
+      downloadedAt: new Date().toISOString(),
+      byteSize: 1024,
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+    });
+
+    const fetchSpy = vi.spyOn(global, 'fetch');
+    const content = await fetchBookContent(undefined, 1342);
+
+    expect(content).toBe('It is a truth universally acknowledged...');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+
+    // Reset store
+    useJurisdictionStore.setState({ country: 'US' });
+  });
+
+  it('should block non-US visitors with LegalRestrictionError if cached offline book is protected in their country', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    useJurisdictionStore.setState({ country: 'RO' });
+
+    const { getOfflineBookRecord } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce({
+      bookId: 863,
+      title: 'The Mysterious Affair at Styles',
+      text: 'Cached copyrighted text...',
+      downloadedAt: new Date().toISOString(),
+      byteSize: 1024,
+      authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+    });
+
+    const fetchSpy = vi.spyOn(global, 'fetch');
+
+    try {
+      await fetchBookContent(undefined, 863);
+      expect.fail('Should have thrown LegalRestrictionError');
+    } catch (err: any) {
+      expect(err.name).toBe('LegalRestrictionError');
+      expect(err.status).toBe(451);
+      expect(err.details.country).toBe('RO');
+      expect(err.details.publicDomainYear).toBe(2047);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+      useJurisdictionStore.setState({ country: 'US' });
     }
   });
 });

@@ -251,6 +251,36 @@ describe('book.adapter', () => {
       });
     });
 
+    it('preserves birth and death years in author strings when present', () => {
+      const bookWithDates: GutendexBook = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        subjects: ['Courtship'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 50000,
+      };
+
+      const insertPayload = toCloudBookInsert(bookWithDates, 'user-1');
+      expect(insertPayload.book_authors).toEqual(['Austen, Jane, 1775-1817']);
+
+      // Reconstruct and verify lifespans are recovered
+      const reconstructed = toGutendexBookFromCloudRow({
+        book_id: 1342,
+        book_title: 'Pride and Prejudice',
+        book_authors: insertPayload.book_authors,
+        cover_url: null,
+      });
+
+      expect(reconstructed.authors[0].birth_year).toBe(1775);
+      expect(reconstructed.authors[0].death_year).toBe(1817);
+    });
+
     it('omits bookshelf_id when not provided', () => {
       const book: GutendexBook = {
         id: 11,
@@ -272,4 +302,5 @@ describe('book.adapter', () => {
     });
   });
 });
+
 

@@ -96,6 +96,25 @@ describe('useBookshelfStore', () => {
     expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(0);
   });
 
+  it('should enrich saved books with fresh author lifespans', async () => {
+    const incompleteBook = {
+      ...mockBooks[0],
+      authors: [{ name: 'Austen, Jane', birth_year: null, death_year: null }],
+    };
+    useBookshelfStore.setState({ savedBooks: [incompleteBook] });
+
+    const freshBook = {
+      ...mockBooks[0],
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+    };
+
+    await useBookshelfStore.getState().enrichSavedBooks([freshBook]);
+
+    const updated = useBookshelfStore.getState().savedBooks;
+    expect(updated[0].authors[0].birth_year).toBe(1775);
+    expect(updated[0].authors[0].death_year).toBe(1817);
+  });
+
   it('should call Supabase upsert and delete on toggleFavoriteBook with userId', async () => {
     const mockUpsert = vi.fn().mockResolvedValue({ error: null });
     const mockEqBook = vi.fn().mockResolvedValue({ error: null });

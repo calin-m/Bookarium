@@ -289,5 +289,37 @@ describe('BookCard component', () => {
     const restrictedBtn = screen.getByRole('button', { name: /is restricted in GB/i });
     expect(restrictedBtn).toBeDisabled();
     expect(restrictedBtn).toHaveTextContent('Restricted');
+
+    // Get button should also be disabled
+    const getBtn = screen.getByRole('button', { name: /Download unavailable for The Mysterious Affair at Styles in GB/i });
+    expect(getBtn).toBeDisabled();
+  });
+
+  it('applies opacity and grayscale to cover image when book is restricted', () => {
+    act(() => {
+      useJurisdictionStore.getState().setCountry('GB');
+    });
+
+    const restrictedBookWithCover: any = {
+      id: 864,
+      title: 'Restricted Title With Cover',
+      authors: [{ name: 'Modern Author', birth_year: 1940, death_year: 1995 }],
+      translators: [],
+      subjects: ['Fiction'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {
+        'image/jpeg': 'https://example.com/cover.jpg',
+      },
+      download_count: 100,
+    };
+
+    render(<BookCard book={restrictedBookWithCover} />);
+
+    const coverImg = screen.getByAltText('Cover of Restricted Title With Cover');
+    expect(coverImg.className).toContain('opacity-65');
+    expect(coverImg.className).toContain('grayscale-[35%]');
   });
 });

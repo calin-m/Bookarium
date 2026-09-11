@@ -66,12 +66,22 @@ function parseContributors(rawString) {
 
   for (let str of parts) {
     let isTranslator = false;
+    let isNonAuthor = false;
     const roleMatch = str.match(/\s*\[([^\]]+)\]\s*$/);
     if (roleMatch) {
       const role = roleMatch[1].trim().toLowerCase();
       str = str.substring(0, str.length - roleMatch[0].length).trim();
       if (role.includes('translator')) {
         isTranslator = true;
+      } else if (
+        role.includes('illustrator') ||
+        role.includes('photographer') ||
+        role.includes('engraver') ||
+        role.includes('artist') ||
+        role.includes('decorator') ||
+        role.includes('calligrapher')
+      ) {
+        isNonAuthor = true;
       }
     }
 
@@ -109,7 +119,7 @@ function parseContributors(rawString) {
 
     if (isTranslator) {
       translators.push(person);
-    } else {
+    } else if (!isNonAuthor) {
       authors.push(person);
     }
   }

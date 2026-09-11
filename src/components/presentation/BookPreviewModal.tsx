@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, RotateCw, Quote, BookOpen } from 'lucide-react';
+import { Sparkles, RotateCw, Quote, BookOpen, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { BookCard } from './BookCard';
 import { NotablePassagesSpread } from './NotablePassagesSpread';
 
@@ -46,6 +48,10 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const { bookRatings, bookStatuses, setBookRating, setReadingStatus } = useHydratedBookshelf();
   const rating = book?.id ? bookRatings[book.id] ?? null : null;
   const status = book?.id ? bookStatuses[book.id] ?? null : null;
+
+  const { country } = useJurisdiction();
+  const evaluation = book ? isBookPublicDomainInJurisdiction(book, country) : null;
+  const isRestricted = Boolean(evaluation && !evaluation.isAllowed);
 
   // Personal curation toolbar is strictly restricted to personal collections (Bookshelf & Favorites)
   // and completely hidden in the main catalog view
@@ -258,7 +264,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               isCoverOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}>
               <div key={`right-page-base-${book.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
-                <NotablePassagesSpread passage={currentPassage} />
+                <NotablePassagesSpread passage={currentPassage} isRestricted={isRestricted} country={country} />
 
                 {/* Right Page Footer Actions */}
                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2 mt-2 shrink-0">
@@ -278,19 +284,33 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono text-muted-foreground opacity-60">p. 2</span>
                     {onReadBook && (
-                      <Button
-                        variant="primary"
-                        size="chip"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleClose();
-                          onReadBook(book);
-                        }}
-                        aria-label={`Read ${book.title}`}
-                      >
-                        <BookOpen className="w-3.5 h-3.5" />
-                        <span>Read</span>
-                      </Button>
+                      isRestricted ? (
+                        <Button
+                          variant="outline"
+                          size="chip"
+                          disabled
+                          className="opacity-60 cursor-not-allowed"
+                          aria-label={`${book.title} is restricted in ${country}`}
+                          title={evaluation?.reason || `Protected by copyright in ${country}`}
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Restricted</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="chip"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleClose();
+                            onReadBook(book);
+                          }}
+                          aria-label={`Read ${book.title}`}
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Read</span>
+                        </Button>
+                      )
                     )}
                   </div>
                 </div>
@@ -306,7 +326,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               >
                 {/* Front Face of Turning Leaf: Outgoing Right Page quotes lifting away */}
                 <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
-                  <NotablePassagesSpread passage={prevPassage} />
+                  <NotablePassagesSpread passage={prevPassage} isRestricted={isRestricted} country={country} />
 
                   <div className="pt-2 flex items-center justify-end text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
                     <span className="opacity-60">p. 2</span>
@@ -325,9 +345,19 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                       <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
                         <div className="space-y-1.5 shrink-0">
                           <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
-                            <span className="flex items-center gap-1">
-                              <Sparkles className="w-3 h-3" /> Public Domain
-                            </span>
+                            {isRestricted ? (
+                              <span
+                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
+                                data-testid={`preview-restricted-badge-${book.id}`}
+                              >
+                                <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span>Protected ({country})</span>
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" /> Public Domain
+                              </span>
+                            )}
                             <span>ID #{book.id}</span>
                           </div>
 
@@ -442,9 +472,19 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                       <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
                         <div className="space-y-1.5 shrink-0">
                           <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
-                            <span className="flex items-center gap-1">
-                              <Sparkles className="w-3 h-3" /> Public Domain
-                            </span>
+                            {isRestricted ? (
+                              <span
+                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
+                                data-testid={`preview-restricted-badge-left-${book.id}`}
+                              >
+                                <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span>Protected ({country})</span>
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" /> Public Domain
+                              </span>
+                            )}
                             <span>ID #{book.id}</span>
                           </div>
 

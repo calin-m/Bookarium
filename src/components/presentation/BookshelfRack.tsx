@@ -3,12 +3,14 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Sparkles, Plus, Edit2, Trash2, CheckCircle2, HardDriveDownload, Lock } from 'lucide-react';
+import { BookOpen, Sparkles, Plus, Edit2, Trash2, CheckCircle2, HardDriveDownload, Lock, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { Button } from '@/components/ui/Button';
 import { BookshelfSpine } from './bookshelf/BookshelfSpine';
 import { BookshelfMobileModal } from './bookshelf/BookshelfMobileModal';
@@ -50,6 +52,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   } = useHydratedBookshelf();
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const { user, openAuthModal } = useAuthStore();
+  const { country } = useJurisdiction();
   const {
     isBookOffline,
     downloadBook,
@@ -107,7 +110,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   };
 
   const handleSpineClick = (book: GutendexBook) => {
-    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+    const isRestricted = !isBookPublicDomainInJurisdiction(book, country).isAllowed;
+    if ((typeof window !== 'undefined' && window.innerWidth < 640) || isRestricted) {
       setSelectedMobileBook(book);
     } else {
       if (onBookClick) onBookClick(book);
@@ -178,6 +182,20 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     );
     return books.filter((b) => currentShelfBookIds.has(b.id));
   }, [cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, books]);
+
+  // Partition shelf books into public domain titles in current jurisdiction vs copyright-restricted titles
+  const { downloadableBooks, restrictedBooks } = useMemo(() => {
+    const downloadable: GutendexBook[] = [];
+    const restricted: GutendexBook[] = [];
+    for (const book of effectiveShelfBooks) {
+      if (isBookPublicDomainInJurisdiction(book, country).isAllowed) {
+        downloadable.push(book);
+      } else {
+        restricted.push(book);
+      }
+    }
+    return { downloadableBooks: downloadable, restrictedBooks: restricted };
+  }, [effectiveShelfBooks, country]);
 
   // Chunk books dynamically into shelves based on container width
   const shelves = useMemo(() => {
@@ -349,18 +367,43 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                         : 'Downloading...'}
                     </span>
                   </Button>
-                ) : effectiveShelfBooks.every((b) => isBookOffline(b.id)) ? (
+                ) : downloadableBooks.length === 0 && restrictedBooks.length > 0 ? (
+                  <div
+                    role="status"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 select-none cursor-default"
+                    title={`All titles on this shelf are protected by copyright in ${country}`}
+                    aria-label={`All Restricted in ${country}`}
+                    data-testid="all-restricted-offline-notice"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span className="hidden sm:inline font-medium">All Restricted in {country}</span>
+                    <span className="sm:hidden font-medium">Restricted ({country})</span>
+                  </div>
+                ) : downloadableBooks.length > 0 && downloadableBooks.every((b) => isBookOffline(b.id)) ? (
                   <div className="flex items-center gap-1.5">
                     <div
                       role="status"
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 select-none cursor-default"
-                      title="All books on this shelf are saved for offline reading"
-                      aria-label="All Saved for Offline"
+                      title={
+                        restrictedBooks.length > 0
+                          ? `All ${downloadableBooks.length} available public domain books are saved offline (${restrictedBooks.length} restricted in ${country})`
+                          : 'All books on this shelf are saved for offline reading'
+                      }
+                      aria-label={restrictedBooks.length > 0 ? 'All Available Saved for Offline' : 'All Saved for Offline'}
                       data-testid="all-saved-offline-notice"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                      <span className="hidden sm:inline font-medium">All Saved for Offline</span>
-                      <span className="sm:hidden font-medium">Saved</span>
+                      <span className="hidden sm:inline font-medium">
+                        {restrictedBooks.length > 0 ? 'All Available Saved' : 'All Saved for Offline'}
+                      </span>
+                      <span className="sm:hidden font-medium">
+                        {restrictedBooks.length > 0 ? `Saved (${downloadableBooks.length})` : 'Saved'}
+                      </span>
+                      {restrictedBooks.length > 0 && (
+                        <span className="hidden md:inline text-[10px] text-amber-600 dark:text-amber-400 font-mono ml-0.5">
+                          ({restrictedBooks.length} restricted)
+                        </span>
+                      )}
                     </div>
                     <Button
                       variant="outline"
@@ -379,9 +422,13 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                   <Button
                     variant="outline"
                     size="chip"
-                    onClick={() => downloadAll(effectiveShelfBooks)}
+                    onClick={() => downloadAll(downloadableBooks)}
                     className="text-xs font-mono gap-1.5"
-                    title="Download all books on this shelf for offline reading"
+                    title={
+                      restrictedBooks.length > 0
+                        ? `Download ${downloadableBooks.length} available public domain books for offline reading (${restrictedBooks.length} restricted in ${country} will be skipped)`
+                        : 'Download all books on this shelf for offline reading'
+                    }
                     aria-label="Download all books on this shelf for offline reading"
                   >
                     <HardDriveDownload className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -490,10 +537,9 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       )}
       </div>
 
-      {/* Mobile In-Shelf Quick-Action Centered Floating Modal */}
+      {/* Mobile/Restricted In-Shelf Quick-Action Centered Floating Modal */}
       {selectedMobileBook && (
         <BookshelfMobileModal
-          className="sm:hidden"
           selectedMobileBook={selectedMobileBook}
           onClose={closeMobileSheet}
           readingProgress={readingProgress[selectedMobileBook.id]}

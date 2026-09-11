@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useJurisdictionStore, useJurisdiction, getCookieValue } from './useJurisdictionStore';
+import { useJurisdictionStore, useJurisdiction, getCookieValue, resolveInitialCountry } from './useJurisdictionStore';
 import { GEO_COOKIE_NAME } from '@/proxy';
 
 describe('useJurisdictionStore', () => {
@@ -72,6 +72,40 @@ describe('useJurisdictionStore', () => {
   it('reads cookie value from document.cookie', () => {
     document.cookie = `${GEO_COOKIE_NAME}=FR; path=/;`;
     expect(getCookieValue(GEO_COOKIE_NAME)).toBe('FR');
+  });
+
+  it('resolves initial country from cookie when present', () => {
+    document.cookie = `${GEO_COOKIE_NAME}=DE; path=/;`;
+    expect(resolveInitialCountry()).toBe('DE');
+  });
+
+  it('resolves initial country from timezone when cookie is absent in development', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    const originalDateTimeFormat = Intl.DateTimeFormat;
+    try {
+      // Mock timezone to Europe/Bucharest
+      Intl.DateTimeFormat = (() => ({
+        resolvedOptions: () => ({ timeZone: 'Europe/Bucharest' }),
+      })) as unknown as typeof Intl.DateTimeFormat;
+
+      expect(resolveInitialCountry()).toBe('RO');
+    } finally {
+      Intl.DateTimeFormat = originalDateTimeFormat;
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('falls back to US when cookie and timezone are unknown', () => {
+    const originalDateTimeFormat = Intl.DateTimeFormat;
+    try {
+      Intl.DateTimeFormat = (() => ({
+        resolvedOptions: () => ({ timeZone: 'Mars/Curiosity' }),
+      })) as unknown as typeof Intl.DateTimeFormat;
+
+      expect(resolveInitialCountry()).toBe('US');
+    } finally {
+      Intl.DateTimeFormat = originalDateTimeFormat;
+    }
   });
 });
 

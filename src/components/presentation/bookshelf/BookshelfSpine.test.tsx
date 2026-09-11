@@ -146,4 +146,54 @@ describe('BookshelfSpine Component', () => {
     fireEvent.mouseLeave(offlineBtn);
     expect(screen.queryByTestId(`spine-tooltip-${mockBook.id}`)).not.toBeInTheDocument();
   });
+
+  it('renders muted spine, restriction badge, banner, and disabled buttons for copyright-protected books', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    useJurisdictionStore.setState({ country: 'RO' });
+
+    const restrictedBook: GutendexBook = {
+      id: 863,
+      title: 'The Mysterious Affair at Styles',
+      authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+      translators: [],
+      subjects: ['Detective and mystery stories'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 25000,
+    };
+
+    render(
+      <BookshelfSpine
+        book={restrictedBook}
+        bookIndex={0}
+        isSaved={true}
+        isFavorite={false}
+        isOffline={false}
+        onToggleSave={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onSpineClick={vi.fn()}
+      />
+    );
+
+    // Spine shows regional restriction badge
+    expect(screen.getByTestId('spine-restricted-badge-863')).toBeInTheDocument();
+    expect(screen.getByText('RO')).toBeInTheDocument();
+
+    // Hover card shows Protected (RO) and restriction banner
+    expect(screen.getByTestId('spine-card-restricted-863')).toBeInTheDocument();
+    expect(screen.getByTestId('spine-restricted-banner-863')).toBeInTheDocument();
+
+    // Read button is disabled
+    const restrictedReadBtn = screen.getByRole('button', { name: `${restrictedBook.title} is restricted in RO` });
+    expect(restrictedReadBtn).toBeDisabled();
+
+    // Offline button is disabled
+    const restrictedOfflineBtn = screen.getByRole('button', { name: `Offline storage unavailable for ${restrictedBook.title}` });
+    expect(restrictedOfflineBtn).toBeDisabled();
+
+    useJurisdictionStore.setState({ country: 'US' });
+  });
 });

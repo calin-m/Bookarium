@@ -7,16 +7,28 @@ export interface NotablePassagesSpreadProps {
     rightPageQuote2?: string;
     tertiaryQuote?: string;
   };
+  isRestricted?: boolean;
+  country?: string;
 }
 
-export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({ passage }) => {
+export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({
+  passage,
+  isRestricted = false,
+  country,
+}) => {
   const rightQuotesCount = 1 + (passage.rightPageQuote2 ? 1 : 0) + (passage.tertiaryQuote ? 1 : 0);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
       <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground pb-1 border-b border-border shrink-0">
         <span>Notable Passages</span>
-        <span className="text-success font-bold uppercase">CC0 / Free</span>
+        {isRestricted ? (
+          <span className="text-amber-600 dark:text-amber-400 font-bold uppercase" data-testid="notable-passages-restricted-badge">
+            Protected ({country || 'Restricted'})
+          </span>
+        ) : (
+          <span className="text-success font-bold uppercase">CC0 / Free</span>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col justify-around gap-2.5 py-1">

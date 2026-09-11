@@ -4,11 +4,13 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Download, Bookmark, Heart, Sparkles, X, CheckCircle2, HardDriveDownload } from 'lucide-react';
+import { BookOpen, Download, Bookmark, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction, getJurisdictionRuleDescription } from '@/lib/copyright-engine';
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { Button } from '@/components/ui/Button';
@@ -93,6 +95,10 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
   const currentStatus = selectedMobileBook ? bookStatuses[selectedMobileBook.id] ?? null : null;
   const isCuratable = activeView === undefined || activeView === 'bookshelf' || activeView === 'favorites';
 
+  const { country } = useJurisdiction();
+  const evaluation = selectedMobileBook ? isBookPublicDomainInJurisdiction(selectedMobileBook, country) : null;
+  const isRestricted = Boolean(evaluation && !evaluation.isAllowed);
+
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && selectedMobileBook) {
@@ -144,8 +150,20 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1 pr-6">
                   <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-primary">
-                    <Sparkles className="w-3 h-3" />
-                    <span>Public Domain</span>
+                    {isRestricted ? (
+                      <span
+                        className="text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold"
+                        data-testid={`mobile-restricted-badge-${selectedMobileBook.id}`}
+                      >
+                        <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                        <span>Protected ({country})</span>
+                      </span>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3" />
+                        <span>Public Domain</span>
+                      </>
+                    )}
                     {isOffline && (
                       <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-semibold flex items-center gap-0.5">
                         <CheckCircle2 className="w-2.5 h-2.5" /> Offline
@@ -174,38 +192,81 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                 </button>
               </div>
 
+              {/* Regional Copyright Notice Banner if Restricted */}
+              {isRestricted && evaluation && (
+                <div
+                  className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs space-y-1"
+                  data-testid="mobile-restricted-notice"
+                >
+                  <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>Restricted in {country}</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    {evaluation.reason || `Protected under ${getJurisdictionRuleDescription(evaluation.rule, country)}.`}
+                    {evaluation.publicDomainYear ? ` Scheduled to enter the public domain on January 1, ${evaluation.publicDomainYear}.` : ''}
+                  </p>
+                </div>
+              )}
+
               {/* Quick Actions Row */}
               <div className="flex items-center gap-2 pt-1">
-                <Button
-                  variant="primary"
-                  size="md"
-                  className="flex-1 font-mono text-xs uppercase tracking-wider font-bold gap-1.5"
-                  onClick={() => {
-                    const target = selectedMobileBook;
-                    onClose();
-                    useReaderStore.getState().openReader(target);
-                    if (onBookClick) onBookClick(target);
-                    else router.push(ROUTES.READ(target.id));
-                  }}
-                  aria-label={`Read ${selectedMobileBook.title}`}
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Read Volume</span>
-                </Button>
+                {isRestricted ? (
+                  <Button
+                    variant="outline"
+                    size="md"
+                    disabled
+                    className="flex-1 font-mono text-xs uppercase tracking-wider font-bold gap-1.5 opacity-60 cursor-not-allowed"
+                    title={evaluation?.reason || `Protected by copyright in ${country}`}
+                    aria-label={`${selectedMobileBook.title} is restricted in ${country}`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Restricted</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    className="flex-1 font-mono text-xs uppercase tracking-wider font-bold gap-1.5"
+                    onClick={() => {
+                      const target = selectedMobileBook;
+                      onClose();
+                      useReaderStore.getState().openReader(target);
+                      if (onBookClick) onBookClick(target);
+                      else router.push(ROUTES.READ(target.id));
+                    }}
+                    aria-label={`Read ${selectedMobileBook.title}`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Read Volume</span>
+                  </Button>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => onToggleOffline?.(selectedMobileBook)}
-                  className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
-                    isOffline
-                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
-                      : 'border-border hover:bg-muted text-foreground'
-                  }`}
-                  aria-label={isOffline ? 'Remove offline copy' : 'Save for offline reading'}
-                  title={isOffline ? 'Offline copy ready (Click to remove)' : 'Save for offline reading'}
-                >
-                  {isOffline ? <CheckCircle2 className="w-4 h-4" /> : <HardDriveDownload className="w-4 h-4" />}
-                </button>
+                {isRestricted ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="p-2.5 rounded-xl border border-border text-muted-foreground/50 opacity-50 cursor-not-allowed"
+                    title={`Offline storage unavailable for protected titles in ${country}`}
+                    aria-label={`Offline storage unavailable for ${selectedMobileBook.title}`}
+                  >
+                    <HardDriveDownload className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onToggleOffline?.(selectedMobileBook)}
+                    className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
+                      isOffline
+                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
+                        : 'border-border hover:bg-muted text-foreground'
+                    }`}
+                    aria-label={isOffline ? 'Remove offline copy' : 'Save for offline reading'}
+                    title={isOffline ? 'Offline copy ready (Click to remove)' : 'Save for offline reading'}
+                  >
+                    {isOffline ? <CheckCircle2 className="w-4 h-4" /> : <HardDriveDownload className="w-4 h-4" />}
+                  </button>
+                )}
 
                 <button
                   type="button"

@@ -172,7 +172,12 @@ export default function BookReaderPage() {
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, error: contentError, refetch } = useBookContent(undefined, numericId);
-  const { data: booksData } = useBooks({ ids: numericId > 0 ? String(numericId) : '', page: 1, copyright: false });
+  const { data: booksData } = useBooks({
+    ids: numericId > 0 ? String(numericId) : '',
+    page: 1,
+    copyright: false,
+    includeRestrictedMetadata: true,
+  });
   
   // Multi-tier metadata resolution: Client Store -> Fixture -> API Result -> Raw Gutenberg Header Extraction
   const extractedMeta = useMemo(() => {

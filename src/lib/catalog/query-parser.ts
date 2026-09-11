@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import type { CatalogQueryOptions } from '@/types/catalog.types';
-import { normalizeCountryCode } from '@/lib/copyright-engine';
-import { GEO_COOKIE_NAME } from '@/proxy';
+import { resolveClientCountry } from '@/lib/country-resolver';
 
 /**
  * Extracts, sanitizes, and normalizes query options from an incoming Next.js request.
@@ -50,17 +49,10 @@ export function parseCatalogQuery(request: NextRequest): CatalogQueryOptions {
 
   const mimeType = (searchParams.get('mime_type') || '').trim() || undefined;
   const ids = (searchParams.get('ids') || '').trim() || undefined;
+  const includeRestrictedMetadata = searchParams.get('include_restricted_metadata') === 'true';
 
-  // Resolve user country: query override (dev) -> edge IP header -> edge proxy header -> cookie -> 'US'
-  const devCountryOverride =
-    process.env.NODE_ENV !== 'production' ? searchParams.get('country') : null;
-  const rawCountry =
-    devCountryOverride ||
-    request.headers.get('x-vercel-ip-country') ||
-    request.headers.get('x-bookarium-country') ||
-    request.cookies.get(GEO_COOKIE_NAME)?.value ||
-    'US';
-  const country = normalizeCountryCode(rawCountry);
+  // Resolve user country through deterministic priority cascade
+  const country = resolveClientCountry(request, searchParams);
 
   return {
     search: search.length >= 2 ? search : undefined,
@@ -74,6 +66,7 @@ export function parseCatalogQuery(request: NextRequest): CatalogQueryOptions {
     mimeType,
     ids,
     country,
+    includeRestrictedMetadata: includeRestrictedMetadata || undefined,
   };
 }
 

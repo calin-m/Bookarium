@@ -46,6 +46,14 @@ describe('NotebookQuoteCard', () => {
     expect(screen.getByTestId('color-badge-btn-ann-1')).toHaveTextContent('yellow');
   });
 
+  it('renders Protected badge when isRestricted is true', () => {
+    render(<NotebookQuoteCard {...defaultProps} isRestricted={true} jurisdictionCountry="RO" />);
+
+    expect(screen.getByText('Protected')).toBeInTheDocument();
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.getByText(/by Jane Austen/i)).toBeInTheDocument();
+  });
+
   it('toggles color swatch popover and updates color on click', async () => {
     render(<NotebookQuoteCard {...defaultProps} />);
 

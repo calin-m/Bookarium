@@ -139,6 +139,43 @@ describe('GutendexCatalogProvider', () => {
     }
   });
 
+  it('bypasses jurisdictional filtering when includeRestrictedMetadata is true', async () => {
+    const mockData = {
+      count: 2,
+      results: [
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          copyright: false,
+        },
+        {
+          id: 863,
+          title: 'The Mysterious Affair at Styles',
+          authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+          translators: [],
+          copyright: false,
+        },
+      ],
+    };
+
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    );
+
+    const result = await provider.searchBooks({
+      ids: '1342,863',
+      page: 1,
+      limit: 32,
+      country: 'GB',
+      includeRestrictedMetadata: true,
+    });
+
+    expect(result.results).toHaveLength(2);
+    expect(result.results.some((b) => b.id === 863)).toBe(true);
+  });
+
   it('throws CatalogProviderError with status 502 on invalid non-JSON body', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValueOnce(
       new Response('<html>Error</html>', {

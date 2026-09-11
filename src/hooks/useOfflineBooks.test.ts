@@ -51,7 +51,8 @@ describe('useOfflineBooks hook', () => {
     expect(saveOfflineBook).toHaveBeenCalledWith(
       mockBooks[0].id,
       mockBooks[0].title,
-      'Full text content of the book...'
+      'Full text content of the book...',
+      mockBooks[0].authors
     );
 
     const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
@@ -108,6 +109,35 @@ describe('useOfflineBooks hook', () => {
     expect(saveOfflineBook).toHaveBeenCalledTimes(2);
     expect(result.current.isDownloading).toBe(false);
     expect(result.current.downloadAllProgress).toBeNull();
+
+    fetchSpy.mockRestore();
+  });
+
+  it('skips restricted books with HTTP 451 during batch download and saves remaining books', async () => {
+    const { saveOfflineBook, getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((url: any) => {
+      if (String(url).includes(`id=${mockBooks[0].id}`)) {
+        return Promise.resolve(new Response('451 Restricted', { status: 451 }));
+      }
+      return Promise.resolve(new Response('Allowed text content', { status: 200 }));
+    });
+
+    const { result } = renderHook(() => useOfflineBooks());
+
+    await act(async () => {
+      await result.current.downloadAll([mockBooks[0], mockBooks[1]]);
+    });
+
+    expect(saveOfflineBook).toHaveBeenCalledTimes(1);
+    expect(saveOfflineBook).toHaveBeenCalledWith(
+      mockBooks[1].id,
+      mockBooks[1].title,
+      'Allowed text content',
+      mockBooks[1].authors
+    );
+    expect(result.current.isDownloading).toBe(false);
 
     fetchSpy.mockRestore();
   });

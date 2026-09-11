@@ -68,6 +68,20 @@ describe('sync-gutenberg-catalog parser', () => {
       ]);
     });
 
+    it('correctly ignores illustrators and visual contributors from authors array', () => {
+      const res = parseContributors(
+        'Tracy, Louis, 1863-1928; McFall, J. V. [Illustrator]; Parsons, A. W. [Illustrator]'
+      );
+      expect(res.authors).toEqual([
+        {
+          name: 'Tracy, Louis',
+          birth_year: 1863,
+          death_year: 1928,
+        },
+      ]);
+      expect(res.translators).toEqual([]);
+    });
+
     it('handles BCE year dates correctly', () => {
       const res = parseContributors('Plato, 428? BCE-348? BCE');
       expect(res.authors).toEqual([

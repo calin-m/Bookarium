@@ -26,6 +26,7 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useCollectionAutoHeal } from '@/hooks/useCollectionAutoHeal';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/types/book.types';
 import { Trash2, AlertTriangle } from 'lucide-react';
@@ -65,26 +66,8 @@ function HomeContent() {
   const favoriteBookIds = useMemo(() => (hasMounted ? rawFavoriteBookIds : []), [hasMounted, rawFavoriteBookIds]);
   const clearSavedBooks = useBookshelfStore((s) => s.clearSavedBooks);
 
-  // Auto-healing: detect any favorite IDs in localStorage that lack full book metadata
-  const missingFavoriteIds = useMemo(() => {
-    if (!hasMounted) return [];
-    const knownIds = new Set((favoriteBooks || []).map((b) => b.id));
-    return favoriteBookIds.filter((id) => !knownIds.has(id));
-  }, [favoriteBookIds, favoriteBooks, hasMounted]);
-
-  const missingIdsParam = missingFavoriteIds.length > 0 ? missingFavoriteIds.join(',') : undefined;
-
-  const { data: missingBooksData, isLoading: isMissingLoading } = useBooks(
-    missingIdsParam ? { ids: missingIdsParam } : undefined,
-    { enabled: Boolean(missingIdsParam) }
-  );
-
-  // Sync returned book objects into favoriteBooks store
-  useEffect(() => {
-    if (missingFavoriteIds.length > 0 && missingBooksData?.results && missingBooksData.results.length > 0) {
-      useBookshelfStore.getState().syncFavoriteBooks(missingBooksData.results);
-    }
-  }, [missingBooksData, missingFavoriteIds]);
+  // Unified collection auto-healing pipeline (Bookshelf & Favorites metadata enrichment)
+  const { isHealing, missingFavoriteIds } = useCollectionAutoHeal();
 
   // Centralized Catalog Filters Hook
   const {
@@ -206,13 +189,12 @@ function HomeContent() {
   const uniqueKnownFavoriteBooks = useMemo(() => {
     const allKnown = [
       ...(favoriteBooks || []),
-      ...(missingBooksData?.results || []),
       ...(booksData?.results || []),
       ...savedBooks,
     ];
     const uniqueKnown = Array.from(new Map(allKnown.map((b) => [b.id, b])).values());
     return uniqueKnown.filter((b) => favoriteBookIds.includes(b.id));
-  }, [favoriteBooks, missingBooksData?.results, booksData?.results, savedBooks, favoriteBookIds]);
+  }, [favoriteBooks, booksData?.results, savedBooks, favoriteBookIds]);
 
   const filteredFavoriteBooks = useMemo(
     () => filterBooksSmart(uniqueKnownFavoriteBooks, collectionSearchQuery),
@@ -230,7 +212,7 @@ function HomeContent() {
     isDisplayError = false;
   } else if (activeView === 'favorites') {
     displayedBooks = filteredFavoriteBooks;
-    isDisplayLoading = missingFavoriteIds.length > 0 && isMissingLoading;
+    isDisplayLoading = missingFavoriteIds.length > 0 && isHealing;
     isDisplayError = false;
   }
 

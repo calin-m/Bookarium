@@ -169,7 +169,15 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   }
 
   if (isError) {
-    return <ReaderErrorView activeTheme={activeTheme} onRetry={onRetry} error={error} />;
+    return (
+      <ReaderErrorView
+        activeTheme={activeTheme}
+        onRetry={onRetry}
+        error={error}
+        bookTitle={bookTitle}
+        bookAuthor={bookAuthor}
+      />
+    );
   }
 
   const baseContent = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');

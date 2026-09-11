@@ -73,7 +73,7 @@ export function useOfflineBooks() {
         if (!res.ok) throw new Error('Failed to fetch book content');
         const text = await res.text();
         if (!text || text.trim().length === 0) throw new Error('Empty text received');
-        await saveOfflineBook(book.id, book.title, text);
+        await saveOfflineBook(book.id, book.title, text, book.authors);
         await refreshOfflineIds();
 
         try {
@@ -123,7 +123,7 @@ export function useOfflineBooks() {
           if (res.ok) {
             const text = await res.text();
             if (text && text.trim().length > 0) {
-              await saveOfflineBook(book.id, book.title, text);
+              await saveOfflineBook(book.id, book.title, text, book.authors);
             }
           }
         } catch {

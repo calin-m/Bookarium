@@ -9,9 +9,17 @@ export interface ReaderErrorViewProps {
   activeTheme: ReaderThemeConfig;
   onRetry?: () => void;
   error?: unknown;
+  bookTitle?: string;
+  bookAuthor?: string;
 }
 
-export const ReaderErrorView: React.FC<ReaderErrorViewProps> = ({ activeTheme, onRetry, error }) => {
+export const ReaderErrorView: React.FC<ReaderErrorViewProps> = ({
+  activeTheme,
+  onRetry,
+  error,
+  bookTitle,
+  bookAuthor,
+}) => {
   const isLegalRestriction =
     error instanceof LegalRestrictionError ||
     (typeof error === 'object' &&
@@ -34,7 +42,21 @@ export const ReaderErrorView: React.FC<ReaderErrorViewProps> = ({ activeTheme, o
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-mono text-[11px] uppercase tracking-wider font-semibold mb-4">
           <span>HTTP 451: Unavailable For Legal Reasons</span>
         </div>
-        <h2 className="font-serif text-2xl font-bold mb-3">
+        {(bookTitle || bookAuthor) && (
+          <div className="mb-3 max-w-lg">
+            {bookTitle && (
+              <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                {bookTitle}
+              </h1>
+            )}
+            {bookAuthor && (
+              <p className={`text-sm italic mt-1 ${activeTheme.textMuted}`}>
+                by {bookAuthor}
+              </p>
+            )}
+          </div>
+        )}
+        <h2 className="font-serif text-xl sm:text-2xl font-bold mb-3">
           Protected by Copyright in Your Jurisdiction
         </h2>
         <div className={`text-xs font-mono max-w-lg mb-6 space-y-2 ${activeTheme.textMuted}`}>
@@ -71,6 +93,20 @@ export const ReaderErrorView: React.FC<ReaderErrorViewProps> = ({ activeTheme, o
       data-testid="reader-error-view"
     >
       <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
+      {(bookTitle || bookAuthor) && (
+        <div className="mb-3 max-w-md">
+          {bookTitle && (
+            <h1 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              {bookTitle}
+            </h1>
+          )}
+          {bookAuthor && (
+            <p className={`text-xs italic mt-1 ${activeTheme.textMuted}`}>
+              by {bookAuthor}
+            </p>
+          )}
+        </div>
+      )}
       <h2 className="font-serif text-lg font-bold mb-2">
         Unable to Load Masterwork Text
       </h2>

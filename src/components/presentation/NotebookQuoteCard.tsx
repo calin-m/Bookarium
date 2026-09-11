@@ -9,6 +9,7 @@ import {
   ExternalLink,
   MessageSquare,
   Palette,
+  Lock,
 } from 'lucide-react';
 import type { Annotation, HighlightColor } from '@/stores/useAnnotationStore';
 import { Button } from '@/components/ui/Button';
@@ -51,6 +52,8 @@ export interface NotebookQuoteCardProps {
   annotation: Annotation;
   bookTitle: string;
   bookAuthor: string;
+  isRestricted?: boolean;
+  jurisdictionCountry?: string;
   isEditing?: boolean;
   onStartEdit?: (ann: Annotation) => void;
   onCancelEdit?: () => void;
@@ -74,6 +77,8 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   annotation: ann,
   bookTitle,
   bookAuthor,
+  isRestricted = false,
+  jurisdictionCountry,
   isEditing = false,
   onStartEdit,
   onCancelEdit,
@@ -168,6 +173,15 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               {bookTitle}
             </span>
             <span className="text-muted-foreground hidden sm:inline truncate">by {bookAuthor}</span>
+            {isRestricted && (
+              <span
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0"
+                title={`Protected by copyright in ${jurisdictionCountry || 'your jurisdiction'}`}
+              >
+                <Lock className="w-2 h-2" />
+                Protected
+              </span>
+            )}
             <span>•</span>
             <span className="truncate">
               Section {ann.chapterIndex + 1}, p. {ann.chapterPage}

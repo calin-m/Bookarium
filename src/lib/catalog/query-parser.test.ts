@@ -5,6 +5,7 @@ import { GEO_COOKIE_NAME } from '@/proxy';
 
 describe('parseCatalogQuery', () => {
   it('defaults to safe base values when no query parameters are provided', () => {
+    vi.stubEnv('NODE_ENV', 'production');
     const req = new NextRequest('http://localhost:3000/api/books');
     const options = parseCatalogQuery(req);
 
@@ -15,6 +16,7 @@ describe('parseCatalogQuery', () => {
     expect(options.topic).toBeUndefined();
     expect(options.languages).toBeUndefined();
     expect(options.sort).toBe('');
+    vi.unstubAllEnvs();
   });
 
   it('normalizes whitespace in search query and trims input', () => {
@@ -56,6 +58,14 @@ describe('parseCatalogQuery', () => {
     expect(options.ids).toBe('1342,863');
   });
 
+  it('parses include_restricted_metadata flag', () => {
+    const req = new NextRequest('http://localhost:3000/api/books?ids=31635&include_restricted_metadata=true');
+    const options = parseCatalogQuery(req);
+
+    expect(options.ids).toBe('31635');
+    expect(options.includeRestrictedMetadata).toBe(true);
+  });
+
   it('parses comma-separated languages into string array', () => {
     const req = new NextRequest('http://localhost:3000/api/books?languages=en,fr,de');
     const options = parseCatalogQuery(req);
@@ -88,9 +98,21 @@ describe('parseCatalogQuery', () => {
     });
     expect(parseCatalogQuery(cookieReq).country).toBe('GB');
 
-    // 5. Default fallback
+    // 5. Default fallback in production
+    vi.stubEnv('NODE_ENV', 'production');
     const defaultReq = new NextRequest('http://localhost:3000/api/books');
     expect(parseCatalogQuery(defaultReq).country).toBe('US');
+    vi.unstubAllEnvs();
+
+    // 6. System timezone fallback in development
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.spyOn(Intl, 'DateTimeFormat').mockReturnValue({
+      resolvedOptions: () => ({ timeZone: 'Europe/Bucharest' }),
+    } as unknown as Intl.DateTimeFormat);
+    const tzReq = new NextRequest('http://localhost:3000/api/books');
+    expect(parseCatalogQuery(tzReq).country).toBe('RO');
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 });
 

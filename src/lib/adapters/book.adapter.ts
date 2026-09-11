@@ -149,19 +149,46 @@ export function toCanonicalBook(
 export interface CloudBookRow {
   book_id: number;
   book_title: string;
-  book_authors: string[] | null;
+  book_authors: (string | Author)[] | null;
   cover_url: string | null;
 }
 
+import { parseLifespansFromName } from '@/lib/copyright-engine';
+
 /**
  * Reconstructs a full GutendexBook from a cloud database row (bookshelf_items or user_favorites).
- * Encapsulates Gutenberg format URL synthesis and author normalization in a single canonical place.
+ * Preserves author lifespans and applies fallback regex extraction from author strings.
  */
 export function toGutendexBookFromCloudRow(item: CloudBookRow): GutendexBook {
+  const authors: Author[] = [];
+
+  if (Array.isArray(item.book_authors)) {
+    for (const authorItem of item.book_authors) {
+      if (authorItem && typeof authorItem === 'object' && 'name' in authorItem) {
+        const a = authorItem as Author;
+        const parsed = (a.birth_year == null && a.death_year == null && a.name)
+          ? parseLifespansFromName(a.name)
+          : { birthYear: a.birth_year ?? null, deathYear: a.death_year ?? null };
+        authors.push({
+          name: a.name,
+          birth_year: parsed.birthYear,
+          death_year: parsed.deathYear,
+        });
+      } else if (typeof authorItem === 'string') {
+        const parsed = parseLifespansFromName(authorItem);
+        authors.push({
+          name: authorItem,
+          birth_year: parsed.birthYear,
+          death_year: parsed.deathYear,
+        });
+      }
+    }
+  }
+
   return {
     id: item.book_id,
     title: item.book_title,
-    authors: (item.book_authors || []).map((name: string) => ({ name, birth_year: null, death_year: null })),
+    authors,
     translators: [],
     subjects: [],
     bookshelves: [],
@@ -194,7 +221,8 @@ export interface CloudBookshelfItemInsertPayload extends CloudFavoriteInsertPayl
 export type CloudBookInsertPayload = CloudFavoriteInsertPayload | CloudBookshelfItemInsertPayload;
 
 /**
- * Transforms a GutendexBook entity into a normalized Supabase insert payload.
+ * Transforms a GutendexBook entity into a normalized Supabase insert payload,
+ * preserving author lifespans in JSON/string representations.
  */
 export function toCloudBookInsert(
   book: GutendexBook,
@@ -210,11 +238,31 @@ export function toCloudBookInsert(
   userId: string,
   bookshelfId?: string
 ): CloudFavoriteInsertPayload | CloudBookshelfItemInsertPayload {
+  // Format authors to preserve lifespans across text[] and jsonb storage
+  const formattedAuthors: string[] = (book.authors || []).map((author) => {
+    if (typeof author === 'string') return author;
+    if (author && typeof author === 'object') {
+      const hasDates = author.birth_year != null || author.death_year != null;
+      if (hasDates) {
+        // If the name doesn't already have dates, embed them for text[] backwards compatibility
+        const parsed = parseLifespansFromName(author.name);
+        if (parsed.deathYear == null && author.death_year != null) {
+          const dateSuffix = author.birth_year != null
+            ? `${author.birth_year}-${author.death_year}`
+            : `d. ${author.death_year}`;
+          return `${author.name}, ${dateSuffix}`;
+        }
+      }
+      return author.name;
+    }
+    return 'Anonymous';
+  });
+
   const base: CloudFavoriteInsertPayload = {
     user_id: userId,
     book_id: book.id,
     book_title: book.title,
-    book_authors: book.authors?.map((a) => a.name) || [],
+    book_authors: formattedAuthors,
     cover_url: book.formats?.['image/jpeg'] || null,
   };
   if (bookshelfId) {

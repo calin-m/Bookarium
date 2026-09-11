@@ -115,6 +115,27 @@ describe('ReaderSurface', () => {
     expect(screen.getByRole('link', { name: /Return to Library/i })).toBeInTheDocument();
   });
 
+  it('forwards bookTitle and bookAuthor to ReaderErrorView when isError is true', () => {
+    const legalErr = new LegalRestrictionError({
+      country: 'RO',
+      rule: 'LIFE_70',
+      reason: 'Protected under Romanian Life + 70 copyright statute.',
+    });
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        isError={true}
+        error={legalErr}
+        bookTitle="The Silent Barrier"
+        bookAuthor="Louis Tracy"
+      />
+    );
+
+    expect(screen.getByRole('heading', { level: 1, name: 'The Silent Barrier' })).toBeInTheDocument();
+    expect(screen.getByText(/by Louis Tracy/i)).toBeInTheDocument();
+  });
+
   it('applies correct surface theme classes for Sepia and Dark themes', () => {
     const { rerender } = render(<ReaderSurface {...defaultProps} theme="sepia" />);
     expect(screen.getByRole('main')).toHaveClass('reader-surface-sepia');
