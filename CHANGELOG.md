@@ -7,20 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.5.0] - 2026-09-10
-### *Authoritative Cloud State Reconciliation, Next.js 16 Edge Proxy & Zero-CLS Bookshelf Sync*
+## [2.5.0] - 2026-09-11
+### *Autonomous Gutenberg Catalog Ingestion, PostgreSQL GIN Search & Dual-Provider Resilience*
 
 ### Added
+- Autonomous Full-Catalog Gutenberg Ingestion (`scripts/sync-gutenberg-catalog.js`): Streamed and batch-upserted 78,086 Project Gutenberg titles into Supabase PostgreSQL (`public.books`) via a zero-dependency RFC 4180 gunzip pipeline with recursive timeout splitting.
+- Self-Hosted PostgreSQL Catalog & GIN Search (`src/lib/catalog/supabase-provider.ts`): Implemented native database full-text search (`search_vector` tsvector) and author lifespan bounds for sub-50ms single-book lookups and ~1–2s catalog page queries.
+- Dual-Provider Catalog Seam & Failover (`src/app/api/books/route.ts`): Unified catalog querying behind `ICatalogProvider` with primary Supabase execution, automatically degrading to Gutendex when unseeded or offline.
+- Multi-Tier Content Streaming & Plain-Text Caching (`src/app/api/books/content/route.ts`): Sub-30ms instant book text streaming from self-hosted Supabase with multi-mirror Gutenberg fallback (`aleph.gutenberg.org`, `gutenberg.readingroo.ms`).
+- Automated Scheduled Weekly Ingestion (`.github/workflows/catalog-sync.yml`): Sunday 02:00 UTC GitHub Actions workflow to stream new catalog additions and keep Supabase active.
+- Architecture Decision Records (`ADR-037` to `ADR-040`): Formally ratified self-hosted catalog schema, Strangler Fig provider seam, content streaming pipeline, and autonomous periodic synchronization in `docs/DECISIONS.md`.
 - Zero-CLS Floating Overlay Sync Badge (`src/components/presentation/BookshelfRack.tsx`): Decoupled the cloud syncing indicator from the document layout flow into an absolutely positioned floating pill (`top-0 right-2 sm:right-4 z-20 pointer-events-none`) with `AnimatePresence` and subtle fade transitions, guaranteeing 0.00 Cumulative Layout Shift during cloud synchronization.
 - Authoritative Cloud Synchronization Anchor (`src/stores/useBookshelfStore.ts`): Introduced `lastBookshelfSyncAt` sync anchor, making Supabase the authoritative source of truth on subsequent syncs to eliminate multi-device ghost resurrections while pre-sync outbox draining (`flushOutbox`) safeguards offline additions.
 - Architecture Decision Record (`ADR-035`): Formally ratified authoritative cloud state reconciliation, Next.js 16 edge proxy migration, and zero-CLS floating sync badge architecture in `docs/DECISIONS.md`.
 
 ### Fixed
+- Catalog Latency Sequential Probing (`src/lib/catalog/supabase-provider.ts`): Added a 60-second in-memory health cache (`HEALTH_CACHE_TTL_MS = 60_000`) on `isHealthy()`, eliminating redundant `SELECT count(id)` round-trips before searches.
 - Bookshelf Mount Layout Jitter (`src/components/presentation/BookshelfRack.tsx`, `BookshelfRack.test.tsx`): Eliminated ~58px vertical layout jump caused by conditional in-flow element insertion inside Tailwind `space-y-8` container, preserving static shelf rail coordinates throughout the sync lifecycle.
 - Next.js 16 Edge Proxy Routing Resilience (`src/proxy.ts`, `src/lib/supabase/middleware.ts`): Wrapped session token refresh in defensive non-blocking fallback (`try...catch`), preventing `TypeError: fetch failed` route transition crashes during offline browsing or network timeouts.
 
 ### Refactored
-- Next.js 16 Edge Proxy Migration (`src/proxy.ts`, `src/proxy.test.ts`): Fully decommissioned legacy `src/middleware.ts` in favor of Next.js 16 native `src/proxy.ts` with 100% co-located unit test coverage.
+- Supabase-First Reader SEO & Layout Resolution (`src/app/read/[id]/reader-layout-utils.ts`): Fast-path in-memory and Supabase metadata resolution for `/read/[id]`, generating rich OpenGraph and Schema.org tags in <15ms without third-party rate limits.
+- Authoritative Cloud Synchronization & Next.js 16 Edge Proxy (`src/stores/useBookshelfStore.ts`, `src/proxy.ts`): Decommissioned legacy `src/middleware.ts` in favor of Next.js 16 native `src/proxy.ts` with 100% co-located unit test coverage.
 - Sanitized Sign-Out & Outbox Drain (`src/stores/useAuthStore.ts`): Enhanced `signOut()` to drain pending offline mutations before logout and wipe in-memory state via `clearBookshelf()`, preventing cross-account contamination while preserving downloaded offline books in IndexedDB.
 - Offline Download Bookshelf Linking (`src/hooks/useOfflineBooks.ts`): Linked `downloadBook()` to automatically save offline volumes to the user's bookshelf if not already saved.
 

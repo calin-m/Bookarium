@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 11 Sep 2026 16:03:55 GMT  
+**Last Generated**: Fri, 11 Sep 2026 17:11:17 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 161 passed  
-**Total Verified Tests**: 1376 passed  
+**Total Verified Tests**: 1378 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **161/161 test suites passed** (1376 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **161/161 test suites passed** (1378 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 40 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.75%** (6480/6986) — *Target: $ge$ 80%*
-- **Statements**: **91.25%** (7003/7674) — *Target: $ge$ 80%*
-- **Functions**: **89.02%** (1541/1731) — *Target: $ge$ 80%*
-- **Branches**: **81.69%** (5952/7286) — *Target: $ge$ 80%*
+- **Lines**: **92.74%** (6498/7006) — *Target: $ge$ 80%*
+- **Statements**: **91.23%** (7020/7694) — *Target: $ge$ 80%*
+- **Functions**: **88.97%** (1541/1732) — *Target: $ge$ 80%*
+- **Branches**: **81.68%** (5960/7296) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (161 Suites / 1376 Tests)
+## 🧪 Comprehensive Test Suite Catalog (161 Suites / 1378 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 152 Tests)
+### 🚀 App Routes & Pages (14 Suites · 153 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (7 tests)</summary>
@@ -255,7 +255,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `clears all cached items from serverMetadataCache`
 - ✔ `returns true when rsc header is 1`
@@ -266,7 +266,8 @@
 - ✔ `returns false when headers() throws`
 - ✔ `returns null for non-numeric or falsy book IDs`
 - ✔ `returns cached book immediately if present in serverMetadataCache`
-- ✔ `fetches upstream book and populates serverMetadataCache`
+- ✔ `fetches upstream book and populates serverMetadataCache when Supabase is unconfigured`
+- ✔ `resolves book directly from Supabase catalog when configured`
 - ✔ `returns null on upstream fetch error or 404`
 - ✔ `returns null on network failure / exception`
 
@@ -1125,7 +1126,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (27 Suites · 270 Tests)
+### 📚 Gutenberg Parsers & Metadata (27 Suites · 271 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1234,7 +1235,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -1246,6 +1247,7 @@
 - ✔ `returns true when client returns count > 0 without error`
 - ✔ `returns false when table has count === 0 (unseeded)`
 - ✔ `returns false when select returns an error or rejects`
+- ✔ `caches health check result for 60 seconds without re-querying Supabase`
 - ✔ `successfully queries books and applies US public domain rules`
 - ✔ `filters out authors protected under Life + 70 when client is in GB`
 - ✔ `generates next and previous pagination links when page bounds allow`

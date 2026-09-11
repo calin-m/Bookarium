@@ -185,7 +185,7 @@ function generateMarkdown() {
     '    QueryBooks --> ProxyBooks',
     '    ProxyBooks --> CatalogSeam',
     '    CatalogSeam --> EngineCore',
-    '    CatalogSeam -->|Primary: <50ms GIN Search| SupabaseCloud',
+    '    CatalogSeam -->|"Primary: ~1-2s Catalog / <50ms Single-Book"| SupabaseCloud',
     '    CatalogSeam -.->|Fallback on unseeded/offline| Gutendex',
     '    SyncEngine -->|Weekly Cron pg_catalog.csv.gz Stream| SupabaseCloud',
     '    QueryBooks -.->|Client Failover on 504| Gutendex',
@@ -404,6 +404,8 @@ function generateMarkdown() {
       'Fuzzy multi-token search engine querying titles, authors, and subjects with punctuation normalization.',
     'speech-utils':
       'Web Speech API voice selection heuristics identifying natural/neural synthesis voices.',
+    'supabase-provider':
+      'Self-hosted Supabase PostgreSQL catalog provider implementing ICatalogProvider with cached healthcheck (60s TTL), GIN full-text search_vector queries, and author lifespan bounds for sub-50ms single-book lookups and ~1-2s catalog page queries.',
     client:
       'Browser-side Supabase client initialization with credential sanitization and local session persistence.',
     middleware:
@@ -428,6 +430,21 @@ function generateMarkdown() {
     );
   }
 
+  lines.push(
+    '',
+    '---',
+    '',
+    '## 🔄 Background Data Pipelines & Automation Engines',
+    '',
+    'Automated ingestion pipelines, periodic synchronization jobs, and GitHub Actions cron workflows (outside `src/`):',
+    '',
+    '| Pipeline / Tool | Execution Mode | Source File | Schedule / Trigger | Architectural Responsibility |',
+    '| :--- | :--- | :--- | :--- | :--- |',
+    '| **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Weekly Cron | Streams official Project Gutenberg `pg_catalog.csv.gz` (5.5MB) through gunzip and batch-upserts 78,000+ public domain titles with adaptive timeout division. |',
+    '| **`ingest-catalog`** | Node.js Batch CLI | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` / On-Demand | Curated masterworks starter seeding and plain-text caching (`--with-content`) generating `supabase/seed_books.sql`. |',
+    '| **`catalog-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays) | Automated CI cron workflow streaming newly added titles into Supabase and acting as a keep-alive heartbeat for the free-tier database. |'
+  );
+
   const dbTables = extractDatabaseCatalog(rootDir);
 
   lines.push(
@@ -445,6 +462,21 @@ function generateMarkdown() {
   for (const t of dbTables) {
     lines.push(`| **\`${t.name}\`** | ${t.rls} | ${t.store} | ${t.description} |`);
   }
+
+  lines.push(
+    '',
+    '### Stored Logic, Triggers & Search Indexes',
+    '',
+    '| Database Object | Type | Target Table | Functionality & Security Scope |',
+    '| :--- | :--- | :--- | :--- |',
+    '| **`public.books_search_vector_trigger`** | Trigger / Function | `public.books` | Automatically generates and updates `search_vector tsvector` from book title and subjects on insert/update for fast GIN full-text search. |',
+    '| **`idx_books_search_vector`** | GIN Index | `public.books` | Full-text search index over `search_vector` TSVECTOR for rapid multi-word search matching. |',
+    '| **`idx_books_languages`** | GIN Index | `public.books` | Inverted index for array containment queries on ISO 639 language codes (`languages && ARRAY[...]`). |',
+    '| **`idx_books_subjects`** | GIN Index | `public.books` | Inverted index for subject facet queries (`subjects && ARRAY[...]`). |',
+    '| **`idx_books_author_death_year`** | B-Tree Index | `public.books` | Index on `max_author_death_year` for instant server-side jurisdictional copyright enforcement. |',
+    '| **`public.handle_new_user()`** | Trigger / Function | `auth.users` -> `public.profiles` | Auto-provisions profile and default General shelf on signup (execution revoked from public/anon/authenticated; immutable search path). |',
+    '| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable search path). |'
+  );
 
   lines.push(
     '',
@@ -499,14 +531,14 @@ function generateMarkdown() {
     '',
     '## ⚡ Data Pulling & Caching Strategy',
     '',
-    '1. **Dual-Provider Catalog Architecture**: Primary search queries execute against self-hosted Supabase PostgreSQL (`public.books`) using full-text GIN search (<50ms latency), falling back seamlessly to upstream Gutendex REST API if Supabase is unconfigured, unseeded, or unreachable, unconditionally enforcing `copyright=false`.',
+    '1. **Dual-Provider Catalog Architecture**: Primary search queries execute against self-hosted Supabase PostgreSQL (`public.books`) using full-text GIN search (~1–2s catalog responses, <50ms single-book lookups), falling back seamlessly to upstream Gutendex REST API if Supabase is unconfigured, unseeded, or unreachable, unconditionally enforcing `copyright=false`.',
     '2. **2-Part Visible Telemetry**: `StickyCatalogToolbar.tsx` renders live API/database connectivity status alongside exact roundtrip latency in milliseconds.',
     '3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.',
     '4. **Edge SWR Caching & Geographic Vary Partitioning**: Common queries are cached with `s-maxage=120, stale-while-revalidate=600` and partitioned across jurisdictions via `Vary: x-vercel-ip-country, Accept-Encoding` to prevent cross-border cache pollution.',
     '5. **Jurisdictional Copyright Gatekeeping**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles.',
     '6. **Multi-Tier Text Streaming & Multi-Mirror Failover**: Plain text is served on-demand from Tier 1 (self-hosted Supabase plain-text cache if present) or Tier 2 (multi-mirror fallback across `aleph.gutenberg.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.',
     '7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.',
-    '8. **Autonomous Weekly Catalog Synchronization**: Project Gutenberg official catalog dump (`pg_catalog.csv.gz`, ~72,000 public domain titles) is streamed and decompressed on-the-fly via GitHub Actions (`.github/workflows/catalog-sync.yml`) or `npm run catalog:sync`, updating Supabase with zero manual SQL intervention and minimal storage footprint (~100 MB).',
+    '8. **Autonomous Weekly Catalog Synchronization**: Project Gutenberg official catalog dump (`pg_catalog.csv.gz`, 78,000+ public domain titles) is streamed and decompressed on-the-fly via GitHub Actions (`.github/workflows/catalog-sync.yml`) or `npm run catalog:sync`, updating Supabase with zero manual SQL intervention and minimal storage footprint (~105 MB).',
     '',
     '---',
     '',

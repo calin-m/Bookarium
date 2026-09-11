@@ -168,6 +168,30 @@ describe('SupabaseCatalogProvider', () => {
 
       expect(healthy).toBe(false);
     });
+
+    it('caches health check result for 60 seconds without re-querying Supabase', async () => {
+      const selectMock = vi.fn().mockResolvedValue({ count: 500, error: null });
+      const mockClient = {
+        from: vi.fn().mockReturnValue({ select: selectMock }),
+      };
+
+      const provider = new SupabaseCatalogProvider(mockClient as any);
+
+      const firstCheck = await provider.isHealthy();
+      expect(firstCheck).toBe(true);
+      expect(selectMock).toHaveBeenCalledTimes(1);
+
+      // Second consecutive check within TTL window: reuses cache without calling selectMock again
+      const secondCheck = await provider.isHealthy();
+      expect(secondCheck).toBe(true);
+      expect(selectMock).toHaveBeenCalledTimes(1);
+
+      // Reset cache: forces re-query
+      provider.resetHealthCache();
+      const thirdCheck = await provider.isHealthy();
+      expect(thirdCheck).toBe(true);
+      expect(selectMock).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('searchBooks', () => {

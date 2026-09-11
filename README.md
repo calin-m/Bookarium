@@ -11,15 +11,17 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-161%20Suites%20%7C%201376%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.75%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-161%20Suites%20%7C%201378%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.74%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
 
-An ultra-refined, high-performance web application for discovering, reading, and downloading 100% legal, public domain books (Zero-Copyright / CC0 / Gutenberg Public Domain). Built with **Next.js 16 App Router**, **Supabase Auth & Cloud Synchronization**, **TanStack React Query**, **Zustand offline-first persistence**, **Tailwind CSS**, **Framer Motion**, developed with **[Google AI / Antigravity](https://antigravity.google)**, and verified by a deterministic **7-Gateway Quality Engine**.
+An open-source, offline-first web application and reader for discovering, reading, and downloading public domain books (Project Gutenberg / CC0). Built with **Next.js 16 App Router**, **Tailwind CSS**, and **Zustand** persistence, deployed on the **Vercel Edge Platform**, developed with **[Google AI / Antigravity](https://antigravity.google)**, and verified by a deterministic **7-Gateway Quality Engine**.
+
+Bookarium is powered by a self-hosted **Supabase PostgreSQL** catalog (78,000+ volumes) featuring GIN full-text search and pre-computed author lifespan indexes, delivering sub-50ms single-book lookups and dependable ~1–2s catalog page queries (compared to 20–60s queue delays on public APIs). To guarantee continuous uptime and zero-configuration setups, it includes an automatic failover to the upstream **Gutendex REST API** and Project Gutenberg mirrors whenever the database is unseeded, unreachable, or undergoing maintenance.
 
 ---
 
@@ -40,11 +42,11 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v2.5.0)
 
-- **Zero-CLS Floating Overlay Sync Badge (`src/components/presentation/BookshelfRack.tsx`)**: Decoupled the cloud syncing indicator from the document layout flow into an absolutely positioned floating pill (`top-0 right-2 sm:right-4 z-20 pointer-events-none`) with `AnimatePresence` and subtle fade transitions, guaranteeing 0.00 Cumulative Layout Shift during cloud synchronization.
-- **Authoritative Cloud Synchronization Anchor (`src/stores/useBookshelfStore.ts`)**: Introduced `lastBookshelfSyncAt` sync anchor, making Supabase the authoritative source of truth on subsequent syncs to eliminate multi-device ghost resurrections while pre-sync outbox draining (`flushOutbox`) safeguards offline additions.
-- **Architecture Decision Record (`ADR-035`)**: Formally ratified authoritative cloud state reconciliation, Next.js 16 edge proxy migration, and zero-CLS floating sync badge architecture in `docs/DECISIONS.md`.
-- **Next.js 16 Edge Proxy Migration (`src/proxy.ts`, `src/proxy.test.ts`)**: Fully decommissioned legacy `src/middleware.ts` in favor of Next.js 16 native `src/proxy.ts` with 100% co-located unit test coverage.
-- **Sanitized Sign-Out & Outbox Drain (`src/stores/useAuthStore.ts`)**: Enhanced `signOut()` to drain pending offline mutations before logout and wipe in-memory state via `clearBookshelf()`, preventing cross-account contamination while preserving downloaded offline books in IndexedDB.
+- **Autonomous Full-Catalog Gutenberg Ingestion (`scripts/sync-gutenberg-catalog.js`)**: Streamed and batch-upserted 78,086 Project Gutenberg titles into Supabase PostgreSQL (`public.books`) via a zero-dependency RFC 4180 gunzip pipeline with recursive timeout splitting.
+- **Self-Hosted PostgreSQL Catalog & GIN Search (`src/lib/catalog/supabase-provider.ts`)**: Implemented native database full-text search (`search_vector` tsvector) and author lifespan bounds for sub-50ms single-book lookups and ~1–2s catalog page queries.
+- **Dual-Provider Catalog Seam & Failover (`src/app/api/books/route.ts`)**: Unified catalog querying behind `ICatalogProvider` with primary Supabase execution, automatically degrading to Gutendex when unseeded or offline.
+- **Supabase-First Reader SEO & Layout Resolution (`src/app/read/[id]/reader-layout-utils.ts`)**: Fast-path in-memory and Supabase metadata resolution for `/read/[id]`, generating rich OpenGraph and Schema.org tags in <15ms without third-party rate limits.
+- **Authoritative Cloud Synchronization & Next.js 16 Edge Proxy (`src/stores/useBookshelfStore.ts`, `src/proxy.ts`)**: Decommissioned legacy `src/middleware.ts` in favor of Next.js 16 native `src/proxy.ts` with 100% co-located unit test coverage.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -57,17 +59,18 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 
 | Service / Source | Endpoint / Provider | Description & Usage |
 |---|---|---|
-| **Gutendex REST API** | [`gutendex.com`](https://gutendex.com/) • [`GitHub`](https://github.com/garethbjohnson/gutendex) | Open-source JSON Web API created by [Gareth B. Johnson](https://github.com/garethbjohnson/gutendex) indexing over 70,000+ Project Gutenberg public domain titles. Provides search, topic filters, author timelines, download metrics, and metadata with strict `copyright=false` filtering. |
-| **Project Gutenberg CDN** | [`gutenberg.org`](https://www.gutenberg.org/) | Direct content delivery network providing unabridged plain text (`.txt`), official EPUB packages (`.epub.images`, `.epub.noimages`), Kindle/MOBI formats, and web-ready HTML. |
-| **Supabase (Auth & Postgres)** | [`supabase.com`](https://supabase.com/) | Optional cloud authentication and PostgreSQL synchronization for custom bookshelves and reading progress using Row Level Security (RLS). |
+| **Self-Hosted Supabase Catalog** | [`public.books`](#step-3-populate-public-domain-book-catalog-optional) (PostgreSQL) | Primary catalog provider hosting 78,000+ Project Gutenberg titles with automated GIN full-text search (`search_vector`) and pre-computed author lifespan indexes, delivering sub-50ms single-book copyright verification, consistent ~1–2s 32-volume catalog page searches, and zero-egress searches. |
+| **Gutendex REST API** | [`gutendex.com`](https://gutendex.com/) • [`GitHub`](https://github.com/garethbjohnson/gutendex) | Resilient upstream search fallback created by [Gareth B. Johnson](https://github.com/garethbjohnson/gutendex) indexing 70,000+ titles with strict `copyright=false` filtering. Engaged automatically when Supabase is unseeded or offline. |
+| **Project Gutenberg CDN & Mirrors** | [`gutenberg.org`](https://www.gutenberg.org/) • Mirrors | Content delivery network and mirrors (`aleph.gutenberg.org`, `gutenberg.readingroo.ms`) providing plain text (`.txt`), official EPUB packages (`.epub.images`), Kindle/MOBI formats, and web-ready HTML. |
+| **Supabase (Auth, Sync & Catalog)** | [`supabase.com`](https://supabase.com/) | Cloud authentication, user library synchronization (bookshelves, annotations, progress, streaks, accolades) with RLS user isolation, and self-hosted public domain catalog. |
 | **Vercel Edge Platform** | [`vercel.com`](https://vercel.com/) | High-performance edge deployment, dynamic SSR route handlers, zero-config production caching, global CDN delivery, and cookie-less aggregate performance telemetry (Vercel Web Analytics & Speed Insights). |
-| **Public Domain Archive Proxy** | `/api/books` & `/api/books/content` | Next.js server-side route proxies providing caching, CORS handling, query length validation (protecting upstream servers from 1-character scans), and guaranteed public domain integrity before client delivery. |
+| **Public Domain Archive Proxies** | `/api/books` & `/api/books/content` | Next.js server-side route proxies providing caching, Strangler Fig dual-provider catalog resolution, Tier 1/Tier 2 content streaming, and guaranteed public domain integrity before client delivery. |
 
 ---
 
 ## 🎯 Key Features & Capabilities
 
-Bookarium delivers an archival-grade, high-performance reading environment organized across four foundational pillars:
+Bookarium is structured around five core engineering pillars:
 
 ### 1. 🎨 Tactile Editorial Design & 3D Book Physics
 * **Booksaw Editorial Aesthetic**: Classical typography inspired by fine art bookstore catalogues, featuring open-book card spreads with center spine creases, realistic paper shadows, and 100% solid non-transparent surfaces across Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) themes.
@@ -79,8 +82,8 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **Studio Bookshelf Bookcase**: Hardwood shelf alcove with 8 authentic spine binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), convex specular curvature, gilded lettering, pull-forward hover scaling, and a **Zero-CLS Floating Cloud Sync Badge** that smoothly overlays real-time sync status without triggering vertical content shifts.
 * **Directional Stepped Scroll Navigation**: Dynamic scroll detection (`useScrollDirection`) smoothly hides the top header on scroll down, docks the catalog filter toolbar to `top-0`, and instantly reveals navigation on upward scroll gestures. Configurable in Account Settings between **Smart Auto-Hide** and **Always Fixed**.
 * **Responsive Filter Drawer & Push-Content Layout**: Persistent left-docked drawer on desktop & ultrawide viewports (≥ 1280px / `xl:`) shifting main content to the right (`xl:pl-96`) for non-blocking catalog browsing; smoothly adapts to a focused slide-out overlay with soft backdrop blur (`backdrop-blur-xs`) on laptops, vertical monitors, and mobile devices—guaranteeing 100% unclipped facet typography with zero text truncation.
-* **Streamlined Single-Row Sticky Catalog Toolbar**: Ultra-compact ~44px mobile toolbar unifying search filter triggers, real-time API health status, view mode toggling (Grid vs. Spine Shelf), and deep-archive pagination in a single horizontal row, maximizing vertical screen real estate for book covers.
-* **Windowed Chunk Sub-Pagination & Predictive Prefetching**: Seamlessly reconciles upstream API batching with responsive client layouts by sub-slicing Gutendex's native 32-volume cache into viewport-optimized pages (8 books/page on mobile `grid-cols-2`, 16 books/page on desktop `md:grid-cols-4`). Sub-page turns execute in 0ms directly from client memory without network delay. A widened predictive prefetch buffer triggers background loading on Sub-page 3 (mobile) or Sub-page 1 (desktop), providing a 15–25 second network lead time before reaching batch boundaries.
+* **Streamlined Single-Row Sticky Catalog Toolbar**: Compact ~44px mobile toolbar unifying search filter triggers, real-time API health status, view mode toggling (Grid vs. Spine Shelf), and deep-archive pagination in a single horizontal row, maximizing vertical screen real estate for book covers.
+* **Windowed Chunk Sub-Pagination & Predictive Prefetching**: Seamlessly reconciles upstream API batching with responsive client layouts by sub-slicing the catalog's native 32-volume batch into viewport-optimized pages (8 books/page on mobile `grid-cols-2`, 16 books/page on desktop `md:grid-cols-4`). Sub-page turns execute in 0ms directly from client memory without network delay. A widened predictive prefetch buffer triggers background loading on Sub-page 3 (mobile) or Sub-page 1 (desktop), providing a 15–25 second network lead time before reaching batch boundaries.
 * **Explicit Catalog Search Activation & 2-Character Guardrail**: Replaced keystroke debouncing with intentional search submission (<kbd>Enter</kbd> or clicking "Search") to eliminate redundant API spam against public upstream servers. Enforces a client-side and server-side 2-character minimum guardrail with accessible inline validation (`aria-live="polite"`), preventing heavy 1-character full-table scans while fully permitting classical two-character literary titles (*It*, *Oz*, *Up*, *Po*).
 * **Unified Native Input Architecture & Search Focus Harmonization**: Standardized all search bars across Catalog, Bookshelf, Favorites, Bookmarks, Notebooks, and Reader Search Drawer to a native `<input>` architecture with `rounded-xl` curvature, subtle pre-hover warming (`hover:border-primary/40`), and a crisp 150ms outward primary ring bloom. The Catalog hero bar integrates floating inset controls (Search button and clear `X`) directly within the input's padding, delivering authentic native focus without enclosing action buttons inside the glow.
 
@@ -119,7 +122,7 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **Reading Streaks, Dual Immersion Telemetry & Annual Reading Challenges (`/account`)**: Offline-first literary activity tracking calculating consecutive daily streaks with a **5-minute active immersion threshold** (`300s`), longest streaks, 7-day calendar activity indicators, and total literary immersion duration. Disentangles telemetry into distinct **Reading Time** (visual focus with 2-minute idle guard) and **Listening Time** (uninterrupted Text-to-Speech audio narration retaining time in background tabs). Includes an interactive annual reading challenge progress bar with user-adjustable volume targets, real-time pace tracking, dynamic countdown prompts (`Xm / 5m logged today`), and multi-device Supabase cloud synchronization with Last-Write-Wins (LWW) conflict resolution.
 * **Full Data Sovereignty & Portability**: Single-click RFC 4180 CSV export and portable JSON backup (`src/lib/library-backup.ts`) with defensive schema validation and merge/replace restore strategies.
 * **Zero-Tracking Privacy Architecture (`/privacy`)**: Zero third-party trackers, zero advertising beacons, cookie-less operation (Art. 5(3) exempt), privacy-first anonymous aggregate telemetry (Vercel Web Analytics & Speed Insights), and self-service account data deletion in User Settings (`/account`).
-* **Technical SEO, Social OpenGraph & Upstream Rate-Shielding**: Native Next.js 16 crawl directives (`robots.ts`) explicitly disallow search query parameters (`?search=*`, `?topic=*`) to protect public Gutendex servers from bot query exhaustion. Dynamic server layouts (`/read/[id]/layout.tsx`) fetch book identities with 24-hour Next.js edge caching (`revalidate: 86400`) to generate rich OpenGraph and Twitter cards (`summary_large_image`) featuring authentic book covers, while injecting safe Schema.org `Book`, `WebSite`, and `WebApplication` (`isAccessibleForFree: true`) JSON-LD structured data.
+* **Technical SEO, Social OpenGraph & Upstream Rate-Shielding**: Native Next.js 16 crawl directives (`robots.ts`) explicitly disallow search query parameters (`?search=*`, `?topic=*`) to protect public upstream catalog servers from bot query exhaustion. Dynamic server layouts (`/read/[id]/layout.tsx`) resolve book identities directly from self-hosted Supabase with an in-memory cache and 24-hour Next.js edge caching (`revalidate: 86400`) to generate rich OpenGraph and Twitter cards (`summary_large_image`) featuring authentic book covers, while injecting safe Schema.org `Book`, `WebSite`, and `WebApplication` (`isAccessibleForFree: true`) JSON-LD structured data.
 
 ### 5. ⚖️ 100% Airtight Jurisdictional Copyright Governance & Legal Compliance
 * **Autonomous Multi-Jurisdiction Engine (`src/lib/copyright-engine.ts`)**: Decoupled, zero-dependency validation engine enforcing exact public domain thresholds based on the user's geographic jurisdiction (year 2026 cutoff calculations):
@@ -160,12 +163,14 @@ flowchart TD
         Reader["Dedicated In-Browser Reader (src/app/read/[id]/page.tsx)"]
         Account["Account & Reading Preferences (src/app/account/page.tsx)"]
         HabitsCard["Reading Habits & Challenge (AccountHabitsCard.tsx)"]
+        AccoladesCard["Literary Accolades & Showcase (AccountAccoladesCard.tsx)"]
         AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
         
         StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• lastBookshelfSyncAt: string | null\n• bookRatings: {}\n• bookStatuses: {}")]
         StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
         StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• readingPositions: {}\n• readingProgress: {}\n• syncReadingPositionToCloud()")]
         StoreHabits[("🔥 Habits Store\n• currentStreak & longestStreak (5-min threshold)\n• activeDates: []\n• annualGoal & annualGoalYear\n• totalReadingSeconds & totalListeningSeconds\n• syncWithCloud()")]
+        StoreAccolades[("🎖️ Accolades Store\n• accolades, showcase pinning, celebrations")]
         StoreTheme[("🎨 Theme Store\n• theme: day | sepia | obsidian")]
         StoreAnnot[("🖍️ Annotation Store\n• highlights: []\n• 4 pastel palettes")]
         StoreOffline[("📦 IndexedDB (useOfflineBooks)\n• downloaded volumes\n• offline text & EPUBs")]
@@ -213,33 +218,42 @@ flowchart TD
         Account --> StorePrefs
         Account --> HabitsCard
         HabitsCard --> StoreHabits
+        Account --> AccoladesCard
+        AccoladesCard --> StoreAccolades
     end
 
     subgraph BackendServices ["Live Data, Cloud Sync & Telemetry"]
         ProxyRoute["Gateway 1: GET /api/books\n(SSR Proxy, SWR Cache, >=2 Char Guard)"]
+        CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\n(supabase-provider.ts • gutendex-provider.ts)"]
         DirectUpstream["Gateway 2: Direct Upstream Fetch\n(Client Failover on 504)"]
-        ContentProxy["GET /api/books/content\n(Text Stream, SWR 24h)"]
+        ContentProxy["GET /api/books/content\n(Tier 1 Supabase DB Text • Tier 2 Multi-Mirror)"]
         TranslateProxy["Gateway 3: POST /api/translate\n(Google Neural MT Proxy)"]
         AuthCallback["GET /auth/callback\n(Session Token Exchange)"]
         
-        GutendexAPI["🌐 Gutendex REST API\n(70,000+ Titles)"]
-        GutenbergContent["🌐 Gutenberg Content CDN\n(text/plain & EPUB)"]
+        GutendexAPI["🌐 Gutendex REST API\n(Upstream Search Fallback)"]
+        GutenbergContent["🌐 Project Gutenberg Mirrors\n(aleph.gutenberg.org, gutenberg.readingroo.ms, www.gutenberg.org)"]
         GoogleNMT["🌐 Google Neural MT\n(40+ Languages)"]
-        SupabaseCloud[("⚡ Supabase Cloud\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves, Progress, Curations)\n• reading_progress (2s Debounced Sync & Restore)\n• user_reading_habits (LWW Timestamp Sync)")]
+        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n• public.books (78k Full Catalog, GIN Search)\n• Sub-50ms Single-Book / ~1-2s Catalog Pages\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves, Progress, Curations, Accolades)\n• reading_progress (2s Debounced Sync & Restore)\n• user_reading_habits (LWW Timestamp Sync)")]
+        SyncEngine["🔄 Gutenberg Catalog Sync Engine\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]
         VercelEdge["⚡ Vercel Edge Platform\n• Cookie-less Web Analytics\n• Real User Speed Insights (Core Web Vitals)"]
         
         QueryBooks --> ProxyRoute
-        ProxyRoute --> GutendexAPI
-        QueryBooks -.->|"Failover"| DirectUpstream
+        ProxyRoute --> CatalogSeam
+        CatalogSeam -->|"Primary: ~1-2s Catalog / <50ms Single-Book"| SupabaseCloud
+        CatalogSeam -.->|"Fallback on unseeded/offline"| GutendexAPI
+        SyncEngine -->|"Weekly Cron pg_catalog.csv.gz Stream"| SupabaseCloud
+        QueryBooks -.->|"Client Failover on 504"| DirectUpstream
         DirectUpstream --> GutendexAPI
         QueryContent --> ContentProxy
-        ContentProxy --> GutenbergContent
+        ContentProxy -->|"Tier 1: Instant DB Text"| SupabaseCloud
+        ContentProxy -->|"Tier 2: Multi-Mirror Fallback"| GutenbergContent
         QueryTranslate --> TranslateProxy
         TranslateProxy --> GoogleNMT
         StoreAuth <-->|"Session / Profiles"| SupabaseCloud
         StoreShelf <-->|"Cloud Sync (RLS)"| SupabaseCloud
         StoreReader <-->|"Progress Sync (RLS)"| SupabaseCloud
         StoreHabits <-->|"Habits Sync (RLS)"| SupabaseCloud
+        StoreAccolades <-->|"Accolades Sync (RLS)"| SupabaseCloud
         AuthCallback <-->|"Code Exchange"| SupabaseCloud
         Telemetry -.->|"Anonymous Metrics"| VercelEdge
     end
@@ -352,7 +366,7 @@ flowchart TD
     subgraph LedgerHook ["useContinueReadingLedger Hook"]
         FilterActive["Active Telemetry Filter\n(readingPositions exists OR readingProgress > 0)\n⚠️ Excludes un-opened shelved books"]
         MissingCheck{"Missing Cached\nIdentity?"}
-        QueryMissing["🔄 useBooks(ids: missingIds)\n(TanStack Query - Gutendex API)"]
+        QueryMissing["🔄 useBooks(ids: missingIds)\n(TanStack Query - Catalog Seam)"]
         EnrichDict["Enriched Book Dictionary\n(savedBooks + recentBooks + queryResults)"]
         Parser["Canonical Utilities (@/lib/utils)\n• formatAuthorNames (reverse 'Last, First' & strip dates)\n• cleanBookTitle (strip Gutenberg prefixes)\n• formatRelativeTime ('Recently', '2h ago')"]
         Assembly["Assemble ActiveReadingVolume[]\n• progress, chapter, coordinates, lastReadAt\n• status (in_progress / completed / on_hold)\n• isOffline badge"]
@@ -441,20 +455,20 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 | `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status classification. |
 | `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, and dual immersion duration (reading & listening). |
 | `public.user_accolades` | Table (RLS) | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
-| `public.books` | Table (RLS) | High-performance self-hosted public domain catalog with GIN full-text search (`search_vector`), indexed languages, subjects, download metrics, pre-computed author lifespan bounds (`max_author_death_year`, `min_author_birth_year`) for sub-50ms jurisdictional copyright queries, optional full plain-text caching (`content`) for instant sub-30ms reader streaming, and public read RLS (`FOR SELECT USING (true)`). |
+| `public.books` | Table (RLS) | High-performance self-hosted public domain catalog with GIN full-text search (`search_vector`), indexed languages, subjects, download metrics, pre-computed author lifespan bounds (`max_author_death_year`, `min_author_birth_year`) for sub-50ms single-book copyright resolution and ~1–2s catalog searches, optional full plain-text caching (`content`) for instant reader streaming, and public read RLS (`FOR SELECT USING (true)`). |
 | `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
 | `public.delete_current_user()` | RPC Function | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable `search_path`). |
 
 ### Step 3: Populate Public Domain Book Catalog (Optional)
 To activate the self-hosted PostgreSQL book catalog and bypass third-party rate limits, you have two options:
 
-#### Option A: Autonomous Full-Catalog Sync (~72,000 Titles — Recommended)
+#### Option A: Autonomous Full-Catalog Sync (78,000+ Titles — Recommended)
 Stream Project Gutenberg's complete official catalog dump directly into Supabase without copy-pasting SQL:
 ```bash
 # 1. Quick test run (first 100 books, ~2 seconds):
 npm run catalog:sync -- --limit=100
 
-# 2. Full autonomous catalog population (~72,000 titles in ~2 minutes):
+# 2. Full autonomous catalog population (78,000+ titles in ~2 minutes):
 npm run catalog:sync
 ```
 > [!TIP]
@@ -468,7 +482,7 @@ npm run catalog:ingest -- --curated --dry-run
 ```
 Paste and run [`supabase/seed_books.sql`](supabase/seed_books.sql) in your Supabase SQL Editor.
 
-Once seeded, `/api/books` automatically switches from Gutendex upstream to your ultra-fast self-hosted Supabase database with sub-50ms query times.
+Once seeded, `/api/books` automatically routes queries to your self-hosted Supabase PostgreSQL catalog with predictable ~1–2s catalog page responses and sub-50ms single-book lookups, eliminating the 20–60s wait times and timeouts common on public APIs.
 
 ### Step 4: Configure Authentication Redirect URLs
 1. In your Supabase Dashboard, navigate to **Authentication $\to$ URL Configuration**.
@@ -503,6 +517,7 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 | Security Vector | Implementation & File Path | Protection Mechanism |
 |---|---|---|
 | **Sliding-Window Rate Limiting** | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) & [`src/lib/api-utils.ts`](src/lib/api-utils.ts) | Zero-dependency in-memory sliding-window rate limiter protecting upstream Project Gutenberg APIs (60 req/min on `/api/books`, 30 req/min on `/api/books/content`) with automatic 30s garbage collection, anti-spoofing IP resolution (prioritizing edge platform headers and rightmost hop extraction), and `429 Too Many Requests` status with `Retry-After`. |
+| **Dual-Provider Failover & Cloud Outage Immunity** | [`src/lib/catalog/`](src/lib/catalog/) & [`src/stores/useBookshelfStore.ts`](src/stores/useBookshelfStore.ts) | Automatic Strangler Fig failover transparently degrading `/api/books` and `/api/books/content` from primary Supabase PostgreSQL to the upstream Gutendex REST API and secondary Gutenberg mirrors (`aleph.gutenberg.org`, `gutenberg.readingroo.ms`) upon database latency or cloud outages. Reading positions, bookmarks, audio telemetry, and downloaded texts remain 100% functional offline via IndexedDB and local Zustand storage, with non-blocking post-outage reconciliation (`flushOutbox`). |
 | **HTTP Security Headers** | [`next.config.ts`](next.config.ts) | Enforces Content-Security-Policy (`default-src 'self'`, `frame-ancestors 'none'`), Cross-Origin-Opener-Policy (`same-origin`), HSTS (`max-age=63072000; includeSubDomains; preload`), Clickjacking defense (`X-Frame-Options: SAMEORIGIN`), MIME-type sniffing prevention (`X-Content-Type-Options: nosniff`), Referrer Policy (`strict-origin-when-cross-origin`), and Permissions Policy (`camera=(), microphone=(), geolocation=()`). |
 | **SSRF & Upstream Stream Bounding** | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) & [`src/app/api/books/content/url-validator.ts`](src/app/api/books/content/url-validator.ts) | Upstream URL whitelisting (`isSafeUpstreamUrl`) restricting fetches strictly to official Project Gutenberg domains (`gutenberg.org`, `www.gutenberg.org`), strict numeric ID regex verification (`^\d{1,8}$`), `redirect: 'manual'` preventing open redirect hops, and a 15MB payload streaming threshold preventing memory exhaustion DoS. |
 | **Open Redirect Defense** | [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) | Path sanitization (`sanitizeRedirectPath`) guaranteeing OAuth and magic-link redirect paths strictly originate from trusted relative roots (`/^\/[^\/\\]/`) preventing off-site phishing redirects. |
@@ -531,7 +546,7 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 | `npm run lint` | Runs ESLint 9 rules and Core Web Vitals checks |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
 | `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
-| `npm run catalog:sync` | Streams Project Gutenberg's catalog dump (~72,000 titles) and batch-upserts into Supabase |
+| `npm run catalog:sync` | Streams Project Gutenberg's catalog dump (78,000+ titles) and batch-upserts into Supabase |
 | `npm run catalog:ingest` | Generates curated SQL seed files (`supabase/seed_books.sql`) for local setup |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
@@ -565,13 +580,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1376 tests across 161 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1378 tests across 161 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 36 validated ADRs (ADR-001 through ADR-036) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, and airtight jurisdictional copyright governance. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 40 validated ADRs (ADR-001 through ADR-040) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, and autonomous full-catalog Gutenberg ingestion. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

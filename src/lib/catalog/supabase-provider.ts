@@ -62,9 +62,17 @@ export function mapDatabaseBookToGutendexBook(row: DatabaseBook): GutendexBook {
 export class SupabaseCatalogProvider implements ICatalogProvider {
   public readonly name = 'supabase' as const;
   private client: SupabaseClient<Database> | null;
+  private lastHealthCheckTime = 0;
+  private lastHealthCheckResult = false;
+  public static readonly HEALTH_CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
   constructor(client?: SupabaseClient<Database>) {
     this.client = client || null;
+  }
+
+  public resetHealthCache(): void {
+    this.lastHealthCheckTime = 0;
+    this.lastHealthCheckResult = false;
   }
 
   private getSupabase(): SupabaseClient<Database> {
@@ -77,10 +85,16 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
   /**
    * Health check verifying Supabase connectivity and presence of catalog records.
    * Returns false if unconfigured, unreachable, or table is empty (triggering Gutendex fallback).
+   * Caches result for 60 seconds to eliminate redundant network roundtrips on consecutive queries.
    */
   public async isHealthy(): Promise<boolean> {
     if (!isSupabaseConfigured() && !this.client) {
       return false;
+    }
+
+    const now = Date.now();
+    if (now - this.lastHealthCheckTime < SupabaseCatalogProvider.HEALTH_CACHE_TTL_MS) {
+      return this.lastHealthCheckResult;
     }
 
     try {
@@ -90,10 +104,15 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         .select('id', { count: 'exact', head: true });
 
       if (error || count === null || count === undefined || count === 0) {
-        return false;
+        this.lastHealthCheckResult = false;
+      } else {
+        this.lastHealthCheckResult = true;
       }
-      return true;
+      this.lastHealthCheckTime = now;
+      return this.lastHealthCheckResult;
     } catch {
+      this.lastHealthCheckResult = false;
+      this.lastHealthCheckTime = now;
       return false;
     }
   }
@@ -150,7 +169,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         query = query.lte('min_author_birth_year', options.authorYearEnd);
       }
 
-      // Jurisdictional copyright filtering at query level (sub-50ms index query)
+      // Jurisdictional copyright filtering at query level (indexed B-Tree bounds)
       if (jurisdictionRule !== 'US_PUBLIC_DOMAIN') {
         let termYears = 70;
         if (jurisdictionRule === 'LIFE_100') {

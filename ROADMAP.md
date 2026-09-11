@@ -3,15 +3,15 @@
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
 [![Current Release](https://img.shields.io/badge/Current%20Release-v2.5.0-teal?style=flat-square)](CHANGELOG.md)
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-82%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-18_of_22-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-86%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-24_of_28-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[████████████████░░░░]` **18/22 (82%)**
+`[█████████████████░░░]` **24/28 (86%)**
 
 ---
 
@@ -81,13 +81,41 @@
 
 ---
 
-### Milestone 4: Literary Accolades & Public Profiles (`Target: v2.1.0`)
-`[█████████████░░░░░░░]` **2/3 (67%)**
+### Milestone 4: Literary Accolades & Personal Honors (`v2.1.0 - v2.3.0 (Completed)`)
+`[████████████████████]` **3/3 (100%)**
 
-> Gamified ex-libris accolades, tactile bookplate achievements, and opt-in public scholar profile pages.
+> Gamified ex-libris accolades, tactile bookplate achievements, 4-tier challenge compendium, and personal showcase pinning.
 
 - [x] **Deterministic Literary Accolades & Badge Engine** `✅ VERIFIED`
   Ex-libris bookplate badges (Seven-Day Sage, Ancient Antiquarian, Century Voyager, Commonplace Scholar) unlocked via pure client-side reading telemetry with tactile unlock celebrations.
+- [x] **Canonical 4-Tier Milestone Accolades Ladder** `✅ VERIFIED`
+  Compendium ladder evaluated deterministically against completed volumes: Bibliophile Novice (Bronze), Canonical Scholar (Silver), Master of the Canon (Gold), and The Laureate's Crown (Masterwork).
+- [x] **Ex-Libris Bookplate Cards & Showcase Pinning** `✅ VERIFIED`
+  Tactile woodcut-bordered bookplates with desktop 3D perspective tilt, specular sheen gradients, spring physics, and personal 3-plate showcase pinning synchronized to `public.user_accolades`.
+
+---
+
+### Milestone 5: Autonomous Gutenberg Catalog & Self-Hosted Search Engine (`v2.5.0 (Completed)`)
+`[████████████████████]` **4/4 (100%)**
+
+> Self-hosted PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, sub-50ms single-book lookups and ~1–2s catalog page queries, automated weekly synchronization, and multi-tier content streaming.
+
+- [x] **Self-Hosted PostgreSQL Catalog (`public.books`) with GIN Search** `✅ VERIFIED`
+  Dedicated database table storing 78,000+ public domain volumes with automated `search_vector` GIN indexing, author lifespan bounds for sub-50ms single-book international copyright filtering, and zero-egress catalog searches.
+- [x] **Streaming Catalog Ingestion Engine (`scripts/sync-gutenberg-catalog.js`)** `✅ VERIFIED`
+  Zero-dependency RFC 4180 streaming CSV gunzip pipeline streaming Project Gutenberg's official `pg_catalog.csv.gz` directly into Supabase with adaptive timeout division and idempotent batch upserts.
+- [x] **Automated Scheduled Weekly Sync (`.github/workflows/catalog-sync.yml`)** `✅ VERIFIED`
+  Scheduled GitHub Actions cron workflow updating newly added titles every Sunday at 02:00 UTC, acting as an automated keep-alive heartbeat for the Supabase database instance.
+- [x] **Dual-Provider Catalog Seam & Strangler Fig Fallback** `✅ VERIFIED`
+  Unified `ICatalogProvider` seam (`src/lib/catalog/`) probing Supabase PostgreSQL as primary provider (~1–2s catalog / <50ms single-book) with seamless fallback to Gutendex when unseeded, offline, or experiencing network errors.
+
+---
+
+### Milestone 6: Public Scholar Profiles & Social Portability (`Target: v2.6.0`)
+`[██████████░░░░░░░░░░]` **1/2 (50%)**
+
+> Opt-in public scholar profile pages, reader biographies, and shareable reading cards for social platforms.
+
 - [x] **Opt-In Public Scholar Profiles (`/u/[username]`)** `✅ VERIFIED`
   Dedicated public profile page showcasing reader biography, public bookshelves, reading challenge progress, and pinned accolade badges with strict privacy toggles (Public vs Private).
 - [ ] **Shareable Reading Cards & OpenGraph Export** `⏳ PLANNED`
@@ -95,7 +123,7 @@
 
 ---
 
-### Milestone 5: Community Hub & Collective Reading (`Target: v2.2.0`)
+### Milestone 7: Community Hub & Collective Reading (`Target: v2.7.0`)
 `[░░░░░░░░░░░░░░░░░░░░]` **0/3 (0%)**
 
 > Shared literary agora, community volume reviews, public commonplace quote discussions, and reader circles.
@@ -113,7 +141,7 @@
 
 | Proposed Vector | Status | Architectural Rationale |
 |---|---|---|
-| **Supabase `api_cache` Table** | 🚫 **Excluded (Redundant)** | Our **Vercel Edge Cache** (`stale-while-revalidate`) and in-memory rate limiter already deliver **15–40ms global cached responses** with zero database egress and zero schema migrations. Storing external API JSON in Postgres would introduce redundant queries and cloud costs. |
+| **Ephemeral Raw API JSON Cache** | 🚫 **Excluded (Architectural Decision ADR-038)** | Storing raw third-party JSON blobs in Postgres was rejected in favor of an authoritative, structured `public.books` PostgreSQL catalog with GIN indexing, precomputed author lifespans, and streaming bulk ingestion, backed by Vercel Edge caching (`s-maxage=120, stale-while-revalidate=600`). |
 | **Proprietary Third-Party TTS** | 🚫 **Excluded (Keyless Policy)** | Paid cloud TTS APIs (ElevenLabs, Google Cloud TTS) violate **Rule 4 (Zero API Key Requirement)**. We strictly use native browser `window.speechSynthesis` for zero-cost, privacy-first read-aloud functionality. |
 
 ---
