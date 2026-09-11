@@ -336,7 +336,13 @@ Options:
       console.warn('  please add SUPABASE_SERVICE_ROLE_KEY to .env.local or GitHub Secrets.');
       console.warn('  (Find it in: Supabase Dashboard -> Settings -> API -> service_role secret)\n');
     }
-    supabase = createClient(supabaseUrl, supabaseKey);
+    if (typeof globalThis.WebSocket === 'undefined') {
+      // Polyfill WebSocket dummy for runtimes where realtime is unused
+      globalThis.WebSocket = class DummyWebSocket {};
+    }
+    supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
 
   const startTime = Date.now();
