@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 11 Sep 2026 11:07:59 GMT  
+**Last Generated**: Fri, 11 Sep 2026 11:29:55 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 160 passed  
-**Total Verified Tests**: 1328 passed  
+**Total Verified Tests**: 1336 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **160/160 test suites passed** (1328 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **160/160 test suites passed** (1336 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 37 Architectural Decision Records validated |
@@ -32,7 +32,7 @@
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (160 Suites / 1328 Tests)
+## 🧪 Comprehensive Test Suite Catalog (160 Suites / 1336 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 146 Tests)
 
@@ -217,7 +217,7 @@
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
-- ✔ `falls back to router.push(`
+- ✔ `falls back to router.push("/") when history length is <= 1`
 - ✔ `opens and closes Table of Contents drawer`
 - ✔ `opens and closes appearance controls popover`
 - ✔ `navigates between chapters using footer Next/Prev buttons`
@@ -266,7 +266,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (23 Suites · 234 Tests)
+### 🎨 Catalog & Presentation (23 Suites · 243 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -301,9 +301,9 @@
 - ✔ `renders fallback cover when image error occurs`
 - ✔ `triggers preview on Enter or Space key press on cover`
 - ✔ `updates cursor tooltip to Add to Favorites and Add to Bookshelf when hovering action buttons`
-- ✔ `requires two clicks on favorite button to remove from favorites when activeView=`
-- ✔ `auto-disarms favorite removal confirmation after timeout when activeView=`
-- ✔ `disarms favorite removal confirmation on mouse leave or blur when activeView=`
+- ✔ `requires two clicks on favorite button to remove from favorites when activeView="favorites"`
+- ✔ `auto-disarms favorite removal confirmation after timeout when activeView="favorites"`
+- ✔ `disarms favorite removal confirmation on mouse leave or blur when activeView="favorites"`
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is protected in UK`
 
 </details>
@@ -336,7 +336,7 @@
 - ✔ `rounds floating-point progress to the nearest integer and applies rounded-full pill styling`
 - ✔ `displays relative time formatted via canonical formatRelativeTime`
 - ✔ `renders Start and global page coordinate when chapterIndex is 0`
-- ✔ `renders `
+- ✔ `renders "Read Again" button with RotateCcw icon and accessible label when status is completed`
 
 </details>
 
@@ -478,12 +478,21 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `renders section landmark, Classic of the Day badge, and book details`
 - ✔ `navigates to reader and dispatches openReader on button click`
 - ✔ `dynamically avoids collision when heroBookId matches candidate book`
 - ✔ `accepts custom className and applies it to root section`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 
 </details>
@@ -1110,7 +1119,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (26 Suites · 254 Tests)
+### 📚 Gutenberg Parsers & Metadata (26 Suites · 253 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1133,7 +1142,7 @@
 <details>
 <summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (16 tests)</summary>
 
-- ✔ `normalizes `
+- ✔ `normalizes "LastName, FirstName" to "FirstName LastName"`
 - ✔ `returns single word or standard formatted names unchanged`
 - ✔ `handles multiple commas gracefully`
 - ✔ `extracts exact matching MIME type`
@@ -1194,7 +1203,7 @@
 <details>
 <summary><b><code>src/lib/catalog/gutendex-provider.test.ts</code></b> (8 tests)</summary>
 
-- ✔ `has name `
+- ✔ `has name "gutendex"`
 - ✔ `searches books, enforces copyright=false, and calculates latency`
 - ✔ `applies jurisdictional filtering when queried from GB`
 - ✔ `throws CatalogProviderError with status 400 on upstream bad request`
@@ -1331,12 +1340,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/library-backup.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/lib/library-backup.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `generates a complete, structured backup payload from active stores`
 - ✔ `creates a download blob and triggers click in DOM`
 - ✔ `generates a valid CSV string with proper escaping and headers`
-- ✔ `\r\n`
 - ✔ `escapes cells containing commas, quotes, and newlines`
 - ✔ `accepts a valid backup payload`
 - ✔ `rejects non-object raw inputs`
@@ -1424,8 +1432,8 @@
 - ✔ `accurately calculates consecutive streaks and longest historical streak`
 - ✔ `handles deduplication and arbitrary sorting order`
 - ✔ `populates 7 days of weekActivity ending with today`
-- ✔ `returns `
-- ✔ `returns `
+- ✔ `returns "0 min" for zero or negative values`
+- ✔ `returns "< 1 min" for durations under 60 seconds`
 - ✔ `returns minutes for durations between 1 and 59 minutes`
 - ✔ `returns decimal hours for durations between 1 and 10 hours`
 - ✔ `returns rounded hours for large durations`
@@ -1512,12 +1520,12 @@
 - ✔ `extracts and deduplicates clean subject tags up to maxTags`
 - ✔ `deduplicates identical base subjects`
 - ✔ `falls back to Classic Literature when empty or missing`
-- ✔ `returns `
+- ✔ `returns "Just now" for timestamps less than 1 minute ago`
 - ✔ `returns minutes ago for timestamps under 1 hour`
 - ✔ `returns hours ago for timestamps under 24 hours`
 - ✔ `returns days ago for timestamps under 7 days`
 - ✔ `formats date string for timestamps older than 7 days`
-- ✔ `falls back gracefully to `
+- ✔ `falls back gracefully to "Recently" for invalid dates or epoch zero`
 - ✔ `creates an anchor, appends to body, clicks, removes anchor, and revokes object URL`
 
 </details>
@@ -1562,7 +1570,7 @@
 - ✔ `strips volume and part suffixes`
 - ✔ `returns original string when no subtitles or volumes exist`
 - ✔ `strips leading structural stopwords to yield core search keywords`
-- ✔ `extracts surname when author is formatted as `
+- ✔ `extracts surname when author is formatted as "Surname, Forename"`
 - ✔ `extracts primary name when author has noble prefix or is formatted without comma`
 - ✔ `resolves known ISO codes to human-readable names`
 - ✔ `falls back to uppercase code for unknown languages`
@@ -2158,7 +2166,7 @@
 - ✔ `should render button text and handle click events`
 - ✔ `should display loading spinner and disable button when isLoading is true`
 - ✔ `should apply variant and size classes properly`
-- ✔ `should render polymorphically with as=`
+- ✔ `should render polymorphically with as="a" and apply chip size styling`
 
 </details>
 

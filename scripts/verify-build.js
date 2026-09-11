@@ -289,7 +289,10 @@ function pass2ServerMocks() {
 // -------------------------------------------------------------
 function pass3ClientUI() {
   logHeader('Pass 3: Vitest Unit Suite & Coverage Assertion (>= 80%)');
-  const res = runCommand(`${npmCmd} run test:coverage -- --reporter=verbose`, true);
+  const res = runCommand(
+    `${npmCmd} run test:coverage -- --reporter=verbose --reporter=json --outputFile=coverage/test-results.json`,
+    true
+  );
   if (!res.success) {
     logFail('Unit test suite failed.');
     return false;
