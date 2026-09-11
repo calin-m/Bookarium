@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-154%20Suites%20%7C%201245%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.66%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-157%20Suites%20%7C%201299%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.67%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -120,6 +120,22 @@ Bookarium delivers an archival-grade, high-performance reading environment organ
 * **Full Data Sovereignty & Portability**: Single-click RFC 4180 CSV export and portable JSON backup (`src/lib/library-backup.ts`) with defensive schema validation and merge/replace restore strategies.
 * **Zero-Tracking Privacy Architecture (`/privacy`)**: Zero third-party trackers, zero advertising beacons, cookie-less operation (Art. 5(3) exempt), privacy-first anonymous aggregate telemetry (Vercel Web Analytics & Speed Insights), and self-service account data deletion in User Settings (`/account`).
 * **Technical SEO, Social OpenGraph & Upstream Rate-Shielding**: Native Next.js 16 crawl directives (`robots.ts`) explicitly disallow search query parameters (`?search=*`, `?topic=*`) to protect public Gutendex servers from bot query exhaustion. Dynamic server layouts (`/read/[id]/layout.tsx`) fetch book identities with 24-hour Next.js edge caching (`revalidate: 86400`) to generate rich OpenGraph and Twitter cards (`summary_large_image`) featuring authentic book covers, while injecting safe Schema.org `Book`, `WebSite`, and `WebApplication` (`isAccessibleForFree: true`) JSON-LD structured data.
+
+### 5. ⚖️ 100% Airtight Jurisdictional Copyright Governance & Legal Compliance
+* **Autonomous Multi-Jurisdiction Engine (`src/lib/copyright-engine.ts`)**: Decoupled, zero-dependency validation engine enforcing exact public domain thresholds based on the user's geographic jurisdiction (year 2026 cutoff calculations):
+  * **United States (17 U.S.C. § 304)**: Published on or before 1930 or cleared by Project Gutenberg US (`copyright === false`).
+  * **Life + 70 (EU 27, UK, Canada, Australia, New Zealand, Japan)**: Author and translator death year $\le 1955$ ($2026 - 71$).
+  * **Life + 100 (Mexico, Côte d'Ivoire)**: Author and translator death year $\le 1925$ ($2026 - 101$).
+  * **Life + 80 (Colombia, Spain pre-1987 deaths)**: Author and translator death year $\le 1945$ ($2026 - 81$).
+* **Joint Authorship & Derivative Protection**: Calculates protection from the death of the *last surviving co-author* (Berne Convention Art. 7bis) and independently validates translator derivative works (Berne Convention Art. 2(3)).
+* **Fail-Closed Longevity Heuristics**: Applies a strict human longevity upper bound ($birth\_year \le currentYear - term - 101$) for missing death dates, and strictly fails closed outside the US when author lifespans cannot be verified.
+* **Next.js 16 Root Proxy Geo-Context (`src/proxy.ts`)**: Automatically resolves the visitor's ISO 3166-1 alpha-2 country code via edge headers (`x-vercel-ip-country`, `cf-ipcountry`), stamps a non-tracking `bookarium-geo-country` cookie, and supports regional development overrides (`?country=XX`).
+* **HTTP 451 Streaming Gatekeeper (`/api/books/content`)**: Evaluates incoming text streaming requests against a 24h LRU metadata cache (`src/app/api/books/content/metadata-cache.ts`). If protected under the visitor's local law, the server returns an **`HTTP 451: Unavailable For Legal Reasons`** response detailing the restricting author, local statute, and projected public domain entry date.
+* **Hyperlink Neutralization & Presentation Isolation**:
+  * **Download Drawer (`DownloadDrawer.tsx`)**: Direct download links are completely omitted from the DOM when restricted, satisfying European Court of Justice (*GS Media*) and UK hyperlink communication case law, replaced with a prominent legal restriction banner.
+  * **Book Cards (`BookCard.tsx`)**: Displays an amber `"Protected ([Country])"` badge and disables the reading action as `"Restricted"`.
+  * **Dedicated Reader Legal View (`ReaderErrorView.tsx`)**: Renders an archival shield view with full statutory rationale and a 1-click `"Return to Library"` action.
+* **Edge CDN Cache Partitioning**: Both `/api/books` and `/api/books/content` routes stamp `Vary: x-vercel-ip-country, Accept-Encoding` to guarantee zero regional cache poisoning across global CDN edge nodes.
 
 ---
 
@@ -521,7 +537,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1245 tests across 154 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1299 tests across 157 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

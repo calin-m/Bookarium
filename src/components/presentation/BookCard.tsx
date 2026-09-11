@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { StarRating } from '@/components/ui/StarRating';
 import { ROUTES } from '@/config/routes';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 
 export interface BookCardProps {
   book: GutendexBook;
@@ -55,6 +57,10 @@ export const BookCard: React.FC<BookCardProps> = ({
   const isFavorite = checkIsFavorite(book.id);
   const rating = useBookRating(book.id);
   const status = useReadingStatus(book.id);
+
+  const { country } = useJurisdiction();
+  const evaluation = isBookPublicDomainInJurisdiction(book, country);
+  const isRestricted = !evaluation.isAllowed;
 
   const formats = extractBookFormats(book.formats, book.id);
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
@@ -97,6 +103,15 @@ export const BookCard: React.FC<BookCardProps> = ({
   }, [hoveredAction, isConfirmingRemoval, isFavorite, isSaved]);
 
   const handleCoverClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+    if (isRestricted) {
+      if (onPreviewClick) {
+        const cardEl = cardRef.current || ((e.currentTarget as HTMLElement).closest('[data-testid^="book-card-"]') as HTMLElement);
+        onPreviewClick(book, cardEl ? cardEl.getBoundingClientRect() : undefined);
+      } else {
+        onDownloadClick?.(book);
+      }
+      return;
+    }
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       if (activeView === 'favorites' || activeView === 'bookshelf') {
         if (onPreviewClick) {
@@ -329,6 +344,13 @@ export const BookCard: React.FC<BookCardProps> = ({
               <span className="text-[10px] font-mono font-bold uppercase text-primary">
                 {status === 'currently_reading' ? '📖 Reading' : status === 'finished' ? '✓ Finished' : '🔖 Want to Read'}
               </span>
+            ) : isRestricted ? (
+              <span
+                className="text-[10px] font-mono font-medium tracking-wider text-amber-600 dark:text-amber-400 uppercase"
+                title={evaluation.reason || `Protected in ${country} under local copyright law`}
+              >
+                Protected ({country})
+              </span>
             ) : (
               <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
                 CC0 / Free
@@ -338,18 +360,32 @@ export const BookCard: React.FC<BookCardProps> = ({
 
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-2">
-            <Button
-              as={Link}
-              href={ROUTES.READ(book.id)}
-              onClick={() => useReaderStore.getState().openReader(book)}
-              variant="primary"
-              size="chip"
-              className="w-full"
-              aria-label={`Read ${book.title}`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Read</span>
-            </Button>
+            {isRestricted ? (
+              <Button
+                variant="outline"
+                size="chip"
+                disabled
+                className="w-full opacity-60 cursor-not-allowed text-xs"
+                aria-label={`${book.title} is restricted in ${country}`}
+                title={evaluation.reason || `Protected by copyright in ${country}`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Restricted</span>
+              </Button>
+            ) : (
+              <Button
+                as={Link}
+                href={ROUTES.READ(book.id)}
+                onClick={() => useReaderStore.getState().openReader(book)}
+                variant="primary"
+                size="chip"
+                className="w-full"
+                aria-label={`Read ${book.title}`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Read</span>
+              </Button>
+            )}
 
             <Button
               variant="outline"

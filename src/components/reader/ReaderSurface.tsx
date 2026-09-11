@@ -27,6 +27,7 @@ export interface ReaderSurfaceProps {
   totalChapters: number;
   isLoading: boolean;
   isError: boolean;
+  error?: unknown;
   onRetry?: () => void;
   bookTitle?: string;
   bookAuthor?: string;
@@ -57,6 +58,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   totalChapters,
   isLoading,
   isError,
+  error,
   onRetry,
   bookTitle,
   bookAuthor,
@@ -167,7 +169,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   }
 
   if (isError) {
-    return <ReaderErrorView activeTheme={activeTheme} onRetry={onRetry} />;
+    return <ReaderErrorView activeTheme={activeTheme} onRetry={onRetry} error={error} />;
   }
 
   const baseContent = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');

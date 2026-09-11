@@ -5,6 +5,7 @@ import BookReaderPage from './page';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
+import { useBookContent } from '@/hooks/queries/useBookContent';
 import { mockBooks } from '@/mocks/handlers';
 
 const mockPush = vi.fn();
@@ -48,14 +49,19 @@ Mr. Bennet was among the earliest of those who waited on Mr. Darcy. He had alway
 
 *** END OF THE PROJECT GUTENBERG EBOOK PRIDE AND PREJUDICE ***`;
 
-vi.mock('@/hooks/queries/useBookContent', () => ({
-  useBookContent: () => ({
-    data: chapterSampleText,
-    isLoading: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
-}));
+vi.mock('@/hooks/queries/useBookContent', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/queries/useBookContent')>();
+  return {
+    ...actual,
+    useBookContent: vi.fn(() => ({
+      data: chapterSampleText,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    })),
+  };
+});
 
 vi.mock('@/hooks/queries/useBookTranslations', () => ({
   useBookTranslations: () => ({
@@ -674,6 +680,30 @@ describe('Dedicated Reader Page (/read/[id])', () => {
       expect(document.title).toContain('Jane Austen');
       expect(document.title).toContain('Bookarium');
     });
+  });
+
+  it('renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction', () => {
+    vi.mocked(useBookContent).mockReturnValueOnce({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: {
+        isLegalRestriction: true,
+        details: {
+          country: 'UK',
+          rule: 'LIFE_70',
+          reason: 'This title is protected under UK copyright law.',
+        },
+      } as any,
+      refetch: vi.fn(),
+    } as any);
+
+    render(<BookReaderPage />);
+
+    expect(screen.getByTestId('reader-legal-restriction-view')).toBeInTheDocument();
+    expect(screen.getByText(/Protected by Copyright in Your Jurisdiction/i)).toBeInTheDocument();
+    expect(screen.getByText(/This title is protected under UK copyright law\./i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Return to Library/i })).toBeInTheDocument();
   });
 });
 

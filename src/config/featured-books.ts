@@ -4,12 +4,15 @@
  */
 
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 
 export interface FeaturedHeroBook {
   id: number;
   volumeNumber: string;
   title: string;
   author: string;
+  authorBirthYear?: number;
+  authorDeathYear?: number;
   year: string;
   quoteExcerpt: string;
   openingLine: string;
@@ -23,6 +26,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 1342',
     title: 'Pride and Prejudice',
     author: 'Jane Austen',
+    authorBirthYear: 1775,
+    authorDeathYear: 1817,
     year: '1813',
     openingLine:
       'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered the rightful property of some one or other of their daughters.',
@@ -36,6 +41,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 84',
     title: 'Frankenstein',
     author: 'Mary Wollstonecraft Shelley',
+    authorBirthYear: 1797,
+    authorDeathYear: 1851,
     year: '1818',
     openingLine:
       'You will rejoice to hear that no disaster has accompanied the commencement of an enterprise which you have regarded with such evil forebodings. I arrived here yesterday, and my first task is to assure my dear sister of my welfare and increasing confidence in the success of my undertaking.',
@@ -49,6 +56,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 2701',
     title: 'Moby Dick',
     author: 'Herman Melville',
+    authorBirthYear: 1819,
+    authorDeathYear: 1891,
     year: '1851',
     openingLine:
       'Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen and regulating the circulation.',
@@ -62,6 +71,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 64317',
     title: 'The Great Gatsby',
     author: 'F. Scott Fitzgerald',
+    authorBirthYear: 1896,
+    authorDeathYear: 1940,
     year: '1925',
     openingLine:
       'In my younger and more vulnerable years my father gave me some advice that I’ve been turning over in my mind ever since. "Whenever you feel like criticizing anyone," he told me, "just remember that all the people in this world haven’t had the advantages that you’ve had."',
@@ -75,6 +86,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 11',
     title: "Alice's Adventures in Wonderland",
     author: 'Lewis Carroll',
+    authorBirthYear: 1832,
+    authorDeathYear: 1898,
     year: '1865',
     openingLine:
       'Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, "and what is the use of a book," thought Alice "without pictures or conversation?"',
@@ -88,6 +101,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 174',
     title: 'The Picture of Dorian Gray',
     author: 'Oscar Wilde',
+    authorBirthYear: 1854,
+    authorDeathYear: 1900,
     year: '1890',
     openingLine:
       'The artist is the creator of beautiful things. To reveal art and conceal the artist is art’s aim. The critic is he who can translate into another manner or a new material his impression of beautiful things. There is no such thing as a moral or an immoral book. Books are well written, or badly written. That is all.',
@@ -101,6 +116,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 1661',
     title: 'The Adventures of Sherlock Holmes',
     author: 'Arthur Conan Doyle',
+    authorBirthYear: 1859,
+    authorDeathYear: 1930,
     year: '1892',
     openingLine:
       'To Sherlock Holmes she is always THE woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex. It was not that he felt any emotion akin to love for Irene Adler. All emotions were abhorrent to his cold, precise but admirably balanced mind.',
@@ -114,6 +131,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 345',
     title: 'Dracula',
     author: 'Bram Stoker',
+    authorBirthYear: 1847,
+    authorDeathYear: 1912,
     year: '1897',
     openingLine:
       '3 May. Bistritz.—Left Munich at 8:35 P.M., on 1st May, arriving at Vienna early next morning. The impression I had was that we were leaving the West and entering the East; the most western of splendid bridges over the Danube taking us among the traditions of Turkish rule.',
@@ -127,6 +146,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 98',
     title: 'A Tale of Two Cities',
     author: 'Charles Dickens',
+    authorBirthYear: 1812,
+    authorDeathYear: 1870,
     year: '1859',
     openingLine:
       'It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of light, it was the season of darkness, it was the spring of hope, it was the winter of despair.',
@@ -140,6 +161,8 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     volumeNumber: 'Vol. 35',
     title: 'The Time Machine',
     author: 'H. G. Wells',
+    authorBirthYear: 1866,
+    authorDeathYear: 1946,
     year: '1895',
     openingLine:
       'The Time Traveller (for so it will be convenient to speak of him) was expounding a recondite matter to us. His grey eyes shone and twinkled, and his usually pale face was flushed and animated. The fire burnt brightly, and the soft radiance of the incandescent lights in the lilies of silver caught the bubbles.',
@@ -436,33 +459,64 @@ export function getBookPassages(book: {
 }
 
 /**
- * Deterministically returns the hourly spotlighted hero book from FEATURED_HERO_BOOKS.
- * Changes every hour (3,600,000 ms).
+ * Returns featured classics that are 100% in the public domain in the specified jurisdiction.
+ * For Life + 100 countries (e.g. Mexico), titles like Gatsby or Sherlock Holmes are filtered out.
  */
-export function getHourlyHeroBook(timestamp: number = Date.now()): FeaturedHeroBook {
+export function getJurisdictionSafeFeaturedBooks(countryCode: string = 'US'): FeaturedHeroBook[] {
+  return FEATURED_HERO_BOOKS.filter((book) => {
+    const evaluation = isBookPublicDomainInJurisdiction(
+      {
+        id: book.id,
+        title: book.title,
+        authors: [
+          {
+            name: book.author,
+            birth_year: book.authorBirthYear ?? null,
+            death_year: book.authorDeathYear ?? null,
+          },
+        ],
+        copyright: false,
+      },
+      countryCode
+    );
+    return evaluation.isAllowed;
+  });
+}
+
+/**
+ * Deterministically returns the hourly spotlighted hero book from FEATURED_HERO_BOOKS.
+ * Changes every hour (3,600,000 ms), filtered safely for the user's jurisdiction.
+ */
+export function getHourlyHeroBook(
+  timestamp: number = Date.now(),
+  countryCode: string = 'US'
+): FeaturedHeroBook {
+  const safeList = getJurisdictionSafeFeaturedBooks(countryCode);
+  const list = safeList.length > 0 ? safeList : FEATURED_HERO_BOOKS;
   const hourlyIndex = Math.floor(timestamp / (1000 * 60 * 60));
-  const normalizedIndex =
-    ((hourlyIndex % FEATURED_HERO_BOOKS.length) + FEATURED_HERO_BOOKS.length) % FEATURED_HERO_BOOKS.length;
-  return FEATURED_HERO_BOOKS[normalizedIndex] || FEATURED_HERO_BOOKS[0];
+  const normalizedIndex = ((hourlyIndex % list.length) + list.length) % list.length;
+  return list[normalizedIndex] || list[0];
 }
 
 /**
  * Deterministically returns the daily editorial classic from FEATURED_HERO_BOOKS.
- * Rotates once per calendar day (86,400,000 ms).
+ * Rotates once per calendar day (86,400,000 ms), filtered safely for the user's jurisdiction.
  * If the candidate matches the spotlighted heroBookId, it automatically advances
  * to the next book in the circular list to guarantee zero duplication on the page.
  */
 export function getDailyEditorialBook(
   heroBookId?: number,
-  timestamp: number = Date.now()
+  timestamp: number = Date.now(),
+  countryCode: string = 'US'
 ): FeaturedHeroBook {
+  const safeList = getJurisdictionSafeFeaturedBooks(countryCode);
+  const list = safeList.length > 0 ? safeList : FEATURED_HERO_BOOKS;
   const dayIndex = Math.floor(timestamp / (1000 * 60 * 60 * 24));
-  let candidateIndex =
-    ((dayIndex % FEATURED_HERO_BOOKS.length) + FEATURED_HERO_BOOKS.length) % FEATURED_HERO_BOOKS.length;
+  let candidateIndex = ((dayIndex % list.length) + list.length) % list.length;
 
-  if (heroBookId !== undefined && FEATURED_HERO_BOOKS[candidateIndex]?.id === heroBookId) {
-    candidateIndex = (candidateIndex + 1) % FEATURED_HERO_BOOKS.length;
+  if (heroBookId !== undefined && list[candidateIndex]?.id === heroBookId && list.length > 1) {
+    candidateIndex = (candidateIndex + 1) % list.length;
   }
 
-  return FEATURED_HERO_BOOKS[candidateIndex] || FEATURED_HERO_BOOKS[0];
+  return list[candidateIndex] || list[0];
 }

@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SITE_CONFIG } from '@/config/site-config';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
 import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
+import { isBookPublicDomainInJurisdiction, normalizeCountryCode, type GenericBookInput } from '@/lib/copyright-engine';
+import { GEO_COOKIE_NAME } from '@/proxy';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 import { isSafeUpstreamUrl } from './url-validator';
+
+import { resolveBookMetadata } from './metadata-cache';
 
 const MAX_BOOK_BYTES = 15 * 1024 * 1024; // 15 MB threshold for Gutenberg plain text volumes
 
@@ -46,6 +51,64 @@ export async function GET(request: NextRequest) {
       { error: 'Missing or invalid Project Gutenberg book ID.' },
       { status: 400 }
     );
+  }
+
+  // Extract user jurisdiction
+  const devCountryOverride =
+    process.env.NODE_ENV !== 'production' ? searchParams.get('country') : null;
+  const rawCountry =
+    devCountryOverride ||
+    request.headers.get('x-vercel-ip-country') ||
+    request.headers.get('x-bookarium-country') ||
+    request.cookies.get(GEO_COOKIE_NAME)?.value ||
+    'US';
+  const country = normalizeCountryCode(rawCountry);
+
+  // Jurisdictional Copyright Gatekeeper:
+  // In international jurisdictions, verify book public domain status before streaming any bytes
+  if (country !== 'US') {
+    const metadata = await resolveBookMetadata(bookId);
+
+    if (!metadata) {
+      // Fail-closed: Cannot stream unverified titles to non-US users
+      return NextResponse.json(
+        {
+          error: 'Unable to verify copyright clearance for your jurisdiction at this time.',
+          country,
+          reason: 'Upstream metadata verification is unavailable. Streaming withheld under international fail-closed protocol.',
+        },
+        {
+          status: 503,
+          headers: {
+            'Vary': 'x-vercel-ip-country, Accept-Encoding',
+          },
+        }
+      );
+    }
+
+    const evaluation = isBookPublicDomainInJurisdiction(metadata, country);
+    if (!evaluation.isAllowed) {
+      // Return HTTP 451 (Unavailable For Legal Reasons)
+      return NextResponse.json(
+        {
+          error: 'This work is protected by copyright in your jurisdiction and cannot be streamed.',
+          country: evaluation.country,
+          rule: evaluation.rule,
+          restrictingAuthor: evaluation.restrictingAuthor,
+          restrictingDeathYear: evaluation.restrictingDeathYear,
+          publicDomainYear: evaluation.publicDomainYear,
+          reason: evaluation.reason,
+        },
+        {
+          status: 451,
+          headers: {
+            'Content-Type': 'application/json',
+            'Vary': 'x-vercel-ip-country, Accept-Encoding',
+            'Cache-Control': 'public, s-maxage=86400',
+          },
+        }
+      );
+    }
   }
 
   // Explicitly encode sanitized numeric ID and anchor to hardcoded Gutenberg origin via new URL
@@ -138,8 +201,7 @@ export async function GET(request: NextRequest) {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+      'Vary': 'x-vercel-ip-country, Accept-Encoding',
     },
   });
 }
-
-

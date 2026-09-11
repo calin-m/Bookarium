@@ -3,6 +3,8 @@ import { API_ENDPOINTS } from '@/config/api-endpoints';
 import type { GutendexBook, GutendexResponse } from '@/types/book.types';
 import { booksApiRateLimiter } from '@/lib/rate-limiter';
 import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
+import { isBookPublicDomainInJurisdiction, getJurisdictionRule, normalizeCountryCode } from '@/lib/copyright-engine';
+import { GEO_COOKIE_NAME } from '@/proxy';
 
 // Ensure Vercel runs this as a dynamic serverless function with extended timeout
 export const dynamic = 'force-dynamic';
@@ -38,9 +40,22 @@ export async function GET(request: NextRequest) {
   const mimeType = searchParams.get('mime_type') || '';
   const ids = searchParams.get('ids') || '';
 
+  // Extract user jurisdiction from Vercel header, edge middleware header/cookie, or dev query param
+  const devCountryOverride =
+    process.env.NODE_ENV !== 'production' ? searchParams.get('country') : null;
+  const rawCountry =
+    devCountryOverride ||
+    request.headers.get('x-vercel-ip-country') ||
+    request.headers.get('x-bookarium-country') ||
+    request.cookies.get(GEO_COOKIE_NAME)?.value ||
+    'US';
+  const country = normalizeCountryCode(rawCountry);
+  const jurisdictionRule = getJurisdictionRule(country);
+
   const gutendexParams = new URLSearchParams();
 
-  // public domain filter will be applied after fetching the data
+  // Strictly enforce upstream US copyright filter
+  gutendexParams.set('copyright', 'false');
 
   if (ids.trim()) {
     gutendexParams.set('ids', ids.trim());
@@ -100,6 +115,8 @@ export async function GET(request: NextRequest) {
           results: [],
           count: 0,
           source: 'upstream',
+          clientCountry: country,
+          jurisdictionRule,
         },
         { status: response.status }
       );
@@ -116,24 +133,40 @@ export async function GET(request: NextRequest) {
           results: [],
           count: 0,
           source: 'upstream',
+          clientCountry: country,
+          jurisdictionRule,
         },
         { status: 502 }
       );
     }
 
-    const filteredResults = (data.results || []).filter((b: GutendexBook) => b.copyright !== true);
+    // Apply strict jurisdictional copyright filtering
+    const originalResults = data.results || [];
+    const filteredResults = originalResults.filter((b: GutendexBook) => {
+      const evaluation = isBookPublicDomainInJurisdiction(b, country);
+      return evaluation.isAllowed;
+    });
+
+    const totalFiltered = originalResults.length - filteredResults.length;
+    // Adjust count conservatively if any results were filtered on this page
+    const adjustedCount = data.count !== undefined ? Math.max(0, data.count - totalFiltered) : filteredResults.length;
+
     return NextResponse.json(
       {
         ...data,
         results: filteredResults,
-        count: data.count !== undefined ? data.count : filteredResults.length,
+        count: adjustedCount,
         source: 'upstream',
         latencyMs,
+        clientCountry: country,
+        jurisdictionRule,
+        totalFiltered,
       },
       {
         status: 200,
         headers: {
           'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+          'Vary': 'x-vercel-ip-country, Accept-Encoding',
         },
       }
     );
@@ -149,6 +182,8 @@ export async function GET(request: NextRequest) {
         results: [],
         count: 0,
         source: 'upstream',
+        clientCountry: country,
+        jurisdictionRule,
       },
       { status: statusCode }
     );

@@ -79,6 +79,36 @@ describe('useBookContent hook', () => {
 
     fetchSpy.mockRestore();
   });
+
+  it('should throw LegalRestrictionError when proxy returns HTTP 451', async () => {
+    const legalPayload = {
+      country: 'GB',
+      rule: 'LIFE_70',
+      publicDomainYear: 2047,
+      restrictingAuthor: 'Agatha Christie',
+      reason: 'Protected under UK Life + 70 laws',
+    };
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify(legalPayload), {
+        status: 451,
+        statusText: 'Unavailable For Legal Reasons',
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    try {
+      await fetchBookContent(undefined, 863);
+      expect.fail('Should have thrown LegalRestrictionError');
+    } catch (err: any) {
+      expect(err.name).toBe('LegalRestrictionError');
+      expect(err.status).toBe(451);
+      expect(err.details.publicDomainYear).toBe(2047);
+      expect(err.details.country).toBe('GB');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
 });
 
 

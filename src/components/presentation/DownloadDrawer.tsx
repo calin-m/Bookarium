@@ -1,12 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Download, FileText, Globe, Smartphone, ShieldCheck } from 'lucide-react';
+import { Download, FileText, Globe, Smartphone, ShieldCheck, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { isBookPublicDomainInJurisdiction, getJurisdictionRuleDescription } from '@/lib/copyright-engine';
 
 export interface DownloadDrawerProps {
   book: GutendexBook | null;
@@ -15,7 +17,12 @@ export interface DownloadDrawerProps {
 }
 
 export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, onClose }) => {
+  const { country } = useJurisdiction();
+
   if (!book) return null;
+
+  const evaluation = isBookPublicDomainInJurisdiction(book, country);
+  const isRestricted = !evaluation.isAllowed;
 
   const formats = extractBookFormats(book.formats, book.id);
 
@@ -55,15 +62,27 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Zero-Copyright Download Hub" maxWidth="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isRestricted ? 'Regional Copyright Notice' : 'Zero-Copyright Download Hub'}
+      maxWidth="lg"
+    >
       <div className="p-6 space-y-6 bg-card text-foreground">
         {/* Book Slip Header Summary */}
         <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-1.5">
           <div className="flex items-center gap-2">
-            <Badge variant="primary" size="sm" className="gap-1 text-[10px] font-mono">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              Public Domain
-            </Badge>
+            {isRestricted ? (
+              <Badge variant="outline" size="sm" className="gap-1 text-[10px] font-mono bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                Protected in {country}
+              </Badge>
+            ) : (
+              <Badge variant="primary" size="sm" className="gap-1 text-[10px] font-mono">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                Public Domain
+              </Badge>
+            )}
             <span className="font-mono text-[11px] text-muted-foreground">ID #{book.id}</span>
           </div>
           <h3 className="font-serif font-bold text-base text-foreground">
@@ -74,63 +93,80 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
           </p>
         </div>
 
-        {/* Formats List */}
-        <div className="space-y-2.5">
-          <h4 className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-            Available Zero-DRM Formats
-          </h4>
-
-          {downloadOptions.map((option) => (
-            <div
-              key={option.format}
-              className="flex items-center justify-between p-3.5 rounded-xl border border-border hover:border-primary/50 bg-card transition-all gap-3 shadow-xs"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 rounded-lg bg-muted shrink-0">
-                  {option.icon}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs sm:text-sm font-serif font-semibold text-foreground">
-                      {option.format}
-                    </span>
-                    {option.recommended && (
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-primary/10 text-primary font-bold">
-                        Default
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground font-sans truncate">
-                    {option.description}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                {option.url ? (
-                  <a
-                    href={option.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-xs font-mono font-bold transition-opacity shadow-xs"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download</span>
-                  </a>
-                ) : (
-                  <Button variant="outline" size="sm" disabled className="text-xs opacity-50">
-                    Unavailable
-                  </Button>
-                )}
-              </div>
+        {isRestricted ? (
+          /* Legal Restriction Banner - Neutralize all download hyperlinks */
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-2.5">
+            <div className="flex items-center gap-2 font-serif font-bold text-sm text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Downloads Withheld Under Local Copyright Law</span>
             </div>
-          ))}
-        </div>
+            <p className="text-xs font-sans leading-relaxed">
+              This edition is protected by copyright in <strong>{country}</strong> under <strong>{getJurisdictionRuleDescription(evaluation.rule, country)}</strong>.
+              {evaluation.publicDomainYear ? ` This volume is scheduled to enter the public domain in your jurisdiction on January 1, ${evaluation.publicDomainYear}.` : ''}
+            </p>
+            <p className="text-[11px] font-mono text-muted-foreground">
+              In strict accordance with international copyright treaties, direct download files are unavailable in your region.
+            </p>
+          </div>
+        ) : (
+          /* Formats List */
+          <div className="space-y-2.5">
+            <h4 className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+              Available Zero-DRM Formats
+            </h4>
+
+            {downloadOptions.map((option) => (
+              <div
+                key={option.format}
+                className="flex items-center justify-between p-3.5 rounded-xl border border-border hover:border-primary/50 bg-card transition-all gap-3 shadow-xs"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-lg bg-muted shrink-0">
+                    {option.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-serif font-semibold text-foreground">
+                        {option.format}
+                      </span>
+                      {option.recommended && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-primary/10 text-primary font-bold">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground font-sans truncate">
+                      {option.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  {option.url ? (
+                    <a
+                      href={option.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-xs font-mono font-bold transition-opacity shadow-xs"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download</span>
+                    </a>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled className="text-xs opacity-50">
+                      Unavailable
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="p-3 rounded-lg bg-muted/60 border border-border text-[11px] font-mono text-muted-foreground">
           <p>
-            ℹ️ All public domain files streamed directly from Project Gutenberg mirrors. Zero keys or logins required.
+            ℹ️ Bookarium strictly complies with international copyright laws. All public domain volumes are streamed from verified archival mirrors. Zero keys or logins required.
           </p>
         </div>
       </div>

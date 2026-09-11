@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 10 Sep 2026 12:29:57 GMT  
+**Last Generated**: Fri, 11 Sep 2026 09:47:55 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 154 passed  
-**Total Verified Tests**: 1245 passed  
+**Total Test Suites**: 157 passed  
+**Total Verified Tests**: 1299 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **154/154 test suites passed** (1245 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **157/157 test suites passed** (1299 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 35 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 36 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,27 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.66%** (6143/6629) — *Target: $ge$ 80%*
-- **Statements**: **91.07%** (6657/7309) — *Target: $ge$ 80%*
-- **Functions**: **88.8%** (1499/1688) — *Target: $ge$ 80%*
-- **Branches**: **81.25%** (5601/6893) — *Target: $ge$ 80%*
+- **Lines**: **92.67%** (6338/6839) — *Target: $ge$ 80%*
+- **Statements**: **91.1%** (6855/7524) — *Target: $ge$ 80%*
+- **Functions**: **88.86%** (1525/1716) — *Target: $ge$ 80%*
+- **Branches**: **81.43%** (5792/7112) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (154 Suites / 1245 Tests)
+## 🧪 Comprehensive Test Suite Catalog (157 Suites / 1299 Tests)
 
-### 🚀 App Routes & Pages (12 Suites · 119 Tests)
+### 🚀 App Routes & Pages (13 Suites · 132 Tests)
+
+<details>
+<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `stores and retrieves cached metadata correctly`
+- ✔ `returns cached metadata if not expired without network fetch`
+- ✔ `fetches metadata from upstream when not cached`
+- ✔ `returns null when upstream returns error status`
+- ✔ `returns null when network throws an error`
+
+</details>
 
 <details>
 <summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (12 tests)</summary>
@@ -55,15 +66,19 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
 - ✔ `should block SSRF attempts targeting cloud metadata or internal network`
 - ✔ `should validate official Gutenberg upstream URLs as safe and sanitize them`
 - ✔ `should reject path traversal attempts in upstream URLs`
-- ✔ `should fetch and return book text for valid id`
-- ✔ `should return 502 if upstream fails or times out`
+- ✔ `should return HTTP 451 Unavailable For Legal Reasons when book is protected in UK`
+- ✔ `should return HTTP 451 when book is protected in Mexico (Life + 100)`
+- ✔ `should return HTTP 503 fail-closed when metadata cannot be retrieved for international user`
+- ✔ `should fetch and return book text for valid public domain id in US`
+- ✔ `should stream public domain book to GB user when metadata confirms death year <= 1955`
+- ✔ `should return 502 if upstream text mirrors fail or time out`
 - ✔ `guarantees fetch is strictly called with canonical Gutenberg endpoints only`
 - ✔ `falls back to secondary mirror when primary mirror returns 404`
 
@@ -85,10 +100,13 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `should return 429 when client exceeds max request rate limit`
 - ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
+- ✔ `should forward copyright=false to upstream Gutendex API`
+- ✔ `should filter out authors who died within Life + 70 when requested from GB`
+- ✔ `should filter out authors who died within Life + 100 when requested from Mexico (MX)`
 - ✔ `should pass topic, language, page, era, sort, and mime_type query parameters`
 - ✔ `should ignore single-character search queries to protect upstream API`
 - ✔ `should normalize whitespace in search queries when passing to upstream API`
@@ -193,7 +211,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (29 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (30 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -224,10 +242,11 @@
 - ✔ `renders volume completion modal with star rating and sets status to finished on the final page`
 - ✔ `persists authentic resolved book metadata to recentBooks and warms reader store on load`
 - ✔ `synchronizes document.title with the authentic resolved book title and author`
+- ✔ `renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction`
 
 </details>
 
-### 🎨 Catalog & Presentation (23 Suites · 232 Tests)
+### 🎨 Catalog & Presentation (23 Suites · 234 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -247,7 +266,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -265,6 +284,7 @@
 - ✔ `requires two clicks on favorite button to remove from favorites when activeView=`
 - ✔ `auto-disarms favorite removal confirmation after timeout when activeView=`
 - ✔ `disarms favorite removal confirmation on mouse leave or blur when activeView=`
+- ✔ `renders Protected (GB) badge and disabled Restricted button when book is protected in UK`
 
 </details>
 
@@ -428,10 +448,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (4 tests)</summary>
 
-- ✔ `should render download formats when opened with a book`
+- ✔ `should render download formats when opened with a public domain book in US`
 - ✔ `should return null when book is null`
+- ✔ `should neutralize download links and show legal banner when book is protected in UK`
 - ✔ `should provide canonical Gutenberg download links even if book.formats is empty`
 
 </details>
@@ -599,7 +620,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 137 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 140 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -672,10 +693,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderErrorView.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/reader/ReaderErrorView.test.tsx</code></b> (4 tests)</summary>
 
-- ✔ `renders error message and retry button`
+- ✔ `renders error message and retry button for generic errors`
 - ✔ `renders without retry button when onRetry is not provided`
+- ✔ `renders dedicated HTTP 451 legal restriction view when error is LegalRestrictionError`
+- ✔ `renders legal restriction view for plain object with isLegalRestriction: true`
 
 </details>
 
@@ -780,12 +803,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (25 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
 - ✔ `renders loading spinner and status message when isLoading is true`
 - ✔ `renders error alert with retry button when isError is true`
+- ✔ `renders legal restriction screen when isError is true with LegalRestrictionError`
 - ✔ `applies correct surface theme classes for Sepia and Dark themes`
 - ✔ `triggers next and previous page handlers on mobile horizontal swipe gestures`
 - ✔ `renders correctly in scroll reading mode and handles empty content fallback`
@@ -873,7 +897,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (8 Suites · 132 Tests)
+### ⚡ Zustand State Stores (9 Suites · 137 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -1009,6 +1033,17 @@
 </details>
 
 <details>
+<summary><b><code>src/stores/useJurisdictionStore.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `initializes with default US public domain rule`
+- ✔ `updates country and switches jurisdiction rule to Life + 70 for GB`
+- ✔ `updates country and switches jurisdiction rule to Life + 100 for MX`
+- ✔ `supports developer country overrides`
+- ✔ `reads cookie value from document.cookie`
+
+</details>
+
+<details>
 <summary><b><code>src/stores/usePreferencesStore.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `initializes with stickyScrollEnabled = true by default`
@@ -1055,7 +1090,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (23 Suites · 216 Tests)
+### 📚 Gutenberg Parsers & Metadata (24 Suites · 239 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1133,6 +1168,35 @@
 - ✔ `evicts the least recently used item when maxEntries is exceeded`
 - ✔ `overwriting an existing key updates its value and recency without exceeding max size`
 - ✔ `supports has, delete, and clear operations`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/copyright-engine.test.ts</code></b> (23 tests)</summary>
+
+- ✔ `normalizes valid 2-letter codes to uppercase`
+- ✔ `defaults null, undefined, or empty values to US`
+- ✔ `identifies US jurisdictions`
+- ✔ `identifies Life + 100 jurisdictions`
+- ✔ `identifies Life + 80 jurisdictions`
+- ✔ `identifies Life + 70 EU and non-EU jurisdictions`
+- ✔ `defaults unknown or unmapped international countries to Life + 70`
+- ✔ `evaluates Agatha Christie (d. 1976): Allowed in US, Blocked in GB/EU and MX`
+- ✔ `evaluates Ernest Hemingway (d. 1961): Allowed in US, Blocked in GB/CA/AU and MX`
+- ✔ `evaluates F. Scott Fitzgerald (d. 1940): Allowed in US and GB, but Blocked in Mexico (Life + 100)`
+- ✔ `evaluates Arthur Conan Doyle (d. 1930): Allowed in US and GB, but Blocked in Mexico (Life + 100)`
+- ✔ `evaluates Jane Austen (d. 1817): Allowed globally`
+- ✔ `withholds work if any co-author died within the regional copyright period`
+- ✔ `withholds ancient work if modern translator died within regional term`
+- ✔ `allows ancient work if translator died long ago`
+- ✔ `blocks author born in 1890 with null death year in Life + 70`
+- ✔ `clears author born in 1840 with null death year in Life + 70`
+- ✔ `withholds book outside US if both birth and death years are null (fail-closed)`
+- ✔ `handles null or undefined book gracefully`
+- ✔ `blocks book in US if copyright === true`
+- ✔ `evaluates canonical Book interface with string authors and authorDetails`
+- ✔ `withholds book if authors array is completely empty outside US`
+- ✔ `formats human-readable descriptions for all jurisdiction rules`
 
 </details>
 
@@ -1411,21 +1475,22 @@
 
 </details>
 
-### 🔄 Hooks & React Query (20 Suites · 177 Tests)
+### 🔄 Hooks & React Query (20 Suites · 179 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
 - ✔ `should throw when fetch returns non-ok status or empty content`
 - ✔ `should return offline cached content without calling fetch when available`
 - ✔ `should handle request abort on network timeout`
+- ✔ `should throw LegalRestrictionError when proxy returns HTTP 451`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
@@ -1439,6 +1504,7 @@
 - ✔ `should handle simulated offline network drop in useBooks hook`
 - ✔ `should respect enabled: false and not fetch books`
 - ✔ `should throw when upstream returns invalid non-JSON body`
+- ✔ `should filter protected books during Strategy 2 fallback for international users`
 
 </details>
 
@@ -1710,7 +1776,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (49 Suites · 213 Tests)
+### 🧩 UI Primitives & Motion (49 Suites · 219 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2125,7 +2191,7 @@
 </details>
 
 <details>
-<summary><b><code>src/config/config.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/config/config.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `defines valid non-empty endpoint URLs`
 - ✔ `provides literary eras with valid date boundaries`
@@ -2136,6 +2202,8 @@
 - ✔ `extracts passages for featured and generic books via getBookPassages`
 - ✔ `getHourlyHeroBook returns deterministic book based on hourly index`
 - ✔ `getDailyEditorialBook rotates daily and avoids collision with heroBookId`
+- ✔ `filters out titles protected in Life + 100 countries (Mexico)`
+- ✔ `includes all featured books for US jurisdiction`
 - ✔ `provides 12 curated quotes with non-empty metadata`
 - ✔ `provides complete theme configs for light, sepia, and dark`
 - ✔ `getReaderTheme returns exact theme or falls back to light`
@@ -2211,11 +2279,15 @@
 </details>
 
 <details>
-<summary><b><code>src/proxy.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/proxy.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
 - ✔ `gracefully falls back to NextResponse.next when updateSession throws`
 - ✔ `exports valid matcher config`
+- ✔ `detects country from x-vercel-ip-country and stamps cookie and header`
+- ✔ `respects development query parameter override ?country=DE`
+- ✔ `falls back to existing cookie when no IP headers are present`
+- ✔ `defaults to US when no geo signals exist`
 
 </details>
 
@@ -2223,7 +2295,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **9 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

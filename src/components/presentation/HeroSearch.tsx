@@ -30,9 +30,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
-import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
+import { FEATURED_HERO_BOOKS, getJurisdictionSafeFeaturedBooks, type FeaturedHeroBook } from '@/config/featured-books';
 import type { GutendexBook } from '@/types/book.types';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { LanguageSelector } from './LanguageSelector';
 import { HeroFeaturedBook3D } from './HeroFeaturedBook3D';
 
@@ -90,6 +91,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   const [query, setQuery] = useState(search);
   const [searchError, setSearchError] = useState<string | null>(null);
   const hasMounted = useHasMounted();
+  const { country } = useJurisdiction();
 
   if (search !== prevSearch) {
     setPrevSearch(search);
@@ -140,21 +142,29 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
       };
     }
 
-    const idx = hasMounted ? (hourlyIndex % FEATURED_HERO_BOOKS.length) : 0;
-    const b = FEATURED_HERO_BOOKS[idx] || FEATURED_HERO_BOOKS[0];
+    const safeHeroBooks = getJurisdictionSafeFeaturedBooks(country);
+    const heroList = safeHeroBooks.length > 0 ? safeHeroBooks : FEATURED_HERO_BOOKS;
+    const idx = hasMounted ? (hourlyIndex % heroList.length) : 0;
+    const b = heroList[idx] || heroList[0];
     return {
       ...b,
       rawBook: {
         id: b.id,
         title: b.title,
-        authors: [{ name: b.author }],
+        authors: [
+          {
+            name: b.author,
+            birth_year: b.authorBirthYear ?? null,
+            death_year: b.authorDeathYear ?? null,
+          },
+        ],
         subjects: [b.primarySubject],
         languages: ['en'],
         formats: {},
         download_count: 50000,
       } as GutendexBook,
     };
-  }, [featuredBook, books, hourlyIndex, hasMounted]);
+  }, [featuredBook, books, hourlyIndex, hasMounted, country]);
 
 
 

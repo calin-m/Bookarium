@@ -171,7 +171,7 @@ export default function BookReaderPage() {
   }, [handleToggleDrawer]);
 
   // Queries
-  const { data: contentText, isLoading: isContentLoading, isError: isContentError, refetch } = useBookContent(undefined, numericId);
+  const { data: contentText, isLoading: isContentLoading, isError: isContentError, error: contentError, refetch } = useBookContent(undefined, numericId);
   const { data: booksData } = useBooks({ ids: numericId > 0 ? String(numericId) : '', page: 1, copyright: false });
   
   // Multi-tier metadata resolution: Client Store -> Fixture -> API Result -> Raw Gutenberg Header Extraction
@@ -580,6 +580,7 @@ export default function BookReaderPage() {
         totalChapters={chaptersWithPagination.length || 1}
         isLoading={isContentLoading}
         isError={isContentError}
+        error={contentError}
         onRetry={() => refetch()}
         bookTitle={bookTitle}
         bookAuthor={bookAuthor}

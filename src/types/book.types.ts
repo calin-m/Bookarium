@@ -48,6 +48,10 @@ export interface Book {
   id: number;
   title: string;
   authors: string[];
+  authorDetails?: Author[];
+  translators?: Author[];
+  copyright?: boolean | null;
+  isRestrictedInJurisdiction?: boolean;
   subjects: string[];
   languages: string[];
   coverUrl: string | null;

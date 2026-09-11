@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { ReaderSurface } from './ReaderSurface';
 import type { Annotation } from '@/stores/useAnnotationStore';
+import { LegalRestrictionError } from '@/hooks/queries/useBookContent';
 
 describe('ReaderSurface', () => {
   const sampleChapter = {
@@ -97,6 +98,21 @@ describe('ReaderSurface', () => {
     const retryBtn = screen.getByText('Retry Connection');
     fireEvent.click(retryBtn);
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders legal restriction screen when isError is true with LegalRestrictionError', () => {
+    const legalErr = new LegalRestrictionError({
+      country: 'CA',
+      rule: 'LIFE_70',
+      reason: 'Protected under Canadian Life + 70 copyright statute.',
+    });
+
+    render(<ReaderSurface {...defaultProps} isError={true} error={legalErr} />);
+
+    expect(screen.getByTestId('reader-legal-restriction-view')).toBeInTheDocument();
+    expect(screen.getByText(/Protected by Copyright in Your Jurisdiction/i)).toBeInTheDocument();
+    expect(screen.getByText(/Protected under Canadian Life \+ 70 copyright statute\./i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Return to Library/i })).toBeInTheDocument();
   });
 
   it('applies correct surface theme classes for Sepia and Dark themes', () => {

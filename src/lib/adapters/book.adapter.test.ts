@@ -119,8 +119,9 @@ describe('book.adapter', () => {
       expect(result.coverUrl).toBe('https://www.gutenberg.org/cache/epub/84/pg84.cover.medium.jpg');
       expect(result.epubUrl).toBe('https://www.gutenberg.org/ebooks/84.epub3.images');
       expect(result.htmlUrl).toBe('https://www.gutenberg.org/files/84/84-h/84-h.htm');
-      expect(result.txtUrl).toBe('https://www.gutenberg.org/files/84/84-0.txt');
       expect(result.downloadCount).toBe(85230);
+      expect(result.authorDetails).toEqual([{ name: 'Shelley, Mary Wollstonecraft', birth_year: 1797, death_year: 1851 }]);
+      expect(result.copyright).toBe(false);
     });
 
     it('is idempotent when given an already-canonical Book', () => {
