@@ -89,6 +89,51 @@ describe('sync-gutenberg-catalog parser', () => {
       ]);
     });
 
+    it('handles birth-only notation with b., born, or trailing hyphen', () => {
+      const res1 = parseContributors('Smith, John, b. 1850');
+      expect(res1.authors).toEqual([
+        {
+          name: 'Smith, John',
+          birth_year: 1850,
+          death_year: null,
+        },
+      ]);
+
+      const res2 = parseContributors('Doe, Jane, 1860-');
+      expect(res2.authors).toEqual([
+        {
+          name: 'Doe, Jane',
+          birth_year: 1860,
+          death_year: null,
+        },
+      ]);
+    });
+
+    it('safely parses authors with single-letter initials without mistaking them for birth years', () => {
+      const res1 = parseContributors('Wortham, B. Hale [Translator]');
+      expect(res1.translators).toEqual([
+        {
+          name: 'Wortham, B. Hale',
+          birth_year: null,
+          death_year: null,
+        },
+      ]);
+
+      const res2 = parseContributors('Barker, B. (Benjamin); Jones, B. W.');
+      expect(res2.authors).toEqual([
+        {
+          name: 'Barker, B. (Benjamin)',
+          birth_year: null,
+          death_year: null,
+        },
+        {
+          name: 'Jones, B. W.',
+          birth_year: null,
+          death_year: null,
+        },
+      ]);
+    });
+
     it('handles authors without any lifespan dates', () => {
       const res = parseContributors('United States');
       expect(res.authors).toEqual([
