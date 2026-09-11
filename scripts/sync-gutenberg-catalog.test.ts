@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
   parseContributors,
   computeLifespanBounds,
   buildStandardFormats,
   normalizeCsvRow,
+  upsertBatch,
 } = require('./sync-gutenberg-catalog');
 
 describe('sync-gutenberg-catalog parser', () => {
@@ -232,6 +233,54 @@ describe('sync-gutenberg-catalog parser', () => {
 
       const book = normalizeCsvRow(row);
       expect(book.title).toBe('Lincoln\'s Gettysburg Address Given November 19, 1863 on the battlefield');
+    });
+  });
+
+  describe('upsertBatch', () => {
+    it('successfully upserts a batch when Supabase returns no error', async () => {
+      const upsertMock = vi.fn().mockResolvedValue({ error: null });
+      const mockSupabase = {
+        from: () => ({ upsert: upsertMock }),
+      };
+
+      const testBatch = [{ id: 1, title: 'Book 1' }, { id: 2, title: 'Book 2' }];
+      await upsertBatch(mockSupabase, testBatch, 1);
+
+      expect(upsertMock).toHaveBeenCalledWith(testBatch, {
+        onConflict: 'id',
+        ignoreDuplicates: true,
+      });
+
+      // Explicit overwrite mode
+      await upsertBatch(mockSupabase, testBatch, 1, false);
+      expect(upsertMock).toHaveBeenLastCalledWith(testBatch, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
+      });
+    });
+
+    it('adaptively splits the batch in half when encountering statement timeout', async () => {
+      const calls: any[][] = [];
+      const mockSupabase = {
+        from: () => ({
+          upsert: vi.fn().mockImplementation((batch: any[]) => {
+            calls.push(batch);
+            if (batch.length > 25) {
+              return Promise.resolve({ error: new Error('canceling statement due to statement timeout') });
+            }
+            return Promise.resolve({ error: null });
+          }),
+        }),
+      };
+
+      // 40 items: fails first (>25), then splits into 20 and 20 (both <= 25, so succeed)
+      const testBatch = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, title: `Book ${i + 1}` }));
+      await upsertBatch(mockSupabase, testBatch, 1);
+
+      expect(calls.length).toBe(3); // 1 failed (40) + 2 succeeded (20 + 20)
+      expect(calls[0].length).toBe(40);
+      expect(calls[1].length).toBe(20);
+      expect(calls[2].length).toBe(20);
     });
   });
 });
