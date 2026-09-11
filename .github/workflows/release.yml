@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release version tag (e.g. v1.9.0)'
+        description: 'Release version tag (e.g. v2.5.0)'
         required: true
-        default: 'v1.9.0'
+        default: 'v2.5.0'
 
 permissions:
   contents: read
@@ -71,4 +71,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
