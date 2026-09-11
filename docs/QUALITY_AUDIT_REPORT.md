@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 11 Sep 2026 11:29:55 GMT  
+**Last Generated**: Fri, 11 Sep 2026 12:52:23 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 160 passed  
-**Total Verified Tests**: 1336 passed  
+**Total Test Suites**: 161 passed  
+**Total Verified Tests**: 1355 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **160/160 test suites passed** (1336 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **161/161 test suites passed** (1355 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 37 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 38 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.7%** (6371/6872) — *Target: $ge$ 80%*
-- **Statements**: **91.17%** (6890/7557) — *Target: $ge$ 80%*
-- **Functions**: **88.9%** (1530/1721) — *Target: $ge$ 80%*
-- **Branches**: **81.57%** (5838/7157) — *Target: $ge$ 80%*
+- **Lines**: **92.73%** (6461/6967) — *Target: $ge$ 80%*
+- **Statements**: **91.2%** (6982/7655) — *Target: $ge$ 80%*
+- **Functions**: **88.96%** (1540/1731) — *Target: $ge$ 80%*
+- **Branches**: **81.65%** (5930/7262) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (160 Suites / 1336 Tests)
+## 🧪 Comprehensive Test Suite Catalog (161 Suites / 1355 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 146 Tests)
+### 🚀 App Routes & Pages (14 Suites · 148 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (5 tests)</summary>
@@ -101,7 +101,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `should return 429 when client exceeds max request rate limit`
 - ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
@@ -116,6 +116,8 @@
 - ✔ `should return 502 status code when network connection fails`
 - ✔ `should return 504 status code when upstream API times out via AbortError`
 - ✔ `should return 502 status code when upstream API returns invalid non-JSON body`
+- ✔ `should query Supabase provider first when healthy and return source supabase`
+- ✔ `should gracefully degrade to upstream Gutendex when Supabase provider throws an error`
 
 </details>
 
@@ -1119,7 +1121,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (26 Suites · 253 Tests)
+### 📚 Gutenberg Parsers & Metadata (27 Suites · 270 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1224,6 +1226,29 @@
 - ✔ `parses author year bounds, sort directions, and mime_type`
 - ✔ `parses comma-separated languages into string array`
 - ✔ `resolves country code through the priority cascade`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (17 tests)</summary>
+
+- ✔ `returns true when valid non-placeholder URL and key are set`
+- ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
+- ✔ `returns false when NEXT_PUBLIC_SUPABASE_ANON_KEY contains placeholder`
+- ✔ `returns false when credentials are missing or empty`
+- ✔ `correctly maps all fields and defaults nullish values`
+- ✔ `handles non-array or nullish authors, formats, and download count`
+- ✔ `returns false when Supabase is not configured and no client was injected`
+- ✔ `returns true when client returns count > 0 without error`
+- ✔ `returns false when table has count === 0 (unseeded)`
+- ✔ `returns false when select returns an error or rejects`
+- ✔ `successfully queries books and applies US public domain rules`
+- ✔ `filters out authors protected under Life + 70 when client is in GB`
+- ✔ `generates next and previous pagination links when page bounds allow`
+- ✔ `filters results by mimeType if specified`
+- ✔ `filters by comma-delimited book IDs`
+- ✔ `applies ascending and descending sort directions`
+- ✔ `throws CatalogProviderError when Supabase returns an error`
 
 </details>
 

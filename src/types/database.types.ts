@@ -327,6 +327,63 @@ export interface Database {
         };
         Relationships: [];
       };
+      books: {
+        Row: {
+          id: number;
+          title: string;
+          authors: Json;
+          translators: Json;
+          subjects: string[];
+          bookshelves: string[];
+          languages: string[];
+          copyright: boolean;
+          media_type: string;
+          formats: Json;
+          download_count: number;
+          max_author_death_year: number | null;
+          min_author_birth_year: number | null;
+          search_vector?: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: number;
+          title: string;
+          authors?: Json;
+          translators?: Json;
+          subjects?: string[];
+          bookshelves?: string[];
+          languages?: string[];
+          copyright?: boolean;
+          media_type?: string;
+          formats?: Json;
+          download_count?: number;
+          max_author_death_year?: number | null;
+          min_author_birth_year?: number | null;
+          search_vector?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          title?: string;
+          authors?: Json;
+          translators?: Json;
+          subjects?: string[];
+          bookshelves?: string[];
+          languages?: string[];
+          copyright?: boolean;
+          media_type?: string;
+          formats?: Json;
+          download_count?: number;
+          max_author_death_year?: number | null;
+          min_author_birth_year?: number | null;
+          search_vector?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -349,3 +406,4 @@ export type UserAnnotation = Database['public']['Tables']['user_annotations']['R
 export type UserBookCuration = Database['public']['Tables']['user_book_curation']['Row'];
 export type UserReadingHabits = Database['public']['Tables']['user_reading_habits']['Row'];
 export type UserAccolade = Database['public']['Tables']['user_accolades']['Row'];
+export type DatabaseBook = Database['public']['Tables']['books']['Row'];

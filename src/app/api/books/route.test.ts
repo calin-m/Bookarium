@@ -267,7 +267,6 @@ describe('GET /api/books route handler', () => {
         headers: { 'Content-Type': 'text/html' },
       })
     );
-
     const req = new NextRequest('http://localhost:3000/api/books?search=Test');
     const res = await GET(req);
 
@@ -275,6 +274,83 @@ describe('GET /api/books route handler', () => {
     const json = await res.json();
     expect(json.error).toContain('Invalid JSON response');
     expect(json.results).toHaveLength(0);
+    fetchSpy.mockRestore();
+  });
+
+  it('should query Supabase provider first when healthy and return source supabase', async () => {
+    const { supabaseCatalogProvider } = await import('@/lib/catalog/supabase-provider');
+    const isHealthySpy = vi.spyOn(supabaseCatalogProvider, 'isHealthy').mockResolvedValueOnce(true);
+    const searchBooksSpy = vi.spyOn(supabaseCatalogProvider, 'searchBooks').mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          subjects: ['Courtship -- Fiction'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 50000,
+        },
+      ],
+      source: 'supabase',
+      latencyMs: 12,
+      clientCountry: 'US',
+      jurisdictionRule: 'US_PUBLIC_DOMAIN',
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/books?search=Pride');
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.source).toBe('supabase');
+    expect(json.results).toHaveLength(1);
+    expect(json.results[0].title).toBe('Pride and Prejudice');
+
+    isHealthySpy.mockRestore();
+    searchBooksSpy.mockRestore();
+  });
+
+  it('should gracefully degrade to upstream Gutendex when Supabase provider throws an error', async () => {
+    const { supabaseCatalogProvider } = await import('@/lib/catalog/supabase-provider');
+    const isHealthySpy = vi.spyOn(supabaseCatalogProvider, 'isHealthy').mockResolvedValueOnce(true);
+    const searchBooksSpy = vi.spyOn(supabaseCatalogProvider, 'searchBooks').mockRejectedValueOnce(
+      new Error('Supabase database connection timeout')
+    );
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        count: 1,
+        results: [
+          {
+            id: 1342,
+            title: 'Pride and Prejudice',
+            authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+            translators: [],
+            copyright: false,
+          },
+        ],
+      }), { status: 200 })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/books?search=Pride');
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.source).toBe('upstream');
+    expect(json.results).toHaveLength(1);
+    expect(json.results[0].title).toBe('Pride and Prejudice');
+
+    isHealthySpy.mockRestore();
+    searchBooksSpy.mockRestore();
     fetchSpy.mockRestore();
   });
 });

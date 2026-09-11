@@ -590,4 +590,71 @@ CREATE POLICY "Users can delete their own accolades"
   TO authenticated
   USING (auth.uid() = user_id);
 
+-- ============================================================================
+-- 9. Books Table (Self-Hosted Public Domain Catalog)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.books (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  authors JSONB NOT NULL DEFAULT '[]'::jsonb,
+  translators JSONB NOT NULL DEFAULT '[]'::jsonb,
+  subjects TEXT[] NOT NULL DEFAULT '{}'::text[],
+  bookshelves TEXT[] NOT NULL DEFAULT '{}'::text[],
+  languages TEXT[] NOT NULL DEFAULT '{en}'::text[],
+  copyright BOOLEAN NOT NULL DEFAULT false,
+  media_type TEXT NOT NULL DEFAULT 'Text',
+  formats JSONB NOT NULL DEFAULT '{}'::jsonb,
+  download_count INTEGER NOT NULL DEFAULT 0,
+  max_author_death_year INTEGER,
+  min_author_birth_year INTEGER,
+  search_vector TSVECTOR,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Trigger to automatically populate and maintain search_vector on insert/update
+CREATE OR REPLACE FUNCTION public.books_search_vector_trigger()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.search_vector := to_tsvector(
+    'english'::regconfig,
+    coalesce(NEW.title, '') || ' ' || coalesce(array_to_string(NEW.subjects, ' '), '')
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trigger_books_search_vector ON public.books;
+CREATE TRIGGER trigger_books_search_vector
+  BEFORE INSERT OR UPDATE OF title, subjects ON public.books
+  FOR EACH ROW EXECUTE FUNCTION public.books_search_vector_trigger();
+
+-- Full-text search and query performance indexes
+CREATE INDEX IF NOT EXISTS idx_books_search_vector ON public.books USING GIN(search_vector);
+CREATE INDEX IF NOT EXISTS idx_books_languages ON public.books USING GIN(languages);
+CREATE INDEX IF NOT EXISTS idx_books_subjects ON public.books USING GIN(subjects);
+CREATE INDEX IF NOT EXISTS idx_books_download_count ON public.books(download_count DESC);
+CREATE INDEX IF NOT EXISTS idx_books_author_death_year ON public.books(max_author_death_year);
+
+-- Row Level Security (RLS)
+ALTER TABLE public.books ENABLE ROW LEVEL SECURITY;
+
+-- Allow public read access to catalog books (Zero API Key Requirement)
+DROP POLICY IF EXISTS "Allow public read access to catalog books" ON public.books;
+CREATE POLICY "Allow public read access to catalog books"
+  ON public.books FOR SELECT
+  USING (true);
+
+-- Mutations restricted to service_role (Admin / Ingestion Script)
+-- Anonymous and standard authenticated clients cannot mutate the catalog
+DROP POLICY IF EXISTS "Service role can manage catalog books" ON public.books;
+CREATE POLICY "Service role can manage catalog books"
+  ON public.books FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+
 
