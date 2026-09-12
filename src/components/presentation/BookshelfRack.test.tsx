@@ -806,5 +806,40 @@ describe('BookshelfRack Component', () => {
       expect(indicator.className).toContain('pointer-events-none');
     });
   });
+
+  describe('showShelfControls prop behavior', () => {
+    it('omits personal shelf management controls when showShelfControls is false', () => {
+      render(<BookshelfRack books={mockBooks} showShelfControls={false} />);
+
+      // Shelf management controls should not be rendered
+      expect(screen.queryByText('General')).not.toBeInTheDocument();
+      expect(screen.queryByText(/volumes/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Guest Mode/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /sign in to sync/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /new shelf/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /download shelf offline/i })).not.toBeInTheDocument();
+      expect(screen.queryByTestId('shelf-action-controls')).not.toBeInTheDocument();
+
+      // Book spines should still be rendered
+      expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
+      expect(screen.getByTestId(`shelf-book-${mockBooks[0].id}`)).toBeInTheDocument();
+    });
+
+    it('does not render syncing indicator when showShelfControls is false even if isSyncing is true', () => {
+      useBookshelfStore.setState({ isSyncing: true });
+      render(<BookshelfRack books={mockBooks} showShelfControls={false} />);
+
+      expect(screen.queryByTestId('syncing-indicator')).not.toBeInTheDocument();
+    });
+
+    it('displays catalog-appropriate empty state when showShelfControls is false and books array is empty', () => {
+      render(<BookshelfRack books={[]} showShelfControls={false} />);
+
+      expect(screen.getByText('No volumes found')).toBeInTheDocument();
+      expect(screen.getByText(/try adjusting your search criteria/i)).toBeInTheDocument();
+      expect(screen.queryByText(/General/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /browse catalog/i })).not.toBeInTheDocument();
+    });
+  });
 });
 

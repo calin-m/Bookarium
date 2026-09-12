@@ -84,5 +84,26 @@ describe('BookGrid component', () => {
     expect(activeCard).toHaveClass('lg:opacity-0');
     expect(activeCard).toHaveClass('max-lg:ring-2');
   });
+
+  it('omits personal shelf management buttons in shelf view when in catalog mode', () => {
+    render(<BookGrid books={mockBooks} viewMode="shelf" activeView="catalog" />);
+
+    expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
+    expect(screen.getByTestId(`shelf-book-${mockBooks[0].id}`)).toBeInTheDocument();
+
+    // Personal library management controls should not be rendered
+    expect(screen.queryByText('General')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new shelf/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /download shelf offline/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sign in to sync/i })).not.toBeInTheDocument();
+  });
+
+  it('renders personal shelf management buttons in shelf view when activeView is bookshelf', () => {
+    render(<BookGrid books={mockBooks} viewMode="shelf" activeView="bookshelf" />);
+
+    expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
+    expect(screen.getByText('General')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /download all books on this shelf/i })).toBeInTheDocument();
+  });
 });
 

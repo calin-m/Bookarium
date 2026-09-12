@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 12 Sep 2026 17:14:50 GMT  
+**Last Generated**: Sat, 12 Sep 2026 18:16:25 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 168 passed  
-**Total Verified Tests**: 1508 passed  
+**Total Verified Tests**: 1513 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1508 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1513 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 44 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.56%** (6873/7425) — *Target: $ge$ 80%*
-- **Statements**: **91.03%** (7429/8161) — *Target: $ge$ 80%*
-- **Functions**: **89.14%** (1601/1796) — *Target: $ge$ 80%*
-- **Branches**: **81.52%** (6509/7984) — *Target: $ge$ 80%*
+- **Lines**: **92.56%** (6874/7426) — *Target: $ge$ 80%*
+- **Statements**: **91.01%** (7429/8162) — *Target: $ge$ 80%*
+- **Functions**: **89.08%** (1600/1796) — *Target: $ge$ 80%*
+- **Branches**: **81.52%** (6525/8004) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1508 Tests)
+## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1513 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 155 Tests)
 
@@ -275,7 +275,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (25 Suites · 281 Tests)
+### 🎨 Catalog & Presentation (25 Suites · 286 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -319,7 +319,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `should render loading skeletons when isLoading is true`
 - ✔ `should render error state with retry button`
@@ -328,6 +328,8 @@
 - ✔ `should switch between editorial grid and bookshelf rack views`
 - ✔ `should forward onPreviewClick to BookCard`
 - ✔ `applies responsive active preview classes when activePreviewBookId matches`
+- ✔ `omits personal shelf management buttons in shelf view when in catalog mode`
+- ✔ `renders personal shelf management buttons in shelf view when activeView is bookshelf`
 
 </details>
 
@@ -425,7 +427,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (38 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (41 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -465,6 +467,9 @@
 - ✔ `renders All Restricted status notice when all books on shelf are protected in visitor jurisdiction`
 - ✔ `does not render syncing indicator when isSyncing is false`
 - ✔ `renders floating syncing indicator with status role when isSyncing is true`
+- ✔ `omits personal shelf management controls when showShelfControls is false`
+- ✔ `does not render syncing indicator when showShelfControls is false even if isSyncing is true`
+- ✔ `displays catalog-appropriate empty state when showShelfControls is false and books array is empty`
 
 </details>
 

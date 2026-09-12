@@ -24,6 +24,7 @@ export interface BookshelfRackProps {
   onBrowseCatalog?: () => void;
   searchQuery?: string;
   onClearSearch?: () => void;
+  showShelfControls?: boolean;
 }
 
 export const BookshelfRack: React.FC<BookshelfRackProps> = ({
@@ -33,6 +34,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   onBrowseCatalog,
   searchQuery,
   onClearSearch,
+  showShelfControls = true,
 }) => {
   const router = useRouter();
   const {
@@ -178,7 +180,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   // On the 'General' master shelf, show all books across all collections.
   // On custom shelves, filter to only the books assigned to that shelf.
   const effectiveShelfBooks = useMemo(() => {
-    if (cloudBookshelves.length <= 1 || isViewingGeneral) {
+    if (!showShelfControls || cloudBookshelves.length <= 1 || isViewingGeneral) {
       return books;
     }
 
@@ -188,7 +190,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
         .map((item) => item.book_id)
     );
     return books.filter((b) => currentShelfBookIds.has(b.id));
-  }, [cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, books]);
+  }, [showShelfControls, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, books]);
 
   // Partition shelf books into public domain titles in current jurisdiction vs copyright-restricted titles
   const { downloadableBooks, restrictedBooks } = useMemo(() => {
@@ -221,7 +223,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     <div className="relative w-full py-6" data-testid="bookshelf-rack" ref={containerRef}>
       {/* Sync Status Overlay Badge (Zero CLS Floating Pill) */}
       <AnimatePresence>
-        {isSyncing && (
+        {showShelfControls && isSyncing && (
           <motion.aside
             initial={{ opacity: 0, y: -4, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -243,8 +245,9 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
       <div className="w-full space-y-8">
         {/* Cloud Bookshelf Header & Multi-Shelf Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-2">
-        <div className="flex items-center gap-2 flex-wrap">
+        {showShelfControls && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-2">
+            <div className="flex items-center gap-2 flex-wrap">
           {user && cloudBookshelves.length > 0 ? (
             <>
               {cloudBookshelves.map((shelf) => {
@@ -439,6 +442,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
           </div>
         )}
       </div>
+    )}
 
       {/* Empty State vs Hardwood Shelf Rails */}
       {effectiveShelfBooks.length === 0 ? (
@@ -448,12 +452,20 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
           </div>
           <h3 className="font-serif font-bold text-lg text-foreground mb-1">
             {searchQuery?.trim()
-              ? `No books found matching "${searchQuery}" on "${activeShelfDisplayName}"`
+              ? !showShelfControls
+                ? `No volumes found matching "${searchQuery}"`
+                : `No books found matching "${searchQuery}" on "${activeShelfDisplayName}"`
+              : !showShelfControls
+              ? 'No volumes found'
               : `No books found on "${activeShelfDisplayName}"`}
           </h3>
           <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-6">
             {searchQuery?.trim()
-              ? 'Try searching for different keywords or clear the search query to see all books on this shelf.'
+              ? !showShelfControls
+                ? 'Try searching for different keywords or clear the search filter.'
+                : 'Try searching for different keywords or clear the search query to see all books on this shelf.'
+              : !showShelfControls
+              ? 'Try adjusting your search criteria or explore other categories in the catalog.'
               : isViewingGeneral
               ? 'Save your favorite books from the catalog to curate your personal classic library.'
               : 'Add books to this shelf using the "Move to Shelf" selector on book spine hover cards.'}
@@ -467,7 +479,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               >
                 Clear Search
               </Button>
-            ) : (
+            ) : showShelfControls ? (
               <Button
                 variant="outline"
                 size="chip"
@@ -481,8 +493,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               >
                 Browse Catalog
               </Button>
-            )}
-            {!user && (
+            ) : null}
+            {showShelfControls && !user && (
               <Button
                 variant="primary"
                 size="chip"
@@ -559,37 +571,39 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       )}
 
       {/* Shelf Management Modals (Create / Rename / Delete) */}
-      <BookshelfManageModals
-        isCreatingShelf={isCreatingShelf}
-        newShelfName={newShelfName}
-        newShelfIsPublic={newShelfIsPublic}
-        onNewShelfNameChange={setNewShelfName}
-        onNewShelfIsPublicChange={setNewShelfIsPublic}
-        onCloseCreateShelf={() => {
-          setIsCreatingShelf(false);
-          setNewShelfName('');
-          setNewShelfIsPublic(true);
-        }}
-        onCreateShelf={handleCreateShelf}
-        editingShelfId={editingShelfId}
-        editingShelfName={editingShelfName}
-        editingShelfIsPublic={editingShelfIsPublic}
-        onEditingShelfNameChange={setEditingShelfName}
-        onEditingShelfIsPublicChange={setEditingShelfIsPublic}
-        onCloseRenameShelf={() => {
-          setEditingShelfId(null);
-          setEditingShelfName('');
-          setEditingShelfIsPublic(true);
-        }}
-        onRenameShelf={handleRenameShelf}
-        deletingShelfId={deletingShelfId}
-        onCloseDeleteShelf={() => setDeletingShelfId(null)}
-        onDeleteShelf={handleDeleteShelf}
-        isClearingOfflineShelf={isClearingOfflineShelf}
-        onCloseClearOfflineShelf={() => setIsClearingOfflineShelf(false)}
-        onConfirmClearOfflineShelf={handleConfirmClearOfflineShelf}
-        isSubmitting={isSubmitting}
-      />
+      {showShelfControls && (
+        <BookshelfManageModals
+          isCreatingShelf={isCreatingShelf}
+          newShelfName={newShelfName}
+          newShelfIsPublic={newShelfIsPublic}
+          onNewShelfNameChange={setNewShelfName}
+          onNewShelfIsPublicChange={setNewShelfIsPublic}
+          onCloseCreateShelf={() => {
+            setIsCreatingShelf(false);
+            setNewShelfName('');
+            setNewShelfIsPublic(true);
+          }}
+          onCreateShelf={handleCreateShelf}
+          editingShelfId={editingShelfId}
+          editingShelfName={editingShelfName}
+          editingShelfIsPublic={editingShelfIsPublic}
+          onEditingShelfNameChange={setEditingShelfName}
+          onEditingShelfIsPublicChange={setEditingShelfIsPublic}
+          onCloseRenameShelf={() => {
+            setEditingShelfId(null);
+            setEditingShelfName('');
+            setEditingShelfIsPublic(true);
+          }}
+          onRenameShelf={handleRenameShelf}
+          deletingShelfId={deletingShelfId}
+          onCloseDeleteShelf={() => setDeletingShelfId(null)}
+          onDeleteShelf={handleDeleteShelf}
+          isClearingOfflineShelf={isClearingOfflineShelf}
+          onCloseClearOfflineShelf={() => setIsClearingOfflineShelf(false)}
+          onConfirmClearOfflineShelf={handleConfirmClearOfflineShelf}
+          isSubmitting={isSubmitting}
+        />
+      )}
     </div>
   );
 };
