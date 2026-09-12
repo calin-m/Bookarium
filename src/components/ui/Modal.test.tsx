@@ -45,5 +45,21 @@ describe('Modal component', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(handleClose).toHaveBeenCalledTimes(2);
   });
+
+  it('supports custom backdropClassName to override default dimming', () => {
+    render(
+      <Modal
+        isOpen={true}
+        onClose={() => {}}
+        backdropClassName="bg-transparent backdrop-blur-none"
+      >
+        <div>Modal Content</div>
+      </Modal>
+    );
+
+    const backdrop = screen.getByTestId('modal-backdrop');
+    expect(backdrop).toHaveClass('bg-transparent');
+    expect(backdrop).not.toHaveClass('bg-black/60');
+  });
 });
 

@@ -13,6 +13,7 @@ export interface ModalProps {
   className?: string;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | 'full';
   showCloseButton?: boolean;
+  backdropClassName?: string;
   backdropTestId?: string;
   testId?: string;
 }
@@ -25,6 +26,7 @@ export const Modal: React.FC<ModalProps> = ({
   className,
   maxWidth = '2xl',
   showCloseButton = true,
+  backdropClassName,
   backdropTestId = 'modal-backdrop',
   testId,
 }) => {
@@ -70,7 +72,7 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-2xs"
+            className={cn('fixed inset-0 bg-black/60 backdrop-blur-2xs', backdropClassName)}
             onClick={onClose}
             data-testid={backdropTestId}
           />

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 12 Sep 2026 16:48:36 GMT  
+**Last Generated**: Sat, 12 Sep 2026 17:14:50 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 168 passed  
-**Total Verified Tests**: 1507 passed  
+**Total Verified Tests**: 1508 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1507 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1508 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 44 Architectural Decision Records validated |
@@ -26,13 +26,13 @@
 ## 📊 Code Coverage Metrics
 
 - **Lines**: **92.56%** (6873/7425) — *Target: $ge$ 80%*
-- **Statements**: **91.01%** (7428/8161) — *Target: $ge$ 80%*
-- **Functions**: **89.08%** (1600/1796) — *Target: $ge$ 80%*
+- **Statements**: **91.03%** (7429/8161) — *Target: $ge$ 80%*
+- **Functions**: **89.14%** (1601/1796) — *Target: $ge$ 80%*
 - **Branches**: **81.52%** (6509/7984) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1507 Tests)
+## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1508 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 155 Tests)
 
@@ -2010,7 +2010,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (50 Suites · 235 Tests)
+### 🧩 UI Primitives & Motion (50 Suites · 236 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2389,11 +2389,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/Modal.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/ui/Modal.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `should not render anything when isOpen is false`
 - ✔ `should render modal content when isOpen is true`
 - ✔ `should trigger onClose when clicking backdrop or pressing Escape`
+- ✔ `supports custom backdropClassName to override default dimming`
 
 </details>
 

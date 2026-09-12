@@ -9,6 +9,19 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================================
+-- Supabase Studio CLI Migration Tracker (Prevents 42P01 dashboard warnings)
+-- ============================================================================
+CREATE SCHEMA IF NOT EXISTS supabase_migrations;
+
+CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (
+  version TEXT PRIMARY KEY,
+  statements TEXT[],
+  name TEXT
+);
+
+ALTER TABLE supabase_migrations.schema_migrations ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
 -- 1. Profiles Table
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.profiles (

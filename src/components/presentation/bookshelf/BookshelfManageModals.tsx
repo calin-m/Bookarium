@@ -297,6 +297,7 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
         testId="clear-offline-shelf-modal"
         maxWidth="sm"
         showCloseButton={false}
+        backdropClassName="bg-transparent backdrop-blur-none"
         className="p-6 space-y-4 ring-1 ring-black/10 dark:ring-white/10"
       >
         <div className="flex items-center justify-between border-b border-border pb-3">

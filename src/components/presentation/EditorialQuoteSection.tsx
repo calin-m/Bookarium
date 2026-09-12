@@ -126,7 +126,7 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
                 aria-label={`Start reading ${book.title} by ${book.author}`}
               >
                 <BookOpen className="w-4 h-4" />
-                <span>Start Reading {book.title}</span>
+                <span>Start Reading</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             </div>
