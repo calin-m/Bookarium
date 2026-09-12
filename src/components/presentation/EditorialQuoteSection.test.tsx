@@ -48,6 +48,7 @@ describe('EditorialQuoteSection component', () => {
 
     const button = screen.getByRole('button', { name: new RegExp(`Start reading ${expectedBook.title}`, 'i') });
     expect(button).toBeInTheDocument();
+    expect(button).toHaveTextContent('Start Reading');
 
     fireEvent.click(button);
 
