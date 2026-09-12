@@ -30,6 +30,7 @@ export interface BookGridProps {
   searchQuery?: string;
   onClearSearch?: () => void;
   activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
+  showShelfControls?: boolean;
 }
 
 export const BookGrid: React.FC<BookGridProps> = ({
@@ -53,9 +54,11 @@ export const BookGrid: React.FC<BookGridProps> = ({
   searchQuery,
   onClearSearch,
   activeView,
+  showShelfControls,
 }) => {
   const [internalViewMode, setInternalViewMode] = useState<BookViewMode>(initialViewMode);
   const activeViewMode = controlledViewMode ?? internalViewMode;
+  const shouldShowShelfControls = showShelfControls ?? (activeView === 'bookshelf');
 
   const handleViewToggle = (mode: BookViewMode) => {
     if (onViewModeChange) {
@@ -198,6 +201,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
             onBrowseCatalog={onBrowseCatalog}
             searchQuery={searchQuery}
             onClearSearch={onClearSearch}
+            showShelfControls={shouldShowShelfControls}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
