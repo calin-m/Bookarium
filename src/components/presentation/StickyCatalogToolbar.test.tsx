@@ -29,7 +29,7 @@ describe('StickyCatalogToolbar component', () => {
     expect(screen.getByTestId('api-latency-badge')).toHaveTextContent('85ms');
   });
 
-  it('should handle page size selection', () => {
+  it('should handle page size selection and reflect aria-pressed state', () => {
     const handlePageSizeChange = vi.fn();
     render(
       <StickyCatalogToolbar
@@ -47,6 +47,11 @@ describe('StickyCatalogToolbar component', () => {
 
     expect(screen.getByText('Show:')).toBeInTheDocument();
     const size8Btn = screen.getByLabelText('Show 8 books per page');
+    const size16Btn = screen.getByLabelText('Show 16 books per page');
+
+    expect(size16Btn).toHaveAttribute('aria-pressed', 'true');
+    expect(size8Btn).toHaveAttribute('aria-pressed', 'false');
+
     fireEvent.click(size8Btn);
     expect(handlePageSizeChange).toHaveBeenCalledWith(8);
   });
@@ -119,10 +124,30 @@ describe('StickyCatalogToolbar component', () => {
     fireEvent.click(nextBtn);
     expect(handlePageChange).toHaveBeenCalledWith(2);
 
-    const jumpInput = screen.getByLabelText('Jump to page');
-    fireEvent.change(jumpInput, { target: { value: '5' } });
+    const jumpInput = screen.getByLabelText('Jump to page') as HTMLInputElement;
+    expect(jumpInput).toHaveAttribute('inputmode', 'numeric');
+    expect(jumpInput).toHaveAttribute('pattern', '[0-9]*');
+    expect(jumpInput.value).toBe('1');
+
+    // Simulate focus and tactile click
+    fireEvent.focus(jumpInput);
+    fireEvent.click(jumpInput);
+
+    // User backspaces to empty string during typing - should not snap back to '1'
+    fireEvent.change(jumpInput, { target: { value: '' } });
+    expect(jumpInput.value).toBe('');
+
+    // User types '25'
+    fireEvent.change(jumpInput, { target: { value: '25' } });
+    expect(jumpInput.value).toBe('25');
+
     fireEvent.submit(jumpInput.closest('form')!);
-    expect(handlePageChange).toHaveBeenCalledWith(5);
+    expect(handlePageChange).toHaveBeenCalledWith(25);
+
+    // User types new page and commits via blur (e.g. tapping outside / Done key on mobile)
+    fireEvent.change(jumpInput, { target: { value: '42' } });
+    fireEvent.blur(jumpInput);
+    expect(handlePageChange).toHaveBeenCalledWith(42);
   });
 
   it('should display error indicator in status badge when isError is true', () => {

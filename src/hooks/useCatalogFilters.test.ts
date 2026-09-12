@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCatalogFilters, parseFiltersFromUrl } from './useCatalogFilters';
 
@@ -490,6 +490,114 @@ describe('windowed chunk sub-pagination in useCatalogFilters', () => {
     expect(result.current.page).toBe(2);
 
     window.matchMedia = originalMatchMedia;
+  });
+});
+
+describe('view-scoped URL pagination and query parameter synchronization', () => {
+  let replaceStateSpy: any;
+
+  beforeEach(() => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/');
+    replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+  });
+
+  afterEach(() => {
+    replaceStateSpy?.mockRestore();
+  });
+
+  it('synchronizes catalog pagination to URL as /?page=2 when on catalog view', () => {
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.setPage(2);
+    });
+
+    expect(result.current.page).toBe(2);
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '/?page=2');
+  });
+
+  it('omits catalog pagination parameter when navigating from catalog page 2 to /bookshelf', () => {
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.setPage(2);
+    });
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '/?page=2');
+
+    act(() => {
+      result.current.setActiveView('bookshelf');
+    });
+
+    expect(result.current.activeView).toBe('bookshelf');
+    // Crucial assertion: URL is strictly /bookshelf without ?page=2
+    expect(replaceStateSpy).toHaveBeenLastCalledWith(null, '', '/bookshelf');
+  });
+
+  it('restores catalog pagination position when switching back from /bookshelf to catalog', () => {
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.setPage(3);
+    });
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '/?page=3');
+
+    act(() => {
+      result.current.setActiveView('bookshelf');
+    });
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, '', '/bookshelf');
+
+    act(() => {
+      result.current.setActiveView('catalog');
+    });
+    expect(result.current.activeView).toBe('catalog');
+    expect(result.current.page).toBe(3);
+    expect(replaceStateSpy).toHaveBeenLastCalledWith(null, '', '/?page=3');
+  });
+
+  it('prevents search, topic, and sort filters from leaking into personal collection views', () => {
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.handleSearchChange('Austen');
+      result.current.handleTopicChange('fiction');
+      result.current.handleSortChange('ascending');
+      result.current.setPage(2);
+    });
+
+    expect(replaceStateSpy).toHaveBeenLastCalledWith(
+      null,
+      '',
+      '/?search=Austen&topic=fiction&sort=ascending&page=2'
+    );
+
+    // Switch to favorites
+    act(() => {
+      result.current.setActiveView('favorites');
+    });
+    expect(replaceStateSpy).toHaveBeenLastCalledWith(null, '', '/favorites');
+
+    // Switch to notebook
+    act(() => {
+      result.current.setActiveView('notebook');
+    });
+    expect(replaceStateSpy).toHaveBeenLastCalledWith(null, '', '/notebook');
+
+    // Switch to bookmarks
+    act(() => {
+      result.current.setActiveView('bookmarks');
+    });
+    expect(replaceStateSpy).toHaveBeenLastCalledWith(null, '', '/bookmarks');
+
+    // Switch back to catalog: full state is restored!
+    act(() => {
+      result.current.setActiveView('catalog');
+    });
+    expect(replaceStateSpy).toHaveBeenLastCalledWith(
+      null,
+      '',
+      '/?search=Austen&topic=fiction&sort=ascending&page=2'
+    );
   });
 });
 

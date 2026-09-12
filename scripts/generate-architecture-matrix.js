@@ -8,6 +8,9 @@ const {
   extractStoreCatalog,
   extractApiAndHookCatalog,
   extractDomainUtilitiesCatalog,
+  extractConfigurationCatalog,
+  extractTypeCatalog,
+  extractWorkerCatalog,
 } = require('./lib/ast-parser');
 
 const rootDir = path.resolve(__dirname, '..');
@@ -68,6 +71,9 @@ function generateMarkdown() {
   const stores = extractStoreCatalog(srcDir);
   const { routes, hooks } = extractApiAndHookCatalog(srcDir);
   const utilities = extractDomainUtilitiesCatalog(srcDir);
+  const configs = extractConfigurationCatalog(srcDir);
+  const typeDefs = extractTypeCatalog(srcDir);
+  const workers = extractWorkerCatalog(srcDir);
 
   const timestamp = new Date().toISOString().split('T')[0];
 
@@ -96,8 +102,12 @@ function generateMarkdown() {
     '    subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]',
     '        Nav["Navbar.tsx\\n(Brand Reset, View Switcher, Theme Cycler)"]',
     '        Hero["HeroSearch.tsx\\n(Dynamic 3D Rotating Spotlight & Search)"]',
+    '        Hero3D["HeroFeaturedBook3D.tsx\\n(3D Open-Cover Hinge & Leaf-Flip Engine)"]',
     '        Toolbar["StickyCatalogToolbar.tsx\\n(0px Flush Header, Filters Toggle, Telemetry)"]',
     '        FilterDrawer["AdvancedFilterDrawer.tsx\\n(Left Push-Sidebar: Eras, Sort, Formats)"]',
+    '        EditorialQuote["EditorialQuoteSection.tsx\\n(Classic of the Day & Collision Guard)"]',
+    '        LiteraryQuotes["LiteraryQuotes.tsx\\n(Words That Shaped Humanity & Safe Shuffling)"]',
+    '        CopyrightBanner["CopyrightNoticeBanner.tsx\\n(Declarative Territorial Restriction & Public Domain Notice)"]',
     '        ',
     '        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]',
     '            Grid["Catalog View (/)\\n(Editorial Card Grid & 3D Hardwood Shelf)"]',
@@ -140,6 +150,8 @@ function generateMarkdown() {
     '            AnnotatorEngine["🖍️ reader-annotator.ts\\n(Computational Interval Partitioning & Highlighter)"]',
     '        end',
     '        ',
+    '        HookCopyright["⚖️ useBookCopyright\\n(Declarative Facade: Rules, Lifespans & Status)"]',
+    '        HookAutoHeal["🩺 useCollectionAutoHeal\\n(Author Lifespan Scanning & Auto-Rehydration)"]',
     '        QueryBooks["🔄 useBooks & usePrefetchNextPage\\n(Windowed Sub-Pages & Predictive Prefetch)"]',
     '        QueryContent["🔄 useBookContent(url, bookId)\\n(IndexedDB Check to CDN Stream)"]',
     '        QueryTranslate["🌐 useBookTranslations\\n(International Editions Aggregation)"]',
@@ -176,10 +188,18 @@ function generateMarkdown() {
     '    User --> RootProxy',
     '    RootProxy --> Nav',
     '    RootProxy --> Hero',
+    '    Hero --> Hero3D',
     '    RootProxy --> Toolbar',
     '    Toolbar --> FilterDrawer',
     '    Toolbar --> Grid',
+    '    Grid --> CopyrightBanner',
+    '    Grid --> HookCopyright',
+    '    Grid --> EditorialQuote',
+    '    Grid --> LiteraryQuotes',
     '    Nav --> Views',
+    '    FavView --> HookAutoHeal',
+    '    ShelfView --> HookAutoHeal',
+    '    HookCopyright --> EngineCore',
     '    AccView --> HabitsCard',
     '    AccView --> AccoladesCard',
     '    ',
@@ -187,7 +207,7 @@ function generateMarkdown() {
     '    QueryBooks --> ProxyBooks',
     '    ProxyBooks --> CatalogSeam',
     '    CatalogSeam --> EngineCore',
-    '    CatalogSeam -->|"Primary: ~1-2s Catalog / <50ms Single-Book"| SupabaseCloud',
+    '    CatalogSeam -->|"Primary: Estimated-Count Fast Scan / <50ms Single-Book"| SupabaseCloud',
     '    CatalogSeam -.->|Fallback on unseeded/offline| Gutendex',
     '    SyncEngine -->|Weekly Cron pg_catalog.csv.gz Stream| SupabaseCloud',
     '    QueryBooks -.->|Client Failover on 504| Gutendex',
@@ -337,6 +357,7 @@ function generateMarkdown() {
     useReadingTimer: 'Reader session telemetry tracking visual reading with 2-minute idle guard and TTS narration audio bypass.',
     useCollectionAutoHeal: 'Unified multi-collection auto-healing pipeline scanning and rehydrating missing author lifespans across Favorites and Bookshelves.',
     useMobileViewSwipe: 'Tactile touch gesture navigation hook enabling horizontal view swiping across primary mobile navigation tabs.',
+    useBookCopyright: 'Declarative jurisdictional copyright facade hook coordinating territory rules, author lifespan restrictions, and public domain badges.',
   };
 
   for (const h of hooks) {
@@ -488,18 +509,67 @@ function generateMarkdown() {
     '',
     '---',
     '',
-    '## 📚 Curated Configurations & Design Token Registry',
+    '## 📚 Configuration, Anthologies & Design Token Catalog',
     '',
-    '* **`FEATURED_HERO_BOOKS`** (`src/config/featured-books.ts`): 10 curated classic masterpieces (*Pride and Prejudice, Frankenstein, Moby Dick, The Great Gatsby, Alice in Wonderland, Dorian Gray, Sherlock Holmes, Dracula, A Tale of Two Cities, The Time Machine*) with verified volume numbers and quotes.',
-    '* **`ACCOLADES_CATALOG` & `ACCOLADE_TIER_CONFIG`** (`src/config/accolades-config.ts`): 10 curated literary achievement accolades across 4 prestige visual tiers (*Parchment Bronze, Specular Silver, Gilded Gold, Obsidian Masterwork*) with badges, mottoes, criteria, and bookplates.',
-    '* **`LITERARY_ERAS`** (`src/config/catalog-filters.ts`): 6 historical eras spanning from Antiquity (-800 to 500) to Mid-20th Century (1914 to 1960).',
-    '* **`GENRE_FACETS`** (`src/config/catalog-filters.ts`): Curated genre tags (Gothic & Horror, Philosophy, Adventure, Sci-Fi, Poetry, Drama, Detective & Mystery, History).',
-    '* **`READER_THEMES` & `NEXT_READER_THEME`** (`src/config/reader-themes.ts`): 3 reading themes (Day Paper, Sepia Parchment, Obsidian Dark) with color tokens for background, text, borders, accents, theme cycling order, and high-contrast Web Speech boundary highlight classes (`speechHighlight`).',
-    '* **`LITERARY_QUOTES`** (`src/config/literary-quotes.ts`): 12 literary passages and opening lines from immortal masterworks.',
-    '* **`ANNOTATION_COLOR_CONFIG` & `ANNOTATION_COLOR_LIST`** (`src/config/annotation-tokens.ts`): Canonical single source of truth for scholar annotation color tokens (`yellow`, `amber`, `mint`, `rose`), text highlight surface classes, dot/border styling, human-readable labels, and filter badges.',
-    '* **`NAV_ITEMS`, `NAVBAR_VIEW_CONFIG` & `VIEW_CONTENT_CONFIG`** (`src/config/views.config.ts`): Declarative polymorphic strategy configurations defining application view IDs, navigation badges, section eyebrows, titles, search placeholders, and collection clear action descriptors.',
-    '* **`ROUTES`** (`src/config/routes.ts`): Centralized single-source route registry defining clean path targets and dynamic route builders.',
-    '* **`SITE_CONFIG`** (`src/config/site-config.ts`): Canonical site metadata, storage key registry, and public domain policy declarations.',
+    `Programmatically extracted from **${configs.length} Configuration Modules** in \`src/config/\` using Babel AST:`,
+    '',
+    '| Configuration Module | Source File | Exported Constants & Fixtures | Exported Pure Functions | Canonical Interfaces / Types |',
+    '| :--- | :--- | :--- | :--- | :--- |'
+  );
+
+  for (const c of configs) {
+    const constsStr = c.constants.length > 0 ? c.constants.map((cn) => `\`${cn}\``).join(', ') : '_None_';
+    const fnsStr = c.functions.length > 0 ? c.functions.map((fn) => `\`${fn}\``).join(', ') : '_None_';
+    const typesStr = c.types.length > 0 ? c.types.map((tp) => `\`${tp}\``).join(', ') : '_None_';
+    lines.push(`| **\`${c.name}\`** | [\`${c.file}\`](${c.file}) | ${constsStr} | ${fnsStr} | ${typesStr} |`);
+  }
+
+  lines.push(
+    '',
+    '---',
+    '',
+    '## 📐 Domain Type Contracts & Data Models',
+    '',
+    `Programmatically extracted from **${typeDefs.length} TypeScript Type Modules** in \`src/types/\` using Babel AST:`,
+    '',
+    '| Type Definition Module | Source File | Exported Interfaces | Exported Type Aliases |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  for (const t of typeDefs) {
+    const ifacesStr = t.interfaces.length > 0 ? t.interfaces.map((i) => `\`${i}\``).join(', ') : '_None_';
+    const aliasesStr = t.typeAliases.length > 0 ? t.typeAliases.map((a) => `\`${a}\``).join(', ') : '_None_';
+    lines.push(`| **\`${t.name}\`** | [\`${t.file}\`](${t.file}) | ${ifacesStr} | ${aliasesStr} |`);
+  }
+
+  lines.push(
+    '',
+    '---',
+    '',
+    '## ⚙️ Background Web Worker Architecture',
+    '',
+    'Dedicated off-thread compute modules in `src/workers/`:',
+    '',
+    '| Worker Module | Source File | Architectural Responsibility |',
+    '| :--- | :--- | :--- |'
+  );
+
+  for (const w of workers) {
+    lines.push(`| **\`${w.name}\`** | [\`${w.file}\`](${w.file}) | ${w.role} |`);
+  }
+
+  lines.push(
+    '',
+    '---',
+    '',
+    '## 🌐 Root Edge Reverse Proxy & Geographic Layer',
+    '',
+    '| Module | Source File | Responsibilities & Security Directives |',
+    '| :--- | :--- | :--- |',
+    '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) | Next.js 16 Edge proxy extracting client IP country (`x-vercel-ip-country`), setting `bookarium-geo-country` cookie, handling development query override (`?country=XX`), and enforcing strict security headers. |'
+  );
+
+  lines.push(
     '',
     '---',
     '',

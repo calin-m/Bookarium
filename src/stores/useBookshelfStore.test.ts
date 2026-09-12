@@ -269,6 +269,167 @@ describe('useBookshelfStore', () => {
       expect(useBookshelfStore.getState().favoriteBookIds).toContain(84);
     });
 
+    it('orders bookshelf_items by created_at descending during syncWithCloud for stable placement', async () => {
+      const orderMock = vi.fn().mockResolvedValueOnce({
+        data: [
+          {
+            id: 'item-2',
+            bookshelf_id: 'shelf-1',
+            user_id: 'user-1',
+            book_id: 200,
+            book_title: 'The Great Gatsby',
+            book_authors: ['F. Scott Fitzgerald'],
+            cover_url: null,
+            created_at: '2026-02-01T00:00:00Z',
+          },
+          {
+            id: 'item-1',
+            bookshelf_id: 'shelf-1',
+            user_id: 'user-1',
+            book_id: 100,
+            book_title: 'Pride and Prejudice',
+            book_authors: ['Jane Austen'],
+            cover_url: null,
+            created_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({
+                  data: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' }],
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: orderMock,
+              }),
+            }),
+          };
+        }
+        if (table === 'user_favorites') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({ data: [] }),
+              }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      const { result } = renderHook(() => useHydratedBookshelf());
+
+      await act(async () => {
+        await result.current.syncWithCloud('user-1');
+      });
+
+      expect(orderMock).toHaveBeenCalledWith('created_at', { ascending: false });
+      expect(useBookshelfStore.getState().savedBooks).toHaveLength(2);
+      expect(useBookshelfStore.getState().savedBooks[0].id).toBe(200);
+      expect(useBookshelfStore.getState().savedBooks[1].id).toBe(100);
+    });
+
+    it('preserves existing local savedBooks and favoriteBooks when Supabase queries error out during syncWithCloud', async () => {
+      // Pre-seed store with local saved and favorite books
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            id: 11,
+            title: 'Alice in Wonderland',
+            authors: [{ name: 'Lewis Carroll', birth_year: 1832, death_year: 1898 }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 100,
+          },
+        ],
+        favoriteBooks: [
+          {
+            id: 84,
+            title: 'Frankenstein',
+            authors: [{ name: 'Mary Wollstonecraft Shelley', birth_year: 1797, death_year: 1851 }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 200,
+          },
+        ],
+        favoriteBookIds: [84],
+        lastBookshelfSyncAt: '2026-01-01T00:00:00Z',
+        lastFavoritesSyncAt: '2026-01-01T00:00:00Z',
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({
+                  data: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' }],
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({
+                  data: null,
+                  error: { message: 'column bookshelf_items.created_at does not exist', code: '42703' },
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'user_favorites') {
+          return {
+            select: vi.fn().mockReturnValueOnce({
+              eq: vi.fn().mockReturnValueOnce({
+                order: vi.fn().mockResolvedValueOnce({
+                  data: null,
+                  error: { message: 'network timeout', code: '500' },
+                }),
+              }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      const { result } = renderHook(() => useHydratedBookshelf());
+
+      await act(async () => {
+        await result.current.syncWithCloud('user-1');
+      });
+
+      // Anti-data-loss verification: local books must NOT be wiped
+      expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
+      expect(useBookshelfStore.getState().savedBooks[0].id).toBe(11);
+      expect(useBookshelfStore.getState().favoriteBooks).toHaveLength(1);
+      expect(useBookshelfStore.getState().favoriteBooks[0].id).toBe(84);
+    });
+
     it('bidirectionally pushes unsynced local books and favorites to Supabase during syncWithCloud', async () => {
       const itemsUpsertMock = vi.fn().mockResolvedValue({ error: null });
       const favsUpsertMock = vi.fn().mockResolvedValue({ error: null });

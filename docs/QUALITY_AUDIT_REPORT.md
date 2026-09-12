@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 11 Sep 2026 21:58:54 GMT  
+**Last Generated**: Sat, 12 Sep 2026 13:31:25 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 163 passed  
-**Total Verified Tests**: 1429 passed  
+**Total Test Suites**: 165 passed  
+**Total Verified Tests**: 1474 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **163/163 test suites passed** (1429 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **165/165 test suites passed** (1474 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 40 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 43 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.49%** (6696/7239) — *Target: $ge$ 80%*
-- **Statements**: **90.92%** (7226/7947) — *Target: $ge$ 80%*
-- **Functions**: **89.06%** (1555/1746) — *Target: $ge$ 80%*
-- **Branches**: **81.5%** (6271/7694) — *Target: $ge$ 80%*
+- **Lines**: **92.51%** (6800/7350) — *Target: $ge$ 80%*
+- **Statements**: **90.94%** (7344/8075) — *Target: $ge$ 80%*
+- **Functions**: **89.03%** (1583/1778) — *Target: $ge$ 80%*
+- **Branches**: **81.56%** (6364/7802) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (163 Suites / 1429 Tests)
+## 🧪 Comprehensive Test Suite Catalog (165 Suites / 1474 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 153 Tests)
+### 🚀 App Routes & Pages (14 Suites · 155 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (7 tests)</summary>
@@ -162,16 +162,17 @@
 </details>
 
 <details>
-<summary><b><code>src/app/layout.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/app/layout.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `should expose valid metadata with OpenGraph, Twitter, and canonical alternates`
 - ✔ `should render children within html structure alongside analytics and performance telemetry`
 - ✔ `should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities`
+- ✔ `should gracefully handle cookie exception and fallback to US`
 
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (20 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -191,6 +192,7 @@
 - ✔ `should switch to Notebook view when Notebook tab in Navbar is clicked`
 - ✔ `switches to Bookmarks view and renders reading ledger when Bookmarks nav tab is clicked`
 - ✔ `smoothly scrolls to catalog-section and updates display mode when toggling between Cards and Bookshelves`
+- ✔ `smoothly scrolls to catalog-section when page size is changed via StickyCatalogToolbar`
 - ✔ `switches views when swiping horizontally across main on mobile`
 
 </details>
@@ -273,7 +275,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (23 Suites · 254 Tests)
+### 🎨 Catalog & Presentation (24 Suites · 275 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -483,6 +485,14 @@
 </details>
 
 <details>
+<summary><b><code>src/components/presentation/CopyrightNoticeBanner.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders standard download withholding banner`
+- ✔ `renders compact mobile notice banner with custom testId`
+
+</details>
+
+<details>
 <summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `should render download formats when opened with a public domain book in US`
@@ -493,12 +503,30 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (32 tests)</summary>
 
 - ✔ `renders section landmark, Classic of the Day badge, and book details`
 - ✔ `navigates to reader and dispatches openReader on button click`
+- ✔ `filters out books protected in Life+100 jurisdiction (Mexico)`
 - ✔ `dynamically avoids collision when heroBookId matches candidate book`
 - ✔ `accepts custom className and applies it to root section`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
+- ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
@@ -531,7 +559,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `should render headline, featured book, 4-pillar benefit strip, static volume badge, and focus classes`
 - ✔ `handles search input lifecycle: typing validation, clear button, whitespace normalization, and explicit submit`
@@ -541,6 +569,7 @@
 - ✔ `should shuffle to next passage within the featured book when rotate button is clicked`
 - ✔ `should toggle pinned open and closed states on click and keyboard events on desktop, and trigger read from open action button`
 - ✔ `should not toggle pinned open state on mobile viewports (< 1024px)`
+- ✔ `should render the hourly hero book immediately on initial render without falling back to index 0`
 
 </details>
 
@@ -561,7 +590,7 @@
 - ✔ `should shuffle quotes when clicking Discover More button`
 - ✔ `should have links pointing to valid /read/[id] routes`
 - ✔ `should cleanly unmount without errors during active shuffle`
-- ✔ `applies theme-aware border-border classes to card dividers without unsupported opacity modifiers`
+- ✔ `filters out quotes from protected authors in Life+100 jurisdiction (Mexico)`
 
 </details>
 
@@ -655,7 +684,7 @@
 <summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and 2-part API status badge`
-- ✔ `should handle page size selection`
+- ✔ `should handle page size selection and reflect aria-pressed state`
 - ✔ `should trigger filter opening, remove individual chips, and clear all filters`
 - ✔ `should handle view mode switching between grid and shelf`
 - ✔ `should handle pagination next button and direct page jump form`
@@ -947,7 +976,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (9 Suites · 141 Tests)
+### ⚡ Zustand State Stores (9 Suites · 144 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -1023,7 +1052,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (37 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (39 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -1035,6 +1064,8 @@
 - ✔ `returns live hydrated state and reactive actions`
 - ✔ `handles activeBookshelfId selection and cloud bookshelf list`
 - ✔ `handles syncWithCloud fetching bookshelves and items`
+- ✔ `orders bookshelf_items by created_at descending during syncWithCloud for stable placement`
+- ✔ `preserves existing local savedBooks and favoriteBooks when Supabase queries error out during syncWithCloud`
 - ✔ `bidirectionally pushes unsynced local books and favorites to Supabase during syncWithCloud`
 - ✔ `treats Supabase as authoritative for savedBooks on subsequent syncs and does not re-upload missing books`
 - ✔ `handles createCloudBookshelf and migrateLocalBooksToCloud`
@@ -1084,7 +1115,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useJurisdictionStore.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/stores/useJurisdictionStore.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `initializes with default US public domain rule`
 - ✔ `updates country and switches jurisdiction rule to Life + 70 for GB`
@@ -1094,6 +1125,7 @@
 - ✔ `resolves initial country from cookie when present`
 - ✔ `resolves initial country from timezone when cookie is absent in development`
 - ✔ `falls back to US when cookie and timezone are unknown`
+- ✔ `initializes jurisdiction safely via initializeJurisdiction`
 
 </details>
 
@@ -1144,7 +1176,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (28 Suites · 294 Tests)
+### 📚 Gutenberg Parsers & Metadata (28 Suites · 302 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1227,7 +1259,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/gutendex-provider.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/lib/catalog/gutendex-provider.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `has name "gutendex"`
 - ✔ `searches books, enforces copyright=false, and calculates latency`
@@ -1238,6 +1270,7 @@
 - ✔ `bypasses jurisdictional filtering when includeRestrictedMetadata is true`
 - ✔ `throws CatalogProviderError with status 502 on invalid non-JSON body`
 - ✔ `checks isHealthy via HEAD request`
+- ✔ `uses calibrated baseline count for unfiltered catalog queries under non-US jurisdictions`
 
 </details>
 
@@ -1281,7 +1314,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/copyright-engine.test.ts</code></b> (26 tests)</summary>
+<summary><b><code>src/lib/copyright-engine.test.ts</code></b> (33 tests)</summary>
 
 - ✔ `normalizes valid 2-letter codes to uppercase`
 - ✔ `defaults null, undefined, or empty values to US`
@@ -1309,6 +1342,13 @@
 - ✔ `coerces string birth and death years correctly`
 - ✔ `extracts embedded birth and death years from author name string when fields are null`
 - ✔ `ignores secondary illustrators and visual contributors with unlisted dates`
+- ✔ `defines calibrated baseline counts for all jurisdiction rules`
+- ✔ `resolves valid country codes to full English names`
+- ✔ `gracefully handles unmapped or normalized codes`
+- ✔ `generates concise badge labels with authentic country names`
+- ✔ `partitions all books into downloadable in US jurisdiction`
+- ✔ `partitions books accurately in Life + 70 jurisdiction (e.g. GB / RO)`
+- ✔ `handles empty collection gracefully`
 
 </details>
 
@@ -1608,7 +1648,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (21 Suites · 187 Tests)
+### 🔄 Hooks & React Query (22 Suites · 196 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -1625,7 +1665,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
@@ -1641,6 +1681,7 @@
 - ✔ `should throw when upstream returns invalid non-JSON body`
 - ✔ `should filter protected books during Strategy 2 fallback for international users`
 - ✔ `should retain protected books during Strategy 2 fallback when includeRestrictedMetadata is true`
+- ✔ `should use calibrated baseline count during Strategy 2 fallback for unfiltered catalog queries in RO`
 
 </details>
 
@@ -1792,6 +1833,15 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/useBookCopyright.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `evaluates public domain works as allowed in US`
+- ✔ `evaluates Agatha Christie as allowed in US but restricted in GB`
+- ✔ `handles null book gracefully`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/useBookPassageShuffle.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `initializes with curated fallback passages for known books`
@@ -1801,7 +1851,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (27 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -1826,16 +1876,21 @@
 - ✔ `normalizes page coordinates and preserves batch index when resizing from desktop to mobile`
 - ✔ `preserves higher batch coordinates (batch 2) across mobile-to-desktop resize`
 - ✔ `does not alter page or pageSize when explicit size override is set`
+- ✔ `synchronizes catalog pagination to URL as /?page=2 when on catalog view`
+- ✔ `omits catalog pagination parameter when navigating from catalog page 2 to /bookshelf`
+- ✔ `restores catalog pagination position when switching back from /bookshelf to catalog`
+- ✔ `prevents search, topic, and sort filters from leaking into personal collection views`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `stays dormant with 0 query params when all collections are healthy`
 - ✔ `detects missing favorite IDs and queries /api/books`
 - ✔ `detects incomplete saved books and enriches author lifespans`
 - ✔ `deduplicates book IDs when a book is in both favorites and bookshelf`
+- ✔ `does not loop and terminates cleanly when upstream books also lack author lifespans`
 
 </details>
 
@@ -1923,7 +1978,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (49 Suites · 220 Tests)
+### 🧩 UI Primitives & Motion (49 Suites · 222 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2338,7 +2393,7 @@
 </details>
 
 <details>
-<summary><b><code>src/config/config.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/config/config.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `defines valid non-empty endpoint URLs`
 - ✔ `provides literary eras with valid date boundaries`
@@ -2351,7 +2406,9 @@
 - ✔ `getDailyEditorialBook rotates daily and avoids collision with heroBookId`
 - ✔ `filters out titles protected in Life + 100 countries (Mexico)`
 - ✔ `includes all featured books for US jurisdiction`
-- ✔ `provides 12 curated quotes with non-empty metadata`
+- ✔ `provides 36+ curated quotes with complete metadata including author birth and death years`
+- ✔ `filters out quotes protected under Life + 100 jurisdiction (Mexico)`
+- ✔ `includes all literary quotes for US jurisdiction`
 - ✔ `provides complete theme configs for light, sepia, and dark`
 - ✔ `getReaderTheme returns exact theme or falls back to light`
 
@@ -2443,7 +2500,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **10 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

@@ -159,42 +159,34 @@ export function useCatalogFilters() {
   useEffect(() => {
     if (typeof window === 'undefined' || !hasMounted) return;
     try {
-      const url = new URL(window.location.href);
-      if (search) url.searchParams.set('search', search);
-      else url.searchParams.delete('search');
+      if (activeView !== 'catalog') {
+        // View-scoped: non-catalog views (bookshelf, favorites, notebook, bookmarks)
+        // are personal collections and do not carry catalog pagination or search queries.
+        const targetPath = `/${activeView}`;
+        const currentRelativeUrl = `${window.location.pathname}${window.location.search}`;
+        if (currentRelativeUrl !== targetPath) {
+          window.history.replaceState(null, '', targetPath);
+        }
+        return;
+      }
 
-      if (topic) url.searchParams.set('topic', topic);
-      else url.searchParams.delete('topic');
-
-      if (language) url.searchParams.set('language', language);
-      else url.searchParams.delete('language');
-
-      if (era) url.searchParams.set('era', era);
-      else url.searchParams.delete('era');
-
-      if (sort && sort !== 'popular') url.searchParams.set('sort', sort);
-      else url.searchParams.delete('sort');
-
-      if (format) url.searchParams.set('format', format);
-      else url.searchParams.delete('format');
-
-      if (page > 1) url.searchParams.set('page', String(page));
-      else url.searchParams.delete('page');
+      // Catalog view: sync search, topic, language, era, sort, format, page, size
+      const searchParams = new URLSearchParams();
+      if (search) searchParams.set('search', search);
+      if (topic) searchParams.set('topic', topic);
+      if (language) searchParams.set('language', language);
+      if (era) searchParams.set('era', era);
+      if (sort && sort !== 'popular') searchParams.set('sort', sort);
+      if (format) searchParams.set('format', format);
+      if (page > 1) searchParams.set('page', String(page));
 
       const defaultSize = isMobile ? 8 : 16;
       if (explicitPageSize && explicitPageSize !== defaultSize) {
-        url.searchParams.set('size', String(explicitPageSize));
-      } else {
-        url.searchParams.delete('size');
+        searchParams.set('size', String(explicitPageSize));
       }
 
-      // Clear legacy 'view' parameter for clean paths
-      url.searchParams.delete('view');
-
-      // Determine clean target path based on activeView
-      const targetPath = activeView === 'catalog' ? '/' : `/${activeView}`;
-      const searchStr = url.searchParams.toString();
-      const newRelativeUrl = searchStr ? `${targetPath}?${searchStr}` : targetPath;
+      const searchStr = searchParams.toString();
+      const newRelativeUrl = searchStr ? `/?${searchStr}` : '/';
 
       const currentRelativeUrl = `${window.location.pathname}${window.location.search}`;
       if (currentRelativeUrl !== newRelativeUrl) {

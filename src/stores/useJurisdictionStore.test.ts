@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useJurisdictionStore, useJurisdiction, getCookieValue, resolveInitialCountry } from './useJurisdictionStore';
+import {
+  useJurisdictionStore,
+  useJurisdiction,
+  getCookieValue,
+  resolveInitialCountry,
+  initializeJurisdiction,
+} from './useJurisdictionStore';
 import { GEO_COOKIE_NAME } from '@/proxy';
 
 describe('useJurisdictionStore', () => {
@@ -106,6 +112,22 @@ describe('useJurisdictionStore', () => {
     } finally {
       Intl.DateTimeFormat = originalDateTimeFormat;
     }
+  });
+
+  it('initializes jurisdiction safely via initializeJurisdiction', () => {
+    initializeJurisdiction('MX');
+    expect(useJurisdictionStore.getState().country).toBe('MX');
+    expect(useJurisdictionStore.getState().rule).toBe('LIFE_100');
+
+    // Does nothing if country is undefined or null
+    initializeJurisdiction(null);
+    expect(useJurisdictionStore.getState().country).toBe('MX');
+
+    // Does not override active user override
+    useJurisdictionStore.getState().setOverrideCountry('GB');
+    initializeJurisdiction('FR');
+    expect(useJurisdictionStore.getState().country).toBe('MX');
+    expect(useJurisdictionStore.getState().getEffectiveCountry()).toBe('GB');
   });
 });
 

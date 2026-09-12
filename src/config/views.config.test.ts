@@ -60,6 +60,23 @@ describe('views.config', () => {
           displayedCount: 10,
         })
       ).toBe('Displaying 10 of 42 public domain volumes');
+
+      // Formatted numbers with comma separators
+      expect(
+        catalog.getSubtitle({
+          count: 0,
+          booksData: { count: 55754 },
+          displayedCount: 16,
+        })
+      ).toBe('Displaying 16 of 55,754 public domain volumes');
+
+      expect(
+        catalog.getSubtitle({
+          count: 0,
+          booksData: { count: 78086 },
+          displayedCount: 16,
+        })
+      ).toBe('Displaying 16 of 78,086 public domain volumes');
     });
 
     it('correctly formats bookshelf and favorites content', () => {

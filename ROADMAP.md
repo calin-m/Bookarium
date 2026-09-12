@@ -2,7 +2,7 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.5.0-teal?style=flat-square)](CHANGELOG.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.5.1-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-86%25-brightgreen?style=flat-square)](ROADMAP.md)
 [![Total Features](https://img.shields.io/badge/Features-24_of_28-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)

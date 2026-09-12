@@ -152,6 +152,10 @@ CREATE TABLE IF NOT EXISTS public.bookshelf_items (
   UNIQUE(bookshelf_id, book_id)
 );
 
+-- Idempotent column additions for existing installations
+ALTER TABLE public.bookshelf_items
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_bookshelf_items_user_id
   ON public.bookshelf_items(user_id);
 

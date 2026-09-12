@@ -3,7 +3,11 @@ import React, { useEffect } from 'react';
 import type { GutendexBook, GutendexResponse } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import {
+  isBookPublicDomainInJurisdiction,
+  getJurisdictionRule,
+  JURISDICTION_BASELINE_COUNTS,
+} from '@/lib/copyright-engine';
 
 export interface UseBooksParams {
   ids?: string | number;
@@ -106,6 +110,7 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
     }
 
     const clientCountry = useJurisdictionStore.getState().getEffectiveCountry() || 'US';
+    const jurisdictionRule = getJurisdictionRule(clientCountry);
     const originalResults = data.results || [];
     const filteredResults = params.includeRestrictedMetadata
       ? originalResults
@@ -117,13 +122,37 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
           return false;
         });
     const totalFiltered = originalResults.length - filteredResults.length;
-    const adjustedCount = data.count !== undefined ? Math.max(0, data.count - totalFiltered) : filteredResults.length;
+
+    const isUnfiltered =
+      !params.search &&
+      !params.topic &&
+      !params.languages &&
+      params.authorYearStart === undefined &&
+      params.authorYearEnd === undefined &&
+      !params.ids &&
+      !params.mimeType;
+
+    let adjustedCount: number;
+    if (
+      isUnfiltered &&
+      jurisdictionRule !== 'US_PUBLIC_DOMAIN' &&
+      JURISDICTION_BASELINE_COUNTS[jurisdictionRule]
+    ) {
+      adjustedCount = JURISDICTION_BASELINE_COUNTS[jurisdictionRule];
+    } else if (data.count !== undefined) {
+      adjustedCount = Math.max(0, data.count - totalFiltered);
+    } else {
+      adjustedCount = filteredResults.length;
+    }
 
     return {
       ...data,
       results: filteredResults,
       count: adjustedCount,
       source: 'upstream',
+      clientCountry,
+      jurisdictionRule,
+      totalFiltered,
     };
   } else {
     // Server runtime: Direct fetch to Gutendex

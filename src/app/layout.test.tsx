@@ -3,6 +3,14 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import RootLayout, { metadata } from './layout';
 
+const mockGetCookie = vi.fn();
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(async () => ({
+    get: (name: string) => mockGetCookie(name),
+  })),
+}));
+
 vi.mock('@vercel/analytics/react', () => ({
   Analytics: () => <div data-testid="vercel-analytics" />,
 }));
@@ -25,7 +33,7 @@ describe('RootLayout', () => {
     expect(tw?.card).toBe('summary');
   });
 
-  it('should render children within html structure alongside analytics and performance telemetry', () => {
+  it('should render children within html structure alongside analytics and performance telemetry', async () => {
     const originalError = console.error;
     console.error = (...args: unknown[]) => {
       if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
@@ -35,11 +43,11 @@ describe('RootLayout', () => {
     };
 
     try {
-      render(
-        <RootLayout>
-          <div data-testid="layout-children">Layout App</div>
-        </RootLayout>
-      );
+      mockGetCookie.mockReturnValue({ value: 'FR' });
+      const layoutJsx = await RootLayout({
+        children: <div data-testid="layout-children">Layout App</div>,
+      });
+      render(layoutJsx);
       expect(screen.getByTestId('layout-children')).toBeInTheDocument();
       expect(screen.getByTestId('vercel-analytics')).toBeInTheDocument();
       expect(screen.getByTestId('vercel-speed-insights')).toBeInTheDocument();
@@ -48,7 +56,7 @@ describe('RootLayout', () => {
     }
   });
 
-  it('should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities', () => {
+  it('should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities', async () => {
     const originalError = console.error;
     console.error = (...args: unknown[]) => {
       if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
@@ -58,11 +66,11 @@ describe('RootLayout', () => {
     };
 
     try {
-      render(
-        <RootLayout>
-          <div>Test Content</div>
-        </RootLayout>
-      );
+      mockGetCookie.mockReturnValue(undefined);
+      const layoutJsx = await RootLayout({
+        children: <div>Test Content</div>,
+      });
+      render(layoutJsx);
       const script = document.querySelector('script[type="application/ld+json"]');
       expect(script).toBeInTheDocument();
       if (script) {
@@ -78,6 +86,29 @@ describe('RootLayout', () => {
         expect(webApp.applicationCategory).toBe('BooksApplication');
         expect(webApp.license).toBe('https://opensource.org/licenses/MIT');
       }
+    } finally {
+      console.error = originalError;
+    }
+  });
+
+  it('should gracefully handle cookie exception and fallback to US', async () => {
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
+        return;
+      }
+      originalError(...args);
+    };
+
+    try {
+      mockGetCookie.mockImplementationOnce(() => {
+        throw new Error('Header context unavailable');
+      });
+      const layoutJsx = await RootLayout({
+        children: <div data-testid="fallback-child">Fallback</div>,
+      });
+      render(layoutJsx);
+      expect(screen.getByTestId('fallback-child')).toBeInTheDocument();
     } finally {
       console.error = originalError;
     }

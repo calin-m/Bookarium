@@ -7,8 +7,8 @@ import { extractBookFormats, formatAuthorNames } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction, getJurisdictionRuleDescription } from '@/lib/copyright-engine';
+import { useBookCopyright } from '@/hooks/useBookCopyright';
+import { CopyrightNoticeBanner } from '@/components/presentation/CopyrightNoticeBanner';
 
 export interface DownloadDrawerProps {
   book: GutendexBook | null;
@@ -17,12 +17,10 @@ export interface DownloadDrawerProps {
 }
 
 export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, onClose }) => {
-  const { country } = useJurisdiction();
+  const { country, isRestricted, ruleDescription, publicDomainYear } = useBookCopyright(book);
 
   if (!book) return null;
 
-  const evaluation = isBookPublicDomainInJurisdiction(book, country);
-  const isRestricted = !evaluation.isAllowed;
 
   const formats = extractBookFormats(book.formats, book.id);
 
@@ -95,19 +93,12 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
 
         {isRestricted ? (
           /* Legal Restriction Banner - Neutralize all download hyperlinks */
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-2.5">
-            <div className="flex items-center gap-2 font-serif font-bold text-sm text-amber-800 dark:text-amber-300">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>Downloads Withheld Under Local Copyright Law</span>
-            </div>
-            <p className="text-xs font-sans leading-relaxed">
-              This edition is protected by copyright in <strong>{country}</strong> under <strong>{getJurisdictionRuleDescription(evaluation.rule, country)}</strong>.
-              {evaluation.publicDomainYear ? ` This volume is scheduled to enter the public domain in your jurisdiction on January 1, ${evaluation.publicDomainYear}.` : ''}
-            </p>
-            <p className="text-[11px] font-mono text-muted-foreground">
-              In strict accordance with international copyright treaties, direct download files are unavailable in your region.
-            </p>
-          </div>
+          <CopyrightNoticeBanner
+            country={country}
+            ruleDescription={ruleDescription}
+            publicDomainYear={publicDomainYear}
+            subtext="In strict accordance with international copyright treaties, direct download files are unavailable in your region."
+          />
         ) : (
           /* Formats List */
           <div className="space-y-2.5">

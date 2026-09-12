@@ -125,7 +125,8 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     const currentYear = new Date().getFullYear();
 
     try {
-      let query = supabase.from('books').select(CATALOG_METADATA_COLUMNS, { count: 'exact' });
+      // Use estimated count to prevent PostgreSQL statement timeout on large 78k-row catalog scans
+      let query = supabase.from('books').select(CATALOG_METADATA_COLUMNS, { count: 'estimated' });
 
       // Enforce zero-copyright
       query = query.eq('copyright', false);

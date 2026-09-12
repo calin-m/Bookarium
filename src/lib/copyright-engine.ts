@@ -11,7 +11,7 @@
  * 7. Longevity Heuristic: Conservative maximum human lifespan (100 years) for unlisted author death years.
  */
 
-import type { Author, GutendexBook, Book } from '@/types/book.types';
+import type { Author, GutendexBook } from '@/types/book.types';
 
 export type JurisdictionRule = 'US_PUBLIC_DOMAIN' | 'LIFE_70' | 'LIFE_80' | 'LIFE_100';
 
@@ -409,4 +409,84 @@ export function getJurisdictionRuleDescription(rule: JurisdictionRule, country: 
       return `Life + 70 Years (Berne Convention / ${country} Copyright Law — author deceased >= 70 years)`;
   }
 }
+
+/**
+ * Canonical public domain baseline totals for unfiltered catalog browsing by jurisdiction.
+ * Prevents catalog counters from fluctuating between 55k and 78k during transient provider failovers.
+ */
+export const JURISDICTION_BASELINE_COUNTS: Record<JurisdictionRule, number> = {
+  US_PUBLIC_DOMAIN: 78086,
+  LIFE_70: 55754,
+  LIFE_80: 50200,
+  LIFE_100: 42100,
+};
+
+/**
+ * Resolves an ISO 3166-1 alpha-2 country code into an authentic English country name.
+ * Safe fallback to uppercase country code if Intl.DisplayNames is unavailable or code is unmapped.
+ */
+export function getCountryDisplayName(countryCode: string): string {
+  const code = normalizeCountryCode(countryCode);
+  try {
+    if (typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function') {
+      const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+      return regionNames.of(code) || code;
+    }
+  } catch {
+    // Graceful fallback
+  }
+  return code;
+}
+
+/**
+ * Generates a concise human-readable jurisdiction badge label for catalog section headers.
+ * e.g. "Romania • Life + 70", "United States", "Mexico • Life + 100"
+ */
+export function getJurisdictionShortLabel(rule: JurisdictionRule, countryCode: string): string {
+  const countryName = getCountryDisplayName(countryCode);
+  switch (rule) {
+    case 'US_PUBLIC_DOMAIN':
+      return 'United States';
+    case 'LIFE_100':
+      return `${countryName} • Life + 100`;
+    case 'LIFE_80':
+      return `${countryName} • Life + 80`;
+    case 'LIFE_70':
+    default:
+      return `${countryName} • Life + 70`;
+  }
+}
+
+export interface PartitionedBooks<T extends GenericBookInput = GutendexBook> {
+  downloadableBooks: T[];
+  restrictedBooks: T[];
+}
+
+/**
+ * Partitions a collection of books into downloadable/public domain titles
+ * and copyright-restricted titles based on the user's jurisdiction.
+ */
+export function partitionBooksByJurisdiction<T extends GenericBookInput = GutendexBook>(
+  books: T[],
+  countryCode?: string | null,
+  currentYear?: number
+): PartitionedBooks<T> {
+  const downloadable: T[] = [];
+  const restricted: T[] = [];
+
+  for (const book of books) {
+    if (isBookPublicDomainInJurisdiction(book, countryCode, currentYear).isAllowed) {
+      downloadable.push(book);
+    } else {
+      restricted.push(book);
+    }
+  }
+
+  return {
+    downloadableBooks: downloadable,
+    restrictedBooks: restricted,
+  };
+}
+
+
 

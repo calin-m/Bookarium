@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HeroSearch } from './HeroSearch';
+import { getHourlyHeroBook } from '@/config/featured-books';
 import type { GutendexBook } from '@/mocks/handlers';
 
 const createTestWrapper = () => {
@@ -248,5 +249,12 @@ describe('HeroSearch component', () => {
     } finally {
       Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
     }
+  });
+
+  it('should render the hourly hero book immediately on initial render without falling back to index 0', () => {
+    const hourlyBook = getHourlyHeroBook();
+    renderWithClient(<HeroSearch search="" />);
+
+    expect(screen.getAllByText(new RegExp(hourlyBook.title, 'i'))[0]).toBeInTheDocument();
   });
 });

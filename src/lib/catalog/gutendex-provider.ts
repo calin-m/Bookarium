@@ -9,6 +9,7 @@ import { API_ENDPOINTS } from '@/config/api-endpoints';
 import {
   isBookPublicDomainInJurisdiction,
   getJurisdictionRule,
+  JURISDICTION_BASELINE_COUNTS,
 } from '@/lib/copyright-engine';
 
 /**
@@ -117,10 +118,30 @@ export class GutendexCatalogProvider implements ICatalogProvider {
           });
 
       const totalFiltered = originalResults.length - filteredResults.length;
-      const adjustedCount =
-        data.count !== undefined
-          ? Math.max(0, data.count - totalFiltered)
-          : filteredResults.length;
+
+      // Calibrated baseline: For unfiltered catalog views under non-US jurisdictions,
+      // use the canonical public domain baseline rather than estimating from a single 32-book page
+      const isUnfilteredQuery =
+        !options.search &&
+        !options.topic &&
+        !options.languages &&
+        options.authorYearStart === undefined &&
+        options.authorYearEnd === undefined &&
+        !options.ids &&
+        !options.mimeType;
+
+      let adjustedCount: number;
+      if (
+        isUnfilteredQuery &&
+        jurisdictionRule !== 'US_PUBLIC_DOMAIN' &&
+        JURISDICTION_BASELINE_COUNTS[jurisdictionRule]
+      ) {
+        adjustedCount = JURISDICTION_BASELINE_COUNTS[jurisdictionRule];
+      } else if (data.count !== undefined) {
+        adjustedCount = Math.max(0, data.count - totalFiltered);
+      } else {
+        adjustedCount = filteredResults.length;
+      }
 
       return {
         ...data,

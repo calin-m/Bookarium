@@ -15,7 +15,7 @@ import {
   getDailyEditorialBook,
   getJurisdictionSafeFeaturedBooks,
 } from './featured-books';
-import { LITERARY_QUOTES } from './literary-quotes';
+import { LITERARY_QUOTES, getJurisdictionSafeLiteraryQuotes } from './literary-quotes';
 import { READER_THEMES, getReaderTheme } from './reader-themes';
 
 describe('src/config configuration modules', () => {
@@ -59,11 +59,13 @@ describe('src/config configuration modules', () => {
       expect(FEATURED_HERO_BOOK.openingLine).toBeDefined();
       expect(FEATURED_HERO_BOOK.openingLine.length).toBeGreaterThan(10);
 
-      expect(FEATURED_HERO_BOOKS.length).toBeGreaterThanOrEqual(10);
+      expect(FEATURED_HERO_BOOKS.length).toBeGreaterThanOrEqual(25);
       expect(FEATURED_HERO_BOOKS.every((b) => b.openingLine && b.openingLine.length > 5)).toBe(true);
       expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'Frankenstein')).toBe(true);
       expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'Moby Dick')).toBe(true);
       expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'The Great Gatsby')).toBe(true);
+      expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'War and Peace')).toBe(true);
+      expect(FEATURED_HERO_BOOKS.some((b) => b.title === 'Les Misérables')).toBe(true);
     });
 
     it('extracts passages for featured and generic books via getBookPassages', () => {
@@ -94,11 +96,12 @@ describe('src/config configuration modules', () => {
       const hourMs = 3600000;
       const bookHour0 = getHourlyHeroBook(0);
       const bookHour1 = getHourlyHeroBook(1 * hourMs);
-      const bookHour10 = getHourlyHeroBook(10 * hourMs);
+      const wrapHour = FEATURED_HERO_BOOKS.length * hourMs;
+      const bookWrapped = getHourlyHeroBook(wrapHour);
 
       expect(bookHour0).toBe(FEATURED_HERO_BOOKS[0]);
       expect(bookHour1).toBe(FEATURED_HERO_BOOKS[1]);
-      expect(bookHour10).toBe(FEATURED_HERO_BOOKS[0]);
+      expect(bookWrapped).toBe(FEATURED_HERO_BOOKS[0]);
       expect(getHourlyHeroBook()).toBeDefined();
     });
 
@@ -106,11 +109,12 @@ describe('src/config configuration modules', () => {
       const dayMs = 86400000;
       const day0 = getDailyEditorialBook(undefined, 0);
       const day1 = getDailyEditorialBook(undefined, 1 * dayMs);
-      const day10 = getDailyEditorialBook(undefined, 10 * dayMs);
+      const wrapDay = FEATURED_HERO_BOOKS.length * dayMs;
+      const dayWrapped = getDailyEditorialBook(undefined, wrapDay);
 
       expect(day0).toBe(FEATURED_HERO_BOOKS[0]);
       expect(day1).toBe(FEATURED_HERO_BOOKS[1]);
-      expect(day10).toBe(FEATURED_HERO_BOOKS[0]);
+      expect(dayWrapped).toBe(FEATURED_HERO_BOOKS[0]);
 
       // When collision occurs with heroBookId, advance to subsequent book
       const collidingHeroId = FEATURED_HERO_BOOKS[0].id;
@@ -123,10 +127,11 @@ describe('src/config configuration modules', () => {
       const standardDay0 = getDailyEditorialBook(nonCollidingHeroId, 0);
       expect(standardDay0).toBe(FEATURED_HERO_BOOKS[0]);
 
-      // When candidate is last element (index 9) and collides, wraps to index 0
-      const day9CandidateId = FEATURED_HERO_BOOKS[9].id;
-      const wrappedDay9 = getDailyEditorialBook(day9CandidateId, 9 * dayMs);
-      expect(wrappedDay9).toBe(FEATURED_HERO_BOOKS[0]);
+      // When candidate is last element and collides, wraps to index 0
+      const lastIndex = FEATURED_HERO_BOOKS.length - 1;
+      const lastCandidateId = FEATURED_HERO_BOOKS[lastIndex].id;
+      const wrappedLast = getDailyEditorialBook(lastCandidateId, lastIndex * dayMs);
+      expect(wrappedLast).toBe(FEATURED_HERO_BOOKS[0]);
 
       // Default timestamp works
       expect(getDailyEditorialBook()).toBeDefined();
@@ -138,6 +143,7 @@ describe('src/config configuration modules', () => {
       expect(mxBooks.some((b) => b.title === 'The Adventures of Sherlock Holmes')).toBe(false);
       expect(mxBooks.some((b) => b.title === 'Pride and Prejudice')).toBe(true);
       expect(mxBooks.some((b) => b.title === 'Frankenstein')).toBe(true);
+      expect(mxBooks.some((b) => b.title === 'War and Peace')).toBe(true);
     });
 
     it('includes all featured books for US jurisdiction', () => {
@@ -147,8 +153,8 @@ describe('src/config configuration modules', () => {
   });
 
   describe('literary-quotes', () => {
-    it('provides 12 curated quotes with non-empty metadata', () => {
-      expect(LITERARY_QUOTES.length).toBe(12);
+    it('provides 36+ curated quotes with complete metadata including author birth and death years', () => {
+      expect(LITERARY_QUOTES.length).toBeGreaterThanOrEqual(36);
       for (const q of LITERARY_QUOTES) {
         expect(q.id).toBeGreaterThan(0);
         expect(q.bookId).toBeGreaterThan(0);
@@ -156,7 +162,24 @@ describe('src/config configuration modules', () => {
         expect(q.author.length).toBeGreaterThan(0);
         expect(q.quote.length).toBeGreaterThan(10);
         expect(q.citation.length).toBeGreaterThan(0);
+        expect(q.authorBirthYear).toBeDefined();
+        expect(q.authorDeathYear).toBeDefined();
       }
+    });
+
+    it('filters out quotes protected under Life + 100 jurisdiction (Mexico)', () => {
+      const mxQuotes = getJurisdictionSafeLiteraryQuotes('MX');
+      expect(mxQuotes.length).toBeGreaterThanOrEqual(30);
+      expect(mxQuotes.some((q) => q.bookTitle === 'The Great Gatsby')).toBe(false);
+      expect(mxQuotes.some((q) => q.bookTitle === 'The Adventures of Sherlock Holmes')).toBe(false);
+      expect(mxQuotes.some((q) => q.bookTitle === 'Pride and Prejudice')).toBe(true);
+      expect(mxQuotes.some((q) => q.bookTitle === 'War and Peace')).toBe(true);
+      expect(mxQuotes.some((q) => q.bookTitle === 'Les Misérables')).toBe(true);
+    });
+
+    it('includes all literary quotes for US jurisdiction', () => {
+      const usQuotes = getJurisdictionSafeLiteraryQuotes('US');
+      expect(usQuotes.length).toBe(LITERARY_QUOTES.length);
     });
   });
 

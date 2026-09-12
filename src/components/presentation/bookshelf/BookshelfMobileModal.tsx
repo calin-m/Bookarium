@@ -9,8 +9,8 @@ import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
-import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction, getJurisdictionRuleDescription } from '@/lib/copyright-engine';
+import { useBookCopyright } from '@/hooks/useBookCopyright';
+import { CopyrightNoticeBanner } from '@/components/presentation/CopyrightNoticeBanner';
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { Button } from '@/components/ui/Button';
@@ -95,9 +95,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
   const currentStatus = selectedMobileBook ? bookStatuses[selectedMobileBook.id] ?? null : null;
   const isCuratable = activeView === undefined || activeView === 'bookshelf' || activeView === 'favorites';
 
-  const { country } = useJurisdiction();
-  const evaluation = selectedMobileBook ? isBookPublicDomainInJurisdiction(selectedMobileBook, country) : null;
-  const isRestricted = Boolean(evaluation && !evaluation.isAllowed);
+  const { country, evaluation, isRestricted, ruleDescription, reason, publicDomainYear } = useBookCopyright(selectedMobileBook);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -193,20 +191,15 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
               </div>
 
               {/* Regional Copyright Notice Banner if Restricted */}
-              {isRestricted && evaluation && (
-                <div
-                  className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs space-y-1"
-                  data-testid="mobile-restricted-notice"
-                >
-                  <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-300">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span>Restricted in {country}</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    {evaluation.reason || `Protected under ${getJurisdictionRuleDescription(evaluation.rule, country)}.`}
-                    {evaluation.publicDomainYear ? ` Scheduled to enter the public domain on January 1, ${evaluation.publicDomainYear}.` : ''}
-                  </p>
-                </div>
+              {isRestricted && (
+                <CopyrightNoticeBanner
+                  country={country}
+                  ruleDescription={ruleDescription}
+                  reason={reason}
+                  publicDomainYear={publicDomainYear}
+                  compact
+                  testId="mobile-restricted-notice"
+                />
               )}
 
               {/* Quick Actions Row */}

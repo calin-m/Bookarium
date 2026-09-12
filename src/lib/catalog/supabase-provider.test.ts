@@ -282,7 +282,7 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.results).toHaveLength(2);
       expect(result.clientCountry).toBe('US');
       expect(result.jurisdictionRule).toBe('US_PUBLIC_DOMAIN');
-      expect(client.from().select).toHaveBeenCalledWith(CATALOG_METADATA_COLUMNS, { count: 'exact' });
+      expect(client.from().select).toHaveBeenCalledWith(CATALOG_METADATA_COLUMNS, { count: 'estimated' });
       expect(CATALOG_METADATA_COLUMNS).not.toContain('content');
       expect(builder.eq).toHaveBeenCalledWith('copyright', false);
       expect(builder.textSearch).toHaveBeenCalledWith('search_vector', 'Jane Austen', {

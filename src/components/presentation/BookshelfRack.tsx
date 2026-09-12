@@ -10,7 +10,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { isBookPublicDomainInJurisdiction, partitionBooksByJurisdiction } from '@/lib/copyright-engine';
 import { Button } from '@/components/ui/Button';
 import { BookshelfSpine } from './bookshelf/BookshelfSpine';
 import { BookshelfMobileModal } from './bookshelf/BookshelfMobileModal';
@@ -83,7 +83,14 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const [selectedMobileBook, setSelectedMobileBook] = useState<GutendexBook | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [shelfCapacity, setShelfCapacity] = useState<number>(18);
+  const [shelfCapacity, setShelfCapacity] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const width = window.innerWidth;
+      const availableWidth = Math.max(300, width - 96);
+      return Math.max(6, Math.floor(availableWidth / 62));
+    }
+    return 18;
+  });
 
   useEffect(() => {
     const updateCapacity = () => {
@@ -185,16 +192,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
   // Partition shelf books into public domain titles in current jurisdiction vs copyright-restricted titles
   const { downloadableBooks, restrictedBooks } = useMemo(() => {
-    const downloadable: GutendexBook[] = [];
-    const restricted: GutendexBook[] = [];
-    for (const book of effectiveShelfBooks) {
-      if (isBookPublicDomainInJurisdiction(book, country).isAllowed) {
-        downloadable.push(book);
-      } else {
-        restricted.push(book);
-      }
-    }
-    return { downloadableBooks: downloadable, restrictedBooks: restricted };
+    return partitionBooksByJurisdiction(effectiveShelfBooks, country);
   }, [effectiveShelfBooks, country]);
 
   // Chunk books dynamically into shelves based on container width
@@ -498,7 +496,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
         </div>
       ) : (
         shelves.map((shelfBooks, shelfIndex) => (
-          <div key={`shelf-${shelfIndex}-${shelfBooks[0]?.id || 0}`} className="relative z-10 hover:z-30 w-full mb-8">
+          <div key={`shelf-${shelfIndex}`} className="relative z-10 hover:z-30 w-full mb-8">
             {/* Unified Shelf Niche & Hardwood Rail Module */}
             <div className="relative w-full rounded-2xl border border-border shelf-ambient-niche shadow-md overflow-hidden sm:overflow-visible">
               

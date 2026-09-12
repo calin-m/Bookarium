@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-163%20Suites%20%7C%201429%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.49%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-165%20Suites%20%7C%201474%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.51%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -40,13 +40,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.5.0)
+## 🛠️ Latest Improvements (v2.5.1)
 
-- **Autonomous Full-Catalog Gutenberg Ingestion (`scripts/sync-gutenberg-catalog.js`)**: Streamed and batch-upserted 78,086 Project Gutenberg titles into Supabase PostgreSQL (`public.books`) via a zero-dependency RFC 4180 gunzip pipeline with recursive timeout splitting.
-- **Self-Hosted PostgreSQL Catalog & GIN Search (`src/lib/catalog/supabase-provider.ts`)**: Implemented native database full-text search (`search_vector` tsvector) and author lifespan bounds for sub-50ms single-book lookups and ~1–2s catalog page queries.
-- **Dual-Provider Catalog Seam & Failover (`src/app/api/books/route.ts`)**: Unified catalog querying behind `ICatalogProvider` with primary Supabase execution, automatically degrading to Gutendex when unseeded or offline.
-- **Supabase-First Reader SEO & Layout Resolution (`src/app/read/[id]/reader-layout-utils.ts`)**: Fast-path in-memory and Supabase metadata resolution for `/read/[id]`, generating rich OpenGraph and Schema.org tags in <15ms without third-party rate limits.
-- **Authoritative Cloud Synchronization & Next.js 16 Edge Proxy (`src/stores/useBookshelfStore.ts`, `src/proxy.ts`)**: Decommissioned legacy `src/middleware.ts` in favor of Next.js 16 native `src/proxy.ts` with 100% co-located unit test coverage.
+- **Synchronized Dynamic SSR & Jurisdictional Edge Cookie Seeding (`src/app/layout.tsx`, `src/stores/useJurisdictionStore.ts`)**: Declared `export const dynamic = 'force-dynamic'`, extracted edge cookie `bookarium-geo-country` via Next.js `cookies()`, and passed `initialCountry` into `<Providers>`, eliminating Frankenstein (Book #0) and Pride & Prejudice (Book #1342) pre-hydration flash-on-mount swaps.
+- **27-Masterwork & 36-Quote Curated Anthology Expansion (`src/config/featured-books.ts`, `src/config/literary-quotes.ts`, `src/components/presentation/LiteraryQuotes.tsx`)**: Expanded `FEATURED_HERO_BOOKS` from 10 to 27 classic masterworks and `LITERARY_QUOTES` from 12 to 36 iconic passages with verified author birth/death lifespans and territorial copyright filtering.
+- **Declarative Copyright Subsystem Encapsulation & Unified Presentation Notice (`src/hooks/useBookCopyright.ts`, `src/components/presentation/CopyrightNoticeBanner.tsx`)**: Introduced declarative facade hook `useBookCopyright` and unified `CopyrightNoticeBanner` component, refactoring 8 presentation components and separating legal calculations from UI layouts.
+- **Presentation Layer Copyright Separation**: Delegated territorial copyright checks across `BookCard`, `BookPreviewModal`, `BookmarkCard`, `BookshelfRack`, `DownloadDrawer`, `BookshelfMobileModal`, and `BookshelfSpine` to `useBookCopyright`.
+- **Smooth Scrolling on Catalog Page Size Toggle (`src/app/page.tsx`)**: Smoothly scrolls `#catalog-section` into view when toggling between 8 and 16 books per page.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -74,15 +74,16 @@ Bookarium is structured around five core engineering pillars:
 
 ### 1. 🎨 Tactile Editorial Design & 3D Book Physics
 * **Booksaw Editorial Aesthetic**: Classical typography inspired by fine art bookstore catalogues, featuring open-book card spreads with center spine creases, realistic paper shadows, and 100% solid non-transparent surfaces across Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) themes.
-* **Hourly Rotating 3D Featured Book**: Curated pool of iconic public domain classics rotated every UTC hour with zero-cron deterministic synchronization.
+* **Hourly Rotating 3D Featured Book (27-Masterwork Curated Anthology)**: Expanded pool of 27 verified public domain masterworks across world literature (Austen, Shelley, Tolstoy, Hugo, Dostoevsky, Brontë, Kafka, Stevenson, Dumas, Machiavelli, Sun Tzu, Marcus Aurelius, Homer, Alcott, Poe, Verne, Thoreau, Twain) rotated every UTC hour with zero-cron deterministic synchronization.
+  * **Synchronized Dynamic SSR & Zero-Flash Pre-Hydration**: Edge-stamped geo-cookie (`bookarium-geo-country`) extracted at the Next.js `layout.tsx` boundary synchronously seeds the jurisdiction store and aligns server snapshots with the client, completely eliminating pre-hydration fallback swaps (e.g. *Frankenstein* #0 flashing before the hourly volume) and guaranteeing 0.00 Cumulative Layout Shift.
   * **Interactive Open-Cover Physics**: On desktop hover, the hardbound volume smoothly elevates and opens 180° on its spine hinge, displaying opening reflections on the Left Page and notable excerpts on the Right Page. Clicking pins the volume open or closed.
   * **Physical 60–120 FPS Page Turn**: Shuffling passages flips a physical 3D leaf across the spine with synchronized ink reveals.
-* **Daily Rotating Editorial Classic of the Day**: Dedicated editorial showcase positioned beneath the catalog grid, presenting a unified public domain masterpiece with authentic title, author, publication year, verbatim literary quote, and 1-click reader handoff. Powered by client-cached fixtures (`FEATURED_HERO_BOOKS`) with dynamic anti-collision intelligence that automatically skips candidate books matching the current Hero spotlight to guarantee two unique masterworks on every visit.
+* **Daily Rotating Editorial Classic of the Day & 36 Literary Quotes**: Dedicated editorial showcase positioned beneath the catalog grid presenting a unified public domain masterpiece with authentic title, author, publication year, verbatim literary quote, and 1-click reader handoff. Evaluated directly on initial SSR with territorial copyright filtering (e.g. Life+100 Mexico protection) and dynamic anti-collision intelligence that automatically skips candidate books matching the current Hero spotlight to guarantee two unique masterworks on every visit. Supported by an expanded collection of 36 iconic literary passages in "Words That Shaped Humanity" (`LiteraryQuotes.tsx`) with safe shuffling and author lifespan governance.
 * **Interactive 3D Book Preview Modal**: Clicking or tapping any book card cover launches a 3D hardcover preview modal with fluid FLIP geometry transitions, subpixel return landing, chapter shuffling, and 1-click reader handoff.
 * **Studio Bookshelf Bookcase**: Hardwood shelf alcove with 8 authentic spine binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), convex specular curvature, gilded lettering, pull-forward hover scaling, and a **Zero-CLS Floating Cloud Sync Badge** that smoothly overlays real-time sync status without triggering vertical content shifts.
 * **Directional Stepped Scroll Navigation**: Dynamic scroll detection (`useScrollDirection`) smoothly hides the top header on scroll down, docks the catalog filter toolbar to `top-0`, and instantly reveals navigation on upward scroll gestures. Configurable in Account Settings between **Smart Auto-Hide** and **Always Fixed**.
 * **Responsive Filter Drawer & Push-Content Layout**: Persistent left-docked drawer on desktop & ultrawide viewports (≥ 1280px / `xl:`) shifting main content to the right (`xl:pl-96`) for non-blocking catalog browsing; smoothly adapts to a focused slide-out overlay with soft backdrop blur (`backdrop-blur-xs`) on laptops, vertical monitors, and mobile devices—guaranteeing 100% unclipped facet typography with zero text truncation.
-* **Streamlined Single-Row Sticky Catalog Toolbar**: Compact ~44px mobile toolbar unifying search filter triggers, real-time API health status, view mode toggling (Grid vs. Spine Shelf), and deep-archive pagination in a single horizontal row, maximizing vertical screen real estate for book covers.
+* **Tactile Mobile Single-Row Sticky Catalog Toolbar**: Compact ~44px mobile toolbar unifying search filter triggers, real-time API health status, view mode toggling (Grid vs. Spine Shelf), and deep-archive pagination in a single horizontal row, maximizing vertical screen real estate for book covers. Features an enhanced tactile numeric page input with auto-selection on tap/focus (`inputMode="numeric"`), decoupled blank editing state, `aria-pressed` size states, and smooth scrolling to `#catalog-section` on page size change.
 * **Windowed Chunk Sub-Pagination & Predictive Prefetching**: Seamlessly reconciles upstream API batching with responsive client layouts by sub-slicing the catalog's native 32-volume batch into viewport-optimized pages (8 books/page on mobile `grid-cols-2`, 16 books/page on desktop `md:grid-cols-4`). Sub-page turns execute in 0ms directly from client memory without network delay. A widened predictive prefetch buffer triggers background loading on Sub-page 3 (mobile) or Sub-page 1 (desktop), providing a 15–25 second network lead time before reaching batch boundaries.
 * **Explicit Catalog Search Activation & 2-Character Guardrail**: Replaced keystroke debouncing with intentional search submission (<kbd>Enter</kbd> or clicking "Search") to eliminate redundant API spam against public upstream servers. Enforces a client-side and server-side 2-character minimum guardrail with accessible inline validation (`aria-live="polite"`), preventing heavy 1-character full-table scans while fully permitting classical two-character literary titles (*It*, *Oz*, *Up*, *Po*).
 * **Unified Native Input Architecture & Search Focus Harmonization**: Standardized all search bars across Catalog, Bookshelf, Favorites, Bookmarks, Notebooks, and Reader Search Drawer to a native `<input>` architecture with `rounded-xl` curvature, subtle pre-hover warming (`hover:border-primary/40`), and a crisp 150ms outward primary ring bloom. The Catalog hero bar integrates floating inset controls (Search button and clear `X`) directly within the input's padding, delivering authentic native focus without enclosing action buttons inside the glow.
@@ -117,6 +118,7 @@ Bookarium is structured around five core engineering pillars:
   * Comprehensive reading journal organizing highlighted excerpts, personal reflections, pastel color filters, full-text search, volume grouping, and 1-click academic citation copying.
 * **Native IndexedDB Offline Book Storage**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading in airplane mode. Downloading a volume automatically links it to the user's personal bookshelf.
 * **Authoritative Cloud State Reconciliation (`lastBookshelfSyncAt`)**: Optional Supabase PostgreSQL cloud sync with Row Level Security (RLS). Initial sync migrates local guest books to the cloud; subsequent syncs treat Supabase as the authoritative source of truth, gracefully pruning titles deleted on another device while pre-sync outbox flushing (`flushOutbox`) safeguards offline additions.
+* **High-Performance Database Query Planner Optimization**: Implemented `{ count: 'estimated' }` planner statistics in `src/lib/catalog/supabase-provider.ts` across 78,000+ catalog rows, completely eliminating PostgreSQL `57014` statement timeouts and slashing query latency from `>3,000ms` down to **`~275ms`**.
 * **Sanitized Sign-Out & Account Isolation**: Pre-logout outbox drain and clean state wipe (`clearBookshelf()`) prevent cross-account contamination while raw downloaded texts in IndexedDB are preserved on device.
 * **Bi-Directional Cloud Reading Progress**: 2000ms debounced upsert to `public.reading_progress`, restoring chapter and scroll coordinates across devices for authenticated accounts while remaining 0ms/zero-network for guest readers.
 * **Reading Streaks, Dual Immersion Telemetry & Annual Reading Challenges (`/account`)**: Offline-first literary activity tracking calculating consecutive daily streaks with a **5-minute active immersion threshold** (`300s`), longest streaks, 7-day calendar activity indicators, and total literary immersion duration. Disentangles telemetry into distinct **Reading Time** (visual focus with 2-minute idle guard) and **Listening Time** (uninterrupted Text-to-Speech audio narration retaining time in background tabs). Includes an interactive annual reading challenge progress bar with user-adjustable volume targets, real-time pace tracking, dynamic countdown prompts (`Xm / 5m logged today`), and multi-device Supabase cloud synchronization with Last-Write-Wins (LWW) conflict resolution.
@@ -130,12 +132,13 @@ Bookarium is structured around five core engineering pillars:
   * **Life + 70 (EU 27, UK, Canada, Australia, New Zealand, Japan)**: Author and translator death year $\le 1955$ ($2026 - 71$).
   * **Life + 100 (Mexico, Côte d'Ivoire)**: Author and translator death year $\le 1925$ ($2026 - 101$).
   * **Life + 80 (Colombia, Spain pre-1987 deaths)**: Author and translator death year $\le 1945$ ($2026 - 81$).
-* **Joint Authorship & Derivative Protection**: Calculates protection from the death of the *last surviving co-author* (Berne Convention Art. 7bis) and independently validates translator derivative works (Berne Convention Art. 2(3)).
+* **Declarative Copyright Subsystem Encapsulation (`useBookCopyright.ts` & `CopyrightNoticeBanner.tsx`)**: Unified copyright logic behind a single declarative facade hook (`useBookCopyright`) and a standardized presentation banner (`CopyrightNoticeBanner`), decoupling legal lifespan calculations from UI layouts and eliminating duplicated evaluation across 8 presentation components.
+* **Joint Authorship & Derivative Protection**: Calculates protection from the death of the *last surviving co-author* (Berne Convention Art. 7bis) and independently validates translator derivative works (Berne Convention Art. 2(3)). Includes `partitionBooksByJurisdiction` for cleanly separating legal collections.
 * **Fail-Closed Longevity Heuristics**: Applies a strict human longevity upper bound ($birth\_year \le currentYear - term - 101$) for missing death dates, and strictly fails closed outside the US when author lifespans cannot be verified.
-* **Next.js 16 Root Proxy Geo-Context (`src/proxy.ts`)**: Automatically resolves the visitor's ISO 3166-1 alpha-2 country code via edge headers (`x-vercel-ip-country`, `cf-ipcountry`), stamps a non-tracking `bookarium-geo-country` cookie, and supports regional development overrides (`?country=XX`).
+* **Next.js 16 Root Proxy Geo-Context & Dynamic SSR Seeding (`src/proxy.ts`, `src/app/layout.tsx`)**: Automatically resolves the visitor's ISO 3166-1 alpha-2 country code via edge headers (`x-vercel-ip-country`, `cf-ipcountry`), stamps a non-tracking `bookarium-geo-country` cookie, supports regional development overrides (`?country=XX`), and synchronously seeds the jurisdiction store during server-side rendering for instant zero-flash hydration.
 * **HTTP 451 Streaming Gatekeeper (`/api/books/content`)**: Evaluates incoming text streaming requests against a 24h LRU metadata cache (`src/app/api/books/content/metadata-cache.ts`). If protected under the visitor's local law, the server returns an **`HTTP 451: Unavailable For Legal Reasons`** response detailing the restricting author, local statute, and projected public domain entry date.
 * **Hyperlink Neutralization & Presentation Isolation**:
-  * **Download Drawer (`DownloadDrawer.tsx`)**: Direct download links are completely omitted from the DOM when restricted, satisfying European Court of Justice (*GS Media*) and UK hyperlink communication case law, replaced with a prominent legal restriction banner.
+  * **Download Drawer (`DownloadDrawer.tsx`)**: Direct download links are completely omitted from the DOM when restricted, satisfying European Court of Justice (*GS Media*) and UK hyperlink communication case law, replaced with a prominent legal restriction banner (`CopyrightNoticeBanner`).
   * **Book Cards (`BookCard.tsx`)**: Displays an amber `"Protected ([Country])"` badge and disables the reading action as `"Restricted"`.
   * **Dedicated Reader Legal View (`ReaderErrorView.tsx`)**: Renders an archival shield view with full statutory rationale and a 1-click `"Return to Library"` action.
 * **Edge CDN Cache Partitioning**: Both `/api/books` and `/api/books/content` routes stamp `Vary: x-vercel-ip-country, Accept-Encoding` to guarantee zero regional cache poisoning across global CDN edge nodes.
@@ -150,129 +153,149 @@ Bookarium is structured around five core engineering pillars:
 flowchart TD
     User["👤 Reader / Literature Enthusiast"]
     
-    subgraph ClientApp ["Bookarium Next.js 16 App"]
-        Nav["Navigation & Brand Reset (Navbar.tsx)"]
-        Hero["Hero Search & Subject Chips (HeroSearch.tsx)"]
-        Toolbar["Sticky Filter Bar (StickyCatalogToolbar.tsx)"]
-        Grid["Interactive Book Grid & Filtering (BookGrid.tsx)"]
-        Card["Book Card Component (BookCard.tsx)"]
-        Modal["3D Book Preview Modal (BookPreviewModal.tsx)"]
-        Bookmarks["Bookmarks & Reading Ledger (BookmarksView.tsx)"]
-        BookmarkCard["Tactile Bookmark Card (BookmarkCard.tsx)"]
-        Notebook["Literary Notebook & Journal (NotebookView.tsx)"]
-        Reader["Dedicated In-Browser Reader (src/app/read/[id]/page.tsx)"]
-        Account["Account & Reading Preferences (src/app/account/page.tsx)"]
-        HabitsCard["Reading Habits & Challenge (AccountHabitsCard.tsx)"]
-        AccoladesCard["Literary Accolades & Showcase (AccountAccoladesCard.tsx)"]
-        AuthModal["Auth Modal & Password Generator (AuthModal.tsx)"]
+    subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]
+        Nav["Navbar.tsx\n(Brand Reset, View Switcher, Theme Cycler)"]
+        Hero["HeroSearch.tsx\n(Dynamic 3D Rotating Spotlight & Search)"]
+        Hero3D["HeroFeaturedBook3D.tsx\n(3D Open-Cover Hinge & Leaf-Flip Engine)"]
+        Toolbar["StickyCatalogToolbar.tsx\n(0px Flush Header, Filters Toggle, Tactile Numeric Jump)"]
+        FilterDrawer["AdvancedFilterDrawer.tsx\n(Left Push-Sidebar: Eras, Sort, Formats)"]
+        EditorialQuote["EditorialQuoteSection.tsx\n(Classic of the Day & Collision Guard)"]
+        LiteraryQuotes["LiteraryQuotes.tsx\n(Words That Shaped Humanity & Safe Shuffling)"]
+        CopyrightBanner["CopyrightNoticeBanner.tsx\n(Declarative Territorial Restriction & Public Domain Notice)"]
         
-        StoreShelf[("⚡ Bookshelf Store\n• savedBooks: []\n• favoriteBooks: []\n• recentBooks: []\n• cloudBookshelves: []\n• lastBookshelfSyncAt: string | null\n• bookRatings: {}\n• bookStatuses: {}")]
-        StoreAuth[("🔐 Auth Store\n• user: User | null\n• profile: Profile | null")]
-        StoreReader[("📖 Reader Store\n• activeBookId\n• currentBook (warm cache)\n• readingPositions: {}\n• readingProgress: {}\n• syncReadingPositionToCloud()")]
-        StoreHabits[("🔥 Habits Store\n• currentStreak & longestStreak (5-min threshold)\n• activeDates: []\n• annualGoal & annualGoalYear\n• totalReadingSeconds & totalListeningSeconds\n• syncWithCloud()")]
-        StoreAccolades[("🎖️ Accolades Store\n• accolades, showcase pinning, celebrations")]
-        StoreTheme[("🎨 Theme Store\n• theme: day | sepia | obsidian")]
-        StoreAnnot[("🖍️ Annotation Store\n• highlights: []\n• 4 pastel palettes")]
-        StoreOffline[("📦 IndexedDB (useOfflineBooks)\n• downloaded volumes\n• offline text & EPUBs")]
-        StorePrefs[("⚙️ Preferences Store\n• stickyScrollEnabled: boolean")]
+        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]
+            Grid["Catalog View (/)\n(Editorial Card Grid & 3D Hardwood Shelf)"]
+            ShelfView["Bookshelf View (/bookshelf)\n(Curated Library & Custom Named Shelves)"]
+            FavView["Favorites View (/favorites)\n(Personal Masterworks Collection)"]
+            MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger & Telemetry)"]
+            NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections & Tags)"]
+            AccView["Account Hub (/account)\n(Library Stats, Cloud Sync & JSON Backup)"]
+            HabitsCard["AccountHabitsCard.tsx\n(Reading Streaks, Daily Progress, Annual Challenge)"]
+            AccoladesCard["AccountAccoladesCard.tsx\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]
+            ReaderPage["Focus Reader Page (/read/[id])\n(Continuous Pagination, Subtitles, AST)"]
+        end
         
-        ScrollHook["📜 useScrollDirection\n(3-State Gesture Stepping)"]
-        LedgerHook["🔖 useContinueReadingLedger\n(Authentic Telemetry & Two-Way Hydration)"]
-        TimerHook["⏱️ useReadingTimer\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]
-        QueryBooks["🔄 useBooks & usePrefetchNextPage\n(Chunked sub-pages & 15-25s prefetch)"]
-        QueryContent["🔄 useBookContent(textUrl, bookId)"]
-        QueryTranslate["🌐 useBookTranslation(targetLang)\n(Dynamic In-Reader NMT)"]
-        Telemetry["📊 Vercel Telemetry (<Analytics />, <SpeedInsights />)"]
+        subgraph ReaderDrawers ["Portaled Mutual-Exclusion Dialogs (z-10000)"]
+            TocDrawer["ReaderTocDrawer\n(Rich Subtitles & Page Numbers)"]
+            SearchDrawer["ReaderSearchDrawer\n(In-Volume Live Text Search)"]
+            ControlsDrawer["ReaderControls\n(Typography, Speech & Themes)"]
+            LangDrawer["ReaderLanguageDrawer\n(International Editions Handoff)"]
+            DownDrawer["DownloadDrawer\n(EPUB, MOBI, TXT Direct Streams)"]
+        end
         
-        Nav -->|"Open Auth / Account"| StoreAuth
-        Nav -->|"View Bookshelf / Favorites"| StoreShelf
-        Nav -->|"View Bookmarks"| Bookmarks
-        Nav -->|"View Notebook"| Notebook
-        Nav -->|"Cycle Theme"| StoreTheme
-        Bookmarks --> LedgerHook
-        LedgerHook --> StoreReader
-        LedgerHook --> StoreShelf
-        LedgerHook --> StoreOffline
-        LedgerHook -->|"Hydrate Missing"| QueryBooks
-        Bookmarks --> BookmarkCard
-        BookmarkCard -->|"Warm Resume / Open"| Reader
-        Notebook --> StoreAnnot
-        StorePrefs --> ScrollHook
-        ScrollHook --> Nav
-        ScrollHook --> Toolbar
-        Hero -->|"Filter Query"| QueryBooks
-        QueryBooks --> Grid
-        Grid --> Card
-        Card -->|"Preview 3D Volume"| Modal
-        Card -->|"Open Reader"| Reader
-        Card -->|"Save / Like"| StoreShelf
-        Reader --> StoreReader
-        Reader --> TimerHook
-        TimerHook --> StoreHabits
-        Reader --> StoreTheme
-        Reader --> StoreAnnot
-        Reader --> QueryContent
-        Reader --> QueryTranslate
-        Account --> StoreAuth
-        Account --> StoreShelf
-        Account --> StorePrefs
-        Account --> HabitsCard
-        HabitsCard --> StoreHabits
-        Account --> AccoladesCard
-        AccoladesCard --> StoreAccolades
+        subgraph StateStores ["Zustand Persistent State & Offline Engine"]
+            StoreShelf[("⚡ useBookshelfStore\n(saved, likes, queue, history, shelves)")]
+            StoreReader[("📖 useReaderStore\n(typography, progress map, coordinates)")]
+            StoreTheme[("🎨 useThemeStore\n(day, sepia, obsidian)")]
+            StoreAuth[("🔐 useAuthStore\n(session, cloud migration, profile)")]
+            StorePref[("⚙️ usePreferencesStore\n(sticky scroll, layout choices)")]
+            StoreAnnot[("🖍️ useAnnotationStore\n(pastel highlights, notes, tags)")]
+            StoreHabits[("🔥 useHabitsStore\n(streak, 5m threshold, dual immersion, cloud)")]
+            StoreAccolades[("🎖️ useAccoladesStore\n(accolades, showcase pinning, celebrations, cloud)")]
+            StoreJurisdiction[("🌐 useJurisdictionStore\n(country, rule, dev override, cookie sync)")]
+            StoreOffline[("📦 IndexedDB Engine\n(unabridged offline volume cache)")]
+        end
+        
+        subgraph ReaderEngine ["Reader Runtime & Web Speech Subsystem"]
+            SpeechHook["🔊 useReaderSpeech\n(SpeechSynthesis, Boundary Sync, Auto-Flip)"]
+            TimerHook["⏱️ useReadingTimer\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]
+            WorkerHook["⚙️ useGutenbergParserWorker\n(Persistent Worker Chapter AST)"]
+            LedgerHook["🔖 useContinueReadingLedger\n(Two-Way Hydration & 0ms Resume)"]
+            AnnotatorEngine["🖍️ reader-annotator.ts\n(Computational Interval Partitioning & Highlighter)"]
+        end
+        
+        HookCopyright["⚖️ useBookCopyright\n(Declarative Facade: Rules, Lifespans & Status)"]
+        HookAutoHeal["🩺 useCollectionAutoHeal\n(Author Lifespan Scanning & Auto-Rehydration)"]
+        QueryBooks["🔄 useBooks & usePrefetchNextPage\n(Windowed Sub-Pages & Predictive Prefetch)"]
+        QueryContent["🔄 useBookContent(url, bookId)\n(IndexedDB Check to CDN Stream)"]
+        QueryTranslate["🌐 useBookTranslations\n(International Editions Aggregation)"]
+        Telemetry["📊 Vercel Telemetry\n(Analytics & Speed Insights)"]
     end
 
-    subgraph BackendServices ["Live Data, Cloud Sync & Telemetry"]
-        ProxyRoute["Gateway 1: GET /api/books\n(SSR Proxy, SWR Cache, >=2 Char Guard)"]
+    subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]
+        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Cookie Stamping)"]
+        ProxyBooks["GET /api/books\n(SWR 120s Cache, Latency Tracking, Rate Limit, Seam Controller)"]
         CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\n(supabase-provider.ts • gutendex-provider.ts)"]
-        DirectUpstream["Gateway 2: Direct Upstream Fetch\n(Client Failover on 504)"]
-        ContentProxy["GET /api/books/content\n(Tier 1 Supabase DB Text • Tier 2 Multi-Mirror)"]
-        TranslateProxy["Gateway 3: POST /api/translate\n(Google Neural MT Proxy)"]
-        AuthCallback["GET /auth/callback\n(Session Token Exchange)"]
-        
-        GutendexAPI["🌐 Gutendex REST API\n(Upstream Search Fallback)"]
-        GutenbergContent["🌐 Project Gutenberg Mirrors\n(aleph.gutenberg.org, gutenberg.readingroo.ms, www.gutenberg.org)"]
-        GoogleNMT["🌐 Google Neural MT\n(40+ Languages)"]
-        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n• public.books (78k Full Catalog, GIN Search)\n• Sub-50ms Single-Book / ~1-2s Catalog Pages\n• Auth (Email / Magic Link / OAuth)\n• Postgres (RLS Shelves, Progress, Curations, Accolades)\n• reading_progress (2s Debounced Sync & Restore)\n• user_reading_habits (LWW Timestamp Sync)")]
+        ProxyContent["GET /api/books/content\n(Tier 1 Supabase DB • Tier 2 Gutenberg Multi-Mirror, Anti-SSRF)"]
+        ProxyTranslate["POST /api/translate\n(Neural MT Proxy, 40+ Languages)"]
+        LayoutServer["Server Layout (/read/[id])\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]
+    end
+
+    subgraph LegalLayer ["Jurisdictional Copyright Engine (src/lib/copyright-engine.ts)"]
+        EngineCore["isBookPublicDomainInJurisdiction\n(US 1930 Cutoff, Life+70, Life+100, Life+80)"]
+        JointAuthors["Joint Authorship Guard (Berne Art. 7bis)"]
+        Translators["Translator Protection (Berne Art. 2(3))"]
+        ContributorFilter["Contributor Role Filter\n(Illustrator/Artist Non-Blocking Exclusion)"]
+        CountryResolver["Country Resolver (src/lib/country-resolver.ts)\n(Edge Geo-IP, Cookie Sync, Timezone Inference)"]
+        MetaCache["Metadata Lifespan Cache\n(metadata-cache.ts • 24h LRU)"]
+    end
+
+    subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]
+        Gutendex["🌐 Gutendex Search API\n(Upstream Search Fallback)"]
+        GutenbergCDN["🌐 Project Gutenberg Mirrors\n(aleph.gutenberg.org, gutenberg.readingroo.ms, www.gutenberg.org)"]
+        GoogleNMT["🌐 Google Neural MT\n(Serverless AI Translation)"]
+        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books catalog, profiles, shelves, progress, habits, accolades)")]
         SyncEngine["🔄 Gutenberg Catalog Sync Engine\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]
-        VercelEdge["⚡ Vercel Edge Platform\n• Cookie-less Web Analytics\n• Real User Speed Insights (Core Web Vitals)"]
-        
-        QueryBooks --> ProxyRoute
-        ProxyRoute --> CatalogSeam
-        CatalogSeam -->|"Primary: ~1-2s Catalog / <50ms Single-Book"| SupabaseCloud
-        CatalogSeam -.->|"Fallback on unseeded/offline"| GutendexAPI
-        SyncEngine -->|"Weekly Cron pg_catalog.csv.gz Stream"| SupabaseCloud
-        QueryBooks -.->|"Client Failover on 504"| DirectUpstream
-        DirectUpstream --> GutendexAPI
-        QueryContent --> ContentProxy
-        ContentProxy -->|"Tier 1: Instant DB Text"| SupabaseCloud
-        ContentProxy -->|"Tier 2: Multi-Mirror Fallback"| GutenbergContent
-        QueryTranslate --> TranslateProxy
-        TranslateProxy --> GoogleNMT
-        StoreAuth <-->|"Session / Profiles"| SupabaseCloud
-        StoreShelf <-->|"Cloud Sync (RLS)"| SupabaseCloud
-        StoreReader <-->|"Progress Sync (RLS)"| SupabaseCloud
-        StoreHabits <-->|"Habits Sync (RLS)"| SupabaseCloud
-        StoreAccolades <-->|"Accolades Sync (RLS)"| SupabaseCloud
-        AuthCallback <-->|"Code Exchange"| SupabaseCloud
-        Telemetry -.->|"Anonymous Metrics"| VercelEdge
+        VercelEdge["⚡ Vercel Edge Platform\n(Cookie-less Analytics & Speed Insights)"]
     end
 
-    subgraph QualityGateEngine ["7-Gateway Verification Engine"]
-        VerifyScript["scripts/verify-build.js"]
-        ASTParser["scripts/lib/ast-parser.js"]
-        LivingArch["docs/ARCHITECTURE.md"]
-        QualityReport["docs/QUALITY_AUDIT_REPORT.md"]
-        Changelog["CHANGELOG.md"]
-        
-        VerifyScript --> ASTParser
-        ASTParser --> LivingArch
-        VerifyScript --> QualityReport
-        VerifyScript --> Changelog
-    end
-
-    User <-->|"Browse, Read, Sync"| ClientApp
-    ClientApp -.->|"Validated by"| VerifyScript
+    User --> RootProxy
+    RootProxy --> Nav
+    RootProxy --> Hero
+    Hero --> Hero3D
+    RootProxy --> Toolbar
+    Toolbar --> FilterDrawer
+    Toolbar --> Grid
+    Grid --> CopyrightBanner
+    Grid --> HookCopyright
+    Grid --> EditorialQuote
+    Grid --> LiteraryQuotes
+    Nav --> Views
+    FavView --> HookAutoHeal
+    ShelfView --> HookAutoHeal
+    HookCopyright --> EngineCore
+    AccView --> HabitsCard
+    AccView --> AccoladesCard
+    
+    Grid --> QueryBooks
+    QueryBooks --> ProxyBooks
+    ProxyBooks --> CatalogSeam
+    CatalogSeam --> EngineCore
+    CatalogSeam -->|"Primary: Estimated-Count Fast Scan / <50ms Single-Book"| SupabaseCloud
+    CatalogSeam -.->|Fallback on unseeded/offline| Gutendex
+    SyncEngine -->|Weekly Cron pg_catalog.csv.gz Stream| SupabaseCloud
+    QueryBooks -.->|Client Failover on 504| Gutendex
+    
+    ReaderPage --> QueryContent
+    ReaderPage --> ReaderDrawers
+    ReaderPage --> ReaderEngine
+    ReaderPage --> TimerHook
+    ReaderPage --> AnnotatorEngine
+    AnnotatorEngine --> StoreAnnot
+    QueryContent --> ProxyContent
+    ProxyContent --> MetaCache
+    MetaCache -->|1. Supabase public.books check| SupabaseCloud
+    MetaCache -.->|2. Fallback to Gutendex| Gutendex
+    MetaCache --> EngineCore
+    EngineCore --> JointAuthors
+    EngineCore --> Translators
+    ProxyContent -->|Tier 1: Instant DB Text| SupabaseCloud
+    ProxyContent -->|Tier 2: Multi-Mirror Fallback| GutenbergCDN
+    ReaderPage --> QueryTranslate
+    QueryTranslate --> ProxyTranslate
+    ProxyTranslate --> GoogleNMT
+    
+    Views --> StateStores
+    HabitsCard --> StoreHabits
+    AccoladesCard --> StoreAccolades
+    TimerHook --> StoreHabits
+    ReaderEngine --> StateStores
+    StoreShelf -->|Cloud Sync via RLS| SupabaseCloud
+    StoreReader -->|Progress Sync| SupabaseCloud
+    StoreAuth -->|Session Auth| SupabaseCloud
+    StoreHabits -->|Habits Sync via RLS| SupabaseCloud
+    StoreAccolades -->|Accolades Sync via RLS| SupabaseCloud
+    Telemetry -.->|Anonymous Metrics| VercelEdge
 ```
 
 ---
@@ -590,7 +613,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1429 tests across 163 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1474 tests across 165 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

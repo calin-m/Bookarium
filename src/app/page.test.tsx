@@ -32,6 +32,8 @@ vi.mock('@/hooks/queries/useBooks', () => ({
       results: pageMockBooks,
       source: 'upstream',
       latencyMs: 140,
+      clientCountry: 'RO',
+      jurisdictionRule: 'LIFE_70',
     },
     isLoading: false,
     isError: false,
@@ -101,6 +103,9 @@ describe('Home page integration', () => {
     expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /Classic of the Day/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Displaying 6 of 6 public domain volumes/i)
+    ).toBeInTheDocument();
   });
 
   it('should handle search, topic, and language change interactions', () => {
@@ -517,6 +522,29 @@ describe('Home page integration', () => {
     expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
     expect(gridBtn).toHaveAttribute('aria-pressed', 'true');
     expect(shelfBtn).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('smoothly scrolls to catalog-section when page size is changed via StickyCatalogToolbar', () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    renderHome();
+
+    // Default pageSize is 16 on desktop; click 8 to change page size
+    const size8Btn = screen.getByRole('button', { name: 'Show 8 books per page' });
+    const size16Btn = screen.getByRole('button', { name: 'Show 16 books per page' });
+
+    expect(size16Btn).toHaveAttribute('aria-pressed', 'true');
+    expect(size8Btn).toHaveAttribute('aria-pressed', 'false');
+
+    act(() => {
+      fireEvent.click(size8Btn);
+    });
+
+    // Verify scrollIntoView was triggered on catalog-section
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(size8Btn).toHaveAttribute('aria-pressed', 'true');
+    expect(size16Btn).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('switches views when swiping horizontally across main on mobile', () => {
