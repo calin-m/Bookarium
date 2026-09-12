@@ -260,6 +260,32 @@ export default function CopyrightPage() {
             <p className="text-sm text-muted-foreground leading-relaxed font-sans pt-1">
               Bookarium respects the legitimate rights of authors, translators, and literary estates. If you are a copyright holder or authorized representative and believe that a volume or translation has been made available in a jurisdiction where it remains protected:
             </p>
+
+            {/* Confidential Intake Form Callout */}
+            {SITE_CONFIG.LEGAL_CONTACT_FORM ? (
+              <div className="p-4 sm:p-5 rounded-xl bg-primary/5 border border-primary/20 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <span className="text-xs font-mono font-bold text-primary uppercase tracking-wider">
+                      Official Confidential Intake Portal
+                    </span>
+                    <p className="text-xs text-muted-foreground font-sans leading-relaxed">
+                      Submit notices, DMCA notifications, public domain verification queries, or general inquiries confidentially without creating a public developer account.
+                    </p>
+                  </div>
+                  <a
+                    href={SITE_CONFIG.LEGAL_CONTACT_FORM}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium font-sans hover:bg-primary/90 transition-colors shadow-xs shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span>Submit Notice or Inquiry Form</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            ) : null}
+
             <div className="bg-muted/50 border border-border rounded-xl p-4 text-xs font-sans text-muted-foreground space-y-2">
               <p className="font-medium text-foreground">Please provide the following details in your notice:</p>
               <ul className="list-disc list-inside space-y-1 pl-1">
@@ -269,7 +295,22 @@ export default function CopyrightPage() {
                 <li>Your contact name, email address, and physical or electronic signature.</li>
               </ul>
               <p className="pt-1">
-                Notices may be submitted directly via our{' '}
+                {SITE_CONFIG.LEGAL_CONTACT_FORM ? (
+                  <>
+                    For confidential inquiries, copyright notices, and estate verification, please use our{' '}
+                    <a
+                      href={SITE_CONFIG.LEGAL_CONTACT_FORM}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-primary underline-offset-4 hover:underline transition-colors inline-flex items-center gap-1"
+                    >
+                      Official Intake Form <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                    </a>
+                    . For open-source technical issues or bug reports, you may also open a ticket on our{' '}
+                  </>
+                ) : (
+                  <>Notices and inquiries may be submitted directly via our{' '}</>
+                )}
                 <a
                   href={`${SITE_CONFIG.GITHUB_REPO}/issues`}
                   target="_blank"
@@ -277,7 +318,8 @@ export default function CopyrightPage() {
                   className="font-semibold text-foreground underline-offset-4 hover:underline hover:text-primary transition-colors inline-flex items-center gap-1"
                 >
                   GitHub Repository Issue Tracker <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                </a>. Valid notices are investigated and resolved within 24 to 48 hours.
+                </a>
+                . Valid notices are investigated and resolved within 24 to 48 hours.
               </p>
             </div>
           </section>

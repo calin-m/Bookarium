@@ -17,6 +17,9 @@ export const SITE_CONFIG = {
   GITHUB_PROFILE: 'https://github.com/calin-m',
   GITHUB_REPO: 'https://github.com/calin-m/Bookarium',
 
+  // Support, Inquiries & Legal Intake (Configurable via NEXT_PUBLIC_LEGAL_CONTACT_FORM)
+  LEGAL_CONTACT_FORM: process.env.NEXT_PUBLIC_LEGAL_CONTACT_FORM || '',
+
   // Public Domain Partners & Upstream Providers
   PROJECT_GUTENBERG: 'https://www.gutenberg.org',
   GUTENDEX: 'https://gutendex.com',
