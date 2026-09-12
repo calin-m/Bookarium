@@ -287,4 +287,38 @@ describe('useBooks hook', () => {
     fetchSpy.mockRestore();
     useJurisdictionStore.getState().resetOverride();
   });
+
+  it('should use calibrated baseline count during Strategy 2 fallback for unfiltered catalog queries in RO', async () => {
+    useJurisdictionStore.getState().setCountry('RO');
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      if (String(url).includes('/api/books')) {
+        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
+      }
+      return new Response(
+        JSON.stringify({
+          count: 78500,
+          results: [
+            {
+              id: 1342,
+              title: 'Pride and Prejudice',
+              authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+              translators: [],
+              copyright: false,
+            },
+          ],
+        }),
+        { status: 200 }
+      );
+    });
+
+    const data = await fetchBooks();
+    expect(data.clientCountry).toBe('RO');
+    expect(data.jurisdictionRule).toBe('LIFE_70');
+    expect(data.count).toBe(55754);
+
+    fetchSpy.mockRestore();
+    useJurisdictionStore.getState().resetOverride();
+  });
 });
+

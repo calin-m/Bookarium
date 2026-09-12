@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { Quote, BookOpen, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -11,8 +11,20 @@ import {
 } from '@/config/featured-books';
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
-import { useHasMounted } from '@/hooks/useHasMounted';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import type { GutendexBook } from '@/types/book.types';
+
+const subscribeHourly = (callback: () => void) => {
+  const interval = setInterval(callback, 60 * 1000);
+  return () => clearInterval(interval);
+};
+
+const getCurrentHourlyTimestamp = () => {
+  return Math.floor(Date.now() / (1000 * 60 * 60)) * (1000 * 60 * 60);
+};
+
+const getHourlyTimestampSnapshot = () => getCurrentHourlyTimestamp();
+const getHourlyTimestampServerSnapshot = () => getCurrentHourlyTimestamp();
 
 export interface EditorialQuoteSectionProps {
   heroBookId?: number;
@@ -24,17 +36,18 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
   className = '',
 }) => {
   const router = useRouter();
-  const hasMounted = useHasMounted();
+  const { country } = useJurisdiction();
+
+  const hourlyTimestamp = useSyncExternalStore(
+    subscribeHourly,
+    getHourlyTimestampSnapshot,
+    getHourlyTimestampServerSnapshot
+  );
 
   const book: FeaturedHeroBook = useMemo(() => {
-    // Deterministic SSR & initial hydration fallback (index 1: Frankenstein, ID 84)
-    // guarantees non-collision with Hero's SSR fallback (index 0: Pride & Prejudice, ID 1342)
-    if (!hasMounted) {
-      return getDailyEditorialBook(1342, 86400000);
-    }
-    const activeHeroId = heroBookId ?? getHourlyHeroBook().id;
-    return getDailyEditorialBook(activeHeroId);
-  }, [hasMounted, heroBookId]);
+    const activeHeroId = heroBookId ?? getHourlyHeroBook(hourlyTimestamp, country).id;
+    return getDailyEditorialBook(activeHeroId, hourlyTimestamp, country);
+  }, [heroBookId, country, hourlyTimestamp]);
 
   // Defensive sanitization: trim outer quotes or whitespace so quotes are never doubled
   const displayQuote = useMemo(() => {
@@ -45,7 +58,13 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
     const bookPayload: GutendexBook = {
       id: book.id,
       title: book.title,
-      authors: [{ name: book.author, birth_year: null, death_year: null }],
+      authors: [
+        {
+          name: book.author,
+          birth_year: book.authorBirthYear ?? null,
+          death_year: book.authorDeathYear ?? null,
+        },
+      ],
       translators: [],
       subjects: [book.primarySubject || 'Classic Literature'],
       bookshelves: [],

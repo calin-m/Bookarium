@@ -171,6 +171,261 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     license: 'CC0 / Public Domain',
     primarySubject: 'Time Travel & Science Fiction',
   },
+  {
+    id: 2600,
+    volumeNumber: 'Vol. 2600',
+    title: 'War and Peace',
+    author: 'Leo Tolstoy',
+    authorBirthYear: 1828,
+    authorDeathYear: 1910,
+    year: '1869',
+    openingLine:
+      '“Well, Prince, so Genoa and Lucca are now just family estates of the Buonapartes. But I warn you, if you don’t tell me that this means war, if you still try to defend the infamies and horrors perpetrated by that Antichrist—I will have nothing more to do with you.”',
+    quoteExcerpt:
+      'We can know only that we know nothing. And that is the highest degree of human wisdom. If everyone fought for their own convictions there would be no war. Seize the moments of happiness, love and be loved! That is the only reality in the world.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Russian Epic & Historical Fiction',
+  },
+  {
+    id: 135,
+    volumeNumber: 'Vol. 135',
+    title: 'Les Misérables',
+    author: 'Victor Hugo',
+    authorBirthYear: 1802,
+    authorDeathYear: 1885,
+    year: '1862',
+    openingLine:
+      'So long as there shall exist, by reason of law and custom, a social condemnation, which, in the face of civilization, artificially creates hells on earth, and complicates a destiny that is divine with human fatality; books like this cannot be useless.',
+    quoteExcerpt:
+      'Even the darkest night will end and the sun will rise. To love or have loved, that is enough. Ask nothing further. There is no other pearl to be found in the dark folds of life. It is nothing to die; it is dreadful not to live.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Social Justice & French Epic',
+  },
+  {
+    id: 2554,
+    volumeNumber: 'Vol. 2554',
+    title: 'Crime and Punishment',
+    author: 'Fyodor Dostoevsky',
+    authorBirthYear: 1821,
+    authorDeathYear: 1881,
+    year: '1866',
+    openingLine:
+      'On an exceptionally hot evening early in July a young man came out of the garret in which he lodged in S. Place and walked slowly, as though in hesitation, towards K. bridge. He had successfully avoided meeting his landlady on the stairs.',
+    quoteExcerpt:
+      'Pain and suffering are always inevitable for a large intelligence and a deep heart. The really great men must, I think, have great sadness on earth. It takes something more than intelligence to act intelligently.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Psychological Drama & Redemption',
+  },
+  {
+    id: 1260,
+    volumeNumber: 'Vol. 1260',
+    title: 'Jane Eyre',
+    author: 'Charlotte Brontë',
+    authorBirthYear: 1816,
+    authorDeathYear: 1855,
+    year: '1847',
+    openingLine:
+      'There was no possibility of taking a walk that day. We had been wandering, indeed, in the leafless shrubbery an hour in the morning; but since dinner the cold winter wind had brought with it clouds so sombre, and a rain so penetrating, that further outdoor exercise was now out of the question.',
+    quoteExcerpt:
+      'I am no bird; and no net ensnares me; I am a free human being with an independent will, which I now exert to leave you. I would always rather be happy than dignified. I care for myself. The more solitary, the more friendless, the more unsustained I am, the more I will respect myself.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Victorian Gothic Romance & Autonomy',
+  },
+  {
+    id: 768,
+    volumeNumber: 'Vol. 768',
+    title: 'Wuthering Heights',
+    author: 'Emily Brontë',
+    authorBirthYear: 1818,
+    authorDeathYear: 1848,
+    year: '1847',
+    openingLine:
+      '1801.—I have just returned from a visit to my landlord—the solitary neighbour that I shall be troubled with. This is certainly a beautiful country! In all England, I do not believe that I could have fixed on a situation so completely removed from the stir of society.',
+    quoteExcerpt:
+      'Whatever our souls are made of, his and mine are the same. If all else perished, and he remained, I should still continue to be; and if all else remained, and he were annihilated, the universe would turn to a mighty stranger. He’s more myself than I am.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Tragic Romance & Yorkshire Moors',
+  },
+  {
+    id: 5200,
+    volumeNumber: 'Vol. 5200',
+    title: 'The Metamorphosis',
+    author: 'Franz Kafka',
+    authorBirthYear: 1883,
+    authorDeathYear: 1924,
+    year: '1915',
+    openingLine:
+      'One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections.',
+    quoteExcerpt:
+      'I cannot make you understand. I cannot make anyone understand what is happening inside me. I cannot even explain it to myself. What about if I sleep a little bit longer and forget all this nonsense?',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Existential & Modernist Allegory',
+  },
+  {
+    id: 43,
+    volumeNumber: 'Vol. 43',
+    title: 'The Strange Case of Dr. Jekyll and Mr. Hyde',
+    author: 'Robert Louis Stevenson',
+    authorBirthYear: 1850,
+    authorDeathYear: 1894,
+    year: '1886',
+    openingLine:
+      'Mr. Utterson the lawyer was a man of a rugged countenance that was never lighted by a smile; cold, scanty and embarrassed in discourse; backward in sentiment; lean, long, dusty, dreary and yet somehow lovable.',
+    quoteExcerpt:
+      'With every day, and from both sides of my intelligence, the moral and the intellectual, I thus drew steadily nearer to that truth: that man is not truly one, but truly two. Quiet minds cannot be perplexed or frightened.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Psychological Horror & Duality',
+  },
+  {
+    id: 1184,
+    volumeNumber: 'Vol. 1184',
+    title: 'The Count of Monte Cristo',
+    author: 'Alexandre Dumas',
+    authorBirthYear: 1802,
+    authorDeathYear: 1870,
+    year: '1844',
+    openingLine:
+      'On the 24th of February, 1815, the look-out at Notre-Dame de la Garde signalled the three-master, the Pharaon, from Smyrna, Trieste, and Naples. As usual, a pilot put off immediately, and rounding the Chateau d’If, got on board the vessel between Cape Morgion and Rion island.',
+    quoteExcerpt:
+      'All human wisdom is contained in these two words,—Wait and Hope. Moral wounds have this peculiarity—they may be hidden, but they never close; always painful, always ready to bleed when touched, they remain fresh and open in the heart.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'French Swashbuckler & Revenge Epic',
+  },
+  {
+    id: 1232,
+    volumeNumber: 'Vol. 1232',
+    title: 'The Prince',
+    author: 'Niccolò Machiavelli',
+    authorBirthYear: 1469,
+    authorDeathYear: 1527,
+    year: '1532',
+    openingLine:
+      'All states, all powers, that have held and hold rule over men have been and are either republics or principalities. Principalities are either hereditary, in which the family has been long established; or they are new.',
+    quoteExcerpt:
+      'It is much safer to be feared than loved because love is preserved by the link of obligation which, owing to the baseness of men, is broken at every opportunity for their advantage; but fear preserves you by a dread of punishment which never fails.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Political Philosophy & Renaissance Statecraft',
+  },
+  {
+    id: 132,
+    volumeNumber: 'Vol. 132',
+    title: 'The Art of War',
+    author: 'Sun Tzu',
+    authorBirthYear: -544,
+    authorDeathYear: -496,
+    year: '5th C. BC',
+    openingLine:
+      'Sun Tzu said: The art of war is of vital importance to the State. It is a matter of life and death, a road either to safety or to ruin. Hence it is a subject of inquiry which can on no account be neglected.',
+    quoteExcerpt:
+      'The supreme art of war is to subdue the enemy without fighting. If you know the enemy and know yourself, you need not fear the result of a hundred battles. In the midst of chaos, there is also opportunity.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Ancient Military Strategy & Philosophy',
+  },
+  {
+    id: 2680,
+    volumeNumber: 'Vol. 2680',
+    title: 'Meditations',
+    author: 'Marcus Aurelius',
+    authorBirthYear: 121,
+    authorDeathYear: 180,
+    year: '180 AD',
+    openingLine:
+      'From my grandfather Verus I learned good morals and the government of my temper. From the reputation and remembrance of my father, modesty and a manly character. From my mother, piety and beneficence, and abstinence, not only from evil deeds, but even from evil thoughts.',
+    quoteExcerpt:
+      'You have power over your mind—not outside events. Realize this, and you will find strength. The happiness of your life depends upon the quality of your thoughts. Very little is needed to make a happy life; it is all within yourself.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Stoic Philosophy & Self-Mastery',
+  },
+  {
+    id: 1727,
+    volumeNumber: 'Vol. 1727',
+    title: 'The Odyssey',
+    author: 'Homer',
+    authorBirthYear: -800,
+    authorDeathYear: -750,
+    year: '8th C. BC',
+    openingLine:
+      'Tell me, O muse, of that ingenious hero who travelled far and wide after he had sacked the famous town of Troy. Many cities did he visit, and many were the nations with whose manners and customs he was acquainted; moreover he suffered much by sea.',
+    quoteExcerpt:
+      'There is nothing more admirable than when two people who see eye to eye keep house as man and wife, confounding their enemies and delighting their friends. Bear up, my heart, a heavier stroke than this you have had the courage to endure.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Ancient Greek Epic & Myth',
+  },
+  {
+    id: 514,
+    volumeNumber: 'Vol. 514',
+    title: 'Little Women',
+    author: 'Louisa May Alcott',
+    authorBirthYear: 1832,
+    authorDeathYear: 1888,
+    year: '1868',
+    openingLine:
+      '“Christmas won’t be Christmas without any presents,” grumbled Jo, lying on the rug. “It’s so dreadful to be poor!” sighed Meg, looking down at her old dress. “I don’t think it’s fair for some girls to have plenty of pretty things, and other girls nothing at all,” added little Amy.',
+    quoteExcerpt:
+      'I am not afraid of storms, for I am learning how to sail my ship. I like good strong words that mean something. Love is the only thing that we can carry with us when we go, and it makes the end so easy.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Coming-of-Age & American Family',
+  },
+  {
+    id: 2147,
+    volumeNumber: 'Vol. 2147',
+    title: 'The Works of Edgar Allan Poe',
+    author: 'Edgar Allan Poe',
+    authorBirthYear: 1809,
+    authorDeathYear: 1849,
+    year: '1845',
+    openingLine:
+      'Once upon a midnight dreary, while I pondered, weak and weary, Over many a quaint and curious volume of forgotten lore—While I nodded, nearly napping, suddenly there came a tapping, As of some one gently rapping, rapping at my chamber door.',
+    quoteExcerpt:
+      'Those who dream by day are cognizant of many things which escape those who dream only by night. Deep into that darkness peering, long I stood there wondering, fearing, doubting, dreaming dreams no mortal ever dared to dream before.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Gothic Poetry & Psychological Mystery',
+  },
+  {
+    id: 164,
+    volumeNumber: 'Vol. 164',
+    title: 'Twenty Thousand Leagues Under the Sea',
+    author: 'Jules Verne',
+    authorBirthYear: 1828,
+    authorDeathYear: 1905,
+    year: '1870',
+    openingLine:
+      'The year 1866 was signalised by a remarkable incident, a mysterious and puzzling phenomenon, which doubtless no one has yet forgotten. Not to mention rumours which agitated the maritime population and excited the public mind, men of business were in an uproar.',
+    quoteExcerpt:
+      'The sea is everything. It covers seven tenths of the terrestrial globe. Its breath is pure and healthy. It is an immense desert, where man is never lonely, for he feels life stirring on all sides. The sea is only the embodiment of a supernatural and wonderful existence.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Submarine Adventure & Early Sci-Fi',
+  },
+  {
+    id: 205,
+    volumeNumber: 'Vol. 205',
+    title: 'Walden',
+    author: 'Henry David Thoreau',
+    authorBirthYear: 1817,
+    authorDeathYear: 1862,
+    year: '1854',
+    openingLine:
+      'When I wrote the following pages, or rather the bulk of them, I lived alone, in the woods, a mile from any neighbor, in a house which I had built myself, on the shore of Walden Pond, in Concord, Massachusetts, and earned my living by the labor of my hands only.',
+    quoteExcerpt:
+      'I went to the woods because I wished to live deliberately, to front only the essential facts of life, and see if I could not learn what it had to teach, and not, when I came to die, discover that I had not lived. Simplicity, simplicity, simplicity!',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Transcendentalist Nature & Solitude',
+  },
+  {
+    id: 76,
+    volumeNumber: 'Vol. 76',
+    title: 'The Adventures of Huckleberry Finn',
+    author: 'Mark Twain',
+    authorBirthYear: 1835,
+    authorDeathYear: 1910,
+    year: '1884',
+    openingLine:
+      'You don’t know about me without you have read a book by the name of The Adventures of Tom Sawyer; but that ain’t no matter. That book was made by Mr. Mark Twain, and he told the truth, mainly. There was things which he stretched, but mainly he told the truth.',
+    quoteExcerpt:
+      'All right, then, I’ll go to hell. It was awful thoughts and awful words, but they was said. And I let them stay said; and never thought no more about reforming. Human beings can be awful cruel to one another.',
+    license: 'CC0 / Public Domain',
+    primarySubject: 'Mississippi Satire & American Realism',
+  },
 ];
 
 export const FEATURED_HERO_BOOK: FeaturedHeroBook = FEATURED_HERO_BOOKS[0];

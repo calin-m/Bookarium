@@ -1,6 +1,6 @@
 {
   "name": "bookarium",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "private": true,
   "description": "High-performance frontend for discovering, reading, and downloading 100% legal, public domain books.",
   "license": "MIT",

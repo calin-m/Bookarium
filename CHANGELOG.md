@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.5.1] - 2026-09-12
+### *Seamless Dynamic SSR Pre-Hydration, Curated Anthology Expansion & Declarative Copyright Encapsulation*
+
+### Added
+- Synchronized Dynamic SSR & Jurisdictional Edge Cookie Seeding (`src/app/layout.tsx`, `src/stores/useJurisdictionStore.ts`): Declared `export const dynamic = 'force-dynamic'`, extracted edge cookie `bookarium-geo-country` via Next.js `cookies()`, and passed `initialCountry` into `<Providers>`, eliminating Frankenstein (Book #0) and Pride & Prejudice (Book #1342) pre-hydration flash-on-mount swaps.
+- 27-Masterwork & 36-Quote Curated Anthology Expansion (`src/config/featured-books.ts`, `src/config/literary-quotes.ts`, `src/components/presentation/LiteraryQuotes.tsx`): Expanded `FEATURED_HERO_BOOKS` from 10 to 27 classic masterworks and `LITERARY_QUOTES` from 12 to 36 iconic passages with verified author birth/death lifespans and territorial copyright filtering.
+- Declarative Copyright Subsystem Encapsulation & Unified Presentation Notice (`src/hooks/useBookCopyright.ts`, `src/components/presentation/CopyrightNoticeBanner.tsx`): Introduced declarative facade hook `useBookCopyright` and unified `CopyrightNoticeBanner` component, refactoring 8 presentation components and separating legal calculations from UI layouts.
+- 100% AST-Driven Architecture Engine Upgrade (`scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`): Added dynamic AST extraction for all 13 config modules, 4 type modules, Web Workers, and proxy routes with 0% drift.
+- Architecture Decision Records (`ADR-041` to `ADR-043`): Formally ratified declarative copyright facade, synchronized dynamic SSR pre-hydration, and estimated planner statistics optimization in `docs/DECISIONS.md`.
+
+### Fixed
+- Pre-Hydration Book Flash & Swap (`src/components/presentation/HeroSearch.tsx`, `src/components/presentation/EditorialQuoteSection.tsx`): Aligned server snapshots with current hourly rotation index and removed static fallback logic, delivering 0.00 Cumulative Layout Shift and zero hydration mismatch warnings.
+- Supabase PostgreSQL Statement Timeout on Large Catalogs (`src/lib/catalog/supabase-provider.ts`): Switched count mode from `exact` to `estimated` to leverage PostgreSQL planner statistics, eliminating 57014 statement timeouts and cutting search latency from >3,000ms down to ~275ms.
+- Mobile Numeric Pagination Typing & Erase Behavior (`src/components/presentation/StickyCatalogToolbar.tsx`): Decoupled input state from current page fallback, added auto-select on focus/tap, `inputMode="numeric"`, and `aria-pressed` accessibility attributes.
+
+### Refactored
+- Presentation Layer Copyright Separation: Delegated territorial copyright checks across `BookCard`, `BookPreviewModal`, `BookmarkCard`, `BookshelfRack`, `DownloadDrawer`, `BookshelfMobileModal`, and `BookshelfSpine` to `useBookCopyright`.
+- Smooth Scrolling on Catalog Page Size Toggle (`src/app/page.tsx`): Smoothly scrolls `#catalog-section` into view when toggling between 8 and 16 books per page.
+
+
 ## [2.5.0] - 2026-09-11
 ### *Autonomous Gutenberg Catalog Ingestion, PostgreSQL GIN Search & Dual-Provider Resilience*
 
@@ -565,3 +585,6 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-038: Self-Hosted Supabase PostgreSQL Catalog via Strangler Fig Pattern (Phase 2: Schema Co-Evolution, Ingestion Pipeline & Dual Provider Fallback)**
 - **ADR-039: Autonomous Public Domain Book Content Pipeline, Supabase Plain-Text Caching & Mirror Resiliency Architecture**
 - **ADR-040: Autonomous Full-Catalog Gutenberg Ingestion & Periodic GitHub Actions Synchronization**
+- **ADR-041: Declarative Copyright Subsystem Encapsulation & Unified Presentation Isolation**
+- **ADR-042: Synchronized Dynamic SSR, Jurisdictional Edge Cookie Seeding & Zero-Flash Pre-Hydration Architecture**
+- **ADR-043: Supabase PostgreSQL Query Statement Timeout Resolution via Estimated Planner Statistics**

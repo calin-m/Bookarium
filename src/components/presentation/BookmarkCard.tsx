@@ -8,8 +8,7 @@ import type { ActiveReadingVolume, LedgerItemStatus } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
-import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { formatAuthorNames, formatRelativeTime } from '@/lib/utils';
 
 export interface BookmarkCardProps {
@@ -32,9 +31,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   const { book, progressPercent, chapterIndex, globalPage, lastReadAt, status } = volume;
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
-  const { country } = useJurisdiction();
-  const evaluation = isBookPublicDomainInJurisdiction(book, country);
-  const isRestricted = !evaluation.isAllowed;
+  const { country, evaluation, isRestricted } = useBookCopyright(book);
 
   const handleResume = () => {
     if (isRestricted) return;

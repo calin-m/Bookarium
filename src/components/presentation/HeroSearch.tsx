@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo, useSyncExternalStore } from 'react';
-import { useHasMounted } from '@/hooks/useHasMounted';
 
 const subscribeHourly = (callback: () => void) => {
   const interval = setInterval(callback, 60 * 1000);
@@ -17,7 +16,7 @@ const getHourlySnapshot = () => {
 };
 
 const getHourlyServerSnapshot = () => {
-  return 0;
+  return getCurrentHourlyIndex();
 };
 import {
   Search,
@@ -90,7 +89,6 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   const [prevSearch, setPrevSearch] = useState(search);
   const [query, setQuery] = useState(search);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const hasMounted = useHasMounted();
   const { country } = useJurisdiction();
 
   if (search !== prevSearch) {
@@ -144,7 +142,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
     const safeHeroBooks = getJurisdictionSafeFeaturedBooks(country);
     const heroList = safeHeroBooks.length > 0 ? safeHeroBooks : FEATURED_HERO_BOOKS;
-    const idx = hasMounted ? (hourlyIndex % heroList.length) : 0;
+    const idx = hourlyIndex % heroList.length;
     const b = heroList[idx] || heroList[0];
     return {
       ...b,
@@ -164,7 +162,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
         download_count: 50000,
       } as GutendexBook,
     };
-  }, [featuredBook, books, hourlyIndex, hasMounted, country]);
+  }, [featuredBook, books, hourlyIndex, country]);
 
 
 

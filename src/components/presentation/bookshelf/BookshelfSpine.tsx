@@ -9,8 +9,7 @@ import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookRating } from '@/stores/useBookshelfStore';
-import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction, getJurisdictionRuleDescription } from '@/lib/copyright-engine';
+import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { StarRating } from '@/components/ui/StarRating';
 import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
@@ -49,7 +48,7 @@ export interface BookshelfSpineProps {
 
 export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   book,
-  bookIndex,
+  bookIndex: _bookIndex,
   readingProgress,
   isSaved,
   isFavorite,
@@ -69,11 +68,9 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
 }) => {
   const router = useRouter();
   const rating = useBookRating(book.id);
-  const palette = SPINE_PALETTES[(book.id + bookIndex) % SPINE_PALETTES.length];
+  const palette = SPINE_PALETTES[book.id % SPINE_PALETTES.length];
 
-  const { country } = useJurisdiction();
-  const evaluation = isBookPublicDomainInJurisdiction(book, country);
-  const isRestricted = !evaluation.isAllowed;
+  const { country, evaluation, isRestricted, ruleDescription } = useBookCopyright(book);
 
   // Deterministic height and thickness variation based on book id
   const heightVariance = 235 + ((book.id * 17) % 45); // 235px to 280px
@@ -131,7 +128,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       default:
         return null;
     }
-  }, [hoveredAction, isOffline, isSaved, isFavorite]);
+  }, [hoveredAction, isOffline, isSaved, isFavorite, country, isRestricted]);
 
   return (
     <div
@@ -261,7 +258,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               <span>Restricted in {country}</span>
             </div>
             <p className="line-clamp-2 text-muted-foreground font-sans">
-              {evaluation.reason || getJurisdictionRuleDescription(evaluation.rule, country)}
+              {evaluation.reason || ruleDescription}
             </p>
           </div>
         )}

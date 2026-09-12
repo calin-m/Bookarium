@@ -9,8 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
-import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { BookCard } from './BookCard';
 import { NotablePassagesSpread } from './NotablePassagesSpread';
 
@@ -49,9 +48,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const rating = book?.id ? bookRatings[book.id] ?? null : null;
   const status = book?.id ? bookStatuses[book.id] ?? null : null;
 
-  const { country } = useJurisdiction();
-  const evaluation = book ? isBookPublicDomainInJurisdiction(book, country) : null;
-  const isRestricted = Boolean(evaluation && !evaluation.isAllowed);
+  const { country, evaluation, isRestricted } = useBookCopyright(book);
 
   // Personal curation toolbar is strictly restricted to personal collections (Bookshelf & Favorites)
   // and completely hidden in the main catalog view

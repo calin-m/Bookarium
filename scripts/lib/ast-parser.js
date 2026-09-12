@@ -512,6 +512,160 @@ function extractDomainUtilitiesCatalog(srcDir) {
   return utilities.sort((a, b) => a.file.localeCompare(b.file));
 }
 
+/**
+ * Extracts configuration fixtures, tokens, and routing constants from src/config/.
+ */
+function extractConfigurationCatalog(srcDir) {
+  const configDir = path.join(srcDir, 'config');
+  if (!fs.existsSync(configDir)) return [];
+
+  const files = fs
+    .readdirSync(configDir)
+    .filter((f) => (f.endsWith('.ts') || f.endsWith('.tsx')) && !f.endsWith('.test.ts') && !f.endsWith('.test.tsx'));
+
+  const configs = [];
+
+  for (const file of files) {
+    const full = path.join(configDir, file);
+    const content = fs.readFileSync(full, 'utf-8');
+    const exportedConstants = [];
+    const exportedFunctions = [];
+    const exportedTypes = [];
+
+    try {
+      const ast = parser.parse(content, {
+        sourceType: 'module',
+        plugins: ['typescript', 'jsx'],
+      });
+
+      traverse(ast, {
+        ExportNamedDeclaration({ node }) {
+          if (node.declaration) {
+            if (node.declaration.declarations) {
+              for (const dec of node.declaration.declarations) {
+                if (dec.id && dec.id.name) {
+                  let extra = '';
+                  if (dec.init && dec.init.type === 'ArrayExpression') {
+                    extra = ` (${dec.init.elements.length} items)`;
+                  }
+                  exportedConstants.push(`${dec.id.name}${extra}`);
+                }
+              }
+            } else if (node.declaration.type === 'FunctionDeclaration' && node.declaration.id) {
+              exportedFunctions.push(node.declaration.id.name);
+            } else if (
+              (node.declaration.type === 'TSInterfaceDeclaration' ||
+                node.declaration.type === 'TSTypeAliasDeclaration') &&
+              node.declaration.id
+            ) {
+              exportedTypes.push(node.declaration.id.name);
+            }
+          }
+          if (node.specifiers) {
+            for (const spec of node.specifiers) {
+              if (spec.exported && spec.exported.name) {
+                exportedConstants.push(spec.exported.name);
+              }
+            }
+          }
+        },
+      });
+    } catch (_err) {
+      const constMatches = content.matchAll(/export\s+const\s+([A-Za-z0-9_]+)/g);
+      for (const m of constMatches) exportedConstants.push(m[1]);
+      const fnMatches = content.matchAll(/export\s+function\s+([A-Za-z0-9_]+)/g);
+      for (const m of fnMatches) exportedFunctions.push(m[1]);
+    }
+
+    const configName = file.replace(/\.(ts|tsx)$/, '');
+    configs.push({
+      name: configName,
+      file: `src/config/${file}`,
+      constants: Array.from(new Set(exportedConstants)),
+      functions: Array.from(new Set(exportedFunctions)),
+      types: Array.from(new Set(exportedTypes)),
+    });
+  }
+
+  return configs.sort((a, b) => a.file.localeCompare(b.file));
+}
+
+/**
+ * Extracts canonical domain type contracts and database row models from src/types/.
+ */
+function extractTypeCatalog(srcDir) {
+  const typesDir = path.join(srcDir, 'types');
+  if (!fs.existsSync(typesDir)) return [];
+
+  const files = fs
+    .readdirSync(typesDir)
+    .filter((f) => (f.endsWith('.ts') || f.endsWith('.d.ts')) && !f.endsWith('.test.ts'));
+
+  const typeModules = [];
+
+  for (const file of files) {
+    const full = path.join(typesDir, file);
+    const content = fs.readFileSync(full, 'utf-8');
+    const interfaces = [];
+    const typeAliases = [];
+
+    try {
+      const ast = parser.parse(content, {
+        sourceType: 'module',
+        plugins: ['typescript'],
+      });
+
+      traverse(ast, {
+        ExportNamedDeclaration({ node }) {
+          if (node.declaration) {
+            if (node.declaration.type === 'TSInterfaceDeclaration' && node.declaration.id) {
+              interfaces.push(node.declaration.id.name);
+            } else if (node.declaration.type === 'TSTypeAliasDeclaration' && node.declaration.id) {
+              typeAliases.push(node.declaration.id.name);
+            }
+          }
+        },
+      });
+    } catch (_err) {
+      const ifaceMatches = content.matchAll(/export\s+interface\s+([A-Za-z0-9_]+)/g);
+      for (const m of ifaceMatches) interfaces.push(m[1]);
+      const typeMatches = content.matchAll(/export\s+type\s+([A-Za-z0-9_]+)/g);
+      for (const m of typeMatches) typeAliases.push(m[1]);
+    }
+
+    typeModules.push({
+      name: file.replace(/\.(ts|d\.ts)$/, ''),
+      file: `src/types/${file}`,
+      interfaces: Array.from(new Set(interfaces)),
+      typeAliases: Array.from(new Set(typeAliases)),
+    });
+  }
+
+  return typeModules.sort((a, b) => a.file.localeCompare(b.file));
+}
+
+/**
+ * Extracts Web Worker architecture modules from src/workers/.
+ */
+function extractWorkerCatalog(srcDir) {
+  const workersDir = path.join(srcDir, 'workers');
+  if (!fs.existsSync(workersDir)) return [];
+
+  const files = fs
+    .readdirSync(workersDir)
+    .filter((f) => f.endsWith('.ts') || f.endsWith('.js'));
+
+  const workers = [];
+  for (const file of files) {
+    workers.push({
+      name: file.replace(/\.(ts|js)$/, ''),
+      file: `src/workers/${file}`,
+      role: 'Dedicated off-thread Web Worker parsing raw Project Gutenberg plain-text AST, calculating chapter segmentation boundaries, and computing fluid paginated layouts without blocking the UI thread.',
+    });
+  }
+  return workers;
+}
+
 module.exports = {
   getAllSourceFiles,
   resolveImportPath,
@@ -522,5 +676,8 @@ module.exports = {
   extractStoreCatalog,
   extractApiAndHookCatalog,
   extractDomainUtilitiesCatalog,
+  extractConfigurationCatalog,
+  extractTypeCatalog,
+  extractWorkerCatalog,
 };
 

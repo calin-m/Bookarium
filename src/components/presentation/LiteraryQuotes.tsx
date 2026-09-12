@@ -1,24 +1,45 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Quote, Shuffle, Sparkles, BookOpen } from 'lucide-react';
-import { LITERARY_QUOTES, type LiteraryQuote } from '@/config/literary-quotes';
+import {
+  LITERARY_QUOTES,
+  getJurisdictionSafeLiteraryQuotes,
+  type LiteraryQuote,
+} from '@/config/literary-quotes';
 import { ROUTES } from '@/config/routes';
-
-
-function getRandomThreeQuotes(excludeIds: number[] = []): LiteraryQuote[] {
-  const available = LITERARY_QUOTES.filter((q) => !excludeIds.includes(q.id));
-  const pool = available.length >= 3 ? available : LITERARY_QUOTES;
-  const shuffled = [...pool].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, 3);
-}
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 export const LiteraryQuotes: React.FC = () => {
-  // Initialize deterministically for SSR/Client hydration match
-  const [displayedQuotes, setDisplayedQuotes] = useState<LiteraryQuote[]>(() => LITERARY_QUOTES.slice(0, 3));
+  const { country } = useJurisdiction();
+  const hasMounted = useHasMounted();
+
+  const safeQuotes = useMemo(() => {
+    if (!hasMounted) {
+      return LITERARY_QUOTES.slice(0, 3);
+    }
+    const filtered = getJurisdictionSafeLiteraryQuotes(country);
+    return filtered.length >= 3 ? filtered : LITERARY_QUOTES.slice(0, 3);
+  }, [country, hasMounted]);
+
+  // User-selected shuffled quotes (null when using default anthology selection)
+  const [shuffledQuotes, setShuffledQuotes] = useState<LiteraryQuote[] | null>(null);
   const [isShuffling, setIsShuffling] = useState(false);
   const shuffleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Synchronously compute displayed quotes, strictly enforcing active jurisdiction safety
+  const displayedQuotes = useMemo(() => {
+    const base = shuffledQuotes || safeQuotes.slice(0, 3);
+    const safeIds = new Set(safeQuotes.map((q) => q.id));
+    const allowed = base.filter((q) => safeIds.has(q.id));
+    if (allowed.length === 3) return allowed;
+    const pool = safeQuotes.filter((q) => !allowed.some((a) => a.id === q.id));
+    const needed = 3 - allowed.length;
+    const fillers = pool.slice(0, needed);
+    return [...allowed, ...fillers];
+  }, [safeQuotes, shuffledQuotes]);
 
   useEffect(() => {
     return () => {
@@ -31,14 +52,16 @@ export const LiteraryQuotes: React.FC = () => {
   const handleShuffle = useCallback(() => {
     setIsShuffling(true);
     const currentIds = displayedQuotes.map((q) => q.id);
-    const nextQuotes = getRandomThreeQuotes(currentIds);
-    setDisplayedQuotes(nextQuotes);
+    const available = safeQuotes.filter((q) => !currentIds.includes(q.id));
+    const pool = available.length >= 3 ? available : safeQuotes;
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    setShuffledQuotes(shuffled.slice(0, 3));
 
     if (shuffleTimerRef.current) {
       clearTimeout(shuffleTimerRef.current);
     }
     shuffleTimerRef.current = setTimeout(() => setIsShuffling(false), 300);
-  }, [displayedQuotes]);
+  }, [displayedQuotes, safeQuotes]);
 
   return (
     <section className="bg-muted py-20 border-t border-border transition-colors duration-theme">

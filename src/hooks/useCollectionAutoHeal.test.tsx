@@ -108,7 +108,10 @@ describe('useCollectionAutoHeal', () => {
 
     expect(result.current.missingFavoriteIds).toEqual([161]);
     expect(result.current.totalMissingCount).toBe(1);
-    expect(mockUseBooks).toHaveBeenCalledWith({ ids: '161' }, { enabled: true });
+    expect(mockUseBooks).toHaveBeenCalledWith(
+      { ids: '161', includeRestrictedMetadata: true },
+      { enabled: true }
+    );
 
     // Simulate upstream data arrival
     mockUseBooks.mockReturnValue({
@@ -141,7 +144,10 @@ describe('useCollectionAutoHeal', () => {
 
     expect(result.current.incompleteSavedIds).toEqual([21839]);
     expect(result.current.totalMissingCount).toBe(1);
-    expect(mockUseBooks).toHaveBeenCalledWith({ ids: '21839' }, { enabled: true });
+    expect(mockUseBooks).toHaveBeenCalledWith(
+      { ids: '21839', includeRestrictedMetadata: true },
+      { enabled: true }
+    );
 
     const healedBook: GutendexBook = {
       ...mockIncompleteBook,
@@ -171,7 +177,35 @@ describe('useCollectionAutoHeal', () => {
       wrapper: createWrapper(),
     });
 
-    expect(mockUseBooks).toHaveBeenCalledWith({ ids: '21839' }, { enabled: true });
+    expect(mockUseBooks).toHaveBeenCalledWith(
+      { ids: '21839', includeRestrictedMetadata: true },
+      { enabled: true }
+    );
+  });
+
+  it('does not loop and terminates cleanly when upstream books also lack author lifespans', async () => {
+    useBookshelfStore.setState({
+      favoriteBookIds: [],
+      favoriteBooks: [],
+      savedBooks: [mockIncompleteBook],
+    });
+
+    mockUseBooks.mockReturnValue({
+      data: { results: [mockIncompleteBook] },
+      isLoading: false,
+    });
+
+    const enrichSpy = vi.spyOn(useBookshelfStore.getState(), 'enrichSavedBooks');
+
+    const { result, rerender } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    rerender();
+    rerender();
+
+    expect(enrichSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.incompleteSavedIds).toEqual([]);
   });
 });
 

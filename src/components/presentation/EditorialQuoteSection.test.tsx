@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { EditorialQuoteSection } from './EditorialQuoteSection';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -56,6 +56,28 @@ describe('EditorialQuoteSection component', () => {
     expect(currentBook).not.toBeNull();
     expect(currentBook?.id).toBe(expectedBook.id);
     expect(currentBook?.title).toBe(expectedBook.title);
+    const firstAuthor = currentBook?.authors?.[0];
+    const authorObj = typeof firstAuthor === 'object' && firstAuthor !== null ? firstAuthor : null;
+    expect(authorObj?.birth_year).toBe(expectedBook.authorBirthYear ?? null);
+    expect(authorObj?.death_year).toBe(expectedBook.authorDeathYear ?? null);
+  });
+
+  it('filters out books protected in Life+100 jurisdiction (Mexico)', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    act(() => {
+      useJurisdictionStore.getState().setCountry('MX');
+    });
+
+    render(<EditorialQuoteSection />);
+
+    // In Mexico, Gatsby, Sherlock Holmes, and The Time Machine must never render
+    expect(screen.queryByText('The Great Gatsby')).toBeNull();
+    expect(screen.queryByText('The Adventures of Sherlock Holmes')).toBeNull();
+
+    // Reset back to US
+    act(() => {
+      useJurisdictionStore.getState().setCountry('US');
+    });
   });
 
   it('dynamically avoids collision when heroBookId matches candidate book', () => {

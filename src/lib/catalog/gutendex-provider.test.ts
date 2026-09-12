@@ -201,5 +201,33 @@ describe('GutendexCatalogProvider', () => {
     vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Down'));
     expect(await provider.isHealthy()).toBe(false);
   });
+
+  it('uses calibrated baseline count for unfiltered catalog queries under non-US jurisdictions', async () => {
+    const mockData = {
+      count: 78500,
+      results: [
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          copyright: false,
+        },
+      ],
+    };
+
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify(mockData), { status: 200 })
+    );
+
+    const result = await provider.searchBooks({
+      page: 1,
+      limit: 32,
+      country: 'RO',
+    });
+
+    expect(result.clientCountry).toBe('RO');
+    expect(result.jurisdictionRule).toBe('LIFE_70');
+    expect(result.count).toBe(55754);
+  });
 });
 

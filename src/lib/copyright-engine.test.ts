@@ -4,11 +4,10 @@ import {
   getJurisdictionRule,
   normalizeCountryCode,
   getJurisdictionRuleDescription,
-  EU_MEMBER_STATES,
-  LIFE_70_COUNTRIES,
-  LIFE_100_COUNTRIES,
-  LIFE_80_COUNTRIES,
-  US_JURISDICTIONS,
+  JURISDICTION_BASELINE_COUNTS,
+  getCountryDisplayName,
+  getJurisdictionShortLabel,
+  partitionBooksByJurisdiction,
 } from './copyright-engine';
 import type { GutendexBook, Book } from '@/types/book.types';
 
@@ -453,5 +452,100 @@ describe('copyright-engine', () => {
       expect(result.isAllowed).toBe(true);
     });
   });
+
+  describe('JURISDICTION_BASELINE_COUNTS', () => {
+    it('defines calibrated baseline counts for all jurisdiction rules', () => {
+      expect(JURISDICTION_BASELINE_COUNTS.US_PUBLIC_DOMAIN).toBe(78086);
+      expect(JURISDICTION_BASELINE_COUNTS.LIFE_70).toBe(55754);
+      expect(JURISDICTION_BASELINE_COUNTS.LIFE_80).toBe(50200);
+      expect(JURISDICTION_BASELINE_COUNTS.LIFE_100).toBe(42100);
+    });
+  });
+
+  describe('getCountryDisplayName', () => {
+    it('resolves valid country codes to full English names', () => {
+      expect(getCountryDisplayName('RO')).toBe('Romania');
+      expect(getCountryDisplayName('US')).toBe('United States');
+      expect(getCountryDisplayName('GB')).toBe('United Kingdom');
+      expect(getCountryDisplayName('DE')).toBe('Germany');
+      expect(getCountryDisplayName('FR')).toBe('France');
+    });
+
+    it('gracefully handles unmapped or normalized codes', () => {
+      expect(getCountryDisplayName('ro')).toBe('Romania');
+      expect(getCountryDisplayName('us')).toBe('United States');
+    });
+  });
+
+  describe('getJurisdictionShortLabel', () => {
+    it('generates concise badge labels with authentic country names', () => {
+      expect(getJurisdictionShortLabel('US_PUBLIC_DOMAIN', 'US')).toBe('United States');
+      expect(getJurisdictionShortLabel('LIFE_70', 'RO')).toBe('Romania • Life + 70');
+      expect(getJurisdictionShortLabel('LIFE_70', 'GB')).toBe('United Kingdom • Life + 70');
+      expect(getJurisdictionShortLabel('LIFE_80', 'CO')).toBe('Colombia • Life + 80');
+      expect(getJurisdictionShortLabel('LIFE_100', 'MX')).toBe('Mexico • Life + 100');
+    });
+  });
+
+  describe('partitionBooksByJurisdiction', () => {
+    const currentYear = 2026;
+    const prideAndPrejudice: GutendexBook = {
+      id: 1342,
+      title: 'Pride and Prejudice',
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+      translators: [],
+      subjects: ['Fiction'],
+      bookshelves: ['Best Books Ever'],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 50000,
+    };
+
+    const deathOnTheNile: GutendexBook = {
+      id: 9999,
+      title: 'Death on the Nile',
+      authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+      translators: [],
+      subjects: ['Detective and mystery stories'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 30000,
+    };
+
+    it('partitions all books into downloadable in US jurisdiction', () => {
+      const { downloadableBooks, restrictedBooks } = partitionBooksByJurisdiction(
+        [prideAndPrejudice, deathOnTheNile],
+        'US',
+        currentYear
+      );
+
+      expect(downloadableBooks).toHaveLength(2);
+      expect(restrictedBooks).toHaveLength(0);
+    });
+
+    it('partitions books accurately in Life + 70 jurisdiction (e.g. GB / RO)', () => {
+      const { downloadableBooks, restrictedBooks } = partitionBooksByJurisdiction(
+        [prideAndPrejudice, deathOnTheNile],
+        'GB',
+        currentYear
+      );
+
+      expect(downloadableBooks.map((b) => b.id)).toEqual([1342]);
+      expect(restrictedBooks.map((b) => b.id)).toEqual([9999]);
+    });
+
+    it('handles empty collection gracefully', () => {
+      const { downloadableBooks, restrictedBooks } = partitionBooksByJurisdiction([], 'RO', currentYear);
+      expect(downloadableBooks).toEqual([]);
+      expect(restrictedBooks).toEqual([]);
+    });
+  });
 });
+
+
 

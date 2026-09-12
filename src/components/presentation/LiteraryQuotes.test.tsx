@@ -41,13 +41,30 @@ describe('LiteraryQuotes component', () => {
     expect(() => unmount()).not.toThrow();
   });
 
-  it('applies theme-aware border-border classes to card dividers without unsupported opacity modifiers', () => {
-    const { container } = render(<LiteraryQuotes />);
-    const topBorderDividers = container.querySelectorAll('.border-t');
-    expect(topBorderDividers.length).toBeGreaterThan(0);
-    topBorderDividers.forEach((el) => {
-      expect(el).toHaveClass('border-border');
-      expect(el.className).not.toContain('border-border/50');
+  it('filters out quotes from protected authors in Life+100 jurisdiction (Mexico)', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    const { act } = await import('@testing-library/react');
+
+    act(() => {
+      useJurisdictionStore.getState().setCountry('MX');
+    });
+
+    render(<LiteraryQuotes />);
+
+    const shuffleBtn = screen.getByLabelText(/Discover more literary quotes/i);
+
+    // Shuffle 5 times under Mexico jurisdiction; Gatsby and Sherlock Holmes must never appear
+    for (let i = 0; i < 5; i++) {
+      act(() => {
+        fireEvent.click(shuffleBtn);
+      });
+      expect(screen.queryByText(/The Great Gatsby/i)).toBeNull();
+      expect(screen.queryByText(/The Adventures of Sherlock Holmes/i)).toBeNull();
+    }
+
+    // Reset back to US
+    act(() => {
+      useJurisdictionStore.getState().setCountry('US');
     });
   });
 });

@@ -1,10 +1,15 @@
 import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
+import { cookies } from 'next/headers';
 import { Providers } from './providers';
 import { SITE_CONFIG } from '@/config/site-config';
+import { GEO_COOKIE_NAME } from '@/proxy';
+import { normalizeCountryCode } from '@/lib/copyright-engine';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
+
+export const dynamic = 'force-dynamic';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -139,11 +144,22 @@ const rootStructuredData = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  let initialCountry = 'US';
+  try {
+    const cookieStore = await cookies();
+    const rawCountry = cookieStore.get(GEO_COOKIE_NAME)?.value;
+    if (rawCountry) {
+      initialCountry = normalizeCountryCode(rawCountry);
+    }
+  } catch {
+    // Gracefully fallback to US when cookies() is called outside request scope (e.g. build/test)
+  }
+
   return (
     <html
       lang="en"
@@ -171,7 +187,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className="min-h-screen flex flex-col bg-background text-foreground antialiased font-sans"
       >
-        <Providers>
+        <Providers initialCountry={initialCountry}>
           {children}
           <Analytics />
           <SpeedInsights />

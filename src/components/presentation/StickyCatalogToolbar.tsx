@@ -63,15 +63,33 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   isVisible = true,
 }) => {
   const hasMounted = useHasMounted();
-  const [jumpPageInput, setJumpPageInput] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [prevPage, setPrevPage] = useState(page);
+  const [jumpPageInput, setJumpPageInput] = useState(String(page));
+
+  // Synchronize input with external page changes during render when not actively editing
+  if (page !== prevPage) {
+    setPrevPage(page);
+    if (!isFocused) {
+      setJumpPageInput(String(page));
+    }
+  }
+
+  const commitPageJump = (rawValue: string) => {
+    const target = parseInt(rawValue, 10);
+    if (!isNaN(target) && target >= 1 && onPageChange) {
+      if (target !== page) {
+        onPageChange(target);
+      }
+      setJumpPageInput(String(target));
+    } else {
+      setJumpPageInput(String(page));
+    }
+  };
 
   const handleJumpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const target = parseInt(jumpPageInput, 10);
-    if (!isNaN(target) && target >= 1 && onPageChange) {
-      onPageChange(target);
-      setJumpPageInput('');
-    }
+    commitPageJump(jumpPageInput);
   };
 
   const displayLatency = latencyMs !== undefined ? latencyMs : 140;
@@ -163,6 +181,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                     aria-label={`Show ${size} books per page`}
+                    aria-pressed={pageSize === size}
                   >
                     {size}
                   </button>
@@ -270,9 +289,24 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               >
                 <input
                   type="text"
-                  value={jumpPageInput || page}
-                  onChange={(e) => setJumpPageInput(e.target.value)}
-                  onFocus={() => setJumpPageInput(String(page))}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={jumpPageInput}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '');
+                    setJumpPageInput(clean);
+                  }}
+                  onFocus={(e) => {
+                    setIsFocused(true);
+                    e.target.select();
+                  }}
+                  onClick={(e) => {
+                    (e.target as HTMLInputElement).select();
+                  }}
+                  onBlur={() => {
+                    setIsFocused(false);
+                    commitPageJump(jumpPageInput);
+                  }}
                   className="w-8 sm:w-9 h-8 text-center text-xs font-mono font-bold rounded border border-border bg-card text-foreground focus:outline-hidden focus:border-primary"
                   aria-label="Jump to page"
                   title="Enter page number and press Enter"

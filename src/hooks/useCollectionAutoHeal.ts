@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useHasMounted } from '@/hooks/useHasMounted';
@@ -23,6 +23,10 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
   const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks || []);
   const savedBooks = useBookshelfStore((s) => s.savedBooks || []);
 
+  // Track book IDs queried this session to prevent infinite re-query loops on authors without known lifespans
+  const [attemptedHealIds, setAttemptedHealIds] = useState<Set<number>>(() => new Set());
+  const [prevResults, setPrevResults] = useState<unknown>(null);
+
   // 1. Detect favorite IDs in localStorage/cloud that lack full book metadata
   const missingFavoriteIds = useMemo(() => {
     if (!hasMounted) return [];
@@ -35,6 +39,7 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     if (!hasMounted) return [];
     const ids: number[] = [];
     for (const b of savedBooks) {
+      if (attemptedHealIds.has(b.id)) continue;
       if (
         !b.authors ||
         b.authors.length === 0 ||
@@ -44,7 +49,7 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
       }
     }
     return ids;
-  }, [savedBooks, hasMounted]);
+  }, [savedBooks, attemptedHealIds, hasMounted]);
 
   // 3. Combine and deduplicate all IDs requiring fresh upstream metadata
   const combinedMissingIds = useMemo(() => {
@@ -56,26 +61,36 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
 
   // 4. Single batched query to /api/books?ids=... (dormant when combinedMissingIds is empty)
   const { data: missingBooksData, isLoading: isHealing } = useBooks(
-    missingIdsParam ? { ids: missingIdsParam } : undefined,
+    missingIdsParam ? { ids: missingIdsParam, includeRestrictedMetadata: true } : undefined,
     { enabled: Boolean(missingIdsParam) }
   );
 
-  // 5. Rehydrate and enrich stores when fresh books arrive
+  // Adjust attempted heal session tracking during render when fresh upstream books arrive
+  if (missingBooksData?.results && missingBooksData.results !== prevResults) {
+    setPrevResults(missingBooksData.results);
+    const freshResults = missingBooksData.results;
+    const newHealedIds = freshResults.map((b) => b.id).filter((id) => !attemptedHealIds.has(id));
+    if (newHealedIds.length > 0) {
+      const next = new Set(attemptedHealIds);
+      for (const id of newHealedIds) next.add(id);
+      setAttemptedHealIds(next);
+    }
+  }
+
+  // 5. Rehydrate and enrich stores when fresh books arrive (reference-guarded)
+  const lastProcessedResultsRef = useRef<unknown>(null);
+
   useEffect(() => {
     if (!missingBooksData?.results || missingBooksData.results.length === 0) return;
+    if (lastProcessedResultsRef.current === missingBooksData.results) return;
+    lastProcessedResultsRef.current = missingBooksData.results;
 
     const freshResults = missingBooksData.results;
 
-    // A. Sync missing favorites
-    if (missingFavoriteIds.length > 0) {
-      useBookshelfStore.getState().syncFavoriteBooks(freshResults);
-    }
-
-    // B. Enrich saved books missing lifespans
-    if (incompleteSavedIds.length > 0) {
-      useBookshelfStore.getState().enrichSavedBooks(freshResults);
-    }
-  }, [missingBooksData, missingFavoriteIds, incompleteSavedIds]);
+    // Both methods are internally idempotent and self-guarded
+    useBookshelfStore.getState().syncFavoriteBooks(freshResults);
+    useBookshelfStore.getState().enrichSavedBooks(freshResults);
+  }, [missingBooksData?.results]);
 
   return {
     isHealing: Boolean(missingIdsParam && isHealing),

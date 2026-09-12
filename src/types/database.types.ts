@@ -99,7 +99,8 @@ export interface Database {
           book_title: string;
           book_authors: string[];
           cover_url: string | null;
-          added_at: string;
+          created_at?: string;
+          added_at?: string;
         };
         Insert: {
           id?: string;
@@ -109,6 +110,7 @@ export interface Database {
           book_title: string;
           book_authors?: string[];
           cover_url?: string | null;
+          created_at?: string;
           added_at?: string;
         };
         Update: {
@@ -119,6 +121,7 @@ export interface Database {
           book_title?: string;
           book_authors?: string[];
           cover_url?: string | null;
+          created_at?: string;
           added_at?: string;
         };
         Relationships: [];

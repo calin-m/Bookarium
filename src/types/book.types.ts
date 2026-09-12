@@ -27,8 +27,11 @@ export interface GutendexResponse {
   next: string | null;
   previous: string | null;
   results: GutendexBook[];
-  source?: 'upstream' | 'cache';
+  source?: 'upstream' | 'cache' | 'supabase';
   latencyMs?: number;
+  clientCountry?: string;
+  jurisdictionRule?: string;
+  totalFiltered?: number;
 }
 
 export type ReadingStatus = 'want_to_read' | 'currently_reading' | 'finished';

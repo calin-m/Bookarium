@@ -15,8 +15,8 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { StarRating } from '@/components/ui/StarRating';
 import { ROUTES } from '@/config/routes';
-import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { useBookCopyright } from '@/hooks/useBookCopyright';
+
 
 export interface BookCardProps {
   book: GutendexBook;
@@ -58,9 +58,7 @@ export const BookCard: React.FC<BookCardProps> = ({
   const rating = useBookRating(book.id);
   const status = useReadingStatus(book.id);
 
-  const { country } = useJurisdiction();
-  const evaluation = isBookPublicDomainInJurisdiction(book, country);
-  const isRestricted = !evaluation.isAllowed;
+  const { country, evaluation, isRestricted } = useBookCopyright(book);
 
   const formats = extractBookFormats(book.formats, book.id);
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';

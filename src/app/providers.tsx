@@ -3,11 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { initializeJurisdiction } from '@/stores/useJurisdictionStore';
 import { syncAllStoresWithCloud } from '@/lib/sync-utils';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export interface ProvidersProps {
+  children: React.ReactNode;
+  initialCountry?: string;
+}
+
+export function Providers({ children, initialCountry }: ProvidersProps) {
+  if (initialCountry) {
+    initializeJurisdiction(initialCountry);
+  }
   const [queryClient] = useState(
     () =>
       new QueryClient({

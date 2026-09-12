@@ -87,10 +87,14 @@ export const VIEW_CONTENT_CONFIG: Record<'catalog' | 'bookshelf' | 'favorites', 
       filters?.search || filters?.topic || filters?.era
         ? 'Search Catalog'
         : 'Public Domain Books',
-    getSubtitle: ({ booksData, displayedCount = 0 }) =>
-      booksData
-        ? `Displaying ${displayedCount} of ${booksData.count.toString()} public domain volumes`
-        : 'Searching Project Gutenberg catalog...',
+    getSubtitle: ({ booksData, displayedCount = 0 }) => {
+      if (!booksData) {
+        return 'Searching Project Gutenberg catalog...';
+      }
+
+      const formattedCount = booksData.count.toLocaleString();
+      return `Displaying ${displayedCount} of ${formattedCount} public domain volumes`;
+    },
     emptyTitle: 'No matching public domain works found',
     emptyDescription:
       'Try adjusting your search keywords, collection facets, or clearing the language/era filter.',

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/presentation/Navbar';
 import { HeroSearch } from '@/components/presentation/HeroSearch';
@@ -153,8 +153,7 @@ function HomeContent() {
     isApproachingBatchEnd && Boolean(booksData?.next)
   );
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
+  const scrollToCatalogSection = () => {
     if (typeof window !== 'undefined') {
       const el = document.getElementById('catalog-section');
       if (el) {
@@ -163,14 +162,19 @@ function HomeContent() {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    scrollToCatalogSection();
+  };
+
   const handleViewModeChange = (mode: 'grid' | 'shelf') => {
     setViewMode(mode);
-    if (typeof window !== 'undefined') {
-      const el = document.getElementById('catalog-section');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
+    scrollToCatalogSection();
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    scrollToCatalogSection();
   };
 
   // Convert chips for toolbar interface
@@ -255,7 +259,19 @@ function HomeContent() {
                 const bookPayload: GutendexBook = (featured as { rawBook?: GutendexBook }).rawBook || {
                   id: featured.id,
                   title: featured.title,
-                  authors: [{ name: authorName, birth_year: null, death_year: null }],
+                  authors: [
+                    {
+                      name: authorName,
+                      birth_year:
+                        (featured as { rawBook?: GutendexBook }).rawBook?.authors?.[0]?.birth_year ??
+                        (featured as { authorBirthYear?: number }).authorBirthYear ??
+                        null,
+                      death_year:
+                        (featured as { rawBook?: GutendexBook }).rawBook?.authors?.[0]?.death_year ??
+                        (featured as { authorDeathYear?: number }).authorDeathYear ??
+                        null,
+                    },
+                  ],
                   translators: [],
                   subjects: [(featured as { primarySubject?: string }).primarySubject || 'Classic Literature'],
                   bookshelves: [],
@@ -297,7 +313,7 @@ function HomeContent() {
             latencyMs={booksData?.latencyMs}
             isError={isError}
             pageSize={pageSize}
-            onPageSizeChange={setPageSize}
+            onPageSizeChange={handlePageSizeChange}
             isHeaderVisible={isHeaderVisible}
             isVisible={isToolbarVisible}
           />

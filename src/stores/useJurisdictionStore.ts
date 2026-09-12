@@ -111,3 +111,19 @@ export function useJurisdiction() {
   };
 }
 
+/**
+ * Synchronously initializes the jurisdiction store with a server-detected country.
+ * Safe for execution during SSR and initial client hydration.
+ */
+export function initializeJurisdiction(country?: string | null): void {
+  if (!country) return;
+  const normalized = normalizeCountryCode(country);
+  const current = useJurisdictionStore.getState();
+  if (current.country !== normalized && !current.overrideCountry) {
+    useJurisdictionStore.setState({
+      country: normalized,
+      rule: getJurisdictionRule(normalized),
+    });
+  }
+}
+
