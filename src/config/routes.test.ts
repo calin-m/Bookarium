@@ -13,6 +13,8 @@ describe('ROUTES Configuration', () => {
     expect(ROUTES.FAVORITES).toBe('/favorites');
     expect(ROUTES.NOTEBOOK).toBe('/notebook');
     expect(ROUTES.BOOKMARKS).toBe('/bookmarks');
+    expect(ROUTES.PRIVACY).toBe('/privacy');
+    expect(ROUTES.COPYRIGHT).toBe('/copyright');
     expect(ROUTES.API_BOOKS).toBe('/api/books');
     expect(ROUTES.API_CONTENT).toBe('/api/books/content');
   });

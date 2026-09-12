@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, Eye, EyeOff, KeyRound, Check } from 'lucide-react';
+import { ROUTES } from '@/config/routes';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore, type AuthModalView } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -417,6 +419,27 @@ export const AuthModal: React.FC = () => {
               <span>{AUTH_VIEW_CONFIG[authModalView].submitLabel}</span>
               <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
+
+            {authModalView === 'sign_up' && (
+              <p className="text-[11px] text-muted-foreground text-center pt-2 leading-relaxed font-sans">
+                By creating an account, you confirm that you are at least 13 years of age (or the digital age of consent in your jurisdiction) and agree to our{' '}
+                <Link
+                  href={ROUTES.PRIVACY}
+                  onClick={closeAuthModal}
+                  className="text-foreground underline underline-offset-2 hover:text-primary transition-colors"
+                >
+                  Privacy Architecture
+                </Link>{' '}
+                and{' '}
+                <Link
+                  href={ROUTES.COPYRIGHT}
+                  onClick={closeAuthModal}
+                  className="text-foreground underline underline-offset-2 hover:text-primary transition-colors"
+                >
+                  Copyright Governance
+                </Link>.
+              </p>
+            )}
           </form>
         )}
 

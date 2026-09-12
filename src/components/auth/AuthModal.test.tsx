@@ -84,6 +84,11 @@ describe('AuthModal Component', () => {
     expect(screen.getByPlaceholderText('reader@bookarium.org')).toBeInTheDocument();
     expect(screen.getAllByPlaceholderText('••••••••••••')).toHaveLength(2);
     expect(screen.getByRole('button', { name: /Create Account/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/By creating an account, you confirm that you are at least 13 years of age/i)
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Privacy Architecture/i })).toHaveAttribute('href', '/privacy');
+    expect(screen.getByRole('link', { name: /Copyright Governance/i })).toHaveAttribute('href', '/copyright');
   });
 
   it('submits valid Sign Up credentials to auth store', () => {

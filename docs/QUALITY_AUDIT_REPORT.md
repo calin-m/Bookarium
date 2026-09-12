@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 12 Sep 2026 13:31:25 GMT  
+**Last Generated**: Sat, 12 Sep 2026 14:45:45 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 165 passed  
-**Total Verified Tests**: 1474 passed  
+**Total Test Suites**: 168 passed  
+**Total Verified Tests**: 1495 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **165/165 test suites passed** (1474 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1495 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 43 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 44 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.51%** (6800/7350) — *Target: $ge$ 80%*
-- **Statements**: **90.94%** (7344/8075) — *Target: $ge$ 80%*
-- **Functions**: **89.03%** (1583/1778) — *Target: $ge$ 80%*
-- **Branches**: **81.56%** (6364/7802) — *Target: $ge$ 80%*
+- **Lines**: **92.53%** (6822/7372) — *Target: $ge$ 80%*
+- **Statements**: **90.97%** (7367/8098) — *Target: $ge$ 80%*
+- **Functions**: **89.05%** (1587/1782) — *Target: $ge$ 80%*
+- **Branches**: **81.64%** (6401/7840) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (165 Suites / 1474 Tests)
+## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1495 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 155 Tests)
 
@@ -275,7 +275,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (24 Suites · 275 Tests)
+### 🎨 Catalog & Presentation (25 Suites · 281 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -368,7 +368,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false or book is null`
 - ✔ `renders book preview modal and triggers cover open animation`
@@ -385,6 +385,7 @@
 - ✔ `closes modal when clicking empty space in the viewport container outside the book`
 - ✔ `does not close modal when clicking inside the curation bar`
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is restricted`
+- ✔ `renders content advisory banner when previewed book contains mature subjects`
 
 </details>
 
@@ -485,6 +486,16 @@
 </details>
 
 <details>
+<summary><b><code>src/components/presentation/ContentAdvisoryBanner.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `renders default advisory with standard message`
+- ✔ `renders customized matched subject`
+- ✔ `renders custom explicit message and custom title`
+- ✔ `renders in compact mode without footer note`
+
+</details>
+
+<details>
 <summary><b><code>src/components/presentation/CopyrightNoticeBanner.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `renders standard download withholding banner`
@@ -493,12 +504,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `should render download formats when opened with a public domain book in US`
 - ✔ `should return null when book is null`
 - ✔ `should neutralize download links and show legal banner when book is protected in UK`
 - ✔ `should provide canonical Gutenberg download links even if book.formats is empty`
+- ✔ `should render content advisory banner when book contains mature subjects`
 
 </details>
 
@@ -696,7 +708,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 143 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 144 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -709,11 +721,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/reader/GutenbergInfoModal.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders null when not open`
 - ✔ `renders volume metadata, title, and handles close action`
 - ✔ `triggers onClose when clicking backdrop`
+- ✔ `renders content advisory banner when subjects indicate mature historical content`
 
 </details>
 
@@ -1176,7 +1189,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (28 Suites · 302 Tests)
+### 📚 Gutenberg Parsers & Metadata (29 Suites · 308 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1310,6 +1323,18 @@
 - ✔ `applies ascending and descending sort directions`
 - ✔ `throws CatalogProviderError when Supabase returns an error`
 - ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/content-advisory.test.ts</code></b> (6 tests)</summary>
+
+- ✔ `returns false for clean public domain classical literature`
+- ✔ `detects erotic literature keyword in subjects`
+- ✔ `detects sexual themes keyword in bookshelves`
+- ✔ `detects other mature keywords like prostitution or sadism`
+- ✔ `handles empty, undefined, or malformed inputs gracefully`
+- ✔ `exports valid mature keywords list`
 
 </details>
 
@@ -1978,7 +2003,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (49 Suites · 222 Tests)
+### 🧩 UI Primitives & Motion (50 Suites · 230 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2003,6 +2028,20 @@
 - ✔ `handles resending email verification on unverified account`
 - ✔ `navigates back to bookmarks when swiping right on mobile`
 - ✔ `renders Public Scholar Profile section and handles saving public preferences`
+
+</details>
+
+<details>
+<summary><b><code>src/app/copyright/page.test.tsx</code></b> (8 tests)</summary>
+
+- ✔ `renders page header, badge, and back link to catalog`
+- ✔ `renders Section 1: 100% CC0 & Public Domain Manifesto`
+- ✔ `renders Section 2: Multi-Jurisdiction Legal Matrix with Berne Convention rules`
+- ✔ `renders Section 3: Project Gutenberg Compliance and policy links`
+- ✔ `renders Section 4: HTTP 451, geolocation, and fail-closed heuristics`
+- ✔ `renders Section 5: Notice & Takedown Protocol with GitHub issue tracker link`
+- ✔ `renders Section 6: Open Cultural Preservation Partners and footer`
+- ✔ `handles navigation actions from Navbar`
 
 </details>
 
@@ -2397,7 +2436,7 @@
 
 - ✔ `defines valid non-empty endpoint URLs`
 - ✔ `provides literary eras with valid date boundaries`
-- ✔ `provides genre facets with valid IDs and labels`
+- ✔ `provides genre facets with valid IDs and labels including children literature`
 - ✔ `provides language mappings with ISO-639 codes`
 - ✔ `provides valid sort and format options`
 - ✔ `provides valid hero book spotlight and collection of classics`

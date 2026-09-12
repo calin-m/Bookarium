@@ -38,11 +38,17 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/Bookarium does not load Google Analytics, Meta Pixels/i)).toBeInTheDocument();
     expect(screen.getByText(/Privacy-First Aggregate Telemetry:/i)).toBeInTheDocument();
 
-    // Section 2: Cookie Exemption
+    // Section 2: Cookie Exemption & Functional Jurisdiction Cookie
     expect(screen.getByText(/2\. Why There Is No Cookie Consent Banner/i)).toBeInTheDocument();
-    expect(screen.getByText(/Strictly Necessary Cookies Only/i)).toBeInTheDocument();
+    expect(screen.getByText(/Strictly Necessary Authentication Cookies/i)).toBeInTheDocument();
     expect(screen.getByText(/sb-\*-auth-token/i)).toBeInTheDocument();
-    expect(screen.getByText(/zero tracking cookies/i)).toBeInTheDocument();
+    expect(screen.getByText(/Functional Jurisdiction Verification:/i)).toBeInTheDocument();
+    expect(screen.getByText(/bookarium-geo-country/i)).toBeInTheDocument();
+    expect(screen.getByText(/zero marketing or tracking cookies/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Copyright & Public Domain Governance/i })).toHaveAttribute(
+      'href',
+      ROUTES.COPYRIGHT
+    );
 
     // Section 3: Local-First Storage
     expect(screen.getByText(/3\. Local-First Browser Storage/i)).toBeInTheDocument();
@@ -61,7 +67,8 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/6\. United States & Global Privacy Frameworks/i)).toBeInTheDocument();
     expect(screen.getByText(/California Consumer Privacy Act/i)).toBeInTheDocument();
     expect(screen.getByText(/Do Not Sell or Share My Personal Information:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Children's Online Privacy Protection \(COPPA\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Children's Online Privacy Protection \(COPPA & GDPR Art\. 8\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/account registration is strictly limited to individuals aged 13 or older/i)).toBeInTheDocument();
     expect(screen.getByText(/United Kingdom \(UK GDPR\) & International Parity/i)).toBeInTheDocument();
 
     // Section 7: Infrastructure Partners

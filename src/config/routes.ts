@@ -11,6 +11,7 @@ export const ROUTES = {
   CONFIRM_DELETION: '/auth/confirm-deletion',
   AUTH_CALLBACK: '/auth/callback',
   PRIVACY: '/privacy',
+  COPYRIGHT: '/copyright',
 
   // View Clean Path Targets
   BOOKSHELF: '/bookshelf',

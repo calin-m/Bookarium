@@ -10,6 +10,8 @@ import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
+import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisoryBanner';
+import { evaluateContentAdvisory } from '@/lib/content-advisory';
 import { BookCard } from './BookCard';
 import { NotablePassagesSpread } from './NotablePassagesSpread';
 
@@ -49,6 +51,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const status = book?.id ? bookStatuses[book.id] ?? null : null;
 
   const { country, evaluation, isRestricted } = useBookCopyright(book);
+  const contentAdvisory = evaluateContentAdvisory(book?.subjects, book?.bookshelves);
 
   // Personal curation toolbar is strictly restricted to personal collections (Bookshelf & Favorites)
   // and completely hidden in the main catalog view
@@ -368,6 +371,15 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                               by {authorNames}
                             </p>
                           </div>
+
+                          {contentAdvisory.isMature && (
+                            <ContentAdvisoryBanner
+                              matchedSubject={contentAdvisory.matchedSubject}
+                              compact={true}
+                              testId={`preview-advisory-base-${book.id}`}
+                              className="my-1"
+                            />
+                          )}
                         </div>
 
                         <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5">
@@ -495,6 +507,15 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                               by {authorNames}
                             </p>
                           </div>
+
+                          {contentAdvisory.isMature && (
+                            <ContentAdvisoryBanner
+                              matchedSubject={contentAdvisory.matchedSubject}
+                              compact={true}
+                              testId={`preview-advisory-${book.id}`}
+                              className="my-1"
+                            />
+                          )}
                         </div>
 
                         <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5">
