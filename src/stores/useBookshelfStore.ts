@@ -277,8 +277,8 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       enrichSavedBooks: async (freshBooks) => {
-        const { savedBooks, cloudBookshelfItems } = get();
-        if (!freshBooks || freshBooks.length === 0 || savedBooks.length === 0) return;
+        const { savedBooks, recentBooks, cloudBookshelfItems } = get();
+        if (!freshBooks || freshBooks.length === 0 || (savedBooks.length === 0 && recentBooks.length === 0)) return;
 
         const freshMap = new Map<number, GutendexBook>();
         for (const fb of freshBooks) {
@@ -287,7 +287,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           }
         }
 
-        let hasChanges = false;
+        let hasSavedChanges = false;
         const nextSaved = savedBooks.map((sb) => {
           const fresh = freshMap.get(sb.id);
           if (!fresh) return sb;
@@ -296,19 +296,52 @@ export const useBookshelfStore = create<BookshelfState>()(
           const freshHasLifespans = Boolean(fresh.authors?.some((a) => a.birth_year != null || a.death_year != null));
           const hasNewLifespans = freshHasLifespans && !sbHasLifespans;
           const hasNewFormats = Boolean(fresh.formats) && Object.keys(fresh.formats).some((key) => !sb.formats?.[key]);
+          const hasNewTranslators = Boolean(
+            fresh.translators &&
+              fresh.translators.length > 0 &&
+              (!sb.translators || sb.translators.length === 0)
+          );
 
-          if (hasNewLifespans || hasNewFormats) {
-            hasChanges = true;
+          if (hasNewLifespans || hasNewFormats || hasNewTranslators) {
+            hasSavedChanges = true;
             return {
               ...sb,
               authors: hasNewLifespans && fresh.authors ? fresh.authors : sb.authors,
+              translators: hasNewTranslators && fresh.translators ? fresh.translators : sb.translators,
               formats: { ...sb.formats, ...fresh.formats },
             };
           }
           return sb;
         });
 
-        if (!hasChanges) return;
+        let hasRecentChanges = false;
+        const nextRecent = recentBooks.map((rb) => {
+          const fresh = freshMap.get(rb.id);
+          if (!fresh) return rb;
+
+          const rbHasLifespans = Boolean(rb.authors?.some((a) => a.birth_year != null || a.death_year != null));
+          const freshHasLifespans = Boolean(fresh.authors?.some((a) => a.birth_year != null || a.death_year != null));
+          const hasNewLifespans = freshHasLifespans && !rbHasLifespans;
+          const hasNewFormats = Boolean(fresh.formats) && Object.keys(fresh.formats).some((key) => !rb.formats?.[key]);
+          const hasNewTranslators = Boolean(
+            fresh.translators &&
+              fresh.translators.length > 0 &&
+              (!rb.translators || rb.translators.length === 0)
+          );
+
+          if (hasNewLifespans || hasNewFormats || hasNewTranslators) {
+            hasRecentChanges = true;
+            return {
+              ...rb,
+              authors: hasNewLifespans && fresh.authors ? fresh.authors : rb.authors,
+              translators: hasNewTranslators && fresh.translators ? fresh.translators : rb.translators,
+              formats: { ...rb.formats, ...fresh.formats },
+            };
+          }
+          return rb;
+        });
+
+        if (!hasSavedChanges && !hasRecentChanges) return;
 
         const nextItems = cloudBookshelfItems.map((item) => {
           const fresh = freshMap.get(item.book_id);
@@ -321,7 +354,11 @@ export const useBookshelfStore = create<BookshelfState>()(
           };
         });
 
-        set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems });
+        set({
+          ...(hasSavedChanges ? { savedBooks: nextSaved } : {}),
+          ...(hasRecentChanges ? { recentBooks: nextRecent } : {}),
+          ...(hasSavedChanges ? { cloudBookshelfItems: nextItems } : {}),
+        });
 
         const userId = useAuthStore.getState().user?.id;
         if (userId) {

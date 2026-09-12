@@ -464,5 +464,28 @@ describe('useContinueReadingLedger', () => {
 
     expect(result.current.volumes).toHaveLength(0);
   });
+
+  it('resolves authorDetails and lifespans for featured volumes without savedBooks or API data', () => {
+    act(() => {
+      useReaderStore.getState().setProgress(1727, 20);
+      useReaderStore.getState().saveReadingPosition(1727, {
+        chapterIndex: 2,
+        chapterPage: 1,
+        globalPage: 15,
+        lastReadAt: new Date().toISOString(),
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    expect(result.current.volumes).toHaveLength(1);
+    const item = result.current.volumes[0];
+
+    expect(item.book.id).toBe(1727);
+    expect(item.book.title).toBe('The Odyssey');
+    expect(item.book.authors).toEqual(['Homer']);
+    expect(item.book.authorDetails).toEqual([
+      { name: 'Homer', birth_year: -800, death_year: -750 },
+    ]);
+  });
 });
 

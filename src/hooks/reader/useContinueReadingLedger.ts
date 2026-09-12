@@ -130,13 +130,25 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       const position = readingPositions[bookId];
 
       if (!book) {
+        const resolved = resolveBookMetadata({
+          id: bookId,
+          currentBook: currentBook?.id === bookId ? currentBook : undefined,
+        });
+
         if (position?.bookTitle) {
           book = {
             id: bookId,
             title: cleanBookTitle(position.bookTitle),
-            authors: position.bookAuthors && position.bookAuthors.length > 0 ? position.bookAuthors : ['Public Domain Author'],
-            subjects: [],
-            languages: ['en'],
+            authors:
+              position.bookAuthors && position.bookAuthors.length > 0
+                ? position.bookAuthors
+                : resolved.authors.length > 0
+                ? resolved.authors.map((a) => a.name)
+                : ['Public Domain Author'],
+            ...(resolved.authors.length > 0 ? { authorDetails: resolved.authors } : {}),
+            ...(resolved.translators.length > 0 ? { translators: resolved.translators } : {}),
+            subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
+            languages: resolved.languages || ['en'],
             coverUrl: position.coverUrl || `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
             epubUrl: `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
             htmlUrl: null,
@@ -144,15 +156,17 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
             downloadCount: 0,
           };
         } else {
-          const resolved = resolveBookMetadata({
-            id: bookId,
-            currentBook: currentBook?.id === bookId ? currentBook : undefined,
-          });
-
           book = {
             id: bookId,
             title: cleanBookTitle(resolved.title) || `Volume #${bookId}`,
-            authors: resolved.author ? [resolved.author] : ['Public Domain Author'],
+            authors:
+              resolved.authors.length > 0
+                ? resolved.authors.map((a) => a.name)
+                : resolved.author
+                ? [resolved.author]
+                : ['Public Domain Author'],
+            ...(resolved.authors.length > 0 ? { authorDetails: resolved.authors } : {}),
+            ...(resolved.translators.length > 0 ? { translators: resolved.translators } : {}),
             subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
             languages: resolved.languages || ['en'],
             coverUrl: `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,

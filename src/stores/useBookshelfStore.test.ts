@@ -10,6 +10,7 @@ import {
   useBookCuration,
 } from './useBookshelfStore';
 import { mockBooks } from '@/mocks/handlers';
+import type { GutendexBook } from '@/types/book.types';
 
 const mockFrom = vi.fn();
 vi.mock('@/lib/supabase/client', () => ({
@@ -1453,6 +1454,59 @@ describe('useBookshelfStore', () => {
       // Assert book was removed locally and NOT resurrected to cloud
       expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(0);
       expect(favsUpsertMock).not.toHaveBeenCalled();
+    });
+
+    it('enriches savedBooks and recentBooks with author lifespans and translators', async () => {
+      const incompleteBook: GutendexBook = {
+        id: 1727,
+        title: 'The Odyssey',
+        authors: [{ name: 'Homer', birth_year: null, death_year: null }],
+        translators: [],
+        subjects: ['Epic poetry'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 500,
+      };
+
+      useBookshelfStore.setState({
+        savedBooks: [incompleteBook],
+        recentBooks: [incompleteBook],
+      });
+
+      const freshBook: GutendexBook = {
+        id: 1727,
+        title: 'The Odyssey',
+        authors: [{ name: 'Homer', birth_year: -800, death_year: -750 }],
+        translators: [{ name: 'Butler, Samuel', birth_year: 1835, death_year: 1902 }],
+        subjects: ['Epic poetry'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: { 'text/html': 'https://www.gutenberg.org/files/1727/1727-h/1727-h.htm' },
+        download_count: 500,
+      };
+
+      await useBookshelfStore.getState().enrichSavedBooks([freshBook]);
+
+      const state = useBookshelfStore.getState();
+      expect(state.savedBooks[0].authors).toEqual([
+        { name: 'Homer', birth_year: -800, death_year: -750 },
+      ]);
+      expect(state.savedBooks[0].translators).toEqual([
+        { name: 'Butler, Samuel', birth_year: 1835, death_year: 1902 },
+      ]);
+      expect(state.savedBooks[0].formats['text/html']).toBeDefined();
+
+      expect(state.recentBooks[0].authors).toEqual([
+        { name: 'Homer', birth_year: -800, death_year: -750 },
+      ]);
+      expect(state.recentBooks[0].translators).toEqual([
+        { name: 'Butler, Samuel', birth_year: 1835, death_year: 1902 },
+      ]);
     });
   });
 });

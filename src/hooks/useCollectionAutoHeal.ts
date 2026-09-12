@@ -2,12 +2,19 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
+import type { GutendexBook } from '@/types/book.types';
 
 export interface CollectionAutoHealResult {
   isHealing: boolean;
   missingFavoriteIds: number[];
   incompleteSavedIds: number[];
   totalMissingCount: number;
+}
+
+function isBookIncomplete(b: GutendexBook): boolean {
+  if (!b.authors || b.authors.length === 0) return true;
+  return b.authors.every((a) => a.birth_year == null && a.death_year == null);
 }
 
 /**
@@ -27,6 +34,41 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
   const [attemptedHealIds, setAttemptedHealIds] = useState<Set<number>>(() => new Set());
   const [prevResults, setPrevResults] = useState<unknown>(null);
 
+  // Fast-path synchronous healing for featured hero books from static fixtures
+  useEffect(() => {
+    if (!hasMounted || savedBooks.length === 0) return;
+    const heroBooksToEnrich: GutendexBook[] = [];
+    for (const b of savedBooks) {
+      if (isBookIncomplete(b)) {
+        const hero = FEATURED_HERO_BOOKS.find((h) => h.id === b.id);
+        if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
+          heroBooksToEnrich.push({
+            id: hero.id,
+            title: hero.title,
+            authors: [
+              {
+                name: hero.author,
+                birth_year: hero.authorBirthYear ?? null,
+                death_year: hero.authorDeathYear ?? null,
+              },
+            ],
+            translators: [],
+            subjects: hero.primarySubject ? [hero.primarySubject] : [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: b.formats || {},
+            download_count: b.download_count || 0,
+          });
+        }
+      }
+    }
+    if (heroBooksToEnrich.length > 0) {
+      useBookshelfStore.getState().enrichSavedBooks(heroBooksToEnrich);
+    }
+  }, [hasMounted, savedBooks]);
+
   // 1. Detect favorite IDs in localStorage/cloud that lack full book metadata
   const missingFavoriteIds = useMemo(() => {
     if (!hasMounted) return [];
@@ -40,11 +82,11 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     const ids: number[] = [];
     for (const b of savedBooks) {
       if (attemptedHealIds.has(b.id)) continue;
-      if (
-        !b.authors ||
-        b.authors.length === 0 ||
-        b.authors.every((a) => a.birth_year == null && a.death_year == null)
-      ) {
+      if (isBookIncomplete(b)) {
+        const hero = FEATURED_HERO_BOOKS.find((h) => h.id === b.id);
+        if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
+          continue; // Handled synchronously via local fixture fast-path
+        }
         ids.push(b.id);
       }
     }

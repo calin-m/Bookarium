@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 12 Sep 2026 14:45:45 GMT  
+**Last Generated**: Sat, 12 Sep 2026 15:31:34 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 168 passed  
-**Total Verified Tests**: 1495 passed  
+**Total Verified Tests**: 1502 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1495 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1502 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 44 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.53%** (6822/7372) — *Target: $ge$ 80%*
-- **Statements**: **90.97%** (7367/8098) — *Target: $ge$ 80%*
-- **Functions**: **89.05%** (1587/1782) — *Target: $ge$ 80%*
-- **Branches**: **81.64%** (6401/7840) — *Target: $ge$ 80%*
+- **Lines**: **92.56%** (6873/7425) — *Target: $ge$ 80%*
+- **Statements**: **91.01%** (7428/8161) — *Target: $ge$ 80%*
+- **Functions**: **89.08%** (1600/1796) — *Target: $ge$ 80%*
+- **Branches**: **81.51%** (6503/7978) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1495 Tests)
+## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1502 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 155 Tests)
 
@@ -989,7 +989,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (9 Suites · 144 Tests)
+### ⚡ Zustand State Stores (9 Suites · 145 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -1065,7 +1065,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (39 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (40 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -1106,6 +1106,7 @@
 - ✔ `manages deletedBookIds tombstones and suppresses ghost resurrection during syncWithCloud`
 - ✔ `manages deletedFavoriteBookIds and suppresses ghost favorite resurrection during syncWithCloud`
 - ✔ `removes local favorite when deleted on another device and syncing with cloud`
+- ✔ `enriches savedBooks and recentBooks with author lifespans and translators`
 
 </details>
 
@@ -1189,7 +1190,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (29 Suites · 308 Tests)
+### 📚 Gutenberg Parsers & Metadata (29 Suites · 310 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1246,7 +1247,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/book-metadata.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/lib/book-metadata.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `strips Gutenberg preamble prefixes cleanly`
 - ✔ `identifies placeholder and empty authors correctly`
@@ -1258,6 +1259,8 @@
 - ✔ `bypasses store placeholder authors and uses authentic API/header authors`
 - ✔ `handles fallback defaults when all metadata sources are empty`
 - ✔ `resolves languages correctly with strict ID-guarding from store, API, and header metadata`
+- ✔ `resolves structured authors with lifespans from featured static fixtures (Tier 1)`
+- ✔ `preserves structured authors and translators from API results (Tier 3)`
 
 </details>
 
@@ -1673,7 +1676,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 196 Tests)
+### 🔄 Hooks & React Query (22 Suites · 200 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -1755,7 +1758,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -1773,6 +1776,7 @@
 - ✔ `actively queries and hydrates missing book metadata (e.g. Volume #55179) and caches in recentBooks`
 - ✔ `immediately renders volumes using cloud-restored bookTitle and authors on readingPosition without calling useBooks`
 - ✔ `clears individual volume progress and all volumes via store methods`
+- ✔ `resolves authorDetails and lifespans for featured volumes without savedBooks or API data`
 
 </details>
 
@@ -1909,13 +1913,16 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `stays dormant with 0 query params when all collections are healthy`
 - ✔ `detects missing favorite IDs and queries /api/books`
 - ✔ `detects incomplete saved books and enriches author lifespans`
 - ✔ `deduplicates book IDs when a book is in both favorites and bookshelf`
 - ✔ `does not loop and terminates cleanly when upstream books also lack author lifespans`
+- ✔ `synchronously enriches featured hero books without firing network queries`
+- ✔ `detects incomplete books with empty authors array and queries /api/books`
+- ✔ `returns empty collections and does not query when not mounted`
 
 </details>
 

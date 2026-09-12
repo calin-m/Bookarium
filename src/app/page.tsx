@@ -67,7 +67,7 @@ function HomeContent() {
   const clearSavedBooks = useBookshelfStore((s) => s.clearSavedBooks);
 
   // Unified collection auto-healing pipeline (Bookshelf & Favorites metadata enrichment)
-  const { isHealing, missingFavoriteIds } = useCollectionAutoHeal();
+  const { isHealing, missingFavoriteIds, incompleteSavedIds } = useCollectionAutoHeal();
 
   // Centralized Catalog Filters Hook
   const {
@@ -330,11 +330,15 @@ function HomeContent() {
               <SectionHeader
                 eyebrow={viewConfig.eyebrow}
                 title={viewConfig.getTitle({ search, topic, era })}
-                subtitle={viewConfig.getSubtitle({
-                  count: collectionCount,
-                  booksData,
-                  displayedCount: displayedBooks.length,
-                })}
+                subtitle={
+                  activeView === 'bookshelf' && incompleteSavedIds.length > 0 && isHealing
+                    ? `You have ${collectionCount} titles preserved on your personal shelf (verifying public domain clearance...)`
+                    : viewConfig.getSubtitle({
+                        count: collectionCount,
+                        booksData,
+                        displayedCount: displayedBooks.length,
+                      })
+                }
               >
                 {viewConfig.clearType && collectionCount > 0 && (
                   <div className="pt-2">
