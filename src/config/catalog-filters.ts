@@ -48,6 +48,7 @@ export const SORT_OPTIONS: SortOption[] = [
 
 export const GENRE_FACETS: GenreFacet[] = [
   { id: '', label: 'All Subjects' },
+  { id: 'children', label: "Children's & Juvenile Literature" },
   { id: 'philosophy', label: 'Classical Philosophy & Ethics' },
   { id: 'fiction', label: 'Classic Literature & Fiction' },
   { id: 'gothic', label: 'Gothic, Mystery & Horror' },
@@ -61,6 +62,7 @@ export const GENRE_FACETS: GenreFacet[] = [
 
 export const HERO_POPULAR_TOPICS: GenreFacet[] = [
   { id: '', label: 'All Classics' },
+  { id: 'children', label: "Children's Classics" },
   { id: 'philosophy', label: 'Philosophy' },
   { id: 'fiction', label: 'Fiction' },
   { id: 'gothic', label: 'Gothic Horror' },

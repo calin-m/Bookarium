@@ -35,9 +35,10 @@ describe('src/config configuration modules', () => {
       expect(LITERARY_ERAS.some((e) => e.label.includes('All'))).toBe(true);
     });
 
-    it('provides genre facets with valid IDs and labels', () => {
+    it('provides genre facets with valid IDs and labels including children literature', () => {
       expect(GENRE_FACETS.length).toBeGreaterThan(0);
       expect(GENRE_FACETS[0].label).toBe('All Subjects');
+      expect(GENRE_FACETS.some((f) => f.id === 'children')).toBe(true);
     });
 
     it('provides language mappings with ISO-639 codes', () => {

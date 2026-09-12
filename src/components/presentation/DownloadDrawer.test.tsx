@@ -93,4 +93,25 @@ describe('DownloadDrawer component', () => {
     expect(downloadButtons.length).toBe(4);
     expect(screen.queryByText('Unavailable')).not.toBeInTheDocument();
   });
+
+  it('should render content advisory banner when book contains mature subjects', () => {
+    const matureBook: GutendexBook = {
+      ...mockBooks[0],
+      id: 99999,
+      title: 'Memoirs of a Woman of Pleasure',
+      subjects: ['Erotic literature', 'Prostitution -- England -- Fiction'],
+      bookshelves: ['Banned Books'],
+    };
+
+    render(
+      <DownloadDrawer
+        book={matureBook}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByText('Historical Content Advisory')).toBeInTheDocument();
+    expect(screen.getByText(/Erotic literature/i)).toBeInTheDocument();
+  });
 });

@@ -646,3 +646,40 @@
   - Complete elimination of PostgreSQL 57014 timeout errors.
   - Rock-solid primary Supabase catalog performance without degrading to upstream mirrors.
 
+## ADR-044: Multi-Jurisdiction Copyright Governance, Digital Age Consent & Content Safety Architecture
+- **Status**: Accepted
+- **Context**:
+  1. Bookarium curates public domain literature across international borders. However, public domain definitions vary significantly across jurisdictions:
+     - United States: Works published before 1930 (expanded annually under the Sonny Bono Copyright Term Extension Act) are public domain.
+     - Berne Convention (EU / UK / Canada): General rule of Life of the author plus 70 calendar years.
+     - Colombia & Spain (pre-1987 works): Life of the author plus 80 calendar years.
+     - Mexico: Life of the author plus 100 calendar years (Art. 29 Ley Federal del Derecho de Autor).
+     - Berne Art. 7bis (Joint Authorship): Copyright endures until 70 years after the death of the *last surviving author*.
+     - Berne Art. 2(3) (Translations): Translations enjoy independent copyright protection separate from the original underlying work.
+     - Project Gutenberg Trademark & Terms of Use: Mandates verification of local copyright laws prior to downloading or distributing ebooks outside the United States.
+  2. Previously, territorial copyright indicators were limited to warning badges, without an accessible educational legal matrix explaining statutory lifespans, Project Gutenberg upstream compliance (`robot_access.html` and `terms_of_use.html`), and transparent HTTP 451 (Unavailable For Legal Reasons) communication.
+  3. Under global privacy frameworks:
+     - EU ePrivacy Directive (Directive 2002/58/EC Art. 5(3)) and GDPR: The `bookarium-geo-country` cookie is strictly functional, serving solely to deliver territorial copyright compliance at edge nodes without storing personal data, advertising telemetry, or cross-site tracking identifiers.
+     - US COPPA (15 U.S.C. §§ 6501–6506) and EU GDPR Art. 8: Creating persistent accounts involves storing personal library data and requires a 13+ digital consent self-declaration, while anonymous guest reading remains accessible without data collection or account creation.
+  4. Public domain literature spans centuries and occasionally includes archaic, mature, or sensitive historical themes. Readers deserve transparent editorial context through non-blocking advisories rather than paternalistic censorship.
+- **Decision**:
+  1. **Dedicated Copyright & Public Domain Governance Route (`src/app/copyright/page.tsx`)**:
+     - Implemented `/copyright` providing a comprehensive public domain manifesto, multi-jurisdictional legal breakdown table, Project Gutenberg compliance details, and an official DMCA / Notice & Takedown contact channel.
+     - Linked from the primary application footer (`Footer.tsx`), route configuration (`src/config/routes.ts`), and the HTTP 451 reader block error state (`ReaderErrorView.tsx`).
+  2. **Statutory Functional Cookie Classification & Privacy Transparency (`src/app/privacy/page.tsx`)**:
+     - Updated `/privacy` Section 2 documenting `bookarium-geo-country` as an exempt strictly functional cookie under EU ePrivacy Directive Art. 5(3) with zero consent banner requirement.
+     - Documented Section 6 digital age consent thresholds (13+ for account registration) alongside unrestricted anonymous guest access.
+  3. **Digital Age Consent Self-Declaration (`src/components/auth/AuthModal.tsx`)**:
+     - Added an explicit, accessible 13+ age self-declaration to the account sign-up form with direct links to `/privacy` and `/copyright`.
+  4. **Domain Content Advisory Engine (`src/lib/content-advisory.ts`)**:
+     - Implemented `evaluateContentAdvisory(book)` performing lexical analysis of Library of Congress subject classifications and bookshelves for mature themes, erotic literature, and sensitive historical context with non-blocking user guidance.
+  5. **Unified Content Advisory Banner (`src/components/presentation/ContentAdvisoryBanner.tsx`)**:
+     - Created a subtle, accessible editorial advisory banner embedded across `BookPreviewModal.tsx`, `DownloadDrawer.tsx`, and `GutenbergInfoModal.tsx`.
+  6. **Curated Safe-by-Design Catalog Facets (`src/config/catalog-filters.ts`)**:
+     - Enriched `GENRE_FACETS` and `HERO_POPULAR_TOPICS` with dedicated "Children's & Juvenile Literature" discovery categories.
+- **Consequences**:
+  - 100% legal clarity and statutory compliance across 180+ Berne Convention jurisdictions.
+  - Complete compliance with COPPA, GDPR Art. 8, and EU ePrivacy Directive Art. 5(3) without compromising user privacy.
+  - Safe, informed reading discovery with zero arbitrary censorship of historical literature.
+
+

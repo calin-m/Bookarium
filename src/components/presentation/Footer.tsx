@@ -110,12 +110,18 @@ export const Footer: React.FC = () => {
             <p className="text-xs text-muted-foreground leading-relaxed font-sans">
               All books listed in Bookarium are in the public domain worldwide. Zero DRM, no subscriptions, zero user tracking.
             </p>
-            <div className="pt-1">
+            <div className="pt-1 flex flex-col gap-1.5">
               <Link
                 href={ROUTES.PRIVACY}
                 className="text-xs font-mono text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 underline-offset-4 hover:underline"
               >
                 Privacy & Data Architecture →
+              </Link>
+              <Link
+                href={ROUTES.COPYRIGHT}
+                className="text-xs font-mono text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 underline-offset-4 hover:underline"
+              >
+                Copyright & Public Domain Governance →
               </Link>
             </div>
             <div className="pt-1">

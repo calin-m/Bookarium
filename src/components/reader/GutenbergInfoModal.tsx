@@ -6,6 +6,8 @@ import { SITE_CONFIG } from '@/config/site-config';
 import { getReaderTheme } from '@/config/reader-themes';
 import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utils';
+import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisoryBanner';
+import { evaluateContentAdvisory } from '@/lib/content-advisory';
 
 export interface GutenbergInfoModalProps {
   isOpen: boolean;
@@ -14,6 +16,8 @@ export interface GutenbergInfoModalProps {
   title: string;
   author: string;
   theme?: 'light' | 'dark' | 'sepia';
+  subjects?: string[];
+  bookshelves?: string[];
 }
 
 /**
@@ -27,8 +31,11 @@ export const GutenbergInfoModal: React.FC<GutenbergInfoModalProps> = ({
   title,
   author,
   theme = 'light',
+  subjects = [],
+  bookshelves = [],
 }) => {
   const activeTheme = getReaderTheme(theme);
+  const contentAdvisory = evaluateContentAdvisory(subjects, bookshelves);
 
   return (
     <Modal
@@ -67,6 +74,14 @@ export const GutenbergInfoModal: React.FC<GutenbergInfoModalProps> = ({
           <X className="w-4 h-4" />
         </button>
       </div>
+
+      {contentAdvisory.isMature && (
+        <ContentAdvisoryBanner
+          matchedSubject={contentAdvisory.matchedSubject}
+          compact={true}
+          testId="reader-info-content-advisory"
+        />
+      )}
 
       <div
         className={`p-3.5 rounded-xl border text-xs font-mono space-y-2 ${activeTheme.pill} border ${activeTheme.border}`}

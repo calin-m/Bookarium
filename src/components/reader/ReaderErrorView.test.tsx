@@ -51,6 +51,10 @@ describe('ReaderErrorView Component', () => {
     expect(returnLink).toBeInTheDocument();
     expect(returnLink).toHaveAttribute('href', '/');
 
+    const copyrightLink = screen.getByRole('link', { name: /Learn About Copyright Jurisdictions/i });
+    expect(copyrightLink).toBeInTheDocument();
+    expect(copyrightLink).toHaveAttribute('href', '/copyright');
+
     // Should NOT render retry connection button
     expect(screen.queryByRole('button', { name: /Retry Connection/i })).not.toBeInTheDocument();
   });

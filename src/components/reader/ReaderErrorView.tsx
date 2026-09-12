@@ -75,13 +75,21 @@ export const ReaderErrorView: React.FC<ReaderErrorViewProps> = ({
             Bookarium enforces strict zero-copyright compliance under the Berne Convention and local statutes. Masterwork streaming is restricted in your region.
           </p>
         </div>
-        <Link
-          href={ROUTES.HOME}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-mono font-bold transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Return to Library</span>
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href={ROUTES.HOME}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-mono font-bold transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to Library</span>
+          </Link>
+          <Link
+            href={ROUTES.COPYRIGHT}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-mono font-medium transition-colors cursor-pointer"
+          >
+            <span>Learn About Copyright Jurisdictions →</span>
+          </Link>
+        </div>
       </main>
     );
   }

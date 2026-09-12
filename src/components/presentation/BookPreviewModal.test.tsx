@@ -431,6 +431,32 @@ describe('BookPreviewModal component', () => {
       expect(btn).toHaveTextContent('Restricted');
     });
   });
+
+  it('renders content advisory banner when previewed book contains mature subjects', () => {
+    const matureBook = {
+      ...defaultBook,
+      id: 99999,
+      title: 'Memoirs of Fanny Hill',
+      subjects: ['Erotic literature', 'English fiction -- 18th century'],
+      bookshelves: ['Erotica'],
+    };
+
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={matureBook}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    const advisory = screen.getByTestId(`preview-advisory-${matureBook.id}`);
+    expect(advisory).toBeInTheDocument();
+    expect(advisory).toHaveTextContent(/Erotic literature/i);
+  });
 });
 
 

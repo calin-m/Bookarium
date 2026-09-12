@@ -56,5 +56,22 @@ describe('GutenbergInfoModal', () => {
     fireEvent.click(backdrop);
     expect(handleClose).toHaveBeenCalled();
   });
+
+  it('renders content advisory banner when subjects indicate mature historical content', () => {
+    render(
+      <GutenbergInfoModal
+        isOpen={true}
+        onClose={vi.fn()}
+        bookId={9999}
+        title="Fanny Hill"
+        author="John Cleland"
+        subjects={['Erotic literature', 'Fiction']}
+      />
+    );
+
+    expect(screen.getByTestId('reader-info-content-advisory')).toBeInTheDocument();
+    expect(screen.getByText('Historical Content Advisory')).toBeInTheDocument();
+    expect(screen.getByText(/Erotic literature/i)).toBeInTheDocument();
+  });
 });
 

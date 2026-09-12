@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { CopyrightNoticeBanner } from '@/components/presentation/CopyrightNoticeBanner';
+import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisoryBanner';
+import { evaluateContentAdvisory } from '@/lib/content-advisory';
 
 export interface DownloadDrawerProps {
   book: GutendexBook | null;
@@ -21,7 +23,7 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
 
   if (!book) return null;
 
-
+  const contentAdvisory = evaluateContentAdvisory(book.subjects, book.bookshelves);
   const formats = extractBookFormats(book.formats, book.id);
 
   const downloadOptions = [
@@ -90,6 +92,13 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
             By {formatAuthorNames(book.authors) || 'Anonymous'}
           </p>
         </div>
+
+        {contentAdvisory.isMature && (
+          <ContentAdvisoryBanner
+            matchedSubject={contentAdvisory.matchedSubject}
+            compact={true}
+          />
+        )}
 
         {isRestricted ? (
           /* Legal Restriction Banner - Neutralize all download hyperlinks */

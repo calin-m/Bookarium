@@ -102,15 +102,25 @@ export default function PrivacyPage() {
               are only legally required to display intrusive consent banners when using non-essential or advertising
               cookies.
             </p>
-            <div className="bg-muted/50 border border-border rounded-xl p-4 text-xs font-sans text-muted-foreground space-y-2">
+            <div className="bg-muted/50 border border-border rounded-xl p-4 text-xs font-sans text-muted-foreground space-y-2.5">
               <p>
-                <strong className="text-foreground font-medium">Strictly Necessary Cookies Only:</strong> When you
+                <strong className="text-foreground font-medium">Strictly Necessary Authentication Cookies:</strong> When you
                 explicitly log into your account, our authentication provider (Supabase) sets a single secure session
                 cookie (<code className="font-mono text-primary font-semibold">sb-*-auth-token</code>) solely to maintain
                 your authenticated session. This cookie is 100% exempt from consent banner requirements.
               </p>
               <p>
-                As a guest reader, <strong className="text-foreground font-medium">zero tracking cookies</strong> are written to
+                <strong className="text-foreground font-medium">Functional Jurisdiction Verification:</strong> To ensure regulatory compliance with international public domain copyright statutes (e.g. Life+70 vs. Life+100 rules), Bookarium sets a non-tracking, functional cookie (<code className="font-mono text-primary font-semibold">bookarium-geo-country</code>, <code className="font-mono">SameSite=Lax</code>, Max-Age=1 year) storing solely your two-letter ISO country code. This functional cookie retains zero personal data, zero IP addresses, and zero browsing history, serving exclusively to withhold copyrighted works in restricted countries. Under EU ePrivacy Directive Art. 5(3), functional cookies strictly necessary for delivering a legally compliant requested service are exempt from consent banners. For details on term calculations, consult our{' '}
+                <Link
+                  href={ROUTES.COPYRIGHT}
+                  className="font-medium text-foreground underline-offset-4 hover:underline hover:text-primary transition-colors inline-flex items-center gap-0.5"
+                >
+                  <span>Copyright & Public Domain Governance</span>
+                  <ExternalLink className="w-3 h-3 text-muted-foreground inline" />
+                </Link>.
+              </p>
+              <p>
+                As a guest reader, <strong className="text-foreground font-medium">zero marketing or tracking cookies</strong> are written to
                 your browser. First-party aggregate analytics and Core Web Vitals operate completely cookie-free.
               </p>
             </div>
@@ -234,11 +244,10 @@ export default function PrivacyPage() {
 
               <div className="space-y-1 pt-1">
                 <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
-                  Children&apos;s Online Privacy Protection (COPPA)
+                  Children&apos;s Online Privacy Protection (COPPA &amp; GDPR Art. 8)
                 </h3>
                 <p>
-                  Bookarium is a dedicated open-access cultural archive. We do not knowingly collect, solicit, or maintain personal
-                  information from children under the age of 13.
+                  Bookarium is a dedicated open-access cultural archive. Guest reading operates anonymously with zero account requirement or personal data collection. For optional cloud bookshelf synchronization, account registration is strictly limited to individuals aged 13 or older (or the digital age of consent in their jurisdiction). We do not knowingly collect, solicit, or maintain personal information from children under the age of 13.
                 </p>
               </div>
 
