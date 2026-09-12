@@ -121,7 +121,7 @@ export const Footer: React.FC = () => {
                 href={ROUTES.COPYRIGHT}
                 className="text-xs font-mono text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 underline-offset-4 hover:underline"
               >
-                Copyright & Public Domain Governance →
+                Copyright & Licensing →
               </Link>
             </div>
             <div className="pt-1">

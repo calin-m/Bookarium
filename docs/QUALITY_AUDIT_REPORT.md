@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 12 Sep 2026 15:31:34 GMT  
+**Last Generated**: Sat, 12 Sep 2026 16:48:36 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 168 passed  
-**Total Verified Tests**: 1502 passed  
+**Total Verified Tests**: 1507 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1502 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1507 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 44 Architectural Decision Records validated |
@@ -28,11 +28,11 @@
 - **Lines**: **92.56%** (6873/7425) — *Target: $ge$ 80%*
 - **Statements**: **91.01%** (7428/8161) — *Target: $ge$ 80%*
 - **Functions**: **89.08%** (1600/1796) — *Target: $ge$ 80%*
-- **Branches**: **81.51%** (6503/7978) — *Target: $ge$ 80%*
+- **Branches**: **81.52%** (6509/7984) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1502 Tests)
+## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1507 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 155 Tests)
 
@@ -2010,7 +2010,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (50 Suites · 230 Tests)
+### 🧩 UI Primitives & Motion (50 Suites · 235 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2039,14 +2039,15 @@
 </details>
 
 <details>
-<summary><b><code>src/app/copyright/page.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/app/copyright/page.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders page header, badge, and back link to catalog`
 - ✔ `renders Section 1: 100% CC0 & Public Domain Manifesto`
 - ✔ `renders Section 2: Multi-Jurisdiction Legal Matrix with Berne Convention rules`
 - ✔ `renders Section 3: Project Gutenberg Compliance and policy links`
 - ✔ `renders Section 4: HTTP 451, geolocation, and fail-closed heuristics`
-- ✔ `renders Section 5: Notice & Takedown Protocol with GitHub issue tracker link`
+- ✔ `renders Section 5: Notice & Takedown Protocol with GitHub tracker fallback when form is unconfigured`
+- ✔ `renders Section 5: Notice & Takedown Protocol with confidential intake portal when configured`
 - ✔ `renders Section 6: Open Cultural Preservation Partners and footer`
 - ✔ `handles navigation actions from Navbar`
 
@@ -2439,7 +2440,7 @@
 </details>
 
 <details>
-<summary><b><code>src/config/config.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/config/config.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `defines valid non-empty endpoint URLs`
 - ✔ `provides literary eras with valid date boundaries`
@@ -2457,6 +2458,10 @@
 - ✔ `includes all literary quotes for US jurisdiction`
 - ✔ `provides complete theme configs for light, sepia, and dark`
 - ✔ `getReaderTheme returns exact theme or falls back to light`
+- ✔ `provides valid site branding and repository URLs`
+- ✔ `defines legal intake form configuration property`
+- ✔ `generates valid canonical Gutenberg eBook URL`
+- ✔ `defines persistent localStorage keys`
 
 </details>
 

@@ -32,7 +32,7 @@ describe('Footer component', () => {
     const privacyLink = screen.getByRole('link', { name: /Privacy & Data Architecture/i });
     expect(privacyLink).toHaveAttribute('href', '/privacy');
 
-    const copyrightLink = screen.getByRole('link', { name: /Copyright & Public Domain Governance/i });
+    const copyrightLink = screen.getByRole('link', { name: /Copyright & Licensing/i });
     expect(copyrightLink).toHaveAttribute('href', '/copyright');
   });
 });

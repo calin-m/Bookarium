@@ -17,6 +17,7 @@ import {
 } from './featured-books';
 import { LITERARY_QUOTES, getJurisdictionSafeLiteraryQuotes } from './literary-quotes';
 import { READER_THEMES, getReaderTheme } from './reader-themes';
+import { SITE_CONFIG, STORAGE_KEYS } from './site-config';
 
 describe('src/config configuration modules', () => {
   describe('API_ENDPOINTS', () => {
@@ -203,6 +204,31 @@ describe('src/config configuration modules', () => {
       expect(getReaderTheme(undefined)).toEqual(READER_THEMES.light);
       expect(getReaderTheme(null)).toEqual(READER_THEMES.light);
       expect(getReaderTheme('invalid' as any)).toEqual(READER_THEMES.light);
+    });
+  });
+
+  describe('SITE_CONFIG & STORAGE_KEYS', () => {
+    it('provides valid site branding and repository URLs', () => {
+      expect(SITE_CONFIG.NAME).toBe('Bookarium');
+      expect(SITE_CONFIG.SITE_URL).toContain('http');
+      expect(SITE_CONFIG.GITHUB_REPO).toContain('github.com');
+      expect(SITE_CONFIG.PROJECT_GUTENBERG).toContain('gutenberg.org');
+    });
+
+    it('defines legal intake form configuration property', () => {
+      expect(typeof SITE_CONFIG.LEGAL_CONTACT_FORM).toBe('string');
+    });
+
+    it('generates valid canonical Gutenberg eBook URL', () => {
+      expect(SITE_CONFIG.GUTENBERG_EBOOK(1342)).toBe('https://www.gutenberg.org/ebooks/1342');
+      expect(SITE_CONFIG.GUTENBERG_EBOOK('84')).toBe('https://www.gutenberg.org/ebooks/84');
+    });
+
+    it('defines persistent localStorage keys', () => {
+      expect(STORAGE_KEYS.BOOKSHELF).toBe('bookarium-bookshelf-storage');
+      expect(STORAGE_KEYS.READER_SETTINGS).toBe('bookarium-reader-preferences');
+      expect(STORAGE_KEYS.PREFERENCES).toBe('bookarium-navigation-preferences');
+      expect(STORAGE_KEYS.THEME).toBe('bookarium-theme-preference');
     });
   });
 });

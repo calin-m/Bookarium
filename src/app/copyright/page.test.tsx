@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CopyrightPage from './page';
 import { ROUTES } from '@/config/routes';
+import { SITE_CONFIG } from '@/config/site-config';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -83,15 +84,48 @@ describe('CopyrightPage', () => {
     expect(screen.getByText(/Fail-Closed Longevity Heuristic:/i)).toBeInTheDocument();
   });
 
-  it('renders Section 5: Notice & Takedown Protocol with GitHub issue tracker link', () => {
+  it('renders Section 5: Notice & Takedown Protocol with GitHub tracker fallback when form is unconfigured', () => {
+    const originalForm = SITE_CONFIG.LEGAL_CONTACT_FORM;
+    (SITE_CONFIG as any).LEGAL_CONTACT_FORM = '';
+
     render(<CopyrightPage />);
 
     expect(screen.getByText(/5\. Notice & Takedown Protocol/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Official Confidential Intake Portal/i)).not.toBeInTheDocument();
 
     const issueLink = screen.getByRole('link', { name: /GitHub Repository Issue Tracker/i });
     expect(issueLink).toBeInTheDocument();
     expect(issueLink).toHaveAttribute('target', '_blank');
     expect(issueLink.getAttribute('href')).toContain('/issues');
+
+    (SITE_CONFIG as any).LEGAL_CONTACT_FORM = originalForm;
+  });
+
+  it('renders Section 5: Notice & Takedown Protocol with confidential intake portal when configured', () => {
+    const originalForm = SITE_CONFIG.LEGAL_CONTACT_FORM;
+    const testFormUrl = 'https://docs.google.com/forms/d/e/test-form/viewform';
+    (SITE_CONFIG as any).LEGAL_CONTACT_FORM = testFormUrl;
+
+    render(<CopyrightPage />);
+
+    expect(screen.getByText(/5\. Notice & Takedown Protocol/i)).toBeInTheDocument();
+    expect(screen.getByText(/Official Confidential Intake Portal/i)).toBeInTheDocument();
+
+    const formButton = screen.getByRole('link', { name: /Submit Notice or Inquiry Form/i });
+    expect(formButton).toBeInTheDocument();
+    expect(formButton).toHaveAttribute('href', testFormUrl);
+    expect(formButton).toHaveAttribute('target', '_blank');
+
+    const formTextLink = screen.getByRole('link', { name: /Official Intake Form/i });
+    expect(formTextLink).toBeInTheDocument();
+    expect(formTextLink).toHaveAttribute('href', testFormUrl);
+
+    const issueLink = screen.getByRole('link', { name: /GitHub Repository Issue Tracker/i });
+    expect(issueLink).toBeInTheDocument();
+    expect(issueLink).toHaveAttribute('target', '_blank');
+    expect(issueLink.getAttribute('href')).toContain('/issues');
+
+    (SITE_CONFIG as any).LEGAL_CONTACT_FORM = originalForm;
   });
 
   it('renders Section 6: Open Cultural Preservation Partners and footer', () => {
