@@ -1,4 +1,4 @@
-import type { GutendexBook, GutendexResponse, Book } from '@/types/book.types';
+import type { GutendexBook, GutendexResponse, Book, Author } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 
@@ -10,6 +10,8 @@ export interface ResolvedBookIdentity {
   primarySubject: string;
   languages: string[];
   isPublicDomain: boolean;
+  authors: Author[];
+  translators: Author[];
 }
 
 export interface ResolveBookMetadataParams {
@@ -146,6 +148,50 @@ export function resolveBookMetadata({
     (extractedMeta?.language ? [extractedMeta.language] : undefined) ||
     ['en'];
 
+  // Structured Authors & Translators Resolution Priority
+  let resolvedAuthors: Author[] = [];
+  let resolvedTranslators: Author[] = [];
+
+  // Tier A: If apiBook has authors
+  if (apiBook?.authors && apiBook.authors.length > 0) {
+    resolvedAuthors = apiBook.authors;
+    resolvedTranslators = apiBook.translators || [];
+  }
+  // Tier B: If storeBook has authors with lifespans
+  else if (
+    storeBook?.authors &&
+    storeBook.authors.length > 0 &&
+    (storeBook.authors as Author[]).some((a) => a.birth_year != null || a.death_year != null)
+  ) {
+    resolvedAuthors = storeBook.authors.map((a) =>
+      typeof a === 'string' ? { name: a, birth_year: null, death_year: null } : a
+    );
+    resolvedTranslators = (storeBook as GutendexBook).translators || [];
+  }
+  // Tier C: Curated static fixture (with authorBirthYear / authorDeathYear)
+  else if (featuredFixture) {
+    resolvedAuthors = [
+      {
+        name: featuredFixture.author,
+        birth_year: featuredFixture.authorBirthYear ?? null,
+        death_year: featuredFixture.authorDeathYear ?? null,
+      },
+    ];
+    resolvedTranslators = [];
+  }
+  // Tier D: Fallback to storeBook if present
+  else if (storeBook?.authors && storeBook.authors.length > 0) {
+    resolvedAuthors = storeBook.authors.map((a) =>
+      typeof a === 'string' ? { name: a, birth_year: null, death_year: null } : a
+    );
+    resolvedTranslators = (storeBook as GutendexBook).translators || [];
+  }
+  // Tier E: Plain resolvedAuthor string
+  else if (resolvedAuthor) {
+    resolvedAuthors = [{ name: resolvedAuthor, birth_year: null, death_year: null }];
+    resolvedTranslators = [];
+  }
+
   return {
     id: numericId,
     title: resolvedTitle,
@@ -154,5 +200,7 @@ export function resolveBookMetadata({
     primarySubject,
     languages: resolvedLanguages,
     isPublicDomain: true,
+    authors: resolvedAuthors,
+    translators: resolvedTranslators,
   };
 }

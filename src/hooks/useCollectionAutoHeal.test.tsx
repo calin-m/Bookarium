@@ -12,9 +12,9 @@ vi.mock('@/hooks/queries/useBooks', () => ({
   useBooks: (params: unknown, options: unknown) => mockUseBooks(params, options),
 }));
 
-// Mock useHasMounted to true
+let mockMounted = true;
 vi.mock('@/hooks/useHasMounted', () => ({
-  useHasMounted: () => true,
+  useHasMounted: () => mockMounted,
 }));
 
 function createWrapper() {
@@ -206,6 +206,78 @@ describe('useCollectionAutoHeal', () => {
 
     expect(enrichSpy).toHaveBeenCalledTimes(1);
     expect(result.current.incompleteSavedIds).toEqual([]);
+  });
+
+  it('synchronously enriches featured hero books without firing network queries', async () => {
+    const incompleteHomer: GutendexBook = {
+      id: 1727,
+      title: 'The Odyssey',
+      authors: [{ name: 'Homer', birth_year: null, death_year: null }],
+      translators: [],
+      subjects: ['Epic poetry'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 500,
+    };
+
+    useBookshelfStore.setState({
+      favoriteBookIds: [],
+      favoriteBooks: [],
+      savedBooks: [incompleteHomer],
+    });
+
+    const { result } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.incompleteSavedIds).toEqual([]);
+    expect(result.current.totalMissingCount).toBe(0);
+    expect(mockUseBooks).toHaveBeenCalledWith(undefined, { enabled: false });
+
+    await waitFor(() => {
+      const saved = useBookshelfStore.getState().savedBooks;
+      expect(saved[0].authors[0].death_year).toBe(-750);
+    });
+  });
+
+  it('detects incomplete books with empty authors array and queries /api/books', () => {
+    const bookWithNoAuthors: GutendexBook = {
+      ...mockIncompleteBook,
+      id: 9999,
+      authors: [],
+    };
+
+    useBookshelfStore.setState({
+      savedBooks: [bookWithNoAuthors],
+    });
+
+    const { result } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.incompleteSavedIds).toEqual([9999]);
+  });
+
+  it('returns empty collections and does not query when not mounted', () => {
+    mockMounted = false;
+    useBookshelfStore.setState({
+      favoriteBookIds: [161],
+      savedBooks: [mockIncompleteBook],
+    });
+
+    const { result } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.missingFavoriteIds).toEqual([]);
+    expect(result.current.incompleteSavedIds).toEqual([]);
+    expect(result.current.totalMissingCount).toBe(0);
+    expect(result.current.isHealing).toBe(false);
+
+    mockMounted = true;
   });
 });
 

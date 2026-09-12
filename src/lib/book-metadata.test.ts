@@ -239,5 +239,60 @@ describe('src/lib/book-metadata', () => {
       });
       expect(resultApi.languages).toEqual(['de']);
     });
+
+    it('resolves structured authors with lifespans from featured static fixtures (Tier 1)', () => {
+      const resultHomer = resolveBookMetadata({ id: 1727 });
+      expect(resultHomer.authors).toEqual([
+        {
+          name: 'Homer',
+          birth_year: -800,
+          death_year: -750,
+        },
+      ]);
+      expect(resultHomer.translators).toEqual([]);
+
+      const resultAusten = resolveBookMetadata({ id: 1342 });
+      expect(resultAusten.authors).toEqual([
+        {
+          name: 'Jane Austen',
+          birth_year: 1775,
+          death_year: 1817,
+        },
+      ]);
+    });
+
+    it('preserves structured authors and translators from API results (Tier 3)', () => {
+      const result = resolveBookMetadata({
+        id: 7777,
+        booksData: {
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: 7777,
+              title: 'The Divine Comedy',
+              authors: [{ name: 'Dante Alighieri', birth_year: 1265, death_year: 1321 }],
+              translators: [{ name: 'Henry Francis Cary', birth_year: 1772, death_year: 1844 }],
+              subjects: ['Epic Poetry'],
+              bookshelves: [],
+              languages: ['en'],
+              copyright: false,
+              media_type: 'Text',
+              formats: {},
+              download_count: 500,
+            },
+          ],
+        },
+      });
+
+      expect(result.authors).toEqual([
+        { name: 'Dante Alighieri', birth_year: 1265, death_year: 1321 },
+      ]);
+      expect(result.translators).toEqual([
+        { name: 'Henry Francis Cary', birth_year: 1772, death_year: 1844 },
+      ]);
+    });
   });
 });
+

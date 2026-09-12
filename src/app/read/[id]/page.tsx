@@ -217,6 +217,7 @@ export default function BookReaderPage() {
       const apiBook = booksData.results[0];
       useBookshelfStore.getState().addRecentBook(apiBook);
       useReaderStore.getState().openReader(apiBook);
+      useBookshelfStore.getState().enrichSavedBooks([apiBook]);
     } else if (
       resolvedIdentity.title &&
       !isPlaceholderTitle(resolvedIdentity.title) &&
@@ -225,10 +226,13 @@ export default function BookReaderPage() {
       const bookObj: GutendexBook = {
         id: numericId,
         title: resolvedIdentity.title,
-        authors: resolvedIdentity.author
-          ? [{ name: resolvedIdentity.author, birth_year: null, death_year: null }]
-          : [],
-        translators: [],
+        authors:
+          resolvedIdentity.authors && resolvedIdentity.authors.length > 0
+            ? resolvedIdentity.authors
+            : resolvedIdentity.author
+            ? [{ name: resolvedIdentity.author, birth_year: null, death_year: null }]
+            : [],
+        translators: resolvedIdentity.translators || [],
         subjects: resolvedIdentity.primarySubject ? [resolvedIdentity.primarySubject] : [],
         bookshelves: [],
         languages: resolvedIdentity.languages || ['en'],
@@ -242,6 +246,9 @@ export default function BookReaderPage() {
       };
       useBookshelfStore.getState().addRecentBook(bookObj);
       useReaderStore.getState().openReader(bookObj);
+      if (resolvedIdentity.authors.some((a) => a.birth_year != null || a.death_year != null)) {
+        useBookshelfStore.getState().enrichSavedBooks([bookObj]);
+      }
     }
   }, [numericId, booksData, resolvedIdentity]);
 
