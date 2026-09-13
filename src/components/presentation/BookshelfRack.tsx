@@ -27,6 +27,21 @@ export interface BookshelfRackProps {
   showShelfControls?: boolean;
 }
 
+/**
+ * Calculates deterministic shelf capacity given a measured or viewport width,
+ * accounting for Tailwind container constraints (max-w-7xl = 1280px) and shelf padding.
+ */
+export function calculateShelfCapacity(viewportWidth: number): number {
+  // Container is constrained by max-w-7xl (1280px) and horizontal padding (32px to 64px)
+  const effectiveContainerWidth = Math.min(viewportWidth, 1280);
+  const containerPadding = effectiveContainerWidth >= 1024 ? 64 : effectiveContainerWidth >= 640 ? 48 : 32;
+  const contentWidth = effectiveContainerWidth - containerPadding;
+  // Subtract shelf side bevel padding (approx 48px)
+  const availableWidth = Math.max(300, contentWidth - 48);
+  // Average book spine width (48px) + gap (14px) = 62px
+  return Math.max(6, Math.floor(availableWidth / 62));
+}
+
 export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   books,
   onBookClick,
@@ -52,18 +67,11 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     moveBookToShelf,
     isSyncing,
   } = useHydratedBookshelf();
-  const readingProgress = useReaderStore((s) => s.readingProgress);
-  const { user, openAuthModal } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const openAuthModal = useAuthStore((s) => s.openAuthModal);
   const { country } = useJurisdiction();
-  const {
-    isBookOffline,
-    downloadBook,
-    removeBook,
-    downloadAll,
-    removeAll,
-    isDownloading: isDownloadingOffline,
-    downloadAllProgress: offlineProgress,
-  } = useOfflineBooks();
+  const readingProgress = useReaderStore((s) => s.readingProgress);
+  const { isBookOffline, downloadBook, removeBook, downloadAll, removeAll, isDownloading: isDownloadingOffline, downloadAllProgress: offlineProgress } = useOfflineBooks();
 
   const handleToggleOffline = async (book: GutendexBook) => {
     if (isBookOffline(book.id)) {
@@ -87,9 +95,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [shelfCapacity, setShelfCapacity] = useState<number>(() => {
     if (typeof window !== 'undefined') {
-      const width = window.innerWidth;
-      const availableWidth = Math.max(300, width - 96);
-      return Math.max(6, Math.floor(availableWidth / 62));
+      return calculateShelfCapacity(window.innerWidth);
     }
     return 18;
   });

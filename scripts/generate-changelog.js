@@ -22,6 +22,7 @@ const RELEASES = [
         'Architecture Decision Record (`ADR-045`): Formally ratified literary notebook dynamic font-reflow deep linking, transparent dialog surfaces, and smart reading milestones in `docs/DECISIONS.md`.',
       ],
       Fixed: [
+        'Bookshelf Refresh Horizontal Layout & Order Shift (`src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/stores/useBookshelfStore.ts`, `src/hooks/useCollectionAutoHeal.ts`): Eliminated initial render capacity jumps (29 → 18 books) on desktop by aligning initial `shelfCapacity` state calculations with `max-w-7xl` (1280px) container bounds (`calculateShelfCapacity`), decoupled outer spine flex transitions, added defensive secondary `.order(\'book_id\', { ascending: true })` tie-breakers across PostgreSQL cloud synchronization queries, and persisted auto-healing attempts in `sessionStorage`.',
         'Viewport Scroll Conflict on Note Navigation (`src/components/reader/ReaderSurface.tsx`): Guarded standard page-turn scroll-to-top with `!targetAnnotationId`, preventing automatic top scrolling from overriding smooth scroll centering on notes located below the fold.',
         'Content Route Metadata Cache Duplicate Prefix Bug (`src/app/api/books/content/metadata-cache.ts`): Fixed URL template concatenation that previously generated redundant `/books/books/` path segments during plain-text stream resolution.',
       ],

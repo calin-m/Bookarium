@@ -138,6 +138,21 @@ const OUTBOX_DISPATCHERS: Record<OutboxAction['type'], OutboxDispatcher> = {
     sb.from('user_book_curation').delete().eq('user_id', p.user_id).eq('book_id', p.book_id),
 };
 
+/**
+ * Defensively applies primary created_at ordering and deterministic secondary book_id tie-breaking.
+ * Resilient against single-order unit test mocks.
+ */
+export function applyDeterministicItemOrdering(query: any): any {
+  if (typeof query?.order === 'function') {
+    const firstOrdered = query.order('created_at', { ascending: false });
+    if (typeof firstOrdered?.order === 'function') {
+      return firstOrdered.order('book_id', { ascending: true });
+    }
+    return firstOrdered;
+  }
+  return query;
+}
+
 export const useBookshelfStore = create<BookshelfState>()(
   persist(
     (set, get) => ({
@@ -680,9 +695,7 @@ export const useBookshelfStore = create<BookshelfState>()(
               .from('bookshelf_items')
               .select('*')
               .eq('user_id', userId);
-            const { data: items, error: itemsError } = await (typeof (itemsQuery as any)?.order === 'function'
-              ? (itemsQuery as any).order('created_at', { ascending: false })
-              : itemsQuery);
+            const { data: items, error: itemsError } = await applyDeterministicItemOrdering(itemsQuery);
 
             if (itemsError) {
               console.error('Failed to sync bookshelf items from cloud:', itemsError);
@@ -735,9 +748,7 @@ export const useBookshelfStore = create<BookshelfState>()(
                     .from('bookshelf_items')
                     .select('*')
                     .eq('user_id', userId);
-                  const { data: updatedItems } = await (typeof (updatedItemsQuery as any)?.order === 'function'
-                    ? (updatedItemsQuery as any).order('created_at', { ascending: false })
-                    : updatedItemsQuery);
+                  const { data: updatedItems } = await applyDeterministicItemOrdering(updatedItemsQuery);
                   if (updatedItems) {
                     set({ cloudBookshelfItems: updatedItems as BookshelfItem[] });
                   }
@@ -789,9 +800,7 @@ export const useBookshelfStore = create<BookshelfState>()(
                     .from('bookshelf_items')
                     .select('*')
                     .eq('user_id', userId);
-                  const { data: updatedItems } = await (typeof (newDefaultItemsQuery as any)?.order === 'function'
-                    ? (newDefaultItemsQuery as any).order('created_at', { ascending: false })
-                    : newDefaultItemsQuery);
+                  const { data: updatedItems } = await applyDeterministicItemOrdering(newDefaultItemsQuery);
                   if (updatedItems) {
                     set({ cloudBookshelfItems: updatedItems as BookshelfItem[] });
                   }
@@ -806,9 +815,7 @@ export const useBookshelfStore = create<BookshelfState>()(
             .from('user_favorites')
             .select('*')
             .eq('user_id', userId);
-          const { data: favorites, error: favoritesError } = await (typeof (favoritesQuery as any)?.order === 'function'
-            ? (favoritesQuery as any).order('created_at', { ascending: false })
-            : favoritesQuery);
+          const { data: favorites, error: favoritesError } = await applyDeterministicItemOrdering(favoritesQuery);
 
           if (favoritesError) {
             console.error('Failed to sync favorites from cloud:', favoritesError);

@@ -31,7 +31,22 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
   const savedBooks = useBookshelfStore((s) => s.savedBooks || []);
 
   // Track book IDs queried this session to prevent infinite re-query loops on authors without known lifespans
-  const [attemptedHealIds, setAttemptedHealIds] = useState<Set<number>>(() => new Set());
+  const [attemptedHealIds, setAttemptedHealIds] = useState<Set<number>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = sessionStorage.getItem('bookarium_auto_heal_attempted');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            return new Set<number>(parsed);
+          }
+        }
+      } catch {
+        // Fallback to in-memory set on storage restriction
+      }
+    }
+    return new Set<number>();
+  });
   const [prevResults, setPrevResults] = useState<unknown>(null);
 
   // Fast-path synchronous healing for featured hero books from static fixtures
@@ -111,11 +126,19 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
   if (missingBooksData?.results && missingBooksData.results !== prevResults) {
     setPrevResults(missingBooksData.results);
     const freshResults = missingBooksData.results;
-    const newHealedIds = freshResults.map((b) => b.id).filter((id) => !attemptedHealIds.has(id));
+    const idsToRecord = [...freshResults.map((b) => b.id), ...combinedMissingIds];
+    const newHealedIds = idsToRecord.filter((id) => !attemptedHealIds.has(id));
     if (newHealedIds.length > 0) {
       const next = new Set(attemptedHealIds);
       for (const id of newHealedIds) next.add(id);
       setAttemptedHealIds(next);
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('bookarium_auto_heal_attempted', JSON.stringify(Array.from(next)));
+        } catch {
+          // Ignore storage quota/access errors
+        }
+      }
     }
   }
 

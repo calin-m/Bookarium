@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 13 Sep 2026 14:31:33 GMT  
+**Last Generated**: Sun, 13 Sep 2026 15:16:28 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 169 passed  
-**Total Verified Tests**: 1553 passed  
+**Total Verified Tests**: 1559 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1553 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1559 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 45 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.52%** (7055/7625) — *Target: $ge$ 80%*
-- **Statements**: **90.95%** (7637/8396) — *Target: $ge$ 80%*
-- **Functions**: **89.07%** (1639/1840) — *Target: $ge$ 80%*
-- **Branches**: **81.24%** (6694/8239) — *Target: $ge$ 80%*
+- **Lines**: **92.54%** (7077/7647) — *Target: $ge$ 80%*
+- **Statements**: **90.98%** (7660/8419) — *Target: $ge$ 80%*
+- **Functions**: **89.09%** (1643/1844) — *Target: $ge$ 80%*
+- **Branches**: **81.27%** (6703/8247) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1553 Tests)
+## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1559 Tests)
 
 ### 🚀 App Routes & Pages (15 Suites · 163 Tests)
 
@@ -289,7 +289,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (25 Suites · 293 Tests)
+### 🎨 Catalog & Presentation (25 Suites · 295 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -444,7 +444,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (41 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (43 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -487,6 +487,8 @@
 - ✔ `omits personal shelf management controls when showShelfControls is false`
 - ✔ `does not render syncing indicator when showShelfControls is false even if isSyncing is true`
 - ✔ `displays catalog-appropriate empty state when showShelfControls is false and books array is empty`
+- ✔ `calculates deterministic shelf capacity capped to max-w-7xl (1280px) on wide viewports`
+- ✔ `calculates proportional capacity on tablet and mobile viewports`
 
 </details>
 
@@ -1016,7 +1018,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (9 Suites · 145 Tests)
+### ⚡ Zustand State Stores (9 Suites · 148 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -1092,7 +1094,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (40 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (43 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -1134,6 +1136,9 @@
 - ✔ `manages deletedFavoriteBookIds and suppresses ghost favorite resurrection during syncWithCloud`
 - ✔ `removes local favorite when deleted on another device and syncing with cloud`
 - ✔ `enriches savedBooks and recentBooks with author lifespans and translators`
+- ✔ `chains created_at DESC and book_id ASC when order function is available on query builder`
+- ✔ `gracefully handles single-order mocks where first order returns a Promise or non-chainable object`
+- ✔ `returns original query if query has no order function`
 
 </details>
 
@@ -1707,7 +1712,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 203 Tests)
+### 🔄 Hooks & React Query (22 Suites · 204 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -1947,7 +1952,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `stays dormant with 0 query params when all collections are healthy`
 - ✔ `detects missing favorite IDs and queries /api/books`
@@ -1957,6 +1962,7 @@
 - ✔ `synchronously enriches featured hero books without firing network queries`
 - ✔ `detects incomplete books with empty authors array and queries /api/books`
 - ✔ `returns empty collections and does not query when not mounted`
+- ✔ `suppresses redundant network queries for book IDs already attempted in sessionStorage`
 
 </details>
 

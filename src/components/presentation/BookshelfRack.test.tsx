@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import React from 'react';
-import { BookshelfRack } from './BookshelfRack';
+import { BookshelfRack, calculateShelfCapacity } from './BookshelfRack';
 import { mockBooks } from '@/mocks/handlers';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -839,6 +839,28 @@ describe('BookshelfRack Component', () => {
       expect(screen.getByText(/try adjusting your search criteria/i)).toBeInTheDocument();
       expect(screen.queryByText(/General/i)).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /browse catalog/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('calculateShelfCapacity and Zero-Shift Layout Calculation', () => {
+    it('calculates deterministic shelf capacity capped to max-w-7xl (1280px) on wide viewports', () => {
+      // 1920px desktop viewport
+      expect(calculateShelfCapacity(1920)).toBe(18);
+      // 1440px desktop viewport
+      expect(calculateShelfCapacity(1440)).toBe(18);
+      // 1280px exact container boundary
+      expect(calculateShelfCapacity(1280)).toBe(18);
+    });
+
+    it('calculates proportional capacity on tablet and mobile viewports', () => {
+      // 1024px tablet viewport
+      expect(calculateShelfCapacity(1024)).toBe(14);
+      // 768px small tablet viewport
+      expect(calculateShelfCapacity(768)).toBe(10);
+      // 390px mobile viewport (clamps to minimum 6)
+      expect(calculateShelfCapacity(390)).toBe(6);
+      // Extra small mobile viewport
+      expect(calculateShelfCapacity(320)).toBe(6);
     });
   });
 });

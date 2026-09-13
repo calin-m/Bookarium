@@ -133,7 +133,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   return (
     <div
       key={book.id}
-      className="group relative shrink-0 cursor-pointer select-none transition-all duration-300 hover:z-50 focus:outline-hidden origin-bottom mb-0"
+      className="group relative shrink-0 cursor-pointer select-none hover:z-50 focus:outline-hidden origin-bottom mb-0"
       style={{ height: `${heightVariance}px`, width: `${widthVariance}px` }}
       onClick={() => onSpineClick(book)}
       onKeyDown={(e) => {

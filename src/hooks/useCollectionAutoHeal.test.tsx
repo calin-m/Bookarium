@@ -59,6 +59,11 @@ const mockIncompleteBook: GutendexBook = {
 describe('useCollectionAutoHeal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    try {
+      sessionStorage.clear();
+    } catch {
+      // Safe fallback
+    }
     useBookshelfStore.setState({
       favoriteBookIds: [],
       favoriteBooks: [],
@@ -278,6 +283,22 @@ describe('useCollectionAutoHeal', () => {
     expect(result.current.isHealing).toBe(false);
 
     mockMounted = true;
+  });
+
+  it('suppresses redundant network queries for book IDs already attempted in sessionStorage', () => {
+    sessionStorage.setItem('bookarium_auto_heal_attempted', JSON.stringify([21839]));
+
+    useBookshelfStore.setState({
+      savedBooks: [mockIncompleteBook],
+    });
+
+    const { result } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.incompleteSavedIds).toEqual([]);
+    expect(result.current.totalMissingCount).toBe(0);
+    expect(mockUseBooks).toHaveBeenCalledWith(undefined, { enabled: false });
   });
 });
 

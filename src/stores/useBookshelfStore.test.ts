@@ -8,6 +8,7 @@ import {
   useBookRating,
   useReadingStatus,
   useBookCuration,
+  applyDeterministicItemOrdering,
 } from './useBookshelfStore';
 import { mockBooks } from '@/mocks/handlers';
 import type { GutendexBook } from '@/types/book.types';
@@ -1507,6 +1508,36 @@ describe('useBookshelfStore', () => {
       expect(state.recentBooks[0].translators).toEqual([
         { name: 'Butler, Samuel', birth_year: 1835, death_year: 1902 },
       ]);
+    });
+  });
+
+  describe('applyDeterministicItemOrdering', () => {
+    it('chains created_at DESC and book_id ASC when order function is available on query builder', () => {
+      const secondOrder = vi.fn().mockReturnValue('chained-query');
+      const firstOrder = vi.fn().mockReturnValue({ order: secondOrder });
+      const mockQuery = { order: firstOrder };
+
+      const result = applyDeterministicItemOrdering(mockQuery);
+
+      expect(firstOrder).toHaveBeenCalledWith('created_at', { ascending: false });
+      expect(secondOrder).toHaveBeenCalledWith('book_id', { ascending: true });
+      expect(result).toBe('chained-query');
+    });
+
+    it('gracefully handles single-order mocks where first order returns a Promise or non-chainable object', () => {
+      const mockResolved = Promise.resolve({ data: [] });
+      const firstOrder = vi.fn().mockReturnValue(mockResolved);
+      const mockQuery = { order: firstOrder };
+
+      const result = applyDeterministicItemOrdering(mockQuery);
+
+      expect(firstOrder).toHaveBeenCalledWith('created_at', { ascending: false });
+      expect(result).toBe(mockResolved);
+    });
+
+    it('returns original query if query has no order function', () => {
+      const mockQuery = { select: vi.fn() };
+      expect(applyDeterministicItemOrdering(mockQuery)).toBe(mockQuery);
     });
   });
 });
