@@ -494,7 +494,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 | `public.books_search_vector_trigger()` | Trigger | Automatically maintains `search_vector` on book insert/update (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
 
 ### Step 3: Populate Public Domain Book Catalog (Optional)
-To activate the self-hosted PostgreSQL book catalog and bypass third-party rate limits, you have two options:
+To activate the self-hosted PostgreSQL book catalog and bypass third-party rate limits, you have three options:
 
 #### Option A: Autonomous Full-Catalog Sync (78,000+ Titles — Recommended)
 Stream Project Gutenberg's complete official catalog dump directly into Supabase without copy-pasting SQL:
@@ -506,7 +506,16 @@ npm run catalog:sync -- --limit=100
 npm run catalog:sync
 ```
 > [!TIP]
-> **Hands-Free Weekly Sync**: Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your repository's **GitHub Secrets** (`Settings -> Secrets and variables -> Actions`). The scheduled GitHub Actions workflow (`.github/workflows/catalog-sync.yml`) will automatically update newly added titles every Sunday at 02:00 UTC and keep your Supabase free project active. You can also trigger it on-demand with 1 click from the GitHub **Actions** tab.
+> **Hands-Free Weekly Sync & GitHub Actions Automation**: Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your repository's **GitHub Secrets** (`Settings -> Secrets and variables -> Actions`). Two scheduled GitHub Actions workflows automate background catalog and translation updates while keeping your Supabase free tier active:
+>
+> 1. **Gutenberg Catalog Sync ([`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml))**:
+>    - **Schedule**: Every Sunday at `02:00 UTC`.
+>    - **Action**: Streams newly added Gutenberg titles and batch-upserts metadata into `public.books`, then automatically chains relational translation clustering into `public.book_translations`.
+>    - **Manual Dispatch**: Can be triggered on-demand with custom inputs (`limit`, `update_existing`, `dry_run`) directly from the GitHub Actions tab.
+> 2. **Gutenberg Translations Sync ([`.github/workflows/translations-sync.yml`](.github/workflows/translations-sync.yml))**:
+>    - **Schedule**: Every Sunday at `03:00 UTC` (1 hour after catalog sync).
+>    - **Action**: Dedicated standalone workflow that clusters Wikidata translation statements into canonical literary works without re-streaming the full 78,000-book catalog.
+>    - **Manual Dispatch**: Can be triggered on-demand with custom inputs (`limit`, `update_existing`, `dry_run`) directly from the GitHub Actions tab.
 
 #### Option B: Curated Masterworks Starter Seed (10 Books)
 If you prefer a quick starter seed for local development:
@@ -519,11 +528,17 @@ Paste and run [`supabase/seed_books.sql`](supabase/seed_books.sql) in your Supab
 #### Option C: Ingest Relational Translations (Multilingual Edition Links)
 Populate verified relational book translations linking historical editions across languages:
 ```bash
-# 1. Quick test run / offline seed generation:
-node scripts/ingest-translations.js --limit=200 --output=supabase/seed_translations.sql
+# 1. Dry run / clustering validation (no database writes):
+npm run translations:sync -- --dry-run
 
-# 2. Full-catalog live translation sync:
-node scripts/ingest-translations.js --all
+# 2. Quick test run (first 200 Wikidata translation clusters):
+npm run translations:sync -- --limit=200
+
+# 3. Full live translation clustering & Supabase upsert:
+npm run translations:sync -- --all
+
+# 4. Generate atomic offline SQL seed file (optional):
+npm run translations:sync -- --limit=200 --output=supabase/seed_translations.sql
 ```
 Paste and run [`supabase/seed_translations.sql`](supabase/seed_translations.sql) in your Supabase SQL Editor if seeding offline.
 
@@ -594,6 +609,7 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 | `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
 | `npm run catalog:sync` | Streams Project Gutenberg's catalog dump (78,000+ titles) and batch-upserts into Supabase |
 | `npm run catalog:ingest` | Generates curated SQL seed files (`supabase/seed_books.sql`) for local setup |
+| `npm run translations:sync` | Clusters multilingual translations across Gutenberg volumes and batch-upserts into Supabase (`--all`, `--limit=N`, `--dry-run`, `--output=file.sql`) |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 
