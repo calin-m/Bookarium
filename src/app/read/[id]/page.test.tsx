@@ -12,6 +12,8 @@ const mockPush = vi.fn();
 const mockReplace = vi.fn();
 const mockBack = vi.fn();
 
+let mockSearchParams = new URLSearchParams();
+
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: '1342' }),
@@ -20,6 +22,7 @@ vi.mock('next/navigation', () => ({
     replace: mockReplace,
     back: mockBack,
   }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 // Mock useBooks and useBookContent
@@ -101,6 +104,7 @@ vi.mock('@/hooks/queries/usePageTranslation', () => ({
 describe('Dedicated Reader Page (/read/[id])', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
     useBookshelfStore.getState().clearBookshelf();
     useAnnotationStore.getState().clearAllAnnotations();
     useReaderStore.getState().setFontSize(18);
@@ -704,6 +708,43 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getByText(/Protected by Copyright in Your Jurisdiction/i)).toBeInTheDocument();
     expect(screen.getByText(/This title is protected under UK copyright law\./i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Return to Library/i })).toBeInTheDocument();
+  });
+
+  it('navigates directly to chapter and page specified in URL search params', async () => {
+    mockSearchParams = new URLSearchParams('chapter=1&page=1');
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('navigates to targeted annotation and scrolls it into view when annotationId is provided in URL', async () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 1,
+      chapterPage: 1,
+      selectedText: 'It is a truth universally acknowledged',
+      color: 'yellow',
+      note: 'Darcy note',
+    });
+
+    mockSearchParams = new URLSearchParams(`chapter=1&page=1&annotationId=${ann.id}`);
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
+      const highlight = document.querySelector(`[data-annotation-id="${ann.id}"]`);
+      expect(highlight).toBeInTheDocument();
+      expect(scrollIntoViewMock).toHaveBeenCalled();
+    });
   });
 });
 

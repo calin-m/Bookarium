@@ -85,7 +85,8 @@ describe('metadata-cache', () => {
     };
 
     const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockSupabaseBook, error: null });
-    const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
     const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
 
@@ -103,11 +104,51 @@ describe('metadata-cache', () => {
       expect(mockFrom).toHaveBeenCalledWith('books');
       expect(mockSelect).toHaveBeenCalledWith('id, title, authors, translators, copyright');
       expect(mockEq).toHaveBeenCalledWith('id', 1342);
+      expect(mockAbortSignal).toHaveBeenCalled();
       expect(fetchSpy).not.toHaveBeenCalled();
 
       // Verify cached in memory
       const cached = getBookMetadataCache(1342);
       expect(cached?.book.title).toBe('Pride and Prejudice');
+    } finally {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
+      clientSpy.mockRestore();
+    }
+  });
+
+  it('degrades gracefully to upstream Gutendex when Supabase query times out', async () => {
+    const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://valid-project.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'valid-anon-key-12345';
+
+    const mockAbortSignal = vi.fn().mockReturnValue({
+      maybeSingle: vi.fn().mockRejectedValue(new Error('TimeoutError: The operation was aborted due to timeout')),
+    });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: mockFrom,
+    } as any);
+
+    const mockUpstreamBook = {
+      id: 2600,
+      title: 'War and Peace',
+      authors: [{ name: 'Tolstoy, Leo', birth_year: 1828, death_year: 1910 }],
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify(mockUpstreamBook), { status: 200 })
+    );
+
+    try {
+      const result = await resolveBookMetadata(2600);
+      expect(result).toEqual(mockUpstreamBook);
+      expect(fetchSpy).toHaveBeenCalled();
     } finally {
       process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;

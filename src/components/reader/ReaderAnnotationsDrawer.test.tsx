@@ -94,8 +94,12 @@ describe('ReaderAnnotationsDrawer', () => {
     );
 
     fireEvent.click(screen.getByTestId('annotation-jump-btn-ann-1'));
-    expect(onJumpToAnnotation).toHaveBeenCalledWith(0, 1);
+    expect(onJumpToAnnotation).toHaveBeenCalledWith(0, 1, 'ann-1');
     expect(onClose).toHaveBeenCalled();
+
+    // Also clicking blockquote triggers jump
+    fireEvent.click(screen.getAllByTestId('annotation-quote-text')[0]);
+    expect(onJumpToAnnotation).toHaveBeenCalledWith(0, 1, 'ann-1');
   });
 
   it('allows editing an annotation note', () => {

@@ -476,7 +476,7 @@ describe('NotebookView component', () => {
     const jumpBtn = screen.getByTestId(`jump-reader-btn-${ann.id}`);
     fireEvent.click(jumpBtn);
 
-    expect(mockPush).toHaveBeenCalledWith('/read/1342?chapter=2&page=5');
+    expect(mockPush).toHaveBeenCalledWith(`/read/1342?chapter=2&page=5&annotationId=${ann.id}`);
   });
 
   it('shows confirmation modal and deletes an individual quote card when confirmed', async () => {

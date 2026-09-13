@@ -29,6 +29,10 @@ describe('BookshelfManageModals Component', () => {
     );
 
     expect(screen.getByText('Create New Bookshelf')).toBeInTheDocument();
+    const createBackdrop = screen.getByTestId('modal-backdrop');
+    expect(createBackdrop).toHaveClass('bg-transparent');
+    expect(createBackdrop).toHaveClass('backdrop-blur-none');
+
     const input = screen.getByPlaceholderText('e.g. Philosophy & Logic');
     fireEvent.change(input, { target: { value: 'Classics' } });
     expect(handleNameChange).toHaveBeenCalledWith('Classics');
@@ -61,6 +65,10 @@ describe('BookshelfManageModals Component', () => {
     );
 
     expect(screen.getByText('Rename Bookshelf')).toBeInTheDocument();
+    const renameBackdrop = screen.getByTestId('modal-backdrop');
+    expect(renameBackdrop).toHaveClass('bg-transparent');
+    expect(renameBackdrop).toHaveClass('backdrop-blur-none');
+
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(handleRename).toHaveBeenCalled();
 
@@ -84,6 +92,10 @@ describe('BookshelfManageModals Component', () => {
     );
 
     expect(screen.getByText('Delete Bookshelf')).toBeInTheDocument();
+    const deleteBackdrop = screen.getByTestId('modal-backdrop');
+    expect(deleteBackdrop).toHaveClass('bg-transparent');
+    expect(deleteBackdrop).toHaveClass('backdrop-blur-none');
+
     fireEvent.click(screen.getByRole('button', { name: 'Delete Shelf' }));
     expect(handleDelete).toHaveBeenCalled();
   });
@@ -115,6 +127,9 @@ describe('BookshelfManageModals Component', () => {
     );
 
     expect(screen.getByText('Clear Offline Shelf')).toBeInTheDocument();
+    const clearBackdrop = screen.getByTestId('modal-backdrop');
+    expect(clearBackdrop).toHaveClass('bg-transparent');
+    expect(clearBackdrop).toHaveClass('backdrop-blur-none');
     expect(screen.getByText(/Are you sure you want to remove all offline downloads for this shelf/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));

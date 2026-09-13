@@ -15,7 +15,7 @@ export interface ReaderAnnotationsDrawerProps {
   annotations: Annotation[];
   bookTitle?: string;
   theme?: ReaderTheme;
-  onJumpToAnnotation: (chapterIndex: number, chapterPage: number) => void;
+  onJumpToAnnotation: (chapterIndex: number, chapterPage: number, annotationId?: string) => void;
   onDeleteAnnotation: (id: string) => void;
   onUpdateNote: (id: string, note: string) => void;
 }
@@ -59,8 +59,8 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
     setEditingNoteId(null);
   };
 
-  const handleJump = (chapterIndex: number, chapterPage: number) => {
-    onJumpToAnnotation(chapterIndex, chapterPage);
+  const handleJump = (item: Annotation) => {
+    onJumpToAnnotation(item.chapterIndex, item.chapterPage, item.id);
     onClose();
   };
 
@@ -211,7 +211,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                 {/* Highlighted Quote Text */}
                 <blockquote
                   data-testid="annotation-quote-text"
-                  onClick={() => handleJump(item.chapterIndex, item.chapterPage)}
+                  onClick={() => handleJump(item)}
                   className="font-serif italic text-sm text-foreground/90 leading-relaxed cursor-pointer hover:underline decoration-primary/40 underline-offset-2"
                 >
                   &ldquo;{item.selectedText}&rdquo;
@@ -260,7 +260,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                 <button
                   type="button"
                   data-testid={`annotation-jump-btn-${item.id}`}
-                  onClick={() => handleJump(item.chapterIndex, item.chapterPage)}
+                  onClick={() => handleJump(item)}
                   className="flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline pt-1 self-start cursor-pointer"
                 >
                   <span>Jump to passage</span>

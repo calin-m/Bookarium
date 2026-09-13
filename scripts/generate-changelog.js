@@ -9,6 +9,29 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.5.2',
+    date: '2026-09-13',
+    title: 'Literary Notebook Dynamic Reflow Deep Linking, Transparent Dialogs & Smart Reading Milestones',
+    sections: {
+      Added: [
+        'Literary Notebook "Read Passage" Deep Linking (`src/components/presentation/NotebookView.tsx`, `src/components/reader/ReaderAnnotationsDrawer.tsx`, `src/app/read/[id]/page.tsx`): Integrated URL query parameter propagation (`&annotationId=${ann.id}`), bidirectional reader session override (`initialPosition`), and targeted mark scrolling with a temporary 2.5s focus pulse ring (`ring-2 ring-primary ring-offset-2 animate-pulse`).',
+        'Dynamic Font-Reflow Healing Algorithm (`src/app/read/[id]/page.tsx`): Added runtime AST page text substring scanning (`chapter.pages.findIndex(p => p.includes(ann.selectedText))`) that dynamically corrects target page coordinates whenever the user changes font size or column width between reading sessions.',
+        'Smart Bookmark Completion Confirmation Modal (`src/components/presentation/BookmarksView.tsx`): Implemented status-change confirmation dialog when selecting "Finished" on any volume below 100% progress, warning the user that their reading ledger will advance to 100%, while bypassing confirmation for already-completed volumes.',
+        'Single-Bookmark Deletion Confirmation Modal (`src/components/presentation/BookmarksView.tsx`): Added safety confirmation dialog protecting users against accidental bookmark deletions with volume title highlights.',
+        'Transparent Modal Backdrop Architecture (`src/components/presentation/bookshelf/BookshelfManageModals.tsx`, `src/components/presentation/BookmarksView.tsx`): Replaced dark scrim backdrops across Create Shelf, Rename Shelf, Delete Shelf, and Bookmark modals with transparent non-dimming surfaces (`bg-transparent backdrop-blur-none`).',
+        'Architecture Decision Record (`ADR-045`): Formally ratified literary notebook dynamic font-reflow deep linking, transparent dialog surfaces, and smart reading milestones in `docs/DECISIONS.md`.',
+      ],
+      Fixed: [
+        'Viewport Scroll Conflict on Note Navigation (`src/components/reader/ReaderSurface.tsx`): Guarded standard page-turn scroll-to-top with `!targetAnnotationId`, preventing automatic top scrolling from overriding smooth scroll centering on notes located below the fold.',
+        'Content Route Metadata Cache Duplicate Prefix Bug (`src/app/api/books/content/metadata-cache.ts`): Fixed URL template concatenation that previously generated redundant `/books/books/` path segments during plain-text stream resolution.',
+      ],
+      Refactored: [
+        'Client Route Suspense Boundary (`src/app/read/[id]/page.tsx`): Wrapped reader default export in `<React.Suspense fallback={<ReaderLoadingView />}>` for Next.js 16 client search params hydration compliance.',
+        'In-Reader Annotation Drawer Jump Architecture (`src/components/reader/ReaderAnnotationsDrawer.tsx`): Extended `onJumpToAnnotation` signature to forward annotation IDs, closing the drawer, healing reflowed page targets, and highlighting targeted excerpts.',
+      ],
+    },
+  },
+  {
     version: '2.5.1',
     date: '2026-09-12',
     title: 'Seamless Dynamic SSR Pre-Hydration, Curated Anthology Expansion & Declarative Copyright Encapsulation',

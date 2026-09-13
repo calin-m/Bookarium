@@ -61,6 +61,7 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
         onClose={onCloseCreateShelf}
         maxWidth="sm"
         showCloseButton={false}
+        backdropClassName="bg-transparent backdrop-blur-none"
         className="p-6 space-y-4 ring-1 ring-black/10 dark:ring-white/10"
       >
         <div className="flex items-center justify-between border-b border-border pb-3">
@@ -154,6 +155,7 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
         onClose={onCloseRenameShelf}
         maxWidth="sm"
         showCloseButton={false}
+        backdropClassName="bg-transparent backdrop-blur-none"
         className="p-6 space-y-4 ring-1 ring-black/10 dark:ring-white/10"
       >
         <div className="flex items-center justify-between border-b border-border pb-3">
@@ -247,6 +249,7 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
         onClose={onCloseDeleteShelf}
         maxWidth="sm"
         showCloseButton={false}
+        backdropClassName="bg-transparent backdrop-blur-none"
         className="p-6 space-y-4 ring-1 ring-black/10 dark:ring-white/10"
       >
         <div className="flex items-center justify-between border-b border-border pb-3">

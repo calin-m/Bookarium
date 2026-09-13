@@ -370,7 +370,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   };
 
   const handleJumpToReader = (ann: Annotation) => {
-    router.push(`/read/${ann.bookId}?chapter=${ann.chapterIndex}&page=${ann.chapterPage}`);
+    router.push(`/read/${ann.bookId}?chapter=${ann.chapterIndex}&page=${ann.chapterPage}&annotationId=${ann.id}`);
   };
 
   const handleConfirmClearAll = () => {

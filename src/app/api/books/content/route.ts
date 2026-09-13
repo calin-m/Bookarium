@@ -113,6 +113,7 @@ export async function GET(request: NextRequest) {
         .from('books')
         .select('content')
         .eq('id', bookId)
+        .abortSignal(AbortSignal.timeout(2500))
         .maybeSingle();
 
       if (!error && data?.content && data.content.trim().length > 0) {

@@ -25,6 +25,7 @@ export interface UseReaderSessionOptions {
   fontSize: number;
   readingMode: 'paginated' | 'scroll';
   readingStatus?: ReadingStatus | null;
+  initialPosition?: { chapterIndex: number; chapterPage: number } | null;
 }
 
 export interface UseReaderSessionReturn {
@@ -60,6 +61,7 @@ export function useReaderSession({
   fontSize,
   readingMode,
   readingStatus,
+  initialPosition,
 }: UseReaderSessionOptions): UseReaderSessionReturn {
   const setProgress = useReaderStore((s) => s.setProgress);
   const saveReadingPosition = useReaderStore((s) => s.saveReadingPosition);
@@ -84,6 +86,36 @@ export function useReaderSession({
       return;
     }
     hasRestoredPositionRef.current = true;
+
+    // Direct initial position override (e.g. navigation from Notebook or URL params)
+    if (initialPosition) {
+      const clampedChap = Math.min(
+        Math.max(0, initialPosition.chapterIndex),
+        chaptersWithPagination.length - 1
+      );
+      const targetChap = chaptersWithPagination[clampedChap];
+      const maxPage = targetChap?.pageCount || 1;
+      const clampedPage = Math.min(Math.max(1, initialPosition.chapterPage), maxPage);
+      const savedGlobalPage =
+        (targetChap?.startPageNumber || 1) + (clampedPage - 1);
+
+      queueMicrotask(() => {
+        setActiveChapterIndex(clampedChap);
+        setCurrentChapterPage(clampedPage);
+        setResumeNotice({
+          chapterTitle:
+            targetChap?.displayTitle ||
+            targetChap?.title ||
+            (clampedChap > 0 ? `Chapter ${clampedChap}` : 'Start'),
+          page: savedGlobalPage,
+        });
+      });
+
+      const timer = setTimeout(() => {
+        setResumeNotice(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
 
     // When volume is completed/finished, start fresh from Chapter 0, Page 1 with archival completion notice
     if (readingStatus === 'finished') {
@@ -150,7 +182,7 @@ export function useReaderSession({
           }
         });
     }
-  }, [isMounted, numericId, chaptersWithPagination, getReadingPosition, readingStatus]);
+  }, [isMounted, numericId, chaptersWithPagination, getReadingPosition, readingStatus, initialPosition]);
 
   const activeChapter = chaptersWithPagination[activeChapterIndex] || chaptersWithPagination[0];
   const activeChapterPageCount = activeChapter?.pageCount || 1;

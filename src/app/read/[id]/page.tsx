@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useBookContent } from '@/hooks/queries/useBookContent';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useBookTranslations } from '@/hooks/queries/useBookTranslations';
@@ -23,6 +23,7 @@ import { ReaderControls } from '@/components/reader/ReaderControls';
 import { ReaderLanguageDrawer } from '@/components/reader/ReaderLanguageDrawer';
 import { ReaderSpeechBar } from '@/components/reader/ReaderSpeechBar';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
+import { ReaderLoadingView } from '@/components/reader/ReaderLoadingView';
 import { TextHighlightPopover } from '@/components/reader/TextHighlightPopover';
 import { ReaderAnnotationsDrawer } from '@/components/reader/ReaderAnnotationsDrawer';
 import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
@@ -42,12 +43,19 @@ import { Trophy } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 
-export default function BookReaderPage() {
+function BookReaderContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const rawId = params?.id;
   const bookId = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '';
   const numericId = parseInt(bookId, 10) || 0;
+
+  const urlChapter = searchParams.get('chapter');
+  const urlPage = searchParams.get('page');
+  const urlAnnotationId = searchParams.get('annotationId');
+  const [activeAnnotationTargetId, setActiveAnnotationTargetId] = useState<string | null>(null);
+  const targetAnnotationId = activeAnnotationTargetId || urlAnnotationId;
 
   // Hydrated Global Reader Store (Guarded with useHasMounted for zero SSR hydration mismatch)
   const {
@@ -275,11 +283,41 @@ export default function BookReaderPage() {
   const setReadingStatus = useBookshelfStore((s) => s.setReadingStatus);
   const setBookRating = useBookshelfStore((s) => s.setBookRating);
 
+  // Resolve dynamic initial position from URL params or targeted annotation (with font reflow healing)
+  const initialPosition = useMemo(() => {
+    if (urlAnnotationId) {
+      const ann = annotations.find((a) => a.id === urlAnnotationId);
+      if (ann) {
+        let targetPage = ann.chapterPage;
+        const chapter = chaptersWithPagination[ann.chapterIndex];
+        if (chapter?.pages && chapter.pages.length > 0) {
+          const foundIdx = chapter.pages.findIndex((p) => p.includes(ann.selectedText));
+          if (foundIdx !== -1) {
+            targetPage = foundIdx + 1;
+          }
+        }
+        return {
+          chapterIndex: ann.chapterIndex,
+          chapterPage: targetPage,
+        };
+      }
+    }
+    if (urlChapter !== null) {
+      const parsedChap = parseInt(urlChapter, 10);
+      const parsedPage = urlPage !== null ? parseInt(urlPage, 10) : 1;
+      if (!isNaN(parsedChap)) {
+        return {
+          chapterIndex: Math.max(0, parsedChap),
+          chapterPage: Math.max(1, isNaN(parsedPage) ? 1 : parsedPage),
+        };
+      }
+    }
+    return null;
+  }, [urlAnnotationId, urlChapter, urlPage, annotations, chaptersWithPagination]);
+
   const {
     activeChapterIndex,
-    setActiveChapterIndex,
     currentChapterPage,
-    setCurrentChapterPage,
     activeChapter,
     activeChapterPageCount,
     currentPageText,
@@ -301,7 +339,25 @@ export default function BookReaderPage() {
     fontSize,
     readingMode,
     readingStatus,
+    initialPosition,
   });
+
+  // Handle URL annotation navigation once chapters are populated
+  useEffect(() => {
+    if (!urlAnnotationId || chaptersWithPagination.length === 0) return;
+    const ann = annotations.find((a) => a.id === urlAnnotationId);
+    if (!ann) return;
+
+    let targetPage = ann.chapterPage;
+    const chapter = chaptersWithPagination[ann.chapterIndex];
+    if (chapter?.pages && chapter.pages.length > 0) {
+      const foundIdx = chapter.pages.findIndex((p) => p.includes(ann.selectedText));
+      if (foundIdx !== -1) {
+        targetPage = foundIdx + 1;
+      }
+    }
+    jumpTo(ann.chapterIndex, targetPage);
+  }, [urlAnnotationId, chaptersWithPagination, annotations, jumpTo]);
 
   const activeChapterAnnotations = useMemo(() => {
     return bookAnnotations.filter((a) => a.chapterIndex === activeChapterIndex);
@@ -605,6 +661,7 @@ export default function BookReaderPage() {
         displayMode={displayMode}
         isTranslating={isTranslating}
         annotations={activeChapterAnnotations}
+        targetAnnotationId={targetAnnotationId}
         onSelectAnnotation={handleSelectAnnotation}
         onTextSelected={handleTextSelected}
       />
@@ -722,9 +779,23 @@ export default function BookReaderPage() {
         annotations={bookAnnotations}
         bookTitle={bookTitle}
         theme={theme}
-        onJumpToAnnotation={(chapterIdx, page) => {
-          setActiveChapterIndex(chapterIdx);
-          setCurrentChapterPage(page);
+        onJumpToAnnotation={(chapterIdx, page, annotationId) => {
+          let targetPage = page;
+          if (annotationId) {
+            const ann = bookAnnotations.find((a) => a.id === annotationId);
+            if (ann) {
+              const chap = chaptersWithPagination[chapterIdx];
+              if (chap?.pages && chap.pages.length > 0) {
+                const foundIdx = chap.pages.findIndex((p) => p.includes(ann.selectedText));
+                if (foundIdx !== -1) {
+                  targetPage = foundIdx + 1;
+                }
+              }
+            }
+            setActiveAnnotationTargetId(annotationId);
+          }
+          jumpTo(chapterIdx, targetPage);
+          closeDrawer();
         }}
         onDeleteAnnotation={(id) => deleteAnnotation(id, user?.id)}
         onUpdateNote={(id, note) => updateAnnotationNote(id, note, user?.id)}
@@ -799,5 +870,13 @@ export default function BookReaderPage() {
       </Modal>
 
     </div>
+  );
+}
+
+export default function BookReaderPage() {
+  return (
+    <React.Suspense fallback={<ReaderLoadingView activeTheme={getReaderTheme('light')} />}>
+      <BookReaderContent />
+    </React.Suspense>
   );
 }

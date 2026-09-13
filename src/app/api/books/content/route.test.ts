@@ -282,7 +282,8 @@ describe('GET /api/books/content', () => {
       data: { content: 'The Project Gutenberg eBook of Pride and Prejudice, by Jane Austen...' },
       error: null,
     });
-    const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
     const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
 

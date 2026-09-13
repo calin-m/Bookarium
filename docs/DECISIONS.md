@@ -682,4 +682,43 @@
   - Complete compliance with COPPA, GDPR Art. 8, and EU ePrivacy Directive Art. 5(3) without compromising user privacy.
   - Safe, informed reading discovery with zero arbitrary censorship of historical literature.
 
+## ADR-045: Literary Notebook Dynamic Font-Reflow Deep Linking, Transparent Dialogs & Smart Reading Milestones
+- **Status**: Accepted
+- **Context**:
+  1. **Literary Notebook Deep Linking Desynchronization**:
+     - When scholars clicked "Read Passage" from the Literary Commonplace Notebook (`/notebook`) or selected an annotation inside the Reader Annotations Drawer, the reader route (`/read/[id]`) routinely failed to land on the correct passage or section.
+     - Root causes:
+       - The reader page (`src/app/read/[id]/page.tsx`) never inspected `useSearchParams()`. Navigating to `/read/[id]?chapter=X&page=Y` was completely ignored, causing the session to resume from the reader's last persisted reading position in `useReaderStore`.
+       - Annotations stored a static `chapterPage` captured at note-creation time. When users subsequently modified font size or column width, text reflowed across page boundaries, shifting the highlighted quote to earlier or later pages.
+       - The reading surface executed an unconditional `scrollTo({ top: 0 })` on page load, preventing targeted excerpts located below the fold from coming into view.
+  2. **Modal Backdrops Visual Heaviness**:
+     - The bookshelf management modals (Create Shelf, Rename Shelf, Delete Shelf) and bookmark modals applied standard darkened scrim overlays that dimmed the background, creating unnecessary visual occlusion.
+  3. **Unprotected Reading Ledger State Mutations**:
+     - Deleting bookmarks in `BookmarksView` lacked confirmation, risking accidental loss of reading ledger entries.
+     - Changing bookmark status to "Finished" on a volume read only partially (e.g. 45%) immediately and silently altered recorded progress to 100% without user confirmation.
+- **Decision**:
+  1. **Dynamic Font-Reflow Healing Engine (`src/app/read/[id]/page.tsx`)**:
+     - Propagated `&annotationId=${ann.id}` through all notebook and drawer jump triggers.
+     - In `BookReaderContent`, computed dynamic `initialPosition` by inspecting the Web Worker's parsed `chaptersWithPagination`:
+       ```ts
+       const foundIdx = chapter.pages.findIndex(p => p.includes(ann.selectedText));
+       if (foundIdx !== -1) targetPage = foundIdx + 1;
+       ```
+     - Prioritized explicit URL navigation in `useReaderSession` via `initialPosition` option.
+     - Wrapped client component export in `<React.Suspense fallback={<ReaderLoadingView />}>` for Next.js 16 client search params compliance.
+  2. **Spotlight Centering & Focus Ring Pulse (`src/components/reader/ReaderSurface.tsx`)**:
+     - Guarded page-turn `scrollTo({ top: 0 })` with `!targetAnnotationId`.
+     - Automatically scrolled the targeted highlight into the vertical center of the viewport via `scrollIntoView({ behavior: 'smooth', block: 'center' })` and applied a temporary 2.5s focus pulse ring (`ring-2 ring-primary ring-offset-2 animate-pulse`).
+  3. **Transparent Non-Dimming Modal Surfaces**:
+     - Configured `backdropClassName="bg-transparent backdrop-blur-none"` across `BookshelfManageModals.tsx` and `BookmarksView.tsx`.
+  4. **Smart Reading Milestones & Deletion Guardrails (`src/components/presentation/BookmarksView.tsx`)**:
+     - Implemented single-bookmark deletion confirmation modal.
+     - Implemented smart "Mark as Finished" modal that intercepts status transitions when current progress is `< 100%`, informing the user that their reading ledger will advance to 100%, while bypassing confirmation for already-completed volumes.
+- **Consequences**:
+  - 100% accurate note navigation regardless of user font size, line height, column width, or viewport dimensions.
+  - Zero jarring scroll resets when jumping directly to marginalia notes.
+  - Non-intrusive modal experiences maintaining visual connection with underlying bookshelves.
+  - Protection against accidental data loss and accidental reading progress overwrite.
+
+
 

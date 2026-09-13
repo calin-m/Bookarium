@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ReaderSurface } from './ReaderSurface';
 import type { Annotation } from '@/stores/useAnnotationStore';
@@ -770,5 +770,36 @@ describe('ReaderSurface', () => {
     });
 
     window.getSelection = originalGetSelection;
+  });
+
+  it('scrolls target annotation into view and applies focus ring pulse', async () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    const sampleAnnotation: Annotation = {
+      id: 'target-ann-123',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Call me Ishmael.',
+      color: 'yellow',
+      createdAt: '2026-09-01T00:00:00Z',
+      updatedAt: '2026-09-01T00:00:00Z',
+    };
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        annotations={[sampleAnnotation]}
+        targetAnnotationId="target-ann-123"
+      />
+    );
+
+    const mark = document.querySelector('[data-annotation-id="target-ann-123"]');
+    expect(mark).toBeInTheDocument();
+    await waitFor(() => {
+      expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+      expect(mark?.className).toContain('ring-2');
+    });
   });
 });

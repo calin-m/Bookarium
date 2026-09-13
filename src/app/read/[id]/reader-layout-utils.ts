@@ -49,6 +49,7 @@ export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook 
         .from('books')
         .select(CATALOG_METADATA_COLUMNS)
         .eq('id', bookId)
+        .abortSignal(AbortSignal.timeout(2500))
         .maybeSingle();
 
       if (!error && data) {

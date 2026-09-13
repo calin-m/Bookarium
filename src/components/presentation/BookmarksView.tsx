@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ROUTES } from '@/config/routes';
-import type { LedgerFilter } from '@/types/book.types';
+import type { LedgerFilter, ActiveReadingVolume, LedgerItemStatus } from '@/types/book.types';
 
 export interface BookmarksViewProps {
   onBrowseCatalog?: () => void;
@@ -29,6 +29,8 @@ export interface BookmarksViewProps {
 export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [volumeToDelete, setVolumeToDelete] = useState<ActiveReadingVolume | null>(null);
+  const [volumeToFinish, setVolumeToFinish] = useState<ActiveReadingVolume | null>(null);
   const { isBookOffline } = useOfflineBooks();
 
   const {
@@ -42,6 +44,18 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
     clearVolumeProgress,
     clearAllVolumes,
   } = useContinueReadingLedger();
+
+  const handleStatusChange = (bookId: number, newStatus: LedgerItemStatus) => {
+    const targetVolume = filteredVolumes.find((v) => v.book.id === bookId);
+    if (!targetVolume) return;
+
+    if (newStatus === 'completed' && targetVolume.progressPercent < 100) {
+      setVolumeToFinish(targetVolume);
+      return;
+    }
+
+    updateVolumeStatus(bookId, newStatus);
+  };
 
   const handleResume = (bookId: number) => {
     const matchedVolume = filteredVolumes.find((v) => v.book.id === bookId);
@@ -194,8 +208,8 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
                 volume={vol}
                 isOffline={isBookOffline(vol.book.id)}
                 onResume={handleResume}
-                onStatusChange={updateVolumeStatus}
-                onClear={clearVolumeProgress}
+                onStatusChange={handleStatusChange}
+                onClear={() => setVolumeToDelete(vol)}
               />
             ))}
           </div>
@@ -209,6 +223,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
         onClose={() => setIsClearConfirmOpen(false)}
         title="Clear Reading Bookmarks"
         maxWidth="md"
+        backdropClassName="bg-transparent backdrop-blur-none"
       >
         <div className="p-6 space-y-5" data-testid="clear-bookmarks-dialog">
           <div className="flex items-start gap-3.5">
@@ -247,6 +262,105 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
             >
               <Trash2 className="w-3.5 h-3.5" />
               Yes, Clear Bookmarks
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Remove Single Bookmark Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(volumeToDelete)}
+        onClose={() => setVolumeToDelete(null)}
+        title="Remove Bookmark"
+        maxWidth="sm"
+        backdropClassName="bg-transparent backdrop-blur-none"
+      >
+        <div className="p-6 space-y-4" data-testid="remove-bookmark-dialog">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground text-sm">
+                Remove &ldquo;{volumeToDelete?.book.title}&rdquo; from reading ledger?
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                This will reset your saved reading progress and position for this book. This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <Button
+              variant="outline"
+              size="chip"
+              onClick={() => setVolumeToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="chip"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent"
+              onClick={() => {
+                if (volumeToDelete) {
+                  clearVolumeProgress(volumeToDelete.book.id);
+                  setVolumeToDelete(null);
+                }
+              }}
+            >
+              Remove Bookmark
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mark as Finished Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(volumeToFinish)}
+        onClose={() => setVolumeToFinish(null)}
+        title="Mark as Finished"
+        maxWidth="sm"
+        backdropClassName="bg-transparent backdrop-blur-none"
+      >
+        <div className="p-6 space-y-4" data-testid="finish-bookmark-dialog">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground text-sm">
+                Mark &ldquo;{volumeToFinish?.book.title}&rdquo; as finished?
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                This will advance your recorded reading progress from{' '}
+                <strong className="font-semibold text-foreground">
+                  {Math.round(volumeToFinish?.progressPercent ?? 0)}%
+                </strong>{' '}
+                to <strong className="font-semibold text-foreground">100%</strong> and mark the volume as completed.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <Button
+              variant="outline"
+              size="chip"
+              onClick={() => setVolumeToFinish(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="chip"
+              onClick={() => {
+                if (volumeToFinish) {
+                  updateVolumeStatus(volumeToFinish.book.id, 'completed');
+                  setVolumeToFinish(null);
+                }
+              }}
+            >
+              Mark as Finished
             </Button>
           </div>
         </div>

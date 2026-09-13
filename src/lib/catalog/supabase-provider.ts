@@ -99,9 +99,15 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
 
     try {
       const supabase = this.getSupabase();
-      const { count, error } = await supabase
+      let query = supabase
         .from('books')
-        .select('id', { count: 'exact', head: true });
+        .select('id', { count: 'estimated', head: true });
+
+      if (typeof (query as any).abortSignal === 'function') {
+        query = (query as any).abortSignal(AbortSignal.timeout(2500));
+      }
+
+      const { count, error } = await query;
 
       if (error || count === null || count === undefined || count === 0) {
         this.lastHealthCheckResult = false;

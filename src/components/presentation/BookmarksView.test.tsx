@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { BookmarksView } from './BookmarksView';
@@ -157,6 +157,9 @@ describe('BookmarksView', () => {
 
     // Modal dialog is open
     expect(screen.getByTestId('clear-bookmarks-dialog')).toBeInTheDocument();
+    const bulkBackdrop = screen.getByTestId('modal-backdrop');
+    expect(bulkBackdrop).toHaveClass('bg-transparent');
+    expect(bulkBackdrop).toHaveClass('backdrop-blur-none');
     expect(screen.getByText(/Are you sure you want to clear your reading bookmarks/i)).toBeInTheDocument();
 
     // Click Cancel
@@ -174,6 +177,50 @@ describe('BookmarksView', () => {
     expect(screen.queryByTestId('clear-bookmarks-dialog')).not.toBeInTheDocument();
     expect(screen.getByText('No active reading volumes yet')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Clear Bookmarks/i })).not.toBeInTheDocument();
+  });
+
+  it('opens confirmation modal on removing single bookmark, cancels, and clears volume when confirmed', () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      recentBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 60);
+    useReaderStore.getState().saveReadingPosition(1342, {
+      chapterIndex: 2,
+      chapterPage: 8,
+      globalPage: 24,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    const deleteBtn = screen.getByLabelText(/^Remove Pride and Prejudice from reading ledger$/i);
+    fireEvent.click(deleteBtn);
+
+    // Modal dialog is open with transparent backdrop
+    expect(screen.getByTestId('remove-bookmark-dialog')).toBeInTheDocument();
+    const backdrop = screen.getByTestId('modal-backdrop');
+    expect(backdrop).toHaveClass('bg-transparent');
+    expect(backdrop).toHaveClass('backdrop-blur-none');
+    expect(screen.getByText(/Remove “Pride and Prejudice” from reading ledger\?/i)).toBeInTheDocument();
+
+    // Click Cancel
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+    expect(screen.queryByTestId('remove-bookmark-dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+
+    // Open modal again and Confirm
+    fireEvent.click(screen.getByLabelText(/^Remove Pride and Prejudice from reading ledger$/i));
+    const confirmBtn = screen.getByRole('button', { name: /^Remove Bookmark$/i });
+    fireEvent.click(confirmBtn);
+
+    // Modal closed and volume is cleared
+    expect(screen.queryByTestId('remove-bookmark-dialog')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pride and Prejudice')).not.toBeInTheDocument();
+    expect(screen.getByText('No active reading volumes yet')).toBeInTheDocument();
   });
 
   it('resumes volume by pre-populating useReaderStore and navigating to reader route', () => {
@@ -231,6 +278,82 @@ describe('BookmarksView', () => {
     expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('currently_reading');
     expect(useReaderStore.getState().readingProgress[1342]).toBe(0);
     expect(statusSelect).toHaveValue('in_progress');
+  });
+
+  it('prompts confirmation when selecting Finished on a volume under 100% progress, handles cancel and confirm', async () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 60);
+    useReaderStore.getState().saveReadingPosition(1342, {
+      chapterIndex: 3,
+      chapterPage: 4,
+      globalPage: 45,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    const statusSelect = screen.getByLabelText(/^Change reading status for Pride and Prejudice$/i);
+    expect(statusSelect).toHaveValue('in_progress');
+
+    // Select 'completed' when progress is 60%
+    await act(async () => {
+      fireEvent.change(statusSelect, { target: { value: 'completed' } });
+    });
+
+    // Confirmation dialog opens with transparent backdrop
+    const dialog = screen.getByTestId('finish-bookmark-dialog');
+    expect(dialog).toBeInTheDocument();
+    const backdrop = screen.getByTestId('modal-backdrop');
+    expect(backdrop).toHaveClass('bg-transparent');
+    expect(backdrop).toHaveClass('backdrop-blur-none');
+    expect(within(dialog).getByText(/Mark “Pride and Prejudice” as finished\?/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/advance your recorded reading progress from/i)).toBeInTheDocument();
+    expect(within(dialog).getByText('60%')).toBeInTheDocument();
+
+    // Click Cancel
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+    expect(screen.queryByTestId('finish-bookmark-dialog')).not.toBeInTheDocument();
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('currently_reading');
+    expect(useReaderStore.getState().readingProgress[1342]).toBe(60);
+
+    // Select 'completed' again and Confirm
+    await act(async () => {
+      fireEvent.change(statusSelect, { target: { value: 'completed' } });
+    });
+    const confirmBtn = screen.getByRole('button', { name: /^Mark as Finished$/i });
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    // Modal closes, progress is 100%, and status is finished
+    expect(screen.queryByTestId('finish-bookmark-dialog')).not.toBeInTheDocument();
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('finished');
+    expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
+  });
+
+  it('updates status to Finished immediately without modal when volume is already at 100% progress', async () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 100);
+
+    renderWithClient(<BookmarksView />);
+
+    const statusSelect = screen.getByLabelText(/^Change reading status for Pride and Prejudice$/i);
+
+    await act(async () => {
+      fireEvent.change(statusSelect, { target: { value: 'completed' } });
+    });
+
+    // No modal should be displayed
+    expect(screen.queryByTestId('finish-bookmark-dialog')).not.toBeInTheDocument();
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('finished');
+    expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
   });
 
   it('hydrates missing book metadata (e.g. Volume #55179) and displays real title and author', async () => {

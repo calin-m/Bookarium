@@ -45,6 +45,7 @@ export async function resolveBookMetadata(bookId: number): Promise<GenericBookIn
         .from('books')
         .select('id, title, authors, translators, copyright')
         .eq('id', bookId)
+        .abortSignal(AbortSignal.timeout(2500))
         .maybeSingle();
 
       if (!error && data) {

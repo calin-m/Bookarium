@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 13 Sep 2026 08:32:16 GMT  
+**Last Generated**: Sun, 13 Sep 2026 09:34:31 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 168 passed  
-**Total Verified Tests**: 1520 passed  
+**Total Verified Tests**: 1528 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1520 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1528 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 44 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 45 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,24 +25,25 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.55%** (6897/7452) — *Target: $ge$ 80%*
-- **Statements**: **91.01%** (7458/8194) — *Target: $ge$ 80%*
-- **Functions**: **89.07%** (1607/1804) — *Target: $ge$ 80%*
-- **Branches**: **81.52%** (6573/8063) — *Target: $ge$ 80%*
+- **Lines**: **92.59%** (6985/7544) — *Target: $ge$ 80%*
+- **Statements**: **91.06%** (7558/8300) — *Target: $ge$ 80%*
+- **Functions**: **89.07%** (1630/1830) — *Target: $ge$ 80%*
+- **Branches**: **81.38%** (6622/8137) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1520 Tests)
+## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1528 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 155 Tests)
+### 🚀 App Routes & Pages (14 Suites · 159 Tests)
 
 <details>
-<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `stores and retrieves cached metadata correctly`
 - ✔ `returns cached metadata if not expired without network fetch`
 - ✔ `fetches metadata from upstream with trailing slash when not cached and Supabase is unconfigured`
 - ✔ `resolves metadata directly from Supabase when configured and present`
+- ✔ `degrades gracefully to upstream Gutendex when Supabase query times out`
 - ✔ `falls back to upstream Gutendex when Supabase record is not found`
 - ✔ `returns null when upstream returns error status`
 - ✔ `returns null when network throws an error`
@@ -221,7 +222,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (30 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (32 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -253,11 +254,13 @@
 - ✔ `persists authentic resolved book metadata to recentBooks and warms reader store on load`
 - ✔ `synchronizes document.title with the authentic resolved book title and author`
 - ✔ `renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction`
+- ✔ `navigates directly to chapter and page specified in URL search params`
+- ✔ `navigates to targeted annotation and scrolls it into view when annotationId is provided in URL`
 
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `clears all cached items from serverMetadataCache`
 - ✔ `returns true when rsc header is 1`
@@ -270,12 +273,13 @@
 - ✔ `returns cached book immediately if present in serverMetadataCache`
 - ✔ `fetches upstream book and populates serverMetadataCache when Supabase is unconfigured`
 - ✔ `resolves book directly from Supabase catalog when configured`
+- ✔ `degrades gracefully to upstream Gutendex when Supabase query times out or fails`
 - ✔ `returns null on upstream fetch error or 404`
 - ✔ `returns null on network failure / exception`
 
 </details>
 
-### 🎨 Catalog & Presentation (25 Suites · 290 Tests)
+### 🎨 Catalog & Presentation (25 Suites · 293 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -354,15 +358,18 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
 - ✔ `filters active volumes using the search bar and supports clearing search`
 - ✔ `opens confirmation modal on Clear Bookmarks, cancels, and clears ledger when confirmed`
+- ✔ `opens confirmation modal on removing single bookmark, cancels, and clears volume when confirmed`
 - ✔ `resumes volume by pre-populating useReaderStore and navigating to reader route`
 - ✔ `passes offline status to BookmarkCard when book is saved in offline storage`
 - ✔ `allows user to change status of completed volume to reading directly via dropdown`
+- ✔ `prompts confirmation when selecting Finished on a volume under 100% progress, handles cancel and confirm`
+- ✔ `updates status to Finished immediately without modal when volume is already at 100% progress`
 - ✔ `hydrates missing book metadata (e.g. Volume #55179) and displays real title and author`
 - ✔ `applies adaptive responsive label expansion and tooltip attributes to filter tabs`
 - ✔ `renders completed volume with 100% progress and Read Again action`
@@ -717,7 +724,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 144 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 145 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -903,7 +910,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (27 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (28 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -932,6 +939,7 @@
 - ✔ `ignores collapsed text selections on mouseUp`
 - ✔ `ignores text selections anchored outside reader content body`
 - ✔ `triggers onTextSelected with text and coordinate bounds on valid mouseUp`
+- ✔ `scrolls target annotation into view and applies focus ring pulse`
 
 </details>
 

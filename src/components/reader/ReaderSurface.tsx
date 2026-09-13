@@ -40,6 +40,7 @@ export interface ReaderSurfaceProps {
   displayMode?: 'translated' | 'bilingual';
   isTranslating?: boolean;
   annotations?: Annotation[];
+  targetAnnotationId?: string | null;
   onSelectAnnotation?: (annotation: Annotation, position?: { top: number; left: number }) => void;
   onTextSelected?: (selection: { text: string; position: { top: number; left: number; bottom?: number } }) => void;
 }
@@ -71,6 +72,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   displayMode = 'translated',
   isTranslating = false,
   annotations = [],
+  targetAnnotationId,
   onSelectAnnotation,
   onTextSelected,
 }) => {
@@ -85,9 +87,9 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     onPreviousPage,
   });
 
-  // Smooth animated scroll-to-top on page or chapter transition
+  // Smooth animated scroll-to-top on page or chapter transition (unless jumping to a specific annotation)
   useEffect(() => {
-    if (readingMode === 'paginated' && mainRef.current) {
+    if (readingMode === 'paginated' && mainRef.current && !targetAnnotationId) {
       const prefersReducedMotion =
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -96,7 +98,28 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
         behavior: prefersReducedMotion ? 'instant' : 'smooth',
       });
     }
-  }, [currentPageText, activeChapterIndex, readingMode]);
+  }, [currentPageText, activeChapterIndex, readingMode, targetAnnotationId]);
+
+  // Center and visually accent the targeted highlighted passage
+  useEffect(() => {
+    if (!targetAnnotationId || isLoading) return;
+
+    const timer = setTimeout(() => {
+      const targetEl = mainRef.current?.querySelector<HTMLElement>(
+        `[data-annotation-id="${targetAnnotationId}"]`
+      );
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetEl.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'animate-pulse');
+        const clearTimer = setTimeout(() => {
+          targetEl.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'animate-pulse');
+        }, 2500);
+        return () => clearTimeout(clearTimer);
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [targetAnnotationId, currentPageText, activeChapterIndex, isLoading, readingMode]);
 
   const handleSelection = useCallback(() => {
     if (typeof window === 'undefined' || !onTextSelected) return;
