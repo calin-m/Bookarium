@@ -65,4 +65,10 @@ describe('BackToTop Component', () => {
 
     expect(screen.queryByTestId('back-to-top-btn')).toBeNull();
   });
+
+  it('renders immediately on mount when initial window.scrollY is already above threshold', () => {
+    window.scrollY = 450;
+    render(<BackToTop threshold={300} />);
+    expect(screen.getByTestId('back-to-top-btn')).toBeInTheDocument();
+  });
 });

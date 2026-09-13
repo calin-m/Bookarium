@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
+import { BackToTop } from '@/components/ui/BackToTop';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 
@@ -373,6 +374,7 @@ export default function CopyrightPage() {
       </main>
 
       <Footer />
+      <BackToTop />
     </div>
   );
 }

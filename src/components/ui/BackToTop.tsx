@@ -16,11 +16,12 @@ export const BackToTop: React.FC<BackToTopProps> = ({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     const onScroll = () => {
-      setIsVisible(window.scrollY > threshold);
+      const shouldShow = window.scrollY > threshold;
+      setIsVisible((prev) => (prev !== shouldShow ? shouldShow : prev));
     };
+
+    onScroll();
 
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
@@ -29,12 +30,10 @@ export const BackToTop: React.FC<BackToTopProps> = ({
   }, [threshold]);
 
   const scrollToTop = () => {
-    if (typeof window !== 'undefined') {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      });
-    }
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
   };
 
   return (

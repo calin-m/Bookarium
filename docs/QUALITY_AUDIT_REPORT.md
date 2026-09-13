@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 12 Sep 2026 18:16:25 GMT  
+**Last Generated**: Sun, 13 Sep 2026 08:32:16 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 168 passed  
-**Total Verified Tests**: 1513 passed  
+**Total Verified Tests**: 1520 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1513 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1520 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 44 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.56%** (6874/7426) — *Target: $ge$ 80%*
-- **Statements**: **91.01%** (7429/8162) — *Target: $ge$ 80%*
-- **Functions**: **89.08%** (1600/1796) — *Target: $ge$ 80%*
-- **Branches**: **81.52%** (6525/8004) — *Target: $ge$ 80%*
+- **Lines**: **92.55%** (6897/7452) — *Target: $ge$ 80%*
+- **Statements**: **91.01%** (7458/8194) — *Target: $ge$ 80%*
+- **Functions**: **89.07%** (1607/1804) — *Target: $ge$ 80%*
+- **Branches**: **81.52%** (6573/8063) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1513 Tests)
+## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1520 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 155 Tests)
 
@@ -275,7 +275,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (25 Suites · 286 Tests)
+### 🎨 Catalog & Presentation (25 Suites · 290 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -665,7 +665,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (27 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (31 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -694,6 +694,10 @@
 - ✔ `dismisses quick color popover when clicking outside or pressing Escape`
 - ✔ `allows full editing of personal reflection and color via card footer Edit button`
 - ✔ `live-previews selected color during edit mode and reverts if cancelled`
+- ✔ `does NOT display Protected badge for featured public domain classics in Life+70 jurisdiction (RO)`
+- ✔ `resolves author lifespans from recentBooks without showing Protected badge in Life+70`
+- ✔ `recovers author lifespans for saved books with incomplete metadata from featured fixtures`
+- ✔ `correctly displays Protected badge for truly copyright-restricted authors in foreign jurisdiction`
 
 </details>
 
@@ -2015,7 +2019,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (50 Suites · 236 Tests)
+### 🧩 UI Primitives & Motion (50 Suites · 239 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2044,7 +2048,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/copyright/page.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/app/copyright/page.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders page header, badge, and back link to catalog`
 - ✔ `renders Section 1: 100% CC0 & Public Domain Manifesto`
@@ -2055,6 +2059,7 @@
 - ✔ `renders Section 5: Notice & Takedown Protocol with confidential intake portal when configured`
 - ✔ `renders Section 6: Open Cultural Preservation Partners and footer`
 - ✔ `handles navigation actions from Navbar`
+- ✔ `renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top`
 
 </details>
 
@@ -2099,12 +2104,13 @@
 </details>
 
 <details>
-<summary><b><code>src/app/privacy/page.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/app/privacy/page.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders page header and architectural manifesto`
 - ✔ `renders all core GDPR and ePrivacy disclosure sections`
 - ✔ `provides working navigation links to catalog and account settings`
 - ✔ `handles Navbar view change callback by navigating via router`
+- ✔ `renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top`
 
 </details>
 
@@ -2341,12 +2347,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/BackToTop.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/ui/BackToTop.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `does not render when scrollY is below threshold`
 - ✔ `renders when scrolled past threshold`
 - ✔ `scrolls smoothly to top when clicked`
 - ✔ `hides when scrolling back below threshold`
+- ✔ `renders immediately on mount when initial window.scrollY is already above threshold`
 
 </details>
 

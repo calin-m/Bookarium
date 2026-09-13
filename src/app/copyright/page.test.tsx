@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import CopyrightPage from './page';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
@@ -21,6 +21,12 @@ vi.mock('@/components/presentation/Footer', () => ({
 describe('CopyrightPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('scrollTo', vi.fn());
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('renders page header, badge, and back link to catalog', () => {
@@ -145,6 +151,21 @@ describe('CopyrightPage', () => {
       fireEvent.click(bookshelfButtons[0]);
       expect(mockPush).toHaveBeenCalledWith(ROUTES.BOOKSHELF);
     }
+  });
+
+  it('renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top', () => {
+    render(<CopyrightPage />);
+
+    expect(screen.queryByRole('button', { name: /Back to top/i })).not.toBeInTheDocument();
+
+    window.scrollY = 400;
+    fireEvent.scroll(window);
+
+    const backToTopBtn = screen.getByRole('button', { name: /Back to top/i });
+    expect(backToTopBtn).toBeInTheDocument();
+
+    fireEvent.click(backToTopBtn);
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
   });
 });
 

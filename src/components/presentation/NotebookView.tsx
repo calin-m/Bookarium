@@ -24,7 +24,11 @@ import {
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction, type GenericBookInput } from '@/lib/copyright-engine';
+import {
+  isBookPublicDomainInJurisdiction,
+  parseLifespansFromName,
+  type GenericBookInput,
+} from '@/lib/copyright-engine';
 import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { Button } from '@/components/ui/Button';
@@ -70,6 +74,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   // Cross-reference metadata sources
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
   const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks || []);
+  const recentBooks = useBookshelfStore((s) => s.recentBooks || []);
   const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
   const { country } = useJurisdiction();
 
@@ -85,14 +90,15 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
       const inSaved = savedBooks.some((b) => b.id === ann.bookId);
       const inFavorite = favoriteBooks.some((b) => b.id === ann.bookId);
+      const inRecent = recentBooks.some((b) => b.id === ann.bookId);
       const inFeatured = FEATURED_HERO_BOOKS.some((b) => b.id === ann.bookId);
 
-      if (!inSaved && !inFavorite && !inFeatured) {
+      if (!inSaved && !inFavorite && !inRecent && !inFeatured) {
         ids.add(ann.bookId);
       }
     }
     return Array.from(ids).sort((a, b) => a - b);
-  }, [annotations, savedBooks, favoriteBooks]);
+  }, [annotations, savedBooks, favoriteBooks, recentBooks]);
 
   // Query Gutendex remote API / cache for any unindexed annotated books
   const { data: remoteBooksData } = useBooks(
@@ -143,6 +149,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     (ann: Annotation) => {
       const fromSaved = savedBooks.find((b) => b.id === ann.bookId);
       const fromFavorite = favoriteBooks.find((b) => b.id === ann.bookId);
+      const fromRecent = recentBooks.find((b) => b.id === ann.bookId);
       const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === ann.bookId);
       const fromApi = remoteBooksData?.results?.find((b: GutendexBook) => b.id === ann.bookId);
 
@@ -153,6 +160,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         (hasValidAnnTitle ? cleanedAnnTitle : '') ||
         fromSaved?.title ||
         fromFavorite?.title ||
+        fromRecent?.title ||
         fromFeatured?.title ||
         fromApi?.title ||
         cleanedAnnTitle;
@@ -161,12 +169,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
       const savedAuthor = fromSaved?.authors ? formatAuthorNames(fromSaved.authors) : '';
       const favoriteAuthor = fromFavorite?.authors ? formatAuthorNames(fromFavorite.authors) : '';
+      const recentAuthor = fromRecent?.authors ? formatAuthorNames(fromRecent.authors) : '';
       const apiAuthor = fromApi?.authors ? formatAuthorNames(fromApi.authors) : '';
 
       const candidateAuthor =
         cleanedAnnAuthor ||
         (!isPlaceholderAuthor(savedAuthor) ? savedAuthor : '') ||
         (!isPlaceholderAuthor(favoriteAuthor) ? favoriteAuthor : '') ||
+        (!isPlaceholderAuthor(recentAuthor) ? recentAuthor : '') ||
         fromFeatured?.author ||
         (!isPlaceholderAuthor(apiAuthor) ? apiAuthor : '') ||
         '';
@@ -177,6 +187,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         cleanBookTitle(fromFeatured?.title) ||
         cleanBookTitle(fromSaved?.title) ||
         cleanBookTitle(fromFavorite?.title) ||
+        cleanBookTitle(fromRecent?.title) ||
         cleanBookTitle(fromApi?.title) ||
         (ann.bookId ? `Volume #${ann.bookId}` : 'Public Domain Classic');
 
@@ -186,17 +197,89 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         fromFeatured?.author ||
         'Classic Literature';
 
-      const bookEntity: GenericBookInput | undefined =
+      let bookEntity: GenericBookInput | undefined =
         fromSaved ||
         fromFavorite ||
+        fromRecent ||
         fromApi ||
         (fromFeatured
           ? {
               id: fromFeatured.id,
               title: fromFeatured.title,
-              authors: [{ name: fromFeatured.author, birth_year: null, death_year: null }],
+              authors: [
+                {
+                  name: fromFeatured.author,
+                  birth_year: fromFeatured.authorBirthYear ?? null,
+                  death_year: fromFeatured.authorDeathYear ?? null,
+                },
+              ],
             }
           : undefined);
+
+      // Fallback enrichment: If a book entity exists but its authors lack lifespan dates,
+      // recover them from FEATURED_HERO_BOOKS or parse them from author strings
+      if (bookEntity && bookEntity.authors && bookEntity.authors.length > 0) {
+        const authorsNeedLifespan = bookEntity.authors.every((a) => {
+          if (typeof a === 'string') return true;
+          return a.birth_year == null && a.death_year == null;
+        });
+
+        if (authorsNeedLifespan) {
+          const heroMatch = fromFeatured || FEATURED_HERO_BOOKS.find((h) => h.id === ann.bookId);
+          if (heroMatch && (heroMatch.authorBirthYear != null || heroMatch.authorDeathYear != null)) {
+            bookEntity = {
+              ...bookEntity,
+              authors: [
+                {
+                  name: heroMatch.author,
+                  birth_year: heroMatch.authorBirthYear ?? null,
+                  death_year: heroMatch.authorDeathYear ?? null,
+                },
+              ],
+            };
+          } else {
+            // Attempt parsing lifespans embedded in author names e.g. "Austen, Jane (1775-1817)"
+            const enrichedAuthors = bookEntity.authors.map((a) => {
+              const nameStr = typeof a === 'string' ? a : a.name;
+              const parsed = parseLifespansFromName(nameStr);
+              if (parsed.birthYear != null || parsed.deathYear != null) {
+                return {
+                  name: nameStr,
+                  birth_year: parsed.birthYear,
+                  death_year: parsed.deathYear,
+                };
+              }
+              return a;
+            });
+            bookEntity = {
+              ...bookEntity,
+              authors: enrichedAuthors,
+            };
+          }
+        }
+      }
+
+      // If bookEntity is still undefined, check if ann.bookAuthor or finalAuthor has dates or matches a featured classic
+      if (!bookEntity && ann.bookId > 0 && (finalTitle || finalAuthor)) {
+        const heroMatch = fromFeatured || FEATURED_HERO_BOOKS.find((h) => h.id === ann.bookId);
+        const parsed = parseLifespansFromName(finalAuthor);
+        const birthYear = heroMatch?.authorBirthYear ?? parsed.birthYear ?? null;
+        const deathYear = heroMatch?.authorDeathYear ?? parsed.deathYear ?? null;
+
+        if (birthYear != null || deathYear != null) {
+          bookEntity = {
+            id: ann.bookId,
+            title: finalTitle,
+            authors: [
+              {
+                name: heroMatch?.author || finalAuthor,
+                birth_year: birthYear,
+                death_year: deathYear,
+              },
+            ],
+          };
+        }
+      }
 
       const evaluation = bookEntity ? isBookPublicDomainInJurisdiction(bookEntity, country) : { isAllowed: true };
       const isRestricted = !evaluation.isAllowed;
@@ -208,7 +291,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         country,
       };
     },
-    [savedBooks, favoriteBooks, remoteBooksData, country]
+    [savedBooks, favoriteBooks, recentBooks, remoteBooksData, country]
   );
 
   // Filtered list of annotations

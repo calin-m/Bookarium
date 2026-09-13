@@ -545,8 +545,8 @@ function HomeContent() {
         </div>
       </Modal>
 
-      <BackToTop />
       <Footer />
+      <BackToTop />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render as rtlRender, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -895,5 +895,165 @@ describe('NotebookView component', () => {
     // Now permanently mint
     expect(badgeBtn).toHaveTextContent('mint');
     expect(useAnnotationStore.getState().annotations.find((a) => a.id === ann.id)?.color).toBe('mint');
+  });
+
+  describe('Copyright and Protected Badge Accuracy in International Jurisdictions', () => {
+    afterEach(() => {
+      useJurisdictionStore.getState().resetOverride();
+    });
+
+    it('does NOT display Protected badge for featured public domain classics in Life+70 jurisdiction (RO)', async () => {
+      useJurisdictionStore.setState({
+        country: 'RO',
+        rule: 'LIFE_70',
+        overrideCountry: null,
+      });
+
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342, // Pride and Prejudice (Jane Austen, 1775-1817)
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'It is a truth universally acknowledged...',
+        color: 'yellow',
+        note: 'Classic opening',
+      });
+
+      render(<NotebookView />);
+
+      expect(screen.getAllByText('Pride and Prejudice').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/by Jane Austen/i).length).toBeGreaterThanOrEqual(1);
+
+      // Crucial: Jane Austen died in 1817 (> 70 years ago). Must NEVER show Protected badge.
+      expect(screen.queryByText(/Protected/i)).not.toBeInTheDocument();
+    });
+
+    it('resolves author lifespans from recentBooks without showing Protected badge in Life+70', async () => {
+      useJurisdictionStore.setState({
+        country: 'RO',
+        rule: 'LIFE_70',
+        overrideCountry: null,
+      });
+
+      // Populate recentBooks in useBookshelfStore
+      useBookshelfStore.setState({
+        recentBooks: [
+          {
+            id: 84,
+            title: 'Frankenstein; Or, The Modern Prometheus',
+            authors: [{ name: 'Shelley, Mary Wollstonecraft', birth_year: 1797, death_year: 1851 }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 500,
+          },
+        ],
+      });
+
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 84,
+        bookTitle: 'Frankenstein',
+        bookAuthor: 'Mary Wollstonecraft Shelley',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'I busied myself to think of a story...',
+        color: 'mint',
+      });
+
+      render(<NotebookView />);
+
+      expect(screen.getAllByText(/Frankenstein/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(/Protected/i)).not.toBeInTheDocument();
+    });
+
+    it('recovers author lifespans for saved books with incomplete metadata from featured fixtures', async () => {
+      useJurisdictionStore.setState({
+        country: 'RO',
+        rule: 'LIFE_70',
+        overrideCountry: null,
+      });
+
+      // Simulated incomplete savedBook from legacy cloud sync (null lifespans)
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            id: 2701, // Moby Dick (Herman Melville, 1819-1891)
+            title: 'Moby Dick',
+            authors: [{ name: 'Herman Melville', birth_year: null, death_year: null }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 300,
+          },
+        ],
+      });
+
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 2701,
+        bookTitle: 'Moby Dick',
+        bookAuthor: 'Herman Melville',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Call me Ishmael.',
+        color: 'yellow',
+      });
+
+      render(<NotebookView />);
+
+      expect(screen.getAllByText('Moby Dick').length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(/Protected/i)).not.toBeInTheDocument();
+    });
+
+    it('correctly displays Protected badge for truly copyright-restricted authors in foreign jurisdiction', async () => {
+      useJurisdictionStore.setState({
+        country: 'RO',
+        rule: 'LIFE_70',
+        overrideCountry: null,
+      });
+
+      // Author deceased in 1976 (Agatha Christie) -> protected under Life+70 until 2047
+      useBookshelfStore.setState({
+        recentBooks: [
+          {
+            id: 863,
+            title: 'The Mysterious Affair at Styles',
+            authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 100,
+          },
+        ],
+      });
+
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 863,
+        bookTitle: 'The Mysterious Affair at Styles',
+        bookAuthor: 'Agatha Christie',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Hastings, my friend...',
+        color: 'rose',
+      });
+
+      render(<NotebookView />);
+
+      expect(screen.getAllByText('The Mysterious Affair at Styles').length).toBeGreaterThanOrEqual(1);
+      // Should correctly display Protected badge for Agatha Christie under Life+70 in RO
+      expect(screen.getAllByText(/Protected/i).length).toBeGreaterThanOrEqual(1);
+    });
   });
 });
