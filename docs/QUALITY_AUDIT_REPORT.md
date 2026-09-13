@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 13 Sep 2026 15:39:20 GMT  
+**Last Generated**: Sun, 13 Sep 2026 16:11:03 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 169 passed  
-**Total Verified Tests**: 1559 passed  
+**Total Verified Tests**: 1561 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1559 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1561 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 45 Architectural Decision Records validated |
@@ -26,13 +26,13 @@
 ## 📊 Code Coverage Metrics
 
 - **Lines**: **92.54%** (7077/7647) — *Target: $ge$ 80%*
-- **Statements**: **90.98%** (7660/8419) — *Target: $ge$ 80%*
-- **Functions**: **89.09%** (1643/1844) — *Target: $ge$ 80%*
-- **Branches**: **81.27%** (6703/8247) — *Target: $ge$ 80%*
+- **Statements**: **90.99%** (7661/8419) — *Target: $ge$ 80%*
+- **Functions**: **89.15%** (1644/1844) — *Target: $ge$ 80%*
+- **Branches**: **81.26%** (6705/8251) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1559 Tests)
+## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1561 Tests)
 
 ### 🚀 App Routes & Pages (15 Suites · 163 Tests)
 
@@ -2050,7 +2050,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (50 Suites · 239 Tests)
+### 🧩 UI Primitives & Motion (50 Suites · 241 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2484,7 +2484,7 @@
 </details>
 
 <details>
-<summary><b><code>src/config/config.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/config/config.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `defines valid non-empty endpoint URLs`
 - ✔ `provides literary eras with valid date boundaries`
@@ -2496,9 +2496,11 @@
 - ✔ `getHourlyHeroBook returns deterministic book based on hourly index`
 - ✔ `getDailyEditorialBook rotates daily and avoids collision with heroBookId`
 - ✔ `filters out titles protected in Life + 100 countries (Mexico)`
+- ✔ `filters out titles with protected modern translators in Life + 70 countries (Romania / EU)`
 - ✔ `includes all featured books for US jurisdiction`
 - ✔ `provides 36+ curated quotes with complete metadata including author birth and death years`
 - ✔ `filters out quotes protected under Life + 100 jurisdiction (Mexico)`
+- ✔ `filters out quotes with protected modern translators in Life + 70 countries (Romania / EU)`
 - ✔ `includes all literary quotes for US jurisdiction`
 - ✔ `provides complete theme configs for light, sepia, and dark`
 - ✔ `getReaderTheme returns exact theme or falls back to light`

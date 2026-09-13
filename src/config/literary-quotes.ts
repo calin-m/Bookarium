@@ -3,7 +3,7 @@
  * Single source of truth for the alternating Literary Quotes section.
  */
 
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { isBookPublicDomainInJurisdiction, type Author } from '@/lib/copyright-engine';
 
 export interface LiteraryQuote {
   id: number;
@@ -14,6 +14,7 @@ export interface LiteraryQuote {
   author: string;
   authorBirthYear?: number;
   authorDeathYear?: number;
+  translators?: Author[];
   quote: string;
   citation: string;
 }
@@ -145,6 +146,7 @@ export const LITERARY_QUOTES: LiteraryQuote[] = [
     author: 'Franz Kafka',
     authorBirthYear: 1883,
     authorDeathYear: 1924,
+    translators: [{ name: 'David Wyllie', birth_year: null, death_year: null }],
     quote:
       'As Gregor Samsa awoke one morning from uneasy dreams he found himself transformed in his bed into a gigantic insect.',
     citation: 'Opening line',
@@ -158,6 +160,7 @@ export const LITERARY_QUOTES: LiteraryQuote[] = [
     author: 'Fyodor Dostoevsky',
     authorBirthYear: 1821,
     authorDeathYear: 1881,
+    translators: [{ name: 'Constance Garnett', birth_year: 1861, death_year: 1946 }],
     quote:
       'Pain and suffering are always inevitable for a large intelligence and a deep heart. The really great men must, I think, have great sadness on earth.',
     citation: 'Part 3, Chapter 5',
@@ -184,6 +187,10 @@ export const LITERARY_QUOTES: LiteraryQuote[] = [
     author: 'Leo Tolstoy',
     authorBirthYear: 1828,
     authorDeathYear: 1910,
+    translators: [
+      { name: 'Aylmer Maude', birth_year: 1858, death_year: 1938 },
+      { name: 'Louise Maude', birth_year: 1855, death_year: 1939 },
+    ],
     quote:
       'We can know only that we know nothing. And that is the highest degree of human wisdom.',
     citation: 'Book 9, Chapter 1',
@@ -197,6 +204,7 @@ export const LITERARY_QUOTES: LiteraryQuote[] = [
     author: 'Victor Hugo',
     authorBirthYear: 1802,
     authorDeathYear: 1885,
+    translators: [{ name: 'Isabel Florence Hapgood', birth_year: 1850, death_year: 1928 }],
     quote:
       'Even the darkest night will end and the sun will rise. To love or have loved, that is enough. Ask nothing further.',
     citation: 'Part 5: Jean Valjean',
@@ -236,6 +244,7 @@ export const LITERARY_QUOTES: LiteraryQuote[] = [
     author: 'Sun Tzu',
     authorBirthYear: -544,
     authorDeathYear: -496,
+    translators: [{ name: 'Lionel Giles', birth_year: 1875, death_year: 1958 }],
     quote:
       'The supreme art of war is to subdue the enemy without fighting. In the midst of chaos, there is also opportunity.',
     citation: 'Chapter 3: Attack by Stratagem',
@@ -262,6 +271,7 @@ export const LITERARY_QUOTES: LiteraryQuote[] = [
     author: 'Homer',
     authorBirthYear: -800,
     authorDeathYear: -750,
+    translators: [{ name: 'Samuel Butler', birth_year: 1835, death_year: 1902 }],
     quote:
       'There is nothing more admirable than when two people who see eye to eye keep house as man and wife, confounding their enemies and delighting their friends.',
     citation: 'Book VI',
@@ -275,6 +285,7 @@ export const LITERARY_QUOTES: LiteraryQuote[] = [
     author: 'Niccolò Machiavelli',
     authorBirthYear: 1469,
     authorDeathYear: 1527,
+    translators: [{ name: 'W. K. Marriott', birth_year: null, death_year: 1927 }],
     quote:
       'It is much safer to be feared than loved because love is preserved by the link of obligation which, owing to the baseness of men, is broken at every opportunity.',
     citation: 'Chapter 17',
@@ -506,6 +517,7 @@ export function getJurisdictionSafeLiteraryQuotes(countryCode: string = 'US'): L
             death_year: quote.authorDeathYear ?? null,
           },
         ],
+        translators: quote.translators,
         copyright: false,
       },
       countryCode

@@ -12,6 +12,7 @@
  */
 
 import type { Author, GutendexBook } from '@/types/book.types';
+export type { Author };
 
 export type JurisdictionRule = 'US_PUBLIC_DOMAIN' | 'LIFE_70' | 'LIFE_80' | 'LIFE_100';
 

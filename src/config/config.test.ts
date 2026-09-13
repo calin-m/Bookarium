@@ -143,9 +143,24 @@ describe('src/config configuration modules', () => {
       const mxBooks = getJurisdictionSafeFeaturedBooks('MX');
       expect(mxBooks.some((b) => b.title === 'The Great Gatsby')).toBe(false);
       expect(mxBooks.some((b) => b.title === 'The Adventures of Sherlock Holmes')).toBe(false);
+      expect(mxBooks.some((b) => b.title === 'War and Peace')).toBe(false); // Translator Aylmer Maude died 1938 -> protected until 2039
       expect(mxBooks.some((b) => b.title === 'Pride and Prejudice')).toBe(true);
       expect(mxBooks.some((b) => b.title === 'Frankenstein')).toBe(true);
-      expect(mxBooks.some((b) => b.title === 'War and Peace')).toBe(true);
+      expect(mxBooks.some((b) => b.title === 'The Odyssey')).toBe(true); // Translator Samuel Butler died 1902 -> public domain in MX
+    });
+
+    it('filters out titles with protected modern translators in Life + 70 countries (Romania / EU)', () => {
+      const roBooks = getJurisdictionSafeFeaturedBooks('RO');
+      // The Metamorphosis (ID 5200) translated in 2002 by David Wyllie (unlisted modern dates) -> blocked
+      expect(roBooks.some((b) => b.id === 5200)).toBe(false);
+      // The Art of War (ID 132) translated by Lionel Giles (died 1958 -> protected until 2029) -> blocked
+      expect(roBooks.some((b) => b.id === 132)).toBe(false);
+      // Verified public domain translations pass cleanly
+      expect(roBooks.some((b) => b.title === 'War and Peace')).toBe(true);
+      expect(roBooks.some((b) => b.title === 'Crime and Punishment')).toBe(true);
+      expect(roBooks.some((b) => b.title === 'Les Misérables')).toBe(true);
+      expect(roBooks.some((b) => b.title === 'The Odyssey')).toBe(true);
+      expect(roBooks.some((b) => b.title === 'Pride and Prejudice')).toBe(true);
     });
 
     it('includes all featured books for US jurisdiction', () => {
@@ -171,12 +186,23 @@ describe('src/config configuration modules', () => {
 
     it('filters out quotes protected under Life + 100 jurisdiction (Mexico)', () => {
       const mxQuotes = getJurisdictionSafeLiteraryQuotes('MX');
-      expect(mxQuotes.length).toBeGreaterThanOrEqual(30);
+      expect(mxQuotes.length).toBeGreaterThanOrEqual(25);
       expect(mxQuotes.some((q) => q.bookTitle === 'The Great Gatsby')).toBe(false);
       expect(mxQuotes.some((q) => q.bookTitle === 'The Adventures of Sherlock Holmes')).toBe(false);
+      expect(mxQuotes.some((q) => q.bookTitle === 'War and Peace')).toBe(false); // Translator Aylmer Maude died 1938
       expect(mxQuotes.some((q) => q.bookTitle === 'Pride and Prejudice')).toBe(true);
-      expect(mxQuotes.some((q) => q.bookTitle === 'War and Peace')).toBe(true);
-      expect(mxQuotes.some((q) => q.bookTitle === 'Les Misérables')).toBe(true);
+      expect(mxQuotes.some((q) => q.bookTitle === 'The Odyssey')).toBe(true);
+    });
+
+    it('filters out quotes with protected modern translators in Life + 70 countries (Romania / EU)', () => {
+      const roQuotes = getJurisdictionSafeLiteraryQuotes('RO');
+      // The Metamorphosis quote (bookId 5200) is filtered out in RO
+      expect(roQuotes.some((q) => q.bookId === 5200)).toBe(false);
+      // The Art of War quote (bookId 132) is filtered out in RO
+      expect(roQuotes.some((q) => q.bookId === 132)).toBe(false);
+      // Other safe quotes remain present
+      expect(roQuotes.some((q) => q.bookTitle === 'Pride and Prejudice')).toBe(true);
+      expect(roQuotes.some((q) => q.bookTitle === 'War and Peace')).toBe(true);
     });
 
     it('includes all literary quotes for US jurisdiction', () => {

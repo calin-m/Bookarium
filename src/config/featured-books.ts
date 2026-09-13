@@ -4,7 +4,7 @@
  */
 
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { isBookPublicDomainInJurisdiction, type Author } from '@/lib/copyright-engine';
 
 export interface FeaturedHeroBook {
   id: number;
@@ -13,6 +13,7 @@ export interface FeaturedHeroBook {
   author: string;
   authorBirthYear?: number;
   authorDeathYear?: number;
+  translators?: Author[];
   year: string;
   quoteExcerpt: string;
   openingLine: string;
@@ -178,6 +179,10 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     author: 'Leo Tolstoy',
     authorBirthYear: 1828,
     authorDeathYear: 1910,
+    translators: [
+      { name: 'Aylmer Maude', birth_year: 1858, death_year: 1938 },
+      { name: 'Louise Maude', birth_year: 1855, death_year: 1939 },
+    ],
     year: '1869',
     openingLine:
       '“Well, Prince, so Genoa and Lucca are now just family estates of the Buonapartes. But I warn you, if you don’t tell me that this means war, if you still try to defend the infamies and horrors perpetrated by that Antichrist—I will have nothing more to do with you.”',
@@ -193,6 +198,7 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     author: 'Victor Hugo',
     authorBirthYear: 1802,
     authorDeathYear: 1885,
+    translators: [{ name: 'Isabel Florence Hapgood', birth_year: 1850, death_year: 1928 }],
     year: '1862',
     openingLine:
       'So long as there shall exist, by reason of law and custom, a social condemnation, which, in the face of civilization, artificially creates hells on earth, and complicates a destiny that is divine with human fatality; books like this cannot be useless.',
@@ -208,6 +214,7 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     author: 'Fyodor Dostoevsky',
     authorBirthYear: 1821,
     authorDeathYear: 1881,
+    translators: [{ name: 'Constance Garnett', birth_year: 1861, death_year: 1946 }],
     year: '1866',
     openingLine:
       'On an exceptionally hot evening early in July a young man came out of the garret in which he lodged in S. Place and walked slowly, as though in hesitation, towards K. bridge. He had successfully avoided meeting his landlady on the stairs.',
@@ -253,6 +260,7 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     author: 'Franz Kafka',
     authorBirthYear: 1883,
     authorDeathYear: 1924,
+    translators: [{ name: 'David Wyllie', birth_year: null, death_year: null }],
     year: '1915',
     openingLine:
       'One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections.',
@@ -298,6 +306,7 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     author: 'Niccolò Machiavelli',
     authorBirthYear: 1469,
     authorDeathYear: 1527,
+    translators: [{ name: 'W. K. Marriott', birth_year: null, death_year: 1927 }],
     year: '1532',
     openingLine:
       'All states, all powers, that have held and hold rule over men have been and are either republics or principalities. Principalities are either hereditary, in which the family has been long established; or they are new.',
@@ -313,6 +322,7 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     author: 'Sun Tzu',
     authorBirthYear: -544,
     authorDeathYear: -496,
+    translators: [{ name: 'Lionel Giles', birth_year: 1875, death_year: 1958 }],
     year: '5th C. BC',
     openingLine:
       'Sun Tzu said: The art of war is of vital importance to the State. It is a matter of life and death, a road either to safety or to ruin. Hence it is a subject of inquiry which can on no account be neglected.',
@@ -343,6 +353,7 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
     author: 'Homer',
     authorBirthYear: -800,
     authorDeathYear: -750,
+    translators: [{ name: 'Samuel Butler', birth_year: 1835, death_year: 1902 }],
     year: '8th C. BC',
     openingLine:
       'Tell me, O muse, of that ingenious hero who travelled far and wide after he had sacked the famous town of Troy. Many cities did he visit, and many were the nations with whose manners and customs he was acquainted; moreover he suffered much by sea.',
@@ -730,6 +741,7 @@ export function getJurisdictionSafeFeaturedBooks(countryCode: string = 'US'): Fe
             death_year: book.authorDeathYear ?? null,
           },
         ],
+        translators: book.translators,
         copyright: false,
       },
       countryCode
