@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 13 Sep 2026 16:11:03 GMT  
+**Last Generated**: Sun, 13 Sep 2026 18:11:47 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 169 passed  
-**Total Verified Tests**: 1561 passed  
+**Total Verified Tests**: 1562 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1561 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1562 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 45 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.54%** (7077/7647) — *Target: $ge$ 80%*
-- **Statements**: **90.99%** (7661/8419) — *Target: $ge$ 80%*
-- **Functions**: **89.15%** (1644/1844) — *Target: $ge$ 80%*
-- **Branches**: **81.26%** (6705/8251) — *Target: $ge$ 80%*
+- **Lines**: **92.53%** (7078/7649) — *Target: $ge$ 80%*
+- **Statements**: **90.97%** (7661/8421) — *Target: $ge$ 80%*
+- **Functions**: **89.09%** (1643/1844) — *Target: $ge$ 80%*
+- **Branches**: **81.25%** (6711/8259) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1561 Tests)
+## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1562 Tests)
 
 ### 🚀 App Routes & Pages (15 Suites · 163 Tests)
 
@@ -1222,7 +1222,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (29 Suites · 314 Tests)
+### 📚 Gutenberg Parsers & Metadata (29 Suites · 315 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1337,7 +1337,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -1351,6 +1351,7 @@
 - ✔ `returns false when select returns an error or rejects`
 - ✔ `caches health check result for 60 seconds without re-querying Supabase`
 - ✔ `successfully queries books and applies US public domain rules`
+- ✔ `queries books using GIN search_vector when only topic is provided`
 - ✔ `filters out authors protected under Life + 70 when client is in GB`
 - ✔ `generates next and previous pagination links when page bounds allow`
 - ✔ `filters results by mimeType if specified`
@@ -2597,7 +2598,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **2 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

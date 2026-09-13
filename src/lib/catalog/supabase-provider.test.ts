@@ -285,7 +285,7 @@ describe('SupabaseCatalogProvider', () => {
       expect(client.from().select).toHaveBeenCalledWith(CATALOG_METADATA_COLUMNS, { count: 'estimated' });
       expect(CATALOG_METADATA_COLUMNS).not.toContain('content');
       expect(builder.eq).toHaveBeenCalledWith('copyright', false);
-      expect(builder.textSearch).toHaveBeenCalledWith('search_vector', 'Jane Austen', {
+      expect(builder.textSearch).toHaveBeenCalledWith('search_vector', 'Jane Austen Fiction', {
         type: 'websearch',
         config: 'english',
       });
@@ -293,6 +293,26 @@ describe('SupabaseCatalogProvider', () => {
       expect(builder.gte).toHaveBeenCalledWith('max_author_death_year', 1750);
       expect(builder.lte).toHaveBeenCalledWith('min_author_birth_year', 1850);
       expect(builder.order).toHaveBeenCalledWith('download_count', { ascending: false });
+    });
+
+    it('queries books using GIN search_vector when only topic is provided', async () => {
+      const { client, builder } = createMockQueryBuilder(sampleDbRows, 2);
+      const provider = new SupabaseCatalogProvider(client as any);
+
+      const options: CatalogQueryOptions = {
+        topic: 'philosophy',
+        page: 1,
+        limit: 32,
+        country: 'US',
+      };
+
+      const result = await provider.searchBooks(options);
+
+      expect(result.source).toBe('supabase');
+      expect(builder.textSearch).toHaveBeenCalledWith('search_vector', 'philosophy', {
+        type: 'plain',
+        config: 'english',
+      });
     });
 
     it('filters out authors protected under Life + 70 when client is in GB', async () => {

@@ -33,6 +33,7 @@ describe('HeroSearch component', () => {
     expect(screen.getByText(/100% Public Domain/i)).toBeInTheDocument();
     expect(screen.getByText(/Zero Setup or Keys/i)).toBeInTheDocument();
     expect(screen.getByTestId('search-input')).toBeInTheDocument();
+    expect(screen.getByText(/Explore Topics/i)).toBeInTheDocument();
     expect(screen.getByTestId('topic-chip-philosophy')).toBeInTheDocument();
 
     // Static volume badge on cover across viewports

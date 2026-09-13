@@ -148,19 +148,25 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         }
       }
 
-      // Full-text search on GIN search_vector (title + authors + subjects)
-      if (options.search && options.search.trim().length >= 2) {
-        const cleanSearch = options.search.trim();
+      // Full-text search and topic filtering on GIN search_vector (title + subjects)
+      const cleanSearch = options.search && options.search.trim().length >= 2 ? options.search.trim() : null;
+      const cleanTopic = options.topic && options.topic.trim().length > 0 ? options.topic.trim() : null;
+
+      if (cleanSearch && cleanTopic) {
+        query = query.textSearch('search_vector', `${cleanSearch} ${cleanTopic}`, {
+          type: 'websearch',
+          config: 'english',
+        });
+      } else if (cleanSearch) {
         query = query.textSearch('search_vector', cleanSearch, {
           type: 'websearch',
           config: 'english',
         });
-      }
-
-      // Topic filter (contained in subjects or bookshelves)
-      if (options.topic && options.topic.trim().length > 0) {
-        const topic = options.topic.trim();
-        query = query.or(`subjects.cs.{"${topic}"},bookshelves.cs.{"${topic}"}`);
+      } else if (cleanTopic) {
+        query = query.textSearch('search_vector', cleanTopic, {
+          type: 'plain',
+          config: 'english',
+        });
       }
 
       // Languages filter (array overlap)

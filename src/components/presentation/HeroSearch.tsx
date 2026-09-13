@@ -26,6 +26,7 @@ import {
   Download,
   Bookmark,
   Sparkles,
+  Compass,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
@@ -298,7 +299,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
             <div className="space-y-3 pt-2">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-[11px] font-mono uppercase text-muted-foreground mr-1 select-none flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-primary" /> Curated:
+                  <Compass className="w-3 h-3 text-primary" /> Explore Topics:
                 </span>
                 {HERO_POPULAR_TOPICS.map((topic) => {
                   const isSelected = selectedTopic.toLowerCase() === topic.id;

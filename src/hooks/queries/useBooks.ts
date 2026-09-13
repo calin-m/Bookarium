@@ -70,7 +70,7 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
   if (isBrowser) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const internalUrl = `${API_ENDPOINTS.INTERNAL_API_BOOKS}?${searchParams.toString()}`;
       const res = await fetch(internalUrl, { signal: controller.signal });
