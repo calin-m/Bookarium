@@ -258,7 +258,32 @@ function loadFallbackSnapshot() {
   return [];
 }
 
-// 9. Generate Foreign-Key Safe Atomic SQL (Blocker 5 & Defense 4)
+// 9. Foreign-Key Pre-Validation (Defense 4)
+async function filterValidCatalogBookIds(supabase, candidateIds = []) {
+  if (!supabase || !candidateIds || !candidateIds.length) return new Set(candidateIds);
+  const uniqueIds = Array.from(new Set(candidateIds.filter((id) => Number.isInteger(id) && id > 0)));
+  const validIds = new Set();
+  const chunkSize = 500;
+
+  for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+    const chunk = uniqueIds.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from('books')
+      .select('id')
+      .in('id', chunk);
+
+    if (error) {
+      console.warn(`  ⚠ Foreign-key catalog pre-check warning: ${error.message}`);
+      return new Set(candidateIds);
+    } else if (data) {
+      data.forEach((r) => validIds.add(r.id));
+    }
+  }
+
+  return validIds;
+}
+
+// 10. Generate Foreign-Key Safe Atomic SQL (Blocker 5 & Defense 4)
 function generateAtomicSeedSql(translations = []) {
   let sql = `-- ============================================================================\n`;
   sql += `-- Canonical Relational Book Translations Seed (Cold-Start & Partial Catalog Safe)\n`;
@@ -414,12 +439,26 @@ Options:
 
   // Live Supabase Upsert
   if (supabase && !isDryRun) {
+    console.log('\n🚀 Verifying foreign-key catalog integrity against public.books...');
+    const candidateIds = translationsToInsert.map((t) => t.book_id);
+    const validBookIds = await filterValidCatalogBookIds(supabase, candidateIds);
+
+    let finalTranslations = translationsToInsert;
+    if (validBookIds && validBookIds.size > 0 && validBookIds.size !== candidateIds.length) {
+      finalTranslations = translationsToInsert.filter((t) => validBookIds.has(t.book_id));
+      const skippedCount = translationsToInsert.length - finalTranslations.length;
+      console.log(`  • Verified in Catalog:  ${finalTranslations.length} rows`);
+      console.log(`  • Safely Skipped (FK):  ${skippedCount} rows not present in public.books`);
+    } else {
+      console.log(`  • Verified in Catalog:  ${finalTranslations.length} rows (100% catalog coverage)`);
+    }
+
     console.log('\n🚀 Performing live batch upsert into Supabase (public.book_translations)...');
     const batchSize = 250;
     let upsertedCount = 0;
 
-    for (let i = 0; i < translationsToInsert.length; i += batchSize) {
-      const batch = translationsToInsert.slice(i, i + batchSize);
+    for (let i = 0; i < finalTranslations.length; i += batchSize) {
+      const batch = finalTranslations.slice(i, i + batchSize);
       const { error } = await supabase
         .from('book_translations')
         .upsert(batch, {
@@ -428,7 +467,7 @@ Options:
         });
 
       if (error) {
-        console.warn(`  ⚠ Warning on batch ${i / batchSize + 1}: ${error.message}`);
+        console.warn(`  ⚠ Warning on batch ${Math.floor(i / batchSize) + 1}: ${error.message}`);
       } else {
         upsertedCount += batch.length;
       }
@@ -456,6 +495,7 @@ module.exports = {
   checkHeuristicWorkMatch,
   fetchWikidataTranslations,
   loadFallbackSnapshot,
+  filterValidCatalogBookIds,
   generateAtomicSeedSql,
 };
 

@@ -9,6 +9,7 @@ const {
   checkAuthorCompatibility,
   checkHeuristicWorkMatch,
   loadFallbackSnapshot,
+  filterValidCatalogBookIds,
   generateAtomicSeedSql,
 } = require('./ingest-translations');
 
@@ -198,6 +199,49 @@ describe('scripts/ingest-translations Engine', () => {
       expect(sql).toContain('JOIN public.books b ON b.id = v.book_id');
       expect(sql).toContain('ON CONFLICT (work_id, book_id) DO UPDATE');
       expect(sql).toContain("('Q170583', 1342, 'en', true, 1.00, 'authority_wikidata')");
+    });
+  });
+
+  describe('filterValidCatalogBookIds (Defense 4)', () => {
+    it('returns all candidate IDs when supabase client is not provided', async () => {
+      const candidates = [1, 2, 3];
+      const result = await filterValidCatalogBookIds(null, candidates);
+      expect(Array.from(result)).toEqual([1, 2, 3]);
+    });
+
+    it('filters out book IDs that do not exist in public.books table', async () => {
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            in: async (_col: string, ids: number[]) => {
+              // Simulate only IDs 1342 and 43647 existing in catalog, while 999999 is missing
+              const valid = ids.filter((id) => id !== 999999).map((id) => ({ id }));
+              return { data: valid, error: null };
+            },
+          }),
+        }),
+      };
+
+      const candidates = [1342, 43647, 999999];
+      const result = await filterValidCatalogBookIds(mockSupabase, candidates);
+      expect(result.has(1342)).toBe(true);
+      expect(result.has(43647)).toBe(true);
+      expect(result.has(999999)).toBe(false);
+      expect(result.size).toBe(2);
+    });
+
+    it('gracefully falls back to candidates when database query fails', async () => {
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            in: async () => ({ data: null, error: { message: 'Network error' } }),
+          }),
+        }),
+      };
+
+      const candidates = [100, 200];
+      const result = await filterValidCatalogBookIds(mockSupabase, candidates);
+      expect(Array.from(result)).toEqual([100, 200]);
     });
   });
 });
