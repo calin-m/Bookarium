@@ -36,6 +36,7 @@ function extractDatabaseCatalog(rootDirPath) {
     user_reading_habits: '`useHabitsStore`',
     user_accolades: '`useAccoladesStore`',
     books: '`SupabaseCatalogProvider`',
+    book_translations: '`useBookTranslations` / `SupabaseCatalogProvider`',
   };
 
   const descMap = {
@@ -49,13 +50,14 @@ function extractDatabaseCatalog(rootDirPath) {
     user_reading_habits: 'Reading streaks (5-min threshold), daily activity dates, annual challenge goals, and dual immersion telemetry.',
     user_accolades: 'Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata.',
     books: 'Self-hosted public domain catalog with GIN full-text search vector, pre-computed author lifespan bounds, and optional plain-text caching.',
+    book_translations: 'Relational FRBR literary work clusters mapping Project Gutenberg editions across languages with zero false positives.',
   };
 
   while ((match = tableRegex.exec(content)) !== null) {
     const tableName = match[1];
     tables.push({
       name: `public.${tableName}`,
-      rls: tableName === 'books' ? 'Enabled (`Public Read`)' : 'Enabled (`auth.uid()`)',
+      rls: tableName === 'books' || tableName === 'book_translations' ? 'Enabled (`Public Read`)' : 'Enabled (`auth.uid()`)',
       store: storeMap[tableName] || 'Client Store',
       description: descMap[tableName] || 'Database entity with RLS user isolation.',
     });
@@ -159,7 +161,8 @@ function generateMarkdown() {
     '        HookAutoHeal["🩺 useCollectionAutoHeal\\n(Author Lifespan Scanning & Auto-Rehydration)"]',
     '        QueryBooks["🔄 useBooks & usePrefetchNextPage\\n(Windowed Sub-Pages & Predictive Prefetch)"]',
     '        QueryContent["🔄 useBookContent(url, bookId)\\n(IndexedDB Check to CDN Stream)"]',
-    '        QueryTranslate["🌐 useBookTranslations\\n(International Editions Aggregation)"]',
+    '        QueryTranslate["🌐 useBookTranslations\\n(International Editions Relational Handoff)"]',
+    '        QueryPageTranslate["🌐 usePageTranslation\\n(Neural Full-Page Translation)"]',
     '        Telemetry["📊 Vercel Telemetry\\n(Analytics & Speed Insights)"]',
     '    end',
     '',
@@ -168,6 +171,7 @@ function generateMarkdown() {
     '        ProxyBooks["GET /api/books\\n(SWR 120s Cache, Latency Tracking, Rate Limit, Seam Controller)"]',
     '        CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\\n(supabase-provider.ts • gutendex-provider.ts)"]',
     '        ProxyContent["GET /api/books/content\\n(Tier 1 Supabase DB • Tier 2 Gutenberg Multi-Mirror, Anti-SSRF)"]',
+    '        ProxyBookTranslations["GET /api/books/translations\\n(Edge SWR Cache, Zero False Positives, FRBR Work Mapping)"]',
     '        ProxyTranslate["POST /api/translate\\n(Neural MT Proxy, 40+ Languages)"]',
     '        LayoutServer["Server Layout (/read/[id])\\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]',
     '    end',
@@ -186,8 +190,10 @@ function generateMarkdown() {
     '        Gutendex["🌐 Gutendex Search API\\n(Upstream Search Fallback)"]',
     '        GutenbergCDN["🌐 Project Gutenberg Mirrors\\n(aleph.gutenberg.org, gutenberg.readingroo.ms, www.gutenberg.org)"]',
     '        GoogleNMT["🌐 Google Neural MT\\n(Serverless AI Translation)"]',
-    '        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\\n(public.books catalog, profiles, shelves, progress, habits, accolades)")]',
+    '        WikidataSPARQL["🌐 Wikidata SPARQL\\n(P648 Gutenberg Work-to-Edition Authority Clusters)"]',
+    '        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]',
     '        SyncEngine["🔄 Gutenberg Catalog Sync Engine\\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]',
+    '        SyncTranslations["🔄 Relational Translations Sync\\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]',
     '        VercelEdge["⚡ Vercel Edge Platform\\n(Cookie-less Analytics & Speed Insights)"]',
     '    end',
     '',
@@ -237,8 +243,15 @@ function generateMarkdown() {
     '    ProxyContent -->|Tier 1: Instant DB Text| SupabaseCloud',
     '    ProxyContent -->|Tier 2: Multi-Mirror Fallback| GutenbergCDN',
     '    ReaderPage --> QueryTranslate',
-    '    QueryTranslate --> ProxyTranslate',
+    '    LangDrawer --> QueryTranslate',
+    '    QueryTranslate -->|Tier 1: Relational Work Mapping| ProxyBookTranslations',
+    '    ProxyBookTranslations -->|100% Precision Relational Query| SupabaseCloud',
+    '    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex',
+    '    ReaderPage --> QueryPageTranslate',
+    '    QueryPageTranslate --> ProxyTranslate',
     '    ProxyTranslate --> GoogleNMT',
+    '    SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud',
+    '    SyncTranslations -.->|Wikidata P648 Query & Fallback Snapshot| WikidataSPARQL',
     '    ',
     '    Views --> StateStores',
     '    HabitsCard --> StoreHabits',
@@ -479,8 +492,10 @@ function generateMarkdown() {
     '| Pipeline / Tool | Execution Mode | Source File | Schedule / Trigger | Architectural Responsibility |',
     '| :--- | :--- | :--- | :--- | :--- |',
     '| **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Weekly Cron | Streams official Project Gutenberg `pg_catalog.csv.gz` (5.5MB) through gunzip and batch-upserts 78,000+ public domain titles with adaptive timeout division. |',
+    '| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `node scripts/ingest-translations.js` / Weekly Cron | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting and atomic SQL generation. |',
     '| **`ingest-catalog`** | Node.js Batch CLI | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` / On-Demand | Curated masterworks starter seeding and plain-text caching (`--with-content`) generating `supabase/seed_books.sql`. |',
-    '| **`catalog-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays) | Automated CI cron workflow streaming newly added titles into Supabase and acting as a keep-alive heartbeat for the free-tier database. |'
+    '| **`catalog-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays) | Automated CI cron workflow streaming newly added titles into Supabase and chaining translation sync. |',
+    '| **`translations-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/translations-sync.yml`](.github/workflows/translations-sync.yml) | `cron: 0 3 * * 0` (Sundays) / On-Demand | Automated weekly CI cron workflow clustering upstream Wikidata editions and syncing to `public.book_translations`. |'
   );
 
   const dbTables = extractDatabaseCatalog(rootDir);
@@ -512,6 +527,9 @@ function generateMarkdown() {
     '| **`idx_books_languages`** | GIN Index | `public.books` | Inverted index for array containment queries on ISO 639 language codes (`languages && ARRAY[...]`). |',
     '| **`idx_books_subjects`** | GIN Index | `public.books` | Inverted index for subject facet queries (`subjects && ARRAY[...]`). |',
     '| **`idx_books_author_death_year`** | B-Tree Index | `public.books` | Index on `max_author_death_year` for instant server-side jurisdictional copyright enforcement. |',
+    '| **`idx_book_translations_book_id`** | B-Tree Index | `public.book_translations` | Single-book translation query index for instant reader drawer lookups. |',
+    '| **`idx_book_translations_work_id`** | B-Tree Index | `public.book_translations` | Canonical literary work grouping index for cluster traversal. |',
+    '| **`idx_book_translations_work_lang`** | Composite Index | `public.book_translations` | Composite index on `(work_id, language)` for fast language filtering within a literary work cluster. |',
     '| **`public.handle_new_user()`** | Trigger / Function | `auth.users` -> `public.profiles` | Auto-provisions profile and default General shelf on signup (execution revoked from public/anon/authenticated; immutable search path). |',
     '| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable search path). |'
   );

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 13 Sep 2026 09:34:31 GMT  
+**Last Generated**: Sun, 13 Sep 2026 14:17:08 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 168 passed  
-**Total Verified Tests**: 1528 passed  
+**Total Test Suites**: 169 passed  
+**Total Verified Tests**: 1550 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **168/168 test suites passed** (1528 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1550 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 45 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.59%** (6985/7544) — *Target: $ge$ 80%*
-- **Statements**: **91.06%** (7558/8300) — *Target: $ge$ 80%*
-- **Functions**: **89.07%** (1630/1830) — *Target: $ge$ 80%*
-- **Branches**: **81.38%** (6622/8137) — *Target: $ge$ 80%*
+- **Lines**: **92.52%** (7055/7625) — *Target: $ge$ 80%*
+- **Statements**: **90.95%** (7637/8396) — *Target: $ge$ 80%*
+- **Functions**: **89.07%** (1639/1840) — *Target: $ge$ 80%*
+- **Branches**: **81.24%** (6694/8239) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (168 Suites / 1528 Tests)
+## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1550 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 159 Tests)
+### 🚀 App Routes & Pages (15 Suites · 163 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
@@ -123,6 +123,16 @@
 - ✔ `should return 502 status code when upstream API returns invalid non-JSON body`
 - ✔ `should query Supabase provider first when healthy and return source supabase`
 - ✔ `should gracefully degrade to upstream Gutendex when Supabase provider throws an error`
+
+</details>
+
+<details>
+<summary><b><code>src/app/api/books/translations/route.test.ts</code></b> (4 tests)</summary>
+
+- ✔ `returns 400 with no-store cache when id is missing or invalid`
+- ✔ `returns 200 with edge caching when translations are retrieved successfully`
+- ✔ `returns 429 when rate limited`
+- ✔ `returns 500 with no-store cache when provider throws an unexpected error`
 
 </details>
 
@@ -1207,7 +1217,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (29 Suites · 310 Tests)
+### 📚 Gutenberg Parsers & Metadata (29 Suites · 314 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1322,7 +1332,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -1343,6 +1353,9 @@
 - ✔ `applies ascending and descending sort directions`
 - ✔ `throws CatalogProviderError when Supabase returns an error`
 - ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
+- ✔ `returns empty array for invalid bookId`
+- ✔ `returns translations when cluster exists`
+- ✔ `gracefully returns empty array on database error`
 
 </details>
 
@@ -1664,7 +1677,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/utils.test.ts</code></b> (24 tests)</summary>
+<summary><b><code>src/lib/utils.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `should merge class names correctly`
 - ✔ `should extract standard Gutenberg format keys`
@@ -1675,6 +1688,7 @@
 - ✔ `should truncate strings with ellipsis`
 - ✔ `should convert last, first author strings to natural first last`
 - ✔ `should strip birth and death years and parenthesized expansions from author strings`
+- ✔ `should preserve generational and lineage suffixes at the end of author names`
 - ✔ `should preserve single or clean names without commas`
 - ✔ `should format array of author objects or strings into comma separated string`
 - ✔ `strips LCSH subdivisions separated by double dashes`
@@ -1693,7 +1707,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 200 Tests)
+### 🔄 Hooks & React Query (22 Suites · 203 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -1731,7 +1745,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBookTranslations.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookTranslations.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `strips subtitles after semicolons and colons`
 - ✔ `strips volume and part suffixes`
@@ -1747,6 +1761,9 @@
 - ✔ `pulls all available languages when API returns diverse multilingual editions`
 - ✔ `discovers alternative translations bi-directionally when active book is in a non-English edition (e.g. Dutch -> English)`
 - ✔ `gracefully handles fetch error and retains current edition`
+- ✔ `rejects candidate editions from stemmer collisions when author does not match (e.g. The Woman in the Alcove for Joan Alcover)`
+- ✔ `requires title keyword match when volume has an anonymous or placeholder author`
+- ✔ `prioritizes Tier 1 relational database editions when returned from /api/books/translations`
 
 </details>
 
@@ -2572,7 +2589,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

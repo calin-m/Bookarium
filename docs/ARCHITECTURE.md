@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-09-13`  
-> **Topology Health**: `180` Modules Analyzed • `624` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `181` Modules Analyzed • `628` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -74,7 +74,8 @@ flowchart TD
         HookAutoHeal["🩺 useCollectionAutoHeal\n(Author Lifespan Scanning & Auto-Rehydration)"]
         QueryBooks["🔄 useBooks & usePrefetchNextPage\n(Windowed Sub-Pages & Predictive Prefetch)"]
         QueryContent["🔄 useBookContent(url, bookId)\n(IndexedDB Check to CDN Stream)"]
-        QueryTranslate["🌐 useBookTranslations\n(International Editions Aggregation)"]
+        QueryTranslate["🌐 useBookTranslations\n(International Editions Relational Handoff)"]
+        QueryPageTranslate["🌐 usePageTranslation\n(Neural Full-Page Translation)"]
         Telemetry["📊 Vercel Telemetry\n(Analytics & Speed Insights)"]
     end
 
@@ -83,6 +84,7 @@ flowchart TD
         ProxyBooks["GET /api/books\n(SWR 120s Cache, Latency Tracking, Rate Limit, Seam Controller)"]
         CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\n(supabase-provider.ts • gutendex-provider.ts)"]
         ProxyContent["GET /api/books/content\n(Tier 1 Supabase DB • Tier 2 Gutenberg Multi-Mirror, Anti-SSRF)"]
+        ProxyBookTranslations["GET /api/books/translations\n(Edge SWR Cache, Zero False Positives, FRBR Work Mapping)"]
         ProxyTranslate["POST /api/translate\n(Neural MT Proxy, 40+ Languages)"]
         LayoutServer["Server Layout (/read/[id])\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]
     end
@@ -101,8 +103,10 @@ flowchart TD
         Gutendex["🌐 Gutendex Search API\n(Upstream Search Fallback)"]
         GutenbergCDN["🌐 Project Gutenberg Mirrors\n(aleph.gutenberg.org, gutenberg.readingroo.ms, www.gutenberg.org)"]
         GoogleNMT["🌐 Google Neural MT\n(Serverless AI Translation)"]
-        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books catalog, profiles, shelves, progress, habits, accolades)")]
+        WikidataSPARQL["🌐 Wikidata SPARQL\n(P648 Gutenberg Work-to-Edition Authority Clusters)"]
+        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]
         SyncEngine["🔄 Gutenberg Catalog Sync Engine\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]
+        SyncTranslations["🔄 Relational Translations Sync\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]
         VercelEdge["⚡ Vercel Edge Platform\n(Cookie-less Analytics & Speed Insights)"]
     end
 
@@ -152,8 +156,15 @@ flowchart TD
     ProxyContent -->|Tier 1: Instant DB Text| SupabaseCloud
     ProxyContent -->|Tier 2: Multi-Mirror Fallback| GutenbergCDN
     ReaderPage --> QueryTranslate
-    QueryTranslate --> ProxyTranslate
+    LangDrawer --> QueryTranslate
+    QueryTranslate -->|Tier 1: Relational Work Mapping| ProxyBookTranslations
+    ProxyBookTranslations -->|100% Precision Relational Query| SupabaseCloud
+    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex
+    ReaderPage --> QueryPageTranslate
+    QueryPageTranslate --> ProxyTranslate
     ProxyTranslate --> GoogleNMT
+    SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud
+    SyncTranslations -.->|Wikidata P648 Query & Fallback Snapshot| WikidataSPARQL
     
     Views --> StateStores
     HabitsCard --> StoreHabits
@@ -302,6 +313,7 @@ Zustand client-side state stores programmatically verified across **9 Persistent
 | :--- | :--- | :--- | :--- | :--- |
 | **`/api/books`** | `GET` | [`src/app/api/books/route.ts`](src/app/api/books/route.ts) | `s-maxage=120, stale-while-revalidate=600` • Sliding-Window Rate Limit | `https://gutendex.com/books/` |
 | **`/api/books/content`** | `GET` | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) | `s-maxage=86400, stale-while-revalidate=604800` • Anti-SSRF Allowlist | `https://www.gutenberg.org/cache/epub/{id}/pg{id}.txt` |
+| **`/api/books/translations`** | `GET` | [`src/app/api/books/translations/route.ts`](src/app/api/books/translations/route.ts) | Edge Proxy | Project Gutenberg Infrastructure |
 | **`/api/translate`** | `POST` | [`src/app/api/translate/route.ts`](src/app/api/translate/route.ts) | Serverless Neural MT Proxy • 40+ Languages | Google Neural Machine Translation |
 
 ### 2. Custom Hooks (Data Queries & Reader Subsystems)
@@ -345,7 +357,7 @@ Pure business logic, historical engines, and layout algorithms verified across *
 | **`cache`** | Core Domain | [`src/lib/cache.ts`](src/lib/cache.ts) | `SimpleLRUCache` | Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions. |
 | **`gutendex-provider`** | Catalog | [`src/lib/catalog/gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts) | `GutendexCatalogProvider`, `gutendexProvider` | Upstream Gutendex REST catalog provider implementing ICatalogProvider with 15s timeout control, error mapping, and jurisdictional copyright filtering. |
 | **`query-parser`** | Catalog | [`src/lib/catalog/query-parser.ts`](src/lib/catalog/query-parser.ts) | `parseCatalogQuery` | Canonical query parameter extractor and sanitizer for catalog queries, normalizing whitespace, pagination, author lifespans, and edge geo-country fallback cascades. |
-| **`supabase-provider`** | Catalog | [`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) | `CATALOG_METADATA_COLUMNS`, `isSupabaseConfigured`, `mapDatabaseBookToGutendexBook`, `SupabaseCatalogProvider`, `supabaseCatalogProvider` | Self-hosted Supabase PostgreSQL catalog provider implementing ICatalogProvider with cached healthcheck (60s TTL), GIN full-text search_vector queries, and author lifespan bounds for sub-50ms single-book lookups and ~1-2s catalog page queries. |
+| **`supabase-provider`** | Catalog | [`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) | `CATALOG_METADATA_COLUMNS`, `isSupabaseConfigured`, `mapDatabaseBookToGutendexBook`, `SupabaseCatalogProvider`, `RelationalTranslationOption` _(+1 more)_ | Self-hosted Supabase PostgreSQL catalog provider implementing ICatalogProvider with cached healthcheck (60s TTL), GIN full-text search_vector queries, and author lifespan bounds for sub-50ms single-book lookups and ~1-2s catalog page queries. |
 | **`content-advisory`** | Core Domain | [`src/lib/content-advisory.ts`](src/lib/content-advisory.ts) | `ContentAdvisoryResult`, `MATURE_CONTENT_KEYWORDS`, `evaluateContentAdvisory` | Autonomous content advisory evaluation engine scanning Library of Congress subject classifications and bookshelves for mature themes, erotic literature, and sensitive historical context with non-blocking user guidance. |
 | **`copyright-engine`** | Core Domain | [`src/lib/copyright-engine.ts`](src/lib/copyright-engine.ts) | `JurisdictionRule`, `CopyrightEvaluationResult`, `EU_MEMBER_STATES`, `LIFE_70_COUNTRIES`, `LIFE_100_COUNTRIES` _(+14 more)_ | Multi-jurisdictional copyright engine evaluating public domain status across US, EU/Berne (Life + 70), Mexico (Life + 100), and Colombia/Spain (Life + 80), with joint authorship (Art. 7bis), translator protection (Art. 2(3)), and longevity heuristics. |
 | **`country-resolver`** | Core Domain | [`src/lib/country-resolver.ts`](src/lib/country-resolver.ts) | `GEO_COOKIE_NAME`, `DEV_OVERRIDE_COOKIE_NAME`, `TIMEZONE_COUNTRY_MAP`, `getCountryFromTimezone`, `resolveClientCountry` | Synchronous and edge geographic country resolution coordinating timezone mapping, geo-cookies, and developer overrides. |
@@ -381,14 +393,16 @@ Automated ingestion pipelines, periodic synchronization jobs, and GitHub Actions
 | Pipeline / Tool | Execution Mode | Source File | Schedule / Trigger | Architectural Responsibility |
 | :--- | :--- | :--- | :--- | :--- |
 | **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Weekly Cron | Streams official Project Gutenberg `pg_catalog.csv.gz` (5.5MB) through gunzip and batch-upserts 78,000+ public domain titles with adaptive timeout division. |
+| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `node scripts/ingest-translations.js` / Weekly Cron | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting and atomic SQL generation. |
 | **`ingest-catalog`** | Node.js Batch CLI | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` / On-Demand | Curated masterworks starter seeding and plain-text caching (`--with-content`) generating `supabase/seed_books.sql`. |
-| **`catalog-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays) | Automated CI cron workflow streaming newly added titles into Supabase and acting as a keep-alive heartbeat for the free-tier database. |
+| **`catalog-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays) | Automated CI cron workflow streaming newly added titles into Supabase and chaining translation sync. |
+| **`translations-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/translations-sync.yml`](.github/workflows/translations-sync.yml) | `cron: 0 3 * * 0` (Sundays) / On-Demand | Automated weekly CI cron workflow clustering upstream Wikidata editions and syncing to `public.book_translations`. |
 
 ---
 
 ## 🗄️ Database Architecture & Row Level Security (RLS) Policies
 
-Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **10 Database Tables** with strict Row Level Security (Rule 9):
+Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **11 Database Tables** with strict Row Level Security (Rule 9):
 
 | Table Name | RLS Governance | Client State Store | Domain Role & Security Description |
 | :--- | :--- | :--- | :--- |
@@ -402,6 +416,7 @@ Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified 
 | **`public.user_reading_habits`** | Enabled (`auth.uid()`) | `useHabitsStore` | Reading streaks (5-min threshold), daily activity dates, annual challenge goals, and dual immersion telemetry. |
 | **`public.user_accolades`** | Enabled (`auth.uid()`) | `useAccoladesStore` | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
 | **`public.books`** | Enabled (`Public Read`) | `SupabaseCatalogProvider` | Self-hosted public domain catalog with GIN full-text search vector, pre-computed author lifespan bounds, and optional plain-text caching. |
+| **`public.book_translations`** | Enabled (`Public Read`) | `useBookTranslations` / `SupabaseCatalogProvider` | Relational FRBR literary work clusters mapping Project Gutenberg editions across languages with zero false positives. |
 
 ### Stored Logic, Triggers & Search Indexes
 
@@ -412,6 +427,9 @@ Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified 
 | **`idx_books_languages`** | GIN Index | `public.books` | Inverted index for array containment queries on ISO 639 language codes (`languages && ARRAY[...]`). |
 | **`idx_books_subjects`** | GIN Index | `public.books` | Inverted index for subject facet queries (`subjects && ARRAY[...]`). |
 | **`idx_books_author_death_year`** | B-Tree Index | `public.books` | Index on `max_author_death_year` for instant server-side jurisdictional copyright enforcement. |
+| **`idx_book_translations_book_id`** | B-Tree Index | `public.book_translations` | Single-book translation query index for instant reader drawer lookups. |
+| **`idx_book_translations_work_id`** | B-Tree Index | `public.book_translations` | Canonical literary work grouping index for cluster traversal. |
+| **`idx_book_translations_work_lang`** | Composite Index | `public.book_translations` | Composite index on `(work_id, language)` for fast language filtering within a literary work cluster. |
 | **`public.handle_new_user()`** | Trigger / Function | `auth.users` -> `public.profiles` | Auto-provisions profile and default General shelf on signup (execution revoked from public/anon/authenticated; immutable search path). |
 | **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable search path). |
 
@@ -448,7 +466,7 @@ Programmatically extracted from **4 TypeScript Type Modules** in `src/types/` us
 | **`accolades.types`** | [`src/types/accolades.types.ts`](src/types/accolades.types.ts) | `AccoladeEvaluationContext`, `AccoladeDefinition`, `UnlockedAccolade`, `AccoladeProgress`, `AccoladeEvaluationResult` | `AccoladeId`, `AccoladeTier`, `AccoladeCategory` |
 | **`book.types`** | [`src/types/book.types.ts`](src/types/book.types.ts) | `Author`, `GutendexBook`, `GutendexResponse`, `BookCuration`, `Book`, `ActiveReadingVolume` | `ReadingStatus`, `LedgerFilter`, `LedgerItemStatus` |
 | **`catalog.types`** | [`src/types/catalog.types.ts`](src/types/catalog.types.ts) | `CatalogQueryOptions`, `CatalogQueryResult`, `ICatalogProvider` | _None_ |
-| **`database.types`** | [`src/types/database.types.ts`](src/types/database.types.ts) | `Database` | `Json`, `Profile`, `Bookshelf`, `BookshelfItem`, `UserFavorite`, `ReadingProgress`, `UserAnnotation`, `UserBookCuration`, `UserReadingHabits`, `UserAccolade`, `DatabaseBook` |
+| **`database.types`** | [`src/types/database.types.ts`](src/types/database.types.ts) | `Database` | `Json`, `Profile`, `Bookshelf`, `BookshelfItem`, `UserFavorite`, `ReadingProgress`, `UserAnnotation`, `UserBookCuration`, `UserReadingHabits`, `UserAccolade`, `DatabaseBook`, `BookTranslationRow`, `BookTranslationInsert`, `BookTranslationUpdate` |
 
 ---
 
@@ -482,6 +500,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`route.ts`](src/app/api/books/content/route.ts) | `config/site-config`, `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `lib/country-resolver`, `./url-validator`, `./metadata-cache`, `lib/catalog/supabase-provider`, `lib/supabase/client` | _App Route Entry_ | Production Module |
 | [`url-validator.ts`](src/app/api/books/content/url-validator.ts) | _Root Primitive_ | `route.ts` | Production Module |
 | [`route.ts`](src/app/api/books/route.ts) | `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `lib/catalog/query-parser`, `lib/catalog/gutendex-provider`, `lib/catalog/supabase-provider`, `types/catalog.types`, `types/catalog.types` | _App Route Entry_ | Production Module |
+| [`route.ts`](src/app/api/books/translations/route.ts) | `lib/rate-limiter`, `lib/api-utils`, `lib/catalog/supabase-provider` | _App Route Entry_ | Production Module |
 | [`route.ts`](src/app/api/translate/route.ts) | `lib/rate-limiter`, `config/site-config`, `lib/cache`, `lib/api-utils` | `usePageTranslation.ts` | Production Module |
 | [`route.ts`](src/app/auth/callback/route.ts) | `lib/supabase/server` | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/auth/confirm-deletion/page.tsx) | `stores/useAuthStore`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `config/routes` | _App Route Entry_ | Production Module |
@@ -585,10 +604,10 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`reader-themes.ts`](src/config/reader-themes.ts) | `stores/useReaderStore` | `page.tsx`, `GutenbergInfoModal.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderControls.tsx`, `ReaderDrawerShell.tsx`, `ReaderErrorView.tsx`, `ReaderFooter.tsx`, `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx`, `ReaderLoadingView.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSpeechBar.tsx`, `ReaderSubHeaderRibbon.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx` | Production Module |
 | [`routes.ts`](src/config/routes.ts) | _Root Primitive_ | `page.tsx`, `page.tsx`, `page.tsx`, `error.tsx`, `not-found.tsx`, `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx`, `AccountPublicProfileSection.tsx`, `AuthModal.tsx`, `BookCard.tsx`, `BookmarkCard.tsx`, `BookmarksView.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `EditorialQuoteSection.tsx`, `Footer.tsx`, `LiteraryQuotes.tsx`, `Navbar.tsx`, `PrivateProfileNotice.tsx`, `PublicProfileView.tsx`, `ReaderErrorView.tsx`, `library-tokens.ts`, `useAuthStore.ts` | Production Module |
 | [`site-config.ts`](src/config/site-config.ts) | _Root Primitive_ | `metadata-cache.ts`, `route.ts`, `route.ts`, `page.tsx`, `layout.tsx`, `manifest.ts`, `page.tsx`, `layout.tsx`, `page.tsx`, `robots.ts`, `sitemap.ts`, `Footer.tsx`, `Navbar.tsx`, `GutenbergInfoModal.tsx`, `useAccoladesStore.ts`, `useAnnotationStore.ts`, `useBookshelfStore.ts`, `useHabitsStore.ts`, `usePreferencesStore.ts`, `useReaderStore.ts`, `useThemeStore.ts` | Production Module |
-| [`translation-languages.ts`](src/config/translation-languages.ts) | _Root Primitive_ | `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx` | Production Module |
+| [`translation-languages.ts`](src/config/translation-languages.ts) | _Root Primitive_ | `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx`, `useBookTranslations.ts` | Production Module |
 | [`views.config.ts`](src/config/views.config.ts) | `config/library-tokens` | `page.tsx`, `page.tsx`, `Navbar.tsx`, `useMobileViewSwipe.ts` | Production Module |
 | [`useBookContent.ts`](src/hooks/queries/useBookContent.ts) | `mocks/handlers`, `config/api-endpoints`, `lib/offline-storage`, `stores/useJurisdictionStore`, `lib/copyright-engine`, `stores/useReaderStore`, `stores/useBookshelfStore`, `types/book.types` | `page.tsx`, `ReaderErrorView.tsx`, `useBookPassageShuffle.ts` | Production Module |
-| [`useBookTranslations.ts`](src/hooks/queries/useBookTranslations.ts) | `config/catalog-filters`, `lib/book-metadata`, `types/book.types` | `page.tsx`, `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx` | Production Module |
+| [`useBookTranslations.ts`](src/hooks/queries/useBookTranslations.ts) | `config/catalog-filters`, `config/translation-languages`, `lib/book-metadata`, `types/book.types` | `page.tsx`, `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx` | Production Module |
 | [`useBooks.ts`](src/hooks/queries/useBooks.ts) | `types/book.types`, `config/api-endpoints`, `stores/useJurisdictionStore`, `lib/copyright-engine` | `page.tsx`, `page.tsx`, `NotebookView.tsx`, `useContinueReadingLedger.ts`, `useCollectionAutoHeal.ts` | Production Module |
 | [`usePageTranslation.ts`](src/hooks/queries/usePageTranslation.ts) | `app/api/translate/route` | `page.tsx` | Production Module |
 | [`useContinueReadingLedger.ts`](src/hooks/reader/useContinueReadingLedger.ts) | `stores/useReaderStore`, `stores/useBookshelfStore`, `hooks/useHasMounted`, `hooks/queries/useBooks`, `lib/adapters/book.adapter`, `lib/book-metadata`, `types/book.types` | `BookmarksView.tsx` | Production Module |
@@ -610,12 +629,12 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`useScrollDirection.ts`](src/hooks/useScrollDirection.ts) | _Root Primitive_ | `page.tsx`, `page.tsx` | Production Module |
 | [`accolades-engine.ts`](src/lib/accolades-engine.ts) | `types/accolades.types`, `config/accolades-config`, `types/book.types`, `stores/useAnnotationStore`, `stores/useHabitsStore` | `ExLibrisBookplate.tsx`, `AccountAccoladesCard.tsx`, `useAccoladesStore.ts` | Production Module |
 | [`book.adapter.ts`](src/lib/adapters/book.adapter.ts) | `types/book.types`, `lib/utils`, `lib/book-metadata`, `lib/copyright-engine` | `useContinueReadingLedger.ts`, `useBookshelfStore.ts` | Production Module |
-| [`api-utils.ts`](src/lib/api-utils.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `route.ts` | Production Module |
+| [`api-utils.ts`](src/lib/api-utils.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `route.ts`, `route.ts` | Production Module |
 | [`book-metadata.ts`](src/lib/book-metadata.ts) | `types/book.types`, `config/featured-books`, `lib/utils` | `layout.tsx`, `page.tsx`, `NotebookView.tsx`, `ReaderHeader.tsx`, `useBookTranslations.ts`, `useContinueReadingLedger.ts`, `book.adapter.ts`, `useAnnotationStore.ts` | Production Module |
 | [`cache.ts`](src/lib/cache.ts) | _Root Primitive_ | `route.ts` | Production Module |
 | [`gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts) | `types/catalog.types`, `types/catalog.types`, `types/book.types`, `config/api-endpoints`, `lib/copyright-engine` | `route.ts` | Production Module |
 | [`query-parser.ts`](src/lib/catalog/query-parser.ts) | `types/catalog.types`, `lib/country-resolver` | `route.ts` | Production Module |
-| [`supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) | `types/catalog.types`, `types/catalog.types`, `types/book.types`, `types/database.types`, `lib/supabase/client`, `lib/copyright-engine` | `metadata-cache.ts`, `route.ts`, `route.ts`, `reader-layout-utils.ts` | Production Module |
+| [`supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) | `types/catalog.types`, `types/catalog.types`, `types/book.types`, `types/database.types`, `lib/supabase/client`, `lib/copyright-engine` | `metadata-cache.ts`, `route.ts`, `route.ts`, `route.ts`, `reader-layout-utils.ts` | Production Module |
 | [`content-advisory.ts`](src/lib/content-advisory.ts) | _Root Primitive_ | `BookPreviewModal.tsx`, `DownloadDrawer.tsx`, `GutenbergInfoModal.tsx` | Production Module |
 | [`copyright-engine.ts`](src/lib/copyright-engine.ts) | `types/book.types` | `metadata-cache.ts`, `route.ts`, `route.ts`, `layout.tsx`, `BookshelfRack.tsx`, `NotebookView.tsx`, `featured-books.ts`, `literary-quotes.ts`, `useBookContent.ts`, `useBooks.ts`, `useBookCopyright.ts`, `book.adapter.ts`, `gutendex-provider.ts`, `supabase-provider.ts`, `useJurisdictionStore.ts`, `catalog.types.ts` | Production Module |
 | [`country-resolver.ts`](src/lib/country-resolver.ts) | _Root Primitive_ | `route.ts`, `query-parser.ts`, `proxy.ts`, `useJurisdictionStore.ts` | Production Module |
@@ -631,7 +650,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`library-backup.ts`](src/lib/library-backup.ts) | `stores/useBookshelfStore`, `stores/useReaderStore`, `stores/useAnnotationStore`, `stores/usePreferencesStore`, `stores/useThemeStore`, `types/book.types`, `types/database.types`, `lib/utils`, `lib/offline-storage` | `AccountPreferencesSection.tsx`, `AccountRestoreModal.tsx` | Production Module |
 | [`offline-storage.ts`](src/lib/offline-storage.ts) | `types/book.types` | `useBookContent.ts`, `useOfflineBooks.ts`, `library-backup.ts` | Production Module |
 | [`password.ts`](src/lib/password.ts) | _Root Primitive_ | `page.tsx`, `AccountSecuritySection.tsx`, `AuthModal.tsx`, `PasswordStrengthMeter.tsx` | Production Module |
-| [`rate-limiter.ts`](src/lib/rate-limiter.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `route.ts` | Production Module |
+| [`rate-limiter.ts`](src/lib/rate-limiter.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `route.ts`, `route.ts` | Production Module |
 | [`reader-annotator.ts`](src/lib/reader-annotator.ts) | `stores/useAnnotationStore` | `ReaderSurface.tsx` | Production Module |
 | [`reading-analytics.ts`](src/lib/reading-analytics.ts) | _Root Primitive_ | `useHabitsStore.ts` | Production Module |
 | [`smart-search.ts`](src/lib/smart-search.ts) | `types/book.types` | `page.tsx`, `in-book-search.ts` | Production Module |

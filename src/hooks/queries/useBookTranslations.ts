@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CATALOG_LANGUAGES } from '@/config/catalog-filters';
+import { resolveTranslationLanguage } from '@/config/translation-languages';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { GutendexBook } from '@/types/book.types';
 
@@ -80,18 +81,28 @@ export function extractAuthorSurname(author: string): string {
 
 /**
  * Resolves a human-readable language label for any ISO-639-1 code.
+ * Preserves catalog-level localization and resolves extended historical Gutenberg languages (e.g. Catalan, Ancient Greek).
  */
 export function resolveLanguageLabel(code: string): string {
+  if (!code) return 'Unknown';
   const match = CATALOG_LANGUAGES.find((l) => l.value.toLowerCase() === code.toLowerCase());
-  if (match && match.label && match.value) {
+  if (match?.label && match?.value) {
     return match.label;
   }
-  return code ? code.toUpperCase() : 'Unknown';
+  const resolved = resolveTranslationLanguage(code);
+  if (resolved?.label) {
+    return resolved.label;
+  }
+  return code.toUpperCase();
 }
 
 /**
  * React Query hook that discovers alternative language translations and editions
  * for the currently active book volume.
+ * 
+ * Uses a Two-Tier Resolution Architecture:
+ * - Tier 1: Queries /api/books/translations?id=... for 100% verified Supabase relational editions.
+ * - Tier 2: Gracefully falls back to local AST search filtering if DB returns 0 editions or is unseeded.
  */
 export function useBookTranslations(
   title?: string,
@@ -118,8 +129,39 @@ export function useBookTranslations(
     return titleKeywords || '';
   }, [authorSurname, author, titleKeywords]);
 
-  const { data, isLoading, isError } = useQuery<{ results: GutendexBook[] }>({
-    queryKey: ['book-translations', currentBookId, searchQuery],
+  // Tier 1: Query relational database translation links
+  const {
+    data: dbData,
+    isLoading: isDbLoading,
+  } = useQuery<{ results: { bookId: number; title: string; languageCode: string; isCurrent: boolean }[] }>({
+    queryKey: ['db-book-translations', currentBookId],
+    queryFn: async () => {
+      if (!currentBookId || currentBookId <= 0) return { results: [] };
+      const endpoint = `/api/books/translations?id=${currentBookId}`;
+      const res = await fetch(endpoint);
+      if (!res.ok) return { results: [] };
+      return res.json();
+    },
+    enabled: Boolean(currentBookId && currentBookId > 0),
+    staleTime: 1000 * 60 * 30, // 30 minutes cache
+    gcTime: 1000 * 60 * 60, // 1 hour garbage collection
+  });
+
+  const hasDbEditions = Boolean(
+    dbData?.results &&
+    Array.isArray(dbData.results) &&
+    dbData.results.some(
+      (r) => typeof r.languageCode === 'string' && r.bookId > 0 && r.bookId !== currentBookId
+    )
+  );
+
+  // Tier 2: Heuristic AST Search Fallback (Only queried when DB has no other editions)
+  const {
+    data: astData,
+    isLoading: isAstLoading,
+    isError: isAstError,
+  } = useQuery<{ results: GutendexBook[] }>({
+    queryKey: ['ast-book-translations', currentBookId, searchQuery],
     queryFn: async () => {
       if (!searchQuery) return { results: [] };
       const endpoint = `/api/books?search=${encodeURIComponent(searchQuery)}`;
@@ -129,13 +171,46 @@ export function useBookTranslations(
       }
       return res.json();
     },
-    enabled: Boolean(searchQuery && currentBookId && currentBookId > 0),
-    staleTime: 1000 * 60 * 30, // 30 minutes cache
-    gcTime: 1000 * 60 * 60, // 1 hour garbage collection
+    enabled: Boolean(!hasDbEditions && searchQuery && currentBookId && currentBookId > 0),
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
   });
 
   const translations = useMemo<BookTranslationOption[]>(() => {
     const activeId = currentBookId || 0;
+
+    // TIER 1: If relational translations exist in Supabase, return them with 100% precision
+    if (hasDbEditions && dbData?.results) {
+      const options: BookTranslationOption[] = dbData.results.map((r) => ({
+        bookId: r.bookId,
+        title: r.title,
+        languageCode: r.languageCode,
+        languageLabel: resolveLanguageLabel(r.languageCode),
+        isCurrent: r.bookId === activeId,
+      }));
+
+      // Ensure current volume is represented
+      if (!options.some((o) => o.isCurrent)) {
+        for (const lang of currentLangs) {
+          const code = lang.toLowerCase();
+          options.unshift({
+            bookId: activeId,
+            title: title || 'Current Edition',
+            languageCode: code,
+            languageLabel: resolveLanguageLabel(code),
+            isCurrent: true,
+          });
+        }
+      }
+
+      return options.sort((a, b) => {
+        if (a.isCurrent && !b.isCurrent) return -1;
+        if (!a.isCurrent && b.isCurrent) return 1;
+        return a.languageLabel.localeCompare(b.languageLabel);
+      });
+    }
+
+    // TIER 2: Fallback to client-side AST logic gates
     const map = new Map<string, BookTranslationOption>();
 
     // 1. Always ensure all languages of the current book edition are present as base entries
@@ -151,34 +226,51 @@ export function useBookTranslations(
     }
 
     // 2. Process search results to discover editions in other languages
-    if (data?.results && Array.isArray(data.results)) {
+    if (astData?.results && Array.isArray(astData.results)) {
+      const hasAuthenticAuthor = Boolean(authorSurname && !isPlaceholderAuthor(author));
       const surnameLower = authorSurname.toLowerCase();
       const firstKeyword = titleKeywords.split(/\s+/)[0]?.toLowerCase() || '';
 
-      for (const book of data.results) {
+      for (const book of astData.results) {
         if (!book.languages || book.languages.length === 0) continue;
-        
-        // Author check: does any author name contain the surname?
+        if (book.id === activeId) continue;
+
+        // Author check: does any author or translator name contain the surname?
         const matchesAuthor =
-          !surnameLower ||
-          book.authors?.some((a) => a.name?.toLowerCase().includes(surnameLower));
+          Boolean(surnameLower) &&
+          (book.authors?.some((a) => a.name?.toLowerCase().includes(surnameLower)) ||
+           book.translators?.some((t) => t.name?.toLowerCase().includes(surnameLower)));
 
         const matchesTitle =
-          !firstKeyword ||
-          book.title?.toLowerCase().includes(firstKeyword);
+          Boolean(firstKeyword) &&
+          Boolean(book.title?.toLowerCase().includes(firstKeyword));
 
-        if (!matchesAuthor && !matchesTitle && data.results.length > 5) continue;
+        // Strict rejection:
+        // 1. If the current volume has a known author, candidate MUST match the author or translator.
+        //    Never allow foreign-author books through due to database stemmer collisions (e.g. Alcover vs Alcove).
+        if (hasAuthenticAuthor && !matchesAuthor) {
+          continue;
+        }
+
+        // 2. If the current volume is anonymous/placeholder, candidate MUST match the title keywords.
+        if (!hasAuthenticAuthor && !matchesTitle) {
+          continue;
+        }
 
         for (const lang of book.languages) {
           const langCode = lang.toLowerCase();
-          
-          if (book.id === activeId) {
-            // Already set as current
-            continue;
-          }
 
-          // Add or replace with best matching edition per language
-          if (!map.has(langCode)) {
+          const existing = map.get(langCode);
+          if (!existing) {
+            map.set(langCode, {
+              bookId: book.id,
+              title: book.title || `Volume #${book.id}`,
+              languageCode: langCode,
+              languageLabel: resolveLanguageLabel(langCode),
+              isCurrent: false,
+            });
+          } else if (!existing.isCurrent && matchesTitle) {
+            // Prioritize an edition that matches title keywords over one that only matched author
             map.set(langCode, {
               bookId: book.id,
               title: book.title || `Volume #${book.id}`,
@@ -197,13 +289,12 @@ export function useBookTranslations(
       if (!a.isCurrent && b.isCurrent) return 1;
       return a.languageLabel.localeCompare(b.languageLabel);
     });
-  }, [data, currentBookId, title, currentLangs, authorSurname, titleKeywords]);
+  }, [hasDbEditions, dbData, astData, currentBookId, title, currentLangs, authorSurname, titleKeywords]);
 
   return {
     translations,
     currentLanguage: resolvedCurrentLang,
-    isLoading,
-    isError,
+    isLoading: isDbLoading || (!hasDbEditions && isAstLoading),
+    isError: Boolean(isAstError),
   };
 }
-

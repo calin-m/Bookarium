@@ -97,6 +97,14 @@ describe('lib/utils', () => {
       expect(formatAuthorName('Shakespeare, William [1564-1616]')).toBe('William Shakespeare');
     });
 
+    it('should preserve generational and lineage suffixes at the end of author names', () => {
+      expect(formatAuthorName('James, Henry, Jr.')).toBe('Henry James, Jr.');
+      expect(formatAuthorName('James, Henry, Jr., 1843-1916')).toBe('Henry James, Jr.');
+      expect(formatAuthorName('Dumas, Alexandre, père')).toBe('Alexandre Dumas, père');
+      expect(formatAuthorName('Dumas, Alexandre, fils')).toBe('Alexandre Dumas, fils');
+      expect(formatAuthorName('Morgan, J. Pierpont, III')).toBe('J. Pierpont Morgan, III');
+    });
+
     it('should preserve single or clean names without commas', () => {
       expect(formatAuthorName('Homer')).toBe('Homer');
       expect(formatAuthorName('Jane Austen')).toBe('Jane Austen');

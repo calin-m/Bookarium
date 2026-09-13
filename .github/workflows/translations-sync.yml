@@ -1,22 +1,22 @@
-name: Gutenberg Catalog Sync
+name: Gutenberg Translations Sync
 
 on:
   schedule:
-    # Run every Sunday at 02:00 UTC
-    - cron: '0 2 * * 0'
+    # Run every Sunday at 03:00 UTC (1 hour after catalog sync)
+    - cron: '0 3 * * 0'
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Maximum titles to ingest (leave blank for all ~72,000)'
+        description: 'Maximum Wikidata statements to process (leave blank for all)'
         required: false
         type: string
       update_existing:
-        description: 'Force overwrite existing books (default: false / skip existing)'
+        description: 'Force overwrite existing translation records (default: false)'
         required: false
         type: boolean
         default: false
       dry_run:
-        description: 'Dry run (parse and validate without writing to database)'
+        description: 'Dry run (parse and cluster without writing to database)'
         required: false
         type: boolean
         default: false
@@ -25,10 +25,10 @@ permissions:
   contents: read
 
 jobs:
-  sync:
-    name: Stream & Sync Gutenberg Catalog
+  sync-translations:
+    name: Cluster & Sync Book Translations
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Repository
@@ -43,24 +43,7 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run Gutenberg Catalog Sync
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          CMD_ARGS=""
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            CMD_ARGS="$CMD_ARGS --dry-run"
-          fi
-          if [ "${{ github.event.inputs.update_existing }}" = "true" ]; then
-            CMD_ARGS="$CMD_ARGS --update-existing"
-          fi
-          if [ -n "${{ github.event.inputs.limit }}" ]; then
-            CMD_ARGS="$CMD_ARGS --limit=${{ github.event.inputs.limit }}"
-          fi
-          node scripts/sync-gutenberg-catalog.js $CMD_ARGS
-
-      - name: Run Relational Translations Sync
+      - name: Run Translations Clustering
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

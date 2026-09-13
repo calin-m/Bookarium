@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-168%20Suites%20%7C%201528%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.59%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-169%20Suites%20%7C%201550%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.52%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -488,6 +488,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 | `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, and dual immersion duration (reading & listening). |
 | `public.user_accolades` | Table (RLS) | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
 | `public.books` | Table (RLS) | High-performance self-hosted public domain catalog with GIN full-text search (`search_vector`), indexed languages, subjects, download metrics, pre-computed author lifespan bounds (`max_author_death_year`, `min_author_birth_year`) for sub-50ms single-book copyright resolution and ~1–2s catalog searches, optional full plain-text caching (`content`) for instant reader streaming, and public read RLS (`FOR SELECT USING (true)`). |
+| `public.book_translations` | Table (RLS) | Relational routing junction table linking Project Gutenberg volumes to canonical literary works and multi-language translations (FRBR model). Microscopic footprint (< 2.5 MB for 75,000 books), zero text duplication, foreign key cascading on book deletion, and public read RLS (`FOR SELECT USING (true)`). |
 | `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
 | `public.delete_current_user()` | RPC Function | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable `search_path`). |
 | `public.books_search_vector_trigger()` | Trigger | Automatically maintains `search_vector` on book insert/update (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
@@ -514,6 +515,17 @@ If you prefer a quick starter seed for local development:
 npm run catalog:ingest -- --curated --dry-run
 ```
 Paste and run [`supabase/seed_books.sql`](supabase/seed_books.sql) in your Supabase SQL Editor.
+
+#### Option C: Ingest Relational Translations (Multilingual Edition Links)
+Populate verified relational book translations linking historical editions across languages:
+```bash
+# 1. Quick test run / offline seed generation:
+node scripts/ingest-translations.js --limit=200 --output=supabase/seed_translations.sql
+
+# 2. Full-catalog live translation sync:
+node scripts/ingest-translations.js --all
+```
+Paste and run [`supabase/seed_translations.sql`](supabase/seed_translations.sql) in your Supabase SQL Editor if seeding offline.
 
 Once seeded, `/api/books` automatically routes queries to your self-hosted Supabase PostgreSQL catalog with predictable ~1–2s catalog page responses and sub-50ms single-book lookups, eliminating the 20–60s wait times and timeouts common on public APIs.
 
@@ -614,7 +626,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1528 tests across 168 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1550 tests across 169 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

@@ -27,6 +27,10 @@ describe('translation-languages', () => {
   it('resolves languages correctly by full code or prefix', () => {
     expect(resolveTranslationLanguage('ro')?.label).toBe('Romanian');
     expect(resolveTranslationLanguage('FR')?.label).toBe('French');
+    expect(resolveTranslationLanguage('ca')?.label).toBe('Catalan');
+    expect(resolveTranslationLanguage('grc')?.label).toBe('Ancient Greek');
+    expect(resolveTranslationLanguage('eo')?.label).toBe('Esperanto');
+    expect(resolveTranslationLanguage('tl')?.label).toBe('Tagalog');
     expect(resolveTranslationLanguage('zh-cn')?.label).toBe('Chinese (Simplified)');
     expect(resolveTranslationLanguage('unknown')).toBeUndefined();
     expect(resolveTranslationLanguage('')).toBeUndefined();

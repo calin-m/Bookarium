@@ -288,6 +288,121 @@ describe('useBookTranslations and helpers', () => {
       expect(result.current.translations[0].bookId).toBe(84);
       expect(result.current.translations[0].isCurrent).toBe(true);
     });
+
+    it('rejects candidate editions from stemmer collisions when author does not match (e.g. The Woman in the Alcove for Joan Alcover)', async () => {
+      const mockApiResponse = {
+        results: [
+          {
+            id: 76831,
+            title: 'CA - Cap al tard',
+            authors: [{ name: 'Alcover, Joan' }],
+            languages: ['ca'],
+          },
+          {
+            id: 1851,
+            title: 'The Woman in the Alcove',
+            authors: [{ name: 'Green, Anna Katharine' }],
+            languages: ['en'],
+          },
+        ],
+      };
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockApiResponse,
+      } as any);
+
+      const { result } = renderHook(
+        () => useBookTranslations('Cap al tard', 'Joan Alcover', 76831, ['ca']),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        // Must strictly reject #1851 since Anna Katharine Green is not Joan Alcover
+        expect(result.current.translations).toHaveLength(1);
+      });
+
+      expect(result.current.translations[0].bookId).toBe(76831);
+      expect(result.current.translations[0].languageCode).toBe('ca');
+      expect(result.current.translations.some((t) => t.bookId === 1851)).toBe(false);
+    });
+
+    it('requires title keyword match when volume has an anonymous or placeholder author', async () => {
+      const mockApiResponse = {
+        results: [
+          {
+            id: 1001,
+            title: 'The Arabian Nights Entertainments',
+            authors: [{ name: 'Anonymous' }],
+            languages: ['en'],
+          },
+          {
+            id: 2002,
+            title: 'Les Mille et Une Nuits',
+            authors: [{ name: 'Anonymous' }],
+            languages: ['fr'],
+          },
+          {
+            id: 9999,
+            title: 'Completely Unrelated Book',
+            authors: [{ name: 'Anonymous' }],
+            languages: ['de'],
+          },
+        ],
+      };
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockApiResponse,
+      } as any);
+
+      const { result } = renderHook(
+        () => useBookTranslations('The Arabian Nights Entertainments', 'Anonymous', 1001, ['en']),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        // Should keep English (current) and French (title matched via first keyword 'Arabian' or 'Nights' if matching, or reject completely unrelated)
+        expect(result.current.translations.some((t) => t.bookId === 9999)).toBe(false);
+      });
+    });
+
+    it('prioritizes Tier 1 relational database editions when returned from /api/books/translations', async () => {
+      const mockDbResponse = {
+        results: [
+          { bookId: 1342, title: 'Pride and Prejudice', languageCode: 'en', isOriginal: true, isCurrent: true },
+          { bookId: 43647, title: 'Orgueil et Préjugé', languageCode: 'fr', isOriginal: false, isCurrent: false },
+          { bookId: 50000, title: 'Stolz und Vorurteil', languageCode: 'de', isOriginal: false, isCurrent: false },
+        ],
+      };
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/books/translations')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockDbResponse,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ results: [] }),
+        });
+      });
+
+      const { result } = renderHook(
+        () => useBookTranslations('Pride and Prejudice', 'Jane Austen', 1342, ['en']),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        expect(result.current.translations).toHaveLength(3);
+      });
+
+      expect(result.current.translations[0].bookId).toBe(1342);
+      expect(result.current.translations[0].isCurrent).toBe(true);
+      expect(result.current.translations[1].languageCode).toBe('fr');
+      expect(result.current.translations[2].languageCode).toBe('de');
+    });
   });
 });
 

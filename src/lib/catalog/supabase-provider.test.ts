@@ -407,5 +407,76 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.results[0].id).toBe(863);
     });
   });
+
+  describe('getBookTranslations', () => {
+    it('returns empty array for invalid bookId', async () => {
+      const provider = new SupabaseCatalogProvider({} as any);
+      expect(await provider.getBookTranslations(0)).toEqual([]);
+      expect(await provider.getBookTranslations(-5)).toEqual([]);
+    });
+
+    it('returns translations when cluster exists', async () => {
+      const mockSupabase = {
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'book_translations') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({
+                  data: [{ work_id: 'Q170583' }],
+                  error: null,
+                }),
+                in: vi.fn().mockResolvedValue({
+                  data: [
+                    { book_id: 1342, language: 'en', is_original: true },
+                    { book_id: 43647, language: 'fr', is_original: false },
+                  ],
+                  error: null,
+                }),
+              }),
+            };
+          }
+          if (table === 'books') {
+            return {
+              select: vi.fn().mockReturnValue({
+                in: vi.fn().mockResolvedValue({
+                  data: [
+                    { id: 1342, title: 'Pride and Prejudice', download_count: 50000 },
+                    { id: 43647, title: 'Orgueil et Préjugé', download_count: 1200 },
+                  ],
+                  error: null,
+                }),
+              }),
+            };
+          }
+          return {};
+        }),
+      };
+
+      const provider = new SupabaseCatalogProvider(mockSupabase as any);
+      const results = await provider.getBookTranslations(1342);
+
+      expect(results).toHaveLength(2);
+      expect(results[0].bookId).toBe(1342);
+      expect(results[0].isCurrent).toBe(true);
+      expect(results[0].languageCode).toBe('en');
+      expect(results[1].bookId).toBe(43647);
+      expect(results[1].isCurrent).toBe(false);
+      expect(results[1].languageCode).toBe('fr');
+    });
+
+    it('gracefully returns empty array on database error', async () => {
+      const mockSupabase = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockRejectedValue(new Error('DB Timeout')),
+          }),
+        }),
+      };
+
+      const provider = new SupabaseCatalogProvider(mockSupabase as any);
+      const results = await provider.getBookTranslations(1342);
+      expect(results).toEqual([]);
+    });
+  });
 });
 

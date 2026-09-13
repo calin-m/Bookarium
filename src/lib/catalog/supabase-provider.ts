@@ -268,6 +268,91 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       );
     }
   }
+
+  /**
+   * Retrieves verified multi-language translations and editions for a specific volume ID.
+   * Performs an indexed relational join via public.book_translations using IN subquery defense.
+   */
+  public async getBookTranslations(bookId: number): Promise<RelationalTranslationOption[]> {
+    if (!bookId || bookId <= 0) return [];
+
+    try {
+      const supabase = this.getSupabase();
+
+      // 1. Fetch work_id(s) for the target book
+      const { data: workMappings, error: workErr } = await supabase
+        .from('book_translations')
+        .select('work_id')
+        .eq('book_id', bookId);
+
+      if (workErr || !workMappings || workMappings.length === 0) {
+        return [];
+      }
+
+      const workIds = (workMappings as { work_id: string }[]).map((w) => w.work_id);
+
+      // 2. Fetch all edition book_ids in the same work(s) (Defense 1: IN subquery defense)
+      const { data: clusterEditions, error: clusterErr } = await supabase
+        .from('book_translations')
+        .select('book_id, language, is_original')
+        .in('work_id', workIds);
+
+      if (clusterErr || !clusterEditions || clusterEditions.length === 0) {
+        return [];
+      }
+
+      const editions = clusterEditions as { book_id: number; language: string; is_original: boolean }[];
+      const editionBookIds = editions.map((e) => e.book_id);
+
+      // 3. Fetch title and download_count for discovered books
+      const { data: books, error: booksErr } = await supabase
+        .from('books')
+        .select('id, title, download_count')
+        .in('id', editionBookIds);
+
+      if (booksErr || !books) {
+        return [];
+      }
+
+      const typedBooks = books as { id: number; title: string; download_count: number }[];
+      const booksMap = new Map(typedBooks.map((b) => [b.id, b]));
+
+      const results: RelationalTranslationOption[] = [];
+      for (const ed of editions) {
+        const book = booksMap.get(ed.book_id);
+        if (book) {
+          results.push({
+            bookId: ed.book_id,
+            title: book.title,
+            languageCode: ed.language,
+            isOriginal: Boolean(ed.is_original),
+            isCurrent: ed.book_id === bookId,
+          });
+        }
+      }
+
+      // Sort: Current book first, then original edition, then by download_count
+      return results.sort((a, b) => {
+        if (a.isCurrent && !b.isCurrent) return -1;
+        if (!a.isCurrent && b.isCurrent) return 1;
+        if (a.isOriginal && !b.isOriginal) return -1;
+        if (!a.isOriginal && b.isOriginal) return 1;
+        const countA = booksMap.get(a.bookId)?.download_count ?? 0;
+        const countB = booksMap.get(b.bookId)?.download_count ?? 0;
+        return countB - countA;
+      });
+    } catch {
+      return [];
+    }
+  }
+}
+
+export interface RelationalTranslationOption {
+  bookId: number;
+  title: string;
+  languageCode: string;
+  isOriginal: boolean;
+  isCurrent: boolean;
 }
 
 export const supabaseCatalogProvider = new SupabaseCatalogProvider();

@@ -1,0 +1,76 @@
+[
+  {
+    "workId": "Q170583",
+    "workTitle": "Pride and Prejudice",
+    "editions": [
+      { "bookId": 1342, "langCode": "en", "isOriginal": true },
+      { "bookId": 43647, "langCode": "fr", "isOriginal": false }
+    ]
+  },
+  {
+    "workId": "Q480",
+    "workTitle": "Don Quixote",
+    "editions": [
+      { "bookId": 2000, "langCode": "es", "isOriginal": true },
+      { "bookId": 996, "langCode": "en", "isOriginal": false },
+      { "bookId": 5921, "langCode": "en", "isOriginal": false }
+    ]
+  },
+  {
+    "workId": "Q58574",
+    "workTitle": "The Count of Monte Cristo",
+    "editions": [
+      { "bookId": 17989, "langCode": "fr", "isOriginal": true },
+      { "bookId": 1184, "langCode": "en", "isOriginal": false }
+    ]
+  },
+  {
+    "workId": "Q35160",
+    "workTitle": "The Odyssey",
+    "editions": [
+      { "bookId": 2850, "langCode": "grc", "isOriginal": true },
+      { "bookId": 1727, "langCode": "en", "isOriginal": false }
+    ]
+  },
+  {
+    "workId": "Q29478",
+    "workTitle": "Faust",
+    "editions": [
+      { "bookId": 2229, "langCode": "de", "isOriginal": true },
+      { "bookId": 14591, "langCode": "en", "isOriginal": false }
+    ]
+  },
+  {
+    "workId": "Q180736",
+    "workTitle": "Les Misérables",
+    "editions": [
+      { "bookId": 135, "langCode": "fr", "isOriginal": true },
+      { "bookId": 48731, "langCode": "en", "isOriginal": false }
+    ]
+  },
+  {
+    "workId": "Q862577",
+    "workTitle": "Aesop's Fables",
+    "editions": [
+      { "bookId": 29, "langCode": "en", "isOriginal": false },
+      { "bookId": 37, "langCode": "en", "isOriginal": false }
+    ]
+  },
+  {
+    "workId": "Q1535068",
+    "workTitle": "The First Book of the Kings",
+    "editions": [
+      { "bookId": 3008, "langCode": "en", "isOriginal": false },
+      { "bookId": 38, "langCode": "en", "isOriginal": false }
+    ]
+  },
+  {
+    "workId": "Q2870358",
+    "workTitle": "Barchester Towers",
+    "editions": [
+      { "bookId": 545, "langCode": "en", "isOriginal": true },
+      { "bookId": 123, "langCode": "en", "isOriginal": false }
+    ]
+  }
+]
+

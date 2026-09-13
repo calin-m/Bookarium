@@ -35,10 +35,15 @@ export const ALL_TRANSLATION_LANGUAGES: TranslationLanguage[] = [
   { code: 'bg', label: 'Bulgarian', nativeLabel: 'Български', flag: '🇧🇬' },
   { code: 'ca', label: 'Catalan', nativeLabel: 'Català', flag: '🇪🇸' },
   { code: 'cs', label: 'Czech', nativeLabel: 'Čeština', flag: '🇨🇿' },
+  { code: 'cy', label: 'Welsh', nativeLabel: 'Cymraeg', flag: '🏴󠁧󠁢󠁷󠁬󠁳󠁿' },
   { code: 'da', label: 'Danish', nativeLabel: 'Dansk', flag: '🇩🇰' },
   { code: 'en', label: 'English', nativeLabel: 'English', flag: '🇬🇧' },
+  { code: 'eo', label: 'Esperanto', nativeLabel: 'Esperanto', flag: '🟢' },
   { code: 'et', label: 'Estonian', nativeLabel: 'Eesti', flag: '🇪🇪' },
   { code: 'fi', label: 'Finnish', nativeLabel: 'Suomi', flag: '🇫🇮' },
+  { code: 'ga', label: 'Irish', nativeLabel: 'Gaeilge', flag: '🇮🇪' },
+  { code: 'gd', label: 'Scottish Gaelic', nativeLabel: 'Gàidhlig', flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿' },
+  { code: 'grc', label: 'Ancient Greek', nativeLabel: 'Ἑλληνική', flag: '🏛️' },
   { code: 'he', label: 'Hebrew', nativeLabel: 'עברית', flag: '🇮🇱' },
   { code: 'hr', label: 'Croatian', nativeLabel: 'Hrvatski', flag: '🇭🇷' },
   { code: 'hu', label: 'Hungarian', nativeLabel: 'Magyar', flag: '🇭🇺' },
@@ -49,19 +54,25 @@ export const ALL_TRANSLATION_LANGUAGES: TranslationLanguage[] = [
   { code: 'lv', label: 'Latvian', nativeLabel: 'Latviešu', flag: '🇱🇻' },
   { code: 'ms', label: 'Malay', nativeLabel: 'Bahasa Melayu', flag: '🇲🇾' },
   { code: 'no', label: 'Norwegian', nativeLabel: 'Norsk', flag: '🇳🇴' },
+  { code: 'sa', label: 'Sanskrit', nativeLabel: 'संस्कृतम्', flag: '🏛️' },
+  { code: 'sco', label: 'Scots', nativeLabel: 'Scots', flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿' },
   { code: 'sk', label: 'Slovak', nativeLabel: 'Slovenčina', flag: '🇸🇰' },
   { code: 'sl', label: 'Slovenian', nativeLabel: 'Slovenščina', flag: '🇸🇮' },
   { code: 'sr', label: 'Serbian', nativeLabel: 'Српски', flag: '🇷🇸' },
   { code: 'th', label: 'Thai', nativeLabel: 'ไทย', flag: '🇹🇭' },
+  { code: 'tl', label: 'Tagalog', nativeLabel: 'Wikang Tagalog', flag: '🇵🇭' },
   { code: 'vi', label: 'Vietnamese', nativeLabel: 'Tiếng Việt', flag: '🇻🇳' },
   { code: 'zh-TW', label: 'Chinese (Traditional)', nativeLabel: '繁體中文', flag: '🇹🇼' },
 ].sort((a, b) => a.label.localeCompare(b.label));
 
 export function resolveTranslationLanguage(code: string): TranslationLanguage | undefined {
   if (!code) return undefined;
-  const normalized = code.toLowerCase();
-  return ALL_TRANSLATION_LANGUAGES.find(
-    (l) => l.code.toLowerCase() === normalized || l.code.toLowerCase().startsWith(normalized)
+  const raw = code.toLowerCase().trim();
+  const base = raw.split(/[-_]/)[0];
+  return (
+    ALL_TRANSLATION_LANGUAGES.find((l) => l.code.toLowerCase() === raw) ||
+    ALL_TRANSLATION_LANGUAGES.find((l) => l.code.toLowerCase() === base) ||
+    ALL_TRANSLATION_LANGUAGES.find((l) => l.code.toLowerCase().startsWith(base))
   );
 }
 

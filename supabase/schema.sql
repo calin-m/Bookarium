@@ -683,5 +683,38 @@ CREATE POLICY "Service role can manage catalog books"
   USING (true)
   WITH CHECK (true);
 
+-- ============================================================================
+-- 10. Book Translations Junction Table (Relational Multilingual Catalog)
+-- Strictly relational: stores lightweight routing metadata (< 2.5 MB total for 75,000 books)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.book_translations (
+  work_id TEXT NOT NULL,
+  book_id INTEGER NOT NULL REFERENCES public.books(id) ON DELETE CASCADE,
+  language VARCHAR(10) NOT NULL,
+  is_original BOOLEAN DEFAULT false,
+  confidence_score NUMERIC(3, 2) DEFAULT 1.00,
+  source VARCHAR(32) DEFAULT 'authority_wikidata',
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  PRIMARY KEY (work_id, book_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_book_translations_book_id ON public.book_translations (book_id);
+CREATE INDEX IF NOT EXISTS idx_book_translations_work_id ON public.book_translations (work_id);
+CREATE INDEX IF NOT EXISTS idx_book_translations_work_lang ON public.book_translations (work_id, language);
+
+ALTER TABLE public.book_translations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read access for book translations" ON public.book_translations;
+CREATE POLICY "Public read access for book translations"
+  ON public.book_translations FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Service role can manage book translations" ON public.book_translations;
+CREATE POLICY "Service role can manage book translations"
+  ON public.book_translations FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
 
 

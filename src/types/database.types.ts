@@ -390,6 +390,44 @@ export interface Database {
         };
         Relationships: [];
       };
+      book_translations: {
+        Row: {
+          work_id: string;
+          book_id: number;
+          language: string;
+          is_original: boolean;
+          confidence_score: number;
+          source: string;
+          created_at: string;
+        };
+        Insert: {
+          work_id: string;
+          book_id: number;
+          language: string;
+          is_original?: boolean;
+          confidence_score?: number;
+          source?: string;
+          created_at?: string;
+        };
+        Update: {
+          work_id?: string;
+          book_id?: number;
+          language?: string;
+          is_original?: boolean;
+          confidence_score?: number;
+          source?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'book_translations_book_id_fkey';
+            columns: ['book_id'];
+            isOneToOne: false;
+            referencedRelation: 'books';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -413,3 +451,6 @@ export type UserBookCuration = Database['public']['Tables']['user_book_curation'
 export type UserReadingHabits = Database['public']['Tables']['user_reading_habits']['Row'];
 export type UserAccolade = Database['public']['Tables']['user_accolades']['Row'];
 export type DatabaseBook = Database['public']['Tables']['books']['Row'];
+export type BookTranslationRow = Database['public']['Tables']['book_translations']['Row'];
+export type BookTranslationInsert = Database['public']['Tables']['book_translations']['Insert'];
+export type BookTranslationUpdate = Database['public']['Tables']['book_translations']['Update'];

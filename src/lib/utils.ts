@@ -99,9 +99,11 @@ export function truncate(text: string, maxLength: number): string {
   return (lastSpace > 0 ? sub.slice(0, lastSpace) : sub) + '...';
 }
 
+const LINEAGE_SUFFIX_REGEX = /^(jr\.?|sr\.?|père|fils|ii|iii|iv|v)$/i;
+
 /**
  * Formats a raw author name (e.g. "Fitzgerald, F. Scott (Francis Scott)" or "Austen, Jane, 1775-1817")
- * into natural reading order (e.g. "F. Scott Fitzgerald", "Jane Austen").
+ * into natural reading order (e.g. "F. Scott Fitzgerald", "Jane Austen", "Henry James, Jr.").
  */
 export function formatAuthorName(rawName?: string): string {
   if (!rawName || typeof rawName !== 'string') return '';
@@ -116,12 +118,19 @@ export function formatAuthorName(rawName?: string): string {
   cleaned = cleaned.replace(/[,;]+$/, '').trim();
 
   if (cleaned.includes(',')) {
-    return cleaned
+    const parts = cleaned
       .split(',')
       .map((part) => part.trim())
-      .reverse()
-      .filter(Boolean)
-      .join(' ');
+      .filter(Boolean);
+
+    if (parts.length >= 3 && LINEAGE_SUFFIX_REGEX.test(parts[parts.length - 1])) {
+      const suffix = parts.pop()!;
+      const surname = parts[0];
+      const givenNames = parts.slice(1).join(' ');
+      return `${givenNames} ${surname}, ${suffix}`;
+    }
+
+    return parts.reverse().join(' ');
   }
   return cleaned;
 }
