@@ -224,8 +224,11 @@ export const BookCard: React.FC<BookCardProps> = ({
           </CursorTooltip>
         )}
 
-        {/* Quick Action Overlay Badges (Top-Right) */}
-        <div className="absolute top-2.5 right-2.5 flex flex-col gap-1.5 z-20">
+        {/* Quick Action Overlay Badges (Top-Right) with >=44px Hitboxes */}
+        <div
+          className="absolute top-2.5 right-2.5 flex flex-col gap-2.5 z-20"
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
             onClick={(e) => {
@@ -263,7 +266,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                 setIsConfirmingRemoval(false);
               }
             }}
-            className={`p-1.5 rounded-full transition-all shadow-xs ${
+            className={`relative touch-manipulation p-2 rounded-full transition-all shadow-xs after:absolute after:-inset-1.5 after:content-[''] ${
               isConfirmingRemoval
                 ? 'bg-destructive text-destructive-foreground scale-110 ring-2 ring-destructive/40 animate-pulse'
                 : isFavorite
@@ -296,7 +299,7 @@ export const BookCard: React.FC<BookCardProps> = ({
               setShowTooltip(true);
             }}
             onMouseLeave={() => setHoveredAction('preview')}
-            className={`p-1.5 rounded-full transition-all shadow-xs ${
+            className={`relative touch-manipulation p-2 rounded-full transition-all shadow-xs after:absolute after:-inset-1.5 after:content-[''] ${
               isSaved
                 ? 'bg-primary text-primary-foreground scale-105'
                 : 'bg-card text-muted-foreground hover:text-primary'
@@ -309,25 +312,25 @@ export const BookCard: React.FC<BookCardProps> = ({
       </div>
 
       {/* Book Metadata Content */}
-      <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between gap-3">
-        <div className="space-y-1.5">
+      <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between gap-2 sm:gap-3">
+        <div className="space-y-1 sm:space-y-1.5">
           <div>
-            <h3 className="font-serif font-bold text-foreground text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors text-balance">
+            <h3 className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors text-balance">
               {book.title}
             </h3>
-            <p className="text-xs text-muted-foreground font-sans line-clamp-1 mt-0.5">
+            <p className="text-[11px] sm:text-xs text-muted-foreground font-sans line-clamp-1 mt-0.5">
               {authorNames}
             </p>
           </div>
 
           {/* Multiple Subject Tags */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 pt-0.5 sm:pt-1">
             {tags.map((tag) => (
               <Badge
                 key={tag}
                 variant="outline"
                 size="sm"
-                className="bg-muted/40 text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors shadow-2xs"
+                className="bg-muted/40 text-[9px] sm:text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors shadow-2xs py-0 sm:py-0.5 px-1.5 sm:px-2"
               >
                 {tag}
               </Badge>
@@ -335,10 +338,10 @@ export const BookCard: React.FC<BookCardProps> = ({
           </div>
         </div>
 
-        <div className="space-y-2 pt-2 border-t border-border">
+        <div className="space-y-1.5 sm:space-y-2 pt-1.5 sm:pt-2 border-t border-border">
           <div
             onClick={activeView === 'favorites' || activeView === 'bookshelf' ? handleCoverClick : undefined}
-            className={`flex items-center justify-between text-xs text-muted-foreground ${
+            className={`flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground ${
               activeView === 'favorites' || activeView === 'bookshelf' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
             }`}
             title={activeView === 'favorites' || activeView === 'bookshelf' ? 'Click to rate or change reading status' : undefined}
@@ -346,28 +349,28 @@ export const BookCard: React.FC<BookCardProps> = ({
             {rating ? (
               <StarRating value={rating} readOnly size="sm" showLabel />
             ) : (
-              <span className="font-mono text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
+              <span className="font-mono text-[10px] sm:text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
             )}
             {isRestricted ? (
               <span
-                className="text-[10px] font-mono font-medium tracking-wider text-amber-600 dark:text-amber-400 uppercase"
+                className="text-[9px] sm:text-[10px] font-mono font-medium tracking-wider text-amber-600 dark:text-amber-400 uppercase"
                 title={evaluation.reason || `Protected in ${country} under local copyright law`}
               >
                 Protected ({country})
               </span>
             ) : status ? (
-              <span className="text-[10px] font-mono font-bold uppercase text-primary">
+              <span className="text-[9px] sm:text-[10px] font-mono font-bold uppercase text-primary">
                 {status === 'currently_reading' ? '📖 Reading' : status === 'finished' ? '✓ Finished' : '🔖 Want to Read'}
               </span>
             ) : (
-              <span className="text-[10px] font-mono font-medium tracking-wider text-success uppercase">
+              <span className="text-[9px] sm:text-[10px] font-mono font-medium tracking-wider text-success uppercase">
                 CC0 / Free
               </span>
             )}
           </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
             {isRestricted ? (
               <Button
                 variant="outline"

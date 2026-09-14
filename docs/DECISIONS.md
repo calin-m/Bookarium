@@ -720,5 +720,35 @@
   - Non-intrusive modal experiences maintaining visual connection with underlying bookshelves.
   - Protection against accidental data loss and accidental reading progress overwrite.
 
-
-
+## ADR-046: Mobile Floating Bottom Capsule Dock, Adaptive Bottom Sheet Filters & 2-Column Catalog Density
+- **Status**: Accepted
+- **Context**:
+  1. **Mobile Vertical Thumb Zone & Reachability Friction**:
+     - Squeezing catalog filter triggers, view mode switchers, and pagination into a sticky top toolbar (`StickyCatalogToolbar`) on mobile viewports (< 640px) forced repetitive, awkward thumb reaches into the upper screen zone and consumed valuable reading estate immediately below the fixed navigation bar.
+  2. **Filter Drawer Usability on Small Screens**:
+     - The desktop left-sliding filter sidebar (`AdvancedFilterDrawer`) felt clunky on mobile devices, displaying long vertically stacked rows that required extensive scrolling to reach filter actions.
+  3. **Low Mobile Catalog Density**:
+     - Single-column card layouts rendered ~702px-tall cards, permitting only ~0.8 books to be visible simultaneously on standard mobile viewports (e.g. 390×844), severely impeding catalog discovery.
+  4. **Corner Button Tap Collisions**:
+     - 26px touch targets for Favorite and Bookmark buttons in `BookCard` caused accidental clicks on the underlying book cover, inadvertently opening the full reader subsystem.
+- **Decision**:
+  1. **Mobile Floating Bottom Capsule Dock (`src/components/presentation/StickyCatalogToolbar.tsx`)**:
+     - Segregated desktop and mobile presentation layers.
+     - Preserved full-width sticky top sub-header with API status, roundtrip latency telemetry, and sticky pagination for desktop/tablet ($\ge$ 640px).
+     - Introduced an ergonomic floating capsule dock on mobile (`< 640px`) centered at `fixed bottom-6 inset-x-0 mx-auto w-fit z-40`:
+       - `[ ⚡ Filters (N) ]` trigger with active count badge.
+       - View mode toggle (`[ ⊞ Grid | ☰ Shelf ]`) with 36px touch targets.
+       - Built-in `[ ↑ Top ]` button with smooth scrolling.
+     - Coordinated `BackToTop` in `src/app/page.tsx` to hide the standalone button on mobile in catalog view, eliminating duplicate controls.
+  2. **Adaptive Bottom Sheet Filter Drawer (`src/components/presentation/AdvancedFilterDrawer.tsx`)**:
+     - Converted mobile view (`< xl`) into a native bottom sheet (`slide-in-from-bottom`) with drag handle, body scroll lock, and sticky footer action buttons (`Reset All` & `Show Results`).
+     - Preserved fixed left sidebar on desktop (`xl:`).
+     - Compacted Eras and Subjects into multi-select chip clouds (`flex flex-wrap gap-1.5`), reducing drawer scroll height by >70%.
+  3. **2-Column Responsive Mobile Catalog Grid (`src/components/presentation/BookGrid.tsx` & `BookCard.tsx`)**:
+     - Configured 2-column mobile grid (`grid-cols-2 gap-3.5 sm:gap-6`), tripling mobile catalog density from 0.8 books to 4 visible books per screen.
+     - Expanded corner button hitboxes to $\ge$44×44px via CSS pseudo-elements and added `e.stopPropagation()` to prevent cover click bubbling.
+- **Consequences**:
+  - Natural thumb-zone ergonomics for mobile catalog filtering and navigation.
+  - Zero accidental reader launches during book curation.
+  - Significantly enhanced catalog browse velocity and visual immersion.
+  - 100% non-breaking desktop preservation.

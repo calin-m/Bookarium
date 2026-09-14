@@ -324,7 +324,7 @@ function HomeContent() {
         ) : activeView === 'bookmarks' ? (
           <BookmarksView onBrowseCatalog={() => setActiveView('catalog')} />
         ) : (
-          <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 sm:pb-12 scroll-mt-32">
             <div key={`view-page-turn-${activeView}`} className="animate-page-turn">
               {/* Booksaw Centered Section Header */}
               <SectionHeader
@@ -546,7 +546,7 @@ function HomeContent() {
       </Modal>
 
       <Footer />
-      <BackToTop />
+      <BackToTop className={activeView === 'catalog' ? 'hidden sm:block' : ''} />
     </div>
   );
 }

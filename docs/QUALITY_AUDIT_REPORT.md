@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 13 Sep 2026 18:11:47 GMT  
+**Last Generated**: Mon, 14 Sep 2026 10:44:16 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 169 passed  
-**Total Verified Tests**: 1562 passed  
+**Total Verified Tests**: 1566 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1562 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1566 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 45 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 46 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.53%** (7078/7649) — *Target: $ge$ 80%*
-- **Statements**: **90.97%** (7661/8421) — *Target: $ge$ 80%*
-- **Functions**: **89.09%** (1643/1844) — *Target: $ge$ 80%*
-- **Branches**: **81.25%** (6711/8259) — *Target: $ge$ 80%*
+- **Lines**: **92.51%** (7085/7658) — *Target: $ge$ 80%*
+- **Statements**: **90.97%** (7668/8429) — *Target: $ge$ 80%*
+- **Functions**: **89.06%** (1646/1848) — *Target: $ge$ 80%*
+- **Branches**: **81.29%** (6734/8283) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1562 Tests)
+## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1566 Tests)
 
 ### 🚀 App Routes & Pages (15 Suites · 163 Tests)
 
@@ -289,7 +289,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (25 Suites · 295 Tests)
+### 🎨 Catalog & Presentation (25 Suites · 299 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
@@ -721,7 +721,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and 2-part API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
@@ -733,6 +733,10 @@
 - ✔ `applies -translate-y-[calc(100%+4rem)] and pointer-events-none when isVisible is false`
 - ✔ `renders archive fetching badge when isFetching is true`
 - ✔ `renders direct page jump input without redundant Pg label`
+- ✔ `renders mobile dock with filter trigger, view mode switch, and scroll-to-top buttons`
+- ✔ `handles mobile filter opening and view mode switching`
+- ✔ `scrolls smoothly to top when mobile dock top button is clicked`
+- ✔ `hides mobile dock with translate-y-24 and opacity-0 when isVisible is false`
 
 </details>
 
@@ -2598,7 +2602,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **2 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

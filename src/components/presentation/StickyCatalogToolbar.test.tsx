@@ -21,8 +21,8 @@ describe('StickyCatalogToolbar component', () => {
       />
     );
 
-    expect(screen.getByText('Filters')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getAllByText('Filters')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('2')[0]).toBeInTheDocument();
     expect(screen.getByText('Victorian')).toBeInTheDocument();
     expect(screen.getByText('French')).toBeInTheDocument();
     expect(screen.getByTestId('api-status-badge')).toHaveTextContent('Live');
@@ -277,5 +277,128 @@ describe('StickyCatalogToolbar component', () => {
 
     expect(screen.getByLabelText('Jump to page')).toHaveValue('3');
     expect(screen.queryByText('Pg')).not.toBeInTheDocument();
+  });
+
+  describe('Mobile Floating Bottom Capsule Dock', () => {
+    it('renders mobile dock with filter trigger, view mode switch, and scroll-to-top buttons', () => {
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={3}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+        />
+      );
+
+      const dock = screen.getByTestId('mobile-catalog-dock');
+      expect(dock).toBeInTheDocument();
+      expect(dock).toHaveAttribute('aria-label', 'Mobile catalog controls');
+
+      const filterBtn = screen.getByTestId('mobile-dock-filters-btn');
+      expect(filterBtn).toBeInTheDocument();
+      expect(filterBtn).toHaveAttribute('aria-label', 'Open filters');
+      expect(filterBtn).toHaveTextContent('3');
+
+      const gridBtn = screen.getByTestId('mobile-dock-grid-btn');
+      const shelfBtn = screen.getByTestId('mobile-dock-shelf-btn');
+      expect(gridBtn).toBeInTheDocument();
+      expect(gridBtn).toHaveAttribute('aria-pressed', 'true');
+      expect(shelfBtn).toBeInTheDocument();
+      expect(shelfBtn).toHaveAttribute('aria-pressed', 'false');
+
+      const topBtn = screen.getByTestId('mobile-dock-top-btn');
+      expect(topBtn).toBeInTheDocument();
+      expect(topBtn).toHaveAttribute('aria-label', 'Scroll to top');
+    });
+
+    it('handles mobile filter opening and view mode switching', () => {
+      const handleOpenFilters = vi.fn();
+      const handleViewModeChange = vi.fn();
+
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={handleViewModeChange}
+          onOpenFilters={handleOpenFilters}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('mobile-dock-filters-btn'));
+      expect(handleOpenFilters).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByTestId('mobile-dock-shelf-btn'));
+      expect(handleViewModeChange).toHaveBeenCalledWith('shelf');
+
+      fireEvent.click(screen.getByTestId('mobile-dock-grid-btn'));
+      expect(handleViewModeChange).toHaveBeenCalledWith('grid');
+    });
+
+    it('scrolls smoothly to top when mobile dock top button is clicked', () => {
+      const scrollToSpy = vi.fn();
+      vi.stubGlobal('scrollTo', scrollToSpy);
+
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('mobile-dock-top-btn'));
+      expect(scrollToSpy).toHaveBeenCalledWith({
+        top: 0,
+        behavior: 'smooth',
+      });
+
+      vi.unstubAllGlobals();
+    });
+
+    it('hides mobile dock with translate-y-24 and opacity-0 when isVisible is false', () => {
+      const { rerender } = render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          isVisible={true}
+        />
+      );
+
+      const dock = screen.getByTestId('mobile-catalog-dock');
+      expect(dock).toHaveClass('translate-y-0');
+      expect(dock).toHaveClass('opacity-100');
+
+      rerender(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          isVisible={false}
+        />
+      );
+
+      expect(dock).toHaveClass('translate-y-24');
+      expect(dock).toHaveClass('opacity-0');
+      expect(dock).toHaveClass('pointer-events-none');
+    });
   });
 });

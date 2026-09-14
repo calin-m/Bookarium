@@ -1,6 +1,23 @@
 'use client';
 
 import React, { useState, useMemo, useSyncExternalStore } from 'react';
+import {
+  Search,
+  X,
+  ShieldCheck,
+  Zap,
+  Download,
+  Bookmark,
+  Compass,
+} from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
+import { FEATURED_HERO_BOOKS, getJurisdictionSafeFeaturedBooks, type FeaturedHeroBook } from '@/config/featured-books';
+import type { GutendexBook } from '@/types/book.types';
+import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
+import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { LanguageSelector } from './LanguageSelector';
+import { HeroFeaturedBook3D } from './HeroFeaturedBook3D';
 
 const subscribeHourly = (callback: () => void) => {
   const interval = setInterval(callback, 60 * 1000);
@@ -18,24 +35,6 @@ const getHourlySnapshot = () => {
 const getHourlyServerSnapshot = () => {
   return getCurrentHourlyIndex();
 };
-import {
-  Search,
-  X,
-  ShieldCheck,
-  Zap,
-  Download,
-  Bookmark,
-  Sparkles,
-  Compass,
-} from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
-import { FEATURED_HERO_BOOKS, getJurisdictionSafeFeaturedBooks, type FeaturedHeroBook } from '@/config/featured-books';
-import type { GutendexBook } from '@/types/book.types';
-import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
-import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { LanguageSelector } from './LanguageSelector';
-import { HeroFeaturedBook3D } from './HeroFeaturedBook3D';
 
 export interface HeroSearchProps {
   search?: string;
@@ -251,9 +250,9 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                   type="text"
                   value={query}
                   onChange={(e) => handleInputChange(e.target.value)}
-                  placeholder="Search 70,000+ classics by title or author (e.g. Austen, Plato)..."
+                  placeholder="Search 70,000+ classics by title or author..."
                   className={`w-full h-12 pl-11 ${
-                    query ? 'pr-32' : 'pr-24'
+                    query ? 'pr-32' : 'pr-24 sm:pr-28'
                   } text-xs sm:text-sm font-sans rounded-xl bg-card border shadow-booksaw hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground transition-all duration-150 ${
                     searchError
                       ? 'border-destructive focus:border-destructive focus:ring-destructive'
@@ -331,7 +330,6 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Booksaw Standing 3D Book Spotlight with Realistic 3D Opening Physics */}
           {/* Right Column: Booksaw Standing 3D Book Spotlight with Realistic 3D Opening Physics */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
             <HeroFeaturedBook3D

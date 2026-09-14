@@ -11,6 +11,7 @@ import {
   WifiOff,
   Zap,
   Sparkles,
+  ArrowUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useHasMounted } from '@/hooks/useHasMounted';
@@ -96,16 +97,18 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   const pageSizes = [8, 16];
 
   return (
-    <div
-      className={`sticky top-16 z-30 w-full bg-background border-y border-border shadow-md transition-transform duration-300 ease-in-out py-2.5 px-4 sm:px-6 lg:px-8 ${
-        !isVisible
-          ? '-translate-y-[calc(100%+4rem)] pointer-events-none'
-          : isHeaderVisible
-            ? 'translate-y-0'
-            : '-translate-y-16'
-      }`}
-      data-testid="sticky-catalog-toolbar"
-    >
+    <>
+      {/* Desktop / Tablet Sticky Sub-Header Toolbar */}
+      <div
+        className={`hidden sm:block sticky top-16 z-30 w-full bg-background border-y border-border shadow-md transition-transform duration-300 ease-in-out py-2.5 px-4 sm:px-6 lg:px-8 ${
+          !isVisible
+            ? '-translate-y-[calc(100%+4rem)] pointer-events-none'
+            : isHeaderVisible
+              ? 'translate-y-0'
+              : '-translate-y-16'
+        }`}
+        data-testid="sticky-catalog-toolbar"
+      >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
         
         {/* Left Side: Filter Trigger, Active Chips & Per Page Selector */}
@@ -116,7 +119,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             size="sm"
             onClick={onOpenFilters}
             data-testid="open-filters-btn"
-            className={`text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border transition-all ${
+            className={`h-9 px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border transition-all ${
               isFiltersOpen || activeFilterCount > 0
                 ? 'border-primary-600 bg-primary-600 text-white hover:bg-primary-700 hover:text-white shadow-xs'
                 : 'border-border text-foreground hover:border-primary hover:bg-muted hover:text-foreground'
@@ -125,7 +128,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             aria-expanded={isFiltersOpen}
           >
             <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Filters</span>
+            <span className="inline">Filters</span>
             {activeFilterCount > 0 && (
               <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold ${
                 isFiltersOpen ? 'bg-primary text-primary-foreground' : 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 [html.sepia_&]:bg-primary/30 [html.sepia_&]:text-primary-foreground'
@@ -136,7 +139,10 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
           </Button>
 
           {/* Active Filter Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full sm:max-w-md md:max-w-lg shrink min-w-0 py-0.5">
+          <div
+            data-no-swipe
+            className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-full sm:max-w-md md:max-w-lg shrink min-w-0 py-0.5"
+          >
             {activeFilterChips.map((chip) => (
               <span
                 key={chip.id}
@@ -194,8 +200,8 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
         {/* Right Side: 2-Part API Telemetry, View Mode & Sticky Pagination */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           
-          {/* 2-Part API Status & Latency Indicator */}
-          <div className="flex items-center gap-1 sm:gap-1.5">
+          {/* 2-Part API Status & Latency Indicator (Tablet & Desktop) */}
+          <div className="hidden sm:flex items-center gap-1 sm:gap-1.5">
             {/* Part 1: Live API Status Badge */}
             <div
               className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border border-border ${
@@ -230,14 +236,14 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             </div>
           </div>
 
-          <div className="h-4 w-[1px] bg-border hidden md:block" />
+          <div className="h-4 w-[1px] bg-border hidden sm:block" />
 
-          {/* View Mode Toggle */}
+          {/* View Mode Toggle with Comfortable Mobile Touch Targets */}
           <div className="flex items-center bg-muted p-0.5 rounded-lg border border-border">
             <button
               type="button"
               onClick={() => onViewModeChange('grid')}
-              className={`p-1.5 rounded-md text-xs transition-all ${
+              className={`p-2 sm:p-1.5 rounded-md text-xs transition-all ${
                 viewMode === 'grid'
                   ? 'bg-card text-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground'
@@ -246,12 +252,12 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               title="Cover Grid View (2:3 Portrait Cards)"
               aria-pressed={viewMode === 'grid'}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
+              <LayoutGrid className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
             </button>
             <button
               type="button"
               onClick={() => onViewModeChange('shelf')}
-              className={`p-1.5 rounded-md text-xs transition-all ${
+              className={`p-2 sm:p-1.5 rounded-md text-xs transition-all ${
                 viewMode === 'shelf'
                   ? 'bg-card text-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground'
@@ -260,15 +266,15 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               title="Spine Shelf View (Architectural Bookcase)"
               aria-pressed={viewMode === 'shelf'}
             >
-              <Library className="w-3.5 h-3.5" />
+              <Library className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
             </button>
           </div>
 
-          <div className="h-4 w-[1px] bg-border hidden xs:block" />
+          <div className="h-4 w-[1px] bg-border hidden sm:block" />
 
-          {/* Sticky Pagination Controls */}
+          {/* Sticky Pagination Controls (Tablet & Desktop; Mobile uses primary bottom pagination) */}
           {onPageChange && (
-            <div className="flex items-center gap-1 sm:gap-1.5">
+            <div className="hidden sm:flex items-center gap-1 sm:gap-1.5">
               <Button
                 variant="outline"
                 size="sm"
@@ -369,6 +375,98 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
         </div>
 
       </div>
-    </div>
+      </div>
+
+      {/* Mobile Floating Bottom Capsule Dock */}
+      <aside
+        className={`fixed bottom-6 inset-x-0 mx-auto w-fit max-w-[92vw] z-40 sm:hidden transition-all duration-300 ease-in-out ${
+          !isVisible
+            ? 'translate-y-24 opacity-0 pointer-events-none'
+            : 'translate-y-0 opacity-100'
+        }`}
+        data-testid="mobile-catalog-dock"
+        aria-label="Mobile catalog controls"
+      >
+        <div className="flex items-center gap-1.5 p-1.5 bg-card border border-border shadow-2xl rounded-full text-foreground">
+          {/* Mobile Filter Trigger */}
+          <button
+            type="button"
+            onClick={onOpenFilters}
+            data-testid="mobile-dock-filters-btn"
+            className={`h-9 px-3.5 rounded-full text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center transition-all ${
+              isFiltersOpen || activeFilterCount > 0
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'bg-muted hover:bg-muted/80 text-foreground'
+            }`}
+            aria-label={isFiltersOpen ? 'Close filters' : 'Open filters'}
+            aria-expanded={isFiltersOpen}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span
+                className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold ${
+                  isFiltersOpen || activeFilterCount > 0
+                    ? 'bg-primary-foreground/25 text-primary-foreground'
+                    : 'bg-primary text-primary-foreground'
+                }`}
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          <div className="h-4 w-[1px] bg-border" />
+
+          {/* Mobile View Mode Toggle */}
+          <div className="flex items-center bg-muted p-0.5 rounded-full border border-border">
+            <button
+              type="button"
+              onClick={() => onViewModeChange('grid')}
+              data-testid="mobile-dock-grid-btn"
+              className={`p-2 rounded-full text-xs transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              aria-label="Switch to grid layout"
+              title="Cover Grid"
+              aria-pressed={viewMode === 'grid'}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewModeChange('shelf')}
+              data-testid="mobile-dock-shelf-btn"
+              className={`p-2 rounded-full text-xs transition-all ${
+                viewMode === 'shelf'
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              aria-label="Switch to shelf layout"
+              title="Bookshelf Rack"
+              aria-pressed={viewMode === 'shelf'}
+            >
+              <Library className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="h-4 w-[1px] bg-border" />
+
+          {/* Scroll to Top */}
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            data-testid="mobile-dock-top-btn"
+            className="p-2 rounded-full text-muted-foreground hover:text-primary hover:bg-muted transition-colors cursor-pointer"
+            aria-label="Scroll to top"
+            title="Scroll to top"
+          >
+            <ArrowUp className="w-4 h-4" />
+          </button>
+        </div>
+      </aside>
+    </>
   );
 };

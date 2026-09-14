@@ -616,3 +616,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-043: Supabase PostgreSQL Query Statement Timeout Resolution via Estimated Planner Statistics**
 - **ADR-044: Multi-Jurisdiction Copyright Governance, Digital Age Consent & Content Safety Architecture**
 - **ADR-045: Literary Notebook Dynamic Font-Reflow Deep Linking, Transparent Dialogs & Smart Reading Milestones**
+- **ADR-046: Mobile Floating Bottom Capsule Dock, Adaptive Bottom Sheet Filters & 2-Column Catalog Density**

@@ -1,7 +1,7 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-09-13`  
+> **Last Synchronized**: `2026-09-14`  
 > **Topology Health**: `181` Modules Analyzed • `628` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
@@ -18,15 +18,15 @@ flowchart TD
         Nav["Navbar.tsx\n(Brand Reset, View Switcher, Theme Cycler)"]
         Hero["HeroSearch.tsx\n(Dynamic 3D Rotating Spotlight & Search)"]
         Hero3D["HeroFeaturedBook3D.tsx\n(3D Open-Cover Hinge & Leaf-Flip Engine)"]
-        Toolbar["StickyCatalogToolbar.tsx\n(0px Flush Header, Filters Toggle, Telemetry)"]
-        FilterDrawer["AdvancedFilterDrawer.tsx\n(Left Push-Sidebar: Eras, Sort, Formats)"]
+        Toolbar["StickyCatalogToolbar.tsx\n(Desktop Sticky Sub-Header & Mobile Bottom Capsule Dock)"]
+        FilterDrawer["AdvancedFilterDrawer.tsx\n(Adaptive Drawer: Mobile Bottom Sheet & Desktop Left Sidebar)"]
         EditorialQuote["EditorialQuoteSection.tsx\n(Classic of the Day & Collision Guard)"]
         LiteraryQuotes["LiteraryQuotes.tsx\n(Words That Shaped Humanity & Safe Shuffling)"]
         CopyrightBanner["CopyrightNoticeBanner.tsx\n(Declarative Territorial Restriction & Public Domain Notice)"]
         ContentAdvisory["ContentAdvisoryBanner.tsx\n(Non-blocking Mature/Historical Context Advisory)"]
         
         subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]
-            Grid["Catalog View (/)\n(Editorial Card Grid & 3D Hardwood Shelf)"]
+            Grid["Catalog View (/)\n(2-Col Mobile Grid, Multi-Col Desktop & 3D Hardwood Shelf)"]
             ShelfView["Bookshelf View (/bookshelf)\n(Curated Library & Custom Named Shelves)"]
             FavView["Favorites View (/favorites)\n(Personal Masterworks Collection)"]
             MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger & Telemetry)"]
