@@ -62,5 +62,10 @@ describe('LanguageSelector component', () => {
     const options = screen.getAllByRole('option');
     expect(options).toHaveLength(CATALOG_LANGUAGES.length);
   });
+
+  it('displays synthetic option when value contains comma-separated multi-languages', () => {
+    render(<LanguageSelector variant="compact" value="en,fr" />);
+    expect(screen.getByRole('option', { name: 'Multiple (2 Languages)' })).toBeInTheDocument();
+  });
 });
 

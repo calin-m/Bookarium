@@ -469,7 +469,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
                 value={speechVoiceURI || ''}
                 onChange={(e) => onSpeechVoiceChange(e.target.value || null)}
                 aria-label="Preferred narrator voice"
-                className="w-full py-2 px-3 text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer"
+                className="w-full py-2 px-3 text-base sm:text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer max-w-full truncate"
               >
                 <option value="">✨ Auto-Select Highest Quality Voice (Recommended)</option>
                 {naturalVoices.length > 0 && (

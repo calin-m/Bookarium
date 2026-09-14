@@ -91,4 +91,68 @@ describe('ReaderFooter', () => {
     fireEvent.click(screen.getByLabelText('Next Chapter'));
     expect(onSelectChapter).toHaveBeenCalledWith(3);
   });
+
+  it('renders mobile quick tools and dispatches drawer and theme actions', () => {
+    const onToggleToc = vi.fn();
+    const onToggleSearch = vi.fn();
+    const onToggleSpeech = vi.fn();
+    const onToggleAnnotations = vi.fn();
+    const onToggleControls = vi.fn();
+    const onToggleTranslations = vi.fn();
+    const onThemeChange = vi.fn();
+
+    render(
+      <ReaderFooter
+        {...defaultProps}
+        onToggleToc={onToggleToc}
+        onToggleSearch={onToggleSearch}
+        onToggleSpeech={onToggleSpeech}
+        onToggleAnnotations={onToggleAnnotations}
+        onToggleControls={onToggleControls}
+        onToggleTranslations={onToggleTranslations}
+        onThemeChange={onThemeChange}
+      />
+    );
+
+    // Chapter title TOC trigger
+    const tocTrigger = screen.getByTestId('footer-toc-trigger');
+    fireEvent.click(tocTrigger);
+    expect(onToggleToc).toHaveBeenCalledTimes(1);
+
+    // Search button
+    fireEvent.click(screen.getByLabelText('Search in Book'));
+    expect(onToggleSearch).toHaveBeenCalledTimes(1);
+
+    // Speech button
+    fireEvent.click(screen.getByLabelText('Read Aloud Narration'));
+    expect(onToggleSpeech).toHaveBeenCalledTimes(1);
+
+    // Notes button
+    fireEvent.click(screen.getByLabelText('Notes & Highlights'));
+    expect(onToggleAnnotations).toHaveBeenCalledTimes(1);
+
+    // Controls button
+    fireEvent.click(screen.getByLabelText('Typography & Theme Controls'));
+    expect(onToggleControls).toHaveBeenCalledTimes(1);
+
+    // Translations button
+    fireEvent.click(screen.getByLabelText('Language Editions & Translations'));
+    expect(onToggleTranslations).toHaveBeenCalledTimes(1);
+
+    // Theme cycle button (sepia -> dark)
+    fireEvent.click(screen.getByLabelText('Current theme: sepia. Click to switch theme.'));
+    expect(onThemeChange).toHaveBeenCalledWith('dark');
+  });
+
+  it('renders Prev and Next buttons with visible labels and accessible touch target classes', () => {
+    render(<ReaderFooter {...defaultProps} />);
+
+    const prevBtn = screen.getByLabelText('Previous Page');
+    expect(prevBtn).toHaveTextContent('Prev');
+    expect(prevBtn.className).toContain('min-h-[42px]');
+
+    const nextBtn = screen.getByLabelText('Next Page');
+    expect(nextBtn).toHaveTextContent('Next');
+    expect(nextBtn.className).toContain('min-h-[42px]');
+  });
 });

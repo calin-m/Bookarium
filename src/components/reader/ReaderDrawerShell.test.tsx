@@ -127,5 +127,34 @@ describe('ReaderDrawerShell Component', () => {
     expect(panel.className).toContain('overflow-auto');
     expect(panel.className).not.toContain('overflow-hidden');
   });
+
+  it('renders mobile grab handle and bottom sheet responsive classes', () => {
+    render(
+      <ReaderDrawerShell
+        isOpen={true}
+        onClose={vi.fn()}
+        title="Table of Contents"
+        ariaLabel="TOC Drawer"
+        panelTestId="test-panel"
+        backdropTestId="test-backdrop"
+      >
+        <div>Chapters</div>
+      </ReaderDrawerShell>
+    );
+
+    const grabHandle = screen.getByTestId('reader-drawer-grab-handle');
+    expect(grabHandle).toBeInTheDocument();
+    expect(grabHandle).toHaveClass('sm:hidden');
+
+    const panel = screen.getByTestId('test-panel');
+    expect(panel).toHaveClass('bottom-0');
+    expect(panel).toHaveClass('rounded-t-2xl');
+    expect(panel).toHaveClass('overscroll-contain');
+    expect(panel).toHaveClass('sm:w-96');
+    expect(panel).toHaveClass('sm:max-w-md');
+
+    const backdrop = screen.getByTestId('test-backdrop');
+    expect(backdrop).toHaveClass('touch-none');
+  });
 });
 

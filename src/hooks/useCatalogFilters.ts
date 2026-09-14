@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
-import { LITERARY_ERAS, CATALOG_LANGUAGES, GENRE_FACETS } from '@/config/catalog-filters';
+import { LITERARY_ERAS, CATALOG_LANGUAGES, GENRE_FACETS, FORMAT_FILTERS } from '@/config/catalog-filters';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
 function subscribeMobile(callback: () => void) {
@@ -218,9 +218,23 @@ export function useCatalogFilters() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const selectedEraObj = useMemo(() => {
-    return LITERARY_ERAS.find((e) => e.id === era);
+  const selectedEraObjs = useMemo(() => {
+    if (!era) return [];
+    const eraIds = era.split(',').map((e) => e.trim()).filter(Boolean);
+    return LITERARY_ERAS.filter((e) => eraIds.includes(e.id));
   }, [era]);
+
+  const authorYearStart = useMemo(() => {
+    if (selectedEraObjs.length === 0) return undefined;
+    const starts = selectedEraObjs.map((e) => e.start).filter((s): s is number => s !== undefined);
+    return starts.length > 0 ? Math.min(...starts) : undefined;
+  }, [selectedEraObjs]);
+
+  const authorYearEnd = useMemo(() => {
+    if (selectedEraObjs.length === 0) return undefined;
+    const ends = selectedEraObjs.map((e) => e.end).filter((e): e is number => e !== undefined);
+    return ends.length > 0 ? Math.max(...ends) : undefined;
+  }, [selectedEraObjs]);
 
   const queryParams = useMemo<CatalogQueryParams>(() => {
     const subPagesPerBatch = Math.max(1, Math.floor(32 / pageSize));
@@ -230,14 +244,14 @@ export function useCatalogFilters() {
       search: search || undefined,
       topic: topic || undefined,
       languages: language || undefined,
-      authorYearStart: selectedEraObj?.start,
-      authorYearEnd: selectedEraObj?.end,
+      authorYearStart,
+      authorYearEnd,
       sort: sort || undefined,
       mimeType: format || undefined,
       page: apiPage,
       copyright: false as const,
     };
-  }, [search, topic, language, selectedEraObj, sort, format, page, pageSize]);
+  }, [search, topic, language, authorYearStart, authorYearEnd, sort, format, page, pageSize]);
 
   const activeFilterChips = useMemo<ActiveFilterChip[]>(() => {
     const chips: ActiveFilterChip[] = [];
@@ -246,19 +260,40 @@ export function useCatalogFilters() {
       chips.push({ id: 'search', label: `Search: "${search}"`, type: 'search' });
     }
     if (topic) {
-      const facet = GENRE_FACETS.find((f) => f.id === topic);
-      chips.push({ id: 'topic', label: facet ? facet.label : topic, type: 'topic' });
+      const topicList = topic.split(',').map((t) => t.trim()).filter(Boolean);
+      if (topicList.length === 1) {
+        const facet = GENRE_FACETS.find((f) => f.id === topicList[0]);
+        chips.push({ id: 'topic', label: facet ? facet.label : topicList[0], type: 'topic' });
+      } else if (topicList.length > 1) {
+        chips.push({ id: 'topic', label: `${topicList.length} Subjects`, type: 'topic' });
+      }
     }
     if (language) {
-      const lang = CATALOG_LANGUAGES.find((l) => l.value === language);
-      chips.push({ id: 'language', label: lang ? lang.label : language.toUpperCase(), type: 'language' });
+      const langCodes = language.split(',').map((l) => l.trim()).filter(Boolean);
+      if (langCodes.length === 1) {
+        const lang = CATALOG_LANGUAGES.find((l) => l.value === langCodes[0]);
+        chips.push({ id: 'language', label: lang ? lang.label : langCodes[0].toUpperCase(), type: 'language' });
+      } else if (langCodes.length > 1) {
+        chips.push({ id: 'language', label: `${langCodes.length} Languages`, type: 'language' });
+      }
     }
     if (era) {
-      const eraObj = LITERARY_ERAS.find((e) => e.id === era);
-      chips.push({ id: 'era', label: eraObj ? eraObj.label : era, type: 'era' });
+      const eraList = era.split(',').map((e) => e.trim()).filter(Boolean);
+      if (eraList.length === 1) {
+        const eraObj = LITERARY_ERAS.find((e) => e.id === eraList[0]);
+        chips.push({ id: 'era', label: eraObj ? eraObj.label : eraList[0], type: 'era' });
+      } else if (eraList.length > 1) {
+        chips.push({ id: 'era', label: `${eraList.length} Historical Eras`, type: 'era' });
+      }
     }
     if (format) {
-      chips.push({ id: 'format', label: 'Format Filter Active', type: 'format' });
+      const formatList = format.split(',').map((f) => f.trim()).filter(Boolean);
+      if (formatList.length === 1) {
+        const fmt = FORMAT_FILTERS.find((f) => f.value === formatList[0]);
+        chips.push({ id: 'format', label: fmt ? fmt.label : 'Format Filter', type: 'format' });
+      } else if (formatList.length > 1) {
+        chips.push({ id: 'format', label: `${formatList.length} Formats`, type: 'format' });
+      }
     }
 
     return chips;
@@ -335,6 +370,21 @@ export function useCatalogFilters() {
     setPage(newPage);
   }, [page, pageSize]);
 
+  const handleApplyFilters = useCallback((filters: {
+    era?: string;
+    sort?: CatalogSortOption;
+    topic?: string;
+    language?: string;
+    format?: string;
+  }) => {
+    if (filters.era !== undefined) setEra(filters.era);
+    if (filters.sort !== undefined) setSort(filters.sort);
+    if (filters.topic !== undefined) setTopic(filters.topic);
+    if (filters.language !== undefined) setLanguage(filters.language);
+    if (filters.format !== undefined) setFormat(filters.format);
+    setPage(1);
+  }, []);
+
   return {
     // State
     activeView,
@@ -348,7 +398,8 @@ export function useCatalogFilters() {
     pageSize,
     viewMode,
     isFilterDrawerOpen,
-    selectedEraObj,
+    selectedEraObjs,
+    selectedEraObj: selectedEraObjs[0] || null,
     queryParams,
     activeFilterChips,
     isMobile,
@@ -365,6 +416,7 @@ export function useCatalogFilters() {
     handleEraChange,
     handleSortChange,
     handleFormatChange,
+    handleApplyFilters,
     handleResetAllFilters,
     removeFilterChip,
   };

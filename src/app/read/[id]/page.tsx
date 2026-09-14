@@ -683,6 +683,19 @@ function BookReaderContent() {
         currentChapterIndex={activeChapterIndex}
         totalChapters={chaptersWithPagination.length || 1}
         onSelectChapter={handleSelectChapter}
+        onToggleToc={() => toggleDrawer('toc')}
+        onToggleControls={() => toggleDrawer('controls')}
+        onToggleSearch={() => toggleDrawer('search')}
+        onToggleSpeech={() => setIsSpeechOpen((prev) => !prev)}
+        onToggleAnnotations={() => toggleDrawer('annotations')}
+        onToggleTranslations={() => toggleDrawer('translations')}
+        onThemeChange={setTheme}
+        isTocOpen={isTocOpen}
+        isControlsOpen={isControlsOpen}
+        isSearchOpen={isSearchOpen}
+        isSpeechOpen={isSpeechOpen}
+        isAnnotationsOpen={isAnnotationsOpen}
+        isTranslationsOpen={isTranslationsOpen}
       />
 
       {/* Floating Appearance & Typography Controls Popover */}

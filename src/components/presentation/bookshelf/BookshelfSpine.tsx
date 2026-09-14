@@ -424,7 +424,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
                   await onMoveBookToShelf(book.id, targetShelfId, userId || '');
                 }
               }}
-              className="text-[10px] font-mono bg-card text-foreground border border-border rounded px-1.5 py-0.5 max-w-[130px] truncate cursor-pointer hover:border-primary transition-colors focus:outline-hidden"
+              className="text-base sm:text-[10px] font-mono bg-card text-foreground border border-border rounded px-1.5 py-0.5 max-w-[130px] truncate cursor-pointer hover:border-primary transition-colors focus:outline-hidden"
             >
               {cloudBookshelves.map((shelf) => (
                 <option key={shelf.id} value={shelf.id}>

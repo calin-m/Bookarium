@@ -315,7 +315,7 @@ describe('ReaderHeader', () => {
     expect(screen.getByTestId('lang-sparkles-icon')).toBeInTheDocument();
   });
 
-  it('renders active indicator dot in mobile action tray when dynamic translation is active', () => {
+  it('renders dynamic translation indicator and sparkles on language button', () => {
     const onToggleTranslations = vi.fn();
     render(
       <ReaderHeader
@@ -335,9 +335,9 @@ describe('ReaderHeader', () => {
       />
     );
 
-    // Open mobile tray
-    fireEvent.click(screen.getByTestId('mobile-tray-toggle'));
-    expect(screen.getByTestId('mobile-lang-active-indicator')).toBeInTheDocument();
+    expect(screen.getByTestId('lang-dropdown-button')).toBeInTheDocument();
+    expect(screen.getByTestId('lang-sparkles-icon')).toBeInTheDocument();
+    expect(screen.getByTestId('lang-active-dot')).toBeInTheDocument();
   });
 
   it('handles link copying when share button is clicked', async () => {
@@ -361,24 +361,27 @@ describe('ReaderHeader', () => {
     expect(copiedBtns[0]).toBeInTheDocument();
   });
 
-  it('toggles mobile action tray visibility when clicking the handle button', () => {
+  it('renders mobile quick share button and handles link copying', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
     render(<ReaderHeader {...defaultProps} />);
 
-    const toggleBtn = screen.getByTestId('mobile-tray-toggle');
-    expect(toggleBtn).toBeInTheDocument();
-    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    const mobileShareBtn = screen.getByTestId('mobile-reader-share-btn');
+    expect(mobileShareBtn).toBeInTheDocument();
+    expect(mobileShareBtn).toHaveAttribute('aria-label', 'Share Book Link');
 
-    // Open mobile tray
-    fireEvent.click(toggleBtn);
-    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByTestId('mobile-action-tray')).toBeInTheDocument();
-
-    // Retract via traveling handle toggle button
-    fireEvent.click(screen.getByTestId('mobile-tray-toggle'));
-    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(mobileShareBtn);
+    expect(writeTextMock).toHaveBeenCalledWith(window.location.href);
+    const copiedBtns = await screen.findAllByLabelText('Link Copied to Clipboard');
+    expect(copiedBtns[0]).toBeInTheDocument();
   });
 
-  it('dispatches TOC, Search, and Controls actions while keeping mobile tray open', () => {
+  it('dispatches TOC, Search, and Controls actions from desktop tool row', () => {
     const onToggleToc = vi.fn();
     const onToggleSearch = vi.fn();
     const onToggleControls = vi.fn();
@@ -392,36 +395,35 @@ describe('ReaderHeader', () => {
       />
     );
 
-    // Open mobile tray
-    fireEvent.click(screen.getByTestId('mobile-tray-toggle'));
-    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
-
-    // Trigger TOC, Search, and Controls from inside tray - tray remains open for all multi-tool actions
-    const tocBtns = screen.getAllByLabelText('Table of Contents');
-    fireEvent.click(tocBtns[tocBtns.length - 1]);
+    const tocBtn = screen.getByLabelText('Table of Contents');
+    fireEvent.click(tocBtn);
     expect(onToggleToc).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
 
-    const searchBtns = screen.getAllByLabelText('Search in Book');
-    fireEvent.click(searchBtns[searchBtns.length - 1]);
+    const searchBtn = screen.getByLabelText('Search in Book');
+    fireEvent.click(searchBtn);
     expect(onToggleSearch).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
 
-    const controlsBtns = screen.getAllByLabelText('Typography & Theme Controls');
-    fireEvent.click(controlsBtns[controlsBtns.length - 1]);
+    const controlsBtn = screen.getByLabelText('Typography & Theme Controls');
+    fireEvent.click(controlsBtn);
     expect(onToggleControls).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('dismisses open mobile action tray when pressing Escape key', () => {
-    render(<ReaderHeader {...defaultProps} />);
+  it('renders and dispatches Annotations toggle with count badge', () => {
+    const onToggleAnnotations = vi.fn();
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        onToggleAnnotations={onToggleAnnotations}
+        annotationsCount={3}
+      />
+    );
 
-    const toggleBtn = screen.getByTestId('mobile-tray-toggle');
-    fireEvent.click(toggleBtn);
-    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'true');
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    expect(notesBtn).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.getByTestId('mobile-tray-toggle')).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(notesBtn);
+    expect(onToggleAnnotations).toHaveBeenCalledTimes(1);
   });
 
   it('renders Read Aloud button and handles click toggles', () => {

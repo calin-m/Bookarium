@@ -96,6 +96,7 @@ function HomeContent() {
     handleEraChange,
     handleSortChange,
     handleFormatChange,
+    handleApplyFilters,
     handleResetAllFilters,
     removeFilterChip,
   } = useCatalogFilters();
@@ -207,7 +208,7 @@ function HomeContent() {
 
   // Derive displayed books with windowed sub-page slicing based on active view
   let displayedBooks = booksData?.results ? booksData.results.slice(sliceStart, sliceEnd) : [];
-  let isDisplayLoading = isLoading;
+  let isDisplayLoading = isLoading || isFetching;
   let isDisplayError = isError;
 
   if (activeView === 'bookshelf') {
@@ -486,6 +487,7 @@ function HomeContent() {
         onLanguageChange={handleLanguageChange}
         selectedFormat={format}
         onFormatChange={handleFormatChange}
+        onApplyFilters={handleApplyFilters}
         onResetAll={handleResetAllFilters}
         activeFilterCount={toolbarChips.length}
       />

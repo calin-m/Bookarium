@@ -29,134 +29,300 @@ describe('AdvancedFilterDrawer component', () => {
     expect(screen.getByText(/19th Century Victorian & Romantic/i)).toBeInTheDocument();
   });
 
-  it('should handle era selection on click', () => {
+  it('should stage era selection and commit on Show Results click', () => {
     const handleEraChange = vi.fn();
+    const handleApply = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        onEraChange={handleEraChange}
+        onApplyFilters={handleApply}
+        selectedSort="popular"
+        selectedTopic=""
+        selectedLanguage=""
+        selectedFormat=""
+        onResetAll={vi.fn()}
+        activeFilterCount={0}
+      />
+    );
+
+    const antiquityChip = screen.getByTestId('era-option-antiquity');
+    expect(antiquityChip).toHaveAttribute('role', 'checkbox');
+    fireEvent.click(antiquityChip);
+    expect(handleApply).not.toHaveBeenCalled();
+    expect(handleEraChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ era: 'antiquity' }));
+  });
+
+  it('should support multi-era selection and reset via All Historical Eras chip', () => {
+    const handleApply = vi.fn();
 
     render(
       <AdvancedFilterDrawer
         isOpen={true}
         onClose={vi.fn()}
         selectedEra="victorian"
-        onEraChange={handleEraChange}
         selectedSort="popular"
-        onSortChange={vi.fn()}
         selectedTopic=""
-        onTopicChange={vi.fn()}
         selectedLanguage=""
-        onLanguageChange={vi.fn()}
         selectedFormat=""
-        onFormatChange={vi.fn()}
+        onApplyFilters={handleApply}
+        onResetAll={vi.fn()}
+        activeFilterCount={1}
+      />
+    );
+
+    // Toggle early-20th in addition to victorian
+    const early20thChip = screen.getByTestId('era-option-early-20th');
+    fireEvent.click(early20thChip);
+
+    // Verify counter badge appears
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+    // Reset via All Historical Eras chip
+    const allEraChip = screen.getByTestId('era-option-all');
+    fireEvent.click(allEraChip);
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ era: '' }));
+  });
+
+  it('should stage sort order change and commit on Show Results click', () => {
+    const handleSortChange = vi.fn();
+    const handleApply = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra="victorian"
+        selectedSort="popular"
+        onSortChange={handleSortChange}
+        onApplyFilters={handleApply}
+        selectedTopic=""
+        selectedLanguage=""
+        selectedFormat=""
+        onResetAll={vi.fn()}
+        activeFilterCount={1}
+      />
+    );
+
+    const sortChip = screen.getByTestId('sort-option-descending');
+    expect(sortChip).toBeInTheDocument();
+    expect(sortChip).toHaveAttribute('role', 'radio');
+    expect(sortChip).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(sortChip);
+    expect(handleApply).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ sort: 'descending' }));
+  });
+
+  it('should stage genre facet selection and commit on Show Results click', () => {
+    const handleApply = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        selectedSort=""
+        selectedTopic=""
+        selectedLanguage=""
+        selectedFormat=""
+        onApplyFilters={handleApply}
+        onResetAll={vi.fn()}
+        activeFilterCount={0}
+      />
+    );
+
+    const gothicChip = screen.getByTestId('genre-facet-gothic');
+    expect(gothicChip).toHaveAttribute('role', 'checkbox');
+    fireEvent.click(gothicChip);
+    expect(handleApply).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ topic: 'gothic' }));
+  });
+
+  it('should support multi-topic selection and reset via All Subjects chip', () => {
+    const handleApply = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        selectedSort=""
+        selectedTopic="philosophy"
+        selectedLanguage=""
+        selectedFormat=""
+        onApplyFilters={handleApply}
+        onResetAll={vi.fn()}
+        activeFilterCount={1}
+      />
+    );
+
+    // Toggle science in addition to philosophy
+    const scienceChip = screen.getByTestId('genre-facet-science');
+    fireEvent.click(scienceChip);
+
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ topic: 'philosophy,science' }));
+  });
+
+  it('should stage format selection change and commit on Show Results click', () => {
+    const handleApply = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        selectedSort=""
+        selectedTopic="philosophy"
+        selectedLanguage=""
+        selectedFormat=""
+        onApplyFilters={handleApply}
+        onResetAll={vi.fn()}
+        activeFilterCount={1}
+      />
+    );
+
+    const formatChip = screen.getByTestId('format-option-text-html');
+    expect(formatChip).toBeInTheDocument();
+    expect(formatChip).toHaveAttribute('role', 'checkbox');
+    expect(formatChip).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(formatChip);
+    expect(handleApply).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ format: 'text/html' }));
+  });
+
+  it('should support multi-format selection and reset via All Formats chip', () => {
+    const handleApply = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        selectedSort=""
+        selectedTopic=""
+        selectedLanguage=""
+        selectedFormat=""
+        onApplyFilters={handleApply}
+        onResetAll={vi.fn()}
+        activeFilterCount={0}
+      />
+    );
+
+    const epubChip = screen.getByTestId('format-option-application-epub-zip');
+    const htmlChip = screen.getByTestId('format-option-text-html');
+
+    fireEvent.click(epubChip);
+    fireEvent.click(htmlChip);
+
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+    expect(handleApply).toHaveBeenCalledWith(
+      expect.objectContaining({ format: 'application/epub+zip,text/html' })
+    );
+  });
+
+  it('should support multi-language selection via touch chips and commit on Show Results', () => {
+    const handleApply = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        selectedSort=""
+        selectedTopic=""
+        selectedLanguage=""
+        selectedFormat=""
+        onApplyFilters={handleApply}
+        onResetAll={vi.fn()}
+        activeFilterCount={0}
+      />
+    );
+
+    const enChip = screen.getByTestId('language-option-en');
+    const frChip = screen.getByTestId('language-option-fr');
+
+    expect(enChip).toBeInTheDocument();
+    expect(frChip).toBeInTheDocument();
+
+    fireEvent.click(enChip);
+    fireEvent.click(frChip);
+
+    expect(handleApply).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ language: 'en,fr' }));
+  });
+
+  it('should reset languages to empty string when clicking All Languages chip', () => {
+    const handleApply = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        selectedSort=""
+        selectedTopic=""
+        selectedLanguage="en,fr"
+        selectedFormat=""
+        onApplyFilters={handleApply}
+        onResetAll={vi.fn()}
+        activeFilterCount={2}
+      />
+    );
+
+    const allLangChip = screen.getByTestId('language-option-all');
+    fireEvent.click(allLangChip);
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ language: '' }));
+  });
+
+  it('should discard uncommitted draft changes when closing drawer without applying', () => {
+    const handleApply = vi.fn();
+    const handleClose = vi.fn();
+
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={handleClose}
+        selectedEra="victorian"
+        selectedSort="popular"
+        selectedTopic=""
+        selectedLanguage=""
+        selectedFormat=""
+        onApplyFilters={handleApply}
         onResetAll={vi.fn()}
         activeFilterCount={1}
       />
     );
 
     fireEvent.click(screen.getByTestId('era-option-antiquity'));
-    expect(handleEraChange).toHaveBeenCalledWith('antiquity');
-  });
 
-  it('should handle sort order change', () => {
-    const handleSortChange = vi.fn();
-
-    render(
-      <AdvancedFilterDrawer
-        isOpen={true}
-        onClose={vi.fn()}
-        selectedEra="victorian"
-        onEraChange={vi.fn()}
-        selectedSort="popular"
-        onSortChange={handleSortChange}
-        selectedTopic=""
-        onTopicChange={vi.fn()}
-        selectedLanguage=""
-        onLanguageChange={vi.fn()}
-        selectedFormat=""
-        onFormatChange={vi.fn()}
-        onResetAll={vi.fn()}
-        activeFilterCount={1}
-      />
-    );
-
-    fireEvent.change(screen.getByTestId('sort-select'), { target: { value: 'descending' } });
-    expect(handleSortChange).toHaveBeenCalledWith('descending');
-  });
-
-  it('should handle genre facet selection on chip click', () => {
-    const handleTopicChange = vi.fn();
-
-    render(
-      <AdvancedFilterDrawer
-        isOpen={true}
-        onClose={vi.fn()}
-        selectedEra=""
-        onEraChange={vi.fn()}
-        selectedSort=""
-        onSortChange={vi.fn()}
-        selectedTopic="philosophy"
-        onTopicChange={handleTopicChange}
-        selectedLanguage=""
-        onLanguageChange={vi.fn()}
-        selectedFormat=""
-        onFormatChange={vi.fn()}
-        onResetAll={vi.fn()}
-        activeFilterCount={1}
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('genre-facet-gothic'));
-    expect(handleTopicChange).toHaveBeenCalledWith('gothic');
-  });
-
-  it('should handle format selection change', () => {
-    const handleFormatChange = vi.fn();
-
-    render(
-      <AdvancedFilterDrawer
-        isOpen={true}
-        onClose={vi.fn()}
-        selectedEra=""
-        onEraChange={vi.fn()}
-        selectedSort=""
-        onSortChange={vi.fn()}
-        selectedTopic="philosophy"
-        onTopicChange={vi.fn()}
-        selectedLanguage=""
-        onLanguageChange={vi.fn()}
-        selectedFormat=""
-        onFormatChange={handleFormatChange}
-        onResetAll={vi.fn()}
-        activeFilterCount={1}
-      />
-    );
-
-    fireEvent.change(screen.getByTestId('format-drawer-select'), { target: { value: 'text/html' } });
-    expect(handleFormatChange).toHaveBeenCalledWith('text/html');
-  });
-
-  it('should handle language selection change', () => {
-    const handleLangChange = vi.fn();
-
-    render(
-      <AdvancedFilterDrawer
-        isOpen={true}
-        onClose={vi.fn()}
-        selectedEra=""
-        onEraChange={vi.fn()}
-        selectedSort=""
-        onSortChange={vi.fn()}
-        selectedTopic=""
-        onTopicChange={vi.fn()}
-        selectedLanguage="en"
-        onLanguageChange={handleLangChange}
-        selectedFormat=""
-        onFormatChange={vi.fn()}
-        onResetAll={vi.fn()}
-        activeFilterCount={1}
-      />
-    );
-
-    fireEvent.change(screen.getByTestId('language-drawer-select'), { target: { value: 'fr' } });
-    expect(handleLangChange).toHaveBeenCalledWith('fr');
+    fireEvent.click(screen.getByRole('button', { name: /Close filters/i }));
+    expect(handleClose).toHaveBeenCalledTimes(1);
+    expect(handleApply).not.toHaveBeenCalled();
   });
 
   it('should reset all filters on reset button click', () => {
@@ -167,15 +333,10 @@ describe('AdvancedFilterDrawer component', () => {
         isOpen={true}
         onClose={vi.fn()}
         selectedEra=""
-        onEraChange={vi.fn()}
         selectedSort=""
-        onSortChange={vi.fn()}
         selectedTopic=""
-        onTopicChange={vi.fn()}
         selectedLanguage="en"
-        onLanguageChange={vi.fn()}
         selectedFormat=""
-        onFormatChange={vi.fn()}
         onResetAll={handleReset}
         activeFilterCount={1}
       />
@@ -193,15 +354,10 @@ describe('AdvancedFilterDrawer component', () => {
         isOpen={true}
         onClose={handleClose}
         selectedEra=""
-        onEraChange={vi.fn()}
         selectedSort=""
-        onSortChange={vi.fn()}
         selectedTopic=""
-        onTopicChange={vi.fn()}
         selectedLanguage="en"
-        onLanguageChange={vi.fn()}
         selectedFormat=""
-        onFormatChange={vi.fn()}
         onResetAll={vi.fn()}
         activeFilterCount={1}
       />

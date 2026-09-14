@@ -65,7 +65,6 @@ export const ReaderLanguageDrawer: React.FC<ReaderLanguageDrawerProps> = ({
       ariaLabel="Language Editions & Translations"
       closeAriaLabel="Close Language Editions Drawer"
       backdropTestId="language-backdrop"
-      className="sm:w-88"
       role="dialog"
     >
       <div className="flex-1 overflow-y-auto space-y-5 pr-1 -mr-1 [scrollbar-width:thin]">
@@ -227,7 +226,7 @@ export const ReaderLanguageDrawer: React.FC<ReaderLanguageDrawerProps> = ({
               value={dynamicTargetLanguage || ''}
               onChange={(e) => onSelectDynamicLanguage?.(e.target.value || null)}
               aria-label="Select translation language"
-              className={`w-full py-2 px-3 text-xs font-mono rounded-lg border ${activeTheme.border} ${activeTheme.pill} text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer`}
+              className={`w-full py-2 px-3 text-base sm:text-xs font-mono rounded-lg border ${activeTheme.border} ${activeTheme.pill} text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer max-w-full truncate`}
             >
               <option value="">Choose a language to translate...</option>
               {ALL_TRANSLATION_LANGUAGES.map((lang) => (

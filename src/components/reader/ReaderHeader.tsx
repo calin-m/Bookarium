@@ -1,10 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
 import {
   ArrowLeft,
-  ChevronLeft,
   Globe,
   List,
   Search,
@@ -29,16 +27,14 @@ interface ReaderHeaderToolAction {
   isOpen: boolean;
   onClick: () => void;
   desktopTestId?: string;
-  mobileTestId?: string;
   desktopBadge?: React.ReactNode;
 }
-import { useReaderStore, type ReaderTheme } from '@/stores/useReaderStore';
+import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme, NEXT_READER_THEME } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
 import { resolveTranslationLanguage } from '@/config/translation-languages';
-import { useHasMounted } from '@/hooks/useHasMounted';
 import { GutenbergInfoModal } from './GutenbergInfoModal';
 import { ReaderSubHeaderRibbon } from './ReaderSubHeaderRibbon';
 
@@ -112,14 +108,8 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   dynamicTargetLanguage = null,
   displayMode = 'translated',
 }) => {
-  const hasMounted = useHasMounted();
-  const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
-  const rawIsMobileTrayOpen = useReaderStore((s) => s.isMobileTrayOpen);
-  const isMobileTrayOpen = hasMounted ? rawIsMobileTrayOpen : false;
-  const setMobileTrayOpen = useReaderStore((s) => s.setMobileTrayOpen);
-  const toggleMobileTray = useReaderStore((s) => s.toggleMobileTray);
   const [isCopied, setIsCopied] = useState(false);
-  const mobileTrayRef = useRef<HTMLDivElement | null>(null);
+  const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
   const activeTheme = getReaderTheme(theme);
 
   const currentBookLang =
@@ -141,16 +131,6 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
       ? `Bilingual Parallel: ${currentBookLang} ∥ ${activeLangInfo?.label || dynamicLangUpper}`
       : `Translated to ${activeLangInfo?.label || dynamicLangUpper} (AI Translation)`
     : `Language Editions & Translations (${currentBookLang})`;
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isMobileTrayOpen) {
-        setMobileTrayOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMobileTrayOpen, setMobileTrayOpen]);
 
   const handleShare = async () => {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
@@ -233,7 +213,6 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             isOpen: isAnnotationsOpen,
             onClick: onToggleAnnotations,
             desktopTestId: 'reader-annotations-toggle-btn',
-            mobileTestId: 'mobile-annotations-toggle-btn',
             desktopBadge:
               annotationsCount > 0 ? (
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-primary/10 text-primary">
@@ -272,7 +251,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <div className="relative min-w-0 flex-1 flex flex-col justify-center overflow-hidden select-text pr-2 [mask-image:linear-gradient(to_right,black_calc(100%-1.25rem),transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,black_calc(100%-1.25rem),transparent_100%)]">
+            <div className="relative min-w-0 flex-1 flex flex-col justify-center overflow-hidden select-text pr-2">
               <h1
                 className="text-sm font-serif font-bold truncate text-foreground leading-tight select-text"
                 title={displayTitle}
@@ -407,120 +386,26 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
           </div>
 
-          {/* Right: Mobile Sliding Tool Drawer with Integrated Traveling Pull Handle */}
-          <div className="sm:hidden flex items-center">
-            {/* Physical Sliding Drawer Pin-Docked to Right Margin */}
-            <motion.div
-              ref={mobileTrayRef}
-              initial={false}
-              animate={{
-                x: isMobileTrayOpen ? 0 : 'calc(100% - 44px)',
-              }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className={`absolute right-3 top-2.5 bottom-2.5 z-50 flex items-center gap-1.5 px-1.5 py-1 rounded-xl border shadow-xl ${activeTheme.drawerBg} border ${activeTheme.border}`}
-              data-testid="mobile-action-tray"
+          {/* Right: Mobile Clean Quick Share Action (Relieved of sliding drawer) */}
+          <div className="sm:hidden flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleShare}
+              className={`p-2 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                isCopied
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
+                  : activeTheme.button
+              }`}
+              aria-label={isCopied ? 'Link Copied to Clipboard' : 'Share Book Link'}
+              title={isCopied ? 'Link Copied!' : 'Share Book Link'}
+              data-testid="mobile-reader-share-btn"
             >
-              {/* Physical Drawer Pull Handle (Travels with the drawer to the left of the tools) */}
-              <button
-                type="button"
-                onClick={toggleMobileTray}
-                className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 shrink-0 shadow-2xs ${activeTheme.button}`}
-                aria-label={isMobileTrayOpen ? 'Hide Reader Controls' : 'Show Reader Controls'}
-                aria-expanded={isMobileTrayOpen}
-                data-testid="mobile-tray-toggle"
-              >
-                <ChevronLeft
-                  className={`w-4 h-4 transition-transform duration-300 ${
-                    isMobileTrayOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {/* Standard Tool Drawer Toggles */}
-              {toolActions.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  data-testid={action.mobileTestId}
-                  onClick={action.onClick}
-                  className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 ${
-                    action.isOpen ? activeTheme.activePill : activeTheme.button
-                  }`}
-                  aria-label={action.ariaLabel}
-                  aria-expanded={action.isOpen}
-                  title={action.title}
-                >
-                  <action.icon className="w-4 h-4" />
-                </button>
-              ))}
-
-              {/* 4. Language button */}
-              {((translations && translations.length > 0) || isDynamicActive) && onToggleTranslations && (
-                <button
-                  type="button"
-                  onClick={onToggleTranslations}
-                  className={`p-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 shrink-0 relative ${
-                    isTranslationsOpen ? activeTheme.activePill : activeTheme.button
-                  }`}
-                  aria-label="Language Editions & Translations"
-                  aria-expanded={isTranslationsOpen}
-                  title={languageButtonTitle}
-                  data-testid="mobile-lang-dropdown-button"
-                >
-                  <Globe
-                    className={`w-4 h-4 shrink-0 ${
-                      theme === 'sepia'
-                        ? isTranslationsOpen
-                          ? 'text-[#2b1d16]'
-                          : 'text-amber-500'
-                        : 'text-primary'
-                    }`}
-                  />
-                  {isDynamicActive && (
-                    <span
-                      data-testid="mobile-lang-active-indicator"
-                      className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400 ring-1 ring-background"
-                    />
-                  )}
-                </button>
+              {isCopied ? (
+                <Check className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <Share2 className="w-4 h-4" />
               )}
-
-              {/* 5. Theme switcher */}
-              {onThemeChange && (
-                <button
-                  type="button"
-                  onClick={() => onThemeChange(NEXT_READER_THEME[theme])}
-                  aria-label={`Current theme: ${theme}. Click to switch theme.`}
-                  className={`p-1.5 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 ${activeTheme.button}`}
-                >
-                  {theme === 'light' ? (
-                    <Sun className="w-4 h-4 text-amber-500" />
-                  ) : theme === 'sepia' ? (
-                    <Coffee className="w-4 h-4 text-amber-500" />
-                  ) : (
-                    <Moon className="w-4 h-4 text-indigo-400" />
-                  )}
-                </button>
-              )}
-
-              {/* 6. Share button */}
-              <button
-                type="button"
-                onClick={handleShare}
-                className={`p-1.5 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 ${
-                  isCopied
-                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
-                    : activeTheme.button
-                }`}
-                aria-label={isCopied ? 'Link Copied to Clipboard' : 'Share Book Link'}
-              >
-                {isCopied ? (
-                  <Check className="w-4 h-4 text-emerald-500" />
-                ) : (
-                  <Share2 className="w-4 h-4" />
-                )}
-              </button>
-            </motion.div>
+            </button>
           </div>
 
         </div>

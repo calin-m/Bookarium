@@ -151,9 +151,11 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       // Full-text search and topic filtering on GIN search_vector (title + subjects)
       const cleanSearch = options.search && options.search.trim().length >= 2 ? options.search.trim() : null;
       const cleanTopic = options.topic && options.topic.trim().length > 0 ? options.topic.trim() : null;
+      const topicList = cleanTopic ? cleanTopic.split(',').map((t) => t.trim()).filter(Boolean) : [];
 
-      if (cleanSearch && cleanTopic) {
-        query = query.textSearch('search_vector', `${cleanSearch} ${cleanTopic}`, {
+      if (cleanSearch && topicList.length > 0) {
+        const topicQuery = topicList.length > 1 ? topicList.join(' or ') : topicList[0];
+        query = query.textSearch('search_vector', `${cleanSearch} ${topicQuery}`, {
           type: 'websearch',
           config: 'english',
         });
@@ -162,8 +164,13 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
           type: 'websearch',
           config: 'english',
         });
-      } else if (cleanTopic) {
-        query = query.textSearch('search_vector', cleanTopic, {
+      } else if (topicList.length > 1) {
+        query = query.textSearch('search_vector', topicList.join(' or '), {
+          type: 'websearch',
+          config: 'english',
+        });
+      } else if (topicList.length === 1) {
+        query = query.textSearch('search_vector', topicList[0], {
           type: 'plain',
           config: 'english',
         });
@@ -233,9 +240,12 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
             return evalResult.isAllowed;
           });
 
-      // Filter by mimeType if specified
-      const finalResults = options.mimeType
-        ? filteredResults.filter((b) => Boolean(b.formats && b.formats[options.mimeType!]))
+      // Filter by mimeType if specified (supports comma-separated list of formats)
+      const mimeTypes = options.mimeType
+        ? options.mimeType.split(',').map((m) => m.trim()).filter(Boolean)
+        : [];
+      const finalResults = mimeTypes.length > 0
+        ? filteredResults.filter((b) => mimeTypes.some((fmt) => Boolean(b.formats && b.formats[fmt])))
         : filteredResults;
 
       const totalFiltered = gutendexBooks.length - filteredResults.length;

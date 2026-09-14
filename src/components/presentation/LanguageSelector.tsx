@@ -30,12 +30,17 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
       onChange={(e) => onChange?.(e.target.value)}
       data-testid={dataTestId}
       aria-label="Filter catalog by language"
-      className={`bg-card text-foreground border border-border rounded focus:outline-hidden focus:border-primary cursor-pointer transition-colors ${
+      className={`bg-card text-foreground border border-border rounded focus:outline-hidden focus:border-primary cursor-pointer transition-colors max-w-full truncate ${
         variant === 'compact'
-          ? 'px-2 py-0.5 text-xs'
-          : 'w-full p-2.5 text-xs rounded-lg'
+          ? 'px-2 py-0.5 text-base sm:text-xs'
+          : 'w-full p-2.5 text-base sm:text-xs rounded-lg'
       } ${className}`}
     >
+      {value.includes(',') && (
+        <option value={value} className="bg-card text-foreground">
+          Multiple ({value.split(',').filter(Boolean).length} Languages)
+        </option>
+      )}
       {CATALOG_LANGUAGES.map((lang) => (
         <option key={lang.value} value={lang.value} className="bg-card text-foreground">
           {lang.label}

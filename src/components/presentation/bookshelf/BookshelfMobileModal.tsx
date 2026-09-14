@@ -345,7 +345,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                         await onMoveBookToShelf(selectedMobileBook.id, targetShelfId, userId || '');
                       }
                     }}
-                    className="text-xs font-mono bg-card text-foreground border border-border rounded-lg px-2.5 py-1 max-w-[200px] truncate cursor-pointer hover:border-primary transition-colors focus:outline-hidden"
+                    className="text-base sm:text-xs font-mono bg-card text-foreground border border-border rounded-lg px-2.5 py-1 max-w-[200px] truncate cursor-pointer hover:border-primary transition-colors focus:outline-hidden"
                   >
                     {cloudBookshelves.map((shelf) => (
                       <option key={shelf.id} value={shelf.id}>

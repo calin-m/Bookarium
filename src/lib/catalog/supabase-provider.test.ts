@@ -315,6 +315,26 @@ describe('SupabaseCatalogProvider', () => {
       });
     });
 
+    it('queries books using GIN search_vector with OR union when multiple topics are provided', async () => {
+      const { client, builder } = createMockQueryBuilder(sampleDbRows, 2);
+      const provider = new SupabaseCatalogProvider(client as any);
+
+      const options: CatalogQueryOptions = {
+        topic: 'philosophy,science',
+        page: 1,
+        limit: 32,
+        country: 'US',
+      };
+
+      const result = await provider.searchBooks(options);
+
+      expect(result.source).toBe('supabase');
+      expect(builder.textSearch).toHaveBeenCalledWith('search_vector', 'philosophy or science', {
+        type: 'websearch',
+        config: 'english',
+      });
+    });
+
     it('filters out authors protected under Life + 70 when client is in GB', async () => {
       const { client } = createMockQueryBuilder(sampleDbRows, 2);
       const provider = new SupabaseCatalogProvider(client as any);
@@ -367,6 +387,23 @@ describe('SupabaseCatalogProvider', () => {
       // Only Pride and Prejudice has application/epub+zip
       expect(result.results).toHaveLength(1);
       expect(result.results[0].id).toBe(1342);
+    });
+
+    it('filters results by multiple mimeTypes if specified', async () => {
+      const { client } = createMockQueryBuilder(sampleDbRows, 2);
+      const provider = new SupabaseCatalogProvider(client as any);
+
+      const options: CatalogQueryOptions = {
+        page: 1,
+        limit: 32,
+        mimeType: 'application/epub+zip,text/html',
+        country: 'US',
+      };
+
+      const result = await provider.searchBooks(options);
+
+      // Both Pride and Prejudice and Christie have text/html or epub
+      expect(result.results).toHaveLength(2);
     });
 
     it('filters by comma-delimited book IDs', async () => {

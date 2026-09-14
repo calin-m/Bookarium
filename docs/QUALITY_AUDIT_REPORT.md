@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 14 Sep 2026 11:10:16 GMT  
+**Last Generated**: Mon, 14 Sep 2026 18:20:49 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 169 passed  
-**Total Verified Tests**: 1572 passed  
+**Total Verified Tests**: 1585 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1572 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1585 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 46 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 47 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.53%** (7105/7678) — *Target: $ge$ 80%*
-- **Statements**: **90.99%** (7691/8452) — *Target: $ge$ 80%*
-- **Functions**: **89.09%** (1651/1853) — *Target: $ge$ 80%*
-- **Branches**: **81.32%** (6746/8295) — *Target: $ge$ 80%*
+- **Lines**: **92.49%** (7223/7809) — *Target: $ge$ 80%*
+- **Statements**: **90.9%** (7830/8613) — *Target: $ge$ 80%*
+- **Functions**: **88.81%** (1683/1895) — *Target: $ge$ 80%*
+- **Branches**: **81.42%** (6910/8486) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1572 Tests)
+## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1585 Tests)
 
 ### 🚀 App Routes & Pages (15 Suites · 163 Tests)
 
@@ -289,17 +289,22 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (25 Suites · 305 Tests)
+### 🎨 Catalog & Presentation (25 Suites · 311 Tests)
 
 <details>
-<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `should render drawer with all filter sections when open`
-- ✔ `should handle era selection on click`
-- ✔ `should handle sort order change`
-- ✔ `should handle genre facet selection on chip click`
-- ✔ `should handle format selection change`
-- ✔ `should handle language selection change`
+- ✔ `should stage era selection and commit on Show Results click`
+- ✔ `should support multi-era selection and reset via All Historical Eras chip`
+- ✔ `should stage sort order change and commit on Show Results click`
+- ✔ `should stage genre facet selection and commit on Show Results click`
+- ✔ `should support multi-topic selection and reset via All Subjects chip`
+- ✔ `should stage format selection change and commit on Show Results click`
+- ✔ `should support multi-format selection and reset via All Formats chip`
+- ✔ `should support multi-language selection via touch chips and commit on Show Results`
+- ✔ `should reset languages to empty string when clicking All Languages chip`
+- ✔ `should discard uncommitted draft changes when closing drawer without applying`
 - ✔ `should reset all filters on reset button click`
 - ✔ `should apply filters and close drawer on apply button click`
 - ✔ `should not render anything when isOpen is false`
@@ -615,12 +620,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/LanguageSelector.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/presentation/LanguageSelector.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders compact inline variant with Globe icon and label`
 - ✔ `renders full width variant without inline wrapper`
 - ✔ `triggers onChange with selected language code`
 - ✔ `contains all 12 supported public domain languages`
+- ✔ `displays synthetic option when value contains comma-separated multi-languages`
 
 </details>
 
@@ -746,7 +752,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 145 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 148 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -807,7 +813,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders children when open`
 - ✔ `does not render when isOpen is false`
@@ -816,6 +822,7 @@
 - ✔ `calls onClose when pressing Escape key`
 - ✔ `applies min-h-0 and overflow-hidden to the panel by default`
 - ✔ `allows custom className to override overflow using cn/twMerge`
+- ✔ `renders mobile grab handle and bottom sheet responsive classes`
 
 </details>
 
@@ -832,13 +839,15 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderFooter.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/reader/ReaderFooter.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders global volume pagination and chapter title`
 - ✔ `triggers onPrevPage and onNextPage callbacks when buttons are clicked`
 - ✔ `handles page jump input changes`
 - ✔ `disables previous and next buttons when boundary disabled flags are set`
 - ✔ `renders continuous flow indicator and chapter navigation when in scroll mode`
+- ✔ `renders mobile quick tools and dispatches drawer and theme actions`
+- ✔ `renders Prev and Next buttons with visible labels and accessible touch target classes`
 
 </details>
 
@@ -858,11 +867,11 @@
 - ✔ `renders language and translation switcher and handles edition selection`
 - ✔ `renders single target language with sparkles when dynamic translation is active in translated mode`
 - ✔ `renders parallel notation (e.g. EN ∥ ES) when bilingual mode is active`
-- ✔ `renders active indicator dot in mobile action tray when dynamic translation is active`
+- ✔ `renders dynamic translation indicator and sparkles on language button`
 - ✔ `handles link copying when share button is clicked`
-- ✔ `toggles mobile action tray visibility when clicking the handle button`
-- ✔ `dispatches TOC, Search, and Controls actions while keeping mobile tray open`
-- ✔ `dismisses open mobile action tray when pressing Escape key`
+- ✔ `renders mobile quick share button and handles link copying`
+- ✔ `dispatches TOC, Search, and Controls actions from desktop tool row`
+- ✔ `renders and dispatches Annotations toggle with count badge`
 - ✔ `renders Read Aloud button and handles click toggles`
 
 </details>
@@ -1232,7 +1241,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (29 Suites · 315 Tests)
+### 📚 Gutenberg Parsers & Metadata (29 Suites · 317 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1347,7 +1356,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -1362,9 +1371,11 @@
 - ✔ `caches health check result for 60 seconds without re-querying Supabase`
 - ✔ `successfully queries books and applies US public domain rules`
 - ✔ `queries books using GIN search_vector when only topic is provided`
+- ✔ `queries books using GIN search_vector with OR union when multiple topics are provided`
 - ✔ `filters out authors protected under Life + 70 when client is in GB`
 - ✔ `generates next and previous pagination links when page bounds allow`
 - ✔ `filters results by mimeType if specified`
+- ✔ `filters results by multiple mimeTypes if specified`
 - ✔ `filters by comma-delimited book IDs`
 - ✔ `applies ascending and descending sort directions`
 - ✔ `throws CatalogProviderError when Supabase returns an error`
@@ -1723,7 +1734,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 204 Tests)
+### 🔄 Hooks & React Query (22 Suites · 206 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -1930,7 +1941,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (27 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (29 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -1959,6 +1970,8 @@
 - ✔ `omits catalog pagination parameter when navigating from catalog page 2 to /bookshelf`
 - ✔ `restores catalog pagination position when switching back from /bookshelf to catalog`
 - ✔ `prevents search, topic, and sort filters from leaking into personal collection views`
+- ✔ `batches multiple filter changes atomically via handleApplyFilters`
+- ✔ `calculates bounding year range for multi-era selection and formats chips accurately`
 
 </details>
 
@@ -2608,7 +2621,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

@@ -237,13 +237,13 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
             <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
               {/* Voice Selector */}
               {availableVoices.length > 0 && (
-                <div className="relative max-w-[125px] sm:max-w-[190px]">
+                <div className="relative max-w-[130px] sm:max-w-[190px]">
                   <select
                     value={selectedVoice?.voiceURI || ''}
                     onChange={(e) => onVoiceChange(e.target.value)}
                     aria-label="Narrator voice"
                     style={{ colorScheme: theme === 'light' ? 'light' : 'dark' }}
-                    className={`w-full min-h-[40px] py-1.5 pl-2 pr-5 text-[11px] font-mono truncate rounded-lg border ${activeTheme.border} ${activeTheme.pill} focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer`}
+                    className={`w-full min-h-[40px] py-1.5 pl-2 pr-5 text-base sm:text-[11px] font-mono truncate rounded-lg border ${activeTheme.border} ${activeTheme.pill} focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer max-w-full`}
                   >
                     {naturalVoices.length > 0 && (
                       <optgroup label="🌟 Natural & Neural">

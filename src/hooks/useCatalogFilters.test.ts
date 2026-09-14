@@ -599,6 +599,72 @@ describe('view-scoped URL pagination and query parameter synchronization', () =>
       '/?search=Austen&topic=fiction&sort=ascending&page=2'
     );
   });
+
+  it('batches multiple filter changes atomically via handleApplyFilters', () => {
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.setPage(4);
+    });
+    expect(result.current.page).toBe(4);
+
+    act(() => {
+      result.current.handleApplyFilters({
+        era: 'victorian',
+        sort: 'descending',
+        topic: 'gothic',
+        language: 'en,fr',
+        format: 'application/epub+zip',
+      });
+    });
+
+    expect(result.current.era).toBe('victorian');
+    expect(result.current.sort).toBe('descending');
+    expect(result.current.topic).toBe('gothic');
+    expect(result.current.language).toBe('en,fr');
+    expect(result.current.format).toBe('application/epub+zip');
+    expect(result.current.page).toBe(1);
+
+    expect(result.current.queryParams.languages).toBe('en,fr');
+    expect(result.current.queryParams.authorYearStart).toBe(1800);
+    expect(result.current.queryParams.authorYearEnd).toBe(1900);
+    expect(result.current.queryParams.mimeType).toBe('application/epub+zip');
+    expect(result.current.queryParams.sort).toBe('descending');
+
+    const langChip = result.current.activeFilterChips.find((c) => c.id === 'language');
+    expect(langChip).toBeDefined();
+    expect(langChip?.label).toBe('2 Languages');
+  });
+
+  it('calculates bounding year range for multi-era selection and formats chips accurately', () => {
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.handleApplyFilters({
+        era: 'victorian,early-20th',
+        topic: 'philosophy,science',
+        format: 'application/epub+zip,text/html',
+      });
+    });
+
+    // Victorian: 1800-1900, Early 20th: 1900-1928 -> Bounding: 1800 to 1928
+    expect(result.current.queryParams.authorYearStart).toBe(1800);
+    expect(result.current.queryParams.authorYearEnd).toBe(1928);
+    expect(result.current.queryParams.topic).toBe('philosophy,science');
+    expect(result.current.queryParams.mimeType).toBe('application/epub+zip,text/html');
+
+    const eraChip = result.current.activeFilterChips.find((c) => c.id === 'era');
+    expect(eraChip).toBeDefined();
+    expect(eraChip?.label).toBe('2 Historical Eras');
+
+    const topicChip = result.current.activeFilterChips.find((c) => c.id === 'topic');
+    expect(topicChip).toBeDefined();
+    expect(topicChip?.label).toBe('2 Subjects');
+
+    const formatChip = result.current.activeFilterChips.find((c) => c.id === 'format');
+    expect(formatChip).toBeDefined();
+    expect(formatChip?.label).toBe('2 Formats');
+  });
 });
 
 

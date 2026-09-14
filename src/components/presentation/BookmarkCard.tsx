@@ -267,7 +267,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             value={status}
             onChange={(e) => onStatusChange(book.id, e.target.value as LedgerItemStatus)}
             aria-label={`Change reading status for ${book.title}`}
-            className="h-8 px-2 rounded border border-border bg-background text-foreground font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+            className="h-8 px-2 rounded border border-border bg-background text-foreground font-mono text-base sm:text-xs max-w-[110px] truncate focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
           >
             <option value="in_progress">Reading</option>
             <option value="completed">Finished</option>
