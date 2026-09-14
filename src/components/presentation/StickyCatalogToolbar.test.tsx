@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { StickyCatalogToolbar } from './StickyCatalogToolbar';
 
@@ -365,7 +365,7 @@ describe('StickyCatalogToolbar component', () => {
       vi.unstubAllGlobals();
     });
 
-    it('hides mobile dock with translate-y-24 and opacity-0 when isVisible is false', () => {
+    it('controls mobile dock visibility with isMobileDockVisible prop', () => {
       const { rerender } = render(
         <StickyCatalogToolbar
           page={1}
@@ -375,7 +375,7 @@ describe('StickyCatalogToolbar component', () => {
           activeFilterCount={0}
           activeFilterChips={[]}
           onClearAllFilters={vi.fn()}
-          isVisible={true}
+          isMobileDockVisible={true}
         />
       );
 
@@ -392,13 +392,53 @@ describe('StickyCatalogToolbar component', () => {
           activeFilterCount={0}
           activeFilterChips={[]}
           onClearAllFilters={vi.fn()}
-          isVisible={false}
+          isMobileDockVisible={false}
         />
       );
 
       expect(dock).toHaveClass('translate-y-24');
       expect(dock).toHaveClass('opacity-0');
       expect(dock).toHaveClass('pointer-events-none');
+    });
+
+    it('dynamically reveals mobile dock when scrolling past threshold and hides when at top', () => {
+      Object.defineProperty(window, 'scrollY', { value: 0, writable: true });
+
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          mobileDockThreshold={300}
+        />
+      );
+
+      const dock = screen.getByTestId('mobile-catalog-dock');
+      // Initially at top (scrollY = 0 <= 300)
+      expect(dock).toHaveClass('translate-y-24');
+      expect(dock).toHaveClass('opacity-0');
+
+      // Scroll past hero into catalog (scrollY = 450 > 300)
+      act(() => {
+        window.scrollY = 450;
+        window.dispatchEvent(new Event('scroll'));
+      });
+
+      expect(dock).toHaveClass('translate-y-0');
+      expect(dock).toHaveClass('opacity-100');
+
+      // Return to top hero section (scrollY = 100 <= 300)
+      act(() => {
+        window.scrollY = 100;
+        window.dispatchEvent(new Event('scroll'));
+      });
+
+      expect(dock).toHaveClass('translate-y-24');
+      expect(dock).toHaveClass('opacity-0');
     });
   });
 });

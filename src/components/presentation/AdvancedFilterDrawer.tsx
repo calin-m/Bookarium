@@ -48,10 +48,18 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Lock body scrolling on mobile/tablet to prevent background scroll bleed
-    const prevOverflow = document.body.style.overflow;
+    // Lock body and html scrolling on mobile/tablet to prevent background scroll bleed
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
+
     if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
       document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -63,7 +71,9 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = prevOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
     };
   }, [isOpen, onClose]);
 
@@ -79,8 +89,9 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
     >
       {/* Click-outside blurred backdrop on mobile, tablet & laptop (< xl) */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-xs pointer-events-auto xl:hidden transition-opacity"
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs pointer-events-auto xl:hidden transition-opacity touch-none"
         onClick={onClose}
+        onTouchMove={(e) => e.preventDefault()}
         aria-hidden="true"
         data-testid="filter-backdrop"
       />
@@ -117,7 +128,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
         </div>
 
         {/* Drawer Scrollable Filter Sections */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-6">
           
           {/* Section 1: Literary Era / Century (Chip Cloud) */}
           <div className="space-y-2.5">

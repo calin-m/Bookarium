@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 14 Sep 2026 10:44:16 GMT  
+**Last Generated**: Mon, 14 Sep 2026 11:10:16 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 169 passed  
-**Total Verified Tests**: 1566 passed  
+**Total Verified Tests**: 1572 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1566 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1572 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 46 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.51%** (7085/7658) — *Target: $ge$ 80%*
-- **Statements**: **90.97%** (7668/8429) — *Target: $ge$ 80%*
-- **Functions**: **89.06%** (1646/1848) — *Target: $ge$ 80%*
-- **Branches**: **81.29%** (6734/8283) — *Target: $ge$ 80%*
+- **Lines**: **92.53%** (7105/7678) — *Target: $ge$ 80%*
+- **Statements**: **90.99%** (7691/8452) — *Target: $ge$ 80%*
+- **Functions**: **89.09%** (1651/1853) — *Target: $ge$ 80%*
+- **Branches**: **81.32%** (6746/8295) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1566 Tests)
+## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1572 Tests)
 
 ### 🚀 App Routes & Pages (15 Suites · 163 Tests)
 
@@ -289,10 +289,10 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (25 Suites · 299 Tests)
+### 🎨 Catalog & Presentation (25 Suites · 305 Tests)
 
 <details>
-<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `should render drawer with all filter sections when open`
 - ✔ `should handle era selection on click`
@@ -305,6 +305,11 @@
 - ✔ `should not render anything when isOpen is false`
 - ✔ `should close when pressing the Escape key`
 - ✔ `renders header icon container with theme-aware solid border-border without fractional opacity`
+- ✔ `locks both document.body and document.documentElement overflow on mobile (<1280px) and restores on unmount`
+- ✔ `compensates for scrollbar width using paddingRight and restores on unmount`
+- ✔ `does not lock overflow when on desktop viewports (>= 1280px)`
+- ✔ `renders backdrop with touch-none and prevents default on touchmove to eliminate scroll bleed`
+- ✔ `renders scrollable filter options container with overscroll-contain`
 
 </details>
 
@@ -721,7 +726,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and 2-part API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
@@ -736,7 +741,8 @@
 - ✔ `renders mobile dock with filter trigger, view mode switch, and scroll-to-top buttons`
 - ✔ `handles mobile filter opening and view mode switching`
 - ✔ `scrolls smoothly to top when mobile dock top button is clicked`
-- ✔ `hides mobile dock with translate-y-24 and opacity-0 when isVisible is false`
+- ✔ `controls mobile dock visibility with isMobileDockVisible prop`
+- ✔ `dynamically reveals mobile dock when scrolling past threshold and hides when at top`
 
 </details>
 

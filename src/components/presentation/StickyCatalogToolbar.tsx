@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SlidersHorizontal,
   ChevronLeft,
@@ -41,6 +41,8 @@ export interface StickyCatalogToolbarProps {
   onPageSizeChange?: (size: number) => void;
   isHeaderVisible?: boolean;
   isVisible?: boolean;
+  isMobileDockVisible?: boolean;
+  mobileDockThreshold?: number;
 }
 
 export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
@@ -62,11 +64,30 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   onPageSizeChange,
   isHeaderVisible = true,
   isVisible = true,
+  isMobileDockVisible,
+  mobileDockThreshold = 300,
 }) => {
   const hasMounted = useHasMounted();
   const [isFocused, setIsFocused] = useState(false);
   const [prevPage, setPrevPage] = useState(page);
   const [jumpPageInput, setJumpPageInput] = useState(String(page));
+  const [internalMobileDockVisible, setInternalMobileDockVisible] = useState(false);
+
+  useEffect(() => {
+    if (isMobileDockVisible !== undefined) return;
+    const onScroll = () => {
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      const shouldShow = scrollY > mobileDockThreshold;
+      setInternalMobileDockVisible((prev) => (prev !== shouldShow ? shouldShow : prev));
+    };
+
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isMobileDockVisible, mobileDockThreshold]);
+
+  const effectiveMobileDockVisible =
+    isMobileDockVisible !== undefined ? isMobileDockVisible : internalMobileDockVisible;
 
   // Synchronize input with external page changes during render when not actively editing
   if (page !== prevPage) {
@@ -380,7 +401,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
       {/* Mobile Floating Bottom Capsule Dock */}
       <aside
         className={`fixed bottom-6 inset-x-0 mx-auto w-fit max-w-[92vw] z-40 sm:hidden transition-all duration-300 ease-in-out ${
-          !isVisible
+          !effectiveMobileDockVisible
             ? 'translate-y-24 opacity-0 pointer-events-none'
             : 'translate-y-0 opacity-100'
         }`}
