@@ -547,6 +547,56 @@ describe('Home page integration', () => {
     expect(size16Btn).toHaveAttribute('aria-pressed', 'false');
   });
 
+  it('smoothly scrolls to catalog-section when filters are applied via Show Results', () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    renderHome();
+
+    // Open filter drawer
+    const openFiltersBtn = screen.getByTestId('open-filters-btn');
+    fireEvent.click(openFiltersBtn);
+
+    expect(screen.getByTestId('advanced-filter-drawer')).toBeInTheDocument();
+
+    // Select an era
+    const eraOption = screen.getByTestId('era-option-victorian');
+    fireEvent.click(eraOption);
+
+    scrollIntoViewMock.mockClear();
+
+    // Tap Show Results
+    const applyBtn = screen.getByTestId('apply-filters-btn');
+    fireEvent.click(applyBtn);
+
+    // Verify scrollIntoView was triggered on catalog-section
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(screen.queryByTestId('advanced-filter-drawer')).not.toBeInTheDocument();
+  });
+
+  it('smoothly scrolls to catalog-section when filters are cleared via quick clear button', () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    renderHome();
+
+    // Open drawer and apply a filter to activate quick clear button
+    fireEvent.click(screen.getByTestId('open-filters-btn'));
+    fireEvent.click(screen.getByTestId('era-option-victorian'));
+    fireEvent.click(screen.getByTestId('apply-filters-btn'));
+
+    expect(screen.getByTestId('clear-all-filters-btn')).toBeInTheDocument();
+
+    scrollIntoViewMock.mockClear();
+
+    // Click quick clear button
+    fireEvent.click(screen.getByTestId('clear-all-filters-btn'));
+
+    // Verify scrollIntoView was triggered on catalog-section
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(screen.queryByTestId('clear-all-filters-btn')).not.toBeInTheDocument();
+  });
+
   it('switches views when swiping horizontally across main on mobile', () => {
     const originalMatchMedia = window.matchMedia;
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({

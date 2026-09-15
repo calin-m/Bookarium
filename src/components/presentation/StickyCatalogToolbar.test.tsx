@@ -440,5 +440,84 @@ describe('StickyCatalogToolbar component', () => {
       expect(dock).toHaveClass('translate-y-24');
       expect(dock).toHaveClass('opacity-0');
     });
+
+    it('renders segmented quick clear button on mobile dock when filters are active and clears filters on tap', () => {
+      const handleOpenFilters = vi.fn();
+      const handleClearAll = vi.fn();
+
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={handleOpenFilters}
+          activeFilterCount={3}
+          activeFilterChips={[
+            { id: 'era', label: 'Victorian', onRemove: vi.fn() },
+            { id: 'topic', label: 'Philosophy', onRemove: vi.fn() },
+            { id: 'lang', label: 'French', onRemove: vi.fn() },
+          ]}
+          onClearAllFilters={handleClearAll}
+          isMobileDockVisible={true}
+        />
+      );
+
+      const clearBtn = screen.getByTestId('mobile-dock-clear-all-btn');
+      expect(clearBtn).toBeInTheDocument();
+      expect(clearBtn).toHaveAttribute('aria-label', 'Clear all 3 active filters');
+
+      fireEvent.click(clearBtn);
+      expect(handleClearAll).toHaveBeenCalledTimes(1);
+      expect(handleOpenFilters).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Segmented Split-Button Quick Clear', () => {
+    it('renders segmented quick clear button on desktop toolbar when filters are active and clears filters on click', () => {
+      const handleOpenFilters = vi.fn();
+      const handleClearAll = vi.fn();
+
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={handleOpenFilters}
+          activeFilterCount={2}
+          activeFilterChips={[
+            { id: 'era', label: 'Victorian', onRemove: vi.fn() },
+            { id: 'lang', label: 'French', onRemove: vi.fn() },
+          ]}
+          onClearAllFilters={handleClearAll}
+        />
+      );
+
+      const clearBtn = screen.getByTestId('clear-all-filters-btn');
+      expect(clearBtn).toBeInTheDocument();
+      expect(clearBtn).toHaveAttribute('aria-label', 'Clear all 2 active filters');
+
+      fireEvent.click(clearBtn);
+      expect(handleClearAll).toHaveBeenCalledTimes(1);
+      expect(handleOpenFilters).not.toHaveBeenCalled();
+    });
+
+    it('does not render quick clear buttons on desktop or mobile when activeFilterCount is 0', () => {
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          isMobileDockVisible={true}
+        />
+      );
+
+      expect(screen.queryByTestId('clear-all-filters-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('mobile-dock-clear-all-btn')).not.toBeInTheDocument();
+    });
   });
 });
+

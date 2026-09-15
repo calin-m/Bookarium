@@ -178,11 +178,24 @@ function HomeContent() {
     scrollToCatalogSection();
   };
 
+  const handleApplyFiltersWithScroll = (filters: Parameters<typeof handleApplyFilters>[0]) => {
+    handleApplyFilters(filters);
+    scrollToCatalogSection();
+  };
+
+  const handleResetAllFiltersWithScroll = () => {
+    handleResetAllFilters();
+    scrollToCatalogSection();
+  };
+
   // Convert chips for toolbar interface
   const toolbarChips: ActiveFilterChip[] = activeFilterChips.map((chip) => ({
     id: chip.id,
     label: chip.label,
-    onRemove: () => removeFilterChip(chip.id),
+    onRemove: () => {
+      removeFilterChip(chip.id);
+      scrollToCatalogSection();
+    },
   }));
 
   // Smart filtered collection books (order-independent search)
@@ -308,7 +321,7 @@ function HomeContent() {
             isFiltersOpen={isFilterDrawerOpen}
             activeFilterCount={toolbarChips.length}
             activeFilterChips={toolbarChips}
-            onClearAllFilters={handleResetAllFilters}
+            onClearAllFilters={handleResetAllFiltersWithScroll}
             isFetching={isFetching}
             onPrefetchNext={prefetchNextPage}
             latencyMs={booksData?.latencyMs}
@@ -325,7 +338,7 @@ function HomeContent() {
         ) : activeView === 'bookmarks' ? (
           <BookmarksView onBrowseCatalog={() => setActiveView('catalog')} />
         ) : (
-          <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 sm:pb-12 scroll-mt-32">
+          <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 sm:pb-12">
             <div key={`view-page-turn-${activeView}`} className="animate-page-turn">
               {/* Booksaw Centered Section Header */}
               <SectionHeader
@@ -487,8 +500,8 @@ function HomeContent() {
         onLanguageChange={handleLanguageChange}
         selectedFormat={format}
         onFormatChange={handleFormatChange}
-        onApplyFilters={handleApplyFilters}
-        onResetAll={handleResetAllFilters}
+        onApplyFilters={handleApplyFiltersWithScroll}
+        onResetAll={handleResetAllFiltersWithScroll}
         activeFilterCount={toolbarChips.length}
       />
 

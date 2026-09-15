@@ -134,30 +134,52 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
         
         {/* Left Side: Filter Trigger, Active Chips & Per Page Selector */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
-          {/* Advanced Filters Button */}
-          <Button
-            variant={isFiltersOpen || activeFilterCount > 0 ? 'primary' : 'outline'}
-            size="sm"
-            onClick={onOpenFilters}
-            data-testid="open-filters-btn"
-            className={`h-9 px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border transition-all ${
-              isFiltersOpen || activeFilterCount > 0
-                ? 'border-primary-600 bg-primary-600 text-white hover:bg-primary-700 hover:text-white shadow-xs'
-                : 'border-border text-foreground hover:border-primary hover:bg-muted hover:text-foreground'
-            }`}
-            aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
-            aria-expanded={isFiltersOpen}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-            <span className="inline">Filters</span>
-            {activeFilterCount > 0 && (
-              <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold ${
-                isFiltersOpen ? 'bg-primary text-primary-foreground' : 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 [html.sepia_&]:bg-primary/30 [html.sepia_&]:text-primary-foreground'
-              }`}>
-                {activeFilterCount}
-              </span>
-            )}
-          </Button>
+          {/* Advanced Filters Button / Split Quick-Clear Capsule */}
+          {activeFilterCount > 0 ? (
+            <div className="inline-flex items-center rounded-lg border border-primary-600 bg-primary-600 text-white shadow-xs overflow-hidden shrink-0">
+              <button
+                type="button"
+                onClick={onOpenFilters}
+                data-testid="open-filters-btn"
+                className="h-9 px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center hover:bg-primary-700 transition-colors"
+                aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
+                aria-expanded={isFiltersOpen}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+                <span className="inline">Filters</span>
+                <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold bg-primary-foreground/25 text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              </button>
+              <div className="h-4 w-[1px] bg-primary-400/40" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClearAllFilters();
+                }}
+                data-testid="clear-all-filters-btn"
+                className="h-9 px-2 flex items-center justify-center hover:bg-primary-700 hover:text-white transition-colors cursor-pointer"
+                aria-label={`Clear all ${activeFilterCount} active filters`}
+                title={`Clear all ${activeFilterCount} active filters`}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenFilters}
+              data-testid="open-filters-btn"
+              className="h-9 px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border border-border text-foreground hover:border-primary hover:bg-muted hover:text-foreground transition-all shrink-0"
+              aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
+              aria-expanded={isFiltersOpen}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+              <span className="inline">Filters</span>
+            </Button>
+          )}
 
           {/* Active Filter Chips */}
           <div
@@ -409,33 +431,51 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
         aria-label="Mobile catalog controls"
       >
         <div className="flex items-center gap-1.5 p-1.5 bg-card border border-border shadow-2xl rounded-full text-foreground">
-          {/* Mobile Filter Trigger */}
-          <button
-            type="button"
-            onClick={onOpenFilters}
-            data-testid="mobile-dock-filters-btn"
-            className={`h-9 px-3.5 rounded-full text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center transition-all ${
-              isFiltersOpen || activeFilterCount > 0
-                ? 'bg-primary text-primary-foreground shadow-xs'
-                : 'bg-muted hover:bg-muted/80 text-foreground'
-            }`}
-            aria-label={isFiltersOpen ? 'Close filters' : 'Open filters'}
-            aria-expanded={isFiltersOpen}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-            <span>Filters</span>
-            {activeFilterCount > 0 && (
-              <span
-                className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold ${
-                  isFiltersOpen || activeFilterCount > 0
-                    ? 'bg-primary-foreground/25 text-primary-foreground'
-                    : 'bg-primary text-primary-foreground'
-                }`}
+          {/* Mobile Filter Trigger / Split Quick-Clear Capsule */}
+          {activeFilterCount > 0 ? (
+            <div className="flex items-center rounded-full bg-primary text-primary-foreground shadow-xs overflow-hidden shrink-0">
+              <button
+                type="button"
+                onClick={onOpenFilters}
+                data-testid="mobile-dock-filters-btn"
+                className="h-9 pl-3.5 pr-2 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center hover:bg-primary-700 transition-colors"
+                aria-label={isFiltersOpen ? 'Close filters' : 'Open filters'}
+                aria-expanded={isFiltersOpen}
               >
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+                <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+                <span>Filters</span>
+                <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold bg-primary-foreground/25 text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              </button>
+              <div className="h-4 w-[1px] bg-primary-foreground/30" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClearAllFilters();
+                }}
+                data-testid="mobile-dock-clear-all-btn"
+                className="h-9 px-2.5 flex items-center justify-center hover:bg-primary-700 transition-colors cursor-pointer"
+                aria-label={`Clear all ${activeFilterCount} active filters`}
+                title={`Clear all ${activeFilterCount} active filters`}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenFilters}
+              data-testid="mobile-dock-filters-btn"
+              className="h-9 px-3.5 rounded-full text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center transition-all bg-muted hover:bg-muted/80 text-foreground"
+              aria-label={isFiltersOpen ? 'Close filters' : 'Open filters'}
+              aria-expanded={isFiltersOpen}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+              <span>Filters</span>
+            </button>
+          )}
 
           <div className="h-4 w-[1px] bg-border" />
 

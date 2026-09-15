@@ -618,3 +618,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-045: Literary Notebook Dynamic Font-Reflow Deep Linking, Transparent Dialogs & Smart Reading Milestones**
 - **ADR-046: Mobile Floating Bottom Capsule Dock, Adaptive Bottom Sheet Filters & 2-Column Catalog Density**
 - **ADR-047: Atomic Filter Staging, Multi-Dimensional Touch-Chip Multi-Selection & Immediate Fetch Feedback Architecture**
+- **ADR-048: Catalog Filter Bar Top-Margin Scroll Docking, Segmented Split-Button Quick Clear & Show Results Smooth Navigation**

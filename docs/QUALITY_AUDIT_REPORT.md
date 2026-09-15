@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 14 Sep 2026 18:20:49 GMT  
+**Last Generated**: Tue, 15 Sep 2026 09:21:03 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 169 passed  
-**Total Verified Tests**: 1585 passed  
+**Total Verified Tests**: 1590 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1585 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1590 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 47 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 48 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.49%** (7223/7809) — *Target: $ge$ 80%*
-- **Statements**: **90.9%** (7830/8613) — *Target: $ge$ 80%*
-- **Functions**: **88.81%** (1683/1895) — *Target: $ge$ 80%*
-- **Branches**: **81.42%** (6910/8486) — *Target: $ge$ 80%*
+- **Lines**: **92.48%** (7232/7820) — *Target: $ge$ 80%*
+- **Statements**: **90.89%** (7839/8624) — *Target: $ge$ 80%*
+- **Functions**: **88.78%** (1686/1899) — *Target: $ge$ 80%*
+- **Branches**: **81.4%** (6897/8472) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1585 Tests)
+## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1590 Tests)
 
-### 🚀 App Routes & Pages (15 Suites · 163 Tests)
+### 🚀 App Routes & Pages (15 Suites · 165 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
@@ -183,7 +183,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (20 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (22 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -204,6 +204,8 @@
 - ✔ `switches to Bookmarks view and renders reading ledger when Bookmarks nav tab is clicked`
 - ✔ `smoothly scrolls to catalog-section and updates display mode when toggling between Cards and Bookshelves`
 - ✔ `smoothly scrolls to catalog-section when page size is changed via StickyCatalogToolbar`
+- ✔ `smoothly scrolls to catalog-section when filters are applied via Show Results`
+- ✔ `smoothly scrolls to catalog-section when filters are cleared via quick clear button`
 - ✔ `switches views when swiping horizontally across main on mobile`
 
 </details>
@@ -289,7 +291,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (25 Suites · 311 Tests)
+### 🎨 Catalog & Presentation (25 Suites · 314 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -732,7 +734,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and 2-part API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
@@ -749,6 +751,9 @@
 - ✔ `scrolls smoothly to top when mobile dock top button is clicked`
 - ✔ `controls mobile dock visibility with isMobileDockVisible prop`
 - ✔ `dynamically reveals mobile dock when scrolling past threshold and hides when at top`
+- ✔ `renders segmented quick clear button on mobile dock when filters are active and clears filters on tap`
+- ✔ `renders segmented quick clear button on desktop toolbar when filters are active and clears filters on click`
+- ✔ `does not render quick clear buttons on desktop or mobile when activeFilterCount is 0`
 
 </details>
 
