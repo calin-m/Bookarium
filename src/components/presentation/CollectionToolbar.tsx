@@ -75,7 +75,7 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
       className={`flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 bg-card border border-border rounded-xl shadow-booksaw ${className}`}
     >
       {/* Search Input (Row 1 on Mobile, Left-side on Desktop) */}
-      <div className="relative flex-1 min-w-[220px]">
+      <div className="relative flex-1 min-w-0 md:min-w-[220px]">
         <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center text-muted-foreground">
           <Search className="w-4 h-4" aria-hidden="true" />
         </div>
@@ -122,7 +122,7 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
       </div>
 
       {/* Utility Controls Row (Row 2 on Mobile, Right-side on Desktop) */}
-      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 shrink-0">
+      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 min-w-0">
         {/* Sort Dropdown */}
         {hasSort && (
           <div className="flex items-center gap-1.5 shrink-0">
@@ -154,7 +154,9 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
 
           {itemCountLabel && (
             <span
-              className="text-[11px] font-mono text-muted-foreground whitespace-nowrap select-none"
+              className={`text-[11px] font-mono text-muted-foreground whitespace-nowrap select-none ${
+                hasPagination ? 'hidden sm:inline' : 'hidden min-[380px]:inline'
+              }`}
               data-testid="collection-item-count"
             >
               {itemCountLabel}

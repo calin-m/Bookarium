@@ -25,7 +25,7 @@ export const CollectionSortDropdown: React.FC<CollectionSortDropdownProps> = ({
 }) => {
   return (
     <div
-      className={`relative inline-flex items-center min-w-[125px] sm:min-w-[155px] ${className}`}
+      className={`relative inline-flex items-center min-w-[125px] sm:min-w-[145px] max-w-[165px] sm:max-w-[195px] ${className}`}
       data-testid="collection-sort-dropdown"
     >
       <div className="absolute left-2.5 sm:left-3 pointer-events-none flex items-center justify-center text-muted-foreground">
@@ -37,16 +37,16 @@ export const CollectionSortDropdown: React.FC<CollectionSortDropdownProps> = ({
         onChange={(e) => onChange(e.target.value)}
         aria-label={ariaLabel}
         data-testid="collection-sort-select"
-        className="w-full min-h-[38px] sm:min-h-[40px] pl-7.5 sm:pl-8 pr-6 sm:pr-7 py-1.5 sm:py-2 text-base sm:text-xs font-mono font-medium rounded-xl bg-card border border-border hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground cursor-pointer transition-all shadow-booksaw appearance-none select-none truncate"
+        className="w-full h-8 pl-8 sm:pl-9 pr-7 sm:pr-8 py-1 text-xs font-sans font-medium rounded-lg bg-card border border-border hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground cursor-pointer transition-all shadow-booksaw appearance-none select-none truncate"
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-background text-foreground py-1">
+          <option key={opt.value} value={opt.value} className="bg-background text-foreground py-1 text-xs">
             {opt.label}
           </option>
         ))}
       </select>
 
-      <div className="absolute right-2.5 pointer-events-none flex items-center justify-center text-muted-foreground">
+      <div className="absolute right-2.5 sm:right-3 pointer-events-none flex items-center justify-center text-muted-foreground">
         <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
       </div>
     </div>

@@ -576,8 +576,9 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                   type="button"
                   onClick={() => setGroupMode('volume')}
                   title="Group by Volume"
+                  aria-label="By Book"
                   aria-pressed={groupMode === 'volume'}
-                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
                     groupMode === 'volume'
                       ? 'bg-background text-foreground shadow-xs font-bold'
                       : 'text-muted-foreground hover:text-foreground'
@@ -585,14 +586,15 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                 >
                   <Layers className="w-3.5 h-3.5 shrink-0" />
                   <span className="hidden min-[420px]:inline">By </span>
-                  <span>Book</span>
+                  <span className="hidden min-[380px]:inline">Book</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setGroupMode('chronological')}
                   title="All Passages in Chronological Order"
+                  aria-label="Chronological"
                   aria-pressed={groupMode === 'chronological'}
-                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
                     groupMode === 'chronological'
                       ? 'bg-background text-foreground shadow-xs font-bold'
                       : 'text-muted-foreground hover:text-foreground'
@@ -600,7 +602,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                 >
                   <Clock className="w-3.5 h-3.5 shrink-0" />
                   <span className="hidden min-[420px]:inline">Chronological</span>
-                  <span className="min-[420px]:hidden">Chrono</span>
+                  <span className="hidden min-[380px]:inline min-[420px]:hidden">Chrono</span>
                 </button>
               </div>
             }
