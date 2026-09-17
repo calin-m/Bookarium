@@ -1056,4 +1056,272 @@ describe('NotebookView component', () => {
       expect(screen.getAllByText(/Protected/i).length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe('Sorting and Pagination in NotebookView', () => {
+    it('sorts chronological quotes by Date Added Oldest and Newest', async () => {
+      const ann1 = await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'First quote chronologically',
+        color: 'yellow',
+      });
+      useAnnotationStore.setState((state) => ({
+        annotations: state.annotations.map((a) =>
+          a.id === ann1.id ? { ...a, createdAt: '2025-01-01T10:00:00Z' } : a
+        ),
+      }));
+
+      const ann2 = await useAnnotationStore.getState().addAnnotation({
+        bookId: 84,
+        bookTitle: 'Frankenstein',
+        bookAuthor: 'Mary Shelley',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Second quote chronologically',
+        color: 'mint',
+      });
+      useAnnotationStore.setState((state) => ({
+        annotations: state.annotations.map((a) =>
+          a.id === ann2.id ? { ...a, createdAt: '2025-06-01T10:00:00Z' } : a
+        ),
+      }));
+
+      render(<NotebookView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+
+      // Default sort is Date Added (Newest) -> ann2 comes first
+      const quoteCards = screen.getAllByTestId(/notebook-quote-card-/);
+      expect(quoteCards[0]).toHaveTextContent('Second quote chronologically');
+      expect(quoteCards[1]).toHaveTextContent('First quote chronologically');
+
+      // Change sort to Date Added (Oldest)
+      const sortSelect = screen.getByLabelText('Sort quotes chronologically');
+      fireEvent.change(sortSelect, { target: { value: 'date_asc' } });
+
+      const reorderedCards = screen.getAllByTestId(/notebook-quote-card-/);
+      expect(reorderedCards[0]).toHaveTextContent('First quote chronologically');
+      expect(reorderedCards[1]).toHaveTextContent('Second quote chronologically');
+    });
+
+    it('sorts chronological quotes alphabetically by title and author', async () => {
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Pride quote',
+        color: 'yellow',
+      });
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 84,
+        bookTitle: 'Frankenstein',
+        bookAuthor: 'Mary Shelley',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Frankenstein quote',
+        color: 'mint',
+      });
+
+      render(<NotebookView />);
+      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+
+      const sortSelect = screen.getByLabelText('Sort quotes chronologically');
+
+      // Sort by Title (A -> Z): Frankenstein first
+      fireEvent.change(sortSelect, { target: { value: 'title_asc' } });
+      let quoteCards = screen.getAllByTestId(/notebook-quote-card-/);
+      expect(quoteCards[0]).toHaveTextContent('Frankenstein quote');
+      expect(quoteCards[1]).toHaveTextContent('Pride quote');
+
+      // Sort by Author (A -> Z): Jane Austen first
+      fireEvent.change(sortSelect, { target: { value: 'author_asc' } });
+      quoteCards = screen.getAllByTestId(/notebook-quote-card-/);
+      expect(quoteCards[0]).toHaveTextContent('Pride quote');
+      expect(quoteCards[1]).toHaveTextContent('Frankenstein quote');
+    });
+
+    it('sorts book groups in By-Book mode by Title, Author, and Most Quotes', async () => {
+      // Book A: Jane Austen, Pride and Prejudice (1 quote)
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Austen single quote',
+        color: 'yellow',
+      });
+
+      // Book B: Mary Shelley, Frankenstein (2 quotes)
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 84,
+        bookTitle: 'Frankenstein',
+        bookAuthor: 'Mary Shelley',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Shelley quote 1',
+        color: 'mint',
+      });
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 84,
+        bookTitle: 'Frankenstein',
+        bookAuthor: 'Mary Shelley',
+        chapterIndex: 1,
+        chapterPage: 2,
+        selectedText: 'Shelley quote 2',
+        color: 'mint',
+      });
+
+      render(<NotebookView />);
+      const getBookHeadings = () =>
+        screen.getAllByRole('heading', { level: 2 }).filter((h) => h.textContent !== 'Literary Notebook');
+
+      // In By-Book mode, default sort is Title A -> Z: Frankenstein first
+      let headings = getBookHeadings();
+      expect(headings[0]).toHaveTextContent('Frankenstein');
+      expect(headings[1]).toHaveTextContent('Pride and Prejudice');
+
+      const sortSelect = screen.getByLabelText('Sort book groups');
+
+      // Sort Title Z -> A: Pride and Prejudice first
+      fireEvent.change(sortSelect, { target: { value: 'title_desc' } });
+      headings = getBookHeadings();
+      expect(headings[0]).toHaveTextContent('Pride and Prejudice');
+      expect(headings[1]).toHaveTextContent('Frankenstein');
+
+      // Sort Author A -> Z: Jane Austen first
+      fireEvent.change(sortSelect, { target: { value: 'author_asc' } });
+      headings = getBookHeadings();
+      expect(headings[0]).toHaveTextContent('Pride and Prejudice');
+
+      // Sort Author Z -> A: Mary Shelley first
+      fireEvent.change(sortSelect, { target: { value: 'author_desc' } });
+      headings = getBookHeadings();
+      expect(headings[0]).toHaveTextContent('Frankenstein');
+
+      // Sort Most Quotes First: Frankenstein (2 quotes) before Pride and Prejudice (1 quote)
+      fireEvent.change(sortSelect, { target: { value: 'count_desc' } });
+      headings = getBookHeadings();
+      expect(headings[0]).toHaveTextContent('Frankenstein');
+    });
+
+    it('paginates chronological quotes with 12 items per page and scrolls to top on page change', async () => {
+      const scrollToMock = vi.fn();
+      window.scrollTo = scrollToMock;
+      const scrollIntoViewMock = vi.fn();
+      window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+      // Add 15 annotations with distinct non-substring text
+      for (let i = 1; i <= 15; i++) {
+        await useAnnotationStore.getState().addAnnotation({
+          bookId: 1342,
+          bookTitle: 'Pride and Prejudice',
+          bookAuthor: 'Jane Austen',
+          chapterIndex: 0,
+          chapterPage: i,
+          selectedText: `Chronological quote sentence #${String(i).padStart(2, '0')}`,
+          color: 'yellow',
+        });
+      }
+
+      render(<NotebookView />);
+      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+
+      // Should render exactly 12 quote cards on page 1
+      const quoteCards = screen.getAllByTestId(/notebook-quote-card-/);
+      expect(quoteCards).toHaveLength(12);
+
+      // Top pagination should be visible
+      const topPagination = screen.getByRole('navigation', { name: 'Top notebook pagination' });
+      expect(topPagination).toBeInTheDocument();
+      expect(within(topPagination).getByTestId('top-pagination-indicator')).toHaveTextContent(/1\s*\/\s*2/);
+
+      // Bottom pagination bar should also be visible
+      expect(screen.getByRole('navigation', { name: /Pagination navigation/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Go to page 1' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Go to page 2' })).toBeInTheDocument();
+
+      // Navigate to Page 2 via top pagination Next button
+      const nextBtn = within(topPagination).getByRole('button', { name: 'Next page' });
+      fireEvent.click(nextBtn);
+
+      // Page 2 should have remaining 3 items
+      const page2Cards = screen.getAllByTestId(/notebook-quote-card-/);
+      expect(page2Cards).toHaveLength(3);
+
+      // smart scroll should have been called
+      expect(scrollToMock).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+    });
+
+    it('paginates volume groups with 6 books per page in By-Book mode', async () => {
+      // Add 7 annotations across 7 different books
+      for (let i = 1; i <= 7; i++) {
+        await useAnnotationStore.getState().addAnnotation({
+          bookId: 1000 + i,
+          bookTitle: `Book Volume Title ${String.fromCharCode(65 + i)}`,
+          bookAuthor: `Author ${String.fromCharCode(65 + i)}`,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: `Quote in volume #${String(i).padStart(2, '0')}`,
+          color: 'yellow',
+        });
+      }
+
+      render(<NotebookView />);
+      const getBookHeadings = () =>
+        screen.getAllByRole('heading', { level: 2 }).filter((h) => h.textContent !== 'Literary Notebook');
+
+      // Should render 6 book groups on Page 1
+      let headings = getBookHeadings();
+      expect(headings).toHaveLength(6);
+
+      // Navigate to Page 2
+      const nextBtn = screen.getByRole('button', { name: 'Go to next page' });
+      fireEvent.click(nextBtn);
+
+      // Page 2 should render 1 book group
+      headings = getBookHeadings();
+      expect(headings).toHaveLength(1);
+    });
+
+    it('resets page to 1 when changing search query, color filter, or sort order', async () => {
+      // Add 26 annotations (13 mint, 13 rose)
+      for (let i = 1; i <= 26; i++) {
+        await useAnnotationStore.getState().addAnnotation({
+          bookId: 1342,
+          bookTitle: 'Pride and Prejudice',
+          bookAuthor: 'Jane Austen',
+          chapterIndex: 0,
+          chapterPage: i,
+          selectedText: `Reset page test quote sentence #${String(i).padStart(2, '0')}`,
+          color: i % 2 === 0 ? 'mint' : 'rose',
+        });
+      }
+
+      render(<NotebookView />);
+      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+
+      // Navigate to Page 2
+      fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
+      expect(screen.getByRole('button', { name: 'Go to page 2' })).toHaveAttribute('aria-current', 'page');
+
+      // Filter by color -> resets to page 1 (13 mint items > 12, so page 1 is active)
+      fireEvent.click(screen.getByTestId('notebook-filter-mint'));
+      expect(screen.getByRole('button', { name: 'Go to page 1' })).toHaveAttribute('aria-current', 'page');
+
+      // Navigate to Page 2 of mint items
+      fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
+      expect(screen.getByRole('button', { name: 'Go to page 2' })).toHaveAttribute('aria-current', 'page');
+
+      // Change sort order -> resets to page 1
+      const sortSelect = screen.getByLabelText('Sort quotes chronologically');
+      fireEvent.change(sortSelect, { target: { value: 'date_asc' } });
+      expect(screen.getByRole('button', { name: 'Go to page 1' })).toHaveAttribute('aria-current', 'page');
+    });
+  });
 });

@@ -758,6 +758,7 @@ function BookReaderContent() {
       <ReaderSpeechBar
         speech={speech}
         isOpen={isSpeechOpen}
+        isDrawerOpen={Boolean(activeDrawer)}
         onClose={() => {
           speech.stop();
           setIsSpeechOpen(false);

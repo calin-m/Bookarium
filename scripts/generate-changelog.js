@@ -9,6 +9,33 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.5.3',
+    date: '2026-09-17',
+    title: 'Unified Collection Workbench, Strict 2-Row Mobile Ergonomics, Multi-Shelf Pagination & Viewport-Aware Scroll Architecture',
+    sections: {
+      Added: [
+        'Unified Collection Toolbar (`src/components/presentation/CollectionToolbar.tsx`): Built a single reusable workbench card adopting the Notebook container aesthetic (`bg-card border border-border rounded-xl shadow-booksaw`), encapsulating search input, clear shortcut (`Esc`), match counter badge (`X / Y`), sort dropdown, top pagination (`CollectionTopPagination`), volume count badge, and `extraControls`.',
+        'Strict 2-Row Mobile Architecture: Guaranteed that controls across Bookshelf, Favorites, Bookmarks, and Notebook never wrap across 3 rows on mobile viewports (<640px) — Row 1 is a 100% full-width search bar; Row 2 is a single balanced utility flex row.',
+        'Compact Collection Sort Dropdown (`src/components/presentation/CollectionSortDropdown.tsx`): Reduced mobile width from 150px to 125px with py-1.5 padding and preserved 16px font sizing on mobile inputs to eliminate iOS Safari auto-zoom while maintaining tight proportions.',
+        'Responsive Multi-Shelf Pagination (`src/app/page.tsx`): Configured Bookshelf pagination to display 2 bookshelves per page on desktop/tablet (>=640px) and 1 bookshelf per page on mobile (<640px). Configured Favorites pagination to 24 books per page with both top and bottom pagination controls.',
+        'Viewport-Aware Smart Smooth Scroll Engine (`src/lib/scroll-utils.ts`): Created `smartScrollToContent(elementId, { offsetTop, behavior })`, measuring element viewport coordinates to gracefully skip scrolling if already comfortably visible or smoothly glide to content with fixed header clearance.',
+        'Deterministic Multi-Attribute Book Sorting Engine (`src/lib/book-sorting.ts`): Implemented pure computational utility sorting books across Recently Added, Title (A-Z/Z-A), Author (A-Z/Z-A), Release Year, and Downloads.',
+        'Mobile Bottom Capsule Dock & Adaptive Bottom Sheet Filters (`ADR-046`): Built floating thumb-friendly bottom dock on mobile catalog view and converted filter drawer into a native mobile bottom sheet with 2-column catalog grid density.',
+        'Atomic Filter Staging & Multi-Select Touch Chips (`ADR-047`): Buffered catalog filter selections into local draft state with multi-select touch chips across Eras, Topics, Languages, and Formats, slashing database query volume by >75%.',
+        'Filter Bar Top-Margin Scroll Docking & Segmented Quick Clear (`ADR-048`): Restored seamless top-margin docking at top-16/top-0 and introduced a segmented split-capsule filter clear button `[ ⚡ Filters (N) | ✕ ]`.',
+        'Architecture Decision Records (`ADR-046` to `ADR-049`): Formally ratified mobile bottom dock, atomic filter staging, scroll docking quick clear, and unified collection toolbar architecture in `docs/DECISIONS.md`.',
+      ],
+      Fixed: [
+        'Mobile Multi-Row Control Wrap: Eliminated 3-row layout overflow on narrow mobile screens (320px–390px) by compacting sort dropdowns and shortening toggle labels (`Book` and `Chrono` on <420px).',
+        'Clear Button ARIA Collisions: Disambiguated clear search accessible labels (`clearAriaLabel`) across Bookmarks, Bookshelf, and Favorites to eliminate collisions with empty-state action buttons.',
+        'Jarring Blind Scroll Resets: Replaced jarring `window.scrollTo(0, 0)` on collection page changes with non-disorienting `smartScrollToContent`.',
+      ],
+      Refactored: [
+        'Collection Presentation Unification: Migrated Bookshelf, Favorites, Bookmarks, and Notebook views to the unified `CollectionToolbar` component.',
+      ],
+    },
+  },
+  {
     version: '2.5.2',
     date: '2026-09-13',
     title: 'Literary Notebook Dynamic Reflow Deep Linking, Transparent Dialogs & Smart Reading Milestones',

@@ -300,4 +300,92 @@ describe('ReaderSpeechBar', () => {
     fireEvent.click(prevBtn);
     expect(skipPrev).toHaveBeenCalledTimes(1);
   });
+
+  it('renders expanded card by default and allows manual toggling to minimized mini-pill and back', () => {
+    render(<ReaderSpeechBar {...defaultProps} />);
+
+    // Default: expanded mode
+    expect(screen.getByTestId('speech-bar-expanded')).toBeInTheDocument();
+    expect(screen.queryByTestId('speech-bar-minimized')).not.toBeInTheDocument();
+
+    // Click minimize button
+    const minimizeBtn = screen.getByRole('button', { name: 'Minimize narration controls' });
+    fireEvent.click(minimizeBtn);
+
+    // Minimized mode is now active
+    expect(screen.getByTestId('speech-bar-minimized')).toBeInTheDocument();
+    expect(screen.queryByTestId('speech-bar-expanded')).not.toBeInTheDocument();
+
+    // Minimized mode has essential playback controls and expand button
+    const expandBtn = screen.getByRole('button', { name: 'Expand narration controls' });
+    expect(expandBtn).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Previous sentence' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Play narration' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next sentence' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close Read Aloud' })).toBeInTheDocument();
+
+    // Click expand button to restore full card
+    fireEvent.click(expandBtn);
+    expect(screen.getByTestId('speech-bar-expanded')).toBeInTheDocument();
+    expect(screen.queryByTestId('speech-bar-minimized')).not.toBeInTheDocument();
+  });
+
+  it('automatically enters minimized mode and docks at the top when isDrawerOpen is true', () => {
+    const { rerender } = render(<ReaderSpeechBar {...defaultProps} isDrawerOpen={false} />);
+
+    const containerBefore = screen.getByTestId('reader-speech-bar');
+    expect(containerBefore.className).toContain('bottom-');
+    expect(screen.getByTestId('speech-bar-expanded')).toBeInTheDocument();
+
+    // Open a reader drawer
+    rerender(<ReaderSpeechBar {...defaultProps} isDrawerOpen={true} />);
+
+    const containerAfter = screen.getByTestId('reader-speech-bar');
+    expect(containerAfter.className).toContain('top-');
+    expect(screen.getByTestId('speech-bar-minimized')).toBeInTheDocument();
+    expect(screen.queryByTestId('speech-bar-expanded')).not.toBeInTheDocument();
+  });
+
+  it('handles playback toggling and skipping inside minimized mode', () => {
+    const onPlay = vi.fn();
+    const onPause = vi.fn();
+    const onSkipNext = vi.fn();
+    const onSkipPrev = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <ReaderSpeechBar
+        {...defaultProps}
+        isDrawerOpen={true}
+        isPlaying={false}
+        onPlay={onPlay}
+        onPause={onPause}
+        onSkipNext={onSkipNext}
+        onSkipPrev={onSkipPrev}
+        onClose={onClose}
+      />
+    );
+
+    expect(screen.getByTestId('speech-bar-minimized')).toBeInTheDocument();
+
+    // Play/Pause inside minimized pill
+    const playBtn = screen.getByRole('button', { name: 'Play narration' });
+    fireEvent.click(playBtn);
+    expect(onPlay).toHaveBeenCalledTimes(1);
+
+    // Skip Next & Prev
+    const nextBtn = screen.getByRole('button', { name: 'Next sentence' });
+    fireEvent.click(nextBtn);
+    expect(onSkipNext).toHaveBeenCalledTimes(1);
+
+    const prevBtn = screen.getByRole('button', { name: 'Previous sentence' });
+    fireEvent.click(prevBtn);
+    expect(onSkipPrev).toHaveBeenCalledTimes(1);
+
+    // Close from minimized pill
+    const closeBtn = screen.getByRole('button', { name: 'Close Read Aloud' });
+    fireEvent.click(closeBtn);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
+

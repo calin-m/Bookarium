@@ -28,6 +28,10 @@ export interface CollectionSearchBarProps {
   className?: string;
 }
 
+/**
+ * @deprecated Superseded by `CollectionToolbar` (ADR-049).
+ * Use `CollectionToolbar` for unified search, sorting, and top-pagination across collection views.
+ */
 export const CollectionSearchBar: React.FC<CollectionSearchBarProps> = ({
   query,
   onQueryChange,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bookmark,
@@ -11,13 +11,15 @@ import {
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
-import { useContinueReadingLedger } from '@/hooks/reader/useContinueReadingLedger';
+import { useContinueReadingLedger, type BookmarksSortOption } from '@/hooks/reader/useContinueReadingLedger';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { BookmarkCard } from './BookmarkCard';
-import { CollectionSearchBar } from './CollectionSearchBar';
+import { CollectionToolbar, type SortOption } from './CollectionToolbar';
+import { smartScrollToContent } from '@/lib/scroll-utils';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Pagination } from '@/components/ui/Pagination';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ROUTES } from '@/config/routes';
 import type { LedgerFilter, ActiveReadingVolume, LedgerItemStatus } from '@/types/book.types';
@@ -26,8 +28,21 @@ export interface BookmarksViewProps {
   onBrowseCatalog?: () => void;
 }
 
+const BOOKMARK_SORT_OPTIONS: SortOption[] = [
+  { value: 'recent', label: 'Recently Read' },
+  { value: 'title_asc', label: 'Title (A → Z)' },
+  { value: 'title_desc', label: 'Title (Z → A)' },
+  { value: 'author_asc', label: 'Author (A → Z)' },
+  { value: 'author_desc', label: 'Author (Z → A)' },
+  { value: 'progress_desc', label: 'Progress (High → Low)' },
+  { value: 'progress_asc', label: 'Progress (Low → High)' },
+];
+
+const BOOKMARKS_PAGE_SIZE = 12;
+
 export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [volumeToDelete, setVolumeToDelete] = useState<ActiveReadingVolume | null>(null);
   const [volumeToFinish, setVolumeToFinish] = useState<ActiveReadingVolume | null>(null);
@@ -39,11 +54,40 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
     setActiveFilter,
     searchQuery,
     setSearchQuery,
+    sortBy,
+    setSortBy,
     counts,
     updateVolumeStatus,
     clearVolumeProgress,
     clearAllVolumes,
   } = useContinueReadingLedger();
+
+  // Reset page to 1 when filters, search query, or sorting change
+  const [prevFilterKey, setPrevFilterKey] = useState(`${activeFilter}-${searchQuery}-${sortBy}`);
+  const filterKey = `${activeFilter}-${searchQuery}-${sortBy}`;
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setCurrentPage(1);
+  }
+
+  const totalPages = Math.ceil(filteredVolumes.length / BOOKMARKS_PAGE_SIZE);
+  const paginatedVolumes = useMemo(() => {
+    const start = (currentPage - 1) * BOOKMARKS_PAGE_SIZE;
+    return filteredVolumes.slice(start, start + BOOKMARKS_PAGE_SIZE);
+  }, [filteredVolumes, currentPage]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    if (typeof window !== 'undefined') {
+      const didScroll = smartScrollToContent('bookmarks-grid-content', { offsetTop: 80 });
+      if (!didScroll && !document.getElementById('bookmarks-grid-content')) {
+        const section = document.getElementById('bookmarks-ledger-section');
+        if (section) {
+          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+  };
 
   const handleStatusChange = (bookId: number, newStatus: LedgerItemStatus) => {
     const targetVolume = filteredVolumes.find((v) => v.book.id === bookId);
@@ -101,15 +145,30 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
         )}
       </SectionHeader>
 
-      {/* Smart Collection Search Bar for Bookmarks */}
+      {/* Smart Collection Toolbar for Bookmarks */}
       {counts.all > 0 && (
-        <CollectionSearchBar
-          query={searchQuery}
-          onQueryChange={setSearchQuery}
-          placeholder="Search your reading bookmarks by title, author, or subject..."
+        <CollectionToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search your reading bookmarks by title, author, or subject..."
+          searchAriaLabel="Search bookmarks"
+          clearAriaLabel="Clear bookmarks search"
           totalCount={activeFilter === 'all' ? counts.all : counts[activeFilter]}
           filteredCount={filteredVolumes.length}
-          collectionName="bookmarks"
+          sortValue={sortBy}
+          onSortChange={(newSort) => setSortBy(newSort as BookmarksSortOption)}
+          sortOptions={BOOKMARK_SORT_OPTIONS}
+          sortAriaLabel="Sort bookmarks"
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          paginationAriaLabel="Top bookmarks pagination"
+          itemCountLabel={
+            filteredVolumes.length > 0
+              ? `${filteredVolumes.length} ${filteredVolumes.length === 1 ? 'volume' : 'volumes'}`
+              : undefined
+          }
+          className="mb-8"
         />
       )}
 
@@ -201,18 +260,30 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredVolumes.map((vol) => (
-              <BookmarkCard
-                key={vol.book.id}
-                volume={vol}
-                isOffline={isBookOffline(vol.book.id)}
-                onResume={handleResume}
-                onStatusChange={handleStatusChange}
-                onClear={() => setVolumeToDelete(vol)}
-              />
-            ))}
-          </div>
+          <>
+            <div id="bookmarks-grid-content" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {paginatedVolumes.map((vol) => (
+                <BookmarkCard
+                  key={vol.book.id}
+                  volume={vol}
+                  isOffline={isBookOffline(vol.book.id)}
+                  onResume={handleResume}
+                  onStatusChange={handleStatusChange}
+                  onClear={() => setVolumeToDelete(vol)}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls (shown when > 12 items) */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              totalItems={filteredVolumes.length}
+              pageSize={BOOKMARKS_PAGE_SIZE}
+              className="mt-8"
+            />
+          </>
         )}
       </div>
     </div>

@@ -167,9 +167,17 @@ export const useReaderStore = create<ReaderState>()(
 
       syncReadingPositionToCloud: async (bookId, position, userId) => {
         if (!userId || !bookId) return;
+        const progress = get().readingProgress[bookId] ?? 0;
+        const isGhost =
+          progress === 0 &&
+          (position.chapterIndex ?? 0) === 0 &&
+          (position.chapterPage ?? 1) <= 1 &&
+          (position.globalPage ?? 1) <= 1;
+
+        if (isGhost) return;
+
         try {
           const supabase = createClient();
-          const progress = get().readingProgress[bookId] ?? 0;
           await supabase.from('reading_progress').upsert(
             {
               user_id: userId,
@@ -201,6 +209,13 @@ export const useReaderStore = create<ReaderState>()(
             .maybeSingle();
 
           if (data && !error) {
+            const isGhost =
+              Number(data.progress_percent || 0) === 0 &&
+              (data.current_chapter_index ?? 0) === 0 &&
+              Number(data.scroll_offset || 0) <= 1;
+
+            if (isGhost) return null;
+
             const remotePosition: BookReadingPosition = {
               chapterIndex: data.current_chapter_index ?? 0,
               chapterPage: Number(data.scroll_offset) || 1,
@@ -232,6 +247,16 @@ export const useReaderStore = create<ReaderState>()(
         if (!userId) return;
         try {
           const supabase = createClient();
+
+          // Cloud sanitization: purge legacy 0% Page-1 orphaned records
+          await supabase
+            .from('reading_progress')
+            .delete()
+            .eq('user_id', userId)
+            .eq('progress_percent', 0)
+            .eq('current_chapter_index', 0)
+            .lte('scroll_offset', 1);
+
           const { data, error } = await supabase
             .from('reading_progress')
             .select('*')
@@ -244,7 +269,29 @@ export const useReaderStore = create<ReaderState>()(
             const nextPositions = { ...state.readingPositions };
             const nextProgress = { ...state.readingProgress };
 
+            // Prune local ghost entries
+            Object.entries(nextPositions).forEach(([idStr, pos]) => {
+              const id = Number(idStr);
+              const prog = nextProgress[id] ?? 0;
+              if (
+                (pos.globalPage ?? 1) <= 1 &&
+                (pos.chapterIndex ?? 0) === 0 &&
+                (pos.chapterPage ?? 1) <= 1 &&
+                prog === 0
+              ) {
+                delete nextPositions[id];
+                delete nextProgress[id];
+              }
+            });
+
             data.forEach((row) => {
+              const isGhost =
+                Number(row.progress_percent || 0) === 0 &&
+                (row.current_chapter_index ?? 0) === 0 &&
+                Number(row.scroll_offset || 0) <= 1;
+
+              if (isGhost) return;
+
               const bookId = row.book_id;
               const localPos = nextPositions[bookId];
               const remoteTime = new Date(row.last_read_at).getTime();

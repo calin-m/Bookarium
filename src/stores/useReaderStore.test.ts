@@ -306,11 +306,18 @@ describe('useReaderStore', () => {
         }),
       });
 
-      mockFrom.mockReturnValue({ select: mockSelect });
+      const mockLte = vi.fn().mockResolvedValue({ error: null });
+      const mockEq3 = vi.fn().mockReturnValue({ lte: mockLte });
+      const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 });
+
+      mockFrom.mockReturnValue({ select: mockSelect, delete: mockDelete });
 
       await useReaderStore.getState().syncWithCloud('test-user-123');
 
       expect(mockFrom).toHaveBeenCalledWith('reading_progress');
+      expect(mockDelete).toHaveBeenCalled();
       const pos1342 = useReaderStore.getState().getReadingPosition(1342);
       expect(pos1342?.bookTitle).toBe('Pride and Prejudice');
       expect(pos1342?.chapterIndex).toBe(5);
@@ -376,6 +383,91 @@ describe('useReaderStore', () => {
       expect(mockFrom).toHaveBeenCalledWith('reading_progress');
       expect(mockDelete).toHaveBeenCalled();
       expect(mockEqUser).toHaveBeenCalledWith('user_id', 'test-user-123');
+    });
+
+    it('does not upsert ghost reading position (0% progress on Page 1) to Supabase', async () => {
+      const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({ upsert: mockUpsert });
+
+      useAuthStore.setState({
+        user: { id: 'test-user-123', email: 'reader@example.com' } as any,
+      });
+
+      // Position on Page 1 with 0 progress
+      const ghostPos = {
+        chapterIndex: 0,
+        chapterPage: 1,
+        globalPage: 1,
+        lastReadAt: new Date().toISOString(),
+      };
+
+      await useReaderStore.getState().syncReadingPositionToCloud(777, ghostPos, 'test-user-123');
+
+      expect(mockUpsert).not.toHaveBeenCalled();
+    });
+
+    it('filters out remote ghost records and prunes local ghost entries during syncWithCloud', async () => {
+      const mockSelect = vi.fn().mockReturnValue({
+        eq: () => ({
+          order: () =>
+            Promise.resolve({
+              data: [
+                {
+                  book_id: 111,
+                  book_title: 'Remote Ghost Book',
+                  book_authors: ['Ghost Author'],
+                  cover_url: null,
+                  current_chapter_index: 0,
+                  progress_percent: 0,
+                  scroll_offset: 1,
+                  last_read_at: '2026-09-01T10:00:00.000Z',
+                },
+                {
+                  book_id: 222,
+                  book_title: 'Real Active Book',
+                  book_authors: ['Real Author'],
+                  cover_url: null,
+                  current_chapter_index: 1,
+                  progress_percent: 25,
+                  scroll_offset: 3,
+                  last_read_at: '2026-09-02T10:00:00.000Z',
+                },
+              ],
+              error: null,
+            }),
+        }),
+      });
+
+      const mockLte = vi.fn().mockResolvedValue({ error: null });
+      const mockEq3 = vi.fn().mockReturnValue({ lte: mockLte });
+      const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 });
+
+      mockFrom.mockReturnValue({ select: mockSelect, delete: mockDelete });
+
+      // Seed local with a ghost book
+      useReaderStore.setState({
+        readingPositions: {
+          999: { chapterIndex: 0, chapterPage: 1, globalPage: 1, lastReadAt: '2026-09-01' },
+        },
+        readingProgress: {
+          999: 0,
+        },
+      });
+
+      await useReaderStore.getState().syncWithCloud('test-user-123');
+
+      // Local ghost 999 should be pruned
+      expect(useReaderStore.getState().getReadingPosition(999)).toBeNull();
+      expect(useReaderStore.getState().getProgress(999)).toBe(0);
+
+      // Remote ghost 111 should be ignored
+      expect(useReaderStore.getState().getReadingPosition(111)).toBeNull();
+
+      // Real active book 222 should be synced
+      expect(useReaderStore.getState().getReadingPosition(222)).not.toBeNull();
+      expect(useReaderStore.getState().getProgress(222)).toBe(25);
     });
   });
 

@@ -840,6 +840,31 @@ describe('BookshelfRack Component', () => {
       expect(screen.queryByText(/General/i)).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /browse catalog/i })).not.toBeInTheDocument();
     });
+
+    it('displays totalBooksCount in General shelf badge when provided', () => {
+      render(<BookshelfRack books={mockBooks.slice(0, 2)} totalBooksCount={45} />);
+      expect(screen.getByText(/\(45 volumes\)/)).toBeInTheDocument();
+    });
+
+    it('distributes books evenly across 2 shelves when books exceed shelf capacity', () => {
+      const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 1200 });
+
+      try {
+        const twentyFourBooks = Array.from({ length: 24 }, (_, i) => ({
+          ...mockBooks[i % mockBooks.length],
+          id: 3000 + i,
+          title: `Book ${i}`,
+        }));
+        const { container } = render(<BookshelfRack books={twentyFourBooks} />);
+        const shelfRows = container.querySelectorAll('.shelf-ambient-niche');
+        expect(shelfRows.length).toBe(2);
+      } finally {
+        if (originalClientWidth) {
+          Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidth);
+        }
+      }
+    });
   });
 
   describe('calculateShelfCapacity and Zero-Shift Layout Calculation', () => {

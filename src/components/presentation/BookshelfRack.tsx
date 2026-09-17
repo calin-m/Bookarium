@@ -25,6 +25,7 @@ export interface BookshelfRackProps {
   searchQuery?: string;
   onClearSearch?: () => void;
   showShelfControls?: boolean;
+  totalBooksCount?: number;
 }
 
 /**
@@ -50,6 +51,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   searchQuery,
   onClearSearch,
   showShelfControls = true,
+  totalBooksCount,
 }) => {
   const router = useRouter();
   const {
@@ -203,11 +205,18 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     return partitionBooksByJurisdiction(effectiveShelfBooks, country);
   }, [effectiveShelfBooks, country]);
 
-  // Chunk books dynamically into shelves based on container width
+  // Chunk books dynamically into shelves based on container width with balanced distribution
   const shelves = useMemo(() => {
+    if (effectiveShelfBooks.length === 0) return [];
+    if (effectiveShelfBooks.length <= shelfCapacity) {
+      return [effectiveShelfBooks];
+    }
+
+    const targetShelves = Math.ceil(effectiveShelfBooks.length / shelfCapacity);
+    const balancedCapacity = Math.ceil(effectiveShelfBooks.length / targetShelves);
     const result: GutendexBook[][] = [];
-    for (let i = 0; i < effectiveShelfBooks.length; i += shelfCapacity) {
-      result.push(effectiveShelfBooks.slice(i, i + shelfCapacity));
+    for (let i = 0; i < effectiveShelfBooks.length; i += balancedCapacity) {
+      result.push(effectiveShelfBooks.slice(i, i + balancedCapacity));
     }
     return result;
   }, [effectiveShelfBooks, shelfCapacity]);
@@ -276,7 +285,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                       <Lock className="w-2.5 h-2.5 text-amber-500 inline ml-1 shrink-0" data-testid="private-shelf-badge" />
                     )}
                     {shelf.is_default && (
-                      <span className="ml-1.5 opacity-70 text-[10px]">({books.length})</span>
+                      <span className="ml-1.5 opacity-70 text-[10px]">({totalBooksCount ?? books.length})</span>
                     )}
                     {!shelf.is_default && (
                       <span className="ml-1.5 opacity-70 text-[10px]">
@@ -303,7 +312,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               <span className="px-3.5 py-1.5 rounded-full text-xs font-mono font-medium bg-primary text-primary-foreground shadow-sm">
                 General
               </span>
-              <span className="text-xs font-mono text-muted-foreground">({books.length} volumes)</span>
+              <span className="text-xs font-mono text-muted-foreground">({totalBooksCount ?? books.length} volumes)</span>
             </div>
           )}
         </div>

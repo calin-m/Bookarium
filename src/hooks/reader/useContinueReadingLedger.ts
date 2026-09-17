@@ -14,6 +14,15 @@ import type {
   ReadingStatus,
 } from '@/types/book.types';
 
+export type BookmarksSortOption =
+  | 'recent'
+  | 'title_asc'
+  | 'title_desc'
+  | 'author_asc'
+  | 'author_desc'
+  | 'progress_desc'
+  | 'progress_asc';
+
 export interface UseContinueReadingLedgerReturn {
   volumes: ActiveReadingVolume[];
   filteredVolumes: ActiveReadingVolume[];
@@ -21,6 +30,8 @@ export interface UseContinueReadingLedgerReturn {
   setActiveFilter: (filter: LedgerFilter) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  sortBy: BookmarksSortOption;
+  setSortBy: (sort: BookmarksSortOption) => void;
   counts: {
     all: number;
     in_progress: number;
@@ -41,6 +52,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   const hasMounted = useHasMounted();
   const [activeFilter, setActiveFilter] = useState<LedgerFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<BookmarksSortOption>('recent');
 
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const readingPositions = useReaderStore((s) => s.readingPositions);
@@ -56,18 +68,27 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     if (!hasMounted) return [];
 
     const idSet = new Set<number>();
-    Object.keys(readingPositions).forEach((idStr) => {
+    Object.entries(readingPositions).forEach(([idStr, pos]) => {
       const id = parseInt(idStr, 10);
-      if (!Number.isNaN(id)) idSet.add(id);
+      if (Number.isNaN(id) || !pos) return;
+      const prog = readingProgress[id] ?? 0;
+      const hasStatus = Boolean(bookStatuses[id]);
+      const isPastPageOne =
+        (pos.globalPage ?? 1) > 1 ||
+        (pos.chapterIndex ?? 0) > 0 ||
+        (pos.chapterPage ?? 1) > 1;
+      if (prog > 0 || isPastPageOne || hasStatus) {
+        idSet.add(id);
+      }
     });
 
-    Object.keys(readingProgress).forEach((idStr) => {
+    Object.entries(readingProgress).forEach(([idStr, prog]) => {
       const id = parseInt(idStr, 10);
-      if (!Number.isNaN(id) && readingProgress[id] > 0) idSet.add(id);
+      if (!Number.isNaN(id) && prog > 0) idSet.add(id);
     });
 
     return Array.from(idSet).sort((a, b) => a - b);
-  }, [hasMounted, readingPositions, readingProgress]);
+  }, [hasMounted, readingPositions, readingProgress, bookStatuses]);
 
   const missingIds = useMemo(() => {
     const known = new Set<number>();
@@ -254,19 +275,50 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       result = result.filter((vol) => vol.status === activeFilter);
     }
     const cleanQuery = searchQuery.trim().toLowerCase();
-    if (!cleanQuery) return result;
+    if (cleanQuery) {
+      result = result.filter((vol) => {
+        const titleMatch = vol.book.title?.toLowerCase().includes(cleanQuery);
+        const authorMatch = vol.book.authors?.some((author) =>
+          author.toLowerCase().includes(cleanQuery)
+        );
+        const subjectMatch = vol.book.subjects?.some((subject) =>
+          subject.toLowerCase().includes(cleanQuery)
+        );
+        return Boolean(titleMatch || authorMatch || subjectMatch);
+      });
+    }
 
-    return result.filter((vol) => {
-      const titleMatch = vol.book.title?.toLowerCase().includes(cleanQuery);
-      const authorMatch = vol.book.authors?.some((author) =>
-        author.toLowerCase().includes(cleanQuery)
-      );
-      const subjectMatch = vol.book.subjects?.some((subject) =>
-        subject.toLowerCase().includes(cleanQuery)
-      );
-      return Boolean(titleMatch || authorMatch || subjectMatch);
+    const sortedResult = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'title_asc':
+          return (a.book.title || '').localeCompare(b.book.title || '', undefined, { sensitivity: 'base' });
+        case 'title_desc':
+          return (b.book.title || '').localeCompare(a.book.title || '', undefined, { sensitivity: 'base' });
+        case 'author_asc': {
+          const authorA = a.book.authors?.[0] || '';
+          const authorB = b.book.authors?.[0] || '';
+          return authorA.localeCompare(authorB, undefined, { sensitivity: 'base' });
+        }
+        case 'author_desc': {
+          const authorA = a.book.authors?.[0] || '';
+          const authorB = b.book.authors?.[0] || '';
+          return authorB.localeCompare(authorA, undefined, { sensitivity: 'base' });
+        }
+        case 'progress_desc':
+          return b.progressPercent - a.progressPercent;
+        case 'progress_asc':
+          return a.progressPercent - b.progressPercent;
+        case 'recent':
+        default: {
+          const timeA = new Date(a.lastReadAt).getTime();
+          const timeB = new Date(b.lastReadAt).getTime();
+          return timeB - timeA;
+        }
+      }
     });
-  }, [volumes, activeFilter, searchQuery]);
+
+    return sortedResult;
+  }, [volumes, activeFilter, searchQuery, sortBy]);
 
   const updateVolumeStatus = useCallback(
     async (bookId: number, status: LedgerItemStatus) => {
@@ -316,6 +368,8 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     searchQuery,
     setSearchQuery,
     counts,
+    sortBy,
+    setSortBy,
     isLoading: !hasMounted || (missingIds.length > 0 && isMissingBooksLoading),
     updateVolumeStatus,
     clearVolumeProgress,

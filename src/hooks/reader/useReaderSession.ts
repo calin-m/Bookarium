@@ -211,24 +211,34 @@ export function useReaderSession({
           )
         );
 
-  // Sync Progress & Exact Position to Store
+  // Sync Progress & Exact Position to Store (Gated by Page-2+ Reading Engagement)
   useEffect(() => {
     if (numericId > 0 && totalVolumePages > 0) {
-      if (readingStatus !== 'finished') {
-        setProgress(numericId, volumeProgress);
-      }
-      if (hasRestoredPositionRef.current) {
-        const currentUserId = useAuthStore.getState().user?.id;
-        saveReadingPosition(
-          numericId,
-          {
-            chapterIndex: activeChapterIndex,
-            chapterPage: currentChapterPage,
-            globalPage: currentGlobalPage,
-            lastReadAt: new Date().toISOString(),
-          },
-          currentUserId
-        );
+      const isEngagedReading =
+        currentGlobalPage > 1 ||
+        activeChapterIndex > 0 ||
+        currentChapterPage > 1 ||
+        volumeProgress > 0 ||
+        readingStatus === 'finished' ||
+        Boolean(getReadingPosition(numericId));
+
+      if (isEngagedReading) {
+        if (readingStatus !== 'finished') {
+          setProgress(numericId, volumeProgress);
+        }
+        if (hasRestoredPositionRef.current) {
+          const currentUserId = useAuthStore.getState().user?.id;
+          saveReadingPosition(
+            numericId,
+            {
+              chapterIndex: activeChapterIndex,
+              chapterPage: currentChapterPage,
+              globalPage: currentGlobalPage,
+              lastReadAt: new Date().toISOString(),
+            },
+            currentUserId
+          );
+        }
       }
     }
   }, [
@@ -241,6 +251,7 @@ export function useReaderSession({
     currentGlobalPage,
     setProgress,
     saveReadingPosition,
+    getReadingPosition,
   ]);
 
   // Navigation Handlers

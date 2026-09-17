@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 15 Sep 2026 09:21:03 GMT  
+**Last Generated**: Thu, 17 Sep 2026 14:58:23 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 169 passed  
-**Total Verified Tests**: 1590 passed  
+**Total Test Suites**: 175 passed  
+**Total Verified Tests**: 1652 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **169/169 test suites passed** (1590 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1652 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 48 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 49 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.48%** (7232/7820) — *Target: $ge$ 80%*
-- **Statements**: **90.89%** (7839/8624) — *Target: $ge$ 80%*
-- **Functions**: **88.78%** (1686/1899) — *Target: $ge$ 80%*
-- **Branches**: **81.4%** (6897/8472) — *Target: $ge$ 80%*
+- **Lines**: **92.11%** (7508/8151) — *Target: $ge$ 80%*
+- **Statements**: **90.56%** (8142/8990) — *Target: $ge$ 80%*
+- **Functions**: **88.83%** (1751/1971) — *Target: $ge$ 80%*
+- **Branches**: **80.97%** (7187/8876) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (169 Suites / 1590 Tests)
+## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1652 Tests)
 
-### 🚀 App Routes & Pages (15 Suites · 165 Tests)
+### 🚀 App Routes & Pages (15 Suites · 170 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
@@ -183,7 +183,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (22 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -207,6 +207,10 @@
 - ✔ `smoothly scrolls to catalog-section when filters are applied via Show Results`
 - ✔ `smoothly scrolls to catalog-section when filters are cleared via quick clear button`
 - ✔ `switches views when swiping horizontally across main on mobile`
+- ✔ `renders sort dropdown, volume badge, top and bottom pagination on Bookshelf when books exceed 24 on desktop`
+- ✔ `sorts saved books on Bookshelf by title ascending and author descending`
+- ✔ `renders sort dropdown, volume badge, and pagination on Favorites when exceeding 24 items`
+- ✔ `resets pagination page to 1 when collection search query changes`
 
 </details>
 
@@ -234,7 +238,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (32 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (33 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -255,6 +259,7 @@
 - ✔ `automatically dismisses text selection popover when any reader drawer is opened`
 - ✔ `toggles Read Aloud audio bar and triggers speech controls`
 - ✔ `automatically closes any open side drawer when Read Aloud narration is opened from the header`
+- ✔ `automatically minimizes Read Aloud into mini-pill and docks at top when a reader drawer is opened`
 - ✔ `toggles Annotations & Notes drawer from reader header`
 - ✔ `renders selection popover on mouseUp and applies chosen highlight color`
 - ✔ `attaches and saves a personal reflection note to an existing highlight`
@@ -291,7 +296,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (25 Suites · 314 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 340 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -380,7 +385,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
@@ -395,6 +400,8 @@
 - ✔ `hydrates missing book metadata (e.g. Volume #55179) and displays real title and author`
 - ✔ `applies adaptive responsive label expansion and tooltip attributes to filter tabs`
 - ✔ `renders completed volume with 100% progress and Read Again action`
+- ✔ `renders sort dropdown and allows changing sort order`
+- ✔ `renders pagination when volumes exceed 12 items and navigates between pages`
 
 </details>
 
@@ -456,7 +463,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (43 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (45 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -499,6 +506,8 @@
 - ✔ `omits personal shelf management controls when showShelfControls is false`
 - ✔ `does not render syncing indicator when showShelfControls is false even if isSyncing is true`
 - ✔ `displays catalog-appropriate empty state when showShelfControls is false and books array is empty`
+- ✔ `displays totalBooksCount in General shelf badge when provided`
+- ✔ `distributes books evenly across 2 shelves when books exceed shelf capacity`
 - ✔ `calculates deterministic shelf capacity capped to max-w-7xl (1280px) on wide viewports`
 - ✔ `calculates proportional capacity on tablet and mobile viewports`
 
@@ -518,6 +527,40 @@
 - ✔ `should return server and client snapshot correctly and handle undefined matchMedia`
 - ✔ `should render correct accessible labels when collectionName is bookmarks`
 - ✔ `should apply crisp focus-ring styling matching the Notebooks search bar effect`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CollectionSortDropdown.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders all options with currently selected value`
+- ✔ `calls onChange with new value when an option is chosen`
+- ✔ `uses default ariaLabel when not explicitly provided`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CollectionToolbar.test.tsx</code></b> (9 tests)</summary>
+
+- ✔ `renders search input with placeholder and accessible label`
+- ✔ `calls onSearchChange when user types in search input`
+- ✔ `renders clear button and counter badge when filtering`
+- ✔ `supports custom clearAriaLabel`
+- ✔ `clears search when pressing Escape key`
+- ✔ `renders sort dropdown and handles value changes`
+- ✔ `renders top pagination when totalPages > 1 and handles page clicks`
+- ✔ `does not render top pagination when totalPages <= 1`
+- ✔ `renders item count label and extra controls when provided`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CollectionTopPagination.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `renders null when totalPages is 1 or less`
+- ✔ `renders pagination controls and indicator when totalPages > 1`
+- ✔ `disables previous button on first page and enables next button`
+- ✔ `disables next button on last page and enables previous button`
 
 </details>
 
@@ -697,7 +740,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (31 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (37 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -730,6 +773,12 @@
 - ✔ `resolves author lifespans from recentBooks without showing Protected badge in Life+70`
 - ✔ `recovers author lifespans for saved books with incomplete metadata from featured fixtures`
 - ✔ `correctly displays Protected badge for truly copyright-restricted authors in foreign jurisdiction`
+- ✔ `sorts chronological quotes by Date Added Oldest and Newest`
+- ✔ `sorts chronological quotes alphabetically by title and author`
+- ✔ `sorts book groups in By-Book mode by Title, Author, and Most Quotes`
+- ✔ `paginates chronological quotes with 12 items per page and scrolls to top on page change`
+- ✔ `paginates volume groups with 6 books per page in By-Book mode`
+- ✔ `resets page to 1 when changing search query, color filter, or sort order`
 
 </details>
 
@@ -757,7 +806,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 148 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 151 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -918,7 +967,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders null when isOpen is false`
 - ✔ `renders with elevated z-[10001] stacking context to remain interactive above drawer backdrops`
@@ -933,6 +982,9 @@
 - ✔ `adapts properly to sepia and dark themes`
 - ✔ `renders with mobile-responsive positioning and WCAG touch target classes`
 - ✔ `correctly uses UseReaderSpeechReturn facade prop when provided`
+- ✔ `renders expanded card by default and allows manual toggling to minimized mini-pill and back`
+- ✔ `automatically enters minimized mode and docks at the top when isDrawerOpen is true`
+- ✔ `handles playback toggling and skipping inside minimized mode`
 
 </details>
 
@@ -1042,7 +1094,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (9 Suites · 148 Tests)
+### ⚡ Zustand State Stores (9 Suites · 150 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -1211,7 +1263,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1228,6 +1280,8 @@
 - ✔ `bulk synchronizes all user reading progress via syncWithCloud`
 - ✔ `deletes from Supabase when clearReadingPosition is invoked while authenticated`
 - ✔ `deletes all user records from Supabase on clearAllVolumes while authenticated`
+- ✔ `does not upsert ghost reading position (0% progress on Page 1) to Supabase`
+- ✔ `filters out remote ghost records and prunes local ghost entries during syncWithCloud`
 - ✔ `returns 0 for null, undefined, or empty state`
 - ✔ `returns unique volume count across positions and progress`
 - ✔ `provides hydration-safe reader defaults and activeReadingCount`
@@ -1246,7 +1300,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (29 Suites · 317 Tests)
+### 📚 Gutenberg Parsers & Metadata (31 Suites · 330 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1317,6 +1371,20 @@
 - ✔ `resolves languages correctly with strict ID-guarding from store, API, and header metadata`
 - ✔ `resolves structured authors with lifespans from featured static fixtures (Tier 1)`
 - ✔ `preserves structured authors and translators from API results (Tier 3)`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/book-sorting.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `exposes defined sort option lists for Bookshelf and Favorites`
+- ✔ `handles empty arrays, undefined inputs, and single-item arrays safely`
+- ✔ `does not mutate the original array (immutability check)`
+- ✔ `sorts alphabetically by title ascending and descending (cleans preamble)`
+- ✔ `sorts alphabetically by author ascending and descending`
+- ✔ `sorts by reading progress percentage descending and ascending`
+- ✔ `sorts by download count (popularity) descending`
+- ✔ `preserves order when sortBy is "recent" or unrecognized`
 
 </details>
 
@@ -1653,6 +1721,17 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `returns false when element does not exist in DOM`
+- ✔ `does not scroll when element top is already comfortably in view`
+- ✔ `scrolls smoothly to element when top is scrolled off-screen above viewport`
+- ✔ `scrolls smoothly to element when top is far below the threshold ratio`
+- ✔ `clamps targetY to minimum 0 if target position is negative`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/smart-search.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `should return empty string for null, undefined, or empty inputs`
@@ -1739,7 +1818,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 206 Tests)
+### 🔄 Hooks & React Query (22 Suites · 210 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -1824,7 +1903,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -1843,6 +1922,8 @@
 - ✔ `immediately renders volumes using cloud-restored bookTitle and authors on readingPosition without calling useBooks`
 - ✔ `clears individual volume progress and all volumes via store methods`
 - ✔ `resolves authorDetails and lifespans for featured volumes without savedBooks or API data`
+- ✔ `excludes legacy 0% Page-1 books from volumes unless they advance or have curation status`
+- ✔ `supports multi-attribute sorting by title, author, and progress`
 
 </details>
 
@@ -1885,7 +1966,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -1897,6 +1978,8 @@
 - ✔ `handleRestart resets progress to 0 and transitions readingStatus to currently_reading`
 - ✔ `jumps directly to a specified chapter and page using jumpTo`
 - ✔ `works with default internalized hasMounted when not explicitly passed`
+- ✔ `does not save reading position or progress on initial load when remaining on Page 1`
+- ✔ `records reading position and progress immediately upon advancing to Page 2`
 
 </details>
 
@@ -2079,7 +2162,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (50 Suites · 241 Tests)
+### 🧩 UI Primitives & Motion (51 Suites · 250 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2467,6 +2550,21 @@
 - ✔ `should render modal content when isOpen is true`
 - ✔ `should trigger onClose when clicking backdrop or pressing Escape`
 - ✔ `supports custom backdropClassName to override default dimming`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/Pagination.test.tsx</code></b> (9 tests)</summary>
+
+- ✔ `renders null when totalPages is 1 or less`
+- ✔ `renders pagination controls when totalPages is greater than 1`
+- ✔ `disables previous button on the first page`
+- ✔ `disables next button on the last page`
+- ✔ `navigates to previous and next pages via buttons`
+- ✔ `navigates directly to a page when a page pill button is clicked`
+- ✔ `marks current page with aria-current="page"`
+- ✔ `renders item range counts when totalItems and pageSize are provided`
+- ✔ `renders ellipses for large totalPages counts`
 
 </details>
 

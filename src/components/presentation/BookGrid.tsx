@@ -31,6 +31,7 @@ export interface BookGridProps {
   onClearSearch?: () => void;
   activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
   showShelfControls?: boolean;
+  totalBooksCount?: number;
 }
 
 export const BookGrid: React.FC<BookGridProps> = ({
@@ -55,6 +56,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   onClearSearch,
   activeView,
   showShelfControls,
+  totalBooksCount,
 }) => {
   const [internalViewMode, setInternalViewMode] = useState<BookViewMode>(initialViewMode);
   const activeViewMode = controlledViewMode ?? internalViewMode;
@@ -193,7 +195,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
       )}
 
       {/* Main Content: Grid vs. Shelf with smooth page fade */}
-      <div key={`catalog-page-${page}`} className="animate-page-turn">
+      <div key={`catalog-page-${page}`} className="animate-page-turn" id="book-grid-content">
         {activeViewMode === 'shelf' ? (
           <BookshelfRack
             books={books}
@@ -202,6 +204,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
             searchQuery={searchQuery}
             onClearSearch={onClearSearch}
             showShelfControls={shouldShowShelfControls}
+            totalBooksCount={totalBooksCount}
           />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3.5 sm:gap-6">

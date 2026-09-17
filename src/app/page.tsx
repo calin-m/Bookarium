@@ -31,8 +31,17 @@ import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/types/book.types';
 import { Trash2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { CollectionSearchBar } from '@/components/presentation/CollectionSearchBar';
+import { CollectionToolbar } from '@/components/presentation/CollectionToolbar';
+import { Pagination } from '@/components/ui/Pagination';
 import { filterBooksSmart } from '@/lib/smart-search';
+import { smartScrollToContent } from '@/lib/scroll-utils';
+import {
+  sortBooks,
+  BOOKSHELF_SORT_OPTIONS,
+  FAVORITES_SORT_OPTIONS,
+  type BookshelfSortOption,
+  type FavoritesSortOption,
+} from '@/lib/book-sorting';
 import { ROUTES } from '@/config/routes';
 import { VIEW_CONTENT_CONFIG } from '@/config/views.config';
 
@@ -65,6 +74,20 @@ function HomeContent() {
   const rawFavoriteBookIds = useBookshelfStore((s) => s.favoriteBookIds);
   const favoriteBookIds = useMemo(() => (hasMounted ? rawFavoriteBookIds : []), [hasMounted, rawFavoriteBookIds]);
   const clearSavedBooks = useBookshelfStore((s) => s.clearSavedBooks);
+  const rawActiveBookshelfId = useBookshelfStore((s) => s.activeBookshelfId);
+  const activeBookshelfId = hasMounted ? rawActiveBookshelfId : null;
+  const rawCloudBookshelves = useBookshelfStore((s) => s.cloudBookshelves || []);
+  const cloudBookshelves = useMemo(() => (hasMounted ? rawCloudBookshelves : []), [hasMounted, rawCloudBookshelves]);
+  const rawCloudBookshelfItems = useBookshelfStore((s) => s.cloudBookshelfItems || []);
+  const cloudBookshelfItems = useMemo(() => (hasMounted ? rawCloudBookshelfItems : []), [hasMounted, rawCloudBookshelfItems]);
+  const rawReadingProgress = useReaderStore((s) => s.readingProgress || {});
+  const readingProgress = useMemo(() => (hasMounted ? rawReadingProgress : {}), [hasMounted, rawReadingProgress]);
+
+  // Sorting & Pagination State for Bookshelf & Favorites
+  const [shelfSortBy, setShelfSortBy] = useState<BookshelfSortOption>('recent');
+  const [favoritesSortBy, setFavoritesSortBy] = useState<FavoritesSortOption>('recent');
+  const [shelfPage, setShelfPage] = useState(1);
+  const [favoritesPage, setFavoritesPage] = useState(1);
 
   // Unified collection auto-healing pipeline (Bookshelf & Favorites metadata enrichment)
   const { isHealing, missingFavoriteIds, incompleteSavedIds } = useCollectionAutoHeal();
@@ -121,11 +144,52 @@ function HomeContent() {
     enabled: isMobile && !isAnyModalActive,
   });
 
+  // Shelf resolution for general vs custom shelves
+  const defaultShelf = useMemo(
+    () => cloudBookshelves.find((s) => s.is_default) || cloudBookshelves[0],
+    [cloudBookshelves]
+  );
+  const currentActiveShelfId = activeBookshelfId || defaultShelf?.id;
+  const isViewingGeneral = defaultShelf ? currentActiveShelfId === defaultShelf.id : true;
+
+  const currentShelfBooks = useMemo(() => {
+    if (cloudBookshelves.length <= 1 || isViewingGeneral) {
+      return savedBooks;
+    }
+
+    const currentShelfBookIds = new Set(
+      cloudBookshelfItems
+        .filter((item) => item.bookshelf_id === currentActiveShelfId)
+        .map((item) => item.book_id)
+    );
+    return savedBooks.filter((b) => currentShelfBookIds.has(b.id));
+  }, [cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, savedBooks]);
+
   // Reset collection search query when switching views
   const [prevActiveView, setPrevActiveView] = useState(activeView);
   if (prevActiveView !== activeView) {
     setPrevActiveView(activeView);
     setCollectionSearchQuery('');
+  }
+
+  // Reset shelf page when view, search, sort, or active shelf changes
+  const [prevShelfKey, setPrevShelfKey] = useState(
+    `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${currentActiveShelfId}`
+  );
+  const currentShelfKey = `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${currentActiveShelfId}`;
+  if (currentShelfKey !== prevShelfKey) {
+    setPrevShelfKey(currentShelfKey);
+    setShelfPage(1);
+  }
+
+  // Reset favorites page when view, search, or sort changes
+  const [prevFavoritesKey, setPrevFavoritesKey] = useState(
+    `${activeView}-${collectionSearchQuery}-${favoritesSortBy}`
+  );
+  const currentFavoritesKey = `${activeView}-${collectionSearchQuery}-${favoritesSortBy}`;
+  if (currentFavoritesKey !== prevFavoritesKey) {
+    setPrevFavoritesKey(currentFavoritesKey);
+    setFavoritesPage(1);
   }
 
   // Server Query
@@ -159,6 +223,15 @@ function HomeContent() {
       const el = document.getElementById('catalog-section');
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  const scrollToCollectionContent = () => {
+    if (typeof window !== 'undefined') {
+      const didScroll = smartScrollToContent('book-grid-content', { offsetTop: 80 });
+      if (!didScroll && !document.getElementById('book-grid-content')) {
+        scrollToCatalogSection();
       }
     }
   };
@@ -198,12 +271,32 @@ function HomeContent() {
     },
   }));
 
-  // Smart filtered collection books (order-independent search)
+  // Responsive collection page size: 12 on mobile (2 shelves of 6), 24 on desktop (2 shelves of 12)
+  const collectionPageSize = isMobile ? 12 : 24;
+
+  // Smart filtered & sorted collection books (Bookshelf)
   const filteredSavedBooks = useMemo(
-    () => filterBooksSmart(savedBooks, collectionSearchQuery),
-    [savedBooks, collectionSearchQuery]
+    () => filterBooksSmart(currentShelfBooks, collectionSearchQuery),
+    [currentShelfBooks, collectionSearchQuery]
   );
 
+  const sortedSavedBooks = useMemo(
+    () => sortBooks(filteredSavedBooks, shelfSortBy, readingProgress),
+    [filteredSavedBooks, shelfSortBy, readingProgress]
+  );
+
+  const totalShelfPages = Math.max(1, Math.ceil(sortedSavedBooks.length / collectionPageSize));
+  const safeShelfPage = Math.min(shelfPage, totalShelfPages);
+  if (shelfPage > totalShelfPages) {
+    setShelfPage(totalShelfPages);
+  }
+
+  const paginatedSavedBooks = useMemo(() => {
+    const start = (safeShelfPage - 1) * collectionPageSize;
+    return sortedSavedBooks.slice(start, start + collectionPageSize);
+  }, [sortedSavedBooks, safeShelfPage, collectionPageSize]);
+
+  // Smart filtered & sorted collection books (Favorites)
   const uniqueKnownFavoriteBooks = useMemo(() => {
     const allKnown = [
       ...(favoriteBooks || []),
@@ -219,17 +312,33 @@ function HomeContent() {
     [uniqueKnownFavoriteBooks, collectionSearchQuery]
   );
 
+  const sortedFavoriteBooks = useMemo(
+    () => sortBooks(filteredFavoriteBooks, favoritesSortBy),
+    [filteredFavoriteBooks, favoritesSortBy]
+  );
+
+  const totalFavoritesPages = Math.max(1, Math.ceil(sortedFavoriteBooks.length / collectionPageSize));
+  const safeFavoritesPage = Math.min(favoritesPage, totalFavoritesPages);
+  if (favoritesPage > totalFavoritesPages) {
+    setFavoritesPage(totalFavoritesPages);
+  }
+
+  const paginatedFavoriteBooks = useMemo(() => {
+    const start = (safeFavoritesPage - 1) * collectionPageSize;
+    return sortedFavoriteBooks.slice(start, start + collectionPageSize);
+  }, [sortedFavoriteBooks, safeFavoritesPage, collectionPageSize]);
+
   // Derive displayed books with windowed sub-page slicing based on active view
   let displayedBooks = booksData?.results ? booksData.results.slice(sliceStart, sliceEnd) : [];
   let isDisplayLoading = isLoading || isFetching;
   let isDisplayError = isError;
 
   if (activeView === 'bookshelf') {
-    displayedBooks = filteredSavedBooks;
+    displayedBooks = paginatedSavedBooks;
     isDisplayLoading = false;
     isDisplayError = false;
   } else if (activeView === 'favorites') {
-    displayedBooks = filteredFavoriteBooks;
+    displayedBooks = paginatedFavoriteBooks;
     isDisplayLoading = missingFavoriteIds.length > 0 && isHealing;
     isDisplayError = false;
   }
@@ -240,11 +349,11 @@ function HomeContent() {
 
   const isShelf = activeView === 'bookshelf';
   const isFavorites = activeView === 'favorites';
-  const collectionCount = isShelf ? savedBooks.length : isFavorites ? favoriteBookIds.length : 0;
+  const collectionCount = isShelf ? currentShelfBooks.length : isFavorites ? favoriteBookIds.length : 0;
   const filteredCollectionBooks = isShelf
-    ? filteredSavedBooks
+    ? sortedSavedBooks
     : isFavorites
-    ? filteredFavoriteBooks
+    ? sortedFavoriteBooks
     : [];
 
   return (
@@ -369,15 +478,45 @@ function HomeContent() {
                 )}
               </SectionHeader>
 
-              {/* Smart Collection Search Bar for Bookshelf & Favorites */}
+              {/* Collection Toolbar for Bookshelf & Favorites */}
               {viewConfig.collectionName && collectionCount > 0 && (
-                <CollectionSearchBar
-                  query={collectionSearchQuery}
-                  onQueryChange={setCollectionSearchQuery}
-                  placeholder={viewConfig.searchPlaceholder!}
+                <CollectionToolbar
+                  searchQuery={collectionSearchQuery}
+                  onSearchChange={setCollectionSearchQuery}
+                  searchPlaceholder={viewConfig.searchPlaceholder!}
+                  searchAriaLabel={`Search ${viewConfig.collectionName}`}
+                  clearAriaLabel={`Clear ${viewConfig.collectionName} search`}
                   totalCount={collectionCount}
                   filteredCount={filteredCollectionBooks.length}
-                  collectionName={viewConfig.collectionName}
+                  sortValue={isShelf ? shelfSortBy : favoritesSortBy}
+                  onSortChange={(newSort) => {
+                    if (isShelf) {
+                      setShelfSortBy(newSort as BookshelfSortOption);
+                    } else {
+                      setFavoritesSortBy(newSort as FavoritesSortOption);
+                    }
+                  }}
+                  sortOptions={isShelf ? BOOKSHELF_SORT_OPTIONS : FAVORITES_SORT_OPTIONS}
+                  sortAriaLabel={isShelf ? 'Sort bookshelf' : 'Sort favorites'}
+                  currentPage={isShelf ? safeShelfPage : safeFavoritesPage}
+                  totalPages={isShelf ? totalShelfPages : totalFavoritesPages}
+                  onPageChange={(newPage) => {
+                    if (isShelf) {
+                      setShelfPage(newPage);
+                    } else {
+                      setFavoritesPage(newPage);
+                    }
+                    scrollToCollectionContent();
+                  }}
+                  paginationAriaLabel={isShelf ? 'Top bookshelf pagination' : 'Top favorites pagination'}
+                  itemCountLabel={
+                    filteredCollectionBooks.length > 0
+                      ? `${filteredCollectionBooks.length} ${
+                          filteredCollectionBooks.length === 1 ? 'volume' : 'volumes'
+                        }`
+                      : undefined
+                  }
+                  className="mb-8"
                 />
               )}
 
@@ -405,6 +544,7 @@ function HomeContent() {
                 searchQuery={collectionSearchQuery}
                 onClearSearch={collectionSearchQuery.trim() ? () => setCollectionSearchQuery('') : undefined}
                 activeView={activeView}
+                totalBooksCount={savedBooks.length}
                 emptyTitle={
                   collectionSearchQuery.trim()
                     ? `No volumes found matching "${collectionSearchQuery}"`
@@ -416,6 +556,35 @@ function HomeContent() {
                     : viewConfig.emptyDescription
                 }
               />
+
+              {/* Pagination for Bookshelf & Favorites (Threshold-based, hides when <= 12 items on mobile or <= 24 on PC) */}
+              {isShelf && (
+                <Pagination
+                  currentPage={safeShelfPage}
+                  totalPages={totalShelfPages}
+                  onPageChange={(newPage) => {
+                    setShelfPage(newPage);
+                    scrollToCollectionContent();
+                  }}
+                  totalItems={sortedSavedBooks.length}
+                  pageSize={collectionPageSize}
+                  className="mt-8"
+                />
+              )}
+
+              {isFavorites && (
+                <Pagination
+                  currentPage={safeFavoritesPage}
+                  totalPages={totalFavoritesPages}
+                  onPageChange={(newPage) => {
+                    setFavoritesPage(newPage);
+                    scrollToCollectionContent();
+                  }}
+                  totalItems={sortedFavoriteBooks.length}
+                  pageSize={collectionPageSize}
+                  className="mt-8"
+                />
+              )}
             </div>
           </div>
         )}

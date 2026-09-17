@@ -487,5 +487,107 @@ describe('useContinueReadingLedger', () => {
       { name: 'Homer', birth_year: -800, death_year: -750 },
     ]);
   });
+
+  it('excludes legacy 0% Page-1 books from volumes unless they advance or have curation status', () => {
+    act(() => {
+      useReaderStore.setState({
+        readingPositions: {
+          999: {
+            chapterIndex: 0,
+            chapterPage: 1,
+            globalPage: 1,
+            lastReadAt: new Date().toISOString(),
+            bookTitle: 'Ghost Preview Book',
+          },
+          1342: {
+            chapterIndex: 0,
+            chapterPage: 2,
+            globalPage: 2,
+            lastReadAt: new Date().toISOString(),
+            bookTitle: 'Pride and Prejudice',
+          },
+        },
+        readingProgress: {
+          999: 0,
+          1342: 5,
+        },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    // 999 is excluded because it only reached page 1 with 0 progress
+    // 1342 is included because it reached page 2
+    expect(result.current.volumes).toHaveLength(1);
+    expect(result.current.volumes[0].book.id).toBe(1342);
+    expect(result.current.counts.all).toBe(1);
+  });
+
+  it('supports multi-attribute sorting by title, author, and progress', () => {
+    act(() => {
+      useReaderStore.setState({
+        readingPositions: {
+          1: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 5,
+            lastReadAt: '2026-09-01T10:00:00.000Z',
+            bookTitle: 'Zeno of Elea',
+            bookAuthors: ['Parmenides'],
+          },
+          2: {
+            chapterIndex: 2,
+            chapterPage: 2,
+            globalPage: 10,
+            lastReadAt: '2026-09-03T10:00:00.000Z',
+            bookTitle: 'Alice in Wonderland',
+            bookAuthors: ['Lewis Carroll'],
+          },
+          3: {
+            chapterIndex: 3,
+            chapterPage: 2,
+            globalPage: 15,
+            lastReadAt: '2026-09-02T10:00:00.000Z',
+            bookTitle: 'Middlemarch',
+            bookAuthors: ['George Eliot'],
+          },
+        },
+        readingProgress: {
+          1: 10,
+          2: 80,
+          3: 45,
+        },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    // Default: recent (lastReadAt descending: 2 (Sep 3), 3 (Sep 2), 1 (Sep 1))
+    expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([2, 3, 1]);
+
+    // Sort: title_asc (Alice in Wonderland, Middlemarch, Zeno of Elea)
+    act(() => {
+      result.current.setSortBy('title_asc');
+    });
+    expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([2, 3, 1]);
+
+    // Sort: author_asc (George Eliot, Lewis Carroll, Parmenides)
+    act(() => {
+      result.current.setSortBy('author_asc');
+    });
+    expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([3, 2, 1]);
+
+    // Sort: progress_desc (80% (2), 45% (3), 10% (1))
+    act(() => {
+      result.current.setSortBy('progress_desc');
+    });
+    expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([2, 3, 1]);
+
+    // Sort: progress_asc (10% (1), 45% (3), 80% (2))
+    act(() => {
+      result.current.setSortBy('progress_asc');
+    });
+    expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([1, 3, 2]);
+  });
 });
 

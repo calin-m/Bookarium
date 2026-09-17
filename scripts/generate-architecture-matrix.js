@@ -111,6 +111,8 @@ function generateMarkdown() {
     '        LiteraryQuotes["LiteraryQuotes.tsx\\n(Words That Shaped Humanity & Safe Shuffling)"]',
     '        CopyrightBanner["CopyrightNoticeBanner.tsx\\n(Declarative Territorial Restriction & Public Domain Notice)"]',
     '        ContentAdvisory["ContentAdvisoryBanner.tsx\\n(Non-blocking Mature/Historical Context Advisory)"]',
+    '        CollectionToolbarNode["CollectionToolbar.tsx\\n(Unified 2-Row Mobile Workbench: Integrated Search, Sort & Top-Pagination)"]',
+    '        PaginationNode["Pagination.tsx\\n(Accessible Numeric Page Navigation)"]',
     '        ',
     '        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]',
     '            Grid["Catalog View (/)\\n(Smooth Scroll Navigation, 2-Col Mobile Grid, Multi-Col Desktop & 3D Hardwood Shelf)"]',
@@ -220,6 +222,15 @@ function generateMarkdown() {
     '    DownDrawer --> ContentAdvisory',
     '    AccView --> HabitsCard',
     '    AccView --> AccoladesCard',
+    '    ShelfView --> CollectionToolbarNode',
+    '    FavView --> CollectionToolbarNode',
+    '    MarksView --> CollectionToolbarNode',
+    '    NoteView --> CollectionToolbarNode',
+    '    Grid --> PaginationNode',
+    '    ShelfView --> PaginationNode',
+    '    FavView --> PaginationNode',
+    '    MarksView --> PaginationNode',
+    '    NoteView --> PaginationNode',
     '    ',
     '    Grid --> QueryBooks',
     '    QueryBooks --> ProxyBooks',
@@ -468,6 +479,10 @@ function generateMarkdown() {
       'Server-side Supabase client initialization using Next.js cookies for authenticated route handlers.',
     'sync-utils':
       'Unified bidirectional cloud synchronization coordinator coordinating local Zustand stores with Supabase tables.',
+    'book-sorting':
+      'Deterministic multi-attribute book sorting algorithms for title, author, year, downloads, reading progress, and recency.',
+    'scroll-utils':
+      'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, and header avoidance.',
     utils:
       'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, format badges, and blob downloads.',
   };

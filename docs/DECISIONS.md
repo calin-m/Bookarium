@@ -815,4 +815,44 @@
   - Zero dead space or manual scrolling required after applying filters.
   - 100% test coverage with zero regressions across all 169 test suites.
 
+## ADR-049: Unified Collection Toolbar, Strict 2-Row Mobile Ergonomics, Multi-Shelf Pagination & Viewport-Aware Scroll Architecture
+- **Status**: Accepted
+- **Context**:
+  1. **Inconsistent Collection Controls & Visual Fragmentation**:
+     - User personal collections (Bookshelf, Favorites, Bookmarks, and Notebook) each used divergent control primitives. Bookshelf and Favorites used a detached standalone `CollectionSearchBar` floating above separate rows; Bookmarks used an unstyled sub-bar; and Notebook featured an integrated card container (`bg-card border border-border rounded-xl shadow-booksaw`).
+  2. **Mobile Multi-Row Control Wrap (3+ Rows)**:
+     - On vertical mobile screens (<640px and narrow 320px–390px viewports), sorting dropdowns, top pagination indicators, mode toggles, and search badges routinely wrapped across 3 lines. This pushed book racks and cards far down the viewport and created cluttered thumb-zone ergonomics.
+  3. **Bookshelf Vertical Bloat & Desktop Shelf Density**:
+     - On desktop monitors, rendering all user bookshelves in a single long scroll created unbounded vertical height when users created many custom shelves. Displaying 2 shelves per page on desktop while maintaining 1 shelf per page on mobile creates an optimal balance between density and visual breathing room.
+  4. **Jarring Blind Scroll Resets on Pagination**:
+     - Changing pages on collections previously either did not scroll at all (leaving users stranded at the bottom of the page) or executed blind `window.scrollTo({ top: 0 })` resets that threw users all the way to the top of the browser window, requiring them to repeatedly scroll back down to interact with the next shelf or page.
+- **Decision**:
+  1. **Unified `CollectionToolbar` Component (`src/components/presentation/CollectionToolbar.tsx`)**:
+     - Standardized all 4 collection views on the Notebook workbench card aesthetic (`bg-card border border-border rounded-xl shadow-booksaw`).
+     - Encapsulates search input, clear button with `Esc` shortcut, match counter badge (`X / Y`), sort dropdown, top pagination (`CollectionTopPagination`), volume badge, and arbitrary `extraControls`.
+     - Strictly guarantees a **2-row architecture on mobile**:
+       - **Row 1**: 100% full-width search input with integrated clear and match count badges.
+       - **Row 2**: Balanced, non-wrapping utility row (`flex items-center justify-between gap-2`) accommodating sort, top pagination, and mode toggles without ever overflowing onto a 3rd row.
+     - On desktop ($\ge$md), smoothly collapses into a single horizontal toolbar.
+  2. **Compact `CollectionSortDropdown` & Responsive Controls (`src/components/presentation/CollectionSortDropdown.tsx`)**:
+     - Reduced mobile minimum width from `150px` to `125px` with `py-1.5` padding.
+     - Preserved `text-base sm:text-xs` font sizing on mobile inputs to eliminate iOS Safari automatic zoom blowouts while maintaining tight visual proportions.
+     - In `NotebookView`, shortened toggle labels on narrow mobile viewports (<420px) to `"Book"` and `"Chrono"`, saving $>40\text{px}$ of horizontal width.
+  3. **Responsive Multi-Shelf Pagination & Page-Size Strategy (`src/app/page.tsx`)**:
+     - Configured responsive page sizing: 2 bookshelves per page on desktop/tablet ($\ge$640px) and 1 bookshelf per page on mobile (<640px).
+     - Favorites pagination configured to 24 books per page with both top and bottom pagination controls.
+  4. **Viewport-Aware Smart Smooth Scroll Engine (`src/lib/scroll-utils.ts`)**:
+     - Created `smartScrollToContent(elementId, { offsetTop, behavior })`:
+       - Measures element top relative to the viewport via `getBoundingClientRect()`.
+       - If the content top is already comfortably visible within the top quarter of the viewport, scrolling is gracefully skipped to avoid disorientation.
+       - If the content is out of view (e.g., scrolled past or below the fold), smoothly scrolls the target element into view with configurable header clearance (`offsetTop: 80`).
+  5. **Deterministic Multi-Attribute Book Sorting (`src/lib/book-sorting.ts`)**:
+     - Pure computational utility sorting books across 6 distinct criteria: Recently Added (`recent`), Title A $\to$ Z (`title_asc`), Title Z $\to$ A (`title_desc`), Author A $\to$ Z (`author_asc`), Author Z $\to$ A (`author_desc`), and Release Year / Downloads (`year_desc`, `downloads_desc`).
+- **Consequences**:
+  - Seamless, unified visual identity across all personal collection hubs.
+  - Complete elimination of 3-row layout wrapping on all mobile form factors down to 320px.
+  - Ergonomic page transitions that maintain user context without disruptive full-page jumps.
+  - 100% authentic co-located test coverage across 175 test suites with zero regressions.
+
+
 

@@ -136,6 +136,12 @@ vi.mock('framer-motion', async () => {
           layoutId: _layoutId,
           onAnimationStart: _onAnimationStart,
           onAnimationComplete: _onAnimationComplete,
+          drag: _drag,
+          dragConstraints: _dragConstraints,
+          dragElastic: _dragElastic,
+          dragMomentum: _dragMomentum,
+          onDrag: _onDrag,
+          onDragEnd: _onDragEnd,
           ...props
         }: any,
         ref: any

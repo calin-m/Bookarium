@@ -431,6 +431,86 @@ describe('BookmarksView', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Read Again')).toBeInTheDocument();
   });
+
+  it('renders sort dropdown and allows changing sort order', () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 60);
+
+    renderWithClient(<BookmarksView />);
+
+    const sortSelect = screen.getByRole('combobox', { name: 'Sort bookmarks' });
+    expect(sortSelect).toBeInTheDocument();
+    expect(sortSelect).toHaveValue('recent');
+
+    fireEvent.change(sortSelect, { target: { value: 'title_asc' } });
+    expect(sortSelect).toHaveValue('title_asc');
+  });
+
+  it('renders pagination when volumes exceed 12 items and navigates between pages', () => {
+    // Generate 15 mock books
+    const fifteenBooks = Array.from({ length: 15 }, (_, i) => ({
+      ...mockBook,
+      id: 1000 + i,
+      title: `Book Title ${String(i + 1).padStart(2, '0')}`,
+    }));
+
+    const positions: Record<number, any> = {};
+    const progress: Record<number, number> = {};
+    fifteenBooks.forEach((b, i) => {
+      positions[b.id] = {
+        chapterIndex: 1,
+        chapterPage: 2,
+        globalPage: 2,
+        lastReadAt: new Date(Date.now() - i * 10000).toISOString(),
+        bookTitle: b.title,
+      };
+      progress[b.id] = 10 + i;
+    });
+
+    useBookshelfStore.setState({
+      savedBooks: fifteenBooks,
+    });
+    useReaderStore.setState({
+      readingPositions: positions,
+      readingProgress: progress,
+    });
+
+    // Mock window.scrollTo for smartScrollToContent
+    const scrollToSpy = vi.fn();
+    window.scrollTo = scrollToSpy;
+    const scrollSpy = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollSpy;
+
+    renderWithClient(<BookmarksView />);
+
+    // Page 1 should show the first 12 items
+    expect(screen.getByText('Book Title 01')).toBeInTheDocument();
+    expect(screen.getByText('Book Title 12')).toBeInTheDocument();
+    expect(screen.queryByText('Book Title 13')).not.toBeInTheDocument();
+
+    // Top and bottom pagination should both be present
+    const topPagination = screen.getByRole('navigation', { name: 'Top bookmarks pagination' });
+    expect(topPagination).toBeInTheDocument();
+    expect(within(topPagination).getByTestId('top-pagination-indicator')).toHaveTextContent(/1\s*\/\s*2/);
+
+    const paginationNav = screen.getByTestId('pagination-nav');
+    expect(paginationNav).toBeInTheDocument();
+
+    // Navigate to Next page (Page 2) via top pagination
+    const nextBtn = within(topPagination).getByRole('button', { name: 'Next page' });
+    fireEvent.click(nextBtn);
+
+    // Page 2 should show remaining 3 items (13, 14, 15)
+    expect(screen.queryByText('Book Title 01')).not.toBeInTheDocument();
+    expect(screen.getByText('Book Title 13')).toBeInTheDocument();
+    expect(screen.getByText('Book Title 15')).toBeInTheDocument();
+
+    // Verify smart scroll was triggered
+    expect(scrollToSpy).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+  });
 });
 
 

@@ -441,6 +441,36 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
   });
 
+  it('automatically minimizes Read Aloud into mini-pill and docks at top when a reader drawer is opened', () => {
+    render(<BookReaderPage />);
+
+    // Open speech bar from header button
+    const speechBtn = screen.getAllByLabelText('Read Aloud Narration')[0];
+    fireEvent.click(speechBtn);
+
+    // Speech bar appears in expanded mode at bottom
+    expect(screen.getByTestId('speech-bar-expanded')).toBeInTheDocument();
+    expect(screen.getByTestId('reader-speech-bar').className).toContain('bottom-');
+
+    // Open Table of Contents drawer
+    const tocBtn = screen.getAllByLabelText('Table of Contents')[0];
+    fireEvent.click(tocBtn);
+    expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
+
+    // Speech bar automatically collapses into mini-pill and docks at top
+    expect(screen.getByTestId('speech-bar-minimized')).toBeInTheDocument();
+    expect(screen.getByTestId('reader-speech-bar').className).toContain('top-');
+
+    // Close TOC drawer
+    const closeBtn = screen.getByLabelText('Close Table of Contents');
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole('dialog', { name: /Table of Contents/i })).not.toBeInTheDocument();
+
+    // Speech bar restores to expanded mode at bottom
+    expect(screen.getByTestId('speech-bar-expanded')).toBeInTheDocument();
+    expect(screen.getByTestId('reader-speech-bar').className).toContain('bottom-');
+  });
+
   it('toggles Annotations & Notes drawer from reader header', () => {
     render(<BookReaderPage />);
 

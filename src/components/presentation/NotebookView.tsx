@@ -4,16 +4,17 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation';
 import {
   Highlighter,
-  Search,
   BookOpen,
   Trash2,
-  X,
   Layers,
   Clock,
   AlertTriangle,
   Lock,
 } from 'lucide-react';
 import { NotebookQuoteCard } from './NotebookQuoteCard';
+import { CollectionToolbar } from './CollectionToolbar';
+import type { SortOption } from './CollectionSortDropdown';
+import { smartScrollToContent } from '@/lib/scroll-utils';
 import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
 import {
   useAnnotationStore,
@@ -33,6 +34,7 @@ import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-bo
 import { useBooks } from '@/hooks/queries/useBooks';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Pagination } from '@/components/ui/Pagination';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import {
   cleanBookTitle,
@@ -59,6 +61,34 @@ const COLOR_FILTERS: Array<{ id: HighlightColor | 'all'; label: string; badgeCla
     badgeClass: c.filterBadgeClass,
   })),
 ];
+
+export type NotebookChronoSortOption = 'date_desc' | 'date_asc' | 'title_asc' | 'author_asc';
+export type NotebookVolumeSortOption =
+  | 'title_asc'
+  | 'title_desc'
+  | 'author_asc'
+  | 'author_desc'
+  | 'count_desc'
+  | 'recent';
+
+const CHRONO_SORT_OPTIONS: SortOption[] = [
+  { value: 'date_desc', label: 'Date Added (Newest)' },
+  { value: 'date_asc', label: 'Date Added (Oldest)' },
+  { value: 'title_asc', label: 'Book Title (A → Z)' },
+  { value: 'author_asc', label: 'Author (A → Z)' },
+];
+
+const VOLUME_SORT_OPTIONS: SortOption[] = [
+  { value: 'title_asc', label: 'Book Title (A → Z)' },
+  { value: 'title_desc', label: 'Book Title (Z → A)' },
+  { value: 'author_asc', label: 'Author (A → Z)' },
+  { value: 'author_desc', label: 'Author (Z → A)' },
+  { value: 'count_desc', label: 'Most Quotes First' },
+  { value: 'recent', label: 'Recently Annotated' },
+];
+
+const CHRONO_PAGE_SIZE = 12;
+const VOLUME_PAGE_SIZE = 6;
 
 export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
@@ -119,10 +149,23 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<HighlightColor | 'all'>('all');
   const [groupMode, setGroupMode] = useState<'volume' | 'chronological'>('volume');
+  const [chronoSort, setChronoSort] = useState<NotebookChronoSortOption>('date_desc');
+  const [volumeSort, setVolumeSort] = useState<NotebookVolumeSortOption>('title_asc');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [reflectionToDelete, setReflectionToDelete] = useState<Annotation | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
+
+  // Reset page to 1 when filters, search query, mode, or sorting change
+  const [prevFilterKey, setPrevFilterKey] = useState(
+    `${searchQuery}-${selectedColor}-${groupMode}-${chronoSort}-${volumeSort}`
+  );
+  const filterKey = `${searchQuery}-${selectedColor}-${groupMode}-${chronoSort}-${volumeSort}`;
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setCurrentPage(1);
+  }
 
   const colorTabsRef = useRef<HTMLDivElement>(null);
 
@@ -333,6 +376,84 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     }));
   }, [filteredAnnotations, resolveBookDetails]);
 
+  // Sorted list of annotations for Chronological mode
+  const sortedAnnotations = useMemo(() => {
+    const list = [...filteredAnnotations];
+    switch (chronoSort) {
+      case 'date_asc':
+        return list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      case 'title_asc':
+        return list.sort((a, b) => {
+          const titleA = resolveBookDetails(a).title;
+          const titleB = resolveBookDetails(b).title;
+          return titleA.localeCompare(titleB, undefined, { sensitivity: 'base' });
+        });
+      case 'author_asc':
+        return list.sort((a, b) => {
+          const authorA = resolveBookDetails(a).author;
+          const authorB = resolveBookDetails(b).author;
+          return authorA.localeCompare(authorB, undefined, { sensitivity: 'base' });
+        });
+      case 'date_desc':
+      default:
+        return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+  }, [filteredAnnotations, chronoSort, resolveBookDetails]);
+
+  // Sorted Grouped by Volume mapping
+  const sortedGroupedByVolume = useMemo(() => {
+    const list = [...groupedByVolume];
+    switch (volumeSort) {
+      case 'title_desc':
+        return list.sort((a, b) => b.title.localeCompare(a.title, undefined, { sensitivity: 'base' }));
+      case 'author_asc':
+        return list.sort((a, b) => a.author.localeCompare(b.author, undefined, { sensitivity: 'base' }));
+      case 'author_desc':
+        return list.sort((a, b) => b.author.localeCompare(a.author, undefined, { sensitivity: 'base' }));
+      case 'count_desc':
+        return list.sort((a, b) => b.items.length - a.items.length);
+      case 'recent':
+        return list.sort((a, b) => {
+          const timeA = Math.max(...a.items.map((i) => new Date(i.createdAt).getTime()), 0);
+          const timeB = Math.max(...b.items.map((i) => new Date(i.createdAt).getTime()), 0);
+          return timeB - timeA;
+        });
+      case 'title_asc':
+      default:
+        return list.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+    }
+  }, [groupedByVolume, volumeSort]);
+
+  // Pagination slicing
+  const chronoTotalPages = Math.ceil(sortedAnnotations.length / CHRONO_PAGE_SIZE);
+  const paginatedAnnotations = useMemo(() => {
+    const start = (currentPage - 1) * CHRONO_PAGE_SIZE;
+    return sortedAnnotations.slice(start, start + CHRONO_PAGE_SIZE);
+  }, [sortedAnnotations, currentPage]);
+
+  const volumeTotalPages = Math.ceil(sortedGroupedByVolume.length / VOLUME_PAGE_SIZE);
+  const paginatedGroupedByVolume = useMemo(() => {
+    const start = (currentPage - 1) * VOLUME_PAGE_SIZE;
+    return sortedGroupedByVolume.slice(start, start + VOLUME_PAGE_SIZE);
+  }, [sortedGroupedByVolume, currentPage]);
+
+  const totalPages = groupMode === 'volume' ? volumeTotalPages : chronoTotalPages;
+  const totalItems = groupMode === 'volume' ? sortedGroupedByVolume.length : sortedAnnotations.length;
+  const pageSize = groupMode === 'volume' ? VOLUME_PAGE_SIZE : CHRONO_PAGE_SIZE;
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    if (typeof window !== 'undefined') {
+      const didScroll = smartScrollToContent('notebook-content-anchor', { offsetTop: 80 });
+      if (!didScroll && !document.getElementById('notebook-content-anchor')) {
+        const section = document.getElementById('literary-notebook-section');
+        if (section) {
+          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+  };
+
   // Unique volume count
   const uniqueBookCount = useMemo(() => {
     return new Set(annotations.map((a) => a.bookId)).size;
@@ -379,7 +500,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   };
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" aria-label="Literary Commonplace Notebook">
+    <section id="literary-notebook-section" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" aria-label="Literary Commonplace Notebook">
       <div key="view-page-turn-notebook" className="animate-page-turn">
         {/* Booksaw Centered Section Header */}
         <SectionHeader
@@ -429,60 +550,61 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         /* Notebook Content */
         <div className="space-y-6">
           {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-card border border-border rounded-xl shadow-booksaw">
-            {/* Search Input */}
-            <div className="relative flex-1 min-w-[240px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                data-testid="notebook-search-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search quotes, reflections, books, or authors..."
-                className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary font-sans transition-all"
-              />
-              {searchQuery && (
+          <CollectionToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search quotes, reflections, books, or authors..."
+            searchAriaLabel="Search quotes"
+            searchTestId="notebook-search-input"
+            sortValue={groupMode === 'volume' ? volumeSort : chronoSort}
+            onSortChange={(newSort) => {
+              if (groupMode === 'volume') {
+                setVolumeSort(newSort as NotebookVolumeSortOption);
+              } else {
+                setChronoSort(newSort as NotebookChronoSortOption);
+              }
+            }}
+            sortOptions={groupMode === 'volume' ? VOLUME_SORT_OPTIONS : CHRONO_SORT_OPTIONS}
+            sortAriaLabel={groupMode === 'volume' ? 'Sort book groups' : 'Sort quotes chronologically'}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            paginationAriaLabel="Top notebook pagination"
+            extraControls={
+              <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border shrink-0">
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  aria-label="Clear search"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => setGroupMode('volume')}
+                  title="Group by Volume"
+                  aria-pressed={groupMode === 'volume'}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
+                    groupMode === 'volume'
+                      ? 'bg-background text-foreground shadow-xs font-bold'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
-                  <X className="w-3 h-3" />
+                  <Layers className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden min-[420px]:inline">By </span>
+                  <span>Book</span>
                 </button>
-              )}
-            </div>
-
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 self-end sm:self-auto bg-muted/60 p-1 rounded-lg border border-border">
-              <button
-                type="button"
-                onClick={() => setGroupMode('volume')}
-                title="Group by Volume"
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono rounded-md transition-all ${
-                  groupMode === 'volume'
-                    ? 'bg-background text-foreground shadow-xs font-bold'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>By Book</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setGroupMode('chronological')}
-                title="All Passages in Chronological Order"
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono rounded-md transition-all ${
-                  groupMode === 'chronological'
-                    ? 'bg-background text-foreground shadow-xs font-bold'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Chronological</span>
-              </button>
-            </div>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setGroupMode('chronological')}
+                  title="All Passages in Chronological Order"
+                  aria-pressed={groupMode === 'chronological'}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
+                    groupMode === 'chronological'
+                      ? 'bg-background text-foreground shadow-xs font-bold'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden min-[420px]:inline">Chronological</span>
+                  <span className="min-[420px]:hidden">Chrono</span>
+                </button>
+              </div>
+            }
+          />
 
           {/* Color Filter Tabs */}
           <div
@@ -544,49 +666,62 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             </div>
           )}
 
-          {/* Grouped by Volume Display */}
-          {groupMode === 'volume' && groupedByVolume.length > 0 && (
-            <div className="space-y-8">
-              {groupedByVolume.map((group) => (
-                <div key={group.bookId} className="space-y-3">
-                  {/* Volume Header */}
-                  <div className="flex items-center justify-between border-b border-border pb-2">
-                    <div className="flex items-baseline gap-2.5 flex-wrap">
-                      <h2 className="text-lg sm:text-xl font-serif font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-                        onClick={() => router.push(`/read/${group.bookId}`)}
-                      >
-                        {group.title}
-                      </h2>
-                      <span className="text-xs font-mono text-muted-foreground">
-                        by {group.author}
-                      </span>
-                      {group.isRestricted && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                          <Lock className="w-2.5 h-2.5" />
-                          Protected ({group.country || 'Jurisdiction'})
+          {/* Main Notebook Content with Anchor */}
+          <div id="notebook-content-anchor" className="space-y-6">
+            {/* Grouped by Volume Display */}
+            {groupMode === 'volume' && sortedGroupedByVolume.length > 0 && (
+              <div className="space-y-8">
+                {paginatedGroupedByVolume.map((group) => (
+                  <div key={group.bookId} className="space-y-3">
+                    {/* Volume Header */}
+                    <div className="flex items-center justify-between border-b border-border pb-2">
+                      <div className="flex items-baseline gap-2.5 flex-wrap">
+                        <h2 className="text-lg sm:text-xl font-serif font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
+                          onClick={() => router.push(`/read/${group.bookId}`)}
+                        >
+                          {group.title}
+                        </h2>
+                        <span className="text-xs font-mono text-muted-foreground">
+                          by {group.author}
                         </span>
-                      )}
+                        {group.isRestricted && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                            <Lock className="w-2.5 h-2.5" />
+                            Protected ({group.country || 'Jurisdiction'})
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+                        {group.items.length} quote{group.items.length === 1 ? '' : 's'}
+                      </span>
                     </div>
-                    <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
-                      {group.items.length} quote{group.items.length === 1 ? '' : 's'}
-                    </span>
-                  </div>
 
-                  {/* Cards Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {group.items.map((ann) => renderQuoteCard(ann))}
+                    {/* Cards Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {group.items.map((ann) => renderQuoteCard(ann))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          {/* Chronological Stream Display */}
-          {groupMode === 'chronological' && filteredAnnotations.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredAnnotations.map((ann) => renderQuoteCard(ann))}
-            </div>
-          )}
+            {/* Chronological Stream Display */}
+            {groupMode === 'chronological' && sortedAnnotations.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {paginatedAnnotations.map((ann) => renderQuoteCard(ann))}
+              </div>
+            )}
+          </div>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            className="mt-8"
+          />
         </div>
       )}
       </div>

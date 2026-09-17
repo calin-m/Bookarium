@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-169%20Suites%20%7C%201590%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.48%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-175%20Suites%20%7C%201652%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.11%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -40,13 +40,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.5.2)
+## 🛠️ Latest Improvements (v2.5.3)
 
-- **Literary Notebook "Read Passage" Deep Linking (`src/components/presentation/NotebookView.tsx`, `src/components/reader/ReaderAnnotationsDrawer.tsx`, `src/app/read/[id]/page.tsx`)**: Integrated URL query parameter propagation (`&annotationId=${ann.id}`), bidirectional reader session override (`initialPosition`), and targeted mark scrolling with a temporary 2.5s focus pulse ring (`ring-2 ring-primary ring-offset-2 animate-pulse`).
-- **Dynamic Font-Reflow Healing Algorithm (`src/app/read/[id]/page.tsx`)**: Added runtime AST page text substring scanning (`chapter.pages.findIndex(p => p.includes(ann.selectedText))`) that dynamically corrects target page coordinates whenever the user changes font size or column width between reading sessions.
-- **Smart Bookmark Completion Confirmation Modal (`src/components/presentation/BookmarksView.tsx`)**: Implemented status-change confirmation dialog when selecting "Finished" on any volume below 100% progress, warning the user that their reading ledger will advance to 100%, while bypassing confirmation for already-completed volumes.
-- **Client Route Suspense Boundary (`src/app/read/[id]/page.tsx`)**: Wrapped reader default export in `<React.Suspense fallback={<ReaderLoadingView />}>` for Next.js 16 client search params hydration compliance.
-- **In-Reader Annotation Drawer Jump Architecture (`src/components/reader/ReaderAnnotationsDrawer.tsx`)**: Extended `onJumpToAnnotation` signature to forward annotation IDs, closing the drawer, healing reflowed page targets, and highlighting targeted excerpts.
+- **Unified Collection Toolbar (`src/components/presentation/CollectionToolbar.tsx`)**: Built a single reusable workbench card adopting the Notebook container aesthetic (`bg-card border border-border rounded-xl shadow-booksaw`), encapsulating search input, clear shortcut (`Esc`), match counter badge (`X / Y`), sort dropdown, top pagination (`CollectionTopPagination`), volume count badge, and `extraControls`.
+- **Strict 2-Row Mobile Architecture**: Guaranteed that controls across Bookshelf, Favorites, Bookmarks, and Notebook never wrap across 3 rows on mobile viewports (<640px) — Row 1 is a 100% full-width search bar; Row 2 is a single balanced utility flex row.
+- **Compact Collection Sort Dropdown (`src/components/presentation/CollectionSortDropdown.tsx`)**: Reduced mobile width from 150px to 125px with py-1.5 padding and preserved 16px font sizing on mobile inputs to eliminate iOS Safari auto-zoom while maintaining tight proportions.
+- **Collection Presentation Unification**: Migrated Bookshelf, Favorites, Bookmarks, and Notebook views to the unified `CollectionToolbar` component.
+- **Mobile Multi-Row Control Wrap**: Eliminated 3-row layout overflow on narrow mobile screens (320px–390px) by compacting sort dropdowns and shortening toggle labels (`Book` and `Chrono` on <420px).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -642,7 +642,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1590 tests across 169 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1652 tests across 175 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

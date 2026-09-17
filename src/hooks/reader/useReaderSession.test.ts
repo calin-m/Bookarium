@@ -310,4 +310,69 @@ describe('useReaderSession', () => {
     expect(result.current.activeChapterIndex).toBe(0);
     expect(result.current.currentChapterPage).toBe(1);
   });
+
+  it('does not save reading position or progress on initial load when remaining on Page 1', async () => {
+    useReaderStore.setState({
+      readingPositions: {},
+      readingProgress: {},
+    });
+
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 200,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 5,
+        fontSize: 18,
+        readingMode: 'paginated',
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.activeChapterIndex).toBe(0);
+    expect(result.current.currentChapterPage).toBe(1);
+    expect(useReaderStore.getState().getReadingPosition(200)).toBeNull();
+    expect(useReaderStore.getState().getProgress(200)).toBe(0);
+    expect(useReaderStore.getState().readingProgress[200]).toBeUndefined();
+  });
+
+  it('records reading position and progress immediately upon advancing to Page 2', async () => {
+    useReaderStore.setState({
+      readingPositions: {},
+      readingProgress: {},
+    });
+
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 300,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 5,
+        fontSize: 18,
+        readingMode: 'paginated',
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Before advancing: no position saved
+    expect(useReaderStore.getState().getReadingPosition(300)).toBeNull();
+
+    // Advance to Page 2
+    act(() => {
+      result.current.handleNextPage();
+    });
+
+    expect(result.current.currentChapterPage).toBe(2);
+    const savedPos = useReaderStore.getState().getReadingPosition(300);
+    expect(savedPos).not.toBeNull();
+    expect(savedPos?.chapterPage).toBe(2);
+    expect(savedPos?.globalPage).toBe(2);
+    expect(useReaderStore.getState().getProgress(300)).toBeGreaterThan(0);
+  });
 });

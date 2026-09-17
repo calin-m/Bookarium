@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import Home from './page';
@@ -667,6 +667,126 @@ describe('Home page integration', () => {
     } finally {
       window.matchMedia = originalMatchMedia;
     }
+  });
+
+  describe('Bookshelf & Favorites Sorting and Pagination', () => {
+    const generateBooks = (count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        ...mockBooks[i % mockBooks.length],
+        id: 2000 + i,
+        title: `Volume ${String.fromCharCode(65 + (i % 26))} ${i}`,
+        authors: [{ name: `Writer ${String.fromCharCode(90 - (i % 26))}`, birth_year: 1800, death_year: 1880 }],
+        download_count: (i + 1) * 100,
+      }));
+
+    it('renders sort dropdown, volume badge, top and bottom pagination on Bookshelf when books exceed 24 on desktop', () => {
+      const books = generateBooks(28);
+      useBookshelfStore.setState({ savedBooks: books });
+
+      renderHome();
+
+      // Switch to Bookshelf
+      const bookshelfBtn = screen.getByRole('button', { name: /^Bookshelf$/i });
+      fireEvent.click(bookshelfBtn);
+
+      // Verify sort dropdown is present
+      const sortSelect = screen.getByRole('combobox', { name: 'Sort bookshelf' });
+      expect(sortSelect).toBeInTheDocument();
+
+      // Verify volume count badge
+      expect(screen.getByText('28 volumes')).toBeInTheDocument();
+
+      // Verify top compact pagination is rendered
+      const topPagination = screen.getByRole('navigation', { name: 'Top bookshelf pagination' });
+      expect(topPagination).toBeInTheDocument();
+      expect(within(topPagination).getByTestId('top-pagination-indicator')).toHaveTextContent(/1\s*\/\s*2/);
+
+      // Verify bottom pagination appears (28 items > 24 per page on desktop)
+      const paginationNav = screen.getByTestId('pagination-nav');
+      expect(paginationNav).toBeInTheDocument();
+      expect(paginationNav).toHaveTextContent(/Showing 1–24 of 28 items/i);
+
+      // Go to next page via top pagination
+      const topNextBtn = within(topPagination).getByRole('button', { name: 'Next page' });
+      fireEvent.click(topNextBtn);
+
+      // Verify page 2 is active
+      expect(paginationNav).toHaveTextContent(/Showing 25–28 of 28 items/i);
+    });
+
+    it('sorts saved books on Bookshelf by title ascending and author descending', () => {
+      const bookAlpha = { ...mockBooks[0], id: 2001, title: 'Alpha Book', authors: [{ name: 'Author Z', birth_year: 1800, death_year: 1880 }] };
+      const bookZulu = { ...mockBooks[1], id: 2002, title: 'Zulu Book', authors: [{ name: 'Author A', birth_year: 1800, death_year: 1880 }] };
+      useBookshelfStore.setState({ savedBooks: [bookZulu, bookAlpha] });
+
+      renderHome();
+
+      // Switch to Bookshelf
+      fireEvent.click(screen.getByRole('button', { name: /^Bookshelf$/i }));
+
+      const sortSelect = screen.getByRole('combobox', { name: 'Sort bookshelf' });
+
+      // Sort by Title A-Z
+      fireEvent.change(sortSelect, { target: { value: 'title_asc' } });
+      expect(sortSelect).toHaveValue('title_asc');
+
+      // Sort by Author Z-A
+      fireEvent.change(sortSelect, { target: { value: 'author_desc' } });
+      expect(sortSelect).toHaveValue('author_desc');
+    });
+
+    it('renders sort dropdown, volume badge, and pagination on Favorites when exceeding 24 items', () => {
+      const books = generateBooks(28);
+      useBookshelfStore.setState({
+        favoriteBooks: books,
+        favoriteBookIds: books.map((b) => b.id),
+      });
+
+      renderHome();
+
+      // Switch to Favorites
+      const favoritesBtn = screen.getByRole('button', { name: /^Favorites$/i });
+      fireEvent.click(favoritesBtn);
+
+      // Verify sort dropdown
+      const sortSelect = screen.getByRole('combobox', { name: 'Sort favorites' });
+      expect(sortSelect).toBeInTheDocument();
+
+      // Verify volume count badge
+      expect(screen.getByText('28 volumes')).toBeInTheDocument();
+
+      // Verify pagination
+      const paginationNav = screen.getByTestId('pagination-nav');
+      expect(paginationNav).toBeInTheDocument();
+      expect(paginationNav).toHaveTextContent(/Showing 1–24 of 28 items/i);
+
+      // Sort by popularity
+      fireEvent.change(sortSelect, { target: { value: 'downloads_desc' } });
+      expect(sortSelect).toHaveValue('downloads_desc');
+    });
+
+    it('resets pagination page to 1 when collection search query changes', () => {
+      const books = generateBooks(28);
+      useBookshelfStore.setState({ savedBooks: books });
+
+      renderHome();
+
+      // Switch to Bookshelf
+      fireEvent.click(screen.getByRole('button', { name: /^Bookshelf$/i }));
+
+      // Navigate to Page 2
+      const paginationNav = screen.getByTestId('pagination-nav');
+      const nextBtn = screen.getByRole('button', { name: 'Go to next page' });
+      fireEvent.click(nextBtn);
+      expect(paginationNav).toHaveTextContent(/Showing 25–28 of 28 items/i);
+
+      // Type in collection search input
+      const searchInput = screen.getByPlaceholderText(/search your bookshelf/i);
+      fireEvent.change(searchInput, { target: { value: 'Volume' } });
+
+      // Page should reset to 1
+      expect(paginationNav).toHaveTextContent(/Showing 1–24 of 28 items/i);
+    });
   });
 });
 
