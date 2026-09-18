@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   SlidersHorizontal,
   ChevronLeft,
@@ -43,6 +43,7 @@ export interface StickyCatalogToolbarProps {
   isVisible?: boolean;
   isMobileDockVisible?: boolean;
   mobileDockThreshold?: number;
+  mobileDockIdleTimeoutMs?: number;
 }
 
 export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
@@ -66,28 +67,52 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   isVisible = true,
   isMobileDockVisible,
   mobileDockThreshold = 300,
+  mobileDockIdleTimeoutMs = 1400,
 }) => {
   const hasMounted = useHasMounted();
   const [isFocused, setIsFocused] = useState(false);
   const [prevPage, setPrevPage] = useState(page);
   const [jumpPageInput, setJumpPageInput] = useState(String(page));
   const [internalMobileDockVisible, setInternalMobileDockVisible] = useState(false);
+  const [isIdle, setIsIdle] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (isMobileDockVisible !== undefined) return;
     const onScroll = () => {
       const scrollY = window.scrollY || window.pageYOffset || 0;
-      const shouldShow = scrollY > mobileDockThreshold;
-      setInternalMobileDockVisible((prev) => (prev !== shouldShow ? shouldShow : prev));
+      if (isMobileDockVisible === undefined) {
+        const shouldShow = scrollY > mobileDockThreshold;
+        setInternalMobileDockVisible((prev) => (prev !== shouldShow ? shouldShow : prev));
+      }
+
+      // Reset idle state immediately on active scrolling
+      setIsIdle(false);
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+
+      // Schedule fade-out after idle timeout
+      if (mobileDockIdleTimeoutMs > 0) {
+        idleTimerRef.current = setTimeout(() => {
+          setIsIdle(true);
+        }, mobileDockIdleTimeoutMs);
+      }
     };
 
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [isMobileDockVisible, mobileDockThreshold]);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+    };
+  }, [isMobileDockVisible, mobileDockThreshold, mobileDockIdleTimeoutMs]);
 
   const effectiveMobileDockVisible =
     isMobileDockVisible !== undefined ? isMobileDockVisible : internalMobileDockVisible;
+  const isDockDimmed = effectiveMobileDockVisible && isIdle && !isFiltersOpen && !isHovered;
 
   // Synchronize input with external page changes during render when not actively editing
   if (page !== prevPage) {
@@ -422,13 +447,31 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
       {/* Mobile Floating Bottom Capsule Dock */}
       <aside
-        className={`fixed bottom-6 inset-x-0 mx-auto w-fit max-w-[92vw] z-40 sm:hidden transition-all duration-300 ease-in-out ${
+        className={`fixed bottom-6 inset-x-0 mx-auto w-fit max-w-[92vw] z-40 sm:hidden transition-all focus-within:opacity-100 focus-within:pointer-events-auto ${
           !effectiveMobileDockVisible
-            ? 'translate-y-24 opacity-0 pointer-events-none'
-            : 'translate-y-0 opacity-100'
+            ? 'translate-y-24 opacity-0 pointer-events-none duration-300 ease-in-out'
+            : isDockDimmed
+              ? 'translate-y-0 opacity-0 pointer-events-none duration-400 ease-out'
+              : 'translate-y-0 opacity-100 duration-150 ease-in'
         }`}
         data-testid="mobile-catalog-dock"
         aria-label="Mobile catalog controls"
+        onPointerEnter={() => {
+          setIsHovered(true);
+          setIsIdle(false);
+          if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+        }}
+        onPointerLeave={() => {
+          setIsHovered(false);
+          if (mobileDockIdleTimeoutMs > 0) {
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+            idleTimerRef.current = setTimeout(() => setIsIdle(true), mobileDockIdleTimeoutMs);
+          }
+        }}
+        onPointerDown={() => {
+          setIsIdle(false);
+          if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+        }}
       >
         <div className="flex items-center gap-1.5 p-1.5 bg-card border border-border shadow-2xl rounded-full text-foreground">
           {/* Mobile Filter Trigger / Split Quick-Clear Capsule */}

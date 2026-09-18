@@ -441,6 +441,144 @@ describe('StickyCatalogToolbar component', () => {
       expect(dock).toHaveClass('opacity-0');
     });
 
+    it('fades out to opacity-0 with pointer-events-none after scroll inactivity timeout', () => {
+      vi.useFakeTimers();
+      Object.defineProperty(window, 'scrollY', { value: 0, writable: true });
+
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          mobileDockThreshold={300}
+        />
+      );
+
+      const dock = screen.getByTestId('mobile-catalog-dock');
+
+      // Scroll into catalog
+      act(() => {
+        window.scrollY = 500;
+        window.dispatchEvent(new Event('scroll'));
+      });
+
+      // Actively scrolling: visible with opacity-100
+      expect(dock).toHaveClass('translate-y-0');
+      expect(dock).toHaveClass('opacity-100');
+      expect(dock).not.toHaveClass('pointer-events-none');
+
+      // Advance by 1300ms (not yet idle under default 1400ms)
+      act(() => {
+        vi.advanceTimersByTime(1300);
+      });
+      expect(dock).toHaveClass('opacity-100');
+
+      // Advance past 1400ms
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(dock).toHaveClass('opacity-0');
+      expect(dock).toHaveClass('pointer-events-none');
+
+      // Resume scrolling: instantly wakes back up
+      act(() => {
+        window.scrollY = 550;
+        window.dispatchEvent(new Event('scroll'));
+      });
+      expect(dock).toHaveClass('opacity-100');
+      expect(dock).not.toHaveClass('pointer-events-none');
+
+      vi.useRealTimers();
+    });
+
+    it('does not fade out mobile dock after idle timeout if filter drawer is open', () => {
+      vi.useFakeTimers();
+      Object.defineProperty(window, 'scrollY', { value: 500, writable: true });
+
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          isFiltersOpen={true}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          mobileDockThreshold={300}
+        />
+      );
+
+      const dock = screen.getByTestId('mobile-catalog-dock');
+      act(() => {
+        window.dispatchEvent(new Event('scroll'));
+      });
+      expect(dock).toHaveClass('opacity-100');
+
+      // Advance past default 1400ms
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      // Filter drawer is open -> remains visible
+      expect(dock).toHaveClass('opacity-100');
+      expect(dock).not.toHaveClass('pointer-events-none');
+
+      vi.useRealTimers();
+    });
+
+    it('cancels idle fade-out while user hovers over dock and resumes timer on pointerleave', () => {
+      vi.useFakeTimers();
+      Object.defineProperty(window, 'scrollY', { value: 500, writable: true });
+
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          mobileDockThreshold={300}
+        />
+      );
+
+      const dock = screen.getByTestId('mobile-catalog-dock');
+      act(() => {
+        window.dispatchEvent(new Event('scroll'));
+      });
+
+      // Hover over dock before timeout
+      fireEvent.pointerEnter(dock);
+
+      // Advance past default 1400ms while hovered
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(dock).toHaveClass('opacity-100');
+
+      // Pointer leaves dock -> timer restarts
+      fireEvent.pointerLeave(dock);
+      expect(dock).toHaveClass('opacity-100');
+
+      act(() => {
+        vi.advanceTimersByTime(1500);
+      });
+      expect(dock).toHaveClass('opacity-0');
+      expect(dock).toHaveClass('pointer-events-none');
+
+      // Pointer down / touch wakes it up
+      fireEvent.pointerDown(dock);
+      expect(dock).toHaveClass('opacity-100');
+
+      vi.useRealTimers();
+    });
+
     it('renders segmented quick clear button on mobile dock when filters are active and clears filters on tap', () => {
       const handleOpenFilters = vi.fn();
       const handleClearAll = vi.fn();

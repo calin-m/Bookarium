@@ -854,5 +854,49 @@
   - Ergonomic page transitions that maintain user context without disruptive full-page jumps.
   - 100% authentic co-located test coverage across 175 test suites with zero regressions.
 
+## ADR-050: Mobile Catalog Dock Inactivity Auto-Fade (1.4s), Biomechanical Touch-Swipe Ergonomics (Zero False Negatives) & Directional View Slide Transitions
+- **Status**: Accepted
+- **Context**:
+  1. **Mobile Floating Bottom Capsule Dock Visual Obstruction**:
+     - On mobile screens, when users scrolled past 300px on the Catalog view, the floating bottom capsule dock (`[data-testid="mobile-catalog-dock"]`) was permanently rendered at full opacity. While convenient for quick navigation, keeping the dock continuously visible blocked reading content and book cards during prolonged browsing.
+  2. **High Touch-Swipe False Negative Rate on Mobile**:
+     - Swiping horizontally across top-level views (Catalog $\leftrightarrow$ Bookshelf $\leftrightarrow$ Favorites $\leftrightarrow$ Notebook $\leftrightarrow$ Bookmarks $\leftrightarrow$ Account) previously suffered from frequent dropped gestures ("swipes not registering").
+     - The previous `dominanceRatio` of 1.8 required swipe angles $< 29^\circ$. Natural one-handed thumb gestures pivot around the base joint (carpometacarpal joint) and trace an arc between $30^\circ$ and $38^\circ$, causing natural thumb swipes to be silently discarded.
+     - Deliberate, casual swipes taking slightly over 500ms were cut off by `maxDurationMs: 500`, and short agile flicks under 50px were rejected by `minDistancePx: 50`.
+     - Mobile browsers (iOS Safari and Android Chrome) could intercept or cancel horizontal drag gestures mid-flight without explicit CSS `touch-action: pan-y`.
+  3. **Visual Disconnect on View Transitions**:
+     - When swiping between views, the view switched instantly with a generic static micro-fade (`translateY(4px)`), lacking visual feedback aligned with the user's physical horizontal swipe direction.
+- **Decision**:
+  1. **Hardware-Accelerated Inactivity Auto-Fade (`src/components/presentation/StickyCatalogToolbar.tsx`)**:
+     - Added `mobileDockIdleTimeoutMs?: number` (default `1400`ms) to `StickyCatalogToolbarProps`.
+     - Integrated passive scroll listener tracking with `isIdle` state. Scrolling immediately restores `opacity-100` (`duration-150 ease-in`). After 1,400ms of scroll inactivity, the dock smoothly fades out to `opacity-0 pointer-events-none` (`duration-400 ease-out`).
+     - Added safety guards preventing fade-out while the filter drawer is open (`!isFiltersOpen`), while hovered (`isHovered`), or while focused (`focus-within:opacity-100`).
+     - Transitioning strictly on `opacity` avoids layout reflows and reduces compositor work to zero when idle.
+  2. **Biomechanical Gesture Ergonomics & Zero-Dropped Swipes (`src/hooks/useMobileViewSwipe.ts`)**:
+     - Relaxed `dominanceRatio` from `1.8` to `1.25` ($\arctan(1/1.25) \approx 38.6^\circ$), natively accommodating ergonomic thumb arcs while reliably separating horizontal swipes from vertical scrolling ($|\Delta X| \ge 1.25 \times |\Delta Y|$).
+     - Extended `maxDurationMs` from `500ms` to `650ms` for relaxed, deliberate swipes.
+     - Lowered `minDistancePx` from `50px` to `40px` for immediate, light flick registration.
+     - Kept `edgeDeadZonePx` at `20px` to prevent bezel-adjacent swipe rejection while protecting against native iOS Safari back/forward history navigation.
+     - Added `handleTouchCancel` to reset gesture state upon system interruptions.
+     - Added `onSwipeDirection?: (direction: 'forward' | 'backward') => void` and `lastSwipeDirection: 'forward' | 'backward' | null`.
+  3. **Mobile Browser Touch Protection (`src/app/page.tsx`)**:
+     - Added `touch-pan-y` to the `<main>` element, declaring native vertical scroll intent and preventing mobile browser engines from canceling horizontal touch events.
+     - Wired `onTouchCancel={handleTouchCancel}` into `<main>`.
+  4. **Smooth Directional Animated Slide Transitions (`src/app/globals.css`, `src/app/page.tsx`)**:
+     - Defined `@keyframes viewSlideInFromRight` and `@keyframes viewSlideInFromLeft` with 220ms ease-out cubic bezier curves.
+     - Added utility classes `.animate-view-slide-left` (slides in from right on forward swipe) and `.animate-view-slide-right` (slides in from left on backward swipe).
+     - Wrapped active views in `page.tsx` with a dynamic transition container, resetting to standard `.animate-page-turn` on animation completion or manual Navbar tab selection.
+     - Included full compliance with `@media (prefers-reduced-motion: reduce)`.
+  5. **Co-Located Behavioral Tests & Verification**:
+     - Expanded `src/hooks/useMobileViewSwipe.test.ts` to 15 unit tests covering thumb arcs, deliberate duration, light flicks, dead-zone thresholds, `onSwipeDirection`, and `handleTouchCancel`.
+     - Updated `src/app/page.test.tsx` (26 tests) asserting application of directional slide animation classes on swipe navigation.
+     - Confirmed live behavior on mobile viewport (390×844) using Chrome DevTools MCP.
+- **Consequences**:
+  - Unobstructed, distraction-free reading on mobile catalog views with instant control wake-up.
+  - Effortless, forgiving touch navigation with zero dropped swipes from natural curved thumb movements.
+  - Smooth, tactile visual continuity across all top-level view switches.
+  - 100% test pass rate maintained across all 175 test suites with zero regressions.
+
+
 
 

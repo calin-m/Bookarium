@@ -132,7 +132,9 @@ function HomeContent() {
     confirmClearType
   );
 
-  const { handleTouchStart, handleTouchEnd } = useMobileViewSwipe({
+  const [swipeDirection, setSwipeDirection] = useState<'forward' | 'backward' | null>(null);
+
+  const { handleTouchStart, handleTouchEnd, handleTouchCancel } = useMobileViewSwipe({
     activeView,
     onViewChange: (view) => {
       if (view === 'account') {
@@ -141,6 +143,7 @@ function HomeContent() {
         setActiveView(view as CatalogView);
       }
     },
+    onSwipeDirection: setSwipeDirection,
     enabled: isMobile && !isAnyModalActive,
   });
 
@@ -358,12 +361,20 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
-      <Navbar activeView={activeView} onViewChange={setActiveView} isVisible={isHeaderVisible} />
+      <Navbar
+        activeView={activeView}
+        onViewChange={(view) => {
+          setSwipeDirection(null);
+          setActiveView(view);
+        }}
+        isVisible={isHeaderVisible}
+      />
 
       <main
-        className={`flex-1 transition-all duration-300 ${isFilterDrawerOpen ? 'xl:pl-96' : 'xl:pl-0'}`}
+        className={`flex-1 transition-all duration-300 touch-pan-y ${isFilterDrawerOpen ? 'xl:pl-96' : 'xl:pl-0'}`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
       >
         {activeView === 'catalog' && (
           <HeroSearch
@@ -442,13 +453,33 @@ function HomeContent() {
           />
         )}
 
-        {activeView === 'notebook' ? (
-          <NotebookView onBrowseCatalog={() => setActiveView('catalog')} />
-        ) : activeView === 'bookmarks' ? (
-          <BookmarksView onBrowseCatalog={() => setActiveView('catalog')} />
-        ) : (
-          <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 sm:pb-12">
-            <div key={`view-page-turn-${activeView}`} className="animate-page-turn">
+        <div
+          key={`view-transition-${activeView}`}
+          className={
+            swipeDirection === 'forward'
+              ? 'animate-view-slide-left'
+              : swipeDirection === 'backward'
+              ? 'animate-view-slide-right'
+              : 'animate-page-turn'
+          }
+          onAnimationEnd={() => setSwipeDirection(null)}
+        >
+          {activeView === 'notebook' ? (
+            <NotebookView
+              onBrowseCatalog={() => {
+                setSwipeDirection(null);
+                setActiveView('catalog');
+              }}
+            />
+          ) : activeView === 'bookmarks' ? (
+            <BookmarksView
+              onBrowseCatalog={() => {
+                setSwipeDirection(null);
+                setActiveView('catalog');
+              }}
+            />
+          ) : (
+            <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 sm:pb-12">
               {/* Booksaw Centered Section Header */}
               <SectionHeader
                 eyebrow={viewConfig.eyebrow}
@@ -586,8 +617,8 @@ function HomeContent() {
                 />
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Booksaw Editorial Classic of the Day Section */}
         {activeView === 'catalog' && <EditorialQuoteSection />}

@@ -631,9 +631,11 @@ describe('Home page integration', () => {
         });
       });
 
-      // Switches to Bookshelf
+      // Switches to Bookshelf with directional slide-left animation
       expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
       expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
+      const bookshelfTransitionContainer = screen.getByText('Personal Reading Shelf').closest('.animate-view-slide-left');
+      expect(bookshelfTransitionContainer).toBeInTheDocument();
 
       // Swipe left again
       act(() => {
@@ -647,8 +649,10 @@ describe('Home page integration', () => {
         });
       });
 
-      // Switches to Favorites
+      // Switches to Favorites with directional slide-left animation
       expect(screen.getByText('Favorite Works')).toBeInTheDocument();
+      const favoritesTransitionContainer = screen.getByText('Favorite Works').closest('.animate-view-slide-left');
+      expect(favoritesTransitionContainer).toBeInTheDocument();
 
       // Swipe right (move from 400px to 500px)
       act(() => {
@@ -662,8 +666,16 @@ describe('Home page integration', () => {
         });
       });
 
-      // Switches back to Bookshelf
+      // Switches back to Bookshelf with directional slide-right animation
       expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
+      const returnTransitionContainer = screen.getByText('Personal Reading Shelf').closest('.animate-view-slide-right');
+      expect(returnTransitionContainer).toBeInTheDocument();
+
+      // Firing animationEnd resets to standard page-turn
+      act(() => {
+        fireEvent.animationEnd(returnTransitionContainer!);
+      });
+      expect(screen.getByText('Personal Reading Shelf').closest('.animate-page-turn')).toBeInTheDocument();
     } finally {
       window.matchMedia = originalMatchMedia;
     }

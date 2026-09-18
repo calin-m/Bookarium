@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 17 Sep 2026 15:22:27 GMT  
+**Last Generated**: Fri, 18 Sep 2026 11:34:49 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 175 passed  
-**Total Verified Tests**: 1652 passed  
+**Total Verified Tests**: 1660 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1652 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1660 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 49 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 50 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.11%** (7508/8151) — *Target: $ge$ 80%*
-- **Statements**: **90.57%** (8143/8990) — *Target: $ge$ 80%*
-- **Functions**: **88.83%** (1751/1971) — *Target: $ge$ 80%*
-- **Branches**: **80.98%** (7190/8878) — *Target: $ge$ 80%*
+- **Lines**: **92.13%** (7542/8186) — *Target: $ge$ 80%*
+- **Statements**: **90.59%** (8178/9027) — *Target: $ge$ 80%*
+- **Functions**: **88.88%** (1759/1979) — *Target: $ge$ 80%*
+- **Branches**: **80.97%** (7209/8903) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1652 Tests)
+## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1660 Tests)
 
 ### 🚀 App Routes & Pages (15 Suites · 170 Tests)
 
@@ -296,7 +296,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 340 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 343 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -783,7 +783,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (18 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and 2-part API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
@@ -800,6 +800,9 @@
 - ✔ `scrolls smoothly to top when mobile dock top button is clicked`
 - ✔ `controls mobile dock visibility with isMobileDockVisible prop`
 - ✔ `dynamically reveals mobile dock when scrolling past threshold and hides when at top`
+- ✔ `fades out to opacity-0 with pointer-events-none after scroll inactivity timeout`
+- ✔ `does not fade out mobile dock after idle timeout if filter drawer is open`
+- ✔ `cancels idle fade-out while user hovers over dock and resumes timer on pointerleave`
 - ✔ `renders segmented quick clear button on mobile dock when filters are active and clears filters on tap`
 - ✔ `renders segmented quick clear button on desktop toolbar when filters are active and clears filters on click`
 - ✔ `does not render quick clear buttons on desktop or mobile when activeFilterCount is 0`
@@ -1818,7 +1821,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 210 Tests)
+### 🔄 Hooks & React Query (22 Suites · 215 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -2096,18 +2099,23 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useMobileViewSwipe.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/hooks/useMobileViewSwipe.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `advances to next view on valid swipe left`
 - ✔ `navigates to previous view on valid swipe right`
 - ✔ `clamps at boundaries (no-op when swiping right on catalog or left on account)`
-- ✔ `ignores swipe if touch starts within 25px edge dead-zone (native Safari/Android back-forward)`
+- ✔ `ignores swipe if touch starts within 20px edge dead-zone (native Safari/Android back-forward)`
+- ✔ `permits swipes starting just outside edge dead-zone (e.g. 25px from bezel)`
 - ✔ `ignores swipe originating on interactive controls or inputs`
 - ✔ `ignores diagonal or vertical scroll gestures failing dominance ratio`
 - ✔ `ignores gestures exceeding max duration or below min distance`
+- ✔ `permits deliberate swipes within 650ms and responsive flicks down to 40px`
 - ✔ `does nothing when disabled`
 - ✔ `supports custom config overrides`
 - ✔ `cycles across all 6 views in sequence`
+- ✔ `allows natural biomechanical thumb arcs conforming to 1.25 dominance ratio`
+- ✔ `invokes onSwipeDirection callback and updates lastSwipeDirection state`
+- ✔ `handleTouchCancel safely aborts active gesture without triggering navigation`
 
 </details>
 

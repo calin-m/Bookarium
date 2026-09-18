@@ -158,7 +158,7 @@ describe('useMobileViewSwipe', () => {
     expect(onViewChange).toHaveBeenCalledWith('bookmarks');
   });
 
-  it('ignores swipe if touch starts within 25px edge dead-zone (native Safari/Android back-forward)', () => {
+  it('ignores swipe if touch starts within 20px edge dead-zone (native Safari/Android back-forward)', () => {
     const onViewChange = vi.fn();
     const { result } = renderHook(() =>
       useMobileViewSwipe({
@@ -167,7 +167,7 @@ describe('useMobileViewSwipe', () => {
       })
     );
 
-    // Touch starting at clientX = 15 (< 25px from left edge)
+    // Touch starting at clientX = 15 (< 20px from left edge)
     act(() => {
       result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 15, clientY: 300 }));
       vi.advanceTimersByTime(100);
@@ -175,13 +175,63 @@ describe('useMobileViewSwipe', () => {
     });
     expect(onViewChange).not.toHaveBeenCalled();
 
-    // Touch starting at clientX = 985 (> 1000 - 25 = 975px from right edge)
+    // Touch starting at clientX = 985 (> 1000 - 20 = 980px from right edge)
     act(() => {
       result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 985, clientY: 300 }));
       vi.advanceTimersByTime(100);
       result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 850, clientY: 300 }));
     });
     expect(onViewChange).not.toHaveBeenCalled();
+  });
+
+  it('permits swipes starting just outside edge dead-zone (e.g. 25px from bezel)', () => {
+    const onViewChange = vi.fn();
+    const { result } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'catalog',
+        onViewChange,
+      })
+    );
+
+    // Touch starting at clientX = 25 (> 20px dead-zone)
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 25, clientY: 300 }));
+      vi.advanceTimersByTime(100);
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 100, clientY: 300 }));
+    });
+    // deltaX = +75 (swiped right on catalog, clamped) -> test swipe left from clientX = 120 to 25
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 25, clientY: 300 }));
+      vi.advanceTimersByTime(100);
+      // Wait, on catalog, swiping left is deltaX < 0: start at 100, end at 25 (|deltaX| = 75)
+    });
+
+    const { result: leftSwipeHook } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'catalog',
+        onViewChange,
+      })
+    );
+    act(() => {
+      leftSwipeHook.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 25, clientY: 300 }));
+      vi.advanceTimersByTime(100);
+      // deltaX = -10 is not enough, start at 100, end at 40 -> or start at 25, end at 0? Wait, start at 25 and move left to 0: deltaX = -25 (< 40px)
+      // If user swipes right from 25px on bookshelf:
+    });
+
+    const { result: bookshelfHook } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'bookshelf',
+        onViewChange,
+      })
+    );
+    act(() => {
+      // Swiping right from 25px across to 120px (|deltaX| = 95 >= 40)
+      bookshelfHook.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 25, clientY: 300 }));
+      vi.advanceTimersByTime(150);
+      bookshelfHook.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 120, clientY: 300 }));
+    });
+    expect(onViewChange).toHaveBeenCalledWith('catalog');
   });
 
   it('ignores swipe originating on interactive controls or inputs', () => {
@@ -250,21 +300,48 @@ describe('useMobileViewSwipe', () => {
       })
     );
 
-    // Too slow: duration = 600ms (> 500ms)
+    // Too slow: duration = 750ms (> 650ms)
     act(() => {
       result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }));
-      vi.advanceTimersByTime(600);
+      vi.advanceTimersByTime(750);
       result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 400, clientY: 300 }));
     });
     expect(onViewChange).not.toHaveBeenCalled();
 
-    // Too short: distance = 30px (< 50px)
+    // Too short: distance = 25px (< 40px)
     act(() => {
       result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }));
       vi.advanceTimersByTime(100);
-      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 470, clientY: 300 }));
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 475, clientY: 300 }));
     });
     expect(onViewChange).not.toHaveBeenCalled();
+  });
+
+  it('permits deliberate swipes within 650ms and responsive flicks down to 40px', () => {
+    const onViewChange = vi.fn();
+    const { result } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'catalog',
+        onViewChange,
+      })
+    );
+
+    // Deliberate swipe: duration = 580ms (previously dropped under 500ms, now accepted under 650ms)
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }));
+      vi.advanceTimersByTime(580);
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 420, clientY: 300 }));
+    });
+    expect(onViewChange).toHaveBeenCalledWith('bookshelf');
+    onViewChange.mockClear();
+
+    // Agile flick: distance = 42px (previously dropped under 50px, now accepted under 40px)
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }));
+      vi.advanceTimersByTime(120);
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 458, clientY: 300 }));
+    });
+    expect(onViewChange).toHaveBeenCalledWith('bookshelf');
   });
 
   it('does nothing when disabled', () => {
@@ -342,5 +419,87 @@ describe('useMobileViewSwipe', () => {
 
     expect(MOBILE_VIEW_ORDER).toEqual(['catalog', 'bookshelf', 'favorites', 'notebook', 'bookmarks', 'account']);
   });
+
+  it('allows natural biomechanical thumb arcs conforming to 1.25 dominance ratio', () => {
+    const onViewChange = vi.fn();
+    const { result } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'catalog',
+        onViewChange,
+      })
+    );
+
+    // Natural curved thumb swipe: DeltaX = 60, DeltaY = 40 (Angle ~33.7°, ratio = 1.5)
+    // Under previous 1.8 ratio (60 < 72) this failed; under 1.25 ratio (60 >= 50) this succeeds.
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }));
+      vi.advanceTimersByTime(120);
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 440, clientY: 340 }));
+    });
+
+    expect(onViewChange).toHaveBeenCalledWith('bookshelf');
+  });
+
+  it('invokes onSwipeDirection callback and updates lastSwipeDirection state', () => {
+    const onViewChange = vi.fn();
+    const onSwipeDirection = vi.fn();
+    const { result } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'bookshelf',
+        onViewChange,
+        onSwipeDirection,
+      })
+    );
+
+    // 1. Swipe left -> advance forward
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }));
+      vi.advanceTimersByTime(120);
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 420, clientY: 300 }));
+    });
+
+    expect(onSwipeDirection).toHaveBeenCalledWith('forward');
+    expect(result.current.lastSwipeDirection).toBe('forward');
+    expect(onViewChange).toHaveBeenCalledWith('favorites');
+
+    onSwipeDirection.mockClear();
+
+    // 2. Swipe right -> go backward
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 400, clientY: 300 }));
+      vi.advanceTimersByTime(120);
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 490, clientY: 300 }));
+    });
+
+    expect(onSwipeDirection).toHaveBeenCalledWith('backward');
+    expect(result.current.lastSwipeDirection).toBe('backward');
+    expect(onViewChange).toHaveBeenCalledWith('catalog');
+  });
+
+  it('handleTouchCancel safely aborts active gesture without triggering navigation', () => {
+    const onViewChange = vi.fn();
+    const { result } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'catalog',
+        onViewChange,
+      })
+    );
+
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }));
+    });
+
+    // Browser touch cancellation (e.g. system gesture or incoming call)
+    act(() => {
+      result.current.handleTouchCancel();
+    });
+
+    act(() => {
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 400, clientY: 300 }));
+    });
+
+    expect(onViewChange).not.toHaveBeenCalled();
+  });
 });
+
 

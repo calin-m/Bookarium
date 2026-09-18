@@ -562,6 +562,39 @@
   will-change: opacity, transform;
 }
 
+/* Directional Touch-Swipe View Slide Transitions */
+@keyframes viewSlideInFromRight {
+  0% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes viewSlideInFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-view-slide-left {
+  animation: viewSlideInFromRight 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.animate-view-slide-right {
+  animation: viewSlideInFromLeft 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
 /* Ink Dissolve & Vanish-to-Appear Transition for Book Content Shuffling */
 @keyframes inkVanishAppear {
   0% {
@@ -625,6 +658,8 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-page-turn,
   .animate-ink-appear,
+  .animate-view-slide-left,
+  .animate-view-slide-right,
   .book-turning-leaf {
     animation: none !important;
     transform: none !important;

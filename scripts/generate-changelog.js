@@ -9,6 +9,27 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.5.4',
+    date: '2026-09-18',
+    title: 'Mobile Catalog Dock Inactivity Auto-Fade (1.4s), Biomechanical Touch-Swipe Ergonomics (Zero False Negatives) & Directional View Slide Transitions',
+    sections: {
+      Added: [
+        'Hardware-Accelerated Mobile Dock Auto-Fade (`src/components/presentation/StickyCatalogToolbar.tsx`): Integrated scroll inactivity auto-fade transitioning the floating mobile catalog capsule dock to `opacity-0 pointer-events-none` after 1,400ms of inactivity, waking instantly (<180ms) upon scrolling, touching, or hovering.',
+        'Directional View Slide Transitions (`src/app/globals.css`, `src/app/page.tsx`): Built 220ms hardware-accelerated slide-in transitions (`animate-view-slide-left` from right on forward swipe, `animate-view-slide-right` from left on backward swipe), with clean fallback to grounded Booksaw vertical fade (`animate-page-turn`) on manual tab taps and full `@media (prefers-reduced-motion: reduce)` accessibility support.',
+        'Biomechanical Touch-Swipe Ergonomics (`src/hooks/useMobileViewSwipe.ts`): Relaxed `dominanceRatio` from 1.8 to 1.25 to natively support natural human thumb arcs (up to 38.6°), extended `maxDurationMs` from 500ms to 650ms for deliberate swipes, lowered `minDistancePx` from 50px to 40px for responsive flicks, and added `lastSwipeDirection` state with `onSwipeDirection` callbacks.',
+        'Mobile Browser Touch Protection (`src/app/page.tsx`): Declared `touch-pan-y` on the root `<main>` container and wired `handleTouchCancel` to prevent mobile Safari and Chrome from swallowing or aborting horizontal touch sequences.',
+        'Architecture Decision Record (`ADR-050`): Formally ratified mobile dock inactivity auto-fade, biomechanical touch ergonomics, and directional view transitions in `docs/DECISIONS.md`.',
+      ],
+      Fixed: [
+        'Collection Sort Dropdown Icon Overlap (`src/components/presentation/CollectionSortDropdown.tsx`): Replaced arbitrary Tailwind classes with standard spacing (`pl-8 sm:pl-9 pr-7 sm:pr-8`) and bounded width (`min-w-[125px] sm:min-w-[145px] max-w-[165px] sm:max-w-[195px]`), guaranteeing a clean 10px clear gutter from the ArrowUpDown icon.',
+        'Touch-Swipe False Negatives & Dropped Gestures: Eliminated dropped swipes caused by overly strict Cartesian angle thresholds, timeout cutoffs, and edge bezel touch rejections.',
+      ],
+      Refactored: [
+        'Unified View-Transition Wrapper (`src/app/page.tsx`): Consolidated view presentation containers across Catalog, Bookshelf, Favorites, Bookmarks, and Notebook into a unified dynamic transition wrapper with automatic direction cleanup on animation end.',
+      ],
+    },
+  },
+  {
     version: '2.5.3',
     date: '2026-09-17',
     title: 'Unified Collection Workbench, Strict 2-Row Mobile Ergonomics, Multi-Shelf Pagination & Viewport-Aware Scroll Architecture',
