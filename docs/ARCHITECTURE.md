@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-09-18`  
-> **Topology Health**: `187` Modules Analyzed • `643` Static Linkages • `0` Circular Dependencies • `1` Orphaned Modules
+> **Topology Health**: `188` Modules Analyzed • `644` Static Linkages • `0` Circular Dependencies • `1` Orphaned Modules
 
 ---
 
@@ -219,8 +219,8 @@ Auto-extracted dynamically from **77 Production UI Components** using Babel AST:
 | **`MotionReveal`** | Motion | `MotionRevealProps` | `children`, `delay`, `className` | [`src/components/motion/MotionReveal.tsx`](src/components/motion/MotionReveal.tsx) |
 | **`StaggerGroup`** | Motion | `StaggerGroupProps` | `children`, `className` | [`src/components/motion/StaggerGroup.tsx`](src/components/motion/StaggerGroup.tsx) |
 | **`AdvancedFilterDrawer`** | Presentation | `AdvancedFilterDrawerProps` | `isOpen`, `onClose`, `selectedEra`, `onEraChange`, `selectedSort`, `onSortChange`, `selectedTopic`, `onTopicChange`, `selectedLanguage`, `onLanguageChange`, `selectedFormat`, `onFormatChange`, `onApplyFilters`, `onResetAll`, `activeFilterCount` | [`src/components/presentation/AdvancedFilterDrawer.tsx`](src/components/presentation/AdvancedFilterDrawer.tsx) |
-| **`BookCard`** | Presentation | `BookCardProps` | `book`, `onDownloadClick`, `onPreviewClick`, `isPreviewActive`, `activeView` | [`src/components/presentation/BookCard.tsx`](src/components/presentation/BookCard.tsx) |
-| **`BookGrid`** | Presentation | `BookGridProps` | `books`, `isLoading`, `isError`, `onRetry`, `page`, `onPageChange`, `hasNextPage`, `onDownloadClick`, `onPreviewClick`, `activePreviewBookId`, `emptyTitle`, `emptyDescription`, `viewMode`, `onViewModeChange`, `initialViewMode`, `showViewToggle`, `onBrowseCatalog`, `searchQuery`, `onClearSearch`, `activeView`, `showShelfControls`, `totalBooksCount` | [`src/components/presentation/BookGrid.tsx`](src/components/presentation/BookGrid.tsx) |
+| **`BookCard`** | Presentation | `BookCardProps` | `book`, `onDownloadClick`, `onPreviewClick`, `isPreviewActive`, `activeView`, `onTopicClick` | [`src/components/presentation/BookCard.tsx`](src/components/presentation/BookCard.tsx) |
+| **`BookGrid`** | Presentation | `BookGridProps` | `books`, `isLoading`, `isError`, `onRetry`, `page`, `onPageChange`, `hasNextPage`, `onDownloadClick`, `onPreviewClick`, `activePreviewBookId`, `emptyTitle`, `emptyDescription`, `viewMode`, `onViewModeChange`, `initialViewMode`, `showViewToggle`, `onBrowseCatalog`, `searchQuery`, `onClearSearch`, `activeView`, `showShelfControls`, `totalBooksCount`, `onTopicClick` | [`src/components/presentation/BookGrid.tsx`](src/components/presentation/BookGrid.tsx) |
 | **`BookmarkCard`** | Presentation | `BookmarkCardProps` | `volume`, `isOffline`, `onResume`, `onStatusChange`, `onClear` | [`src/components/presentation/BookmarkCard.tsx`](src/components/presentation/BookmarkCard.tsx) |
 | **`BookmarksView`** | Presentation | `BookmarksViewProps` | `onBrowseCatalog` | [`src/components/presentation/BookmarksView.tsx`](src/components/presentation/BookmarksView.tsx) |
 | **`BookPreviewModal`** | Presentation | `BookPreviewModalProps` | `book`, `originRect`, `isOpen`, `activeView`, `onWillClose`, `onClose`, `onReadBook` | [`src/components/presentation/BookPreviewModal.tsx`](src/components/presentation/BookPreviewModal.tsx) |
@@ -364,7 +364,7 @@ Zustand client-side state stores programmatically verified across **9 Persistent
 
 ## 🧠 Domain Engines & Pure Computational Utilities
 
-Pure business logic, historical engines, and layout algorithms verified across **35 Domain Modules** using Babel AST:
+Pure business logic, historical engines, and layout algorithms verified across **36 Domain Modules** using Babel AST:
 
 | Engine / Utility | Subsystem / Layer | Source File | Primary Exported Primitives | Architectural Responsibility |
 | :--- | :--- | :--- | :--- | :--- |
@@ -373,6 +373,7 @@ Pure business logic, historical engines, and layout algorithms verified across *
 | **`api-utils`** | Core Domain | [`src/lib/api-utils.ts`](src/lib/api-utils.ts) | `RateLimitInfo`, `getClientIp`, `createRateLimitErrorResponse` | Server-side API route helpers, IP address extraction, and standardized rate limit error response generation. |
 | **`book-metadata`** | Core Domain | [`src/lib/book-metadata.ts`](src/lib/book-metadata.ts) | `ResolvedBookIdentity`, `ResolveBookMetadataParams`, `cleanBookTitle`, `isPlaceholderAuthor`, `isPlaceholderTitle` _(+1 more)_ | Author and title cleaning, placeholder author heuristics, and defensive editorial metadata normalization. |
 | **`book-sorting`** | Core Domain | [`src/lib/book-sorting.ts`](src/lib/book-sorting.ts) | `BookshelfSortOption`, `FavoritesSortOption`, `BOOKSHELF_SORT_OPTIONS`, `FAVORITES_SORT_OPTIONS`, `sortBooks` | Deterministic multi-attribute book sorting algorithms for title, author, year, downloads, reading progress, and recency. |
+| **`book-tags`** | Core Domain | [`src/lib/book-tags.ts`](src/lib/book-tags.ts) | `BookTagSet`, `resolveBookTags` | Semantic book tag normalizer mapping verbose Library of Congress subjects and Gutenberg bookshelves to canonical zero-truncation badges (<= 14 chars) with responsive mobile/desktop allocation and administrative prefix sanitization. |
 | **`cache`** | Core Domain | [`src/lib/cache.ts`](src/lib/cache.ts) | `SimpleLRUCache` | Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions. |
 | **`gutendex-provider`** | Catalog | [`src/lib/catalog/gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts) | `GutendexCatalogProvider`, `gutendexProvider` | Upstream Gutendex REST catalog provider implementing ICatalogProvider with 15s timeout control, error mapping, and jurisdictional copyright filtering. |
 | **`query-parser`** | Catalog | [`src/lib/catalog/query-parser.ts`](src/lib/catalog/query-parser.ts) | `parseCatalogQuery` | Canonical query parameter extractor and sanitizer for catalog queries, normalizing whitespace, pagination, author lifespans, and edge geo-country fallback cascades. |
@@ -558,7 +559,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`StaggerGroup.tsx`](src/components/motion/StaggerGroup.tsx) | `./motion-config` | _Direct Root Consumer_ | Production Module |
 | [`motion-config.ts`](src/components/motion/motion-config.ts) | _Root Primitive_ | `MotionReveal.tsx`, `StaggerGroup.tsx` | Production Module |
 | [`AdvancedFilterDrawer.tsx`](src/components/presentation/AdvancedFilterDrawer.tsx) | `components/ui/Button`, `config/catalog-filters` | `page.tsx` | Production Module |
-| [`BookCard.tsx`](src/components/presentation/BookCard.tsx) | `hooks/useCursorTooltip`, `components/ui/CursorTooltip`, `types/book.types`, `lib/utils`, `stores/useBookshelfStore`, `stores/useReaderStore`, `components/ui/Badge`, `components/ui/Button`, `components/ui/Card`, `components/ui/StarRating`, `config/routes`, `hooks/useBookCopyright` | `BookGrid.tsx`, `BookPreviewModal.tsx` | Production Module |
+| [`BookCard.tsx`](src/components/presentation/BookCard.tsx) | `hooks/useCursorTooltip`, `components/ui/CursorTooltip`, `types/book.types`, `lib/utils`, `lib/book-tags`, `stores/useBookshelfStore`, `stores/useReaderStore`, `components/ui/Badge`, `components/ui/Button`, `components/ui/Card`, `components/ui/StarRating`, `config/routes`, `hooks/useBookCopyright` | `BookGrid.tsx`, `BookPreviewModal.tsx` | Production Module |
 | [`BookGrid.tsx`](src/components/presentation/BookGrid.tsx) | `types/book.types`, `./BookCard`, `./BookshelfRack`, `components/ui/Button` | `page.tsx` | Production Module |
 | [`BookPreviewModal.tsx`](src/components/presentation/BookPreviewModal.tsx) | `types/book.types`, `hooks/useBookPassageShuffle`, `lib/utils`, `components/ui/Button`, `components/ui/StarRating`, `components/bookshelf/ReadingStatusSelector`, `stores/useBookshelfStore`, `hooks/useBookCopyright`, `components/presentation/ContentAdvisoryBanner`, `lib/content-advisory`, `./BookCard`, `./NotablePassagesSpread` | `page.tsx` | Production Module |
 | [`BookmarkCard.tsx`](src/components/presentation/BookmarkCard.tsx) | `types/book.types`, `components/ui/Button`, `config/routes`, `stores/useReaderStore`, `hooks/useBookCopyright`, `lib/utils` | `BookmarksView.tsx` | Production Module |
@@ -656,6 +657,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`api-utils.ts`](src/lib/api-utils.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `route.ts`, `route.ts` | Production Module |
 | [`book-metadata.ts`](src/lib/book-metadata.ts) | `types/book.types`, `config/featured-books`, `lib/utils` | `layout.tsx`, `page.tsx`, `NotebookView.tsx`, `ReaderHeader.tsx`, `useBookTranslations.ts`, `useContinueReadingLedger.ts`, `book.adapter.ts`, `book-sorting.ts`, `useAnnotationStore.ts` | Production Module |
 | [`book-sorting.ts`](src/lib/book-sorting.ts) | `types/book.types`, `lib/book-metadata`, `lib/utils`, `components/presentation/CollectionSortDropdown` | `page.tsx` | Production Module |
+| [`book-tags.ts`](src/lib/book-tags.ts) | _Root Primitive_ | `BookCard.tsx` | Production Module |
 | [`cache.ts`](src/lib/cache.ts) | _Root Primitive_ | `route.ts` | Production Module |
 | [`gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts) | `types/catalog.types`, `types/catalog.types`, `types/book.types`, `config/api-endpoints`, `lib/copyright-engine` | `route.ts` | Production Module |
 | [`query-parser.ts`](src/lib/catalog/query-parser.ts) | `types/catalog.types`, `lib/country-resolver` | `route.ts` | Production Module |

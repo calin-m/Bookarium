@@ -664,3 +664,5 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-049: Unified Collection Toolbar, Strict 2-Row Mobile Ergonomics, Multi-Shelf Pagination & Viewport-Aware Scroll Architecture**
 - **ADR-050: Mobile Catalog Dock Inactivity Auto-Fade (1.4s), Biomechanical Touch-Swipe Ergonomics (Zero False Negatives) & Directional View Slide Transitions**
 - **ADR-051: Continuous Circular Carousel Navigation, Scoped Mobile Swipe Media Queries & Cross-Route Directional Slide Handoff**
+- **ADR-052: Full-Surface Tactile Mobile Swiping, Unbiased Button/Link Gesture Tracking & Synthetic Click Cancellation**
+- **ADR-053: Semantic Book Tag Normalization, Zero-Truncation Single-Row Card Protection & Interactive Unabridged Taxonomy Popovers**

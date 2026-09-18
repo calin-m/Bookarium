@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 18 Sep 2026 12:42:35 GMT  
+**Last Generated**: Fri, 18 Sep 2026 15:24:25 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 175 passed  
-**Total Verified Tests**: 1669 passed  
+**Total Test Suites**: 176 passed  
+**Total Verified Tests**: 1682 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1669 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **176/176 test suites passed** (1682 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 51 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 53 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.1%** (7585/8235) — *Target: $ge$ 80%*
-- **Statements**: **90.57%** (8222/9078) — *Target: $ge$ 80%*
-- **Functions**: **88.98%** (1762/1980) — *Target: $ge$ 80%*
-- **Branches**: **81%** (7256/8957) — *Target: $ge$ 80%*
+- **Lines**: **92.1%** (7679/8337) — *Target: $ge$ 80%*
+- **Statements**: **90.56%** (8323/9190) — *Target: $ge$ 80%*
+- **Functions**: **88.96%** (1781/2002) — *Target: $ge$ 80%*
+- **Branches**: **81.03%** (7321/9034) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1669 Tests)
+## 🧪 Comprehensive Test Suite Catalog (176 Suites / 1682 Tests)
 
 ### 🚀 App Routes & Pages (15 Suites · 172 Tests)
 
@@ -298,7 +298,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 345 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 348 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -328,10 +328,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (18 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (20 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
+- ✔ `should open unabridged topics popover when clicking +N button`
 - ✔ `should render link to /read/[id] when clicking Read button`
 - ✔ `should toggle favorite and bookmark state on button clicks`
 - ✔ `should call onDownloadClick when clicking Formats button`
@@ -348,6 +349,7 @@
 - ✔ `disarms favorite removal confirmation on mouse leave or blur when activeView="favorites"`
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is protected in UK`
 - ✔ `applies opacity and grayscale to cover image when book is restricted`
+- ✔ `opens unconstrained popover when clicking +N tag and invokes onTopicClick`
 
 </details>
 
@@ -408,7 +410,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false or book is null`
 - ✔ `renders book preview modal and triggers cover open animation`
@@ -426,6 +428,7 @@
 - ✔ `does not close modal when clicking inside the curation bar`
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is restricted`
 - ✔ `renders content advisory banner when previewed book contains mature subjects`
+- ✔ `renders clean literary spread without cluttering tag clouds on the inside pages`
 
 </details>
 
@@ -1307,7 +1310,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (31 Suites · 330 Tests)
+### 📚 Gutenberg Parsers & Metadata (32 Suites · 338 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1392,6 +1395,20 @@
 - ✔ `sorts by reading progress percentage descending and ascending`
 - ✔ `sorts by download count (popularity) descending`
 - ✔ `preserves order when sortBy is "recent" or unrecognized`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/book-tags.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `resolves Frankenstein into concise canonical genres without character name noise`
+- ✔ `resolves Pride and Prejudice into Classics and Romance rather than geographic subdivisions`
+- ✔ `resolves Dracula into Gothic and Horror/Vampires`
+- ✔ `resolves Alice in Wonderland with curated Childrens Literature`
+- ✔ `resolves The Republic into Philosophy and Politics`
+- ✔ `safely falls back to Classics on undefined, null, or empty inputs`
+- ✔ `guarantees that every resolved badge never contains ellipsis and is <= 14 chars`
+- ✔ `strips administrative Category and Banned Books prefixes from unabridged tags`
 
 </details>
 
@@ -1825,7 +1842,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 216 Tests)
+### 🔄 Hooks & React Query (22 Suites · 218 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -2103,7 +2120,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useMobileViewSwipe.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/hooks/useMobileViewSwipe.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `advances to next view on valid swipe left`
 - ✔ `navigates to previous view on valid swipe right`
@@ -2111,7 +2128,8 @@
 - ✔ `supports circular carousel wrap-around by default (catalog right to account, account left to catalog)`
 - ✔ `ignores swipe if touch starts within 20px edge dead-zone (native Safari/Android back-forward)`
 - ✔ `permits swipes starting just outside edge dead-zone (e.g. 25px from bezel)`
-- ✔ `ignores swipe originating on interactive controls or inputs`
+- ✔ `ignores swipe originating on inputs, horizontal scrollers, or dialogs`
+- ✔ `permits swipe originating on button or link while preserving stationary taps`
 - ✔ `ignores diagonal or vertical scroll gestures failing dominance ratio`
 - ✔ `ignores gestures exceeding max duration or below min distance`
 - ✔ `permits deliberate swipes within 650ms and responsive flicks down to 40px`
@@ -2161,7 +2179,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useScrollDirection.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/hooks/useScrollDirection.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `initializes with BOTH header and toolbar visible at top of page`
 - ✔ `preserves BOTH_VISIBLE while scrolling down within Hero section (scrollY <= dockOffset)`
@@ -2171,6 +2189,7 @@
 - ✔ `transitions to fully hidden on third downward scroll gesture`
 - ✔ `immediately reveals filter toolbar upon upward scroll reversal`
 - ✔ `measures dynamic element offset from DOM when heroDockSelector is provided`
+- ✔ `correctly calculates document Y by traversing nested offsetParent hierarchies`
 - ✔ `keeps both header and toolbar unconditionally visible when enabled is false`
 
 </details>

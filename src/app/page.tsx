@@ -380,7 +380,12 @@ function HomeContent() {
     : [];
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
+    <div
+      className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme touch-pan-y"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
+    >
       <Navbar
         activeView={activeView}
         onViewChange={(view) => {
@@ -392,9 +397,6 @@ function HomeContent() {
 
       <main
         className={`flex-1 transition-all duration-300 touch-pan-y ${isFilterDrawerOpen ? 'xl:pl-96' : 'xl:pl-0'}`}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchCancel}
       >
         {activeView === 'catalog' && (
           <HeroSearch
@@ -607,6 +609,12 @@ function HomeContent() {
                 onClearSearch={collectionSearchQuery.trim() ? () => setCollectionSearchQuery('') : undefined}
                 activeView={activeView}
                 totalBooksCount={savedBooks.length}
+                onTopicClick={(topicName) => {
+                  handleTopicChange(topicName);
+                  if (activeView !== 'catalog') {
+                    setActiveView('catalog');
+                  }
+                }}
                 emptyTitle={
                   collectionSearchQuery.trim()
                     ? `No volumes found matching "${collectionSearchQuery}"`

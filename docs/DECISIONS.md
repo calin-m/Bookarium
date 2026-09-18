@@ -929,6 +929,88 @@
   - Consistent visual slide continuity across route boundaries without layout jumps.
   - 100% test pass rate maintained across all 175 test suites.
 
+## ADR-052: Full-Surface Tactile Mobile Swiping, Unbiased Button/Link Gesture Tracking & Synthetic Click Cancellation
+- **Status**: Accepted
+- **Context**:
+  1. **Overzealous Touch Suppression**:
+     - `useMobileViewSwipe.ts` previously aborted any touch beginning on `button` or `a` elements (`touchStartRef.current = null`).
+     - On mobile screens where book cards, action buttons ("Read", "Get", Favorite, Bookmark), and toolbars occupy a majority of viewport surface, initiating horizontal swipe gestures frequently failed because user thumbs landed on or near interactive buttons.
+  2. **Mechanical Tap vs. Swipe Differentiation**:
+     - Stationary taps ($\Delta X \approx 0$, duration $< 200\text{ms}$) are mechanically distinct from deliberate horizontal swipes ($|\Delta X| \ge 40\text{px}$, dominance ratio $\ge 1.25$). Suppressing swipes at `touchstart` before displacement could be evaluated was unnecessarily restrictive.
+  3. **Viewport Scope Restriction**:
+     - Touch handlers in `src/app/page.tsx` and `src/app/account/page.tsx` were bound to `<main>` instead of the outer full-viewport wrapper `div`, preventing swipe initiation from the top navigation bar or whitespace margins.
+- **Decision**:
+  1. **Unbiased Touch Initiation (`src/hooks/useMobileViewSwipe.ts`)**:
+     - Removed `button` and `a` from the `touchstart` target suppression check, allowing swipe displacement tracking to initiate anywhere across book cards, toolbars, and action surfaces.
+     - Preserved mandatory suppression on text form fields (`input`, `textarea`, `select`), active modals (`[role="dialog"]`), and horizontal carousels (`[data-no-swipe]`).
+  2. **Synthetic Click Cancellation on Valid Swipes**:
+     - On `touchend`, when a valid swipe is detected, `if (e.cancelable) e.preventDefault()` is invoked, ensuring mobile browsers do not fire synthesized `click` events on release after a swipe across buttons.
+     - Stationary taps ($|\Delta X| < 40\text{px}$) do not trigger swipe transitions, allowing native button and link clicks to proceed with zero lag.
+  3. **Full-Viewport Root Touch Binding (`src/app/page.tsx`, `src/app/account/page.tsx`)**:
+     - Relocated `onTouchStart`, `onTouchEnd`, and `onTouchCancel` along with `touch-pan-y` to the root `div` wrappers, allowing natural swipes to start anywhere on the screen including the top navigation bar.
+  4. **Horizontal Carousel Protection (`BookmarksView.tsx`, `NotebookView.tsx`)**:
+     - Added `data-no-swipe` to horizontally scrolling chip and filter rows to ensure internal scrolling remains fully isolated from view transitions.
+- **Consequences**:
+  - Full-surface, responsive mobile swiping across all views without "dead zones".
+  - 100% preservation of button and link click functionality for stationary taps.
+  - Zero accidental button activations when swiping across book cards.
+  - Zero test regressions across all test suites.
+
+## ADR-053: Semantic Book Tag Normalization, Zero-Truncation Single-Row Card Protection & Interactive Unabridged Taxonomy Popovers
+- **Status**: Accepted
+- **Context**:
+  1. **Ugly Character-Level Truncation**:
+     - Book tags in `BookCard.tsx` called `extractBookTags(book.subjects, 2, 20)`, slicing raw Library of Congress Subject Headings (LCSH) at 20 characters with ellipsis (`...`).
+     - This caused truncated, broken-looking badges (e.g. `[Frankenstein (Ficti...]`, `[Historical fictio...]`).
+  2. **Card Stretched Heights & Layout Shifts**:
+     - When tags wrapped onto multiple lines, individual cards stretched vertically, breaking horizontal alignment across 2-column mobile grids and multi-column desktop grids.
+  3. **Omission of Curated Gutenberg Bookshelves**:
+     - Gutenberg's high-level curated `bookshelves` (containing clean, recognized genres like *Gothic Fiction*, *Science Fiction*, *Romantic Fiction*, *Philosophy*) were completely ignored in favor of arbitrary raw subject strings.
+- **Decision**:
+  1. **Semantic Tag Normalization Engine (`src/lib/book-tags.ts`)**:
+     - Built a deterministic normalizer harvesting both `subjects` and `bookshelves`.
+     - Canonical dictionary maps verbose phrases to concise genre badges ($\le 14$ characters, e.g. `"Precursors of Science Fiction"` $\to$ `"Sci-Fi"`, `"Detective and mystery stories"` $\to$ `"Mystery"`, `"Gothic fiction"` $\to$ `"Gothic"`).
+     - Filtered out administrative lists (*"Best Books Ever Listings"*, *"Browsing: ..."*), character qualifiers (*`... (Fictitious character)`*), and non-descriptive filler.
+  2. **Guaranteed Zero Truncation, Single-Row Layout & Bottom Baseline Alignment (`src/components/presentation/BookCard.tsx`)**:
+     - Anchored tag pills at the bottom of the metadata content area directly above the thin divider line (`border-t border-border`). This guarantees all cards in a grid row share the identical horizontal baseline for badges regardless of 1-line vs 2-line title heights.
+     - Enforced `min-h-[26px] py-0.5 items-center flex-nowrap overflow-hidden` without asymmetric top padding, ensuring pills are centered with ~2px clearance above and below so bottom borders and rounded corners are 100% visible and unclipped.
+     - Responsive allocation:
+       - Mobile (`< 640px`): Displays 1 primary canonical badge + `+N` count pill.
+       - Desktop (`>= 640px`): Displays up to 2 canonical badges + `+N` count pill.
+     - Badges never display truncation ellipsis (`...`).
+  3. **Interactive Unabridged Taxonomy Popover**:
+     - Positioned as a sibling to the inner badge strip outside `overflow-hidden` at `absolute bottom-full left-0 right-0 sm:right-auto sm:w-64 mb-1.5 z-30`.
+     - Clicking/tapping `+N` opens an accessible floating popover listing all clean, unabridged subjects and bookshelves, opening upwards into the card space without clipping.
+     - Unconstrained container (`max-h-[min(320px,65vh)] overflow-y-auto`) displays all 10–13 tags fully listed with **zero inner scrollbars**, while administrative prefixes (`Category:\s*`, `Banned Books from\s*`) are stripped for clean presentation.
+     - Clicking any tag badge or popover pill invokes `onTopicClick`, filtering the catalog by that topic instantly.
+  4. **Pristine Archival Typography in 3D Preview Modal (`src/components/presentation/BookPreviewModal.tsx`)**:
+     - Deliberately omitted cluttered tag clouds and miniature tag scrollbars from the inside opening spread of the 3D book modal.
+     - Preserved authentic printed book aesthetics, giving generous breathing room to opening quotes and literary passages while maintaining genre context cleanly via the running head footer (`primarySubject • p. 1`).
+  5. **Invariant Document-Top Hero Docking & 3-State Stepped Bidirectional Navigation (`src/hooks/useScrollDirection.ts`)**:
+     - Implemented `getElementDocumentTop(el)` traversing the `offsetParent` chain to compute true absolute document Y coordinates invariant of any CSS transform or animation wrappers (`.animate-page-turn`, etc.).
+     - Anchored `heroDockSelector` strictly to `'#catalog-section'` (static document flow at $902\text{px}$), avoiding sticky elements whose coordinates shift during sticky scrolling.
+     - Calibrated arrival dock point formula: $\text{dockOffset} = \max(\text{topOffset}, \text{docTop} - 120) = 902 - 120 = \mathbf{782\text{px}}$, accounting for Header ($64\text{px}$) + Toolbar ($56\text{px}$) combined height.
+     - Restored the session-isolated 3-state bidirectional stepped scroll pipeline:
+       - **Hero Guard ($0\text{px} \to 782\text{px}$)**: State 0 (`BOTH_VISIBLE`) locked; Navbar header and filter bar remain at rest with zero premature hiding or upward shifting.
+       - **Arrival Guard ($782\text{px}$)**: Filter bar meets header; docks at `top-16` while header remains visible.
+       - **Scroll Down Step 1 ($\Delta \ge 15\text{px}$)**: State 0 $\to$ State 1 (`TOOLBAR_ONLY`); Header hides, filter bar slides up $64\text{px}$ to sit flush at `top-0`.
+       - **Scroll Down Step 2 ($\Delta \ge 15\text{px}$ or continuous $\ge 120\text{px}$)**: State 1 $\to$ State 2 (`BOTH_HIDDEN`); Filter bar slides off-screen, providing an unobstructed full-canvas reading surface.
+       - **Scroll Up Step 1 ($\Delta \ge 15\text{px}$)**: State 2 $\to$ State 1 (`TOOLBAR_ONLY`); **Filter bar reappears FIRST** at `top-0` flush, while header remains hidden for instant tool access.
+       - **Scroll Up Step 2 ($\Delta \ge 15\text{px}$ or continuous $\ge 120\text{px}$)**: State 1 $\to$ State 0 (`BOTH_VISIBLE`); Header reappears at `top-0`, filter bar shifts down to `top-16`.
+       - **Return to Hero ($< 782\text{px}$)**: Hero Guard re-engages and locks State 0.
+- **Consequences**:
+  - Zero truncated words or ugly ellipses on book cards across mobile and desktop.
+  - Uniform horizontal baseline alignment across all cards in every grid row.
+  - Crisp, unclipped pill borders and accessible zero-scroll upward-opening popovers.
+  - Perfectly uniform card heights and zero grid layout shifts.
+  - Instant, rich taxonomy exploration with click-to-filter convenience.
+  - Clean, distraction-free archival reading experience inside the 3D book modal.
+  - Rock-solid header and filter bar stability during catalog scrolling with mathematically precise $782\text{px}$ hero docking.
+  - Fluid, intuitive 3-state stepped navigation that reveals the toolbar first on upward scroll.
+  - 100% test pass rate maintained with comprehensive co-located tests.
+
+
+
 
 
 

@@ -173,7 +173,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
 
       {/* Filter Navigation Tabs */}
       <div className="flex items-center justify-center mb-8 border-b border-border">
-        <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px" aria-label="Reading ledger filters">
+        <nav data-no-swipe className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px" aria-label="Reading ledger filters">
           {filterTabs.map((tab) => {
             const isActive = activeFilter === tab.id;
             return (

@@ -420,7 +420,12 @@ function AccountDashboardContent() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
+    <div
+      className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme touch-pan-y"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
+    >
       <Navbar
         activeView="account"
         isVisible={isHeaderVisible}
@@ -439,9 +444,6 @@ function AccountDashboardContent() {
               : ''
             : ''
         }`}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchCancel}
         onAnimationEnd={(e) => {
           if (e.target !== e.currentTarget) return;
           setIsTransitioning(false);

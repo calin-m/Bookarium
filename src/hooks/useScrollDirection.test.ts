@@ -222,9 +222,9 @@ describe('useScrollDirection hook', () => {
         vi.advanceTimersByTime(180);
       });
 
-      // 1. Initial arrival past dockOffset (430px > 380px): docks filter bar under header, header stays visible
+      // 1. Initial arrival past dockOffset (400px > 380px): docks filter bar under header, header stays visible
       act(() => {
-        Object.defineProperty(window, 'scrollY', { value: 430, configurable: true });
+        Object.defineProperty(window, 'scrollY', { value: 400, configurable: true });
         window.dispatchEvent(new Event('scroll'));
       });
       expect(result.current.isHeaderVisible).toBe(true);
@@ -235,15 +235,58 @@ describe('useScrollDirection hook', () => {
         vi.advanceTimersByTime(180);
       });
 
-      // 3. Second scroll down gesture in catalog (430 -> 470px): now header hides, toolbar moves to top-0
+      // 3. Second scroll down gesture in catalog (400 -> 450px): now header hides, toolbar moves to top-0
       act(() => {
-        Object.defineProperty(window, 'scrollY', { value: 470, configurable: true });
+        Object.defineProperty(window, 'scrollY', { value: 450, configurable: true });
         window.dispatchEvent(new Event('scroll'));
       });
       expect(result.current.isHeaderVisible).toBe(false);
       expect(result.current.isToolbarVisible).toBe(true);
     } finally {
       document.body.removeChild(mockElement);
+    }
+  });
+
+  it('correctly calculates document Y by traversing nested offsetParent hierarchies', () => {
+    const parent = document.createElement('div');
+    Object.defineProperty(parent, 'offsetTop', { value: 400, configurable: true });
+
+    const child = document.createElement('div');
+    Object.defineProperty(child, 'offsetTop', { value: 150, configurable: true });
+    Object.defineProperty(child, 'offsetParent', { value: parent, configurable: true });
+    child.id = 'catalog-section';
+
+    parent.appendChild(child);
+    document.body.appendChild(parent);
+
+    try {
+      const { result } = renderHook(() =>
+        useScrollDirection({ threshold: 10, gestureEndTimeoutMs: 150, topOffset: 64 })
+      );
+
+      // Total document top = 400 + 150 = 550px. dockOffset = 550 - 120 = 430px.
+      // Scroll to 400px (<= 430px): remains inside hero section
+      act(() => {
+        Object.defineProperty(window, 'scrollY', { value: 400, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+      });
+      expect(result.current.isHeaderVisible).toBe(true);
+      expect(result.current.isToolbarVisible).toBe(true);
+
+      // Advance timeout
+      act(() => {
+        vi.advanceTimersByTime(180);
+      });
+
+      // Arrive past dockOffset (450px > 430px): header remains visible on initial arrival
+      act(() => {
+        Object.defineProperty(window, 'scrollY', { value: 450, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+      });
+      expect(result.current.isHeaderVisible).toBe(true);
+      expect(result.current.isToolbarVisible).toBe(true);
+    } finally {
+      document.body.removeChild(parent);
     }
   });
 

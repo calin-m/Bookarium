@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Bookmark, Heart, Sparkles, Trash2, AlertTriangle } from 'lucide-react';
+import { BookOpen, Download, Bookmark, Heart, Sparkles, Trash2, AlertTriangle, X } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
-import { extractBookFormats, formatAuthorNames, formatDownloadCount, extractBookTags } from '@/lib/utils';
+import { extractBookFormats, formatAuthorNames, formatDownloadCount } from '@/lib/utils';
+import { resolveBookTags } from '@/lib/book-tags';
 import { useHydratedBookshelf, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { Badge } from '@/components/ui/Badge';
@@ -24,6 +25,7 @@ export interface BookCardProps {
   onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
   isPreviewActive?: boolean;
   activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
+  onTopicClick?: (topic: string) => void;
 }
 
 export const BookCard: React.FC<BookCardProps> = ({
@@ -32,6 +34,7 @@ export const BookCard: React.FC<BookCardProps> = ({
   onPreviewClick,
   isPreviewActive = false,
   activeView,
+  onTopicClick,
 }) => {
   const router = useRouter();
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -62,7 +65,23 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   const formats = extractBookFormats(book.formats, book.id);
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
-  const tags = extractBookTags(book.subjects, 2, 20);
+  const tagSet = React.useMemo(() => {
+    return resolveBookTags(book.subjects, book.bookshelves);
+  }, [book.subjects, book.bookshelves]);
+
+  const [isTagPopoverOpen, setIsTagPopoverOpen] = React.useState(false);
+  const popoverRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!isTagPopoverOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setIsTagPopoverOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
+  }, [isTagPopoverOpen]);
 
   const {
     mousePos,
@@ -313,32 +332,141 @@ export const BookCard: React.FC<BookCardProps> = ({
 
       {/* Book Metadata Content */}
       <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between gap-2 sm:gap-3">
-        <div className="space-y-1 sm:space-y-1.5">
-          <div>
-            <h3 className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors text-balance">
-              {book.title}
-            </h3>
-            <p className="text-[11px] sm:text-xs text-muted-foreground font-sans line-clamp-1 mt-0.5">
-              {authorNames}
-            </p>
-          </div>
-
-          {/* Multiple Subject Tags */}
-          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 pt-0.5 sm:pt-1">
-            {tags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="outline"
-                size="sm"
-                className="bg-muted/40 text-[9px] sm:text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors shadow-2xs py-0 sm:py-0.5 px-1.5 sm:px-2"
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
+        {/* Top Header: Title & Author */}
+        <div>
+          <h3 className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors text-balance">
+            {book.title}
+          </h3>
+          <p className="text-[11px] sm:text-xs text-muted-foreground font-sans line-clamp-1 mt-0.5">
+            {authorNames}
+          </p>
         </div>
 
-        <div className="space-y-1.5 sm:space-y-2 pt-1.5 sm:pt-2 border-t border-border">
+        {/* Bottom Section: Tag Pills anchored directly above Divider Line & Footer */}
+        <div className="space-y-1.5 sm:space-y-2">
+          {/* Single-Row Clean Subject Tags with Zero Truncation & Unclipped Borders */}
+          <div className="relative">
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap overflow-hidden min-h-[26px] py-0.5">
+              {/* Mobile Single Primary Tag */}
+              {tagSet.primaryMobile.map((tag) => (
+                <Badge
+                  key={`mobile-${tag}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={
+                    onTopicClick
+                      ? (e) => {
+                          e.stopPropagation();
+                          onTopicClick(tag);
+                        }
+                      : undefined
+                  }
+                  className={`sm:hidden bg-muted/40 text-[9px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors shadow-2xs py-0.5 px-1.5 shrink-0 ${
+                    onTopicClick ? 'cursor-pointer hover:bg-primary/10 hover:text-primary' : ''
+                  }`}
+                >
+                  {tag}
+                </Badge>
+              ))}
+
+              {/* Desktop Up to 2 Primary Tags */}
+              {tagSet.primaryDesktop.map((tag) => (
+                <Badge
+                  key={`desktop-${tag}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={
+                    onTopicClick
+                      ? (e) => {
+                          e.stopPropagation();
+                          onTopicClick(tag);
+                        }
+                      : undefined
+                  }
+                  className={`hidden sm:inline-flex bg-muted/40 text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors shadow-2xs py-0.5 px-2 shrink-0 ${
+                    onTopicClick ? 'cursor-pointer hover:bg-primary/10 hover:text-primary' : ''
+                  }`}
+                >
+                  {tag}
+                </Badge>
+              ))}
+
+              {/* Mobile +N Count Badge */}
+              {tagSet.overflowMobile > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsTagPopoverOpen((prev) => !prev);
+                  }}
+                  className="sm:hidden px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-full bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors shrink-0"
+                  aria-label={`View ${tagSet.overflowMobile} more topics for ${book.title}`}
+                  title="Click to view all topics"
+                >
+                  +{tagSet.overflowMobile}
+                </button>
+              )}
+
+              {/* Desktop +N Count Badge */}
+              {tagSet.overflowDesktop > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsTagPopoverOpen((prev) => !prev);
+                  }}
+                  className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-full bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors shrink-0"
+                  aria-label={`View ${tagSet.overflowDesktop} more topics for ${book.title}`}
+                  title="Click to view all topics"
+                >
+                  +{tagSet.overflowDesktop}
+                </button>
+              )}
+            </div>
+
+            {/* Unabridged Tag Popover (Sibling to inner pills strip, opens upwards cleanly without clipping) */}
+            {isTagPopoverOpen && (
+              <div
+                ref={popoverRef}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute bottom-full left-0 right-0 sm:right-auto sm:w-64 mb-1.5 z-30 p-2.5 bg-popover text-popover-foreground backdrop-blur-md border border-border rounded-xl shadow-xl space-y-1.5 text-left animate-in fade-in zoom-in-95 duration-150"
+              >
+                <div className="flex items-center justify-between border-b border-border pb-1">
+                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-muted-foreground">
+                    All Topics ({tagSet.allTags.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsTagPopoverOpen(false)}
+                    className="text-muted-foreground hover:text-foreground p-0.5 rounded"
+                    aria-label="Close topic list"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="max-h-[min(320px,65vh)] overflow-y-auto py-0.5 flex flex-wrap gap-1">
+                  {tagSet.allTags.map((tag) => (
+                    <span
+                      key={tag}
+                      onClick={() => {
+                        if (onTopicClick) {
+                          onTopicClick(tag);
+                          setIsTagPopoverOpen(false);
+                        }
+                      }}
+                      className={`inline-block text-[10px] px-2 py-0.5 rounded-md bg-muted text-foreground border border-border font-sans ${
+                        onTopicClick ? 'cursor-pointer hover:border-primary hover:text-primary transition-colors' : ''
+                      }`}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5 sm:space-y-2 pt-1.5 sm:pt-2 border-t border-border">
           <div
             onClick={activeView === 'favorites' || activeView === 'bookshelf' ? handleCoverClick : undefined}
             className={`flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground ${
@@ -421,6 +549,7 @@ export const BookCard: React.FC<BookCardProps> = ({
           </div>
         </div>
       </div>
-    </Card>
-  );
+    </div>
+  </Card>
+);
 };

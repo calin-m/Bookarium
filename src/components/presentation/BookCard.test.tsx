@@ -39,8 +39,21 @@ describe('BookCard component', () => {
     const book = mockBooks[0];
     render(<BookCard book={book} />);
 
+    expect(screen.getAllByText('Classics').length).toBeGreaterThan(0);
+    expect(screen.getByText('Romance')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /more topics/i }).length).toBeGreaterThan(0);
+  });
+
+  it('should open unabridged topics popover when clicking +N button', () => {
+    const book = mockBooks[0];
+    render(<BookCard book={book} />);
+
+    const overflowBtn = screen.getAllByRole('button', { name: /more topics/i })[0];
+    fireEvent.click(overflowBtn);
+
+    expect(screen.getByText(/All Topics/i)).toBeInTheDocument();
     expect(screen.getByText('Courtship')).toBeInTheDocument();
-    expect(screen.getByText('Domestic fiction')).toBeInTheDocument();
+    expect(screen.getByText('Domestic Fiction')).toBeInTheDocument();
   });
 
   it('should render link to /read/[id] when clicking Read button', () => {
@@ -321,5 +334,73 @@ describe('BookCard component', () => {
     const coverImg = screen.getByAltText('Cover of Restricted Title With Cover');
     expect(coverImg.className).toContain('opacity-65');
     expect(coverImg.className).toContain('grayscale-[35%]');
+  });
+
+  it('opens unconstrained popover when clicking +N tag and invokes onTopicClick', () => {
+    const onTopicClick = vi.fn();
+    const bookWithManyTags: any = {
+      id: 999,
+      title: 'Multigenre Masterpiece',
+      authors: [{ name: 'Polymath, Author', birth_year: 1800, death_year: 1860 }],
+      translators: [],
+      subjects: [
+        'Science fiction',
+        'Gothic fiction',
+        'Detective and mystery stories',
+        'Courtship -- Fiction',
+        'Philosophy',
+      ],
+      bookshelves: ['Precursors of Science Fiction', 'Romantic Fiction', 'Category: British Literature'],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 1200,
+    };
+
+    render(<BookCard book={bookWithManyTags} onTopicClick={onTopicClick} />);
+
+    // Click on the +N overflow button
+    const plusButtons = screen.getAllByRole('button', { name: /more topics for Multigenre Masterpiece/i });
+    expect(plusButtons.length).toBeGreaterThan(0);
+    fireEvent.click(plusButtons[0]);
+
+    // Popover is open
+    expect(screen.getByText(/All Topics/i)).toBeInTheDocument();
+
+    // Verify unconstrained container class
+    const popoverHeading = screen.getByText(/All Topics/i);
+    const popoverContainer = popoverHeading.closest('.space-y-1\\.5') || popoverHeading.parentElement?.parentElement;
+    const tagList = popoverContainer?.querySelector('.overflow-y-auto');
+    expect(tagList?.className).toContain('max-h-[min(320px,65vh)]');
+
+    // Verify Category: prefix was stripped
+    expect(screen.getByText('British Literature')).toBeInTheDocument();
+
+    // Click a topic inside the popover
+    const topicTag = screen.getByText('British Literature');
+    fireEvent.click(topicTag);
+    expect(onTopicClick).toHaveBeenCalledWith('British Literature');
+
+    // Popover closes after selecting a topic
+    expect(screen.queryByText(/All Topics/i)).not.toBeInTheDocument();
+
+    // Reopen popover using desktop button if available and close with close button
+    if (plusButtons.length > 1) {
+      fireEvent.click(plusButtons[1]);
+    } else {
+      fireEvent.click(plusButtons[0]);
+    }
+    expect(screen.getByText(/All Topics/i)).toBeInTheDocument();
+
+    const closeBtn = screen.getByRole('button', { name: /Close topic list/i });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText(/All Topics/i)).not.toBeInTheDocument();
+
+    // Reopen and close via outside pointerdown
+    fireEvent.click(plusButtons[0]);
+    expect(screen.getByText(/All Topics/i)).toBeInTheDocument();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByText(/All Topics/i)).not.toBeInTheDocument();
   });
 });

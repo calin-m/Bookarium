@@ -481,6 +481,8 @@ function generateMarkdown() {
       'Unified bidirectional cloud synchronization coordinator coordinating local Zustand stores with Supabase tables.',
     'book-sorting':
       'Deterministic multi-attribute book sorting algorithms for title, author, year, downloads, reading progress, and recency.',
+    'book-tags':
+      'Semantic book tag normalizer mapping verbose Library of Congress subjects and Gutenberg bookshelves to canonical zero-truncation badges (<= 14 chars) with responsive mobile/desktop allocation and administrative prefix sanitization.',
     'scroll-utils':
       'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, and header avoidance.',
     utils:

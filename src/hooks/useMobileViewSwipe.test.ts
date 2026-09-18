@@ -253,7 +253,7 @@ describe('useMobileViewSwipe', () => {
     expect(onViewChange).toHaveBeenCalledWith('catalog');
   });
 
-  it('ignores swipe originating on interactive controls or inputs', () => {
+  it('ignores swipe originating on inputs, horizontal scrollers, or dialogs', () => {
     const onViewChange = vi.fn();
     const { result } = renderHook(() =>
       useMobileViewSwipe({
@@ -271,12 +271,12 @@ describe('useMobileViewSwipe', () => {
     });
     expect(onViewChange).not.toHaveBeenCalled();
 
-    // Target inside button
-    const button = document.createElement('button');
+    // Target inside textarea
+    const textarea = document.createElement('textarea');
     act(() => {
-      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }, button));
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }, textarea));
       vi.advanceTimersByTime(100);
-      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 400, clientY: 300 }, button));
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 400, clientY: 300 }, textarea));
     });
     expect(onViewChange).not.toHaveBeenCalled();
 
@@ -287,6 +287,60 @@ describe('useMobileViewSwipe', () => {
       result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }, protectedDiv));
       vi.advanceTimersByTime(100);
       result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 400, clientY: 300 }, protectedDiv));
+    });
+    expect(onViewChange).not.toHaveBeenCalled();
+
+    // Target inside dialog
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }, dialog));
+      vi.advanceTimersByTime(100);
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 400, clientY: 300 }, dialog));
+    });
+    expect(onViewChange).not.toHaveBeenCalled();
+  });
+
+  it('permits swipe originating on button or link while preserving stationary taps', () => {
+    const onViewChange = vi.fn();
+    const { result } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'catalog',
+        onViewChange,
+      })
+    );
+
+    // 1. Swiping starting on a button advances view and prevents synthetic click if cancelable
+    const button = document.createElement('button');
+    const touchEndEvent = createTouchEvent('touchend', { clientX: 400, clientY: 300 }, button);
+    (touchEndEvent as unknown as { cancelable: boolean }).cancelable = true;
+    const preventDefaultSpy = vi.fn();
+    (touchEndEvent as unknown as { preventDefault: () => void }).preventDefault = preventDefaultSpy;
+
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }, button));
+      vi.advanceTimersByTime(100);
+      result.current.handleTouchEnd(touchEndEvent);
+    });
+    expect(onViewChange).toHaveBeenCalledWith('bookshelf');
+    expect(preventDefaultSpy).toHaveBeenCalled();
+    onViewChange.mockClear();
+
+    // 2. Swiping starting on a link (anchor) advances view
+    const link = document.createElement('a');
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }, link));
+      vi.advanceTimersByTime(100);
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 400, clientY: 300 }, link));
+    });
+    expect(onViewChange).toHaveBeenCalledWith('bookshelf');
+    onViewChange.mockClear();
+
+    // 3. Stationary tap on button (|deltaX| < 40px) does NOT trigger swipe
+    act(() => {
+      result.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }, button));
+      vi.advanceTimersByTime(80);
+      result.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 502, clientY: 301 }, button));
     });
     expect(onViewChange).not.toHaveBeenCalled();
   });

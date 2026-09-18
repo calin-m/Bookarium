@@ -17,6 +17,22 @@ export interface ScrollNavState {
 }
 
 /**
+ * Recursively walks an element's offsetParent chain to determine its absolute
+ * document-level Y coordinate, invariant of any CSS transform, animation, or perspective wrappers.
+ */
+export function getElementDocumentTop(el: HTMLElement): number {
+  let top = 0;
+  let current: HTMLElement | null = el;
+  while (current) {
+    top += current.offsetTop;
+    current = current.offsetParent as HTMLElement | null;
+  }
+  return top;
+}
+
+export const DEFAULT_HERO_DOCK_SELECTOR = '#catalog-section';
+
+/**
  * useScrollDirection
  * Implements a calibrated 3-state bidirectional scroll pipeline with Hero section guard:
  * 
@@ -33,7 +49,7 @@ export function useScrollDirection({
   continuousThreshold = 120,
   gestureEndTimeoutMs = 180,
   topOffset = 64,
-  heroDockSelector = '#catalog-section',
+  heroDockSelector = DEFAULT_HERO_DOCK_SELECTOR,
   enabled = true,
 }: UseScrollDirectionOptions = {}): ScrollNavState {
   const [navState, setNavState] = useState<ScrollNavState>({
@@ -72,7 +88,8 @@ export function useScrollDirection({
       if (heroDockSelector) {
         const el = document.querySelector(heroDockSelector) as HTMLElement | null;
         if (el) {
-          dockOffset = Math.max(topOffset, el.offsetTop - 120);
+          const docTop = getElementDocumentTop(el);
+          dockOffset = Math.max(topOffset, docTop - 120);
         }
       }
 

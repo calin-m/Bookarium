@@ -47,9 +47,9 @@ export interface UseMobileViewSwipeReturn {
  * Headless touch gesture hook encapsulating full-page horizontal swipe
  * navigation between top-level mobile views.
  *
- * Implements 4 safety guards tuned for zero false negatives and natural thumb ergonomics:
+ * Implements safety guards tuned for zero false negatives and natural thumb ergonomics:
  * 1. Minimal edge dead-zones (20px) protecting native iOS Safari and Android back/forward gestures without rejecting bezel-adjacent swipes.
- * 2. Interactive control suppression (ignoring touches starting on inputs, buttons, links, or modals).
+ * 2. Interactive text/scroll suppression (ignoring touches inside text inputs, horizontal scrollers [data-no-swipe], or dialogs, while permitting fluid swipes over buttons/links).
  * 3. Relaxed dominance ratio (1.25) accommodating natural biomechanical thumb arcs (up to ~38.6°).
  * 4. Forgiving duration (650ms) and distance (40px) ensuring relaxed or deliberate swipes register every time.
  */
@@ -85,12 +85,12 @@ export function useMobileViewSwipe({
         return;
       }
 
-      // 2. Guard against touch originating inside interactive controls, text fields, or dialogs
+      // 2. Guard against touch originating inside text fields, horizontal carousels, or dialogs
       const target = e.target as HTMLElement | null;
       if (
         target &&
         typeof target.closest === 'function' &&
-        target.closest('input, textarea, select, button, a, [data-no-swipe], [role="dialog"]')
+        target.closest('input, textarea, select, [data-no-swipe], [role="dialog"]')
       ) {
         touchStartRef.current = null;
         return;
@@ -134,6 +134,10 @@ export function useMobileViewSwipe({
         Math.abs(deltaX) >= minDistancePx &&
         Math.abs(deltaX) >= Math.abs(deltaY) * dominanceRatio
       ) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+
         const currentIndex = MOBILE_VIEW_ORDER.indexOf(activeView);
         if (currentIndex === -1) return;
 

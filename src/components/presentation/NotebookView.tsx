@@ -611,6 +611,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           <div
             ref={colorTabsRef}
             data-testid="notebook-color-tabs"
+            data-no-swipe
             className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] overscroll-x-contain"
           >
             {COLOR_FILTERS.map((filter) => {

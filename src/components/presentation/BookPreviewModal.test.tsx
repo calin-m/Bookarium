@@ -457,6 +457,28 @@ describe('BookPreviewModal component', () => {
     expect(advisory).toBeInTheDocument();
     expect(advisory).toHaveTextContent(/Erotic literature/i);
   });
+
+  it('renders clean literary spread without cluttering tag clouds on the inside pages', () => {
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    // Tag cloud should not be present on the inside book spread
+    expect(screen.queryByTestId(`preview-tags-cloud-${defaultBook.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`preview-tags-cloud-turning-${defaultBook.id}`)).not.toBeInTheDocument();
+
+    // Primary subject is cleanly displayed in the running head footer (p. 1)
+    expect(screen.getByText('Courtship')).toBeInTheDocument();
+    expect(screen.getByText('p. 1')).toBeInTheDocument();
+  });
 });
 
 

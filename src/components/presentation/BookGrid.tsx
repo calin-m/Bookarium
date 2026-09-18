@@ -32,6 +32,7 @@ export interface BookGridProps {
   activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
   showShelfControls?: boolean;
   totalBooksCount?: number;
+  onTopicClick?: (topic: string) => void;
 }
 
 export const BookGrid: React.FC<BookGridProps> = ({
@@ -57,6 +58,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   activeView,
   showShelfControls,
   totalBooksCount,
+  onTopicClick,
 }) => {
   const [internalViewMode, setInternalViewMode] = useState<BookViewMode>(initialViewMode);
   const activeViewMode = controlledViewMode ?? internalViewMode;
@@ -216,6 +218,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
                 onPreviewClick={onPreviewClick}
                 isPreviewActive={activePreviewBookId === book.id}
                 activeView={activeView}
+                onTopicClick={onTopicClick}
               />
             ))}
           </div>
