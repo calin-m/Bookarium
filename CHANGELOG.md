@@ -663,3 +663,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-048: Catalog Filter Bar Top-Margin Scroll Docking, Segmented Split-Button Quick Clear & Show Results Smooth Navigation**
 - **ADR-049: Unified Collection Toolbar, Strict 2-Row Mobile Ergonomics, Multi-Shelf Pagination & Viewport-Aware Scroll Architecture**
 - **ADR-050: Mobile Catalog Dock Inactivity Auto-Fade (1.4s), Biomechanical Touch-Swipe Ergonomics (Zero False Negatives) & Directional View Slide Transitions**
+- **ADR-051: Continuous Circular Carousel Navigation, Scoped Mobile Swipe Media Queries & Cross-Route Directional Slide Handoff**

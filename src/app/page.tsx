@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/presentation/Navbar';
 import { HeroSearch } from '@/components/presentation/HeroSearch';
 import { StickyCatalogToolbar, type ActiveFilterChip } from '@/components/presentation/StickyCatalogToolbar';
@@ -47,6 +47,9 @@ import { VIEW_CONTENT_CONFIG } from '@/config/views.config';
 
 function HomeContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const dirParam = searchParams.get('dir');
+  const initialSwipeDir = dirParam === 'forward' || dirParam === 'backward' ? dirParam : null;
   const hasMounted = useHasMounted();
   const stickyScrollEnabled = usePreferencesStore((s) => s.stickyScrollEnabled);
   const { isHeaderVisible, isToolbarVisible } = useScrollDirection({ enabled: stickyScrollEnabled });
@@ -132,13 +135,30 @@ function HomeContent() {
     confirmClearType
   );
 
-  const [swipeDirection, setSwipeDirection] = useState<'forward' | 'backward' | null>(null);
+  const [swipeDirection, setSwipeDirection] = useState<'forward' | 'backward' | null>(initialSwipeDir);
+  const [isTransitioning, setIsTransitioning] = useState(true);
+  const [prevViewForTransition, setPrevViewForTransition] = useState(activeView);
+  const [prevDirParam, setPrevDirParam] = useState<string | null>(dirParam);
+
+  if (prevViewForTransition !== activeView) {
+    setPrevViewForTransition(activeView);
+    setIsTransitioning(true);
+  }
+
+  if (dirParam !== prevDirParam) {
+    setPrevDirParam(dirParam);
+    if (dirParam === 'forward' || dirParam === 'backward') {
+      setSwipeDirection(dirParam);
+      setIsTransitioning(true);
+    }
+  }
 
   const { handleTouchStart, handleTouchEnd, handleTouchCancel } = useMobileViewSwipe({
     activeView,
     onViewChange: (view) => {
       if (view === 'account') {
-        router.push(ROUTES.ACCOUNT);
+        const dir = activeView === 'catalog' ? 'backward' : 'forward';
+        router.push(`${ROUTES.ACCOUNT}?dir=${dir}`);
       } else {
         setActiveView(view as CatalogView);
       }
@@ -456,13 +476,24 @@ function HomeContent() {
         <div
           key={`view-transition-${activeView}`}
           className={
-            swipeDirection === 'forward'
-              ? 'animate-view-slide-left'
-              : swipeDirection === 'backward'
-              ? 'animate-view-slide-right'
-              : 'animate-page-turn'
+            isTransitioning
+              ? swipeDirection === 'forward'
+                ? 'animate-view-slide-left'
+                : swipeDirection === 'backward'
+                ? 'animate-view-slide-right'
+                : 'animate-page-turn'
+              : ''
           }
-          onAnimationEnd={() => setSwipeDirection(null)}
+          onAnimationEnd={(e) => {
+            if (e.target !== e.currentTarget) return;
+            setIsTransitioning(false);
+            setSwipeDirection(null);
+            if (typeof window !== 'undefined' && searchParams.has('dir')) {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('dir');
+              window.history.replaceState(null, '', url.toString());
+            }
+          }}
         >
           {activeView === 'notebook' ? (
             <NotebookView

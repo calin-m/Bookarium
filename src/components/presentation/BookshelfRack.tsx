@@ -459,107 +459,113 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       </div>
     )}
 
-      {/* Empty State vs Hardwood Shelf Rails */}
-      {effectiveShelfBooks.length === 0 ? (
-        <div className="text-center py-20 px-4 rounded-3xl border border-dashed border-border bg-card/40 backdrop-blur-xs max-w-lg mx-auto">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-            <BookOpen className="w-6 h-6" />
-          </div>
-          <h3 className="font-serif font-bold text-lg text-foreground mb-1">
-            {searchQuery?.trim()
-              ? !showShelfControls
-                ? `No volumes found matching "${searchQuery}"`
-                : `No books found matching "${searchQuery}" on "${activeShelfDisplayName}"`
-              : !showShelfControls
-              ? 'No volumes found'
-              : `No books found on "${activeShelfDisplayName}"`}
-          </h3>
-          <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-6">
-            {searchQuery?.trim()
-              ? !showShelfControls
-                ? 'Try searching for different keywords or clear the search filter.'
-                : 'Try searching for different keywords or clear the search query to see all books on this shelf.'
-              : !showShelfControls
-              ? 'Try adjusting your search criteria or explore other categories in the catalog.'
-              : isViewingGeneral
-              ? 'Save your favorite books from the catalog to curate your personal classic library.'
-              : 'Add books to this shelf using the "Move to Shelf" selector on book spine hover cards.'}
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            {searchQuery?.trim() && onClearSearch ? (
-              <Button
-                variant="outline"
-                size="chip"
-                onClick={onClearSearch}
-              >
-                Clear Search
-              </Button>
-            ) : showShelfControls ? (
-              <Button
-                variant="outline"
-                size="chip"
-                onClick={() => {
-                  if (onBrowseCatalog) {
-                    onBrowseCatalog();
-                  } else {
-                    router.push(ROUTES.HOME);
-                  }
-                }}
-              >
-                Browse Catalog
-              </Button>
-            ) : null}
-            {showShelfControls && !user && (
-              <Button
-                variant="primary"
-                size="chip"
-                onClick={() => openAuthModal('sign_in')}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Sign In to Sync</span>
-              </Button>
-            )}
-          </div>
-        </div>
-      ) : (
-        shelves.map((shelfBooks, shelfIndex) => (
-          <div key={`shelf-${shelfIndex}`} className="relative z-10 hover:z-30 w-full mb-8">
-            {/* Unified Shelf Niche & Hardwood Rail Module */}
-            <div className="relative w-full rounded-2xl border border-border shelf-ambient-niche shadow-md overflow-hidden sm:overflow-visible">
-              
-              {/* Shelf Items Row */}
-              <div className="flex items-end justify-center gap-2 sm:gap-3.5 overflow-x-auto sm:overflow-visible scrollbar-none pt-10 px-4 sm:px-8 snap-x relative z-10">
-                {shelfBooks.map((book, bookIndex) => (
-                  <BookshelfSpine
-                    key={book.id}
-                    book={book}
-                    bookIndex={bookIndex}
-                    readingProgress={readingProgress[book.id]}
-                    isSaved={checkIsSaved(book.id)}
-                    isFavorite={checkIsFavorite(book.id)}
-                    isOffline={isBookOffline(book.id)}
-                    onToggleSave={toggleSave}
-                    onToggleFavorite={toggleFavorite}
-                    onToggleOffline={handleToggleOffline}
-                    onSpineClick={handleSpineClick}
-                    onBookClick={onBookClick}
-                    onDownloadClick={onDownloadClick}
-                    cloudBookshelves={cloudBookshelves}
-                    cloudBookshelfItems={cloudBookshelfItems}
-                    defaultShelfId={defaultShelf?.id}
-                    currentActiveShelfId={currentActiveShelfId}
-                    userId={user?.id}
-                    onMoveBookToShelf={moveBookToShelf}
-                  />
-                ))}
-              </div>
-
-              {/* Hardwood Shelf Plank Base */}
-              <div className="shelf-wood-ledge w-full h-5 rounded-b-2xl relative z-20 border-t border-black/30 shadow-md" />
+      {/* Empty State vs Hardwood Shelf Rails with tactile page turn */}
+      <div
+        key={`shelf-content-${currentActiveShelfId || 'general'}-${effectiveShelfBooks.length}`}
+        className="animate-page-turn w-full"
+        data-testid="shelf-content-container"
+      >
+        {effectiveShelfBooks.length === 0 ? (
+          <div className="text-center py-20 px-4 rounded-3xl border border-dashed border-border bg-card/40 backdrop-blur-xs max-w-lg mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+              <BookOpen className="w-6 h-6" />
+            </div>
+            <h3 className="font-serif font-bold text-lg text-foreground mb-1">
+              {searchQuery?.trim()
+                ? !showShelfControls
+                  ? `No volumes found matching "${searchQuery}"`
+                  : `No books found matching "${searchQuery}" on "${activeShelfDisplayName}"`
+                : !showShelfControls
+                ? 'No volumes found'
+                : `No books found on "${activeShelfDisplayName}"`}
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-6">
+              {searchQuery?.trim()
+                ? !showShelfControls
+                  ? 'Try searching for different keywords or clear the search filter.'
+                  : 'Try searching for different keywords or clear the search query to see all books on this shelf.'
+                : !showShelfControls
+                ? 'Try adjusting your search criteria or explore other categories in the catalog.'
+                : isViewingGeneral
+                ? 'Save your favorite books from the catalog to curate your personal classic library.'
+                : 'Add books to this shelf using the "Move to Shelf" selector on book spine hover cards.'}
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              {searchQuery?.trim() && onClearSearch ? (
+                <Button
+                  variant="outline"
+                  size="chip"
+                  onClick={onClearSearch}
+                >
+                  Clear Search
+                </Button>
+              ) : showShelfControls ? (
+                <Button
+                  variant="outline"
+                  size="chip"
+                  onClick={() => {
+                    if (onBrowseCatalog) {
+                      onBrowseCatalog();
+                    } else {
+                      router.push(ROUTES.HOME);
+                    }
+                  }}
+                >
+                  Browse Catalog
+                </Button>
+              ) : null}
+              {showShelfControls && !user && (
+                <Button
+                  variant="primary"
+                  size="chip"
+                  onClick={() => openAuthModal('sign_in')}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Sign In to Sync</span>
+                </Button>
+              )}
             </div>
           </div>
-        ))
-      )}
+        ) : (
+          shelves.map((shelfBooks, shelfIndex) => (
+            <div key={`shelf-${shelfIndex}`} className="relative z-10 hover:z-30 w-full mb-8">
+              {/* Unified Shelf Niche & Hardwood Rail Module */}
+              <div className="relative w-full rounded-2xl border border-border shelf-ambient-niche shadow-md overflow-hidden sm:overflow-visible">
+                
+                {/* Shelf Items Row */}
+                <div className="flex items-end justify-center gap-2 sm:gap-3.5 overflow-x-auto sm:overflow-visible scrollbar-none pt-10 px-4 sm:px-8 snap-x relative z-10">
+                  {shelfBooks.map((book, bookIndex) => (
+                    <BookshelfSpine
+                      key={book.id}
+                      book={book}
+                      bookIndex={bookIndex}
+                      readingProgress={readingProgress[book.id]}
+                      isSaved={checkIsSaved(book.id)}
+                      isFavorite={checkIsFavorite(book.id)}
+                      isOffline={isBookOffline(book.id)}
+                      onToggleSave={toggleSave}
+                      onToggleFavorite={toggleFavorite}
+                      onToggleOffline={handleToggleOffline}
+                      onSpineClick={handleSpineClick}
+                      onBookClick={onBookClick}
+                      onDownloadClick={onDownloadClick}
+                      cloudBookshelves={cloudBookshelves}
+                      cloudBookshelfItems={cloudBookshelfItems}
+                      defaultShelfId={defaultShelf?.id}
+                      currentActiveShelfId={currentActiveShelfId}
+                      userId={user?.id}
+                      onMoveBookToShelf={moveBookToShelf}
+                    />
+                  ))}
+                </div>
+
+                {/* Hardwood Shelf Plank Base */}
+                <div className="shelf-wood-ledge w-full h-5 rounded-b-2xl relative z-20 border-t border-black/30 shadow-md" />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
       </div>
 
       {/* Mobile/Restricted In-Shelf Quick-Action Centered Floating Modal */}

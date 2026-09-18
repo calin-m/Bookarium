@@ -122,8 +122,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
       aria-label="Bookmarks and Continue Reading Ledger"
     >
-      <div key="view-page-turn-bookmarks" className="animate-page-turn">
-        {/* Centered Editorial Header */}
+      {/* Centered Editorial Header */}
       <SectionHeader
         eyebrow="READING LEDGER • PROGRESSIVE RESUME"
         title="Continue Reading & Bookmarks"
@@ -286,7 +285,6 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           </>
         )}
       </div>
-    </div>
 
     {/* Clear Bookmarks Confirmation Modal */}
       <Modal

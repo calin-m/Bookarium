@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 18 Sep 2026 11:34:49 GMT  
+**Last Generated**: Fri, 18 Sep 2026 12:42:35 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 175 passed  
-**Total Verified Tests**: 1660 passed  
+**Total Verified Tests**: 1669 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1660 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1669 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 50 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 51 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.13%** (7542/8186) — *Target: $ge$ 80%*
-- **Statements**: **90.59%** (8178/9027) — *Target: $ge$ 80%*
-- **Functions**: **88.88%** (1759/1979) — *Target: $ge$ 80%*
-- **Branches**: **80.97%** (7209/8903) — *Target: $ge$ 80%*
+- **Lines**: **92.1%** (7585/8235) — *Target: $ge$ 80%*
+- **Statements**: **90.57%** (8222/9078) — *Target: $ge$ 80%*
+- **Functions**: **88.98%** (1762/1980) — *Target: $ge$ 80%*
+- **Branches**: **81%** (7256/8957) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1660 Tests)
+## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1669 Tests)
 
-### 🚀 App Routes & Pages (15 Suites · 170 Tests)
+### 🚀 App Routes & Pages (15 Suites · 172 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
@@ -183,7 +183,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (26 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (28 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -194,6 +194,8 @@
 - ✔ `should open 3D book preview modal when book cover is clicked and close it on desktop`
 - ✔ `renders Bookshelf and Favorites when views are switched via Navbar`
 - ✔ `navigates to /account when swiping left on mobile while on Bookmarks view`
+- ✔ `swipes right on Catalog to wrap around to Account page with backward directional slide parameter`
+- ✔ `mounts with animate-view-slide-right when ?dir=backward is in URL and settles cleanly on animationEnd`
 - ✔ `allows user to toggle between 8 and 16 books per page via toolbar`
 - ✔ `prevents search execution on 1-character query in HeroSearch on catalog page`
 - ✔ `triggers predictive prefetching when approaching batch end on sub-page 3 (size 8)`
@@ -296,7 +298,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 343 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 345 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -356,7 +358,7 @@
 - ✔ `should render error state with retry button`
 - ✔ `should render empty state when no books exist`
 - ✔ `should render book cards and trigger pagination`
-- ✔ `should switch between editorial grid and bookshelf rack views`
+- ✔ `should switch between editorial grid and bookshelf rack views with tactile page-turn transition`
 - ✔ `should forward onPreviewClick to BookCard`
 - ✔ `applies responsive active preview classes when activePreviewBookId matches`
 - ✔ `omits personal shelf management buttons in shelf view when in catalog mode`
@@ -463,7 +465,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (45 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (46 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -508,6 +510,7 @@
 - ✔ `displays catalog-appropriate empty state when showShelfControls is false and books array is empty`
 - ✔ `displays totalBooksCount in General shelf badge when provided`
 - ✔ `distributes books evenly across 2 shelves when books exceed shelf capacity`
+- ✔ `renders shelf content with tactile animate-page-turn container and updates on shelf change`
 - ✔ `calculates deterministic shelf capacity capped to max-w-7xl (1280px) on wide viewports`
 - ✔ `calculates proportional capacity on tablet and mobile viewports`
 
@@ -740,7 +743,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (37 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (38 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -779,6 +782,7 @@
 - ✔ `paginates chronological quotes with 12 items per page and scrolls to top on page change`
 - ✔ `paginates volume groups with 6 books per page in By-Book mode`
 - ✔ `resets page to 1 when changing search query, color filter, or sort order`
+- ✔ `applies tactile animate-page-turn to notebook-content-anchor across grouping, color filter, and pagination transitions`
 
 </details>
 
@@ -1821,7 +1825,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 215 Tests)
+### 🔄 Hooks & React Query (22 Suites · 216 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -2099,11 +2103,12 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useMobileViewSwipe.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/hooks/useMobileViewSwipe.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `advances to next view on valid swipe left`
 - ✔ `navigates to previous view on valid swipe right`
-- ✔ `clamps at boundaries (no-op when swiping right on catalog or left on account)`
+- ✔ `clamps at boundaries when wrapAround is disabled`
+- ✔ `supports circular carousel wrap-around by default (catalog right to account, account left to catalog)`
 - ✔ `ignores swipe if touch starts within 20px edge dead-zone (native Safari/Android back-forward)`
 - ✔ `permits swipes starting just outside edge dead-zone (e.g. 25px from bezel)`
 - ✔ `ignores swipe originating on interactive controls or inputs`
@@ -2170,7 +2175,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (51 Suites · 250 Tests)
+### 🧩 UI Primitives & Motion (51 Suites · 254 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2181,7 +2186,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top`
 - ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
@@ -2195,6 +2200,10 @@
 - ✔ `handles resending email verification on unverified account`
 - ✔ `navigates back to bookmarks when swiping right on mobile`
 - ✔ `renders Public Scholar Profile section and handles saving public preferences`
+- ✔ `applies animate-view-slide-left when ?dir=forward is present and settles on animationEnd`
+- ✔ `applies animate-view-slide-right when ?dir=backward is present and settles on animationEnd`
+- ✔ `swipes left on Account to wrap forward to Catalog with ?dir=forward`
+- ✔ `swipes right on Account to return backward to Bookmarks with ?dir=backward`
 
 </details>
 

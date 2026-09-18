@@ -1323,5 +1323,36 @@ describe('NotebookView component', () => {
       fireEvent.change(sortSelect, { target: { value: 'date_asc' } });
       expect(screen.getByRole('button', { name: 'Go to page 1' })).toHaveAttribute('aria-current', 'page');
     });
+
+    it('applies tactile animate-page-turn to notebook-content-anchor across grouping, color filter, and pagination transitions', async () => {
+      for (let i = 1; i <= 30; i++) {
+        await useAnnotationStore.getState().addAnnotation({
+          bookId: 84,
+          bookTitle: 'Frankenstein',
+          bookAuthor: 'Mary Shelley',
+          chapterIndex: 1,
+          chapterPage: i,
+          selectedText: `Animation test quote #${i}`,
+          color: i % 2 === 0 ? 'mint' : 'rose',
+        });
+      }
+
+      const { container } = render(<NotebookView />);
+      const anchor = container.querySelector('#notebook-content-anchor');
+      expect(anchor).toBeInTheDocument();
+      expect(anchor).toHaveClass('animate-page-turn');
+
+      // Switch to chronological
+      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      expect(container.querySelector('#notebook-content-anchor')).toHaveClass('animate-page-turn');
+
+      // Filter by color
+      fireEvent.click(screen.getByTestId('notebook-filter-mint'));
+      expect(container.querySelector('#notebook-content-anchor')).toHaveClass('animate-page-turn');
+
+      // Paginate to page 2
+      fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
+      expect(container.querySelector('#notebook-content-anchor')).toHaveClass('animate-page-turn');
+    });
   });
 });

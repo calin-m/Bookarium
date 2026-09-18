@@ -501,8 +501,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   return (
     <section id="literary-notebook-section" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" aria-label="Literary Commonplace Notebook">
-      <div key="view-page-turn-notebook" className="animate-page-turn">
-        {/* Booksaw Centered Section Header */}
+      {/* Booksaw Centered Section Header */}
         <SectionHeader
           eyebrow="PERSONAL COMMONPLACE NOTEBOOK • MARGINALIA & REFLECTIONS"
           title="Literary Notebook"
@@ -668,8 +667,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             </div>
           )}
 
-          {/* Main Notebook Content with Anchor */}
-          <div id="notebook-content-anchor" className="space-y-6">
+          {/* Main Notebook Content with Anchor and tactile page turn */}
+          <div
+            id="notebook-content-anchor"
+            key={`notebook-content-${groupMode}-${selectedColor}-${currentPage}`}
+            className="space-y-6 animate-page-turn"
+          >
             {/* Grouped by Volume Display */}
             {groupMode === 'volume' && sortedGroupedByVolume.length > 0 && (
               <div className="space-y-8">
@@ -726,7 +729,6 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           />
         </div>
       )}
-      </div>
 
       {/* Clear All Confirmation Modal */}
       <Modal

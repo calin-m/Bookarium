@@ -440,7 +440,7 @@ describe('AccountPage', () => {
         changedTouches: [{ clientX: 500, clientY: 300 }],
       });
 
-      expect(mockPush).toHaveBeenCalledWith(ROUTES.VIEW('bookmarks'));
+      expect(mockPush).toHaveBeenCalledWith(`${ROUTES.VIEW('bookmarks')}?dir=backward`);
     } finally {
       vi.useRealTimers();
     }
@@ -484,6 +484,80 @@ describe('AccountPage', () => {
           is_public: true,
         })
       );
+    });
+  });
+
+  describe('Mobile Swipe & Directional Transitions', () => {
+    it('applies animate-view-slide-left when ?dir=forward is present and settles on animationEnd', () => {
+      mockSearchParams = new URLSearchParams('dir=forward');
+      render(<AccountPage />);
+
+      const mainEl = screen.getByRole('main');
+      expect(mainEl).toHaveClass('animate-view-slide-left');
+
+      fireEvent.animationEnd(mainEl);
+      expect(mainEl).not.toHaveClass('animate-view-slide-left');
+    });
+
+    it('applies animate-view-slide-right when ?dir=backward is present and settles on animationEnd', () => {
+      mockSearchParams = new URLSearchParams('dir=backward');
+      render(<AccountPage />);
+
+      const mainEl = screen.getByRole('main');
+      expect(mainEl).toHaveClass('animate-view-slide-right');
+
+      fireEvent.animationEnd(mainEl);
+      expect(mainEl).not.toHaveClass('animate-view-slide-right');
+    });
+
+    it('swipes left on Account to wrap forward to Catalog with ?dir=forward', () => {
+      vi.useFakeTimers();
+      try {
+        render(<AccountPage />);
+        const mainEl = screen.getByRole('main');
+
+        // Swipe left: touchStart at 450, touchEnd at 350 (|deltaX| = 100px)
+        fireEvent.touchStart(mainEl, {
+          touches: [{ clientX: 450, clientY: 300 }],
+          changedTouches: [{ clientX: 450, clientY: 300 }],
+        });
+
+        vi.advanceTimersByTime(100);
+
+        fireEvent.touchEnd(mainEl, {
+          touches: [],
+          changedTouches: [{ clientX: 350, clientY: 300 }],
+        });
+
+        expect(mockPush).toHaveBeenCalledWith(`${ROUTES.HOME}?dir=forward`);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('swipes right on Account to return backward to Bookmarks with ?dir=backward', () => {
+      vi.useFakeTimers();
+      try {
+        render(<AccountPage />);
+        const mainEl = screen.getByRole('main');
+
+        // Swipe right: touchStart at 350, touchEnd at 450 (deltaX = +100px)
+        fireEvent.touchStart(mainEl, {
+          touches: [{ clientX: 350, clientY: 300 }],
+          changedTouches: [{ clientX: 350, clientY: 300 }],
+        });
+
+        vi.advanceTimersByTime(100);
+
+        fireEvent.touchEnd(mainEl, {
+          touches: [],
+          changedTouches: [{ clientX: 450, clientY: 300 }],
+        });
+
+        expect(mockPush).toHaveBeenCalledWith(`${ROUTES.VIEW('bookmarks')}?dir=backward`);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

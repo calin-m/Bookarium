@@ -897,6 +897,39 @@
   - Smooth, tactile visual continuity across all top-level view switches.
   - 100% test pass rate maintained across all 175 test suites with zero regressions.
 
+## ADR-051: Continuous Circular Carousel Navigation, Scoped Mobile Swipe Media Queries & Cross-Route Directional Slide Handoff
+- **Status**: Accepted
+- **Context**:
+  1. **Post-Swipe Delayed Repaint Artifact ("Draws Back In")**:
+     - During horizontal swipe navigation on mobile, child elements carrying `className="animate-page-turn"` (`#book-grid-content`, `[data-testid="shelf-content-container"]`, `#notebook-content-anchor`, `bookmarks-filter`) had their animation overridden with `animation: none !important` via a parent transition selector.
+     - When the 220ms parent slide finished, removing the parent transition class unsuppressed the child. Under the W3C CSS Animations Level 1 specification, changing `animation-name` from `none` back to `pageTurnFade` caused the browser to immediately launch the child animation (`opacity: 0 -> 1` and `translateY(4px) -> 0`), making content directly under the static/slid search and filter toolbars abruptly flash transparent and lift back up into view.
+  2. **Boundary Clamping & Asymmetrical Navigation**:
+     - `useMobileViewSwipe.ts` strictly clamped the active view index between `0` and `length - 1`, dead-ending at Catalog on the left and Account on the right without circular wrap-around.
+  3. **Cross-Route Animation Gap**:
+     - Transitioning between the main library page (`/`) and Account (`/account`) performed full Next.js page route changes (`router.push`), losing touch swipe direction state and mounting the destination page statically without horizontal slide transitions.
+- **Decision**:
+  1. **Scoped Mobile Media Query for Zero-Repaint View Transitions (`src/app/globals.css`)**:
+     - Removed the fragile descendant suppression rule (`.animate-view-slide-left .animate-page-turn`).
+     - Added `@media (max-width: 767px) { .touch-pan-y .animate-page-turn { animation: none !important; transform: none !important; opacity: 1 !important; } }`.
+     - On mobile touch screens, horizontal slide is now the single motion driver. View content renders at 100% opacity from frame 0 and moves as one solid unit with zero post-slide redraws or upward jumps.
+     - Desktop viewports (`>= 768px`) and the book reader (`/read/[id]`) preserve smooth `pageTurnFade`.
+  2. **Continuous Circular Carousel Navigation (`src/hooks/useMobileViewSwipe.ts`)**:
+     - Added `wrapAround: true` by default to `MobileViewSwipeConfig`.
+     - Swiping left on Account (index 5) wraps forward to Catalog (index 0).
+     - Swiping right on Catalog (index 0) wraps backward to Account (index 5).
+  3. **Cross-Route Directional Slide Handoff (`src/app/page.tsx`, `src/app/account/page.tsx`)**:
+     - Synchronized gesture navigation between `/` and `/account` by passing `?dir=forward` or `?dir=backward`.
+     - Mounted pages read `dir` from `searchParams` on mount to trigger `animate-view-slide-left` or `animate-view-slide-right`.
+     - When the 220ms slide finishes (`onAnimationEnd`), `isTransitioning` settles to `false` and the `?dir` query parameter is cleanly stripped from the URL via `window.history.replaceState`.
+  4. **Strict Co-Located Test Coverage**:
+     - Updated `useMobileViewSwipe.test.ts`, `page.test.tsx`, and `account/page.test.tsx` asserting wrap-around gestures, URL parameter handoff, animation class application, and clean `animationEnd` settling.
+- **Consequences**:
+  - Completely frictionless, 60fps circular navigation across all 6 mobile views.
+  - Zero post-slide repaint, redraw, or upward jumping artifacts under toolbars/filters.
+  - Consistent visual slide continuity across route boundaries without layout jumps.
+  - 100% test pass rate maintained across all 175 test suites.
+
+
 
 
 

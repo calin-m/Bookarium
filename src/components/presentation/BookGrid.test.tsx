@@ -49,10 +49,13 @@ describe('BookGrid component', () => {
     expect(handlePageChange).toHaveBeenCalledWith(3);
   });
 
-  it('should switch between editorial grid and bookshelf rack views', () => {
-    render(<BookGrid books={mockBooks} />);
+  it('should switch between editorial grid and bookshelf rack views with tactile page-turn transition', () => {
+    const { container } = render(<BookGrid books={mockBooks} />);
 
     // Default is grid
+    const content = container.querySelector('#book-grid-content');
+    expect(content).toBeInTheDocument();
+    expect(content).toHaveClass('animate-page-turn');
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
 
     // Click bookshelf rack view
@@ -61,11 +64,13 @@ describe('BookGrid component', () => {
 
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
     expect(screen.getByTestId(`shelf-book-${mockBooks[0].id}`)).toBeInTheDocument();
+    expect(container.querySelector('#book-grid-content')).toHaveClass('animate-page-turn');
 
     // Click back to grid
     const gridBtn = screen.getByLabelText('Grid cover view');
     fireEvent.click(gridBtn);
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
+    expect(container.querySelector('#book-grid-content')).toHaveClass('animate-page-turn');
   });
 
   it('should forward onPreviewClick to BookCard', () => {

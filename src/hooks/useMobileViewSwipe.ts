@@ -17,6 +17,7 @@ export interface MobileViewSwipeConfig {
   maxDurationMs?: number;
   dominanceRatio?: number;
   edgeDeadZonePx?: number;
+  wrapAround?: boolean;
 }
 
 export const DEFAULT_MOBILE_VIEW_SWIPE_CONFIG: Required<MobileViewSwipeConfig> = {
@@ -24,6 +25,7 @@ export const DEFAULT_MOBILE_VIEW_SWIPE_CONFIG: Required<MobileViewSwipeConfig> =
   maxDurationMs: 650,
   dominanceRatio: 1.25,
   edgeDeadZonePx: 20,
+  wrapAround: true,
 };
 
 export interface UseMobileViewSwipeOptions {
@@ -65,6 +67,7 @@ export function useMobileViewSwipe({
   const maxDurationMs = config?.maxDurationMs ?? DEFAULT_MOBILE_VIEW_SWIPE_CONFIG.maxDurationMs;
   const dominanceRatio = config?.dominanceRatio ?? DEFAULT_MOBILE_VIEW_SWIPE_CONFIG.dominanceRatio;
   const edgeDeadZonePx = config?.edgeDeadZonePx ?? DEFAULT_MOBILE_VIEW_SWIPE_CONFIG.edgeDeadZonePx;
+  const wrapAround = config?.wrapAround ?? DEFAULT_MOBILE_VIEW_SWIPE_CONFIG.wrapAround;
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
@@ -140,6 +143,10 @@ export function useMobileViewSwipe({
             setLastSwipeDirection('forward');
             onSwipeDirection?.('forward');
             onViewChange(MOBILE_VIEW_ORDER[currentIndex + 1]);
+          } else if (wrapAround) {
+            setLastSwipeDirection('forward');
+            onSwipeDirection?.('forward');
+            onViewChange(MOBILE_VIEW_ORDER[0]);
           }
         } else {
           // Swiped Right -> Return to previous view
@@ -147,11 +154,15 @@ export function useMobileViewSwipe({
             setLastSwipeDirection('backward');
             onSwipeDirection?.('backward');
             onViewChange(MOBILE_VIEW_ORDER[currentIndex - 1]);
+          } else if (wrapAround) {
+            setLastSwipeDirection('backward');
+            onSwipeDirection?.('backward');
+            onViewChange(MOBILE_VIEW_ORDER[MOBILE_VIEW_ORDER.length - 1]);
           }
         }
       }
     },
-    [enabled, activeView, onViewChange, onSwipeDirection, minDistancePx, maxDurationMs, dominanceRatio]
+    [enabled, activeView, onViewChange, onSwipeDirection, minDistancePx, maxDurationMs, dominanceRatio, wrapAround]
   );
 
   const handleTouchCancel = useCallback(() => {

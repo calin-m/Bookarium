@@ -9,6 +9,7 @@ import { mockBooks } from '@/mocks/handlers';
 import { ROUTES } from '@/config/routes';
 
 export const mockPush = vi.fn();
+let mockSearchParams = new URLSearchParams();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -16,7 +17,12 @@ vi.mock('next/navigation', () => ({
     replace: vi.fn(),
   }),
   usePathname: () => (typeof window !== 'undefined' ? window.location.pathname : '/'),
-  useSearchParams: () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''),
+  useSearchParams: () => {
+    if (mockSearchParams.toString()) {
+      return mockSearchParams;
+    }
+    return new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  },
 }));
 
 const pageMockBooks = mockBooks.slice(0, 6);
@@ -91,6 +97,7 @@ function renderHome() {
 describe('Home page integration', () => {
   beforeEach(() => {
     mockPush.mockClear();
+    mockSearchParams = new URLSearchParams();
     testQueryClient.clear();
     useBookshelfStore.getState().clearBookshelf();
     useReaderStore.setState({ isOpen: false, currentBook: null });
@@ -304,12 +311,68 @@ describe('Home page integration', () => {
         changedTouches: [{ clientX: 350, clientY: 300 }],
       });
 
-      expect(mockPush).toHaveBeenCalledWith(ROUTES.ACCOUNT);
+      expect(mockPush).toHaveBeenCalledWith(`${ROUTES.ACCOUNT}?dir=forward`);
     } finally {
       Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth });
       window.matchMedia = originalMatchMedia;
       vi.useRealTimers();
     }
+  });
+
+  it('swipes right on Catalog to wrap around to Account page with backward directional slide parameter', () => {
+    vi.useFakeTimers();
+    const originalInnerWidth = window.innerWidth;
+    const originalMatchMedia = window.matchMedia;
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 390 });
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('767px'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    try {
+      renderHome();
+
+      const mainEl = screen.getByRole('main');
+
+      // Swipe right on Catalog: touchStart at 350, touchEnd at 450 (deltaX = +100px)
+      fireEvent.touchStart(mainEl, {
+        touches: [{ clientX: 350, clientY: 300 }],
+        changedTouches: [{ clientX: 350, clientY: 300 }],
+      });
+
+      vi.advanceTimersByTime(100);
+
+      fireEvent.touchEnd(mainEl, {
+        touches: [],
+        changedTouches: [{ clientX: 450, clientY: 300 }],
+      });
+
+      expect(mockPush).toHaveBeenCalledWith(`${ROUTES.ACCOUNT}?dir=backward`);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth });
+      window.matchMedia = originalMatchMedia;
+      vi.useRealTimers();
+    }
+  });
+
+  it('mounts with animate-view-slide-right when ?dir=backward is in URL and settles cleanly on animationEnd', () => {
+    mockSearchParams = new URLSearchParams('dir=backward');
+    renderHome();
+    const transitionContainer = document.querySelector('.animate-view-slide-right');
+    expect(transitionContainer).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.animationEnd(transitionContainer!);
+    });
+
+    expect(transitionContainer).not.toHaveClass('animate-view-slide-right');
   });
 
   it('allows user to toggle between 8 and 16 books per page via toolbar', () => {
@@ -671,11 +734,12 @@ describe('Home page integration', () => {
       const returnTransitionContainer = screen.getByText('Personal Reading Shelf').closest('.animate-view-slide-right');
       expect(returnTransitionContainer).toBeInTheDocument();
 
-      // Firing animationEnd resets to standard page-turn
+      // Firing animationEnd settles the transition container into resting state without duplicate animations
       act(() => {
         fireEvent.animationEnd(returnTransitionContainer!);
       });
-      expect(screen.getByText('Personal Reading Shelf').closest('.animate-page-turn')).toBeInTheDocument();
+      expect(returnTransitionContainer).not.toHaveClass('animate-view-slide-right');
+      expect(returnTransitionContainer).not.toHaveClass('animate-page-turn');
     } finally {
       window.matchMedia = originalMatchMedia;
     }

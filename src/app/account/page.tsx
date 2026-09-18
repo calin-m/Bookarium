@@ -101,6 +101,20 @@ function AccountDashboardContent() {
   );
 
   const searchParams = useSearchParams();
+  const dirParam = searchParams.get('dir');
+  const initialSwipeDir = dirParam === 'forward' || dirParam === 'backward' ? dirParam : null;
+  const [swipeDirection, setSwipeDirection] = useState<'forward' | 'backward' | null>(initialSwipeDir);
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(Boolean(initialSwipeDir));
+  const [prevDirParam, setPrevDirParam] = useState<string | null>(dirParam);
+
+  if (dirParam !== prevDirParam) {
+    setPrevDirParam(dirParam);
+    if (dirParam === 'forward' || dirParam === 'backward') {
+      setSwipeDirection(dirParam);
+      setIsTransitioning(true);
+    }
+  }
+
   const isPreviewMode = searchParams.get('preview') === 'true';
 
   const user =
@@ -390,15 +404,18 @@ function AccountDashboardContent() {
       })
     : 'Member';
 
-  const { handleTouchStart, handleTouchEnd } = useMobileViewSwipe({
+  const { handleTouchStart, handleTouchEnd, handleTouchCancel } = useMobileViewSwipe({
     activeView: 'account',
     onViewChange: (view) => {
-      if (view === 'bookmarks') {
-        router.push(ROUTES.VIEW('bookmarks'));
+      if (view === 'catalog') {
+        router.push(`${ROUTES.HOME}?dir=forward`);
+      } else if (view === 'bookmarks') {
+        router.push(`${ROUTES.VIEW('bookmarks')}?dir=backward`);
       } else if (view !== 'account') {
         router.push(ROUTES.VIEW(view as NavViewId));
       }
     },
+    onSwipeDirection: setSwipeDirection,
     enabled: !isDeleteModalOpen,
   });
 
@@ -413,9 +430,28 @@ function AccountDashboardContent() {
       />
 
       <main
-        className="flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8"
+        className={`flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8 touch-pan-y ${
+          isTransitioning
+            ? swipeDirection === 'forward'
+              ? 'animate-view-slide-left'
+              : swipeDirection === 'backward'
+              ? 'animate-view-slide-right'
+              : ''
+            : ''
+        }`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+        onAnimationEnd={(e) => {
+          if (e.target !== e.currentTarget) return;
+          setIsTransitioning(false);
+          setSwipeDirection(null);
+          if (typeof window !== 'undefined' && searchParams.has('dir')) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('dir');
+            window.history.replaceState(null, '', url.toString());
+          }
+        }}
       >
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between">

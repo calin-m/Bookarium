@@ -865,6 +865,48 @@ describe('BookshelfRack Component', () => {
         }
       }
     });
+
+    it('renders shelf content with tactile animate-page-turn container and updates on shelf change', () => {
+      useAuthStore.setState({
+        user: { id: 'user-1', email: 'test@example.com' } as any,
+        profile: null,
+      });
+      useBookshelfStore.setState({
+        cloudBookshelves: [
+          { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, is_public: true, created_at: '', updated_at: '' },
+          { id: 'shelf-2', user_id: 'user-1', name: 'Philosophy', is_default: false, is_public: true, created_at: '', updated_at: '' },
+        ],
+        cloudBookshelfItems: [
+          {
+            id: 'item-1',
+            bookshelf_id: 'shelf-2',
+            book_id: mockBooks[0].id,
+            user_id: 'user-1',
+            created_at: '',
+            book_title: mockBooks[0].title,
+            book_authors: mockBooks[0].authors.map((a) => a.name),
+            cover_url: null,
+          },
+        ],
+        activeBookshelfId: null,
+      });
+
+      render(<BookshelfRack books={mockBooks} />);
+
+      const container = screen.getByTestId('shelf-content-container');
+      expect(container).toBeInTheDocument();
+      expect(container).toHaveClass('animate-page-turn');
+
+      // Click on custom shelf 'Philosophy'
+      const philosophyBtn = screen.getByRole('button', { name: /philosophy/i });
+      act(() => {
+        fireEvent.click(philosophyBtn);
+      });
+
+      const updatedContainer = screen.getByTestId('shelf-content-container');
+      expect(updatedContainer).toBeInTheDocument();
+      expect(updatedContainer).toHaveClass('animate-page-turn');
+    });
   });
 
   describe('calculateShelfCapacity and Zero-Shift Layout Calculation', () => {

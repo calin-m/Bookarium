@@ -595,6 +595,17 @@
   will-change: opacity, transform;
 }
 
+/* Mobile Touch-Swipe Viewports: View slide is the sole transition.
+   Disable nested vertical pageTurnFade on mobile view contents to eliminate
+   double-animations and post-slide repaint/redraw artifacts. */
+@media (max-width: 767px) {
+  .touch-pan-y .animate-page-turn {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
 /* Ink Dissolve & Vanish-to-Appear Transition for Book Content Shuffling */
 @keyframes inkVanishAppear {
   0% {

@@ -195,7 +195,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
       )}
 
       {/* Main Content: Grid vs. Shelf with smooth page fade */}
-      <div key={`catalog-page-${page}`} className="animate-page-turn" id="book-grid-content">
+      <div key={`catalog-page-${page}-${activeViewMode}`} className="animate-page-turn" id="book-grid-content">
         {activeViewMode === 'shelf' ? (
           <BookshelfRack
             books={books}

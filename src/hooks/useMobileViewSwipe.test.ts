@@ -96,14 +96,15 @@ describe('useMobileViewSwipe', () => {
     expect(onViewChange).toHaveBeenCalledWith('bookshelf');
   });
 
-  it('clamps at boundaries (no-op when swiping right on catalog or left on account)', () => {
+  it('clamps at boundaries when wrapAround is disabled', () => {
     const onViewChange = vi.fn();
 
-    // 1. Swiping right on 'catalog'
+    // 1. Swiping right on 'catalog' with wrapAround: false
     const { result: catalogHook } = renderHook(() =>
       useMobileViewSwipe({
         activeView: 'catalog',
         onViewChange,
+        config: { wrapAround: false },
       })
     );
 
@@ -115,28 +116,12 @@ describe('useMobileViewSwipe', () => {
 
     expect(onViewChange).not.toHaveBeenCalled();
 
-    // 2. Swiping left on 'bookmarks' advances to 'account'
-    const { result: bookmarksHook } = renderHook(() =>
-      useMobileViewSwipe({
-        activeView: 'bookmarks',
-        onViewChange,
-      })
-    );
-
-    act(() => {
-      bookmarksHook.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }));
-      vi.advanceTimersByTime(100);
-      bookmarksHook.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 400, clientY: 300 }));
-    });
-
-    expect(onViewChange).toHaveBeenCalledWith('account');
-    onViewChange.mockClear();
-
-    // 3. Swiping left on 'account' is clamped
+    // 2. Swiping left on 'account' is clamped with wrapAround: false
     const { result: accountHook } = renderHook(() =>
       useMobileViewSwipe({
         activeView: 'account',
         onViewChange,
+        config: { wrapAround: false },
       })
     );
 
@@ -147,15 +132,49 @@ describe('useMobileViewSwipe', () => {
     });
 
     expect(onViewChange).not.toHaveBeenCalled();
+  });
 
-    // 4. Swiping right on 'account' returns to 'bookmarks'
+  it('supports circular carousel wrap-around by default (catalog right to account, account left to catalog)', () => {
+    const onViewChange = vi.fn();
+    const onSwipeDirection = vi.fn();
+
+    // 1. Swiping right on 'catalog' wraps around to 'account' (backward)
+    const { result: catalogHook } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'catalog',
+        onViewChange,
+        onSwipeDirection,
+      })
+    );
+
     act(() => {
-      accountHook.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 400, clientY: 300 }));
+      catalogHook.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 400, clientY: 300 }));
       vi.advanceTimersByTime(100);
-      accountHook.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 500, clientY: 300 }));
+      catalogHook.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 500, clientY: 300 }));
     });
 
-    expect(onViewChange).toHaveBeenCalledWith('bookmarks');
+    expect(onSwipeDirection).toHaveBeenCalledWith('backward');
+    expect(onViewChange).toHaveBeenCalledWith('account');
+    onViewChange.mockClear();
+    onSwipeDirection.mockClear();
+
+    // 2. Swiping left on 'account' wraps around to 'catalog' (forward)
+    const { result: accountHook } = renderHook(() =>
+      useMobileViewSwipe({
+        activeView: 'account',
+        onViewChange,
+        onSwipeDirection,
+      })
+    );
+
+    act(() => {
+      accountHook.current.handleTouchStart(createTouchEvent('touchstart', { clientX: 500, clientY: 300 }));
+      vi.advanceTimersByTime(100);
+      accountHook.current.handleTouchEnd(createTouchEvent('touchend', { clientX: 400, clientY: 300 }));
+    });
+
+    expect(onSwipeDirection).toHaveBeenCalledWith('forward');
+    expect(onViewChange).toHaveBeenCalledWith('catalog');
   });
 
   it('ignores swipe if touch starts within 20px edge dead-zone (native Safari/Android back-forward)', () => {
