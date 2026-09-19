@@ -471,9 +471,9 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
               </div>
 
               {/* Primary Controls Row */}
-              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pt-0.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-0.5">
                 {/* Playback Controls (Skip Prev, Play/Pause, Skip Next) */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center justify-center sm:justify-start gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={onSkipPrev}
@@ -538,10 +538,10 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                 </div>
 
                 {/* Voice & Speed Tuning Row */}
-                <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto sm:ml-auto">
                   {/* Voice Selector */}
                   {availableVoices.length > 0 && (
-                    <div className="relative max-w-[130px] sm:max-w-[190px]">
+                    <div className="relative flex-1 min-w-0 sm:max-w-[190px]">
                       <select
                         value={selectedVoice?.voiceURI || ''}
                         onChange={(e) => onVoiceChange(e.target.value)}
