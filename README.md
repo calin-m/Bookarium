@@ -100,12 +100,11 @@ Bookarium is structured around five core engineering pillars:
   * **Language Editions (`ReaderLanguageDrawer`)**: Discovers authentic foreign language Gutenberg editions and translations with 1-click reading handoff.
 * **Persistent Web Worker Lifecycle**: Single long-lived Web Worker (`useGutenbergParserWorker`) retained across typography tweaks, eliminating UI thread lag with non-blocking async fallback.
 
-### 3. 🌐 Universal Languages, AI Translation & Neural Narration
+### 3. 🌐 Universal Languages, Historical Editions & Web Speech Narration
 * **Catalog & Archive Filtering (12 Primary Languages)**: Full catalog search and facet filtering across English, French, German, Spanish, Italian, Latin, Ancient & Modern Greek, Portuguese, Dutch, Russian, Chinese, and Romanian via the unified `<LanguageSelector />`.
-* **On-Demand Dynamic AI Translation (40+ Languages)**: In-reader on-the-fly translation via a zero-key serverless Google Neural Machine Translation proxy (`/api/translate`) featuring 18 popular language quick-chips.
-  * **Offline Page-Level Caching**: Every translated page is automatically cached in browser storage for instant zero-latency transitions on re-read.
-  * **Bilingual Parallel Reading Mode**: Displays translated paragraphs side-by-side with original authentic sentences for comparative study and language learning.
-* **Synchronized Neural Voice Read-Aloud (Text-to-Speech)**: Offline-first narration (`window.speechSynthesis`) with automatic original/translated language-voice pairing, amber visual sentence highlight tracking, speed presets (0.85x–2.0x), sentence navigation, and OS-level MediaSession lockscreen controls.
+* **Authentic Project Gutenberg Historical Editions & Translations (`ReaderLanguageDrawer`)**: In-reader discovery of authentic public domain translations and historical language editions indexed from Project Gutenberg catalog relations (FRBR work mapping). Readers can switch seamlessly between authentic translations with zero latency.
+* **Native Browser Translation Guidance**: Integrated guidance for Chrome, Edge, Safari, and Firefox built-in translation features for modern on-the-fly multi-language reading without third-party scrapers or ToS violations.
+* **Synchronized W3C Voice Read-Aloud (Text-to-Speech)**: Offline-first narration (`window.speechSynthesis`) with automatic language-voice pairing, amber visual sentence highlight tracking, speed presets (0.85x–2.0x), sentence navigation, and OS-level MediaSession lockscreen controls.
 
 ### 4. ⚡ Offline-First Persistence, Cloud Sync & Data Sovereignty
 * **Clean Path URL & Symmetric SSR Hydration Architecture**: Canonical routes (`/`, `/bookshelf`, `/favorites`, `/notebook`, `/bookmarks`) powered by Next.js server rewrites, client history synchronization, and symmetric `parseFiltersFromUrl` query parsing—guaranteeing identical server-rendered HTML and client hydration on deep paginated URLs (e.g. `?page=8`) with zero layout shift and 0 CLS.
@@ -218,7 +217,7 @@ flowchart TD
         ProxyBooks["GET /api/books\n(SWR 120s Cache, Latency Tracking, Rate Limit, Seam Controller)"]
         CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\n(supabase-provider.ts • gutendex-provider.ts)"]
         ProxyContent["GET /api/books/content\n(Tier 1 Supabase DB • Tier 2 Gutenberg Multi-Mirror, Anti-SSRF)"]
-        ProxyTranslate["POST /api/translate\n(Neural MT Proxy, 40+ Languages)"]
+        ProxyBookTranslations["GET /api/books/translations\n(Edge SWR Cache, Zero False Positives, FRBR Work Mapping)"]
         LayoutServer["Server Layout (/read/[id])\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]
     end
 
@@ -234,7 +233,6 @@ flowchart TD
     subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]
         Gutendex["🌐 Gutendex Search API\n(Upstream Search Fallback)"]
         GutenbergCDN["🌐 Project Gutenberg Mirrors\n(aleph.gutenberg.org, gutenberg.readingroo.ms, www.gutenberg.org)"]
-        GoogleNMT["🌐 Google Neural MT\n(Serverless AI Translation)"]
         SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books catalog, profiles, shelves, progress, habits, accolades)")]
         SyncEngine["🔄 Gutenberg Catalog Sync Engine\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]
         VercelEdge["⚡ Vercel Edge Platform\n(Cookie-less Analytics & Speed Insights)"]
@@ -283,8 +281,8 @@ flowchart TD
     ProxyContent -->|Tier 1: Instant DB Text| SupabaseCloud
     ProxyContent -->|Tier 2: Multi-Mirror Fallback| GutenbergCDN
     ReaderPage --> QueryTranslate
-    QueryTranslate --> ProxyTranslate
-    ProxyTranslate --> GoogleNMT
+    QueryTranslate --> ProxyBookTranslations
+    ProxyBookTranslations --> SupabaseCloud
     
     Views --> StateStores
     HabitsCard --> StoreHabits

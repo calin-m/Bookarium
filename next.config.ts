@@ -24,7 +24,6 @@ const nextConfig: NextConfig = {
       "'self'",
       'https://*.supabase.co',
       'https://gutendex.com',
-      'https://translate.googleapis.com',
       ...(isDev
         ? [
             'ws:',

@@ -232,7 +232,7 @@
   4. Reader Hydration: `src/app/read/[id]/page.tsx` manually queried 10 individual store properties with raw ternaries guarding SSR hydration rather than using an encapsulated hook pattern like `useHydratedBookshelf` and `useHydratedAnnotations`.
   5. Auth Modal: Three nearly identical email verification and confirmation screens were duplicated for sign-up, magic link, and password reset flows, accompanied by redundant view header ternaries.
   6. File Downloads: Imperative anchor element creation, object URL allocation, clicking, and revoking were duplicated across JSON and CSV exports in `library-backup.ts`.
-  7. API Proxy Handlers: Client IP extraction (`x-forwarded-for`, `x-real-ip`) and HTTP 429 response construction were duplicated across `/api/books`, `/api/books/content`, and `/api/translate`, while `SimpleLRUCache` was tightly coupled inside `translate/route.ts`.
+  7. API Proxy Handlers: Client IP extraction (`x-forwarded-for`, `x-real-ip`) and HTTP 429 response construction were duplicated across `/api/books` and `/api/books/content`.
   8. Active Reading Counter: Active reader volume calculation was computed via different manual object extractions and `useMemo` loops in `Navbar.tsx` and `account/page.tsx`.
 - **Decision**:
   1. **Data Layer Adapters & Polymorphic Dispatcher (`book.adapter.ts`, `useBookshelfStore.ts`)**: Encapsulate cloud row conversion into `toGutendexBookFromCloudRow` and normalized insert payload generation into `toCloudBookInsert`. Replace the `flushOutbox` `if-else` ladder with a polymorphic command dispatcher dictionary `OUTBOX_DISPATCHERS`.

@@ -269,7 +269,7 @@ const RELEASES = [
         'Annotation Palette Deduplication (`ReaderSurface.tsx`, `ReaderAnnotationsDrawer.tsx`, `TextHighlightPopover.tsx`, `NotebookView.tsx`): Replaced 6 duplicate local color dictionaries with derived tokens from `ANNOTATION_COLOR_CONFIG`.',
         'Auth Modal Header & Action Label Declarative Mapping (`AuthModal.tsx`): Replaced view switching ternaries with `AUTH_VIEW_CONFIG` and unified confirmation markup with `<EmailSentView />`.',
         'DOM Blob Download Encapsulation (`utils.ts`, `library-backup.ts`): Deduplicated imperative anchor creation and object URL lifecycle management across JSON and CSV exports via `triggerBlobDownload(blob, filename)`.',
-        'API Proxy Rate Limiter Deduplication (`api/books/route.ts`, `api/books/content/route.ts`, `api/translate/route.ts`): Replaced duplicated proxy IP parsing and HTTP 429 response formatting with `api-utils.ts`.',
+        'API Proxy Rate Limiter Deduplication (`api/books/route.ts`, `api/books/content/route.ts`): Replaced duplicated proxy IP parsing and HTTP 429 response formatting with `api-utils.ts`.',
         'Reading Count Unification (`Navbar.tsx`, `account/page.tsx`): Replaced duplicate manual set aggregations and loops with canonical `useReaderStore(getActiveReadingCount)`.',
       ],
       Fixed: [
@@ -435,7 +435,7 @@ const RELEASES = [
     sections: {
       Added: [
         'Centralized Library Design Tokens (`src/config/library-tokens.ts`): Single source of truth for library category colorways (`LIBRARY_THEMES`), synchronizing active borders, focus rings, and filled SVG icons across navbar tabs and account metric cards.',
-        'Dynamic Reader Language & Bilingual Mode Indicators (`src/components/reader/ReaderHeader.tsx`, `read/[id]/page.tsx`): Header translation trigger dynamically displays active target language code (`ES`) when translated, parallel dual-language format (`EN ∥ ES`) in Bilingual mode, accompanied by visual sparkles and active indicator dot.',
+        'Reader Language Editions & Translation Indicators (`src/components/reader/ReaderHeader.tsx`, `read/[id]/page.tsx`): Header translation trigger displays active book language code and available historical editions badge.',
         'Co-Located Test Suite Expansion: Added unit tests for library tokens and expanded test coverage across `AccountLibraryStats.test.tsx` and `ReaderHeader.test.tsx`, achieving 108 suites and 760 passing tests.',
       ],
       Fixed: [
@@ -482,7 +482,6 @@ const RELEASES = [
         'Web Worker Main-Thread Offloading (`src/workers/gutenberg.worker.ts`, `src/hooks/reader/useGutenbergParserWorker.ts`): Offloaded CPU-heavy chapter segmentation regex splitting and pagination spread calculations to a background Web Worker with automatic synchronous fallback.',
         'Storage Quotas & LRU Emergency Eviction (`src/lib/offline-storage.ts`, `src/hooks/useOfflineBooks.ts`): Integrated `navigator.storage.estimate()` monitoring, automatic oldest-volume LRU eviction, and `QuotaExceededError` write recovery in IndexedDB.',
         'Offline Mutation Outbox & Auto-Reconnection (`src/stores/useBookshelfStore.ts`, `src/app/providers.tsx`): Built persistent offline outbox queue ensuring offline shelf deletions and favorite toggles are retained and atomically dispatched upon online network restoration.',
-        'In-Memory SHA-256 LRU Caching & Abuse Shielding (`src/app/api/translate/route.ts`): Hardened the translation proxy with in-memory SHA-256 LRU caching (1,000 entries max) and strict 15,000-character payload rejection to prevent silent truncation.',
         'Hardware Tiering & 2D Reduced-Motion Hero Presentation (`src/components/presentation/HeroFeaturedBook3D.tsx`): Automatic detection of low-tier hardware and user reduced-motion preferences via `usePerformanceTier` to present an accessible, static 2D hero card.',
         'Headless Cursor Tooltip Hook & Zero-Clipping Portal Primitive (`src/hooks/useCursorTooltip.ts`, `src/components/ui/CursorTooltip.tsx`): Encapsulated mouse coordinate tracking and hover timers into a headless hook with a body-portaled tooltip, removing duplicate handlers from `BookCard` and `BookshelfSpine`.',
         'Decoupled 3D Open-Book Kinematics & Presentation Rig (`src/hooks/useBookPassageShuffle.ts`, `src/components/presentation/HeroFeaturedBook3D.tsx`): Decoupled the standing 3D book rig, turning leaf physics, and passage shuffle engine from search state, reducing `HeroSearch.tsx` by 240+ lines and simplifying `BookPreviewModal.tsx`.',
@@ -497,7 +496,7 @@ const RELEASES = [
         'Bookshelf Deduplication & Database Unique Constraints Guardrails (`supabase/schema.sql`, `src/stores/useBookshelfStore.ts`): Enforced `unique_user_default_bookshelf` and `unique_user_shelf_name` unique constraints in PostgreSQL, `ON CONFLICT DO NOTHING` on auto-provisioning triggers, and client-side deduplication.',
         'Responsive Header Ergonomics & GitHub Repository Integration (`src/components/presentation/Navbar.tsx`, `src/components/presentation/Footer.tsx`): Direct repository links across header and footer, brand anti-truncation protection (`shrink-0`, `whitespace-nowrap`), space-aware responsive GitHub button disclosure (`min-[440px]:inline-flex`), synchronized tablet/desktop text expansion at `md:`, anti-jitter `border-b-2 border-transparent` tabs, and desktop hover tooltips.',
         'SPDX Standard MIT License Provisioning (`LICENSE`, `package.json`): Installed official MIT License text with copyright attribution and package manifest metadata for automated GitHub `licensee` badge detection.',
-        'Dynamic On-Demand Translation & Dual-Tier Language Hub (`/api/translate`, `src/hooks/queries/usePageTranslation.ts`, `src/components/reader/ReaderLanguageDrawer.tsx`): Zero-key Google Neural Machine Translation proxy with offline page-level caching, 18 popular language quick-select chips, 40+ language catalog, Bilingual Parallel reading mode with original sentence subtitles, and dynamic native neural voice narration synchronization with Read-Aloud.',
+        'Archival Language Editions & Translation Hub (`src/components/reader/ReaderLanguageDrawer.tsx`, `src/hooks/queries/useBookTranslations.ts`): Language Editions hub supporting authentic Project Gutenberg international translations, FRBR work mapping, and native browser translation guidance.',
         'Co-Located Test Suite Expansion: Expanded unit and integration test coverage across all 100 test suites and 646 tests with 91.7% line coverage.',
       ],
       Changed: [
