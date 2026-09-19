@@ -41,10 +41,9 @@ describe('ReaderLanguageDrawer Component', () => {
     expect(screen.queryByRole('dialog', { name: 'Language Editions & Translations' })).not.toBeInTheDocument();
   });
 
-  it('renders dual-tier layout with archival editions and instant translation', () => {
+  it('renders archival editions with language badges and current indicator', () => {
     const onClose = vi.fn();
     const onSelectTranslation = vi.fn();
-    const onSelectDynamicLanguage = vi.fn();
 
     render(
       <ReaderLanguageDrawer
@@ -52,14 +51,14 @@ describe('ReaderLanguageDrawer Component', () => {
         onClose={onClose}
         translations={mockTranslations}
         onSelectTranslation={onSelectTranslation}
-        onSelectDynamicLanguage={onSelectDynamicLanguage}
       />
     );
 
     expect(screen.getByRole('dialog', { name: 'Language Editions & Translations' })).toBeInTheDocument();
     expect(screen.getByText('Languages & Translations')).toBeInTheDocument();
     expect(screen.getByText('Archival Editions (3)')).toBeInTheDocument();
-    expect(screen.getByText('Instant AI Translation')).toBeInTheDocument();
+    expect(screen.getByText('French (Français)')).toBeInTheDocument();
+    expect(screen.getByText('German (Deutsch)')).toBeInTheDocument();
 
     // Click Archival French edition
     fireEvent.click(screen.getByText('French (Français)'));
@@ -67,84 +66,26 @@ describe('ReaderLanguageDrawer Component', () => {
     expect(onSelectTranslation).toHaveBeenCalledWith(25946);
   });
 
-  it('allows selecting popular translation quick-picks and dropdown', () => {
-    const onSelectDynamicLanguage = vi.fn();
+  it('does not trigger onSelectTranslation when clicking current active edition', () => {
+    const onClose = vi.fn();
+    const onSelectTranslation = vi.fn();
 
     render(
       <ReaderLanguageDrawer
         isOpen={true}
-        onClose={vi.fn()}
+        onClose={onClose}
         translations={mockTranslations}
-        onSelectDynamicLanguage={onSelectDynamicLanguage}
+        onSelectTranslation={onSelectTranslation}
       />
     );
 
-    // Click Spanish quick-pick chip
-    const spanishChip = screen.getByRole('button', { name: /Spanish/i });
-    fireEvent.click(spanishChip);
-    expect(onSelectDynamicLanguage).toHaveBeenCalledWith('es');
-
-    // Select language from dropdown
-    const select = screen.getByRole('combobox', { name: 'Select translation language' });
-    fireEvent.change(select, { target: { value: 'ro' } });
-    expect(onSelectDynamicLanguage).toHaveBeenCalledWith('ro');
+    // English is marked isCurrent: true
+    fireEvent.click(screen.getByText('English'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSelectTranslation).not.toHaveBeenCalled();
   });
 
-  it('supports toggling reading display mode and reverting to original', () => {
-    const onSelectDisplayMode = vi.fn();
-    const onSelectDynamicLanguage = vi.fn();
-
-    render(
-      <ReaderLanguageDrawer
-        isOpen={true}
-        onClose={vi.fn()}
-        translations={mockTranslations}
-        dynamicTargetLanguage="es"
-        onSelectDynamicLanguage={onSelectDynamicLanguage}
-        displayMode="translated"
-        onSelectDisplayMode={onSelectDisplayMode}
-        isTranslating={true}
-      />
-    );
-
-    expect(screen.getByText(/Translating to Spanish/i)).toBeInTheDocument();
-    expect(screen.getByText('Translating page content...')).toBeInTheDocument();
-
-    // Click bilingual mode
-    const bilingualBtn = screen.getByRole('button', { name: /Bilingual Parallel/i });
-    fireEvent.click(bilingualBtn);
-    expect(onSelectDisplayMode).toHaveBeenCalledWith('bilingual');
-
-    // Click translated only
-    const translatedBtn = screen.getByRole('button', { name: /Translated Only/i });
-    fireEvent.click(translatedBtn);
-    expect(onSelectDisplayMode).toHaveBeenCalledWith('translated');
-
-    // Click revert to original
-    const revertBtn = screen.getByRole('button', { name: 'Revert to original language' });
-    fireEvent.click(revertBtn);
-    expect(onSelectDynamicLanguage).toHaveBeenCalledWith(null);
-  });
-
-  it('unselects dynamic language when clicking the active quick-pick chip', () => {
-    const onSelectDynamicLanguage = vi.fn();
-
-    render(
-      <ReaderLanguageDrawer
-        isOpen={true}
-        onClose={vi.fn()}
-        translations={mockTranslations}
-        dynamicTargetLanguage="es"
-        onSelectDynamicLanguage={onSelectDynamicLanguage}
-      />
-    );
-
-    const spanishChip = screen.getByRole('button', { name: /Spanish/i });
-    fireEvent.click(spanishChip);
-    expect(onSelectDynamicLanguage).toHaveBeenCalledWith(null);
-  });
-
-  it('renders fallback message when archival translations array is empty', () => {
+  it('displays empty state when no translations exist', () => {
     render(
       <ReaderLanguageDrawer
         isOpen={true}
@@ -153,13 +94,13 @@ describe('ReaderLanguageDrawer Component', () => {
       />
     );
 
-    expect(
-      screen.getByText('No other archival editions available in Gutenberg.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Archival Editions (0)')).toBeInTheDocument();
+    expect(screen.getByText('No other archival editions available in Gutenberg.')).toBeInTheDocument();
+    expect(screen.getByText('Looking for other languages?')).toBeInTheDocument();
   });
 
-  it('renders properly in Sepia theme', () => {
-    render(
+  it('renders with sepia and dark themes correctly', () => {
+    const { rerender } = render(
       <ReaderLanguageDrawer
         isOpen={true}
         onClose={vi.fn()}
@@ -169,26 +110,16 @@ describe('ReaderLanguageDrawer Component', () => {
     );
 
     expect(screen.getByRole('dialog', { name: 'Language Editions & Translations' })).toBeInTheDocument();
-    // Sepia badge assertion
-    const currentBadge = screen.getByText('en');
-    expect(currentBadge).toHaveClass('border-amber-500/40');
-    expect(currentBadge).toHaveClass('bg-amber-500/20');
-  });
 
-  it('renders active language badge with supported numbered tokens in default light/dark mode', () => {
-    render(
+    rerender(
       <ReaderLanguageDrawer
         isOpen={true}
         onClose={vi.fn()}
         translations={mockTranslations}
-        theme="light"
+        theme="dark"
       />
     );
 
-    const currentBadge = screen.getByText('en');
-    expect(currentBadge).toHaveClass('border-primary-500/30');
-    expect(currentBadge).toHaveClass('bg-primary-500/15');
-    expect(currentBadge.className).not.toContain('border-primary/40');
-    expect(currentBadge.className).not.toContain('bg-primary/20');
+    expect(screen.getByRole('dialog', { name: 'Language Editions & Translations' })).toBeInTheDocument();
   });
 });

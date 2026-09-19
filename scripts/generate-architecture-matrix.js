@@ -165,7 +165,6 @@ function generateMarkdown() {
     '        QueryBooks["🔄 useBooks & usePrefetchNextPage\\n(Windowed Sub-Pages & Predictive Prefetch)"]',
     '        QueryContent["🔄 useBookContent(url, bookId)\\n(IndexedDB Check to CDN Stream)"]',
     '        QueryTranslate["🌐 useBookTranslations\\n(International Editions Relational Handoff)"]',
-    '        QueryPageTranslate["🌐 usePageTranslation\\n(Neural Full-Page Translation)"]',
     '        Telemetry["📊 Vercel Telemetry\\n(Analytics & Speed Insights)"]',
     '    end',
     '',
@@ -175,7 +174,6 @@ function generateMarkdown() {
     '        CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\\n(supabase-provider.ts • gutendex-provider.ts)"]',
     '        ProxyContent["GET /api/books/content\\n(Tier 1 Supabase DB • Tier 2 Gutenberg Multi-Mirror, Anti-SSRF)"]',
     '        ProxyBookTranslations["GET /api/books/translations\\n(Edge SWR Cache, Zero False Positives, FRBR Work Mapping)"]',
-    '        ProxyTranslate["POST /api/translate\\n(Neural MT Proxy, 40+ Languages)"]',
     '        LayoutServer["Server Layout (/read/[id])\\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]',
     '    end',
     '',
@@ -192,7 +190,6 @@ function generateMarkdown() {
     '    subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]',
     '        Gutendex["🌐 Gutendex Search API\\n(Upstream Search Fallback)"]',
     '        GutenbergCDN["🌐 Project Gutenberg Mirrors\\n(aleph.gutenberg.org, gutenberg.readingroo.ms, www.gutenberg.org)"]',
-    '        GoogleNMT["🌐 Google Neural MT\\n(Serverless AI Translation)"]',
     '        WikidataSPARQL["🌐 Wikidata SPARQL\\n(P648 Gutenberg Work-to-Edition Authority Clusters)"]',
     '        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]',
     '        SyncEngine["🔄 Gutenberg Catalog Sync Engine\\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]',
@@ -261,9 +258,6 @@ function generateMarkdown() {
     '    QueryTranslate -->|Tier 1: Relational Work Mapping| ProxyBookTranslations',
     '    ProxyBookTranslations -->|100% Precision Relational Query| SupabaseCloud',
     '    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex',
-    '    ReaderPage --> QueryPageTranslate',
-    '    QueryPageTranslate --> ProxyTranslate',
-    '    ProxyTranslate --> GoogleNMT',
     '    SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud',
     '    SyncTranslations -.->|Wikidata P648 Query & Fallback Snapshot| WikidataSPARQL',
     '    ',
@@ -357,9 +351,6 @@ function generateMarkdown() {
     } else if (r.path === '/api/books/content') {
       cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • Anti-SSRF Allowlist';
       upstream = '`https://www.gutenberg.org/cache/epub/{id}/pg{id}.txt`';
-    } else if (r.path === '/api/translate') {
-      cacheDesc = 'Serverless Neural MT Proxy • 40+ Languages';
-      upstream = 'Google Neural Machine Translation';
     }
     lines.push(`| **\`${r.path}\`** | \`${r.methods}\` | [\`${r.file}\`](${r.file}) | ${cacheDesc} | ${upstream} |`);
   }
@@ -376,7 +367,6 @@ function generateMarkdown() {
     useBooks: 'TanStack Query fetching catalog volumes with sub-pagination and client failover.',
     useBookContent: 'TanStack Query fetching book plain text with IndexedDB offline-first check.',
     useBookTranslations: 'TanStack Query aggregating international language translations and editions.',
-    usePageTranslation: 'On-demand page-level dynamic neural translation caching.',
     useReaderSpeech: 'Browser-native Web Speech synthesis with boundary word highlighting and auto-flip.',
     useReaderSession: 'Reading coordinates restoration, resume ribbons, and cloud session synchronization.',
     useContinueReadingLedger: 'Headless continue reading ledger with authentic telemetry enrollment and query hydration.',

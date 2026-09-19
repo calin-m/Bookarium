@@ -5,7 +5,6 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useBookContent } from '@/hooks/queries/useBookContent';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useBookTranslations } from '@/hooks/queries/useBookTranslations';
-import { usePageTranslation } from '@/hooks/queries/usePageTranslation';
 import { useReaderStore, useHydratedReader } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import type { GutendexBook } from '@/types/book.types';
@@ -103,8 +102,6 @@ function BookReaderContent() {
   } = useReaderDrawers();
   const [readingMode, setReadingMode] = useState<'paginated' | 'scroll'>('paginated');
   const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
-  const [dynamicTargetLanguage, setDynamicTargetLanguage] = useState<string | null>(null);
-  const [displayMode, setDisplayMode] = useState<'translated' | 'bilingual'>('translated');
 
   // Annotations & Highlights Management
   const {
@@ -417,22 +414,8 @@ function BookReaderContent() {
   // Active reading content
   const rawPageText = readingMode === 'paginated' ? currentPageText : (activeChapter?.content || '');
 
-  // Dynamic On-Demand Page Translation
-  const {
-    translatedText,
-    segments: translationSegments,
-    isLoading: isTranslating,
-  } = usePageTranslation({
-    text: rawPageText,
-    targetLanguage: dynamicTargetLanguage,
-    bookId: numericId,
-    chapterIndex: activeChapterIndex,
-    pageIndex: currentChapterPage,
-  });
-
-  // Derive text to speak: if translated, speak translatedText in the target language!
-  const textToRead = translatedText || rawPageText;
-  const speechLanguage = dynamicTargetLanguage || resolvedIdentity.languages?.[0] || 'en';
+  const textToRead = rawPageText;
+  const speechLanguage = resolvedIdentity.languages?.[0] || 'en';
 
   const speech = useReaderSpeech({
     text: textToRead,
@@ -629,8 +612,6 @@ function BookReaderContent() {
         onSelectTranslation={(targetBookId) => {
           router.replace(ROUTES.READ(targetBookId));
         }}
-        dynamicTargetLanguage={dynamicTargetLanguage}
-        displayMode={displayMode}
       />
 
       {/* Main Editorial Reading Canvas */}
@@ -656,10 +637,6 @@ function BookReaderContent() {
         onNextPage={handleNextPage}
         onFontSizeChange={setFontSize}
         highlightedSentence={isSpeechOpen && speech.isPlaying && speechHighlightEnabled ? speech.currentSentence : undefined}
-        translatedText={translatedText}
-        translationSegments={translationSegments}
-        displayMode={displayMode}
-        isTranslating={isTranslating}
         annotations={activeChapterAnnotations}
         targetAnnotationId={targetAnnotationId}
         onSelectAnnotation={handleSelectAnnotation}
@@ -747,11 +724,6 @@ function BookReaderContent() {
           router.replace(ROUTES.READ(targetBookId));
         }}
         theme={theme}
-        dynamicTargetLanguage={dynamicTargetLanguage}
-        onSelectDynamicLanguage={setDynamicTargetLanguage}
-        displayMode={displayMode}
-        onSelectDisplayMode={setDisplayMode}
-        isTranslating={isTranslating}
       />
 
       {/* Floating Read Aloud Audio Narration Mini-Bar */}

@@ -90,16 +90,6 @@ vi.mock('@/hooks/queries/useBookTranslations', () => ({
   }),
 }));
 
-vi.mock('@/hooks/queries/usePageTranslation', () => ({
-  usePageTranslation: () => ({
-    translatedText: null,
-    segments: [],
-    isLoading: false,
-    isError: false,
-    error: null,
-    isCached: false,
-  }),
-}));
 
 describe('Dedicated Reader Page (/read/[id])', () => {
   beforeEach(() => {

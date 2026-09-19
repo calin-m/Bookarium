@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback } from 'react';
-import { BookOpen, ZoomIn, Sparkles } from 'lucide-react';
+import { BookOpen, ZoomIn } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 import type { Annotation } from '@/stores/useAnnotationStore';
@@ -9,9 +9,9 @@ import { getReaderTheme } from '@/config/reader-themes';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { ANNOTATION_COLOR_CONFIG } from '@/config/annotation-tokens';
 import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
-import { ReaderLoadingView } from './ReaderLoadingView';
-import { ReaderErrorView } from './ReaderErrorView';
 import { computeAnnotationSpans } from '@/lib/reader-annotator';
+import { ReaderErrorView } from './ReaderErrorView';
+import { ReaderLoadingView } from './ReaderLoadingView';
 
 export interface ReaderSurfaceProps {
   theme: ReaderTheme;
@@ -35,10 +35,6 @@ export interface ReaderSurfaceProps {
   onNextPage?: () => void;
   onFontSizeChange?: (size: number) => void;
   highlightedSentence?: string;
-  translationSegments?: Array<{ original: string; translated: string }>;
-  translatedText?: string | null;
-  displayMode?: 'translated' | 'bilingual';
-  isTranslating?: boolean;
   annotations?: Annotation[];
   targetAnnotationId?: string | null;
   onSelectAnnotation?: (annotation: Annotation, position?: { top: number; left: number }) => void;
@@ -67,10 +63,6 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   onNextPage,
   onFontSizeChange,
   highlightedSentence,
-  translationSegments,
-  translatedText,
-  displayMode = 'translated',
-  isTranslating = false,
   annotations = [],
   targetAnnotationId,
   onSelectAnnotation,
@@ -203,8 +195,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     );
   }
 
-  const baseContent = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
-  const contentToDisplay = translatedText || baseContent;
+  const contentToDisplay = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
 
   return (
     <main
@@ -249,17 +240,6 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
           lineHeight: `${lineHeight}`,
         }}
       >
-          {/* Subtle Translating Indicator */}
-          {isTranslating && (
-            <div
-              data-testid="translating-indicator"
-              className="flex items-center justify-center gap-2 py-1.5 px-3 mb-6 mx-auto w-fit rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono animate-pulse"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Translating page content...</span>
-            </div>
-          )}
-          
           {/* Archival Opening Frontispiece (Section 1 / Book Opening) */}
           {activeChapterIndex === 0 && (bookTitle || bookAuthor) ? (
             <header className={`mb-12 pb-8 border-b text-center ${activeTheme.border}`}>
@@ -287,85 +267,30 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
             </header>
           ) : null}
 
-          {/* Bilingual Parallel Mode Body */}
-          {displayMode === 'bilingual' && translationSegments && translationSegments.length > 0 ? (
-            <div
-              data-testid="reader-bilingual-body"
-              className="space-y-4 select-text text-inherit font-normal antialiased"
-              style={{
-                fontSize: `${fontSize}px`,
-                lineHeight: `${lineHeight}`,
-              }}
-            >
-              {translationSegments.map((seg, idx) => {
-                const isHighlighted = highlightedSentence && seg.translated.includes(highlightedSentence);
-                return (
-                  <div key={idx} className="space-y-1 py-1 border-l-2 border-primary/30 pl-3">
-                    <p className="font-normal text-inherit leading-relaxed">
-                      {isHighlighted ? (
-                        <mark
-                          data-testid="speech-highlight"
-                          className={`rounded-xs px-1 transition-colors duration-200 ${
-                            theme === 'sepia'
-                              ? 'bg-amber-500/30 text-[#fef6eb]'
-                              : theme === 'dark'
-                              ? 'bg-amber-400/30 text-amber-200'
-                              : 'bg-primary-500/25 text-inherit'
-                          }`}
-                        >
-                          {seg.translated}
-                        </mark>
-                      ) : (
-                        renderContentWithAnnotations(
-                          seg.translated,
-                          annotations,
-                          highlightedSentence,
-                          theme,
-                          onSelectAnnotation
-                        )
-                      )}
-                    </p>
-                    {seg.original && (
-                      <p className={`text-[0.85em] italic ${activeTheme.textMuted} leading-normal`}>
-                        {renderContentWithAnnotations(
-                          seg.original,
-                          annotations,
-                          undefined,
-                          theme,
-                          onSelectAnnotation
-                        )}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            /* Standard / Translated Full Body */
-            <div
-              data-testid="reader-content-body"
-              className="space-y-6 select-text whitespace-pre-wrap text-inherit font-normal antialiased [word-break:normal] [overflow-wrap:break-word] [hyphens:none]"
-              style={{
-                fontSize: `${fontSize}px`,
-                lineHeight: `${lineHeight}`,
-              }}
-            >
-              {contentToDisplay ? (
-                renderContentWithAnnotations(
-                  contentToDisplay,
-                  annotations,
-                  highlightedSentence,
-                  theme,
-                  onSelectAnnotation
-                )
-              ) : (
-                <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
-                  <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  Empty section or end of text volume.
-                </div>
-              )}
-            </div>
-          )}
+          {/* Standard Reading Body */}
+          <div
+            data-testid="reader-content-body"
+            className="space-y-6 select-text whitespace-pre-wrap text-inherit font-normal antialiased [word-break:normal] [overflow-wrap:break-word] [hyphens:none]"
+            style={{
+              fontSize: `${fontSize}px`,
+              lineHeight: `${lineHeight}`,
+            }}
+          >
+            {contentToDisplay ? (
+              renderContentWithAnnotations(
+                contentToDisplay,
+                annotations,
+                highlightedSentence,
+                theme,
+                onSelectAnnotation
+              )
+            ) : (
+              <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
+                <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                Empty section or end of text volume.
+              </div>
+            )}
+          </div>
       </article>
     </main>
   );

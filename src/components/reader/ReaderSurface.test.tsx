@@ -403,47 +403,6 @@ describe('ReaderSurface', () => {
     expect(markEl).toHaveTextContent('Second sentence being read aloud.');
   });
 
-  it('renders translating indicator when isTranslating is true', () => {
-    render(<ReaderSurface {...defaultProps} isTranslating={true} />);
-    expect(screen.getByTestId('translating-indicator')).toBeInTheDocument();
-    expect(screen.getByText('Translating page content...')).toBeInTheDocument();
-  });
-
-  it('renders translatedText in place of base content when provided in translated mode', () => {
-    render(
-      <ReaderSurface
-        {...defaultProps}
-        translatedText="Texto traducido al español."
-        displayMode="translated"
-      />
-    );
-
-    expect(screen.getByText('Texto traducido al español.')).toBeInTheDocument();
-  });
-
-  it('renders bilingual mode with paired translation segments and speech highlight', () => {
-    const mockSegments = [
-      { original: 'Call me Ishmael.', translated: 'Llamadme Ismael.' },
-      { original: 'Some years ago...', translated: 'Hace algunos años...' },
-    ];
-
-    render(
-      <ReaderSurface
-        {...defaultProps}
-        displayMode="bilingual"
-        translationSegments={mockSegments}
-        highlightedSentence="Llamadme Ismael."
-      />
-    );
-
-    const bilingualBody = screen.getByTestId('reader-bilingual-body');
-    expect(bilingualBody).toBeInTheDocument();
-    expect(screen.getByText('Call me Ishmael.')).toBeInTheDocument();
-    expect(screen.getByText('Hace algunos años...')).toBeInTheDocument();
-
-    const markEl = screen.getByTestId('speech-highlight');
-    expect(markEl).toHaveTextContent('Llamadme Ismael.');
-  });
 
   it('renders user annotations with designated highlight color marks and triggers onSelectAnnotation', () => {
     const onSelectAnnotation = vi.fn();
@@ -618,40 +577,6 @@ describe('ReaderSurface', () => {
     expect(marks[1]).toHaveClass('selection:bg-rose-300/70');
   });
 
-  it('renders user annotations inside bilingual parallel mode segments', () => {
-    const annotations: any[] = [
-      {
-        id: 'ann-bilingual-trans',
-        bookId: 1,
-        chapterIndex: 0,
-        chapterPage: 1,
-        selectedText: 'importante cita',
-        color: 'amber',
-        createdAt: '',
-        updatedAt: '',
-      },
-    ];
-
-    render(
-      <ReaderSurface
-        {...defaultProps}
-        displayMode="bilingual"
-        translationSegments={[
-          {
-            original: 'This is an important quote from classic literature.',
-            translated: 'Esta es una importante cita de la literatura clásica.',
-          },
-        ]}
-        annotations={annotations}
-      />
-    );
-
-    expect(screen.getByTestId('reader-bilingual-body')).toBeInTheDocument();
-    const mark = screen.getByTestId('user-annotation-highlight');
-    expect(mark).toBeInTheDocument();
-    expect(mark).toHaveTextContent('importante cita');
-    expect(mark).toHaveAttribute('data-annotation-color', 'amber');
-  });
 
   it('triggers onTextSelected on selectionchange within reader content', async () => {
     vi.useFakeTimers();

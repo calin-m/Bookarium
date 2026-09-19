@@ -260,7 +260,7 @@ describe('ReaderHeader', () => {
     expect(onToggleTranslations).toHaveBeenCalledTimes(1);
   });
 
-  it('renders single target language with sparkles when dynamic translation is active in translated mode', () => {
+  it('renders language button with current language label for single edition', () => {
     const onToggleTranslations = vi.fn();
     render(
       <ReaderHeader
@@ -275,20 +275,17 @@ describe('ReaderHeader', () => {
           },
         ]}
         onToggleTranslations={onToggleTranslations}
-        dynamicTargetLanguage="es"
-        displayMode="translated"
       />
     );
 
     const langBtn = screen.getByTestId('lang-dropdown-button');
     expect(langBtn).toBeInTheDocument();
-    expect(langBtn).toHaveTextContent('ES');
-    expect(langBtn).not.toHaveTextContent('EN ∥ ES');
-    expect(screen.getByTestId('lang-sparkles-icon')).toBeInTheDocument();
-    expect(langBtn).toHaveAttribute('title', expect.stringContaining('Translated to Spanish'));
+    expect(langBtn).toHaveTextContent('EN');
+    expect(langBtn).toHaveAttribute('title', 'Language Editions (EN)');
+    expect(screen.queryByText('1')).not.toBeInTheDocument();
   });
 
-  it('renders parallel notation (e.g. EN ∥ ES) when bilingual mode is active', () => {
+  it('renders language button with count badge when multiple editions exist', () => {
     const onToggleTranslations = vi.fn();
     render(
       <ReaderHeader
@@ -301,43 +298,22 @@ describe('ReaderHeader', () => {
             languageLabel: 'English',
             isCurrent: true,
           },
+          {
+            bookId: 67890,
+            title: 'Orgueil et Préjugés',
+            languageCode: 'fr',
+            languageLabel: 'French (Français)',
+            isCurrent: false,
+          },
         ]}
         onToggleTranslations={onToggleTranslations}
-        dynamicTargetLanguage="es"
-        displayMode="bilingual"
       />
     );
 
     const langBtn = screen.getByTestId('lang-dropdown-button');
     expect(langBtn).toBeInTheDocument();
-    expect(langBtn).toHaveTextContent('EN ∥ ES');
-    expect(langBtn).toHaveAttribute('title', expect.stringContaining('Bilingual Parallel'));
-    expect(screen.getByTestId('lang-sparkles-icon')).toBeInTheDocument();
-  });
-
-  it('renders dynamic translation indicator and sparkles on language button', () => {
-    const onToggleTranslations = vi.fn();
-    render(
-      <ReaderHeader
-        {...defaultProps}
-        translations={[
-          {
-            bookId: 1342,
-            title: 'Pride and Prejudice',
-            languageCode: 'en',
-            languageLabel: 'English',
-            isCurrent: true,
-          },
-        ]}
-        onToggleTranslations={onToggleTranslations}
-        dynamicTargetLanguage="fr"
-        displayMode="translated"
-      />
-    );
-
-    expect(screen.getByTestId('lang-dropdown-button')).toBeInTheDocument();
-    expect(screen.getByTestId('lang-sparkles-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('lang-active-dot')).toBeInTheDocument();
+    expect(langBtn).toHaveTextContent('EN');
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('handles link copying when share button is clicked', async () => {

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 19 Sep 2026 12:07:26 GMT  
+**Last Generated**: Sat, 19 Sep 2026 12:37:29 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 176 passed  
-**Total Verified Tests**: 1682 passed  
+**Total Test Suites**: 174 passed  
+**Total Verified Tests**: 1656 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **176/176 test suites passed** (1682 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **174/174 test suites passed** (1656 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 53 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.11%** (7680/8337) — *Target: $ge$ 80%*
-- **Statements**: **90.57%** (8324/9190) — *Target: $ge$ 80%*
-- **Functions**: **88.96%** (1781/2002) — *Target: $ge$ 80%*
-- **Branches**: **81.03%** (7321/9034) — *Target: $ge$ 80%*
+- **Lines**: **92.02%** (7579/8236) — *Target: $ge$ 80%*
+- **Statements**: **90.51%** (8222/9084) — *Target: $ge$ 80%*
+- **Functions**: **88.97%** (1767/1986) — *Target: $ge$ 80%*
+- **Branches**: **80.9%** (7179/8873) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (176 Suites / 1682 Tests)
+## 🧪 Comprehensive Test Suite Catalog (174 Suites / 1656 Tests)
 
-### 🚀 App Routes & Pages (15 Suites · 172 Tests)
+### 🚀 App Routes & Pages (14 Suites · 161 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
@@ -133,23 +133,6 @@
 - ✔ `returns 200 with edge caching when translations are retrieved successfully`
 - ✔ `returns 429 when rate limited`
 - ✔ `returns 500 with no-store cache when provider throws an unexpected error`
-
-</details>
-
-<details>
-<summary><b><code>src/app/api/translate/route.test.ts</code></b> (11 tests)</summary>
-
-- ✔ `translates text successfully and returns segments`
-- ✔ `rejects request with invalid JSON payload`
-- ✔ `rejects request with missing or empty text`
-- ✔ `rejects request with invalid target language code`
-- ✔ `handles upstream service failure with 502`
-- ✔ `handles malformed upstream payload with 502`
-- ✔ `handles timeout (AbortError) with 504`
-- ✔ `handles unexpected failure with 500`
-- ✔ `enforces rate limiting and returns 429 when quota exceeded`
-- ✔ `rejects request exceeding 15,000 character maximum payload`
-- ✔ `serves identical translation from in-memory LRU cache on second call with X-Cache-Lookup HIT`
 
 </details>
 
@@ -816,7 +799,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 151 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 143 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -916,7 +899,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -929,9 +912,8 @@
 - ✔ `renders the dedicated sub-header metadata ribbon with Book ID, Section, and Progress`
 - ✔ `renders integrated resume notice ribbon in sub-header and handles restart and dismiss`
 - ✔ `renders language and translation switcher and handles edition selection`
-- ✔ `renders single target language with sparkles when dynamic translation is active in translated mode`
-- ✔ `renders parallel notation (e.g. EN ∥ ES) when bilingual mode is active`
-- ✔ `renders dynamic translation indicator and sparkles on language button`
+- ✔ `renders language button with current language label for single edition`
+- ✔ `renders language button with count badge when multiple editions exist`
 - ✔ `handles link copying when share button is clicked`
 - ✔ `renders mobile quick share button and handles link copying`
 - ✔ `dispatches TOC, Search, and Controls actions from desktop tool row`
@@ -941,16 +923,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `does not render content when isOpen is false`
-- ✔ `renders dual-tier layout with archival editions and instant translation`
-- ✔ `allows selecting popular translation quick-picks and dropdown`
-- ✔ `supports toggling reading display mode and reverting to original`
-- ✔ `unselects dynamic language when clicking the active quick-pick chip`
-- ✔ `renders fallback message when archival translations array is empty`
-- ✔ `renders properly in Sepia theme`
-- ✔ `renders active language badge with supported numbered tokens in default light/dark mode`
+- ✔ `renders archival editions with language badges and current indicator`
+- ✔ `does not trigger onSelectTranslation when clicking current active edition`
+- ✔ `displays empty state when no translations exist`
+- ✔ `renders with sepia and dark themes correctly`
 
 </details>
 
@@ -1008,7 +987,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (28 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (24 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -1025,14 +1004,10 @@
 - ✔ `clamps font size to minimum (12px) on extreme pinch-in gesture`
 - ✔ `clamps font size to maximum (36px) on extreme pinch-out gesture`
 - ✔ `renders highlighted sentence with mark tag when highlightedSentence matches text`
-- ✔ `renders translating indicator when isTranslating is true`
-- ✔ `renders translatedText in place of base content when provided in translated mode`
-- ✔ `renders bilingual mode with paired translation segments and speech highlight`
 - ✔ `renders user annotations with designated highlight color marks and triggers onSelectAnnotation`
 - ✔ `renders multiple annotations with amber, mint, and rose colors alongside speech highlight`
 - ✔ `detects window text selection and triggers onTextSelected on mouseUp`
 - ✔ `applies color-specific selection styling to highlight marks`
-- ✔ `renders user annotations inside bilingual parallel mode segments`
 - ✔ `triggers onTextSelected on selectionchange within reader content`
 - ✔ `ignores collapsed text selections on mouseUp`
 - ✔ `ignores text selections anchored outside reader content body`
@@ -1842,7 +1817,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 218 Tests)
+### 🔄 Hooks & React Query (21 Suites · 211 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -1899,19 +1874,6 @@
 - ✔ `rejects candidate editions from stemmer collisions when author does not match (e.g. The Woman in the Alcove for Joan Alcover)`
 - ✔ `requires title keyword match when volume has an anonymous or placeholder author`
 - ✔ `prioritizes Tier 1 relational database editions when returned from /api/books/translations`
-
-</details>
-
-<details>
-<summary><b><code>src/hooks/queries/usePageTranslation.test.ts</code></b> (7 tests)</summary>
-
-- ✔ `generates consistent cache keys`
-- ✔ `handles localStorage read and write safely`
-- ✔ `returns empty result when targetLanguage is null`
-- ✔ `fetches translation and populates result and localStorage`
-- ✔ `uses cached translation directly without calling fetch`
-- ✔ `handles API error gracefully`
-- ✔ `throws error when fetchTranslation fails without JSON body`
 
 </details>
 
