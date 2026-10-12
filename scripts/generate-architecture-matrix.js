@@ -382,7 +382,8 @@ function generateMarkdown() {
     useHasMounted: 'SSR hydration barrier hook preventing client-server markup mismatches.',
     useReadingTimer: 'Reader session telemetry tracking visual reading with 2-minute idle guard and TTS narration audio bypass.',
     useCollectionAutoHeal: 'Unified multi-collection auto-healing pipeline scanning and rehydrating missing author lifespans across Favorites and Bookshelves.',
-    useMobileViewSwipe: 'Tactile touch gesture navigation hook enabling horizontal view swiping across primary mobile navigation tabs.',
+    useMobileViewSwipe: 'Tactile touch gesture navigation hook enabling horizontal view swiping across primary views on mobile and tactile tablets.',
+    useTouchDevice: 'SSR-safe tactile capability and viewport boundary detection enabling touch gestures on tablets and mobile.',
     useBookCopyright: 'Declarative jurisdictional copyright facade hook coordinating territory rules, author lifespan restrictions, and public domain badges.',
   };
 

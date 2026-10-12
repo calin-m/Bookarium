@@ -274,7 +274,7 @@
 @media (min-width: 1024px) {
   .hero-3d-stage.book-open .book-3d-rig,
   .hero-3d-stage:not(.book-closed):hover .book-3d-rig {
-    transform: translateX(55px) translateY(-14px) scale(0.82) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+    transform: translateX(-10px) translateY(-14px) scale(0.76) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
   }
 
   .hero-3d-stage.book-open .book-3d-flipper,

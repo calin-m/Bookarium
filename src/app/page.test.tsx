@@ -745,6 +745,53 @@ describe('Home page integration', () => {
     }
   });
 
+  it('switches views when swiping horizontally across main on tactile tablet devices', () => {
+    const originalMatchMedia = window.matchMedia;
+    const originalMaxTouchPoints = navigator.maxTouchPoints;
+    const originalInnerWidth = window.innerWidth;
+
+    Object.defineProperty(window, 'innerWidth', { value: 1142, writable: true, configurable: true });
+    Object.defineProperty(navigator, 'maxTouchPoints', { value: 10, writable: true, configurable: true });
+
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(pointer: coarse)' || query === '(max-width: 1366px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    try {
+      renderHome();
+
+      const main = screen.getByRole('main');
+      expect(main).toBeInTheDocument();
+
+      // Swipe left on main (move from 500px to 400px)
+      act(() => {
+        fireEvent.touchStart(main, {
+          touches: [{ clientX: 500, clientY: 300 }],
+          changedTouches: [{ clientX: 500, clientY: 300 }],
+        });
+        fireEvent.touchEnd(main, {
+          touches: [],
+          changedTouches: [{ clientX: 400, clientY: 300 }],
+        });
+      });
+
+      // Successfully switches to Bookshelf view with directional slide-left animation
+      expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
+      expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      Object.defineProperty(navigator, 'maxTouchPoints', { value: originalMaxTouchPoints, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, writable: true, configurable: true });
+    }
+  });
+
   describe('Bookshelf & Favorites Sorting and Pagination', () => {
     const generateBooks = (count: number) =>
       Array.from({ length: count }, (_, i) => ({

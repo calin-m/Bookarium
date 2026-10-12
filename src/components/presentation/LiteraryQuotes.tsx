@@ -94,8 +94,8 @@ export const LiteraryQuotes: React.FC = () => {
           </button>
         </div>
 
-        {/* 3-Column Passages Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Passages Grid: 1-Column Stack on Mobile & Tablet Portrait (<1024px), 3-Column on Desktop (>=1024px) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {displayedQuotes.map((item) => (
             <Link
               key={item.id}

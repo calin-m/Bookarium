@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 12 Oct 2026 10:08:23 GMT  
+**Last Generated**: Mon, 12 Oct 2026 11:05:49 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 174 passed  
-**Total Verified Tests**: 1656 passed  
+**Total Test Suites**: 175 passed  
+**Total Verified Tests**: 1665 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **174/174 test suites passed** (1656 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1665 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 53 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.01%** (7578/8236) — *Target: $ge$ 80%*
-- **Statements**: **90.49%** (8221/9084) — *Target: $ge$ 80%*
-- **Functions**: **88.92%** (1766/1986) — *Target: $ge$ 80%*
-- **Branches**: **80.91%** (7180/8873) — *Target: $ge$ 80%*
+- **Lines**: **92.01%** (7596/8255) — *Target: $ge$ 80%*
+- **Statements**: **90.48%** (8239/9105) — *Target: $ge$ 80%*
+- **Functions**: **88.85%** (1770/1992) — *Target: $ge$ 80%*
+- **Branches**: **80.92%** (7196/8892) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (174 Suites / 1656 Tests)
+## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1665 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 161 Tests)
+### 🚀 App Routes & Pages (14 Suites · 162 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
@@ -166,7 +166,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (28 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (29 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -192,6 +192,7 @@
 - ✔ `smoothly scrolls to catalog-section when filters are applied via Show Results`
 - ✔ `smoothly scrolls to catalog-section when filters are cleared via quick clear button`
 - ✔ `switches views when swiping horizontally across main on mobile`
+- ✔ `switches views when swiping horizontally across main on tactile tablet devices`
 - ✔ `renders sort dropdown, volume badge, top and bottom pagination on Bookshelf when books exceed 24 on desktop`
 - ✔ `sorts saved books on Bookshelf by title ascending and author descending`
 - ✔ `renders sort dropdown, volume badge, and pagination on Favorites when exceeding 24 items`
@@ -1817,7 +1818,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (21 Suites · 211 Tests)
+### 🔄 Hooks & React Query (22 Suites · 219 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -2153,6 +2154,20 @@
 - ✔ `measures dynamic element offset from DOM when heroDockSelector is provided`
 - ✔ `correctly calculates document Y by traversing nested offsetParent hierarchies`
 - ✔ `keeps both header and toolbar unconditionally visible when enabled is false`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useTouchDevice.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `returns true for tactile tablet in portrait (800px, coarse pointer, 10 touch points)`
+- ✔ `returns true for tactile tablet in landscape (1200px, coarse pointer, 10 touch points)`
+- ✔ `returns true for mobile device (390px, coarse pointer, 5 touch points)`
+- ✔ `returns false for non-touch desktop (1920px, fine pointer, 0 touch points)`
+- ✔ `returns false for large touch monitors exceeding tablet width (1920px, coarse pointer, 10 touch points)`
+- ✔ `detects touch points even when pointer: coarse is not reported by browser`
+- ✔ `detects pointer: coarse even when maxTouchPoints is 0`
+- ✔ `subscribes to media query changes and unmounts cleanly`
 
 </details>
 
@@ -2722,7 +2737,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

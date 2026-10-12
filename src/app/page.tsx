@@ -21,6 +21,7 @@ import { BackToTop } from '@/components/ui/BackToTop';
 import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
 import { useCatalogFilters, type CatalogView } from '@/hooks/useCatalogFilters';
 import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
+import { useTouchDevice } from '@/hooks/useTouchDevice';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -153,6 +154,9 @@ function HomeContent() {
     }
   }
 
+  const isTouchDevice = useTouchDevice();
+  const isSwipeEnabled = (isMobile || isTouchDevice) && !isAnyModalActive;
+
   const { handleTouchStart, handleTouchEnd, handleTouchCancel } = useMobileViewSwipe({
     activeView,
     onViewChange: (view) => {
@@ -164,7 +168,7 @@ function HomeContent() {
       }
     },
     onSwipeDirection: setSwipeDirection,
-    enabled: isMobile && !isAnyModalActive,
+    enabled: isSwipeEnabled,
   });
 
   // Shelf resolution for general vs custom shelves
