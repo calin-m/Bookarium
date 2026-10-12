@@ -194,7 +194,11 @@ describe('GET /api/books/content', () => {
       text: async () => sampleBookText,
     } as any);
 
-    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
+      headers: {
+        'x-vercel-ip-country': 'US',
+      },
+    });
     const res = await GET(req);
 
     expect(res.status).toBe(200);
