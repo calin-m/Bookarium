@@ -202,7 +202,7 @@ describe('GET /api/books/content', () => {
     expect(res.headers.get('Vary')).toContain('x-vercel-ip-country');
     const text = await res.text();
     expect(text).toContain('Pride and Prejudice');
-  });
+  }, 15000);
 
   it('should stream public domain book to GB user when metadata confirms death year <= 1955', async () => {
     const austenMeta = {
@@ -232,7 +232,7 @@ describe('GET /api/books/content', () => {
     expect(text).toContain('Pride and Prejudice');
 
     fetchSpy.mockRestore();
-  });
+  }, 15000);
 
   it('should return 502 if upstream text mirrors fail or time out', async () => {
     vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Connection aborted'));

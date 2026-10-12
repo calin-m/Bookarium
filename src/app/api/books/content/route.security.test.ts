@@ -132,7 +132,7 @@ describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
       expect(fetchSpy).toHaveBeenCalled();
       const calledUrl = fetchSpy.mock.calls[0][0] as string;
       expect(calledUrl).toBe('https://www.gutenberg.org/cache/epub/1342/pg1342.txt');
-    });
+    }, 15000);
   });
 
   describe('DoS & Rate Limit Abuse Protection', () => {

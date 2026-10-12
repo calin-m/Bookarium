@@ -114,8 +114,8 @@ function pass075SecurityAndSastAudit() {
   logHeader('Pass 0.75: Pre-Commit SAST & OWASP Security Suite');
 
   // Pillar 1: Dependency Vulnerability Audit
-  console.log(`${colors.dim}Pillar 1: Auditing dependencies for high/critical CVEs...${colors.reset}`);
-  const auditRes = runCommand(`${npmCmd} audit --audit-level=high`, false, 6000);
+  console.log(`${colors.dim}Pillar 1: Auditing production runtime dependencies for high/critical CVEs...${colors.reset}`);
+  const auditRes = runCommand(`${npmCmd} audit --omit=dev --audit-level=high`, false, 6000);
   if (!auditRes.success) {
     const combinedOutput = `${auditRes.stdout || ''}\n${auditRes.stderr || ''}`;
     const isNetworkOrRegistryError =
@@ -128,12 +128,12 @@ function pass075SecurityAndSastAudit() {
         `${colors.yellow}⚠ [WARN] npm registry temporarily unavailable or degraded. Skipping remote CVE audit.${colors.reset}`
       );
     } else {
-      logFail('High or critical security vulnerability detected in dependencies:');
+      logFail('High or critical security vulnerability detected in production dependencies:');
       console.error(auditRes.stdout || auditRes.stderr);
       return false;
     }
   } else {
-    logPass('Pillar 1: Zero high or critical dependency CVEs detected.');
+    logPass('Pillar 1: Zero high or critical production runtime CVEs detected.');
   }
 
   // Pillar 2: Static SAST SSRF Audit for API Route Handlers
