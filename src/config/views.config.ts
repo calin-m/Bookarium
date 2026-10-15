@@ -101,7 +101,7 @@ export const VIEW_CONTENT_CONFIG: Record<'catalog' | 'bookshelf' | 'favorites', 
   },
   bookshelf: {
     eyebrow: 'PERSONAL ARCHIVE • PRESERVED LOCALLY',
-    getTitle: () => 'Personal Reading Shelf',
+    getTitle: () => 'Reading Shelf',
     getSubtitle: ({ count }) =>
       `You have ${count} titles preserved on your personal shelf`,
     emptyTitle: 'Your personal shelf is currently empty',

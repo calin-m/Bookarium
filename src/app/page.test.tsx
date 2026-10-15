@@ -157,7 +157,7 @@ describe('Home page integration', () => {
     const bookshelfBtn = screen.getByLabelText('Bookshelf');
     fireEvent.click(bookshelfBtn);
 
-    expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
+    expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
     expect(screen.getByText(/You have 1 titles preserved on your personal shelf/i)).toBeInTheDocument();
 
     const clearBtn = screen.getByRole('button', { name: /Clear Shelf/i });
@@ -257,7 +257,7 @@ describe('Home page integration', () => {
     // Switch to Bookshelf
     const bookshelfBtn = screen.getByRole('button', { name: /^Bookshelf$/i });
     fireEvent.click(bookshelfBtn);
-    expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
+    expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
 
     // Switch to Favorites
@@ -695,9 +695,9 @@ describe('Home page integration', () => {
       });
 
       // Switches to Bookshelf with directional slide-left animation
-      expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
       expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
-      const bookshelfTransitionContainer = screen.getByText('Personal Reading Shelf').closest('.animate-view-slide-left');
+      const bookshelfTransitionContainer = screen.getByText('Reading Shelf').closest('.animate-view-slide-left');
       expect(bookshelfTransitionContainer).toBeInTheDocument();
 
       // Swipe left again
@@ -730,8 +730,8 @@ describe('Home page integration', () => {
       });
 
       // Switches back to Bookshelf with directional slide-right animation
-      expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
-      const returnTransitionContainer = screen.getByText('Personal Reading Shelf').closest('.animate-view-slide-right');
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
+      const returnTransitionContainer = screen.getByText('Reading Shelf').closest('.animate-view-slide-right');
       expect(returnTransitionContainer).toBeInTheDocument();
 
       // Firing animationEnd settles the transition container into resting state without duplicate animations
@@ -783,7 +783,7 @@ describe('Home page integration', () => {
       });
 
       // Successfully switches to Bookshelf view with directional slide-left animation
-      expect(screen.getByText('Personal Reading Shelf')).toBeInTheDocument();
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
       expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
     } finally {
       window.matchMedia = originalMatchMedia;
