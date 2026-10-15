@@ -48,7 +48,7 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
   {
     id: 'bookmarks',
     label: 'Bookmarks',
-    title: 'Bookmarks & Continue Reading',
+    title: 'Bookmarks',
     icon: Bookmark,
     countKey: 'activeReadingCount',
     themeKey: 'bookmarks',

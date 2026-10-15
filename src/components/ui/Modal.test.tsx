@@ -61,5 +61,24 @@ describe('Modal component', () => {
     expect(backdrop).toHaveClass('bg-transparent');
     expect(backdrop).not.toHaveClass('bg-black/60');
   });
+
+  it('portals modal dialog directly into document.body outside transformed parent containers and sets data-no-swipe', () => {
+    const { container } = render(
+      <div className="animate-page-turn" data-testid="transformed-wrapper">
+        <Modal isOpen={true} onClose={() => {}} title="Portaled Modal">
+          <div>Portaled Body</div>
+        </Modal>
+      </div>
+    );
+
+    const wrapper = screen.getByTestId('transformed-wrapper');
+    const dialog = screen.getByRole('dialog');
+
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveAttribute('data-no-swipe');
+    expect(wrapper.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+  });
 });
 

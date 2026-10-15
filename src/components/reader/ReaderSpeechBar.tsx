@@ -204,20 +204,27 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
         aria-label="Read Aloud Narration Controls"
         data-testid="reader-speech-bar"
       >
-        {isEffectiveMinimized ? (
-          /* ========================================================================= */
-          /* MINIMIZED MINI-PILL MODE (~44px Floating Audio Capsule)                   */
-          /* ========================================================================= */
-          <div className="flex flex-col items-center gap-1.5">
-            <div
-              data-testid="speech-bar-minimized"
-              className={cn(
-                'w-full flex items-center justify-between gap-2 px-3 py-1.5 sm:py-2 rounded-full border shadow-2xl backdrop-blur-md transition-all duration-200',
-                activeTheme.drawerBg,
-                activeTheme.border,
-                isThresholdReached && 'ring-2 ring-red-500/50 border-red-500/60 shadow-red-500/20'
-              )}
+        <AnimatePresence initial={false}>
+          {isEffectiveMinimized ? (
+            /* ========================================================================= */
+            /* MINIMIZED MINI-PILL MODE (~44px Floating Audio Capsule)                   */
+            /* ========================================================================= */
+            <motion.div
+              key="speech-minimized"
+              initial={{ opacity: 0, scale: 0.97, y: 4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.14, ease: 'easeOut' }}
+              className="flex flex-col items-center gap-1.5"
             >
+              <div
+                data-testid="speech-bar-minimized"
+                className={cn(
+                  'w-full flex items-center justify-between gap-2 px-3 py-1.5 sm:py-2 rounded-full border shadow-2xl backdrop-blur-md transition-[background-color,border-color,box-shadow] duration-200',
+                  activeTheme.drawerBg,
+                  activeTheme.border,
+                  isThresholdReached && 'ring-2 ring-red-500/50 border-red-500/60 shadow-red-500/20'
+                )}
+              >
               {/* Headphones Icon & Compact Text */}
               <div className="flex items-center gap-2 min-w-0">
                 <div
@@ -357,21 +364,27 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
-        ) : (
-          /* ========================================================================= */
-          /* EXPANDED FULL CARD MODE (Default Full Controls & Pitch/Speed)             */
-          /* ========================================================================= */
-          <div className="flex flex-col items-center gap-1.5">
-            <div
-              data-testid="speech-bar-expanded"
-              className={cn(
-                'w-full border shadow-2xl rounded-2xl p-2.5 sm:p-4 space-y-2 sm:space-y-3 backdrop-blur-md transition-all duration-200',
-                activeTheme.drawerBg,
-                activeTheme.border,
-                isThresholdReached && 'ring-2 ring-primary/50 border-primary/60 shadow-primary/20'
-              )}
+            </motion.div>
+          ) : (
+            /* ========================================================================= */
+            /* EXPANDED FULL CARD MODE (Default Full Controls & Pitch/Speed)             */
+            /* ========================================================================= */
+            <motion.div
+              key="speech-expanded"
+              initial={{ opacity: 0, scale: 0.97, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              className="flex flex-col items-center gap-1.5"
             >
+              <div
+                data-testid="speech-bar-expanded"
+                className={cn(
+                  'w-full border shadow-2xl rounded-2xl p-2.5 sm:p-4 space-y-2 sm:space-y-3 backdrop-blur-md transition-[background-color,border-color,box-shadow] duration-200',
+                  activeTheme.drawerBg,
+                  activeTheme.border,
+                  isThresholdReached && 'ring-2 ring-primary/50 border-primary/60 shadow-primary/20'
+                )}
+              >
               {/* Drag Handle for Vertical Snapping & Dismiss */}
               <div
                 className="flex justify-center -mt-1 -mb-1 py-1 cursor-grab active:cursor-grabbing"
@@ -650,9 +663,10 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                   <span>Release to minimize</span>
                 </motion.div>
               )}
-            </AnimatePresence>
-          </div>
-        )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.aside>
     </AnimatePresence>
   );

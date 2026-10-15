@@ -71,7 +71,7 @@ describe('BookmarksView', () => {
     const handleBrowse = vi.fn();
     renderWithClient(<BookmarksView onBrowseCatalog={handleBrowse} />);
 
-    expect(screen.getByText('Continue Reading & Bookmarks')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Bookmarks' })).toBeInTheDocument();
     expect(screen.getByText('No active reading volumes yet')).toBeInTheDocument();
 
     const browseBtn = screen.getByRole('button', { name: /Browse Library Catalog/i });

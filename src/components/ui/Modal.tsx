@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -56,7 +57,11 @@ export const Modal: React.FC<ModalProps> = ({
     full: 'max-w-[95vw] h-[92vh]',
   };
 
-  return (
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div
@@ -65,6 +70,7 @@ export const Modal: React.FC<ModalProps> = ({
           aria-modal="true"
           aria-labelledby={title ? 'modal-title' : undefined}
           data-testid={testId}
+          data-no-swipe
         >
           {/* Fluid Backdrop */}
           <motion.div
@@ -113,6 +119,7 @@ export const Modal: React.FC<ModalProps> = ({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

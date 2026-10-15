@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 15 Oct 2026 10:31:57 GMT  
+**Last Generated**: Thu, 15 Oct 2026 11:50:08 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 175 passed  
-**Total Verified Tests**: 1670 passed  
+**Total Verified Tests**: 1671 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1670 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1671 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 53 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.05%** (7620/8278) — *Target: $ge$ 80%*
-- **Statements**: **90.5%** (8262/9129) — *Target: $ge$ 80%*
+- **Lines**: **92.04%** (7621/8280) — *Target: $ge$ 80%*
+- **Statements**: **90.49%** (8263/9131) — *Target: $ge$ 80%*
 - **Functions**: **88.86%** (1772/1994) — *Target: $ge$ 80%*
-- **Branches**: **80.95%** (7243/8947) — *Target: $ge$ 80%*
+- **Branches**: **80.94%** (7244/8949) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1670 Tests)
+## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1671 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 162 Tests)
 
@@ -973,7 +973,7 @@
 - ✔ `adapts properly to sepia and dark themes`
 - ✔ `renders with mobile-responsive positioning and WCAG touch target classes`
 - ✔ `correctly uses UseReaderSpeechReturn facade prop when provided`
-- ✔ `renders expanded card by default and allows manual toggling to minimized mini-pill and back`
+- ✔ `renders expanded card by default and allows manual toggling to minimized mini-pill and back with isolated DOM surfaces`
 - ✔ `automatically enters minimized mode and docks at the top when isDrawerOpen is true`
 - ✔ `handles playback toggling and skipping inside minimized mode`
 
@@ -2176,7 +2176,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (51 Suites · 254 Tests)
+### 🧩 UI Primitives & Motion (51 Suites · 255 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2562,12 +2562,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/Modal.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/ui/Modal.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `should not render anything when isOpen is false`
 - ✔ `should render modal content when isOpen is true`
 - ✔ `should trigger onClose when clicking backdrop or pressing Escape`
 - ✔ `supports custom backdropClassName to override default dimming`
+- ✔ `portals modal dialog directly into document.body outside transformed parent containers and sets data-no-swipe`
 
 </details>
 

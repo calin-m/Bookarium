@@ -737,6 +737,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         onClose={() => setIsConfirmClearOpen(false)}
         title="Clear All Saved Notes & Highlights?"
         maxWidth="md"
+        backdropClassName="bg-transparent backdrop-blur-none"
       >
         <div className="p-6 space-y-5" data-testid="clear-all-notes-dialog">
           <div className="flex items-start gap-3.5">
@@ -796,6 +797,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         onClose={() => setReflectionToDelete(null)}
         title="Delete Personal Reflection?"
         maxWidth="md"
+        backdropClassName="bg-transparent backdrop-blur-none"
       >
         <div className="p-6 space-y-5" data-testid="delete-reflection-dialog">
           <div className="flex items-start gap-3.5">

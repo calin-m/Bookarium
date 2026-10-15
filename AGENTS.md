@@ -16,6 +16,7 @@ Welcome to **Bookarium**. When contributing or generating code for this reposito
 7. **Git Protocol (Human Execution Only)**: Provide in-depth structured conventional commit commands (`[PHASE]`, `[WHY]`, `[WHAT]`, `[VERIFICATION]`) only when explicitly requested by the user. AI agents must never execute `git commit` or `git push` directly.
 8. **7-Gateway Quality Engine**: Run `npm run verify` only when explicitly requested by the user or when actively investigating/debugging an encountered error in code to guarantee zero errors across all passes.
 9. **Rule 9 (Idempotent Database Schema Co-Evolution & RLS Governance)**: All database modifications must co-evolve `supabase/schema.sql`, `src/types/database.types.ts`, and `README.md` using strictly idempotent SQL (`CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS`) with strict Row Level Security enabled for user isolation.
+10. **Rule 1 (Documentation & Generator Script Co-Evolution)**: After any codebase change, always check whether source-of-truth docs (`docs/DECISIONS.md`, `README.md`) or generator scripts (`scripts/generate-changelog.js`, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`, `scripts/generate-parser-docs.js`) require adjustments, and run `npm run docs:sync` so generated outputs stay 100% synchronized.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

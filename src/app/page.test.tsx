@@ -553,7 +553,7 @@ describe('Home page integration', () => {
     fireEvent.click(bookmarksTab);
 
     // Verify BookmarksView rendered
-    expect(screen.getByText('Continue Reading & Bookmarks')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Bookmarks' })).toBeInTheDocument();
     expect(screen.getByText('40%')).toBeInTheDocument();
   });
 

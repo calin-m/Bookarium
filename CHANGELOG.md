@@ -20,9 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Collection Sort Dropdown Icon Overlap (`src/components/presentation/CollectionSortDropdown.tsx`): Replaced arbitrary Tailwind classes with standard spacing (`pl-8 sm:pl-9 pr-7 sm:pr-8`) and bounded width (`min-w-[125px] sm:min-w-[145px] max-w-[165px] sm:max-w-[195px]`), guaranteeing a clean 10px clear gutter from the ArrowUpDown icon.
 - Touch-Swipe False Negatives & Dropped Gestures: Eliminated dropped swipes caused by overly strict Cartesian angle thresholds, timeout cutoffs, and edge bezel touch rejections.
+- Portaled Modal Viewport Centering & Ancestor Transform Isolation (`src/components/ui/Modal.tsx`, `src/app/globals.css`): Portaled `Modal.tsx` directly into `document.body` via `createPortal(..., document.body)` with `data-no-swipe`, and normalized `100% { transform: none }` keyframes with `will-change: auto !important` in mobile/reduced-motion media queries so confirmation dialogs never get trapped inside tall ancestor scroll containers.
+- Listen Mode Minimize/Expand Corner Distortion (`src/components/reader/ReaderSpeechBar.tsx`): Isolated the Expanded (`key="speech-expanded"`, `rounded-2xl`) and Minimized (`key="speech-minimized"`, `rounded-full`) narration surfaces onto distinct keyed `<motion.div>` elements inside `<AnimatePresence initial={false}>` and scoped CSS transitions to `transition-[background-color,border-color,box-shadow]`, eliminating the `9999px -> 16px` border-radius snap and padding squish across desktop, tablet, and mobile.
 
 ### Refactored
 - Unified View-Transition Wrapper (`src/app/page.tsx`): Consolidated view presentation containers across Catalog, Bookshelf, Favorites, Bookmarks, and Notebook into a unified dynamic transition wrapper with automatic direction cleanup on animation end.
+- Streamlined Bookmarks Header & Unified Transparent Collection Modals (`src/components/presentation/BookmarksView.tsx`, `src/config/views.config.ts`, `src/components/presentation/NotebookView.tsx`, `src/components/reader/DeleteAnnotationModal.tsx`, `src/app/page.tsx`): Simplified Bookmarks heading from `"Continue Reading & Bookmarks"` to `"Bookmarks"`, and standardized `backdropClassName="bg-transparent backdrop-blur-none"` across all collection confirmation modals.
 
 
 ## [2.5.3] - 2026-09-17
@@ -57,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dynamic Font-Reflow Healing Algorithm (`src/app/read/[id]/page.tsx`): Added runtime AST page text substring scanning (`chapter.pages.findIndex(p => p.includes(ann.selectedText))`) that dynamically corrects target page coordinates whenever the user changes font size or column width between reading sessions.
 - Smart Bookmark Completion Confirmation Modal (`src/components/presentation/BookmarksView.tsx`): Implemented status-change confirmation dialog when selecting "Finished" on any volume below 100% progress, warning the user that their reading ledger will advance to 100%, while bypassing confirmation for already-completed volumes.
 - Single-Bookmark Deletion Confirmation Modal (`src/components/presentation/BookmarksView.tsx`): Added safety confirmation dialog protecting users against accidental bookmark deletions with volume title highlights.
-- Transparent Modal Backdrop Architecture (`src/components/presentation/bookshelf/BookshelfManageModals.tsx`, `src/components/presentation/BookmarksView.tsx`): Replaced dark scrim backdrops across Create Shelf, Rename Shelf, Delete Shelf, and Bookmark modals with transparent non-dimming surfaces (`bg-transparent backdrop-blur-none`).
+- Transparent Modal Backdrop Architecture (`src/components/presentation/bookshelf/BookshelfManageModals.tsx`, `src/components/presentation/BookmarksView.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/reader/DeleteAnnotationModal.tsx`, `src/app/page.tsx`): Standardized collection confirmation and management modals on transparent non-dimming surfaces (`bg-transparent backdrop-blur-none`).
 - Architecture Decision Record (`ADR-045`): Formally ratified literary notebook dynamic font-reflow deep linking, transparent dialog surfaces, and smart reading milestones in `docs/DECISIONS.md`.
 
 ### Fixed

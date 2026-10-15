@@ -364,6 +364,7 @@ describe('NotebookView component', () => {
     // Confirmation modal should appear
     const dialog = screen.getByTestId('delete-reflection-dialog');
     expect(dialog).toBeInTheDocument();
+    expect(screen.getByTestId('modal-backdrop')).toHaveClass('bg-transparent', 'backdrop-blur-none');
     expect(screen.getByText('Delete Personal Reflection?')).toBeInTheDocument();
     expect(screen.getByText(/This will remove only your written personal reflection/i)).toBeInTheDocument();
 
@@ -558,6 +559,7 @@ describe('NotebookView component', () => {
 
     fireEvent.click(screen.getByText('Clear All Notes'));
     expect(screen.getByText('Clear All Saved Notes & Highlights?')).toBeInTheDocument();
+    expect(screen.getByTestId('modal-backdrop')).toHaveClass('bg-transparent', 'backdrop-blur-none');
 
     // Confirm clear
     const confirmBtn = screen.getByRole('button', { name: /Clear Everything/i });

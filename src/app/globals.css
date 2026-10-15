@@ -554,7 +554,7 @@
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -571,7 +571,7 @@
   }
   100% {
     opacity: 1;
-    transform: translateX(0);
+    transform: none;
   }
 }
 
@@ -582,7 +582,7 @@
   }
   100% {
     opacity: 1;
-    transform: translateX(0);
+    transform: none;
   }
 }
 
@@ -603,6 +603,7 @@
   .touch-pan-y .animate-page-turn {
     animation: none !important;
     transform: none !important;
+    will-change: auto !important;
     opacity: 1 !important;
   }
 }
@@ -675,6 +676,7 @@
   .book-turning-leaf {
     animation: none !important;
     transform: none !important;
+    will-change: auto !important;
   }
 }
 

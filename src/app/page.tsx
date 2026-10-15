@@ -754,6 +754,7 @@ function HomeContent() {
         onClose={() => setConfirmClearType(null)}
         title={confirmClearType === 'shelf' ? 'Clear Personal Bookshelf' : 'Clear Favorite Books'}
         maxWidth="md"
+        backdropClassName="bg-transparent backdrop-blur-none"
       >
         <div className="p-6 space-y-5" data-testid="clear-confirmation-dialog">
           <div className="flex items-start gap-3.5">

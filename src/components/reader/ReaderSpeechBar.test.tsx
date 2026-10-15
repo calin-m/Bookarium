@@ -301,19 +301,26 @@ describe('ReaderSpeechBar', () => {
     expect(skipPrev).toHaveBeenCalledTimes(1);
   });
 
-  it('renders expanded card by default and allows manual toggling to minimized mini-pill and back', () => {
+  it('renders expanded card by default and allows manual toggling to minimized mini-pill and back with isolated DOM surfaces', () => {
     render(<ReaderSpeechBar {...defaultProps} />);
 
-    // Default: expanded mode
-    expect(screen.getByTestId('speech-bar-expanded')).toBeInTheDocument();
+    // Default: expanded mode with rounded-2xl and scoped color/shadow transitions (no transition-all corner morphing)
+    const expandedCard = screen.getByTestId('speech-bar-expanded');
+    expect(expandedCard).toBeInTheDocument();
+    expect(expandedCard).toHaveClass('rounded-2xl', 'transition-[background-color,border-color,box-shadow]');
+    expect(expandedCard).not.toHaveClass('transition-all');
     expect(screen.queryByTestId('speech-bar-minimized')).not.toBeInTheDocument();
 
     // Click minimize button
     const minimizeBtn = screen.getByRole('button', { name: 'Minimize narration controls' });
     fireEvent.click(minimizeBtn);
 
-    // Minimized mode is now active
-    expect(screen.getByTestId('speech-bar-minimized')).toBeInTheDocument();
+    // Minimized mode is now active on an isolated DOM node with rounded-full capsule geometry
+    const minimizedPill = screen.getByTestId('speech-bar-minimized');
+    expect(minimizedPill).toBeInTheDocument();
+    expect(minimizedPill).not.toBe(expandedCard);
+    expect(minimizedPill).toHaveClass('rounded-full', 'transition-[background-color,border-color,box-shadow]');
+    expect(minimizedPill).not.toHaveClass('transition-all');
     expect(screen.queryByTestId('speech-bar-expanded')).not.toBeInTheDocument();
 
     // Minimized mode has essential playback controls and expand button

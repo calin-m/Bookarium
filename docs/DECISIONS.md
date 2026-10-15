@@ -136,7 +136,8 @@
   2. **Real-Time Word & Sentence Synchronization**: Bind `onboundary` utterance events to visual highlight ranges, rendering a synchronized karaoke-style reading tracker across paragraph text.
   3. **Auto-Advancing Page Automation**: Synchronize speech completion with virtual page state, automatically flipping to subsequent pages upon paragraph or chapter completion when auto-advance is enabled.
   4. **Hydration & Gesture Safeguards**: Defer speech initialization to client mount to eliminate SSR hydration mismatches, and bind play triggers to explicit user gestures to satisfy mobile browser autoplay policies.
-- **Consequences**: 100% offline-capable, zero-cost audio narration; zero API keys or external server dependencies; seamless synchronization between spoken audio and visual reading coordinates; 100% test coverage with MSW and simulated `SpeechSynthesis` mock suites.
+  5. **Keyed Surface Isolation for Expanded vs. Minimized Controls (`src/components/reader/ReaderSpeechBar.tsx`)**: Render the Expanded Full Card (`key="speech-expanded"`, `rounded-2xl`) and Minimized Mini-Pill (`key="speech-minimized"`, `rounded-full`) as distinct keyed `<motion.div>` surfaces inside `<AnimatePresence initial={false}>`, and scope CSS transitions to `transition-[background-color,border-color,box-shadow] duration-200` rather than `transition-all` so React never reuses the same DOM node or interpolates `border-radius` between `9999px` and `16px`.
+- **Consequences**: 100% offline-capable, zero-cost audio narration; zero API keys or external server dependencies; seamless synchronization between spoken audio and visual reading coordinates; crisp, distortion-free corner geometry when minimizing and expanding the narration bar across desktop, tablet, and mobile; 100% test coverage with MSW and simulated `SpeechSynthesis` mock suites.
 
 ## ADR-019: Commonplace Book, Scholar Annotations & Mobile PWA Manifest
 - **Status**: Accepted
@@ -691,8 +692,9 @@
        - The reader page (`src/app/read/[id]/page.tsx`) never inspected `useSearchParams()`. Navigating to `/read/[id]?chapter=X&page=Y` was completely ignored, causing the session to resume from the reader's last persisted reading position in `useReaderStore`.
        - Annotations stored a static `chapterPage` captured at note-creation time. When users subsequently modified font size or column width, text reflowed across page boundaries, shifting the highlighted quote to earlier or later pages.
        - The reading surface executed an unconditional `scrollTo({ top: 0 })` on page load, preventing targeted excerpts located below the fold from coming into view.
-  2. **Modal Backdrops Visual Heaviness**:
-     - The bookshelf management modals (Create Shelf, Rename Shelf, Delete Shelf) and bookmark modals applied standard darkened scrim overlays that dimmed the background, creating unnecessary visual occlusion.
+  2. **Modal Backdrops Visual Heaviness & Ancestor Transform Containment**:
+     - Collection confirmation modals across Bookshelf Management, Bookmarks, Favorites, and Literary Notebook applied standard darkened scrim overlays that dimmed the background, creating unnecessary visual occlusion.
+     - Additionally, `Modal.tsx` rendered inline within the view component tree rather than portaling to `document.body`, allowing ancestor CSS `transform` or `will-change: opacity, transform` declarations to establish a layout containing block that trapped `position: fixed inset-0` inside the full document scroll height instead of the screen viewport.
   3. **Unprotected Reading Ledger State Mutations**:
      - Deleting bookmarks in `BookmarksView` lacked confirmation, risking accidental loss of reading ledger entries.
      - Changing bookmark status to "Finished" on a volume read only partially (e.g. 45%) immediately and silently altered recorded progress to 100% without user confirmation.
@@ -709,15 +711,17 @@
   2. **Spotlight Centering & Focus Ring Pulse (`src/components/reader/ReaderSurface.tsx`)**:
      - Guarded page-turn `scrollTo({ top: 0 })` with `!targetAnnotationId`.
      - Automatically scrolled the targeted highlight into the vertical center of the viewport via `scrollIntoView({ behavior: 'smooth', block: 'center' })` and applied a temporary 2.5s focus pulse ring (`ring-2 ring-primary ring-offset-2 animate-pulse`).
-  3. **Transparent Non-Dimming Modal Surfaces**:
-     - Configured `backdropClassName="bg-transparent backdrop-blur-none"` across `BookshelfManageModals.tsx` and `BookmarksView.tsx`.
-  4. **Smart Reading Milestones & Deletion Guardrails (`src/components/presentation/BookmarksView.tsx`)**:
+  3. **Portaled Viewport Isolation & Unified Transparent Non-Dimming Modal Surfaces (`src/components/ui/Modal.tsx`)**:
+     - Portaled `Modal.tsx` directly into `document.body` via `createPortal(..., document.body)` with `data-no-swipe`, matching `BookshelfMobileModal.tsx` and `ReaderDrawerShell.tsx` so modal dialogs always center mathematically inside the active screen viewport (`100vw × 100vh`) regardless of scroll depth or ancestor animations.
+     - Standardized `backdropClassName="bg-transparent backdrop-blur-none"` across all collection and confirmation modals (`BookshelfManageModals.tsx`, `BookmarksView.tsx`, `NotebookView.tsx`, `DeleteAnnotationModal.tsx`, and Clear Shelf / Clear Favorites in `src/app/page.tsx`).
+  4. **Smart Reading Milestones, Streamlined Header & Deletion Guardrails (`src/components/presentation/BookmarksView.tsx`, `src/config/views.config.ts`)**:
+     - Streamlined the Bookmarks view header title to `"Bookmarks"` while preserving the descriptive subtitle `"Pick up right where you left off across all your active public domain volumes."`.
      - Implemented single-bookmark deletion confirmation modal.
      - Implemented smart "Mark as Finished" modal that intercepts status transitions when current progress is `< 100%`, informing the user that their reading ledger will advance to 100%, while bypassing confirmation for already-completed volumes.
 - **Consequences**:
   - 100% accurate note navigation regardless of user font size, line height, column width, or viewport dimensions.
   - Zero jarring scroll resets when jumping directly to marginalia notes.
-  - Non-intrusive modal experiences maintaining visual connection with underlying bookshelves.
+  - Guaranteed viewport-centered modal dialogs across mobile, tablet, and desktop at any scroll position, with non-intrusive transparent surfaces maintaining visual connection with underlying collections.
   - Protection against accidental data loss and accidental reading progress overwrite.
 
 ## ADR-046: Mobile Floating Bottom Capsule Dock, Adaptive Bottom Sheet Filters & 2-Column Catalog Density
@@ -908,10 +912,10 @@
   3. **Cross-Route Animation Gap**:
      - Transitioning between the main library page (`/`) and Account (`/account`) performed full Next.js page route changes (`router.push`), losing touch swipe direction state and mounting the destination page statically without horizontal slide transitions.
 - **Decision**:
-  1. **Scoped Mobile Media Query for Zero-Repaint View Transitions (`src/app/globals.css`)**:
+  1. **Scoped Mobile Media Query for Zero-Repaint View Transitions & Clean Containing Blocks (`src/app/globals.css`)**:
      - Removed the fragile descendant suppression rule (`.animate-view-slide-left .animate-page-turn`).
-     - Added `@media (max-width: 767px) { .touch-pan-y .animate-page-turn { animation: none !important; transform: none !important; opacity: 1 !important; } }`.
-     - On mobile touch screens, horizontal slide is now the single motion driver. View content renders at 100% opacity from frame 0 and moves as one solid unit with zero post-slide redraws or upward jumps.
+     - Added `@media (max-width: 767px) { .touch-pan-y .animate-page-turn { animation: none !important; transform: none !important; opacity: 1 !important; will-change: auto !important; } }` (as well as `will-change: auto !important;` in `@media (prefers-reduced-motion: reduce)`), and normalized `100%` keyframes in `pageTurnFade`, `viewSlideInFromRight`, and `viewSlideInFromLeft` to `transform: none;`.
+     - On mobile touch screens, horizontal slide is now the single motion driver. View content renders at 100% opacity from frame 0 and moves as one solid unit with zero post-slide redraws, zero lingering GPU containing blocks, and zero upward jumps.
      - Desktop viewports (`>= 768px`) and the book reader (`/read/[id]`) preserve smooth `pageTurnFade`.
   2. **Continuous Circular Carousel Navigation (`src/hooks/useMobileViewSwipe.ts`)**:
      - Added `wrapAround: true` by default to `MobileViewSwipeConfig`.

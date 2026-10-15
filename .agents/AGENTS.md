@@ -12,10 +12,13 @@ This document establishes immutable engineering rules, governance procedures, an
 - **Deterministic Hook Enforcement:** All file mutations (`write_to_file`, `replace_file_content`) are gated by `.agents/hooks.json` and verified prior to release.
 - **Human Developer Authority:** The human developer retains final authority over all codebase changes, architectural decisions, and terminal command executions.
 
-### Rule 1: Automated Documentation Synchronization
-All architecture diagrams (`docs/ARCHITECTURE.md`), quality reports (`docs/QUALITY_AUDIT_REPORT.md`), and change logs (`CHANGELOG.md`) must be kept in continuous synchronization with the source code.
-- **Trigger:** Synchronize docs via `npm run docs:sync` whenever routes, stores, queries, or components are added, modified, or deleted.
-- **Enforcement:** `npm run verify` runs Pass 4 to automatically re-compile living documentation from source AST.
+### Rule 1: Automated Documentation & Generator Script Co-Evolution
+All architecture diagrams (`docs/ARCHITECTURE.md`), decision records (`docs/DECISIONS.md`), quality reports (`docs/QUALITY_AUDIT_REPORT.md`), roadmaps (`ROADMAP.md`), and change logs (`CHANGELOG.md`) must be kept in continuous synchronization with the source code.
+- **Post-Change Audit Protocol:** Whenever routes, stores, queries, hooks, utilities, or components are added, modified, or deleted, the agent MUST verify and update:
+  1. **Source-of-Truth Documentation:** `docs/DECISIONS.md` (ADRs) and `README.md` (if setup, architecture, or user-facing features changed).
+  2. **Documentation Generator Scripts:** `scripts/generate-changelog.js` (release ledger & `README.md` latest release block), `scripts/generate-architecture-matrix.js` (system topology & descriptions), `scripts/generate-roadmap.js`, and `scripts/generate-parser-docs.js` so that generated outputs never overwrite or drift from the latest changes.
+- **Trigger:** Synchronize all living docs via `npm run docs:sync` after updating any generator scripts or source modules.
+- **Enforcement:** `npm run verify` runs Pass 4 to automatically re-compile living documentation from source AST and generator scripts.
 
 ### Rule 2: Zero-Bloat & AST-Driven Single Source of Truth
 Never manually craft static component matrices, route catalogs, or architectural dependency diagrams that can drift.

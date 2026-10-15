@@ -38,6 +38,7 @@ export const DeleteAnnotationModal: React.FC<DeleteAnnotationModalProps> = ({
       onClose={onClose}
       title={title}
       maxWidth="md"
+      backdropClassName="bg-transparent backdrop-blur-none"
     >
       <div className="p-6 space-y-5" data-testid="delete-single-note-dialog">
         <div className="flex items-start gap-3.5">

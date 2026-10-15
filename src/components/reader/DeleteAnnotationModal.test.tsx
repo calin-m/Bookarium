@@ -20,6 +20,7 @@ describe('DeleteAnnotationModal', () => {
     );
 
     expect(screen.getByTestId('delete-single-note-dialog')).toBeInTheDocument();
+    expect(screen.getByTestId('modal-backdrop')).toHaveClass('bg-transparent', 'backdrop-blur-none');
     expect(screen.getByText('Delete Saved Note & Highlight?')).toBeInTheDocument();
     expect(screen.getByText(/Are you sure you want to delete this saved quote\?/i)).toBeInTheDocument();
     expect(screen.getByText(/Life is what happens/i)).toBeInTheDocument();
