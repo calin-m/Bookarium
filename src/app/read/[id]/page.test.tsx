@@ -5,6 +5,7 @@ import BookReaderPage from './page';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useBookContent } from '@/hooks/queries/useBookContent';
 import { mockBooks } from '@/mocks/handlers';
 
@@ -766,6 +767,44 @@ describe('Dedicated Reader Page (/read/[id])', () => {
       expect(scrollIntoViewMock).toHaveBeenCalled();
     });
   });
+
+  it('displays Literary Symposium milestone dispatch banner and reveals companion progress micro-pill when dismissed', () => {
+    useFellowshipStore.setState({
+      symposiums: [
+        {
+          id: 'symp-1342',
+          book_id: 1342,
+          book_title: 'Pride and Prejudice',
+          host_id: 'me',
+          host_username: 'me_scholar',
+          host_display_name: 'Me Scholar',
+          fellow_id: 'fellow-1',
+          fellow_username: 'clara_v',
+          fellow_display_name: 'Clara Vance',
+          status: 'active',
+          host_progress: 10,
+          host_chapter: 0,
+          fellow_progress: 50,
+          fellow_chapter: 1,
+          created_at: '2026-10-15T10:00:00Z',
+          updated_at: '2026-10-15T10:00:00Z',
+        },
+      ],
+    });
+
+    render(<BookReaderPage />);
+
+    const banner = screen.getByTestId('symposium-milestone-banner');
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent('@clara_v reached Section 2 (50%) in this Symposium');
+
+    fireEvent.click(screen.getByTestId('dismiss-symposium-milestone-btn'));
+    expect(screen.queryByTestId('symposium-milestone-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent('@clara_v: Sec. 2 (50%)');
+
+    useFellowshipStore.getState().clearFellowshipState();
+  });
 });
+
 
 

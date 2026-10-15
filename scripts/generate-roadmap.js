@@ -226,25 +226,75 @@ const ROADMAP_MILESTONES = [
   },
   {
     id: 'm7',
-    title: 'Milestone 7: Community Hub & Collective Reading',
+    title: 'Milestone 7: Reader Circles & Literary Symposiums (Dual Reading)',
     version: 'Target: v2.7.0',
     badge: 'https://img.shields.io/badge/Milestone-v2.7.0-indigo?style=flat-square',
-    description: 'Shared literary agora, community volume reviews, public commonplace quote discussions, and reader circles.',
+    description: 'Intimate scholarly fellowship, mutual Reader Circle connections, per-volume Literary Symposium pacts, resolution-independent shared marginalia, in-context source filtering, and companion reading progress.',
+    features: [
+      {
+        title: 'Reader Circles & Fellow Scholar Invitations (`public.reader_circles`)',
+        description: 'Persistent two-way fellowship connections ("Invite to Reader Circle" on `/u/[username]` and `/account`), accept/decline handshakes, and zero-PII `@username` discovery backed by idempotent Supabase PostgreSQL RLS (`useFellowshipStore.ts`).',
+        check: () =>
+          fileContains('supabase/schema.sql', 'CREATE TABLE IF NOT EXISTS public.reader_circles') &&
+          fileExists('src/stores/useFellowshipStore.ts'),
+      },
+      {
+        title: 'Literary Symposium Sessions, Per-Volume Pacts & Two-Tier Account Hub (`public.symposium_sessions`)',
+        description: 'Per-book Symposium invitations ("Invite Fellow to Symposium"), active shared reading sessions scoped to specific volumes (`book_id`), and Two-Tier Account Sub-Tab management (`AccountSymposiumSection.tsx` & `SymposiumInviteModal.tsx`).',
+        check: () =>
+          fileContains('supabase/schema.sql', 'CREATE TABLE IF NOT EXISTS public.symposium_sessions') &&
+          (fileExists('src/components/symposium/SymposiumInviteModal.tsx') ||
+            fileExists('src/components/account/AccountSymposiumSection.tsx')),
+      },
+      {
+        title: 'Shared Symposium Marginalia, Source Filters & Spoiler Guard',
+        description: 'Resolution-independent rendering of Fellows\' Marginalia in `ReaderSurface.tsx` (dashed archival underlines, monogram badges, and overlapping highlight preservation), read-only scholar attribution popovers in `TextHighlightPopover.tsx`, isolated `fellowAnnotations` state in `useAnnotationStore.ts`, chapter-bound Spoiler Guard (Up to My Chapter vs. All Chapters), and progressive-disclosure `All Marginalia | My Marginalia | Fellows\' Marginalia` filter pills across `ReaderAnnotationsDrawer.tsx` and `NotebookView.tsx`.',
+        check: () =>
+          fileContains('src/stores/useAnnotationStore.ts', 'fellowAnnotations') &&
+          fileContains('src/components/presentation/NotebookView.tsx', 'fellow') &&
+          fileContains('src/components/reader/ReaderAnnotationsDrawer.tsx', 'fellow'),
+      },
+      {
+        title: 'Companion Progress Telemetry & Chapter-Milestone Dispatches',
+        description: 'Synchronized per-volume reading coordinates between Symposium companions, featuring a toggleable companion progress micro-pill (`@username • X%`) and non-intrusive chapter-milestone sub-header dispatches in `ReaderSubHeaderRibbon.tsx`.',
+        check: () =>
+          fileContains('src/components/reader/ReaderSubHeaderRibbon.tsx', 'symposium') ||
+          fileContains('src/components/reader/ReaderSubHeaderRibbon.tsx', 'fellow'),
+      },
+      {
+        title: 'Symposium Ex-Libris Accolade (`Societas Litterarum`)',
+        description: 'Deterministic Ex-Libris bookplate in `src/config/accolades-config.ts` (Symposium Companion — "Societas Litterarum") unlocked by participating in or completing a shared Literary Symposium volume.',
+        check: () => fileContains('src/config/accolades-config.ts', 'symposium-companion'),
+      },
+    ],
+  },
+  {
+    id: 'm8',
+    title: 'Milestone 8: Community Hub & Public Literary Agora',
+    version: 'Target: v2.8.0',
+    badge: 'https://img.shields.io/badge/Milestone-v2.8.0-violet?style=flat-square',
+    description: 'Open literary agora, public volume discussions, community-wide reading challenges, and curated commonplace quote showcases.',
     features: [
       {
         title: 'Bookarium Community Hub (`/?view=community`)',
-        description: 'Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics.',
-        check: () => fileExists('src/components/presentation/CommunityView.tsx') || fileContains('src/config/routes.ts', 'community'),
+        description: 'Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics across the scholar network.',
+        check: () =>
+          fileExists('src/components/presentation/CommunityView.tsx') ||
+          fileContains('src/config/routes.ts', 'community'),
       },
       {
-        title: 'Public Book Discussions & Margin Notes',
-        description: 'Reader commentary and reviews on individual book volumes with opt-in publishing of quote highlights from the Commonplace Notebook.',
-        check: () => fileExists('src/components/community/BookDiscussionThread.tsx') || fileExists('src/components/community/SharedQuoteCard.tsx'),
+        title: 'Public Volume Discussions & Shared Commonplace Quotes',
+        description: 'Reader commentary and scholarly reviews on individual book volumes with opt-in public publishing of highlighted excerpts from the Commonplace Notebook.',
+        check: () =>
+          fileExists('src/components/community/BookDiscussionThread.tsx') ||
+          fileExists('src/components/community/SharedQuoteCard.tsx'),
       },
       {
-        title: 'Reader Circles & Social Activity Stream',
-        description: 'Follow fellow public readers, see what friends are currently reading in real-time, and celebrate shared milestone completions.',
-        check: () => fileExists('src/stores/useCommunityStore.ts') || fileContains('src/types/database.types.ts', 'community_follows'),
+        title: 'Community Reading Challenges & Seasonal Anthologies',
+        description: 'Collective seasonal reading events (e.g., Gothic Autumn, Antiquity Odyssey) with shared community progress meters and commemorative participation badges.',
+        check: () =>
+          fileExists('src/components/community/CommunityChallengeCard.tsx') ||
+          fileExists('src/stores/useCommunityStore.ts'),
       },
     ],
   },

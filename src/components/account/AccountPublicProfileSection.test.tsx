@@ -223,4 +223,21 @@ describe('AccountPublicProfileSection', () => {
       );
     });
   });
+
+  it('switches between Identity & Bio and Sanctuary & Privacy sub-tabs', () => {
+    render(<AccountPublicProfileSection user={mockUser} profile={mockProfile} />);
+
+    const identityTab = screen.getByRole('tab', { name: /Identity & Bio/i });
+    const privacyTab = screen.getByRole('tab', { name: /Sanctuary & Privacy/i });
+
+    expect(identityTab).toHaveAttribute('aria-selected', 'true');
+    expect(document.getElementById('profile-subpanel-identity')).not.toHaveClass('hidden');
+    expect(document.getElementById('profile-subpanel-privacy')).toHaveClass('hidden');
+
+    fireEvent.click(privacyTab);
+    expect(privacyTab).toHaveAttribute('aria-selected', 'true');
+    expect(document.getElementById('profile-subpanel-privacy')).not.toHaveClass('hidden');
+    expect(document.getElementById('profile-subpanel-identity')).toHaveClass('hidden');
+  });
 });
+

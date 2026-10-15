@@ -80,6 +80,7 @@ export interface BuildAccoladeContextParams {
   savedBooks?: GutendexBook[];
   bookStatuses?: Record<number, ReadingStatus>;
   annotations?: Annotation[];
+  completedSymposiumsCount?: number;
   existingUnlockedIds?: string[];
 }
 
@@ -87,7 +88,14 @@ export interface BuildAccoladeContextParams {
  * Builds a unified AccoladeEvaluationContext from store slices.
  */
 export function buildAccoladeContext(params: BuildAccoladeContextParams): AccoladeEvaluationContext {
-  const { habits, savedBooks = [], bookStatuses = {}, annotations = [], existingUnlockedIds = [] } = params;
+  const {
+    habits,
+    savedBooks = [],
+    bookStatuses = {},
+    annotations = [],
+    completedSymposiumsCount = 0,
+    existingUnlockedIds = [],
+  } = params;
 
   // Identify completed books
   const completedBooks = savedBooks.filter((book) => bookStatuses[book.id] === 'finished');
@@ -127,6 +135,7 @@ export function buildAccoladeContext(params: BuildAccoladeContextParams): Accola
     hasCompletedAncientBook: hasAncient,
     totalAnnotationsCount: annotations.length,
     highlightColorsUsed: colorsUsed,
+    completedSymposiumsCount,
     existingUnlockedIds,
   };
 }

@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-175%20Suites%20%7C%201671%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.04%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-178%20Suites%20%7C%201696%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.51%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -40,13 +40,12 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.5.4)
+## 🛠️ Latest Improvements (v2.7.0)
 
-- **Hardware-Accelerated Mobile Dock Auto-Fade (`src/components/presentation/StickyCatalogToolbar.tsx`)**: Integrated scroll inactivity auto-fade transitioning the floating mobile catalog capsule dock to `opacity-0 pointer-events-none` after 1,400ms of inactivity, waking instantly (<180ms) upon scrolling, touching, or hovering.
-- **Directional View Slide Transitions (`src/app/globals.css`, `src/app/page.tsx`)**: Built 220ms hardware-accelerated slide-in transitions (`animate-view-slide-left` from right on forward swipe, `animate-view-slide-right` from left on backward swipe), with clean fallback to grounded Booksaw vertical fade (`animate-page-turn`) on manual tab taps and full `@media (prefers-reduced-motion: reduce)` accessibility support.
-- **Biomechanical Touch-Swipe Ergonomics (`src/hooks/useMobileViewSwipe.ts`)**: Relaxed `dominanceRatio` from 1.8 to 1.25 to natively support natural human thumb arcs (up to 38.6°), extended `maxDurationMs` from 500ms to 650ms for deliberate swipes, lowered `minDistancePx` from 50px to 40px for responsive flicks, and added `lastSwipeDirection` state with `onSwipeDirection` callbacks.
-- **Unified View-Transition Wrapper (`src/app/page.tsx`)**: Consolidated view presentation containers across Catalog, Bookshelf, Favorites, Bookmarks, and Notebook into a unified dynamic transition wrapper with automatic direction cleanup on animation end.
-- **Streamlined Bookmarks Header & Unified Transparent Collection Modals (`src/components/presentation/BookmarksView.tsx`, `src/config/views.config.ts`, `src/components/presentation/NotebookView.tsx`, `src/components/reader/DeleteAnnotationModal.tsx`, `src/app/page.tsx`)**: Simplified Bookmarks heading from `"Continue Reading & Bookmarks"` to `"Bookmarks"`, and standardized `backdropClassName="bg-transparent backdrop-blur-none"` across all collection confirmation modals.
+- **Two-Tier Account Workspace Architecture (`src/app/account/page.tsx`, `ADR-055`)**: Redesigned `/account` with a top-level mode switch between **Reading Studio** (Habits & Streaks, Ex-Libris Accolades, Public Profile, Reader Circles & Symposiums) and **Account & System** (Preferences, Security, Data Portability & Danger Zone), plus URL `?tab=` deep-linking and scroll-aware compact sub-tab transitions on mobile (`< 768px`).
+- **Reader Circles & Literary Symposiums Schema (`supabase/schema.sql`, `src/types/database.types.ts`, `src/stores/useFellowshipStore.ts`)**: Provisioned idempotent `public.reader_circles` and `public.symposium_sessions` tables with strict RLS participant isolation, `lookup_scholar_by_username` RPC, and scoped `user_annotations` RLS policy allowing Literary Fellows in active symposiums to view shared marginalia.
+- **Symposium Invitations & Fellowship Hub (`src/components/account/AccountSymposiumSection.tsx`, `src/components/symposium/SymposiumInviteModal.tsx`, `src/components/profile/PublicProfileView.tsx`, `src/components/presentation/BookmarkCard.tsx`)**: Added Literary Fellowship invitations by `@username` or direct `/u/[username]` profile CTA, active symposium progress cards, and 1-click "Read with a Fellow" symposium invitations.
+- **Dedicated Public Profile Tab Extraction (`src/components/account/AccountIdentityCard.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/components/account/AccountPreferencesSection.tsx`)**: Extracted Public Scholar Profile controls into a dedicated studio sub-tab and relocated Territorial Copyright Jurisdiction settings into Account Preferences.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -485,10 +484,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 | `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status classification. |
 | `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, and dual immersion duration (reading & listening). |
 | `public.user_accolades` | Table (RLS) | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
+| `public.reader_circles` | Table (RLS) | Persistent two-way Fellow Scholar connections (`pending` / `accepted`) with `ON DELETE CASCADE` and strict participant-only RLS policies. |
+| `public.symposium_sessions` | Table (RLS) | Per-volume Literary Symposium reading pacts (`pending`, `active`, `completed`) with synchronized chapter/progress coordinates and participant-only RLS. |
 | `public.books` | Table (RLS) | High-performance self-hosted public domain catalog with GIN full-text search (`search_vector`), indexed languages, subjects, download metrics, pre-computed author lifespan bounds (`max_author_death_year`, `min_author_birth_year`) for sub-50ms single-book copyright resolution and ~1–2s catalog searches, optional full plain-text caching (`content`) for instant reader streaming, and public read RLS (`FOR SELECT USING (true)`). |
 | `public.book_translations` | Table (RLS) | Relational routing junction table linking Project Gutenberg volumes to canonical literary works and multi-language translations (FRBR model). Microscopic footprint (< 2.5 MB for 75,000 books), zero text duplication, foreign key cascading on book deletion, and public read RLS (`FOR SELECT USING (true)`). |
 | `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
 | `public.delete_current_user()` | RPC Function | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable `search_path`). |
+| `public.lookup_scholar_by_username()` | RPC Function | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`is_public = false`). |
 | `public.books_search_vector_trigger()` | Trigger | Automatically maintains `search_vector` on book insert/update (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
 
 ### Step 3: Populate Public Domain Book Catalog (Optional)
@@ -640,13 +642,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1671 tests across 175 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1696 tests across 178 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 40 validated ADRs (ADR-001 through ADR-040) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, and autonomous full-catalog Gutenberg ingestion. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 55 validated ADRs (ADR-001 through ADR-055) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, and Reader Circles & Literary Symposiums (Dual Reading). | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

@@ -82,5 +82,21 @@ describe('computeAnnotationSpans', () => {
     expect(spans[1].start).toBe(13);
     expect(spans[1].end).toBe(18);
   });
+
+  it('preserves both selfAnnotation and fellowAnnotation when overlapping', () => {
+    const text = 'It is a truth universally acknowledged';
+    const selfAnn = createAnnotation('self-1', 'truth universally');
+    const fellowAnn = {
+      ...createAnnotation('fellow-1', 'truth universally acknowledged'),
+      isFellow: true as const,
+      fellowUsername: 'jane_austen',
+    };
+
+    const spans = computeAnnotationSpans(text, [selfAnn, fellowAnn]);
+    expect(spans).toHaveLength(1);
+    expect(spans[0].selfAnnotation?.id).toBe('self-1');
+    expect(spans[0].fellowAnnotation?.id).toBe('fellow-1');
+    expect(spans[0].fellowAnnotation?.fellowUsername).toBe('jane_austen');
+  });
 });
 

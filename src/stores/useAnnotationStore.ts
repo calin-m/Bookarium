@@ -7,6 +7,7 @@ import { cleanBookTitle, isPlaceholderTitle, isPlaceholderAuthor } from '@/lib/b
 import { formatAuthorNames } from '@/lib/utils';
 
 export type HighlightColor = 'yellow' | 'amber' | 'mint' | 'rose';
+export type MarginaliaSourceFilter = 'all' | 'mine' | 'fellows';
 
 export interface Annotation {
   id: string;
@@ -24,6 +25,12 @@ export interface Annotation {
   updatedAt: string;
 }
 
+export interface FellowAnnotation extends Annotation {
+  isFellow: true;
+  fellowUsername: string;
+  fellowDisplayName?: string;
+}
+
 export interface AnnotationOutboxAction {
   id: string;
   type: 'UPSERT_ANNOTATION' | 'DELETE_ANNOTATION';
@@ -36,9 +43,21 @@ export const MAX_ANNOTATION_NOTE_LENGTH = 2000;
 
 export interface AnnotationState {
   annotations: Annotation[];
+  fellowAnnotations: FellowAnnotation[];
+  marginaliaSourceFilter: MarginaliaSourceFilter;
+  spoilerShieldEnabled: boolean;
   outbox: AnnotationOutboxAction[];
   tombstones: string[];
   isSyncing: boolean;
+
+  setMarginaliaSourceFilter: (filter: MarginaliaSourceFilter) => void;
+  setSpoilerShieldEnabled: (enabled: boolean) => void;
+  fetchFellowAnnotationsForBook: (
+    bookId: number,
+    currentUserId?: string,
+    fellowScholarsMap?: Record<string, { username: string; display_name?: string | null }>
+  ) => Promise<FellowAnnotation[]>;
+  getFellowAnnotationsForBook: (bookId: number) => FellowAnnotation[];
 
   queueOutboxAction: (action: Omit<AnnotationOutboxAction, 'id' | 'timestamp'>) => void;
   flushOutbox: (userId: string) => Promise<void>;
@@ -103,9 +122,69 @@ export const useAnnotationStore = create<AnnotationState>()(
   persist(
     (set, get) => ({
       annotations: [],
+      fellowAnnotations: [],
+      marginaliaSourceFilter: 'all',
+      spoilerShieldEnabled: true,
       outbox: [],
       tombstones: [],
       isSyncing: false,
+
+      setMarginaliaSourceFilter: (filter) => {
+        set({ marginaliaSourceFilter: filter });
+      },
+
+      setSpoilerShieldEnabled: (enabled) => {
+        set({ spoilerShieldEnabled: enabled });
+      },
+
+      getFellowAnnotationsForBook: (bookId) => {
+        return get().fellowAnnotations.filter((a) => a.bookId === bookId);
+      },
+
+      fetchFellowAnnotationsForBook: async (bookId, currentUserId, fellowScholarsMap) => {
+        if (!currentUserId || !bookId) return [];
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase
+            .from('user_annotations')
+            .select('*')
+            .eq('book_id', bookId)
+            .neq('user_id', currentUserId)
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          const mapped: FellowAnnotation[] = (data || []).map((row: any) => {
+            const fellowInfo = fellowScholarsMap?.[row.user_id];
+            return {
+              id: row.id,
+              userId: row.user_id,
+              bookId: row.book_id,
+              chapterIndex: row.chapter_index,
+              chapterPage: row.chapter_page,
+              selectedText: row.selected_text,
+              color: (row.color as HighlightColor) || 'amber',
+              note: row.note || undefined,
+              createdAt: row.created_at,
+              updatedAt: row.updated_at,
+              isFellow: true,
+              fellowUsername: fellowInfo?.username || 'fellow_scholar',
+              fellowDisplayName: fellowInfo?.display_name || undefined,
+            };
+          });
+
+          set((state) => ({
+            fellowAnnotations: [
+              ...state.fellowAnnotations.filter((fa) => fa.bookId !== bookId),
+              ...mapped,
+            ],
+          }));
+
+          return mapped;
+        } catch {
+          return get().fellowAnnotations.filter((fa) => fa.bookId === bookId);
+        }
+      },
 
       queueOutboxAction: (action) => {
         const item: AnnotationOutboxAction = {
@@ -461,7 +540,14 @@ export const useAnnotationStore = create<AnnotationState>()(
       },
 
       clearAllAnnotations: () => {
-        set({ annotations: [], outbox: [], tombstones: [] });
+        set({
+          annotations: [],
+          fellowAnnotations: [],
+          marginaliaSourceFilter: 'all',
+          spoilerShieldEnabled: true,
+          outbox: [],
+          tombstones: [],
+        });
       },
     }),
     {
@@ -477,7 +563,14 @@ export const useAnnotationStore = create<AnnotationState>()(
 export function useHydratedAnnotations() {
   const hasMounted = useHasMounted();
   const annotations = useAnnotationStore((s) => s.annotations);
+  const fellowAnnotations = useAnnotationStore((s) => s.fellowAnnotations);
+  const marginaliaSourceFilter = useAnnotationStore((s) => s.marginaliaSourceFilter);
+  const spoilerShieldEnabled = useAnnotationStore((s) => s.spoilerShieldEnabled);
   const isSyncing = useAnnotationStore((s) => s.isSyncing);
+  const setMarginaliaSourceFilter = useAnnotationStore((s) => s.setMarginaliaSourceFilter);
+  const setSpoilerShieldEnabled = useAnnotationStore((s) => s.setSpoilerShieldEnabled);
+  const fetchFellowAnnotationsForBook = useAnnotationStore((s) => s.fetchFellowAnnotationsForBook);
+  const getFellowAnnotationsForBook = useAnnotationStore((s) => s.getFellowAnnotationsForBook);
   const addAnnotation = useAnnotationStore((s) => s.addAnnotation);
   const updateAnnotationColor = useAnnotationStore((s) => s.updateAnnotationColor);
   const updateAnnotationNote = useAnnotationStore((s) => s.updateAnnotationNote);
@@ -491,7 +584,14 @@ export function useHydratedAnnotations() {
   return {
     hasMounted,
     annotations: hasMounted ? annotations : [],
+    fellowAnnotations: hasMounted ? fellowAnnotations : [],
+    marginaliaSourceFilter: hasMounted ? marginaliaSourceFilter : ('all' as MarginaliaSourceFilter),
+    spoilerShieldEnabled: hasMounted ? spoilerShieldEnabled : true,
     isSyncing: hasMounted ? isSyncing : false,
+    setMarginaliaSourceFilter,
+    setSpoilerShieldEnabled,
+    fetchFellowAnnotationsForBook,
+    getFellowAnnotationsForBook,
     addAnnotation,
     updateAnnotationColor,
     updateAnnotationNote,

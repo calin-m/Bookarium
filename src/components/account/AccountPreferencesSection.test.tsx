@@ -276,6 +276,26 @@ describe('AccountPreferencesSection', () => {
       const jsonResult = exportLibraryData('json');
       expect(jsonResult).toBeUndefined();
     });
+
+    it('switches between Appearance & Scroll, Read-Aloud Studio, and Backup & Restore sub-tabs', () => {
+      render(<AccountPreferencesSection {...defaultProps} />);
+
+      const appearanceTab = screen.getByRole('tab', { name: /Appearance & Scroll/i });
+      const narrationTab = screen.getByRole('tab', { name: /Read-Aloud Studio/i });
+      const backupTab = screen.getByRole('tab', { name: /Backup & Restore/i });
+
+      expect(appearanceTab).toHaveAttribute('aria-selected', 'true');
+      expect(document.getElementById('preferences-subpanel-appearance')).not.toHaveClass('hidden');
+
+      fireEvent.click(narrationTab);
+      expect(narrationTab).toHaveAttribute('aria-selected', 'true');
+      expect(document.getElementById('preferences-subpanel-narration')).not.toHaveClass('hidden');
+
+      fireEvent.click(backupTab);
+      expect(backupTab).toHaveAttribute('aria-selected', 'true');
+      expect(document.getElementById('preferences-subpanel-portability')).not.toHaveClass('hidden');
+    });
   });
 });
+
 

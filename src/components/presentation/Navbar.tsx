@@ -9,6 +9,7 @@ import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
@@ -143,7 +144,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Link
               href={ROUTES.ACCOUNT}
               title="User Account"
-              className={`h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
+              className={`relative h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
                 activeView === 'account'
                   ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
                   : 'border-border bg-card hover:border-primary text-foreground'
@@ -152,6 +153,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <UserIcon className="w-3.5 h-3.5 text-primary shrink-0" />
               <span className="hidden lg:inline font-mono">Account</span>
+              {useFellowshipStore.getState().getPendingInviteCount(user.id) > 0 && (
+                <span
+                  data-testid="navbar-fellowship-dot"
+                  className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary"
+                  aria-label="Pending Reader Circle or Symposium invitations"
+                />
+              )}
             </Link>
           ) : (
             <Button

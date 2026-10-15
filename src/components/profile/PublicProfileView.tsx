@@ -13,11 +13,16 @@ import {
   Library,
   BookMarked,
   Shield,
+  Users,
+  Handshake,
 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { Button } from '@/components/ui/Button';
 import { PrivateProfileNotice } from '@/components/profile/PrivateProfileNotice';
 import { PinnedAccoladesShelf, type PinnedBookplateItem } from '@/components/profile/PinnedAccoladesShelf';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
+import { SymposiumInviteModal } from '@/components/symposium/SymposiumInviteModal';
 
 export interface PublicScholarProfile {
   id: string;
@@ -69,11 +74,32 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   bookshelves = [],
 }) => {
   const [copiedLink, setCopiedLink] = useState(false);
+  const [circleSent, setCircleSent] = useState(false);
+  const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
+
+  const user = useAuthStore((s) => s.user);
+  const circles = useFellowshipStore((s) => s.circles);
+  const inviteFellowByUsername = useFellowshipStore((s) => s.inviteFellowByUsername);
 
   // Strict Opt-In Protection: If not public, render classical Private Sanctuary
   if (!profile.is_public) {
     return <PrivateProfileNotice username={profile.username || undefined} />;
   }
+
+  const isOtherAuthenticatedScholar = Boolean(user && user.id !== profile.id && profile.username);
+  const existingCircle = circles.find(
+    (c) =>
+      (c.requester_id === profile.id || c.recipient_id === profile.id) &&
+      (c.status === 'accepted' || c.status === 'pending')
+  );
+
+  const handleInviteCircle = async () => {
+    if (!profile.username) return;
+    const res = await inviteFellowByUsername(profile.username);
+    if (!res.error) {
+      setCircleSent(true);
+    }
+  };
 
   // Safe zero-PII display name resolution (never display an email)
   const displayName = profile.display_name?.trim() || (profile.username ? `@${profile.username}` : 'Bookarium Scholar');
@@ -163,8 +189,47 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
             </div>
           </div>
 
-          {/* Share Profile Button */}
-          <div className="flex items-center gap-3 shrink-0 self-start md:self-center">
+          {/* Share & Fellowship Actions */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start md:self-center">
+            {isOtherAuthenticatedScholar && (
+              <>
+                {existingCircle?.status === 'accepted' ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsSymposiumModalOpen(true)}
+                    data-testid="public-profile-start-symposium-btn"
+                    className="font-mono text-xs uppercase flex items-center gap-1.5"
+                  >
+                    <Handshake className="w-3.5 h-3.5" />
+                    <span>Start Symposium</span>
+                  </Button>
+                ) : existingCircle?.status === 'pending' || circleSent ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled
+                    data-testid="public-profile-circle-pending-btn"
+                    className="font-mono text-xs uppercase flex items-center gap-1.5 opacity-75"
+                  >
+                    <Check className="w-3.5 h-3.5 text-success" />
+                    <span>Invitation Pending</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleInviteCircle}
+                    data-testid="public-profile-invite-circle-btn"
+                    className="font-mono text-xs uppercase flex items-center gap-1.5"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Invite to Reader Circle</span>
+                  </Button>
+                )}
+              </>
+            )}
+
             <Button
               variant="outline"
               size="sm"
@@ -196,6 +261,18 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
           </div>
         )}
       </header>
+
+      {isSymposiumModalOpen && profile.username && (
+        <SymposiumInviteModal
+          isOpen={isSymposiumModalOpen}
+          onClose={() => setIsSymposiumModalOpen(false)}
+          preselectedFellow={{
+            fellowId: profile.id,
+            username: profile.username,
+            displayName: profile.display_name || profile.username,
+          }}
+        />
+      )}
 
       {/* Reading Telemetry & Milestone Progress (Controlled by Privacy Toggles) */}
       {hasTelemetry && (

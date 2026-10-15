@@ -2,16 +2,16 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.5.4-teal?style=flat-square)](CHANGELOG.md)
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-86%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-24_of_28-blue?style=flat-square)](ROADMAP.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.7.0-teal?style=flat-square)](CHANGELOG.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-88%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-29_of_33-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[█████████████████░░░]` **24/28 (86%)**
+`[██████████████████░░]` **29/33 (88%)**
 
 ---
 
@@ -123,17 +123,35 @@
 
 ---
 
-### Milestone 7: Community Hub & Collective Reading (`Target: v2.7.0`)
+### Milestone 7: Reader Circles & Literary Symposiums (Dual Reading) (`Target: v2.7.0`)
+`[████████████████████]` **5/5 (100%)**
+
+> Intimate scholarly fellowship, mutual Reader Circle connections, per-volume Literary Symposium pacts, resolution-independent shared marginalia, in-context source filtering, and companion reading progress.
+
+- [x] **Reader Circles & Fellow Scholar Invitations (`public.reader_circles`)** `✅ VERIFIED`
+  Persistent two-way fellowship connections ("Invite to Reader Circle" on `/u/[username]` and `/account`), accept/decline handshakes, and zero-PII `@username` discovery backed by idempotent Supabase PostgreSQL RLS (`useFellowshipStore.ts`).
+- [x] **Literary Symposium Sessions, Per-Volume Pacts & Two-Tier Account Hub (`public.symposium_sessions`)** `✅ VERIFIED`
+  Per-book Symposium invitations ("Invite Fellow to Symposium"), active shared reading sessions scoped to specific volumes (`book_id`), and Two-Tier Account Sub-Tab management (`AccountSymposiumSection.tsx` & `SymposiumInviteModal.tsx`).
+- [x] **Shared Symposium Marginalia, Source Filters & Spoiler Guard** `✅ VERIFIED`
+  Resolution-independent rendering of Fellows' Marginalia in `ReaderSurface.tsx` (dashed archival underlines, monogram badges, and overlapping highlight preservation), read-only scholar attribution popovers in `TextHighlightPopover.tsx`, isolated `fellowAnnotations` state in `useAnnotationStore.ts`, chapter-bound Spoiler Guard (Up to My Chapter vs. All Chapters), and progressive-disclosure `All Marginalia | My Marginalia | Fellows' Marginalia` filter pills across `ReaderAnnotationsDrawer.tsx` and `NotebookView.tsx`.
+- [x] **Companion Progress Telemetry & Chapter-Milestone Dispatches** `✅ VERIFIED`
+  Synchronized per-volume reading coordinates between Symposium companions, featuring a toggleable companion progress micro-pill (`@username • X%`) and non-intrusive chapter-milestone sub-header dispatches in `ReaderSubHeaderRibbon.tsx`.
+- [x] **Symposium Ex-Libris Accolade (`Societas Litterarum`)** `✅ VERIFIED`
+  Deterministic Ex-Libris bookplate in `src/config/accolades-config.ts` (Symposium Companion — "Societas Litterarum") unlocked by participating in or completing a shared Literary Symposium volume.
+
+---
+
+### Milestone 8: Community Hub & Public Literary Agora (`Target: v2.8.0`)
 `[░░░░░░░░░░░░░░░░░░░░]` **0/3 (0%)**
 
-> Shared literary agora, community volume reviews, public commonplace quote discussions, and reader circles.
+> Open literary agora, public volume discussions, community-wide reading challenges, and curated commonplace quote showcases.
 
 - [ ] **Bookarium Community Hub (`/?view=community`)** `⏳ PLANNED`
-  Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics.
-- [ ] **Public Book Discussions & Margin Notes** `⏳ PLANNED`
-  Reader commentary and reviews on individual book volumes with opt-in publishing of quote highlights from the Commonplace Notebook.
-- [ ] **Reader Circles & Social Activity Stream** `⏳ PLANNED`
-  Follow fellow public readers, see what friends are currently reading in real-time, and celebrate shared milestone completions.
+  Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics across the scholar network.
+- [ ] **Public Volume Discussions & Shared Commonplace Quotes** `⏳ PLANNED`
+  Reader commentary and scholarly reviews on individual book volumes with opt-in public publishing of highlighted excerpts from the Commonplace Notebook.
+- [ ] **Community Reading Challenges & Seasonal Anthologies** `⏳ PLANNED`
+  Collective seasonal reading events (e.g., Gothic Autumn, Antiquity Odyssey) with shared community progress meters and commemorative participation badges.
 
 ---
 

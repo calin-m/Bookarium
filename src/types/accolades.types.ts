@@ -13,6 +13,7 @@ export type AccoladeId =
   | 'century-voyager'
   | 'commonplace-scholar'
   | 'palette-virtuoso'
+  | 'symposium-companion'
   | 'bibliophile-novice'
   | 'canonical-scholar'
   | 'master-of-the-canon'
@@ -34,6 +35,7 @@ export interface AccoladeEvaluationContext {
   hasCompletedAncientBook?: boolean;
   totalAnnotationsCount?: number;
   highlightColorsUsed?: string[];
+  completedSymposiumsCount?: number;
   existingUnlockedIds?: string[];
 }
 

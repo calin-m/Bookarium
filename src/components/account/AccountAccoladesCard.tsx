@@ -11,6 +11,7 @@ import {
 import { useHydratedHabits } from '@/stores/useHabitsStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
+import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { buildAccoladeContext, evaluateAccolades } from '@/lib/accolades-engine';
 import { ExLibrisBookplate } from '@/components/accolades/ExLibrisBookplate';
 import { AccoladeCelebrationModal } from '@/components/accolades/AccoladeCelebrationModal';
@@ -35,8 +36,17 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
   const habits = useHydratedHabits();
   const bookshelf = useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
+  const { symposiums } = useHydratedFellowship();
 
-  // Evaluate accolades deterministically when habits, bookshelf, or annotations change
+  const completedSymposiumsCount = useMemo(
+    () =>
+      symposiums.filter(
+        (s) => s.status === 'completed' || (s.host_progress >= 100 && s.fellow_progress >= 100)
+      ).length,
+    [symposiums]
+  );
+
+  // Evaluate accolades deterministically when habits, bookshelf, annotations, or symposiums change
   useEffect(() => {
     if (!isHydrated) return;
 
@@ -55,6 +65,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
       savedBooks: bookshelf.savedBooks,
       bookStatuses: bookshelf.bookStatuses,
       annotations,
+      completedSymposiumsCount,
       existingUnlockedIds: Object.keys(unlockedAccolades),
     });
 
@@ -68,6 +79,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
     bookshelf.savedBooks,
     bookshelf.bookStatuses,
     annotations,
+    completedSymposiumsCount,
     evaluateAndUnlock,
     habits,
     unlockedAccolades,
@@ -97,11 +109,12 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
       savedBooks: bookshelf.savedBooks,
       bookStatuses: bookshelf.bookStatuses,
       annotations,
+      completedSymposiumsCount,
       existingUnlockedIds: Object.keys(unlockedAccolades),
     });
 
     return evaluateAccolades(context, ACCOLADES_CATALOG, unlockedAccolades).progressMap;
-  }, [habits, bookshelf, annotations, unlockedAccolades]);
+  }, [habits, bookshelf, annotations, completedSymposiumsCount, unlockedAccolades]);
 
   // Pinned definitions for the showcase
   const pinnedDefinitions = useMemo(() => {

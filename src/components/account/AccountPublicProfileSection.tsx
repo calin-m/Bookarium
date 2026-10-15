@@ -17,6 +17,7 @@ import {
   Bookmark,
   AtSign,
   Sparkles,
+  User as UserIcon,
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/database.types';
@@ -40,6 +41,8 @@ export interface AccountPublicProfileSectionProps {
   }) => Promise<{ error: Error | null }>;
 }
 
+type ProfileSubTabId = 'identity' | 'privacy';
+
 export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionProps> = ({
   profile,
   onUpdateProfile,
@@ -47,6 +50,7 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
   const defaultUpdateProfile = useAuthStore((s) => s.updateProfile);
   const updateFn = onUpdateProfile || defaultUpdateProfile;
 
+  const [activeSubTab, setActiveSubTab] = useState<ProfileSubTabId>('identity');
   const [username, setUsername] = useState(profile?.username || '');
   const [bio, setBio] = useState(profile?.bio || '');
   const [isPublic, setIsPublic] = useState(profile?.is_public ?? false);
@@ -96,6 +100,7 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
     const trimmedUsername = username.trim();
     if (isPublic && !trimmedUsername) {
       setUsernameError('A username is required to publish your scholar profile.');
+      setActiveSubTab('identity');
       return;
     }
 
@@ -103,6 +108,7 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
       const res = validateUsername(trimmedUsername);
       if (!res.isValid) {
         setUsernameError(res.error);
+        setActiveSubTab('identity');
         return;
       }
     }
@@ -149,8 +155,8 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
       aria-label="Public Scholar Profile Settings"
       className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6"
     >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
+      {/* Header & Focused Sub-Tab Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-xs">
@@ -159,251 +165,302 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
             <h2 className="text-xl font-serif font-bold text-foreground">
               Public Scholar Profile
             </h2>
+            {isPublic ? (
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-success/20">
+                <Eye className="w-3 h-3" />
+                <span>Public Sanctuary</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-muted text-muted-foreground border border-border">
+                <Lock className="w-3 h-3" />
+                <span>Private Sanctuary</span>
+              </div>
+            )}
           </div>
           <p className="text-xs text-muted-foreground font-sans max-w-xl">
             Opt into an illuminated public scholar page (<code className="font-mono text-primary">/u/[username]</code>) to share your literary motto, pinned Ex-Libris bookplates, and reading achievements.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {isPublic ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-success/10 text-success border border-success/20">
-              <Eye className="w-3.5 h-3.5" />
-              <span>Public Sanctuary</span>
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-muted text-muted-foreground border border-border">
-              <Lock className="w-3.5 h-3.5" />
-              <span>Private Sanctuary</span>
-            </div>
-          )}
+        {/* Tier-2 Focused Sub-Tabs */}
+        <div
+          role="tablist"
+          aria-label="Scholar profile sub-sections"
+          className="inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start sm:self-auto shrink-0"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSubTab === 'identity'}
+            onClick={() => setActiveSubTab('identity')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeSubTab === 'identity'
+                ? 'bg-card text-primary shadow-xs border border-border'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <UserIcon className="w-3.5 h-3.5" />
+            <span>Identity & Bio</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSubTab === 'privacy'}
+            onClick={() => setActiveSubTab('privacy')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeSubTab === 'privacy'
+                ? 'bg-card text-primary shadow-xs border border-border'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>Sanctuary & Privacy</span>
+          </button>
         </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Master Public Profile Toggle */}
-        <div className="p-4 sm:p-5 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-0.5">
-            <label
-              htmlFor="public-profile-toggle"
-              className="text-sm font-serif font-bold text-foreground flex items-center gap-2 cursor-pointer"
-            >
-              {isPublic ? <Eye className="w-4 h-4 text-success" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
-              <span>Enable Public Scholar Profile</span>
-            </label>
-            <p className="text-xs text-muted-foreground font-sans">
-              When disabled, visiting your profile URL renders the classical Private Sanctuary shield.
-            </p>
-          </div>
-
-          <label className="relative inline-flex items-center cursor-pointer shrink-0">
-            <input
-              id="public-profile-toggle"
-              type="checkbox"
-              role="switch"
-              aria-checked={isPublic}
-              checked={isPublic}
-              onChange={(e) => setIsPublic(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-muted peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
-          </label>
-        </div>
-
-        {/* Scholar Handle & Bio */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Username Configuration */}
-          <div className="lg:col-span-6 space-y-2">
-            <label
-              htmlFor="scholar-username-input"
-              className="block text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground"
-            >
-              Scholar Handle (@username)
-            </label>
-            <div className="relative">
-              <Input
-                id="scholar-username-input"
-                type="text"
-                placeholder="e.g. jane_austen"
-                value={username}
-                onChange={(e) => handleUsernameChange(e.target.value)}
-                icon={<AtSign className="w-4 h-4" />}
-                className="font-mono text-sm"
-                aria-invalid={Boolean(usernameError)}
-                aria-describedby={usernameError ? 'username-error-desc' : undefined}
-              />
-            </div>
-            {usernameError && (
-              <p id="username-error-desc" className="text-xs font-mono text-destructive">
-                {usernameError}
-              </p>
-            )}
-            <p className="text-[11px] text-muted-foreground font-sans">
-              3–30 characters: letters, numbers, underscores, and hyphens. Case-insensitive.
-            </p>
-          </div>
-
-          {/* Shareable Link Preview & Copy */}
-          <div className="lg:col-span-6 space-y-2">
-            <span className="block text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground">
-              Public Sanctuary URL
-            </span>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0 bg-muted/40 border border-border rounded-xl px-3.5 py-2.5 text-xs font-mono text-foreground truncate select-all">
-                {profileSlug ? (
-                  <span>{ROUTES.PUBLIC_PROFILE(profileSlug)}</span>
-                ) : (
-                  <span className="text-muted-foreground italic">Set a handle to generate link</span>
-                )}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleCopyLink}
-                disabled={!profileSlug}
-                aria-label="Copy public profile URL"
-                className="shrink-0 font-mono text-xs"
+        {/* Sub-Tab 1: Identity, Handle & Bio */}
+        <div
+          id="profile-subpanel-identity"
+          className={activeSubTab === 'identity' ? 'space-y-6' : 'hidden'}
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Username Configuration */}
+            <div className="lg:col-span-6 space-y-2">
+              <label
+                htmlFor="scholar-username-input"
+                className="block text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground"
               >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 mr-1 text-success" />
-                    <span>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 mr-1" />
-                    <span>Copy</span>
-                  </>
-                )}
-              </Button>
-              {profileSlug && (
-                <Link
-                  href={ROUTES.PUBLIC_PROFILE(profileSlug)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center p-2.5 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-                  title="Preview Public Profile"
-                  aria-label="Preview public profile in new tab"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </Link>
+                Scholar Handle (@username)
+              </label>
+              <div className="relative">
+                <Input
+                  id="scholar-username-input"
+                  type="text"
+                  placeholder="e.g. jane_austen"
+                  value={username}
+                  onChange={(e) => handleUsernameChange(e.target.value)}
+                  icon={<AtSign className="w-4 h-4" />}
+                  className="font-mono text-sm"
+                  aria-invalid={Boolean(usernameError)}
+                  aria-describedby={usernameError ? 'username-error-desc' : undefined}
+                />
+              </div>
+              {usernameError && (
+                <p id="username-error-desc" className="text-xs font-mono text-destructive">
+                  {usernameError}
+                </p>
               )}
+              <p className="text-[11px] text-muted-foreground font-sans">
+                3–30 characters: letters, numbers, underscores, and hyphens. Case-insensitive.
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground font-sans flex items-center gap-1">
-              <Shield className="w-3 h-3 text-primary shrink-0" />
-              <span>Zero PII: Your email and password are never exposed publicly.</span>
-            </p>
+
+            {/* Shareable Link Preview & Copy */}
+            <div className="lg:col-span-6 space-y-2">
+              <span className="block text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground">
+                Public Sanctuary URL
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0 bg-muted/40 border border-border rounded-xl px-3.5 py-2.5 text-xs font-mono text-foreground truncate select-all">
+                  {profileSlug ? (
+                    <span>{ROUTES.PUBLIC_PROFILE(profileSlug)}</span>
+                  ) : (
+                    <span className="text-muted-foreground italic">
+                      Set a handle to generate link
+                    </span>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyLink}
+                  disabled={!profileSlug}
+                  aria-label="Copy public profile URL"
+                  className="shrink-0 font-mono text-xs"
+                >
+                  {copiedLink ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 mr-1 text-success" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 mr-1" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </Button>
+                {profileSlug && (
+                  <Link
+                    href={ROUTES.PUBLIC_PROFILE(profileSlug)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center p-2.5 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                    title="Preview Public Profile"
+                    aria-label="Preview public profile in new tab"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground font-sans flex items-center gap-1">
+                <Shield className="w-3 h-3 text-primary shrink-0" />
+                <span>Zero PII: Your email and password are never exposed publicly.</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Scholar Bio / Motto */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="scholar-bio-input"
+                className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground"
+              >
+                Scholar Bio & Literary Motto
+              </label>
+              <span className="text-[11px] font-mono text-muted-foreground">
+                {bio.length}/200
+              </span>
+            </div>
+            <textarea
+              id="scholar-bio-input"
+              rows={3}
+              maxLength={200}
+              placeholder="A brief reflection, favorite literary era, or personal reading motto..."
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent resize-none transition-colors"
+            />
           </div>
         </div>
 
-        {/* Scholar Bio / Motto */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="scholar-bio-input"
-              className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground"
-            >
-              Scholar Bio & Literary Motto
+        {/* Sub-Tab 2: Public Sanctuary & Granular Privacy Toggles */}
+        <div
+          id="profile-subpanel-privacy"
+          className={activeSubTab === 'privacy' ? 'space-y-6' : 'hidden'}
+        >
+          {/* Master Public Profile Toggle */}
+          <div className="p-4 sm:p-5 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <label
+                htmlFor="public-profile-toggle"
+                className="text-sm font-serif font-bold text-foreground flex items-center gap-2 cursor-pointer"
+              >
+                {isPublic ? (
+                  <Eye className="w-4 h-4 text-success" />
+                ) : (
+                  <EyeOff className="w-4 h-4 text-muted-foreground" />
+                )}
+                <span>Enable Public Scholar Profile</span>
+              </label>
+              <p className="text-xs text-muted-foreground font-sans">
+                When disabled, visiting your profile URL renders the classical Private Sanctuary shield.
+              </p>
+            </div>
+
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                id="public-profile-toggle"
+                type="checkbox"
+                role="switch"
+                aria-checked={isPublic}
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
             </label>
-            <span className="text-[11px] font-mono text-muted-foreground">
-              {bio.length}/200
-            </span>
           </div>
-          <textarea
-            id="scholar-bio-input"
-            rows={3}
-            maxLength={200}
-            placeholder="A brief reflection, favorite literary era, or personal reading motto..."
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent resize-none transition-colors"
-          />
-        </div>
 
-        {/* Granular Privacy Toggles */}
-        <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span>Telemetry & Accomplishment Visibility</span>
-          </h3>
+          {/* Granular Privacy Toggles */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span>Telemetry & Accomplishment Visibility</span>
+            </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Show Reading Streak */}
-            <label className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showStreak}
-                onChange={(e) => setShowStreak(e.target.checked)}
-                className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
-              />
-              <div className="space-y-0.5 min-w-0">
-                <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span>Reading Streak</span>
-                </span>
-                <p className="text-[11px] text-muted-foreground font-sans leading-tight">
-                  Display active reading streak & days
-                </p>
-              </div>
-            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Show Reading Streak */}
+              <label className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showStreak}
+                  onChange={(e) => setShowStreak(e.target.checked)}
+                  className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
+                />
+                <div className="space-y-0.5 min-w-0">
+                  <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>Reading Streak</span>
+                  </span>
+                  <p className="text-[11px] text-muted-foreground font-sans leading-tight">
+                    Display active reading streak & days
+                  </p>
+                </div>
+              </label>
 
-            {/* Show Annual Challenge */}
-            <label className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showChallenge}
-                onChange={(e) => setShowChallenge(e.target.checked)}
-                className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
-              />
-              <div className="space-y-0.5 min-w-0">
-                <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Annual Goal</span>
-                </span>
-                <p className="text-[11px] text-muted-foreground font-sans leading-tight">
-                  Display yearly reading goal progress
-                </p>
-              </div>
-            </label>
+              {/* Show Annual Challenge */}
+              <label className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showChallenge}
+                  onChange={(e) => setShowChallenge(e.target.checked)}
+                  className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
+                />
+                <div className="space-y-0.5 min-w-0">
+                  <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Annual Goal</span>
+                  </span>
+                  <p className="text-[11px] text-muted-foreground font-sans leading-tight">
+                    Display yearly reading goal progress
+                  </p>
+                </div>
+              </label>
 
-            {/* Show General Saved Books */}
-            <label className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showSavedBooks}
-                onChange={(e) => setShowSavedBooks(e.target.checked)}
-                className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
-              />
-              <div className="space-y-0.5 min-w-0">
-                <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
-                  <Bookmark className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                  <span>Saved Works</span>
-                </span>
-                <p className="text-[11px] text-muted-foreground font-sans leading-tight">
-                  Display general saved books shelf
-                </p>
-              </div>
-            </label>
+              {/* Show General Saved Books */}
+              <label className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showSavedBooks}
+                  onChange={(e) => setShowSavedBooks(e.target.checked)}
+                  className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
+                />
+                <div className="space-y-0.5 min-w-0">
+                  <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
+                    <Bookmark className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span>Saved Works</span>
+                  </span>
+                  <p className="text-[11px] text-muted-foreground font-sans leading-tight">
+                    Display general saved books shelf
+                  </p>
+                </div>
+              </label>
 
-            {/* Show Custom Bookshelves */}
-            <label className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showCustomShelves}
-                onChange={(e) => setShowCustomShelves(e.target.checked)}
-                className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
-              />
-              <div className="space-y-0.5 min-w-0">
-                <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
-                  <Library className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                  <span>Custom Shelves</span>
-                </span>
-                <p className="text-[11px] text-muted-foreground font-sans leading-tight">
-                  Display public curated bookshelves
-                </p>
-              </div>
-            </label>
+              {/* Show Custom Bookshelves */}
+              <label className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showCustomShelves}
+                  onChange={(e) => setShowCustomShelves(e.target.checked)}
+                  className="mt-0.5 rounded border-border text-primary focus:ring-primary/20"
+                />
+                <div className="space-y-0.5 min-w-0">
+                  <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
+                    <Library className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    <span>Custom Shelves</span>
+                  </span>
+                  <p className="text-[11px] text-muted-foreground font-sans leading-tight">
+                    Display public curated bookshelves
+                  </p>
+                </div>
+              </label>
+            </div>
           </div>
         </div>
 

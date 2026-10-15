@@ -1013,9 +1013,75 @@
   - Fluid, intuitive 3-state stepped navigation that reveals the toolbar first on upward scroll.
   - 100% test pass rate maintained with comprehensive co-located tests.
 
+## ADR-054: Root Body Modal Portaling, Clean Transform Keyframes, Transparent Collection Modals & Dual-Surface Speech Bar Isolation
+- **Status**: Accepted
+- **Context**:
+  1. **Containing Block Clipping on `position: fixed` Modals**:
+     - Under the W3C CSS Transforms specification, any ancestor element with a non-`none` `transform` or `will-change: transform` establishes a local containing block for `position: fixed` descendants, clipping modals to the scrolled section rather than the browser viewport.
+  2. **Modal Backdrop & Bookmarks Heading Consistency**:
+     - Collection confirmation dialogs across Bookshelf, Favorites, Bookmarks, and Notebook required a unified non-dimmed backdrop (`backdropClassName="bg-transparent backdrop-blur-none"`), and the Bookmarks section header needed to be streamlined to `"Bookmarks"`.
+  3. **Read-Aloud Speech Bar Corner Morphing Artifact**:
+     - `ReaderSpeechBar.tsx` rendered both the Expanded Toolbar (`rounded-2xl`) and Minimized Pill (`rounded-full`) on the same DOM container with `transition-all duration-300`, causing the browser to interpolate border radii alongside flexbox layout collapses during minimize/maximize transitions.
+- **Decision**:
+  1. **Root Body Modal Portaling & Swipe Guard (`src/components/ui/Modal.tsx`)**:
+     - Portaled `Modal` directly to `document.body` via `createPortal(..., document.body)` with `data-no-swipe`, guaranteeing true viewport centering immune to parent transforms and preventing accidental mobile view swipes while a dialog is open.
+  2. **Clean Transform Keyframes (`src/app/globals.css`)**:
+     - Normalized `100%` keyframes across `pageTurnFade`, `viewSlideInFromRight`, and `viewSlideInFromLeft` to `transform: none;` and added `will-change: auto !important;` in mobile and reduced-motion scopes.
+  3. **Unified Transparent Collection Modals & Bookmarks Header (`BookmarksView.tsx`, `NotebookView.tsx`, `DeleteAnnotationModal.tsx`, `page.tsx`, `views.config.ts`)**:
+     - Standardized `backdropClassName="bg-transparent backdrop-blur-none"` across collection modals and simplified the Bookmarks view title to `"Bookmarks"`.
+  4. **Dual-Surface Speech Bar Isolation (`src/components/reader/ReaderSpeechBar.tsx`)**:
+     - Separated the Expanded (`key="speech-expanded"`, `rounded-2xl`) and Minimized (`key="speech-minimized"`, `rounded-full`) states into distinct `<motion.div>` surfaces inside `<AnimatePresence mode="wait" initial={false}>` with a crisp 150ms scale/opacity transition (`scale: 0.94 -> 1`) and scoped color-only CSS transitions (`transition-[background-color,border-color,box-shadow]`).
+- **Consequences**:
+  - Viewport-centered modals across all scrolled states and view transitions with zero clipping.
+  - Crisp, artifact-free 150ms Read-Aloud minimize/restore transitions on mobile, tablet, and desktop.
+  - Consistent transparent modal presentation across all personal collection views.
 
-
-
-
+## ADR-055: Reader Circles, Literary Symposiums (Dual Reading), Filter-First Shared Marginalia & Two-Tier Account Workspace Architecture
+- **Status**: Accepted
+- **Context**:
+  1. **Intimate Collective Reading vs. Social Clutter**:
+     - Scholars want to read the same public domain volume together (**Dual / Collective Reading**) and see each other's highlighted passages and marginalia reflections in context, while clearly differentiating their own notes from a companion's notes.
+  2. **Avoiding Account Settings Bloat & Vertical Scroll Fatigue**:
+     - Adding separate toggles in Account Preferences to enable or disable companion notes in the Reader vs. the Notebook creates hidden state and unnecessary UI friction compared to an in-context source filter directly where marginalia is viewed.
+     - Simultaneously, `/account` had accumulated an 850px+ "always-visible" top fold (`AccountIdentityCard` + `AccountLibraryStats` stacked above the tabs), pushing tab content below the fold on mobile and tablet viewports.
+  3. **Cross-Device Resolution Independence, Store Isolation & Mobile Navbar Immunity**:
+     - Two scholars reading the same book on different devices (e.g., iPhone at `22px` font size vs. Desktop at `16px` font size) have different virtual page counts, requiring text-anchored highlight resolution. Companion notes must never pollute personal library statistics, offline JSON/CSV backups, or *"Clear All Notes"* actions. Moreover, the 393px mobile `Navbar.tsx` has zero horizontal budget for an extra top-level navigation button.
+- **Decision**:
+  1. **Classical Project Lexicon**:
+     - Grounded in the Accolade Compendium (`src/config/accolades-config.ts`), Bookarium adopts classical scholarly terminology:
+       - **Reader Circle**: A scholar's persistent fellowship network.
+       - **Fellow Scholar**: A mutually connected literary companion.
+       - **Symposium**: A per-volume shared reading pact (`book_id`) between Fellow Scholars.
+       - **My Marginalia / Fellows' Marginalia**: Source filter taxonomy in the Reader and Commonplace Notebook.
+       - **Symposium Companion (`Societas Litterarum`)**: Deterministic Ex-Libris bookplate accolade unlocked via Symposium participation.
+  2. **Slim Scholar Identity Ribbon & Two-Tier Account Sub-Tab Architecture (`src/app/account/page.tsx`)**:
+     - **Slim Scholar Identity Ribbon (`AccountIdentityCard.tsx`)**: Replaces the tall top-fold form and standalone library card stack with a compact single-card ribbon displaying the scholar's monogram seal, Display Name, `@username` badge, verified status, and inline clickable library stat pills (`Shelved`, `Favorites`, `Notes`, `Shelves`, `Bookmarks`, `Streak`).
+     - **5 Primary Tabs with Focused Sub-Tabs**:
+       - `Overview & Habits` (`?tab=habits`): Sub-tabs for `Streaks & Challenge` (`AccountHabitsCard`), `Accolades Compendium` (`AccountAccoladesCard`), and `Library Breakdown` (`AccountLibraryStats`).
+       - `Symposiums & Circle` (`?tab=symposiums`): Sub-tabs for `Active Symposiums`, `Reader Circle`, and `Invitations` (`AccountSymposiumSection`).
+       - `Scholar Profile` (`?tab=profile`): Sub-tabs for `Identity & Bio` (relocated Display Name editor, `@username`, and Bio) and `Public Sanctuary & Privacy` (`AccountPublicProfileSection`).
+       - `Preferences` (`?tab=preferences`): Sub-tabs for `Appearance & Scroll`, `Read-Aloud Studio`, and `Backup & Restore` (`AccountPreferencesSection`).
+       - `Security` (`?tab=security`): Password generator/updater, active session, and account deletion (`AccountSecuritySection`).
+  3. **Two-Layer Idempotent Supabase Schema, RLS Governance & Private-Sanctuary Handle Lookup (Rule 9)**:
+     - **Layer 1 (`public.reader_circles`)**: Persistent mutual fellowship table (`requester_id`, `recipient_id`, `status: 'pending' | 'accepted'`) with `ON DELETE CASCADE` to `auth.users` and strict participant-only RLS policies.
+     - **Layer 2 (`public.symposium_sessions`)**: Per-volume shared reading table (`book_id`, `book_title`, `host_id`, `fellow_id`, `status: 'pending' | 'active' | 'completed'`, `host_chapter`, `host_progress`, `fellow_chapter`, `fellow_progress`) with `ON DELETE CASCADE` and participant-only RLS policies.
+     - **Scoped Marginalia Visibility (`public.user_annotations`)**: Adds an idempotent `SELECT` RLS policy permitting authenticated scholars to read a Fellow Scholar's annotations **strictly** for `book_id`s where both users share an active or completed row in `public.symposium_sessions`.
+     - **Private-Sanctuary Handle Lookup (`public.lookup_scholar_by_username`)**: Provides a `SECURITY DEFINER` RPC returning minimal non-PII `(id, username, display_name)` for exact `@username` handle invitations without requiring either scholar to make their general profile public (`is_public = true`).
+     - **Cascading Privacy & Account Deletion**: Leaving a Symposium, removing a Fellow Scholar, or executing `delete_current_user()` immediately revokes access and purges relational records with zero orphaned data.
+  4. **Strict Store Isolation, Progressive Disclosure & Overlapping Highlight Resolution**:
+     - **Store Isolation (`src/stores/useAnnotationStore.ts`)**: Companion notes are stored in a dedicated read-only `fellowAnnotations: FellowAnnotation[]` slice, completely decoupled from personal `annotations: Annotation[]`. Personal backups (`library-backup.ts`), annotation counts (`AccountLibraryStats.tsx`), and *"Clear All Notes"* strictly operate only on `annotations`.
+     - **Progressive Disclosure (Solo & Guest Immunity)**: Source filter pills, Spoiler Guard controls, and companion progress indicators only render when `hasActiveSymposium || fellowAnnotations.length > 0`.
+     - **Overlapping Highlight Preservation (`src/lib/reader-annotator.ts`)**: `computeAnnotationSpans` preserves both `selfAnnotation` and `fellowAnnotation` on overlapping character intervals (`ReaderSurface.tsx` combines solid pastel fill with dashed archival underline), and `TextHighlightPopover.tsx` renders a `[ My Note | @username's Note ]` 2-pill switcher when both scholars annotated the same passage.
+  5. **Filter-First Ergonomics, Spoiler Guard & Cross-Device UI Safeguards**:
+     - **Zero Navbar Width Expansion (`Navbar.tsx`)**: Adds `0px` of extra width on mobile; surfaces a `6px` notification dot on the existing Account (`UserIcon`) button when pending fellowship/symposium invitations exist.
+     - **`BookCard.tsx` Untouched (`ADR-053`)**: Places *"Invite Fellow to Symposium"* in `BookmarkCard.tsx`, `BookPreviewModal.tsx`, `/account`, and `/u/[username]` rather than crowding 2-column catalog cards.
+     - **Single-Row Drawer Source Filter + Spoiler Shield (`ReaderAnnotationsDrawer.tsx` & `NotebookView.tsx`)**: Combines `[ All | Mine | @fellow ]` and the compact Spoiler Shield pill (`🛡️ Ch. 1–X`) onto a single `32px` row in the Reader drawer, and integrates source filter pills into the horizontal filter strip of `NotebookView.tsx` (`data-no-swipe`).
+     - **Responsive Companion Progress & Single-Banner Notice Queue (`ReaderSubHeaderRibbon.tsx`)**: Renders `🤝 X%` on `< 640px` mobile and `🤝 @username: Sec. Y (X%)` on `>= 640px` tablet/desktop, while yielding banner priority to `resumeNotice` so two sub-header banners never stack vertically.
+  6. **Jurisdictional Copyright Compliance (`src/lib/copyright-engine.ts`)**:
+     - Symposium sessions strictly respect `isBookPublicDomainInJurisdiction` (`ADR-035`) per participant; shared invitations never bypass regional copyright restrictions.
+- **Consequences**:
+  - Seamless, classical shared reading experience and decluttered Two-Tier Account workspace across Mobile, Tablet, and Desktop.
+  - 100% non-breaking solo and guest reading experience via progressive disclosure and isolated state slices.
+  - Granular per-book RLS privacy guarantees and full territorial copyright compliance.
 
 

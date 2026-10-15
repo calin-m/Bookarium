@@ -32,7 +32,13 @@ import { useReaderSession } from '@/hooks/reader/useReaderSession';
 import { useReadingTimer } from '@/hooks/useReadingTimer';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
-import { useHydratedAnnotations, type HighlightColor, type Annotation } from '@/stores/useAnnotationStore';
+import {
+  useHydratedAnnotations,
+  type HighlightColor,
+  type Annotation,
+  type FellowAnnotation,
+} from '@/stores/useAnnotationStore';
+import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
 import { StarRating } from '@/components/ui/StarRating';
@@ -106,21 +112,34 @@ function BookReaderContent() {
   // Annotations & Highlights Management
   const {
     annotations,
+    fellowAnnotations,
+    spoilerShieldEnabled,
+    setSpoilerShieldEnabled,
     addAnnotation,
     updateAnnotationColor,
     updateAnnotationNote,
     deleteAnnotation,
     syncWithCloud,
+    fetchFellowAnnotationsForBook,
     updateBookMetadata,
   } = useHydratedAnnotations();
+  const {
+    symposiums,
+    fetchFellowshipData,
+    syncSymposiumProgress,
+  } = useHydratedFellowship();
   const user = useAuthStore((s) => s.user);
 
-  // Sync annotations on load if authenticated
+  // Sync annotations and fellowship symposium state on load if authenticated
   useEffect(() => {
     if (user?.id) {
       syncWithCloud(user.id);
+      fetchFellowshipData(user.id);
+      if (numericId > 0) {
+        fetchFellowAnnotationsForBook(numericId, user.id);
+      }
     }
-  }, [user?.id, syncWithCloud]);
+  }, [user?.id, numericId, syncWithCloud, fetchFellowshipData, fetchFellowAnnotationsForBook]);
 
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [selectionPopover, setSelectionPopover] = useState<{
@@ -128,11 +147,15 @@ function BookReaderContent() {
     selectedText: string;
     position: { top: number; left: number; bottom?: number } | null;
     activeAnnotation: Annotation | null;
+    fellowAnnotation: FellowAnnotation | null;
+    isFellowOnly: boolean;
   }>({
     isOpen: false,
     selectedText: '',
     position: null,
     activeAnnotation: null,
+    fellowAnnotation: null,
+    isFellowOnly: false,
   });
 
   // Dismiss floating text selection popover whenever a reader drawer is toggled
@@ -147,6 +170,10 @@ function BookReaderContent() {
   const bookAnnotations = useMemo(() => {
     return annotations.filter((a) => a.bookId === numericId);
   }, [numericId, annotations]);
+
+  const bookFellowAnnotations = useMemo(() => {
+    return fellowAnnotations.filter((a) => a.bookId === numericId);
+  }, [numericId, fellowAnnotations]);
 
   // Synchronize global application theme with reader theme on mount
   useEffect(() => {
@@ -360,6 +387,69 @@ function BookReaderContent() {
     return bookAnnotations.filter((a) => a.chapterIndex === activeChapterIndex);
   }, [bookAnnotations, activeChapterIndex]);
 
+  const activeChapterFellowAnnotations = useMemo(() => {
+    return bookFellowAnnotations.filter(
+      (a) =>
+        a.chapterIndex === activeChapterIndex &&
+        (!spoilerShieldEnabled || a.chapterPage <= currentChapterPage)
+    );
+  }, [bookFellowAnnotations, activeChapterIndex, spoilerShieldEnabled, currentChapterPage]);
+
+  // Active Symposium & Companion Progress Derivation
+  const activeSymposium = useMemo(
+    () =>
+      symposiums.find(
+        (s) => s.book_id === numericId && (s.status === 'active' || s.status === 'completed')
+      ) || null,
+    [symposiums, numericId]
+  );
+
+  const currentUserId = user?.id;
+  const symposiumCompanion = useMemo(() => {
+    if (!activeSymposium) return null;
+    const isHost = currentUserId ? activeSymposium.host_id === currentUserId : true;
+    const username = isHost
+      ? activeSymposium.fellow_username || 'fellow'
+      : activeSymposium.host_username || 'fellow';
+    const displayName = isHost
+      ? activeSymposium.fellow_display_name || username
+      : activeSymposium.host_display_name || username;
+    const progress = isHost
+      ? activeSymposium.fellow_progress
+      : activeSymposium.host_progress;
+    const currentChapterIndex = isHost
+      ? activeSymposium.fellow_chapter
+      : activeSymposium.host_chapter;
+    return { username, displayName, progress, currentChapterIndex };
+  }, [activeSymposium, currentUserId]);
+
+  const [isMilestoneDismissed, setIsMilestoneDismissed] = useState(false);
+  const symposiumMilestoneNotice = useMemo(() => {
+    if (!symposiumCompanion || isMilestoneDismissed) return null;
+    if (symposiumCompanion.progress >= 25) {
+      return {
+        username: symposiumCompanion.username,
+        displayName: symposiumCompanion.displayName,
+        chapterIndex: symposiumCompanion.currentChapterIndex,
+        progress: symposiumCompanion.progress,
+      };
+    }
+    return null;
+  }, [symposiumCompanion, isMilestoneDismissed]);
+
+  // Synchronize reading progress with active Literary Symposium session
+  useEffect(() => {
+    if (activeSymposium && activeSymposium.status === 'active' && numericId > 0) {
+      syncSymposiumProgress(numericId, activeChapterIndex, volumeProgress);
+    }
+  }, [
+    activeSymposium,
+    numericId,
+    volumeProgress,
+    activeChapterIndex,
+    syncSymposiumProgress,
+  ]);
+
   const handleSelectSearchMatch = useCallback((chapterIndex: number, page: number) => {
     jumpTo(chapterIndex, page);
     closeDrawer();
@@ -448,31 +538,51 @@ function BookReaderContent() {
   const handleTextSelected = useCallback(
     (selection: { text: string; position: { top: number; left: number; bottom?: number } }) => {
       const trimmed = selection.text.trim();
-      const existing = bookAnnotations.find(
-        (a) =>
-          a.selectedText.trim() === trimmed ||
-          a.selectedText === selection.text ||
-          a.selectedText.trim().includes(trimmed) ||
-          trimmed.includes(a.selectedText.trim())
-      );
+      const ownMatch =
+        activeChapterAnnotations.find(
+          (a) =>
+            a.selectedText.trim() === trimmed ||
+            a.selectedText === selection.text ||
+            a.selectedText.trim().includes(trimmed) ||
+            trimmed.includes(a.selectedText.trim())
+        ) || null;
+      const fellowMatch =
+        activeChapterFellowAnnotations.find(
+          (a) =>
+            a.selectedText.trim() === trimmed ||
+            a.selectedText === selection.text ||
+            a.selectedText.trim().includes(trimmed) ||
+            trimmed.includes(a.selectedText.trim())
+        ) || null;
       setSelectionPopover({
         isOpen: true,
         selectedText: selection.text,
         position: selection.position,
-        activeAnnotation: existing || null,
+        activeAnnotation: ownMatch,
+        fellowAnnotation: fellowMatch,
+        isFellowOnly: Boolean(fellowMatch && !ownMatch),
       });
     },
-    [bookAnnotations]
+    [activeChapterAnnotations, activeChapterFellowAnnotations]
   );
 
   const handleSelectAnnotation = useCallback(
-    (annotation: Annotation, position?: { top: number; left: number; bottom?: number }) => {
+    (
+      annotation: Annotation | FellowAnnotation,
+      position?: { top: number; left: number; bottom?: number },
+      overlappingFellow?: FellowAnnotation
+    ) => {
       if (typeof window === 'undefined') return;
+      const isFellowClicked = 'isFellow' in annotation && annotation.isFellow === true;
+      const ownAnn = isFellowClicked ? null : (annotation as Annotation);
+      const fellowAnn = isFellowClicked ? (annotation as FellowAnnotation) : overlappingFellow || null;
       setSelectionPopover({
         isOpen: true,
         selectedText: annotation.selectedText,
         position: position || { top: 140, left: window.innerWidth / 2 },
-        activeAnnotation: annotation,
+        activeAnnotation: ownAnn,
+        fellowAnnotation: fellowAnn,
+        isFellowOnly: Boolean(fellowAnn && !ownAnn),
       });
     },
     []
@@ -556,7 +666,7 @@ function BookReaderContent() {
       setAnnotationToDelete(selectionPopover.activeAnnotation);
     }
     setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
-  }, [selectionPopover]);
+  }, [selectionPopover.activeAnnotation]);
 
   return (
     <div className={`h-[100dvh] flex flex-col overflow-hidden transition-colors duration-theme ${activeTheme.surface}`}>
@@ -599,7 +709,7 @@ function BookReaderContent() {
         }}
         isAnnotationsOpen={isAnnotationsOpen}
         onToggleAnnotations={() => handleToggleDrawer('annotations')}
-        annotationsCount={bookAnnotations.length}
+        annotationsCount={bookAnnotations.length + bookFellowAnnotations.length}
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
         theme={theme}
@@ -612,6 +722,9 @@ function BookReaderContent() {
         onSelectTranslation={(targetBookId) => {
           router.replace(ROUTES.READ(targetBookId));
         }}
+        symposiumCompanion={symposiumCompanion}
+        symposiumMilestoneNotice={symposiumMilestoneNotice}
+        onDismissSymposiumMilestone={() => setIsMilestoneDismissed(true)}
       />
 
       {/* Main Editorial Reading Canvas */}
@@ -637,7 +750,7 @@ function BookReaderContent() {
         onNextPage={handleNextPage}
         onFontSizeChange={setFontSize}
         highlightedSentence={isSpeechOpen && speech.isPlaying && speechHighlightEnabled ? speech.currentSentence : undefined}
-        annotations={activeChapterAnnotations}
+        annotations={[...activeChapterAnnotations, ...activeChapterFellowAnnotations]}
         targetAnnotationId={targetAnnotationId}
         onSelectAnnotation={handleSelectAnnotation}
         onTextSelected={handleTextSelected}
@@ -751,6 +864,8 @@ function BookReaderContent() {
         activeColor={selectionPopover.activeAnnotation?.color}
         existingNote={selectionPopover.activeAnnotation?.note}
         existingAnnotationId={selectionPopover.activeAnnotation?.id}
+        fellowAnnotation={selectionPopover.fellowAnnotation}
+        isFellowOnly={selectionPopover.isFellowOnly}
         onSelectColor={handleSelectColor}
         onSaveNote={handleSaveNote}
         onDelete={handleDeleteAnnotation}
@@ -763,12 +878,19 @@ function BookReaderContent() {
         isOpen={isAnnotationsOpen}
         onClose={closeDrawer}
         annotations={bookAnnotations}
+        fellowAnnotations={bookFellowAnnotations}
+        hasActiveSymposium={Boolean(activeSymposium)}
+        activeChapterIndex={activeChapterIndex}
+        spoilerShieldEnabled={spoilerShieldEnabled}
+        onToggleSpoilerShield={setSpoilerShieldEnabled}
         bookTitle={bookTitle}
         theme={theme}
         onJumpToAnnotation={(chapterIdx, page, annotationId) => {
           let targetPage = page;
           if (annotationId) {
-            const ann = bookAnnotations.find((a) => a.id === annotationId);
+            const ann =
+              bookAnnotations.find((a) => a.id === annotationId) ||
+              bookFellowAnnotations.find((a) => a.id === annotationId);
             if (ann) {
               const chap = chaptersWithPagination[chapterIdx];
               if (chap?.pages && chap.pages.length > 0) {

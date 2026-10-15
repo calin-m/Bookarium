@@ -9,8 +9,12 @@ import {
   ArrowLeft,
   Trophy,
   Globe,
+  Users,
   Sliders,
   ShieldCheck,
+  Flame,
+  Award,
+  Library,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -20,6 +24,7 @@ import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
 import { useThemeStore, type AppTheme } from '@/stores/useThemeStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useHydratedHabits } from '@/stores/useHabitsStore';
+import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
@@ -30,15 +35,20 @@ import { AccountLibraryStats } from '@/components/account/AccountLibraryStats';
 import { AccountHabitsCard } from '@/components/account/AccountHabitsCard';
 import { AccountAccoladesCard } from '@/components/account/AccountAccoladesCard';
 import { AccountPublicProfileSection } from '@/components/account/AccountPublicProfileSection';
+import { AccountSymposiumSection } from '@/components/account/AccountSymposiumSection';
 import { AccountSecuritySection } from '@/components/account/AccountSecuritySection';
 import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
-import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrength } from '@/lib/password';
+import {
+  generateStrongPassword as generatePasswordUtil,
+  evaluatePasswordStrength,
+} from '@/lib/password';
 import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
 import type { NavViewId } from '@/config/views.config';
 import { ROUTES } from '@/config/routes';
 
-type AccountTabId = 'habits' | 'profile' | 'preferences' | 'security';
+type AccountTabId = 'habits' | 'profile' | 'symposiums' | 'preferences' | 'security';
+type HabitsSubTabId = 'streaks' | 'accolades' | 'library';
 
 interface AccountTabConfig {
   id: AccountTabId;
@@ -59,6 +69,12 @@ const ACCOUNT_TABS: readonly AccountTabConfig[] = [
     label: 'Public Scholar',
     icon: Globe,
     description: 'Public bio, sanctuary showcase & privacy',
+  },
+  {
+    id: 'symposiums',
+    label: 'Symposiums & Circle',
+    icon: Users,
+    description: 'Fellow Scholars, Reader Circle & shared volume pacts',
   },
   {
     id: 'preferences',
@@ -102,9 +118,14 @@ function AccountDashboardContent() {
 
   const searchParams = useSearchParams();
   const dirParam = searchParams.get('dir');
-  const initialSwipeDir = dirParam === 'forward' || dirParam === 'backward' ? dirParam : null;
-  const [swipeDirection, setSwipeDirection] = useState<'forward' | 'backward' | null>(initialSwipeDir);
-  const [isTransitioning, setIsTransitioning] = useState<boolean>(Boolean(initialSwipeDir));
+  const initialSwipeDir =
+    dirParam === 'forward' || dirParam === 'backward' ? dirParam : null;
+  const [swipeDirection, setSwipeDirection] = useState<'forward' | 'backward' | null>(
+    initialSwipeDir
+  );
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(
+    Boolean(initialSwipeDir)
+  );
   const [prevDirParam, setPrevDirParam] = useState<string | null>(dirParam);
 
   if (dirParam !== prevDirParam) {
@@ -137,18 +158,23 @@ function AccountDashboardContent() {
           created_at: '2024-01-01T00:00:00Z',
         } as any)
       : null);
-  const { savedCount, favoriteCount, cloudBookshelves, bookStatuses } = useHydratedBookshelf();
+  const { savedCount, favoriteCount, cloudBookshelves, bookStatuses } =
+    useHydratedBookshelf();
   const { annotations } = useHydratedAnnotations();
   const { getStreakStats } = useHydratedHabits();
+  const { getPendingInviteCount } = useHydratedFellowship();
   const annotationCount = annotations.length;
   const bookmarksCount = useReaderStore(getActiveReadingCount);
   const readingStreak = getStreakStats().currentStreak;
+  const pendingInvitesCount = getPendingInviteCount(user?.id);
 
   const completedBooksCount = useMemo(() => {
     const finishedFromStatus = Object.entries(bookStatuses || {})
       .filter(([_, status]) => status === 'finished')
       .map(([id]) => Number(id));
-    const finishedFromProgress = Object.entries(useReaderStore.getState().readingProgress || {})
+    const finishedFromProgress = Object.entries(
+      useReaderStore.getState().readingProgress || {}
+    )
       .filter(([_, p]) => p >= 100)
       .map(([id]) => Number(id));
     return new Set([...finishedFromStatus, ...finishedFromProgress]).size;
@@ -192,11 +218,15 @@ function AccountDashboardContent() {
   // Segmented Sub-Tabs Navigation State
   const tabParam = searchParams.get('tab');
   const validTab: AccountTabId =
-    tabParam === 'profile' || tabParam === 'preferences' || tabParam === 'security'
+    tabParam === 'profile' ||
+    tabParam === 'symposiums' ||
+    tabParam === 'preferences' ||
+    tabParam === 'security'
       ? tabParam
       : 'habits';
 
   const [activeTab, setActiveTab] = useState<AccountTabId>(validTab);
+  const [habitsSubTab, setHabitsSubTab] = useState<HabitsSubTabId>('streaks');
   const [prevTabParam, setPrevTabParam] = useState<string | null>(tabParam);
 
   if (tabParam !== prevTabParam) {
@@ -232,7 +262,8 @@ function AccountDashboardContent() {
     }
   };
 
-  const defaultName = profile?.display_name || user?.user_metadata?.display_name || '';
+  const defaultName =
+    profile?.display_name || user?.user_metadata?.display_name || '';
   const [customName, setCustomName] = useState<string | null>(null);
   const displayName = customName !== null ? customName : defaultName;
 
@@ -435,13 +466,13 @@ function AccountDashboardContent() {
       />
 
       <main
-        className={`flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8 touch-pan-y ${
+        className={`flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6 touch-pan-y ${
           isTransitioning
             ? swipeDirection === 'forward'
               ? 'animate-view-slide-left'
               : swipeDirection === 'backward'
-              ? 'animate-view-slide-right'
-              : ''
+                ? 'animate-view-slide-right'
+                : ''
             : ''
         }`}
         onAnimationEnd={(e) => {
@@ -500,44 +531,41 @@ function AccountDashboardContent() {
           </div>
         )}
 
-        {/* Authenticated View: Executive Modular Dashboard */}
+        {/* Authenticated View: Slim Scholar Identity Ribbon + Two-Tier Sub-Tab Workspace */}
         {user && (
-          <div className="space-y-8">
-            {/* Tier 1: Reader Identity & Library Statistics (Side-by-Side on Desktop/Laptop) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              <div className="lg:col-span-7 h-full">
-                <AccountIdentityCard
-                  user={user}
-                  profile={profile}
-                  formattedDate={formattedDate}
-                  displayName={displayName}
-                  onDisplayNameChange={setCustomName}
-                  onSaveProfile={handleSaveProfile}
-                  isSaving={isSaving}
-                  saveSuccess={saveSuccess}
-                  saveError={saveError}
-                  onResendVerification={handleResendVerification}
-                  isResendingVerification={isResendingVerification}
-                  resendSuccess={resendSuccess}
-                  resendError={resendError}
-                  resendCooldown={resendCooldown}
-                />
-              </div>
+          <div className="space-y-6">
+            {/* Slim Scholar Identity Ribbon (Compact Top Fold) */}
+            <AccountIdentityCard
+              user={user}
+              profile={profile}
+              formattedDate={formattedDate}
+              displayName={displayName}
+              onDisplayNameChange={setCustomName}
+              onSaveProfile={handleSaveProfile}
+              isSaving={isSaving}
+              saveSuccess={saveSuccess}
+              saveError={saveError}
+              onResendVerification={handleResendVerification}
+              isResendingVerification={isResendingVerification}
+              resendSuccess={resendSuccess}
+              resendError={resendError}
+              resendCooldown={resendCooldown}
+              stats={{
+                savedCount,
+                favoriteCount,
+                annotationCount,
+                customShelvesCount,
+                bookmarksCount,
+                readingStreak,
+              }}
+              onOpenLibraryBreakdown={() => {
+                handleTabChange('habits');
+                setHabitsSubTab('library');
+              }}
+            />
 
-              <div className="lg:col-span-5 h-full">
-                <AccountLibraryStats
-                  savedCount={savedCount}
-                  favoriteCount={favoriteCount}
-                  customShelvesCount={customShelvesCount}
-                  annotationCount={annotationCount}
-                  bookmarksCount={bookmarksCount}
-                  readingStreak={readingStreak}
-                />
-              </div>
-            </div>
-
-            {/* Segmented Sub-Tabs Navigation Strip */}
-            <div className="pt-2">
+            {/* Tier 1: Primary Segmented Navigation Bar (5 Tabs) */}
+            <div>
               <div
                 role="tablist"
                 aria-label="Account sections"
@@ -548,6 +576,7 @@ function AccountDashboardContent() {
                 {ACCOUNT_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
                   const Icon = tab.icon;
+                  const showBadge = tab.id === 'symposiums' && pendingInvitesCount > 0;
                   return (
                     <button
                       key={tab.id}
@@ -560,38 +589,137 @@ function AccountDashboardContent() {
                       title={tab.label}
                       tabIndex={isActive ? 0 : -1}
                       onClick={() => handleTabChange(tab.id)}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
+                      className={`relative flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
                         isActive
                           ? 'flex-1 min-w-0 px-3 sm:px-4 bg-primary text-primary-foreground font-semibold shadow-xs'
                           : 'shrink-0 px-2.5 sm:flex-1 sm:px-4 text-muted-foreground hover:text-foreground hover:bg-muted/50'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
-                      <span className={`truncate min-w-0 ${isActive ? 'inline' : 'hidden sm:inline'}`}>
+                      <Icon
+                        className={`w-4 h-4 shrink-0 ${
+                          isActive ? 'text-primary-foreground' : 'text-muted-foreground'
+                        }`}
+                      />
+                      <span
+                        className={`truncate min-w-0 ${
+                          isActive ? 'inline' : 'hidden sm:inline'
+                        }`}
+                      >
                         {tab.label}
                       </span>
+                      {showBadge && (
+                        <span
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                            isActive
+                              ? 'bg-primary-foreground text-primary'
+                              : 'bg-primary text-primary-foreground'
+                          }`}
+                        >
+                          {pendingInvitesCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Tab Panel 1: Habits & Accolades */}
+            {/* Tab Panel 1: Habits, Accolades & Library Breakdown (With Tier-2 Focused Sub-Tabs) */}
             <section
               id="account-tabpanel-habits"
               role="tabpanel"
               aria-labelledby="account-tab-habits"
               tabIndex={0}
-              className={activeTab === 'habits' ? 'space-y-8 animate-in fade-in duration-150' : 'hidden'}
+              className={
+                activeTab === 'habits'
+                  ? 'space-y-5 animate-in fade-in duration-150'
+                  : 'hidden'
+              }
             >
-              {/* Tier 2: Literary Immersion & Reading Habits Card (Full Width) */}
-              <AccountHabitsCard
-                userId={user?.id}
-                completedBooksCount={completedBooksCount}
-              />
+              {/* Tier 2 Sub-Tab Bar for Overview & Habits */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div
+                  role="tablist"
+                  aria-label="Habits and library sub-sections"
+                  className="inline-flex items-center gap-1 p-1 rounded-xl bg-card border border-border shadow-xs"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={habitsSubTab === 'streaks'}
+                    onClick={() => setHabitsSubTab('streaks')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      habitsSubTab === 'streaks'
+                        ? 'bg-primary/10 text-primary border border-primary/30'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Flame className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Streaks & Challenge</span>
+                  </button>
 
-              {/* Tier 3: Ex-Libris Bookplates & Accolades Compendium (Full Width) */}
-              <AccountAccoladesCard userId={user?.id} />
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={habitsSubTab === 'accolades'}
+                    onClick={() => setHabitsSubTab('accolades')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      habitsSubTab === 'accolades'
+                        ? 'bg-primary/10 text-primary border border-primary/30'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Award className="w-3.5 h-3.5 text-primary" />
+                    <span>Accolades Compendium</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={habitsSubTab === 'library'}
+                    onClick={() => setHabitsSubTab('library')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      habitsSubTab === 'library'
+                        ? 'bg-primary/10 text-primary border border-primary/30'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Library className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Library Breakdown</span>
+                  </button>
+                </div>
+              </div>
+
+              <div
+                id="habits-subpanel-streaks"
+                className={habitsSubTab === 'streaks' ? 'block' : 'hidden'}
+              >
+                <AccountHabitsCard
+                  userId={user?.id}
+                  completedBooksCount={completedBooksCount}
+                />
+              </div>
+
+              <div
+                id="habits-subpanel-accolades"
+                className={habitsSubTab === 'accolades' ? 'block' : 'hidden'}
+              >
+                <AccountAccoladesCard userId={user?.id} />
+              </div>
+
+              <div
+                id="habits-subpanel-library"
+                className={habitsSubTab === 'library' ? 'block' : 'hidden'}
+              >
+                <AccountLibraryStats
+                  savedCount={savedCount}
+                  favoriteCount={favoriteCount}
+                  customShelvesCount={customShelvesCount}
+                  annotationCount={annotationCount}
+                  bookmarksCount={bookmarksCount}
+                  readingStreak={readingStreak}
+                />
+              </div>
             </section>
 
             {/* Tab Panel 2: Public Scholar Profile */}
@@ -600,7 +728,11 @@ function AccountDashboardContent() {
               role="tabpanel"
               aria-labelledby="account-tab-profile"
               tabIndex={0}
-              className={activeTab === 'profile' ? 'space-y-8 animate-in fade-in duration-150' : 'hidden'}
+              className={
+                activeTab === 'profile'
+                  ? 'space-y-6 animate-in fade-in duration-150'
+                  : 'hidden'
+              }
             >
               <AccountPublicProfileSection
                 user={user}
@@ -609,13 +741,32 @@ function AccountDashboardContent() {
               />
             </section>
 
-            {/* Tab Panel 3: Reading Preferences */}
+            {/* Tab Panel 3: Literary Symposiums & Reader Circle */}
+            <section
+              id="account-tabpanel-symposiums"
+              role="tabpanel"
+              aria-labelledby="account-tab-symposiums"
+              tabIndex={0}
+              className={
+                activeTab === 'symposiums'
+                  ? 'space-y-6 animate-in fade-in duration-150'
+                  : 'hidden'
+              }
+            >
+              <AccountSymposiumSection userId={user.id} />
+            </section>
+
+            {/* Tab Panel 4: Reading Preferences */}
             <section
               id="account-tabpanel-preferences"
               role="tabpanel"
               aria-labelledby="account-tab-preferences"
               tabIndex={0}
-              className={activeTab === 'preferences' ? 'space-y-8 animate-in fade-in duration-150' : 'hidden'}
+              className={
+                activeTab === 'preferences'
+                  ? 'space-y-6 animate-in fade-in duration-150'
+                  : 'hidden'
+              }
             >
               <AccountPreferencesSection
                 theme={theme}
@@ -635,13 +786,17 @@ function AccountDashboardContent() {
               />
             </section>
 
-            {/* Tab Panel 4: Account & Security */}
+            {/* Tab Panel 5: Account & Security */}
             <section
               id="account-tabpanel-security"
               role="tabpanel"
               aria-labelledby="account-tab-security"
               tabIndex={0}
-              className={activeTab === 'security' ? 'space-y-8 animate-in fade-in duration-150' : 'hidden'}
+              className={
+                activeTab === 'security'
+                  ? 'space-y-6 animate-in fade-in duration-150'
+                  : 'hidden'
+              }
             >
               <AccountSecuritySection
                 newPassword={newPassword}
@@ -697,4 +852,3 @@ export default function AccountPage() {
     </Suspense>
   );
 }
-

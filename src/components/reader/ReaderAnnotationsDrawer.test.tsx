@@ -192,5 +192,60 @@ describe('ReaderAnnotationsDrawer', () => {
     const searchContainer = searchInput.parentElement;
     expect(searchContainer?.className).toContain('shrink-0');
   });
+
+  it('renders progressive-disclosure Symposium source filter and Spoiler Shield when fellowAnnotations exist', () => {
+    const fellowAnnotations = [
+      {
+        id: 'fellow-1',
+        bookId: 1342,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Early chapter fellow note',
+        color: 'amber' as const,
+        note: 'Fellow note in Sec 1',
+        createdAt: '2026-10-15T10:00:00Z',
+        updatedAt: '2026-10-15T10:00:00Z',
+        isFellow: true as const,
+        fellowUsername: 'plato',
+      },
+      {
+        id: 'fellow-2',
+        bookId: 1342,
+        chapterIndex: 5,
+        chapterPage: 1,
+        selectedText: 'Future chapter spoiler note',
+        color: 'amber' as const,
+        note: 'Spoiler from Sec 6',
+        createdAt: '2026-10-15T10:05:00Z',
+        updatedAt: '2026-10-15T10:05:00Z',
+        isFellow: true as const,
+        fellowUsername: 'plato',
+      },
+    ];
+
+    render(
+      <ReaderAnnotationsDrawer
+        {...defaultProps}
+        fellowAnnotations={fellowAnnotations}
+        activeChapterIndex={2}
+      />
+    );
+
+    expect(screen.getByTestId('drawer-symposium-filter-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('drawer-spoiler-shield-btn')).toHaveTextContent('Ch. 1–3');
+
+    // Spoiler Shield is ON by default -> fellow-1 (chapter 0 <= 2) is shown, fellow-2 (chapter 5 > 2) is hidden
+    expect(screen.getByTestId('annotation-item-fellow-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('annotation-item-fellow-2')).not.toBeInTheDocument();
+
+    // Toggle Spoiler Shield OFF -> fellow-2 appears
+    fireEvent.click(screen.getByTestId('drawer-spoiler-shield-btn'));
+    expect(screen.getByTestId('annotation-item-fellow-2')).toBeInTheDocument();
+
+    // Filter by Fellows only
+    fireEvent.click(screen.getByTestId('drawer-source-fellows'));
+    expect(screen.queryByTestId('annotation-item-ann-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('annotation-item-fellow-1')).toBeInTheDocument();
+  });
 });
 

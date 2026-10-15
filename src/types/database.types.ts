@@ -428,12 +428,118 @@ export interface Database {
           },
         ];
       };
+      reader_circles: {
+        Row: {
+          id: string;
+          requester_id: string;
+          requester_username: string;
+          requester_display_name: string;
+          recipient_id: string;
+          recipient_username: string;
+          recipient_display_name: string;
+          status: 'pending' | 'accepted';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          requester_id: string;
+          requester_username?: string;
+          requester_display_name?: string;
+          recipient_id: string;
+          recipient_username?: string;
+          recipient_display_name?: string;
+          status?: 'pending' | 'accepted';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          requester_id?: string;
+          requester_username?: string;
+          requester_display_name?: string;
+          recipient_id?: string;
+          recipient_username?: string;
+          recipient_display_name?: string;
+          status?: 'pending' | 'accepted';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      symposium_sessions: {
+        Row: {
+          id: string;
+          book_id: number;
+          book_title: string;
+          host_id: string;
+          host_username: string;
+          host_display_name: string;
+          fellow_id: string;
+          fellow_username: string;
+          fellow_display_name: string;
+          status: 'pending' | 'active' | 'completed';
+          host_chapter: number;
+          host_progress: number;
+          fellow_chapter: number;
+          fellow_progress: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          book_id: number;
+          book_title?: string;
+          host_id: string;
+          host_username?: string;
+          host_display_name?: string;
+          fellow_id: string;
+          fellow_username?: string;
+          fellow_display_name?: string;
+          status?: 'pending' | 'active' | 'completed';
+          host_chapter?: number;
+          host_progress?: number;
+          fellow_chapter?: number;
+          fellow_progress?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          book_id?: number;
+          book_title?: string;
+          host_id?: string;
+          host_username?: string;
+          host_display_name?: string;
+          fellow_id?: string;
+          fellow_username?: string;
+          fellow_display_name?: string;
+          status?: 'pending' | 'active' | 'completed';
+          host_chapter?: number;
+          host_progress?: number;
+          fellow_chapter?: number;
+          fellow_progress?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
       delete_current_user: {
         Args: Record<string, never>;
         Returns: void;
+      };
+      lookup_scholar_by_username: {
+        Args: {
+          target_username: string;
+        };
+        Returns: {
+          id: string;
+          username: string;
+          display_name: string;
+        }[];
       };
     };
     Enums: Record<string, never>;
@@ -454,3 +560,5 @@ export type DatabaseBook = Database['public']['Tables']['books']['Row'];
 export type BookTranslationRow = Database['public']['Tables']['book_translations']['Row'];
 export type BookTranslationInsert = Database['public']['Tables']['book_translations']['Insert'];
 export type BookTranslationUpdate = Database['public']['Tables']['book_translations']['Update'];
+export type ReaderCircleRow = Database['public']['Tables']['reader_circles']['Row'];
+export type SymposiumSessionRow = Database['public']['Tables']['symposium_sessions']['Row'];

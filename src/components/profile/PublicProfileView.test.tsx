@@ -159,4 +159,63 @@ describe('PublicProfileView', () => {
     expect(writeTextMock).toHaveBeenCalled();
     expect(screen.getByText('Link Copied')).toBeInTheDocument();
   });
+
+  it('renders Invite to Reader Circle button for authenticated visitor and dispatches invite', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+    const sendInviteMock = vi.fn().mockResolvedValue({ error: null, circle: null });
+    useAuthStore.setState({
+      user: { id: 'visitor-user-2', email: 'visitor@bookarium.test' } as any,
+    });
+    useFellowshipStore.setState({
+      circles: [],
+      inviteFellowByUsername: sendInviteMock,
+    } as any);
+
+    render(<PublicProfileView profile={mockProfile} />);
+
+    const inviteBtn = screen.getByTestId('public-profile-invite-circle-btn');
+    expect(inviteBtn).toBeInTheDocument();
+    fireEvent.click(inviteBtn);
+
+    expect(sendInviteMock).toHaveBeenCalledWith('jane_austen');
+
+    useAuthStore.setState({ user: null });
+    useFellowshipStore.getState().clearFellowshipState();
+  });
+
+  it('renders Start Symposium button when visitor is already an accepted Fellow Scholar', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+    useAuthStore.setState({
+      user: { id: 'visitor-user-2', email: 'visitor@bookarium.test' } as any,
+    });
+    useFellowshipStore.setState({
+      circles: [
+        {
+          id: 'circle-1',
+          requester_id: 'visitor-user-2',
+          requester_username: 'visitor_scholar',
+          requester_display_name: 'Visitor Scholar',
+          recipient_id: 'user-scholar-1',
+          recipient_username: 'jane_austen',
+          recipient_display_name: 'Jane Austen',
+          status: 'accepted',
+          created_at: '2026-10-15T10:00:00Z',
+          updated_at: '2026-10-15T10:00:00Z',
+        },
+      ],
+    });
+
+    render(<PublicProfileView profile={mockProfile} />);
+
+    const symposiumBtn = screen.getByTestId('public-profile-start-symposium-btn');
+    expect(symposiumBtn).toBeInTheDocument();
+    fireEvent.click(symposiumBtn);
+
+    expect(screen.getByTestId('symposium-invite-modal')).toBeInTheDocument();
+
+    useAuthStore.setState({ user: null });
+    useFellowshipStore.getState().clearFellowshipState();
+  });
 });

@@ -34,7 +34,11 @@ import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
 import { GutenbergInfoModal } from './GutenbergInfoModal';
-import { ReaderSubHeaderRibbon } from './ReaderSubHeaderRibbon';
+import {
+  ReaderSubHeaderRibbon,
+  type SymposiumCompanionProgress,
+  type SymposiumMilestoneNoticeData,
+} from './ReaderSubHeaderRibbon';
 
 export interface ResumeNoticeData {
   chapterTitle: string;
@@ -70,6 +74,9 @@ export interface ReaderHeaderProps {
   translations?: BookTranslationOption[];
   isTranslationsLoading?: boolean;
   onSelectTranslation?: (bookId: number) => void;
+  symposiumCompanion?: SymposiumCompanionProgress | null;
+  symposiumMilestoneNotice?: SymposiumMilestoneNoticeData | null;
+  onDismissSymposiumMilestone?: () => void;
 }
 
 export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
@@ -101,6 +108,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   translations,
   isTranslationsLoading: _isTranslationsLoading,
   onSelectTranslation: _onSelectTranslation,
+  symposiumCompanion,
+  symposiumMilestoneNotice,
+  onDismissSymposiumMilestone,
 }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
@@ -387,6 +397,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           onRestart={onRestart}
           onDismissResume={onDismissResume}
           onOpenInfoModal={() => setIsInfoCardOpen(true)}
+          symposiumCompanion={symposiumCompanion}
+          symposiumMilestoneNotice={symposiumMilestoneNotice}
+          onDismissSymposiumMilestone={onDismissSymposiumMilestone}
         />
       </header>
 

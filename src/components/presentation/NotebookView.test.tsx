@@ -36,6 +36,7 @@ describe('NotebookView component', () => {
       },
     });
     useAnnotationStore.getState().clearAllAnnotations();
+    useAnnotationStore.setState({ fellowAnnotations: [], marginaliaSourceFilter: 'all' });
     useBookshelfStore.getState().clearBookshelf();
   });
 
@@ -1356,5 +1357,61 @@ describe('NotebookView component', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
       expect(container.querySelector('#notebook-content-anchor')).toHaveClass('animate-page-turn');
     });
+
+    it('renders source filter pills when fellowAnnotations are present and filters between All, Mine, and Fellows', async () => {
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'My own personal quote',
+        color: 'yellow',
+        note: 'My note',
+      });
+
+      useAnnotationStore.setState({
+        fellowAnnotations: [
+          {
+            id: 'fellow-ann-99',
+            bookId: 1342,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: 2,
+            selectedText: 'Fellow symposium quote',
+            color: 'mint',
+            note: 'Clara note',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+            isFellow: true,
+            fellowUsername: 'clara_v',
+            fellowDisplayName: 'Clara Vance',
+          },
+        ],
+      });
+
+      render(<NotebookView />);
+
+      expect(screen.getByTestId('notebook-source-all')).toBeInTheDocument();
+      expect(screen.getByText(/My own personal quote/i)).toBeInTheDocument();
+      expect(screen.getByText(/Fellow symposium quote/i)).toBeInTheDocument();
+
+      // Filter by Fellows only
+      fireEvent.click(screen.getByTestId('notebook-source-fellows'));
+      expect(screen.queryByText(/My own personal quote/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/Fellow symposium quote/i)).toBeInTheDocument();
+
+      // Filter by Mine only
+      fireEvent.click(screen.getByTestId('notebook-source-mine'));
+      expect(screen.getByText(/My own personal quote/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Fellow symposium quote/i)).not.toBeInTheDocument();
+
+      // Filter back to All
+      fireEvent.click(screen.getByTestId('notebook-source-all'));
+      expect(screen.getByText(/My own personal quote/i)).toBeInTheDocument();
+      expect(screen.getByText(/Fellow symposium quote/i)).toBeInTheDocument();
+    });
   });
 });
+

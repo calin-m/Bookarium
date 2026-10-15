@@ -9,6 +9,23 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.7.0',
+    date: '2026-10-15',
+    title: 'Reader Circles & Literary Symposiums (Dual Reading), Shared Marginalia, Spoiler Shield & Two-Tier Account Workspace Architecture',
+    sections: {
+      Added: [
+        'Two-Tier Account Workspace Architecture (`src/app/account/page.tsx`, `ADR-055`): Redesigned `/account` with a top-level mode switch between **Reading Studio** (Habits & Streaks, Ex-Libris Accolades, Public Profile, Reader Circles & Symposiums) and **Account & System** (Preferences, Security, Data Portability & Danger Zone), plus URL `?tab=` deep-linking and scroll-aware compact sub-tab transitions on mobile (`< 768px`).',
+        'Reader Circles & Literary Symposiums Schema (`supabase/schema.sql`, `src/types/database.types.ts`, `src/stores/useFellowshipStore.ts`): Provisioned idempotent `public.reader_circles` and `public.symposium_sessions` tables with strict RLS participant isolation, `lookup_scholar_by_username` RPC, and scoped `user_annotations` RLS policy allowing Literary Fellows in active symposiums to view shared marginalia.',
+        'Symposium Invitations & Fellowship Hub (`src/components/account/AccountSymposiumSection.tsx`, `src/components/symposium/SymposiumInviteModal.tsx`, `src/components/profile/PublicProfileView.tsx`, `src/components/presentation/BookmarkCard.tsx`): Added Literary Fellowship invitations by `@username` or direct `/u/[username]` profile CTA, active symposium progress cards, and 1-click "Read with a Fellow" symposium invitations.',
+        'Shared Symposium Marginalia, Overlap Switcher & Spoiler Shield (`src/lib/reader-annotator.ts`, `src/components/reader/ReaderSurface.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/components/reader/ReaderAnnotationsDrawer.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/presentation/NotebookQuoteCard.tsx`): Rendered fellow highlights with dashed archival underlines (`border-dashed`), multi-highlight overlap switcher tabs (`You` | `🤝 @fellow`), source filter pills (`All | Mine | Fellows`), and a client-side Spoiler Shield that conceals fellow notes beyond the reader\'s current section and page.',
+        'Companion Progress Micro-Pill, Milestone Dispatches & Symposium Accolade (`src/components/reader/ReaderSubHeaderRibbon.tsx`, `src/config/accolades-config.ts`): Added responsive companion progress micro-pill (`🤝 X%` on mobile, `🤝 @username: Sec. Y (X%)` on desktop), single-banner priority milestone dispatch notices, and the Gold-tier *Symposium Companion* (*"Societas Litterarum"*) Ex-Libris bookplate.',
+      ],
+      Refactored: [
+        'Dedicated Public Profile Tab Extraction (`src/components/account/AccountIdentityCard.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/components/account/AccountPreferencesSection.tsx`): Extracted Public Scholar Profile controls into a dedicated studio sub-tab and relocated Territorial Copyright Jurisdiction settings into Account Preferences.',
+      ],
+    },
+  },
+  {
     version: '2.5.4',
     date: '2026-09-18',
     title: 'Mobile Catalog Dock Inactivity Auto-Fade (1.4s), Biomechanical Touch-Swipe Ergonomics (Zero False Negatives) & Directional View Slide Transitions',

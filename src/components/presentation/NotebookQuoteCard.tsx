@@ -10,8 +10,10 @@ import {
   MessageSquare,
   Palette,
   Lock,
+  Feather,
 } from 'lucide-react';
-import type { Annotation, HighlightColor } from '@/stores/useAnnotationStore';
+import type { Annotation, FellowAnnotation, HighlightColor } from '@/stores/useAnnotationStore';
+import { isFellowAnnotation } from '@/lib/reader-annotator';
 import { Button } from '@/components/ui/Button';
 import {
   ANNOTATION_COLOR_CONFIG,
@@ -49,7 +51,7 @@ export const HIGHLIGHT_CARD_COLORS: Record<HighlightColor, { border: string; bg:
 };
 
 export interface NotebookQuoteCardProps {
-  annotation: Annotation;
+  annotation: Annotation | FellowAnnotation;
   bookTitle: string;
   bookAuthor: string;
   isRestricted?: boolean;
@@ -66,7 +68,7 @@ export interface NotebookQuoteCardProps {
   onUpdateColor: (id: string, color: HighlightColor) => Promise<void> | void;
   onRequestDeleteReflection: (ann: Annotation) => void;
   onRequestDeleteAnnotation: (ann: Annotation) => void;
-  onJumpToReader: (ann: Annotation) => void;
+  onJumpToReader: (ann: Annotation | FellowAnnotation) => void;
 }
 
 /**
@@ -157,10 +159,14 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
     await onSaveNote(ann.id, editNoteText, editColor, ann.color);
   };
 
+  const isFellow = isFellowAnnotation(ann);
+
   return (
     <article
       data-testid={`notebook-quote-card-${ann.id}`}
-      className={`relative flex flex-col justify-between p-4 sm:p-5 rounded-xl border border-border bg-card shadow-booksaw hover:shadow-booksaw-hover hover:border-primary/40 transition-all border-l-4 ${colorStyle.border}`}
+      className={`relative flex flex-col justify-between p-4 sm:p-5 rounded-xl border border-border bg-card shadow-booksaw hover:shadow-booksaw-hover hover:border-primary/40 transition-all border-l-4 ${
+        isFellow ? 'border-l-amber-600' : colorStyle.border
+      }`}
     >
       <div className="space-y-3">
         {/* Metadata Topline */}
@@ -188,48 +194,58 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
             </span>
           </div>
 
-          {/* Quick Color Swatch Badge & Popover */}
-          <div className="relative shrink-0" data-testid={`color-badge-container-${ann.id}`}>
-            <button
-              type="button"
-              onClick={() => setIsColorPickerOpen((prev) => !prev)}
-              data-testid={`color-badge-btn-${ann.id}`}
-              aria-label={`Highlight color: ${activeColor}. Click to change color.`}
-              aria-expanded={isColorPickerOpen}
-              title="Click to change highlight color"
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer select-none border border-transparent hover:border-current/30 ${colorStyle.bg} ${colorStyle.text}`}
+          {isFellow ? (
+            <span
+              data-testid={`notebook-fellow-badge-${ann.id}`}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0"
             >
-              <span>{activeColor}</span>
-              <Palette className="w-2.5 h-2.5 opacity-70" />
-            </button>
-
-            {isColorPickerOpen && (
-              <div
-                data-testid={`quick-color-popover-${ann.id}`}
-                className="absolute right-0 top-full mt-1.5 z-20 p-1.5 rounded-xl border border-border bg-card shadow-booksaw flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
+              <Feather className="w-2.5 h-2.5" />
+              <span>@{ann.fellowUsername}</span>
+            </span>
+          ) : (
+            /* Quick Color Swatch Badge & Popover */
+            <div className="relative shrink-0" data-testid={`color-badge-container-${ann.id}`}>
+              <button
+                type="button"
+                onClick={() => setIsColorPickerOpen((prev) => !prev)}
+                data-testid={`color-badge-btn-${ann.id}`}
+                aria-label={`Highlight color: ${activeColor}. Click to change color.`}
+                aria-expanded={isColorPickerOpen}
+                title="Click to change highlight color"
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer select-none border border-transparent hover:border-current/30 ${colorStyle.bg} ${colorStyle.text}`}
               >
-                {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
-                  const isSelected = ann.color === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      aria-label={`Change highlight color to ${c.label}`}
-                      title={`Change to ${c.label}`}
-                      onClick={async () => {
-                        await onUpdateColor(ann.id, c.id);
-                        setIsColorPickerOpen(false);
-                      }}
-                      data-testid={`quick-color-btn-${ann.id}-${c.id}`}
-                      className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
-                        isSelected ? c.activeRing : ''
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                <span>{activeColor}</span>
+                <Palette className="w-2.5 h-2.5 opacity-70" />
+              </button>
+
+              {isColorPickerOpen && (
+                <div
+                  data-testid={`quick-color-popover-${ann.id}`}
+                  className="absolute right-0 top-full mt-1.5 z-20 p-1.5 rounded-xl border border-border bg-card shadow-booksaw flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
+                >
+                  {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
+                    const isSelected = ann.color === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        aria-label={`Change highlight color to ${c.label}`}
+                        title={`Change to ${c.label}`}
+                        onClick={async () => {
+                          await onUpdateColor(ann.id, c.id);
+                          setIsColorPickerOpen(false);
+                        }}
+                        data-testid={`quick-color-btn-${ann.id}-${c.id}`}
+                        className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
+                          isSelected ? c.activeRing : ''
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Highlight Quote */}
@@ -238,7 +254,19 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
         </blockquote>
 
         {/* Personal Note Box */}
-        {isEditing ? (
+        {isFellow ? (
+          ann.note ? (
+            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-sans text-foreground/90 space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-mono text-amber-800 dark:text-amber-300">
+                <span className="flex items-center gap-1 font-bold">
+                  <Feather className="w-3 h-3" />
+                  Fellow Reflection (@{ann.fellowUsername})
+                </span>
+              </div>
+              <p className="leading-relaxed whitespace-pre-wrap">{ann.note}</p>
+            </div>
+          ) : null
+        ) : isEditing ? (
           <div className="space-y-2.5 pt-1">
             {/* Highlight Shade Picker in Edit Mode */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-border">
@@ -374,30 +402,34 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
             )}
           </button>
 
-          {/* Edit Note & Color */}
-          <button
-            type="button"
-            onClick={handleStartEditInternal}
-            data-testid={`edit-quote-btn-${ann.id}`}
-            className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1 text-[11px] cursor-pointer"
-            title="Edit personal reflection and color"
-            aria-label="Edit personal reflection and color"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>Edit</span>
-          </button>
+          {!isFellow && (
+            <>
+              {/* Edit Note & Color */}
+              <button
+                type="button"
+                onClick={handleStartEditInternal}
+                data-testid={`edit-quote-btn-${ann.id}`}
+                className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1 text-[11px] cursor-pointer"
+                title="Edit personal reflection and color"
+                aria-label="Edit personal reflection and color"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit</span>
+              </button>
 
-          {/* Delete Annotation */}
-          <button
-            type="button"
-            onClick={() => onRequestDeleteAnnotation(ann)}
-            data-testid={`delete-quote-btn-${ann.id}`}
-            className="p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
-            title="Delete passage"
-            aria-label="Delete passage"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+              {/* Delete Annotation */}
+              <button
+                type="button"
+                onClick={() => onRequestDeleteAnnotation(ann)}
+                data-testid={`delete-quote-btn-${ann.id}`}
+                className="p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+                title="Delete passage"
+                aria-label="Delete passage"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Jump to Reader */}

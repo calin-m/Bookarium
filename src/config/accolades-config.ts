@@ -174,6 +174,18 @@ export const ACCOLADES_CATALOG: AccoladeDefinition[] = [
     evaluate: (ctx) => (ctx.highlightColorsUsed ? new Set(ctx.highlightColorsUsed).size : 0),
   },
   {
+    id: 'symposium-companion',
+    title: 'Symposium Companion',
+    latinMotto: 'Societas Litterarum',
+    description: 'Complete a dual-reading Literary Symposium volume alongside a Literary Fellow.',
+    tier: 'gold',
+    category: 'scholarship',
+    iconName: 'Scroll',
+    target: 1,
+    unit: 'symposium',
+    evaluate: (ctx) => ctx.completedSymposiumsCount || 0,
+  },
+  {
     id: 'bibliophile-novice',
     title: 'Bibliophile Novice',
     latinMotto: 'Ad Initium',

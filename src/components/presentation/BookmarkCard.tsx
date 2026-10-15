@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle } from 'lucide-react';
+import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake } from 'lucide-react';
 import type { ActiveReadingVolume, LedgerItemStatus } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { formatAuthorNames, formatRelativeTime } from '@/lib/utils';
+import { SymposiumInviteModal } from '@/components/symposium/SymposiumInviteModal';
 
 export interface BookmarkCardProps {
   volume: ActiveReadingVolume;
@@ -28,6 +29,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 }) => {
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
+  const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
   const { book, progressPercent, chapterIndex, globalPage, lastReadAt, status } = volume;
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
@@ -275,18 +277,40 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           </select>
         )}
 
+        {!isRestricted && (
+          <button
+            type="button"
+            onClick={() => setIsSymposiumModalOpen(true)}
+            data-testid="bookmark-card-invite-symposium-btn"
+            aria-label={`Invite Fellow to Symposium on ${book.title}`}
+            title="Invite Fellow to Symposium"
+            className="h-8 w-8 flex items-center justify-center rounded border border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer shrink-0"
+          >
+            <Handshake className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         {onClear && (
           <button
             type="button"
             onClick={() => onClear(book.id)}
             aria-label={`Remove ${book.title} from reading ledger`}
             title="Remove from Ledger"
-            className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+            className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
+
+      {isSymposiumModalOpen && (
+        <SymposiumInviteModal
+          isOpen={isSymposiumModalOpen}
+          onClose={() => setIsSymposiumModalOpen(false)}
+          bookId={book.id}
+          bookTitle={book.title}
+        />
+      )}
     </article>
   );
 };

@@ -219,5 +219,16 @@ describe('BookmarkCard', () => {
     // Title is rendered as non-navigable text, not active link
     expect(screen.queryByRole('link', { name: 'The Mysterious Affair at Styles' })).not.toBeInTheDocument();
   });
+
+  it('opens SymposiumInviteModal pre-populated with the volume when Invite Fellow to Symposium button is clicked', () => {
+    render(<BookmarkCard volume={mockVolume} />);
+
+    const symposiumBtn = screen.getByTestId('bookmark-card-invite-symposium-btn');
+    expect(symposiumBtn).toBeInTheDocument();
+    fireEvent.click(symposiumBtn);
+
+    expect(screen.getByTestId('symposium-invite-modal')).toBeInTheDocument();
+    expect(screen.getByText('Symposium Volume')).toBeInTheDocument();
+  });
 });
 

@@ -258,5 +258,36 @@ describe('Navbar component', () => {
     const signInBtn = screen.getByRole('button', { name: /Sign In/i });
     expect(signInBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
   });
+
+  it('renders 0px-width fellowship notification dot on Account link when pending invitations exist', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { display_name: 'Test Reader' } as any,
+    });
+    useFellowshipStore.setState({
+      circles: [
+        {
+          id: 'circle-pending-1',
+          requester_id: 'u2',
+          requester_username: 'marcus_aurelius',
+          requester_display_name: 'Marcus Aurelius',
+          recipient_id: 'u1',
+          recipient_username: 'reader',
+          recipient_display_name: 'Test Reader',
+          status: 'pending',
+          created_at: '2026-10-15T10:00:00Z',
+          updated_at: '2026-10-15T10:00:00Z',
+        },
+      ],
+      symposiums: [],
+    });
+
+    render(<Navbar activeView="catalog" />);
+    expect(screen.getByTestId('navbar-fellowship-dot')).toBeInTheDocument();
+
+    useFellowshipStore.getState().clearFellowshipState();
+  });
 });
 

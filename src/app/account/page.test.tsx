@@ -138,23 +138,27 @@ describe('AccountPage', () => {
 
     const habitsTab = screen.getByRole('tab', { name: /Habits & Accolades/i });
     const profileTab = screen.getByRole('tab', { name: /Public Scholar/i });
+    const symposiumsTab = screen.getByRole('tab', { name: /Symposiums & Circle/i });
     const preferencesTab = screen.getByRole('tab', { name: /Preferences/i });
     const securityTab = screen.getByRole('tab', { name: /Security/i });
 
     expect(habitsTab).toHaveAttribute('aria-selected', 'true');
     expect(profileTab).toHaveAttribute('aria-selected', 'false');
+    expect(symposiumsTab).toHaveAttribute('aria-selected', 'false');
     expect(preferencesTab).toHaveAttribute('aria-selected', 'false');
     expect(securityTab).toHaveAttribute('aria-selected', 'false');
 
     // Verify title tooltips for mobile/desktop discovery
     expect(habitsTab).toHaveAttribute('title', 'Habits & Accolades');
     expect(profileTab).toHaveAttribute('title', 'Public Scholar');
+    expect(symposiumsTab).toHaveAttribute('title', 'Symposiums & Circle');
     expect(preferencesTab).toHaveAttribute('title', 'Preferences');
     expect(securityTab).toHaveAttribute('title', 'Security');
 
     // Verify adaptive mobile classes: active tab expands with text, inactive tabs collapse to icons
     expect(habitsTab).toHaveClass('flex-1', 'min-w-0');
     expect(profileTab).toHaveClass('shrink-0');
+    expect(symposiumsTab).toHaveClass('shrink-0');
     expect(preferencesTab).toHaveClass('shrink-0');
     expect(securityTab).toHaveClass('shrink-0');
 
@@ -163,6 +167,16 @@ describe('AccountPage', () => {
     const profileLabel = profileTab.querySelector('span');
     expect(habitsLabel).toHaveClass('truncate', 'min-w-0', 'inline');
     expect(profileLabel).toHaveClass('truncate', 'min-w-0', 'hidden', 'sm:inline');
+
+    // Verify Tier-2 Sub-Tabs inside Habits & Accolades
+    const accoladesSubTab = screen.getByRole('tab', { name: /Accolades Compendium/i });
+    const librarySubTab = screen.getByRole('tab', { name: /Library Breakdown/i });
+    expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
+    expect(document.getElementById('habits-subpanel-accolades')).toHaveClass('hidden');
+    fireEvent.click(accoladesSubTab);
+    expect(document.getElementById('habits-subpanel-accolades')).not.toHaveClass('hidden');
+    fireEvent.click(librarySubTab);
+    expect(document.getElementById('habits-subpanel-library')).not.toHaveClass('hidden');
 
     // Tab panels
     expect(document.getElementById('account-tabpanel-habits')).not.toHaveClass('hidden');
@@ -178,6 +192,11 @@ describe('AccountPage', () => {
     expect(habitsTab.querySelector('span')).toHaveClass('hidden', 'sm:inline');
     expect(document.getElementById('account-tabpanel-profile')).not.toHaveClass('hidden');
     expect(document.getElementById('account-tabpanel-habits')).toHaveClass('hidden');
+
+    // Switch to Symposiums & Circle
+    fireEvent.click(symposiumsTab);
+    expect(symposiumsTab).toHaveAttribute('aria-selected', 'true');
+    expect(document.getElementById('account-tabpanel-symposiums')).not.toHaveClass('hidden');
 
     // Switch to Preferences
     fireEvent.click(preferencesTab);

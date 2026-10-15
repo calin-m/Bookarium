@@ -20,6 +20,7 @@ import {
   useAnnotationStore,
   useHydratedAnnotations,
   type Annotation,
+  type FellowAnnotation,
   type HighlightColor,
 } from '@/stores/useAnnotationStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -94,6 +95,9 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const router = useRouter();
   const {
     annotations,
+    fellowAnnotations,
+    marginaliaSourceFilter,
+    setMarginaliaSourceFilter,
     updateAnnotationColor,
     updateAnnotationNote,
     deleteAnnotation,
@@ -337,9 +341,15 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     [savedBooks, favoriteBooks, recentBooks, remoteBooksData, country]
   );
 
+  const sourceFilteredAnnotations = useMemo(() => {
+    if (marginaliaSourceFilter === 'mine') return annotations;
+    if (marginaliaSourceFilter === 'fellows') return fellowAnnotations;
+    return [...annotations, ...fellowAnnotations];
+  }, [annotations, fellowAnnotations, marginaliaSourceFilter]);
+
   // Filtered list of annotations
   const filteredAnnotations = useMemo(() => {
-    return annotations.filter((ann) => {
+    return sourceFilteredAnnotations.filter((ann) => {
       // 1. Color filter
       if (selectedColor !== 'all' && ann.color !== selectedColor) {
         return false;
@@ -356,11 +366,11 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       }
       return true;
     });
-  }, [annotations, selectedColor, searchQuery, resolveBookDetails]);
+  }, [sourceFilteredAnnotations, selectedColor, searchQuery, resolveBookDetails]);
 
   // Grouped by Volume mapping
   const groupedByVolume = useMemo(() => {
-    const map = new Map<number, { title: string; author: string; isRestricted?: boolean; country?: string; items: Annotation[] }>();
+    const map = new Map<number, { title: string; author: string; isRestricted?: boolean; country?: string; items: Array<Annotation | (typeof fellowAnnotations)[number]> }>();
 
     filteredAnnotations.forEach((ann) => {
       if (!map.has(ann.bookId)) {
@@ -526,7 +536,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           )}
         </SectionHeader>
 
-      {annotations.length === 0 ? (
+      {annotations.length === 0 && fellowAnnotations.length === 0 ? (
         /* Empty State */
         <div className="max-w-md mx-auto my-12 p-8 text-center bg-card border border-border rounded-2xl shadow-booksaw space-y-5">
           <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
@@ -607,18 +617,69 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             }
           />
 
-          {/* Color Filter Tabs */}
+          {/* Color & Symposium Source Filter Tabs */}
           <div
             ref={colorTabsRef}
             data-testid="notebook-color-tabs"
             data-no-swipe
             className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] overscroll-x-contain"
           >
+            {fellowAnnotations.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  data-testid="notebook-source-all"
+                  onClick={() => setMarginaliaSourceFilter('all')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all shrink-0 border cursor-pointer ${
+                    marginaliaSourceFilter === 'all'
+                      ? 'border-primary bg-primary text-primary-foreground font-bold shadow-xs'
+                      : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50'
+                  }`}
+                >
+                  <span>All Marginalia</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-muted text-foreground">
+                    {annotations.length + fellowAnnotations.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="notebook-source-mine"
+                  onClick={() => setMarginaliaSourceFilter('mine')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all shrink-0 border cursor-pointer ${
+                    marginaliaSourceFilter === 'mine'
+                      ? 'border-primary bg-primary text-primary-foreground font-bold shadow-xs'
+                      : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50'
+                  }`}
+                >
+                  <span>My Marginalia</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-muted text-foreground">
+                    {annotations.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="notebook-source-fellows"
+                  onClick={() => setMarginaliaSourceFilter('fellows')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all shrink-0 border cursor-pointer ${
+                    marginaliaSourceFilter === 'fellows'
+                      ? 'border-amber-600 bg-amber-600 text-white font-bold shadow-xs'
+                      : 'border-amber-500/30 bg-amber-500/5 text-amber-800 dark:text-amber-300 hover:border-amber-500'
+                  }`}
+                >
+                  <span>Fellows&apos; Marginalia</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/20 text-inherit">
+                    {fellowAnnotations.length}
+                  </span>
+                </button>
+                <span className="h-4 w-px bg-border shrink-0 mx-0.5" aria-hidden="true" />
+              </>
+            )}
+
             {COLOR_FILTERS.map((filter) => {
               const count =
                 filter.id === 'all'
-                  ? annotations.length
-                  : annotations.filter((a) => a.color === filter.id).length;
+                  ? sourceFilteredAnnotations.length
+                  : sourceFilteredAnnotations.filter((a) => a.color === filter.id).length;
               const isSelected = selectedColor === filter.id;
 
               return (
@@ -850,7 +911,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   );
 
   // Quote Card Renderer
-  function renderQuoteCard(ann: Annotation) {
+  function renderQuoteCard(ann: Annotation | FellowAnnotation) {
     const { title, author, isRestricted, country } = resolveBookDetails(ann);
 
     return (

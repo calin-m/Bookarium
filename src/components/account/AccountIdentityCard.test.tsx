@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { AccountIdentityCard } from './AccountIdentityCard';
 
-describe('AccountIdentityCard', () => {
+describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
   const mockVerifiedUser = {
     id: 'u1',
     email: 'reader@bookarium.test',
@@ -21,10 +21,11 @@ describe('AccountIdentityCard', () => {
   const mockProfile = {
     id: 'u1',
     display_name: 'Test Reader',
+    username: 'test_scholar',
     preferred_theme: 'light',
   } as any;
 
-  it('renders verified reader badge when email_confirmed_at is present', () => {
+  it('renders slim scholar identity ribbon with inline clickable stat pills and toggles quick name editor', () => {
     const handleDisplayNameChange = vi.fn();
     const handleSaveProfile = vi.fn((e) => e.preventDefault());
 
@@ -39,14 +40,32 @@ describe('AccountIdentityCard', () => {
         isSaving={false}
         saveSuccess={false}
         saveError={null}
+        stats={{
+          savedCount: 12,
+          favoriteCount: 4,
+          annotationCount: 9,
+          customShelvesCount: 2,
+          bookmarksCount: 3,
+          readingStreak: 7,
+        }}
       />
     );
 
+    expect(screen.getByTestId('scholar-identity-ribbon')).toBeInTheDocument();
     expect(screen.getByText('Test Reader')).toBeInTheDocument();
+    expect(screen.getByText('test_scholar')).toBeInTheDocument();
     expect(screen.getByText('reader@bookarium.test')).toBeInTheDocument();
     expect(screen.getByText('January 2026')).toBeInTheDocument();
     expect(screen.getByText('Verified Reader')).toBeInTheDocument();
-    expect(screen.queryByText('Email Unverified')).not.toBeInTheDocument();
+    expect(screen.getByTestId('identity-ribbon-stat-strip')).toBeInTheDocument();
+    expect(screen.getByText('🔥 7d Streak')).toBeInTheDocument();
+
+    // Toggle quick name editor
+    const toggleBtn = screen.getByRole('button', {
+      name: /Toggle quick display name editor/i,
+    });
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
 
     const input = screen.getByLabelText('Display Name');
     fireEvent.change(input, { target: { value: 'Updated Reader' } });
@@ -124,25 +143,7 @@ describe('AccountIdentityCard', () => {
     expect(screen.getByText('Resend in 45s')).toBeInTheDocument();
   });
 
-  it('displays save error alert when profile update fails', () => {
-    render(
-      <AccountIdentityCard
-        user={mockVerifiedUser}
-        profile={mockProfile}
-        formattedDate="January 2026"
-        displayName="Test Reader"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={false}
-        saveError="Failed to save changes"
-      />
-    );
-
-    expect(screen.getByText('Failed to save changes')).toBeInTheDocument();
-  });
-
-  it('displays save success and verification alert banners', () => {
+  it('displays save error and save success alert banners', () => {
     render(
       <AccountIdentityCard
         user={mockUnverifiedUser}
@@ -153,12 +154,13 @@ describe('AccountIdentityCard', () => {
         onSaveProfile={vi.fn()}
         isSaving={false}
         saveSuccess={true}
-        saveError={null}
+        saveError="Failed to save changes"
         resendSuccess={true}
         resendError="Rate limit exceeded"
       />
     );
 
+    expect(screen.getByText('Failed to save changes')).toBeInTheDocument();
     expect(screen.getByText('Changes saved to cloud')).toBeInTheDocument();
     expect(screen.getByText('Verification link sent! Check your inbox.')).toBeInTheDocument();
     expect(screen.getByText('Rate limit exceeded')).toBeInTheDocument();

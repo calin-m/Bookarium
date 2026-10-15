@@ -221,5 +221,69 @@ describe('TextHighlightPopover', () => {
 
     window.matchMedia = originalMatchMedia;
   });
+
+  it('renders Read-Only Scholar Attribution view when isFellowOnly is true', () => {
+    const fellowAnn = {
+      id: 'fellow-ann-1',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'To be, or not to be',
+      color: 'amber' as const,
+      note: 'Profound soliloquy reflection by Plato',
+      createdAt: '2026-10-15T10:00:00Z',
+      updatedAt: '2026-10-15T10:00:00Z',
+      isFellow: true as const,
+      fellowUsername: 'plato',
+    };
+
+    render(
+      <TextHighlightPopover
+        {...defaultProps}
+        fellowAnnotation={fellowAnn}
+        isFellowOnly={true}
+      />
+    );
+
+    expect(screen.getByTestId('popover-fellow-attribution')).toBeInTheDocument();
+    expect(screen.getByText('@plato')).toBeInTheDocument();
+    expect(screen.getByText(/Profound soliloquy reflection by Plato/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('highlight-delete-btn')).not.toBeInTheDocument();
+  });
+
+  it('renders 2-pill overlap switcher when both self and fellow annotations exist', () => {
+    const fellowAnn = {
+      id: 'fellow-ann-1',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'To be, or not to be',
+      color: 'amber' as const,
+      note: 'Fellow scholar note on Hamlet',
+      createdAt: '2026-10-15T10:00:00Z',
+      updatedAt: '2026-10-15T10:00:00Z',
+      isFellow: true as const,
+      fellowUsername: 'aristotle',
+    };
+
+    render(
+      <TextHighlightPopover
+        {...defaultProps}
+        existingAnnotationId="self-ann-1"
+        existingNote="My own Hamlet note"
+        fellowAnnotation={fellowAnn}
+        isFellowOnly={false}
+      />
+    );
+
+    expect(screen.getByTestId('popover-overlap-switcher')).toBeInTheDocument();
+    expect(screen.getByTestId('overlap-tab-mine')).toBeInTheDocument();
+    expect(screen.getByTestId('overlap-tab-fellow')).toHaveTextContent("@aristotle's Note");
+
+    // Switch to fellow note tab
+    fireEvent.click(screen.getByTestId('overlap-tab-fellow'));
+    expect(screen.getByTestId('popover-fellow-attribution')).toBeInTheDocument();
+    expect(screen.getByText(/Fellow scholar note on Hamlet/i)).toBeInTheDocument();
+  });
 });
 

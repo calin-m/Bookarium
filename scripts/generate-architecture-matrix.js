@@ -37,6 +37,8 @@ function extractDatabaseCatalog(rootDirPath) {
     user_accolades: '`useAccoladesStore`',
     books: '`SupabaseCatalogProvider`',
     book_translations: '`useBookTranslations` / `SupabaseCatalogProvider`',
+    reader_circles: '`useFellowshipStore`',
+    symposium_sessions: '`useFellowshipStore`',
   };
 
   const descMap = {
@@ -51,6 +53,8 @@ function extractDatabaseCatalog(rootDirPath) {
     user_accolades: 'Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata.',
     books: 'Self-hosted public domain catalog with GIN full-text search vector, pre-computed author lifespan bounds, and optional plain-text caching.',
     book_translations: 'Relational FRBR literary work clusters mapping Project Gutenberg editions across languages with zero false positives.',
+    reader_circles: 'Mutual Literary Fellowship pairings (pending/accepted) with RLS participant isolation.',
+    symposium_sessions: 'Dual-reading Literary Symposium sessions tracking shared volume progress and chapter coordinates for two fellows.',
   };
 
   while ((match = tableRegex.exec(content)) !== null) {
@@ -305,11 +309,13 @@ function generateMarkdown() {
     useAccoladesStore:
       'Deterministic literary accolades evaluation, celebration queues, personal showcase pinning (max 3 bookplates), and bi-directional Supabase cloud synchronization.',
     useAnnotationStore:
-      'Scholar marginalia, categorical pastel highlights (Amber, Emerald, Rose, Sky, Violet), reflections, tags, and commonplace book exports.',
+      'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), reflections, and commonplace book exports.',
     useAuthStore:
       'Supabase session authentication, guest status, password generation, and cloud profile synchronization.',
     useBookshelfStore:
       'Personal library collections, reading queue, reading history, custom named shelves, deletion tombstones, and ratings.',
+    useFellowshipStore:
+      'Opt-in 1-on-1 Reader Circle fellowships, per-volume Literary Symposium sessions, companion progress coordinates, pending invitation badges, and bi-directional Supabase cloud synchronization.',
     useHabitsStore:
       'Reading streaks with 5-minute active immersion threshold, daily calendar activity dates, annual volume challenge goals, dual immersion telemetry (reading vs listening), and multi-device Supabase cloud synchronization.',
     useJurisdictionStore:
@@ -542,7 +548,8 @@ function generateMarkdown() {
     '| **`idx_book_translations_work_id`** | B-Tree Index | `public.book_translations` | Canonical literary work grouping index for cluster traversal. |',
     '| **`idx_book_translations_work_lang`** | Composite Index | `public.book_translations` | Composite index on `(work_id, language)` for fast language filtering within a literary work cluster. |',
     '| **`public.handle_new_user()`** | Trigger / Function | `auth.users` -> `public.profiles` | Auto-provisions profile and default General shelf on signup (execution revoked from public/anon/authenticated; immutable search path). |',
-    '| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable search path). |'
+    '| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable search path). |',
+    '| **`public.lookup_scholar_by_username()`** | RPC Function | `public.profiles` | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`is_public = false`). |'
   );
 
   lines.push(

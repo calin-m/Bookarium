@@ -1,11 +1,35 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { Mail, Calendar, ShieldCheck, Check, AlertTriangle } from 'lucide-react';
+import {
+  Mail,
+  Calendar,
+  ShieldCheck,
+  Check,
+  AlertTriangle,
+  Library,
+  Heart,
+  Highlighter,
+  Layers,
+  Bookmark,
+  PenLine,
+  AtSign,
+} from 'lucide-react';
 import type { Profile } from '@/types/database.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ROUTES } from '@/config/routes';
+
+export interface AccountRibbonStats {
+  savedCount: number;
+  favoriteCount: number;
+  annotationCount: number;
+  customShelvesCount: number;
+  bookmarksCount: number;
+  readingStreak?: number;
+}
 
 export interface AccountIdentityCardProps {
   user: User;
@@ -22,6 +46,8 @@ export interface AccountIdentityCardProps {
   resendSuccess?: boolean;
   resendError?: string | null;
   resendCooldown?: number;
+  stats?: AccountRibbonStats;
+  onOpenLibraryBreakdown?: () => void;
 }
 
 export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
@@ -39,32 +65,75 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
   resendSuccess = false,
   resendError = null,
   resendCooldown = 0,
+  stats,
+  onOpenLibraryBreakdown,
 }) => {
+  const [isEditingName, setIsEditingName] = useState(false);
+
   const isEmailVerified = Boolean(
     user.email_confirmed_at ||
-    ('confirmed_at' in user && typeof user.confirmed_at === 'string' && user.confirmed_at)
+      ('confirmed_at' in user && typeof user.confirmed_at === 'string' && user.confirmed_at)
   );
 
+  const resolvedName =
+    profile?.display_name || user?.user_metadata?.display_name || 'Reader';
+  const monogram = resolvedName.trim().charAt(0).toUpperCase() || 'S';
+
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6 h-full flex flex-col justify-between">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-serif font-bold text-foreground truncate">
-            {profile?.display_name || user?.user_metadata?.display_name || 'Reader'}
-          </h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-muted-foreground mt-1">
-            <span className="flex items-center gap-1 truncate max-w-[200px]" title={user.email}>
-              <Mail className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{user.email}</span>
-            </span>
-            <span className="flex items-center gap-1 shrink-0">
-              <Calendar className="w-3.5 h-3.5 shrink-0" />
-              <span>{formattedDate}</span>
-            </span>
+    <div
+      className="bg-card border border-border rounded-2xl p-4 sm:p-5 shadow-booksaw space-y-3.5"
+      data-testid="scholar-identity-ribbon"
+    >
+      {/* Top Row: Monogram Seal, Scholar Identity & Verification Badge */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div
+            className="w-11 h-11 rounded-2xl bg-primary/10 border border-primary/25 text-primary font-serif font-bold text-lg flex items-center justify-center shrink-0 shadow-xs"
+            aria-hidden="true"
+          >
+            {monogram}
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-serif font-bold text-foreground truncate">
+                {resolvedName}
+              </h1>
+              {profile?.username && (
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-mono bg-muted text-muted-foreground border border-border">
+                  <AtSign className="w-3 h-3 text-primary" />
+                  <span>{profile.username}</span>
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsEditingName((prev) => !prev)}
+                aria-expanded={isEditingName}
+                aria-label="Toggle quick display name editor"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+              >
+                <PenLine className="w-3 h-3" />
+                <span>{isEditingName ? 'Close' : 'Edit Name'}</span>
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-muted-foreground mt-0.5">
+              <span
+                className="flex items-center gap-1 truncate max-w-[220px]"
+                title={user.email}
+              >
+                <Mail className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{user.email}</span>
+              </span>
+              <span className="flex items-center gap-1 shrink-0">
+                <Calendar className="w-3.5 h-3.5 shrink-0" />
+                <span>{formattedDate}</span>
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
           {isEmailVerified ? (
             <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-border">
               <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
@@ -79,9 +148,72 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
         </div>
       </div>
 
+      {/* Inline Clickable Stat Strip (Replaces Tall Top-Fold Library Stack) */}
+      {stats && (
+        <div
+          className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pt-2.5 border-t border-border/70"
+          data-testid="identity-ribbon-stat-strip"
+        >
+          <Link
+            href={ROUTES.BOOKSHELF}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono shrink-0 transition-colors"
+          >
+            <Library className="w-3.5 h-3.5 text-primary" />
+            <span className="font-bold text-foreground">{stats.savedCount}</span>
+            <span className="text-muted-foreground">Shelved</span>
+          </Link>
+
+          <Link
+            href={ROUTES.FAVORITES}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono shrink-0 transition-colors"
+          >
+            <Heart className="w-3.5 h-3.5 text-rose-500" />
+            <span className="font-bold text-foreground">{stats.favoriteCount}</span>
+            <span className="text-muted-foreground">Favorites</span>
+          </Link>
+
+          <Link
+            href={ROUTES.VIEW('notebook')}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono shrink-0 transition-colors"
+          >
+            <Highlighter className="w-3.5 h-3.5 text-amber-500" />
+            <span className="font-bold text-foreground">{stats.annotationCount}</span>
+            <span className="text-muted-foreground">Notes</span>
+          </Link>
+
+          <Link
+            href={ROUTES.BOOKSHELF}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono shrink-0 transition-colors"
+          >
+            <Layers className="w-3.5 h-3.5 text-purple-500" />
+            <span className="font-bold text-foreground">{stats.customShelvesCount}</span>
+            <span className="text-muted-foreground">Shelves</span>
+          </Link>
+
+          <Link
+            href={ROUTES.VIEW('bookmarks')}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono shrink-0 transition-colors"
+          >
+            <Bookmark className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="font-bold text-foreground">{stats.bookmarksCount}</span>
+            <span className="text-muted-foreground">Bookmarks</span>
+          </Link>
+
+          {stats.readingStreak !== undefined && stats.readingStreak > 0 && (
+            <button
+              type="button"
+              onClick={onOpenLibraryBreakdown}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border border-border bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-mono font-bold shrink-0 cursor-pointer"
+            >
+              <span>🔥 {stats.readingStreak}d Streak</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Unverified Email Warning & Resend Banner */}
       {!isEmailVerified && (
-        <div className="p-4 rounded-xl border border-amber-500/40 dark:border-amber-500/50 bg-amber-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+        <div className="p-3.5 rounded-xl border border-amber-500/40 dark:border-amber-500/50 bg-amber-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
           <div className="space-y-1 min-w-0">
             <p className="font-bold text-foreground flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-amber-500 shrink-0" />
@@ -109,26 +241,31 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
               disabled={isResendingVerification || resendCooldown > 0}
               className="shrink-0 text-xs font-mono cursor-pointer"
             >
-              {isResendingVerification ? (
-                'Sending...'
-              ) : resendCooldown > 0 ? (
-                `Resend in ${resendCooldown}s`
-              ) : (
-                'Resend Verification Link'
-              )}
+              {isResendingVerification
+                ? 'Sending...'
+                : resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : 'Resend Verification Link'}
             </Button>
           )}
         </div>
       )}
 
-      {/* Profile Editor Form */}
-      <form onSubmit={onSaveProfile} className="space-y-4">
-        <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
+      {/* Collapsible Quick Profile Editor Drawer (Zero height when collapsed) */}
+      <form
+        onSubmit={onSaveProfile}
+        className={
+          isEditingName || saveError || saveSuccess
+            ? 'space-y-3 pt-3 border-t border-border animate-in fade-in duration-150'
+            : 'hidden'
+        }
+      >
+        <h2 className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-bold">
           Account Details
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
             <label htmlFor="display-name" className="text-xs font-mono text-foreground font-bold">
               Display Name
             </label>
@@ -143,10 +280,8 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono text-muted-foreground">
-              Account Email
-            </label>
+          <div className="space-y-1">
+            <label className="text-xs font-mono text-muted-foreground">Account Email</label>
             <Input
               type="email"
               value={user.email ?? ''}
@@ -156,11 +291,9 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
           </div>
         </div>
 
-        {saveError && (
-          <p className="text-xs font-mono text-destructive">{saveError}</p>
-        )}
+        {saveError && <p className="text-xs font-mono text-destructive">{saveError}</p>}
 
-        <div className="flex items-center gap-3 pt-2">
+        <div className="flex items-center gap-3 pt-1">
           <Button
             type="submit"
             variant="primary"

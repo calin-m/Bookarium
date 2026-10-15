@@ -4,12 +4,12 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { BookOpen, ZoomIn } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
-import type { Annotation } from '@/stores/useAnnotationStore';
+import type { FellowAnnotation } from '@/stores/useAnnotationStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { ANNOTATION_COLOR_CONFIG } from '@/config/annotation-tokens';
 import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
-import { computeAnnotationSpans } from '@/lib/reader-annotator';
+import { computeAnnotationSpans, type AnyAnnotation } from '@/lib/reader-annotator';
 import { ReaderErrorView } from './ReaderErrorView';
 import { ReaderLoadingView } from './ReaderLoadingView';
 
@@ -35,9 +35,13 @@ export interface ReaderSurfaceProps {
   onNextPage?: () => void;
   onFontSizeChange?: (size: number) => void;
   highlightedSentence?: string;
-  annotations?: Annotation[];
+  annotations?: AnyAnnotation[];
   targetAnnotationId?: string | null;
-  onSelectAnnotation?: (annotation: Annotation, position?: { top: number; left: number }) => void;
+  onSelectAnnotation?: (
+    annotation: AnyAnnotation,
+    position?: { top: number; left: number },
+    overlappingFellow?: FellowAnnotation
+  ) => void;
   onTextSelected?: (selection: { text: string; position: { top: number; left: number; bottom?: number } }) => void;
 }
 
@@ -298,10 +302,14 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
 
 function renderContentWithAnnotations(
   text: string,
-  annotations: Annotation[],
+  annotations: AnyAnnotation[],
   highlightedSentence: string | undefined,
   theme: ReaderTheme,
-  onSelectAnnotation?: (annotation: Annotation, position?: { top: number; left: number }) => void
+  onSelectAnnotation?: (
+    annotation: AnyAnnotation,
+    position?: { top: number; left: number },
+    overlappingFellow?: FellowAnnotation
+  ) => void
 ): React.ReactNode {
   if (!highlightedSentence && (!annotations || annotations.length === 0)) {
     return text;
@@ -368,24 +376,46 @@ function renderContentWithAnnotations(
     }
 
     const colorConfig = ANNOTATION_COLOR_CONFIG[span.annotation.color] || ANNOTATION_COLOR_CONFIG.yellow;
+    const isFellowOnly = Boolean(span.fellowAnnotation && !span.selfAnnotation);
+    const hasOverlap = Boolean(span.selfAnnotation && span.fellowAnnotation);
+
+    const highlightClass = isFellowOnly
+      ? 'bg-amber-500/15 border-b-2 border-dashed border-amber-600/75 dark:border-amber-400/75 rounded-xs px-0.5 cursor-pointer transition-colors hover:bg-amber-500/25 text-inherit'
+      : hasOverlap
+      ? `${colorConfig.surfaceHighlightClass} border-b-2 border-dashed border-amber-600/85 dark:border-amber-400/85`
+      : colorConfig.surfaceHighlightClass;
 
     elements.push(
       <mark
         key={`ann-${span.annotation.id}-${i}`}
-        data-testid="user-annotation-highlight"
+        data-testid={isFellowOnly ? 'fellow-annotation-highlight' : 'user-annotation-highlight'}
         data-annotation-id={span.annotation.id}
         data-annotation-color={span.annotation.color}
+        data-fellow-username={span.fellowAnnotation?.fellowUsername}
         onClick={(e) => {
           e.stopPropagation();
           const rect = e.currentTarget.getBoundingClientRect();
-          onSelectAnnotation?.(span.annotation, {
+          const pos = {
             top: rect.top,
             left: rect.left + rect.width / 2,
-          });
+          };
+          if (hasOverlap && span.selfAnnotation && span.fellowAnnotation) {
+            onSelectAnnotation?.(span.selfAnnotation, pos, span.fellowAnnotation);
+          } else {
+            onSelectAnnotation?.(span.annotation, pos);
+          }
         }}
-        className={colorConfig.surfaceHighlightClass}
+        className={highlightClass}
       >
         {text.slice(span.start, span.end)}
+        {span.fellowAnnotation && (
+          <sup
+            data-testid="fellow-highlight-badge"
+            className="ml-0.5 inline-flex items-center px-1 py-0 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 select-none"
+          >
+            @{span.fellowAnnotation.fellowUsername}
+          </sup>
+        )}
       </mark>
     );
 

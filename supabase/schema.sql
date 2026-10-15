@@ -723,5 +723,167 @@ CREATE POLICY "Service role can manage book translations"
   USING (true)
   WITH CHECK (true);
 
+-- ============================================================================
+-- 11. Reader Circles & Literary Symposiums (Dual Reading — Milestone 7)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.reader_circles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  requester_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  requester_username TEXT NOT NULL DEFAULT '',
+  requester_display_name TEXT NOT NULL DEFAULT 'Scholar',
+  recipient_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  recipient_username TEXT NOT NULL DEFAULT '',
+  recipient_display_name TEXT NOT NULL DEFAULT 'Scholar',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  UNIQUE(requester_id, recipient_id),
+  CHECK (requester_id <> recipient_id)
+);
 
+ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS requester_username TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS requester_display_name TEXT NOT NULL DEFAULT 'Scholar';
+ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS recipient_username TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS recipient_display_name TEXT NOT NULL DEFAULT 'Scholar';
 
+CREATE INDEX IF NOT EXISTS idx_reader_circles_requester ON public.reader_circles(requester_id);
+CREATE INDEX IF NOT EXISTS idx_reader_circles_recipient ON public.reader_circles(recipient_id);
+
+ALTER TABLE public.reader_circles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Participants can view their reader circle connections" ON public.reader_circles;
+CREATE POLICY "Participants can view their reader circle connections"
+  ON public.reader_circles FOR SELECT
+  TO authenticated
+  USING (auth.uid() = requester_id OR auth.uid() = recipient_id);
+
+DROP POLICY IF EXISTS "Scholars can send reader circle invitations" ON public.reader_circles;
+CREATE POLICY "Scholars can send reader circle invitations"
+  ON public.reader_circles FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = requester_id AND requester_id <> recipient_id);
+
+DROP POLICY IF EXISTS "Participants can update their reader circle status" ON public.reader_circles;
+CREATE POLICY "Participants can update their reader circle status"
+  ON public.reader_circles FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = requester_id OR auth.uid() = recipient_id)
+  WITH CHECK (auth.uid() = requester_id OR auth.uid() = recipient_id);
+
+DROP POLICY IF EXISTS "Participants can remove reader circle connections" ON public.reader_circles;
+CREATE POLICY "Participants can remove reader circle connections"
+  ON public.reader_circles FOR DELETE
+  TO authenticated
+  USING (auth.uid() = requester_id OR auth.uid() = recipient_id);
+
+-- Literary Symposium Sessions (Per-Volume Shared Reading Pacts)
+CREATE TABLE IF NOT EXISTS public.symposium_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  book_id INTEGER NOT NULL,
+  book_title TEXT NOT NULL DEFAULT '',
+  host_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  host_username TEXT NOT NULL DEFAULT '',
+  host_display_name TEXT NOT NULL DEFAULT 'Scholar',
+  fellow_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  fellow_username TEXT NOT NULL DEFAULT '',
+  fellow_display_name TEXT NOT NULL DEFAULT 'Scholar',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'completed')),
+  host_chapter INTEGER NOT NULL DEFAULT 0,
+  host_progress INTEGER NOT NULL DEFAULT 0 CHECK (host_progress >= 0 AND host_progress <= 100),
+  fellow_chapter INTEGER NOT NULL DEFAULT 0,
+  fellow_progress INTEGER NOT NULL DEFAULT 0 CHECK (fellow_progress >= 0 AND fellow_progress <= 100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  UNIQUE(book_id, host_id, fellow_id),
+  CHECK (host_id <> fellow_id)
+);
+
+ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS book_title TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS host_username TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS host_display_name TEXT NOT NULL DEFAULT 'Scholar';
+ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS fellow_username TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS fellow_display_name TEXT NOT NULL DEFAULT 'Scholar';
+ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS host_chapter INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS host_progress INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS fellow_chapter INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS fellow_progress INTEGER NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS idx_symposium_sessions_host ON public.symposium_sessions(host_id);
+CREATE INDEX IF NOT EXISTS idx_symposium_sessions_fellow ON public.symposium_sessions(fellow_id);
+CREATE INDEX IF NOT EXISTS idx_symposium_sessions_book ON public.symposium_sessions(book_id);
+
+ALTER TABLE public.symposium_sessions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Participants can view their symposium sessions" ON public.symposium_sessions;
+CREATE POLICY "Participants can view their symposium sessions"
+  ON public.symposium_sessions FOR SELECT
+  TO authenticated
+  USING (auth.uid() = host_id OR auth.uid() = fellow_id);
+
+DROP POLICY IF EXISTS "Hosts can create symposium invitations" ON public.symposium_sessions;
+CREATE POLICY "Hosts can create symposium invitations"
+  ON public.symposium_sessions FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = host_id AND host_id <> fellow_id);
+
+DROP POLICY IF EXISTS "Participants can update their symposium progress and status" ON public.symposium_sessions;
+CREATE POLICY "Participants can update their symposium progress and status"
+  ON public.symposium_sessions FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = host_id OR auth.uid() = fellow_id)
+  WITH CHECK (auth.uid() = host_id OR auth.uid() = fellow_id);
+
+DROP POLICY IF EXISTS "Participants can leave or delete symposium sessions" ON public.symposium_sessions;
+CREATE POLICY "Participants can leave or delete symposium sessions"
+  ON public.symposium_sessions FOR DELETE
+  TO authenticated
+  USING (auth.uid() = host_id OR auth.uid() = fellow_id);
+
+-- Scoped Marginalia Visibility: Allow Fellow Scholars to read annotations ONLY in shared Symposium volumes
+DROP POLICY IF EXISTS "Fellows can view annotations in active symposiums" ON public.user_annotations;
+CREATE POLICY "Fellows can view annotations in active symposiums"
+  ON public.user_annotations FOR SELECT
+  TO authenticated
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM public.symposium_sessions s
+      WHERE s.book_id = user_annotations.book_id
+        AND s.status IN ('active', 'completed')
+        AND (
+          (s.host_id = auth.uid() AND s.fellow_id = user_annotations.user_id)
+          OR (s.fellow_id = auth.uid() AND s.host_id = user_annotations.user_id)
+        )
+    )
+  );
+
+-- Zero-PII Handle Lookup RPC for Private-Sanctuary Reader Circle Invitations
+CREATE OR REPLACE FUNCTION public.lookup_scholar_by_username(target_username TEXT)
+RETURNS TABLE (
+  id UUID,
+  username TEXT,
+  display_name TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    p.id,
+    p.username,
+    COALESCE(p.display_name, 'Scholar') AS display_name
+  FROM public.profiles p
+  WHERE LOWER(p.username) = LOWER(TRIM(target_username))
+  LIMIT 1;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.lookup_scholar_by_username(TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.lookup_scholar_by_username(TEXT) FROM anon;
+GRANT EXECUTE ON FUNCTION public.lookup_scholar_by_username(TEXT) TO authenticated;

@@ -172,5 +172,23 @@ describe('NotebookQuoteCard', () => {
     fireEvent.click(addBtn);
     expect(defaultProps.onStartEdit).toHaveBeenCalledWith(noNoteAnn);
   });
+
+  it('renders Fellow Marginalia attribution badge and hides edit/delete controls for fellow annotations', () => {
+    const fellowAnnotation = {
+      ...mockAnnotation,
+      id: 'fellow-ann-1',
+      isFellow: true as const,
+      fellowUsername: 'clara_v',
+      fellowDisplayName: 'Clara Vance',
+    };
+
+    render(<NotebookQuoteCard {...defaultProps} annotation={fellowAnnotation} />);
+
+    expect(screen.getByTestId('notebook-fellow-badge-fellow-ann-1')).toHaveTextContent('@clara_v');
+    expect(screen.queryByTestId('edit-quote-btn-fellow-ann-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('delete-quote-btn-fellow-ann-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('jump-reader-btn-fellow-ann-1')).toBeInTheDocument();
+  });
 });
+
 

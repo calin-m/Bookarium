@@ -74,5 +74,77 @@ describe('ReaderSubHeaderRibbon', () => {
     expect(screen.getByTestId('resume-notice')).toBeInTheDocument();
     expect(screen.getByText('Completed Volume (100%) • Page 1')).toBeInTheDocument();
   });
+
+  it('renders symposium companion progress micro-pill when symposiumCompanion is provided', () => {
+    render(
+      <ReaderSubHeaderRibbon
+        bookId={1342}
+        progress={50}
+        totalChapters={20}
+        currentChapterIndex={4}
+        symposiumCompanion={{
+          username: 'clara_v',
+          displayName: 'Clara Vance',
+          progress: 68,
+          currentChapterIndex: 11,
+        }}
+      />
+    );
+
+    const pill = screen.getByTestId('symposium-companion-pill');
+    expect(pill).toBeInTheDocument();
+    expect(pill).toHaveTextContent('@clara_v: Sec. 12 (68%)');
+  });
+
+  it('renders symposium milestone dispatch banner when no resumeNotice is active and yields priority when resumeNotice is active', () => {
+    const handleDismissMilestone = vi.fn();
+
+    const { rerender } = render(
+      <ReaderSubHeaderRibbon
+        bookId={1342}
+        progress={50}
+        totalChapters={20}
+        currentChapterIndex={4}
+        resumeNotice={{ chapterTitle: 'Chapter 5', page: 2 }}
+        symposiumMilestoneNotice={{
+          username: 'clara_v',
+          displayName: 'Clara Vance',
+          chapterIndex: 9,
+          progress: 50,
+        }}
+        onDismissSymposiumMilestone={handleDismissMilestone}
+      />
+    );
+
+    // Resume notice takes priority over milestone banner
+    expect(screen.getByTestId('resume-notice')).toBeInTheDocument();
+    expect(screen.queryByTestId('symposium-milestone-banner')).not.toBeInTheDocument();
+
+    // Once resumeNotice is cleared, milestone banner renders
+    rerender(
+      <ReaderSubHeaderRibbon
+        bookId={1342}
+        progress={50}
+        totalChapters={20}
+        currentChapterIndex={4}
+        resumeNotice={null}
+        symposiumMilestoneNotice={{
+          username: 'clara_v',
+          displayName: 'Clara Vance',
+          chapterIndex: 9,
+          progress: 50,
+        }}
+        onDismissSymposiumMilestone={handleDismissMilestone}
+      />
+    );
+
+    const banner = screen.getByTestId('symposium-milestone-banner');
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent('@clara_v reached Section 10 (50%) in this Symposium');
+
+    fireEvent.click(screen.getByTestId('dismiss-symposium-milestone-btn'));
+    expect(handleDismissMilestone).toHaveBeenCalledTimes(1);
+  });
 });
+
 

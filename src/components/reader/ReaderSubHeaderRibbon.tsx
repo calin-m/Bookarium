@@ -10,6 +10,20 @@ export interface ResumeNoticeData {
   page: number;
 }
 
+export interface SymposiumCompanionProgress {
+  username: string;
+  displayName: string;
+  progress: number;
+  currentChapterIndex: number;
+}
+
+export interface SymposiumMilestoneNoticeData {
+  username: string;
+  displayName: string;
+  chapterIndex: number;
+  progress: number;
+}
+
 export interface ReaderSubHeaderRibbonProps {
   bookId?: string | number;
   progress: number;
@@ -20,11 +34,15 @@ export interface ReaderSubHeaderRibbonProps {
   onRestart?: () => void;
   onDismissResume?: () => void;
   onOpenInfoModal?: () => void;
+  symposiumCompanion?: SymposiumCompanionProgress | null;
+  symposiumMilestoneNotice?: SymposiumMilestoneNoticeData | null;
+  onDismissSymposiumMilestone?: () => void;
 }
 
 /**
- * Sub-header ribbon component rendering either the transient session resume notification
- * or the default archival volume info, section counter, and progress pill.
+ * Sub-header ribbon component rendering either the transient session resume notification,
+ * a Literary Symposium milestone dispatch banner, or the default archival volume info,
+ * section counter, progress pill, and companion progress micro-pill.
  */
 export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
   bookId,
@@ -36,6 +54,9 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
   onRestart,
   onDismissResume,
   onOpenInfoModal,
+  symposiumCompanion,
+  symposiumMilestoneNotice,
+  onDismissSymposiumMilestone,
 }) => {
   const activeTheme = getReaderTheme(theme);
 
@@ -76,6 +97,35 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
             </button>
           )}
         </div>
+      </div>
+    );
+  }
+
+  if (symposiumMilestoneNotice) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        data-testid="symposium-milestone-banner"
+        className="w-full px-4 sm:px-6 md:px-8 py-1.5 border-t border-amber-500/30 flex items-center justify-between gap-3 text-xs font-mono bg-amber-500/10 text-foreground animate-in fade-in slide-in-from-top-1 duration-200"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="shrink-0" aria-hidden="true">📜</span>
+          <span className="truncate font-medium">
+            @{symposiumMilestoneNotice.username} reached Section {symposiumMilestoneNotice.chapterIndex + 1} ({Math.round(symposiumMilestoneNotice.progress)}%) in this Symposium
+          </span>
+        </div>
+        {onDismissSymposiumMilestone && (
+          <button
+            type="button"
+            onClick={onDismissSymposiumMilestone}
+            aria-label="Dismiss symposium milestone notice"
+            data-testid="dismiss-symposium-milestone-btn"
+            className="text-muted-foreground hover:text-foreground font-bold p-1 cursor-pointer shrink-0"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     );
   }
@@ -132,7 +182,25 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
           <span>{Math.round(progress)}%</span>
           <span className="hidden sm:inline"> Progress</span>
         </div>
+
+        {/* Companion Progress Micro-Pill (Dual Reading Symposium) */}
+        {symposiumCompanion && (
+          <>
+            <span className={`opacity-40 shrink-0 ${activeTheme.textMuted}`}>•</span>
+            <div
+              data-testid="symposium-companion-pill"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-[10px] font-mono font-bold shrink-0"
+              title={`Symposium Fellow @${symposiumCompanion.username} (${symposiumCompanion.displayName}): Section ${symposiumCompanion.currentChapterIndex + 1}, ${Math.round(symposiumCompanion.progress)}%`}
+            >
+              <span className="sm:hidden">🤝 {Math.round(symposiumCompanion.progress)}%</span>
+              <span className="hidden sm:inline">
+                🤝 @{symposiumCompanion.username}: Sec. {symposiumCompanion.currentChapterIndex + 1} ({Math.round(symposiumCompanion.progress)}%)
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 };
+

@@ -418,4 +418,21 @@ describe('ReaderHeader', () => {
     fireEvent.click(speechBtns[0]);
     expect(onToggleSpeech).toHaveBeenCalledTimes(1);
   });
+
+  it('forwards symposiumCompanion to the sub-header ribbon', () => {
+    render(
+      <ReaderHeader
+        {...defaultProps}
+        symposiumCompanion={{
+          username: 'clara_v',
+          displayName: 'Clara Vance',
+          progress: 75,
+          currentChapterIndex: 14,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent('@clara_v: Sec. 15 (75%)');
+  });
 });
+

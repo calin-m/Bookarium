@@ -727,4 +727,63 @@ describe('ReaderSurface', () => {
       expect(mark?.className).toContain('ring-2');
     });
   });
+
+  it('renders Fellow Scholar highlights with dashed underline and @fellow badge, and supports overlapping highlights', () => {
+    const onSelectAnnotation = vi.fn();
+    const fellowAnn = {
+      id: 'fellow-ann-1',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Call me Ishmael.',
+      color: 'amber' as const,
+      note: 'Melville narrator introduction',
+      createdAt: '2026-10-15T10:00:00Z',
+      updatedAt: '2026-10-15T10:00:00Z',
+      isFellow: true as const,
+      fellowUsername: 'plato',
+    };
+
+    const { rerender } = render(
+      <ReaderSurface
+        {...defaultProps}
+        annotations={[fellowAnn]}
+        onSelectAnnotation={onSelectAnnotation}
+      />
+    );
+
+    const fellowMark = screen.getByTestId('fellow-annotation-highlight');
+    expect(fellowMark).toBeInTheDocument();
+    expect(fellowMark).toHaveClass('border-dashed');
+    expect(screen.getByTestId('fellow-highlight-badge')).toHaveTextContent('@plato');
+
+    fireEvent.click(fellowMark);
+    expect(onSelectAnnotation).toHaveBeenCalledWith(fellowAnn, expect.any(Object));
+
+    // Overlapping self + fellow highlight
+    const selfAnn: Annotation = {
+      id: 'self-ann-1',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Call me Ishmael.',
+      color: 'mint',
+      note: 'My own note',
+      createdAt: '2026-10-15T10:05:00Z',
+      updatedAt: '2026-10-15T10:05:00Z',
+    };
+
+    rerender(
+      <ReaderSurface
+        {...defaultProps}
+        annotations={[selfAnn, fellowAnn]}
+        onSelectAnnotation={onSelectAnnotation}
+      />
+    );
+
+    const combinedMark = screen.getByTestId('user-annotation-highlight');
+    expect(combinedMark).toHaveClass('border-dashed');
+    fireEvent.click(combinedMark);
+    expect(onSelectAnnotation).toHaveBeenCalledWith(selfAnn, expect.any(Object), fellowAnn);
+  });
 });

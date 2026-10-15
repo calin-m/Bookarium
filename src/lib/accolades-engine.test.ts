@@ -198,6 +198,7 @@ describe('accolades-engine', () => {
         historicalErasExplored: ['antiquity', 'middle-ages', 'renaissance'],
         totalAnnotationsCount: 15,
         highlightColorsUsed: ['yellow', 'amber', 'mint', 'rose'],
+        completedSymposiumsCount: 1,
         completedBooksCount: 52,
       };
 
@@ -210,6 +211,7 @@ describe('accolades-engine', () => {
       expect(result.progressMap['century-voyager'].isUnlocked).toBe(true);
       expect(result.progressMap['commonplace-scholar'].isUnlocked).toBe(true);
       expect(result.progressMap['palette-virtuoso'].isUnlocked).toBe(true);
+      expect(result.progressMap['symposium-companion'].isUnlocked).toBe(true);
       expect(result.progressMap['bibliophile-novice'].isUnlocked).toBe(true);
       expect(result.progressMap['canonical-scholar'].isUnlocked).toBe(true);
       expect(result.progressMap['master-of-the-canon'].isUnlocked).toBe(true);

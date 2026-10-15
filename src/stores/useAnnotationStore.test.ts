@@ -575,6 +575,55 @@ describe('useAnnotationStore', () => {
     expect(useAnnotationStore.getState().outbox).toHaveLength(1);
     expect(useAnnotationStore.getState().outbox[0].id).toBe('outbox-fail');
   });
+
+  it('toggles marginaliaSourceFilter and spoilerShieldEnabled and fetches fellow annotations for a book', async () => {
+    useAnnotationStore.getState().setMarginaliaSourceFilter('fellows');
+    expect(useAnnotationStore.getState().marginaliaSourceFilter).toBe('fellows');
+
+    useAnnotationStore.getState().setSpoilerShieldEnabled(false);
+    expect(useAnnotationStore.getState().spoilerShieldEnabled).toBe(false);
+
+    mockSelect.mockReturnValueOnce({
+      eq: vi.fn().mockReturnValue({
+        neq: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValueOnce({
+            data: [
+              {
+                id: 'fellow-ann-1',
+                user_id: 'fellow-user-2',
+                book_id: 1342,
+                chapter_index: 2,
+                chapter_page: 1,
+                selected_text: 'Fellow highlight quote',
+                color: 'amber',
+                note: 'Fellow marginalia note',
+                created_at: '2026-10-15T12:00:00Z',
+                updated_at: '2026-10-15T12:00:00Z',
+              },
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const fetched = await useAnnotationStore.getState().fetchFellowAnnotationsForBook(
+      1342,
+      'user-123',
+      {
+        'fellow-user-2': {
+          username: 'plato',
+          display_name: 'Plato of Athens',
+        },
+      }
+    );
+
+    expect(fetched).toHaveLength(1);
+    expect(fetched[0].isFellow).toBe(true);
+    expect(fetched[0].fellowUsername).toBe('plato');
+    expect(fetched[0].fellowDisplayName).toBe('Plato of Athens');
+    expect(useAnnotationStore.getState().getFellowAnnotationsForBook(1342)).toHaveLength(1);
+  });
 });
 
 

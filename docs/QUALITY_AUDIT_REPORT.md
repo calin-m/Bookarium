@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 15 Oct 2026 11:50:08 GMT  
+**Last Generated**: Thu, 15 Oct 2026 16:04:37 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 175 passed  
-**Total Verified Tests**: 1671 passed  
+**Total Test Suites**: 178 passed  
+**Total Verified Tests**: 1696 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1671 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **178/178 test suites passed** (1696 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 53 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 55 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.04%** (7621/8280) — *Target: $ge$ 80%*
-- **Statements**: **90.49%** (8263/9131) — *Target: $ge$ 80%*
-- **Functions**: **88.86%** (1772/1994) — *Target: $ge$ 80%*
-- **Branches**: **80.94%** (7244/8949) — *Target: $ge$ 80%*
+- **Lines**: **91.51%** (7977/8717) — *Target: $ge$ 80%*
+- **Statements**: **89.97%** (8653/9617) — *Target: $ge$ 80%*
+- **Functions**: **87.88%** (1878/2137) — *Target: $ge$ 80%*
+- **Branches**: **80.51%** (7694/9556) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1671 Tests)
+## 🧪 Comprehensive Test Suite Catalog (178 Suites / 1696 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 162 Tests)
+### 🚀 App Routes & Pages (14 Suites · 163 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
@@ -224,7 +224,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (33 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (34 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -259,6 +259,7 @@
 - ✔ `renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction`
 - ✔ `navigates directly to chapter and page specified in URL search params`
 - ✔ `navigates to targeted annotation and scrolls it into view when annotationId is provided in URL`
+- ✔ `displays Literary Symposium milestone dispatch banner and reveals companion progress micro-pill when dismissed`
 
 </details>
 
@@ -282,7 +283,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 349 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 353 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -353,7 +354,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -369,6 +370,7 @@
 - ✔ `renders Start and global page coordinate when chapterIndex is 0`
 - ✔ `renders "Read Again" button with RotateCcw icon and accessible label when status is completed`
 - ✔ `renders Protected badge and disabled Restricted button when book is restricted under jurisdiction`
+- ✔ `opens SymposiumInviteModal pre-populated with the volume when Invite Fellow to Symposium button is clicked`
 
 </details>
 
@@ -678,7 +680,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (21 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (22 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -701,6 +703,7 @@
 - ✔ `renders GitHub repository link with target _blank on the header`
 - ✔ `renders dynamic active view masthead subtitle with section theme color and responsive classes`
 - ✔ `applies hidden and lg:inline responsive classes to navigation and action text labels`
+- ✔ `renders 0px-width fellowship notification dot on Account link when pending invitations exist`
 
 </details>
 
@@ -715,7 +718,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders book metadata, quote excerpt, and note`
 - ✔ `renders Protected badge when isRestricted is true`
@@ -727,11 +730,12 @@
 - ✔ `triggers delete annotation and jump to reader from card footer`
 - ✔ `copies formatted citation to clipboard and displays Copied state`
 - ✔ `displays Add a personal note prompt when annotation has no note`
+- ✔ `renders Fellow Marginalia attribution badge and hides edit/delete controls for fellow annotations`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (38 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (39 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -771,6 +775,7 @@
 - ✔ `paginates volume groups with 6 books per page in By-Book mode`
 - ✔ `resets page to 1 when changing search query, color filter, or sort order`
 - ✔ `applies tactile animate-page-turn to notebook-content-anchor across grouping, color filter, and pagination transitions`
+- ✔ `renders source filter pills when fellowAnnotations are present and filters between All, Mine, and Fellows`
 
 </details>
 
@@ -801,7 +806,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 143 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 150 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -833,7 +838,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders annotations list with quotes and section pills`
 - ✔ `renders empty state when there are no annotations`
@@ -845,6 +850,7 @@
 - ✔ `cancels deletion when clicking cancel in modal`
 - ✔ `translates vertical wheel scroll to horizontal scroll on color filter tags`
 - ✔ `renders a vertically scrollable list container with sticky non-compressible controls`
+- ✔ `renders progressive-disclosure Symposium source filter and Spoiler Shield when fellowAnnotations exist`
 
 </details>
 
@@ -901,7 +907,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (18 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -921,6 +927,7 @@
 - ✔ `dispatches TOC, Search, and Controls actions from desktop tool row`
 - ✔ `renders and dispatches Annotations toggle with count badge`
 - ✔ `renders Read Aloud button and handles click toggles`
+- ✔ `forwards symposiumCompanion to the sub-header ribbon`
 
 </details>
 
@@ -980,16 +987,18 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSubHeaderRibbon.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSubHeaderRibbon.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders default archival metadata, section counter, and progress pill`
 - ✔ `renders resume notice when resumeNotice data is provided`
 - ✔ `renders clean completed notice without Resumed prefix when chapterTitle includes Completed`
+- ✔ `renders symposium companion progress micro-pill when symposiumCompanion is provided`
+- ✔ `renders symposium milestone dispatch banner when no resumeNotice is active and yields priority when resumeNotice is active`
 
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (25 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -1015,6 +1024,7 @@
 - ✔ `ignores text selections anchored outside reader content body`
 - ✔ `triggers onTextSelected with text and coordinate bounds on valid mouseUp`
 - ✔ `scrolls target annotation into view and applies focus ring pulse`
+- ✔ `renders Fellow Scholar highlights with dashed underline and @fellow badge, and supports overlapping highlights`
 
 </details>
 
@@ -1030,7 +1040,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `renders all 4 color choices and action buttons`
 - ✔ `calls onSelectColor when a color button is clicked`
@@ -1045,6 +1055,8 @@
 - ✔ `calls onClose when touchstart occurs outside the popover`
 - ✔ `positions docked at bottom on touch devices to avoid native mobile context menu collision`
 - ✔ `positions contextually near anchor on desktop devices`
+- ✔ `renders Read-Only Scholar Attribution view when isFellowOnly is true`
+- ✔ `renders 2-pill overlap switcher when both self and fellow annotations exist`
 
 </details>
 
@@ -1081,7 +1093,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (9 Suites · 150 Tests)
+### ⚡ Zustand State Stores (10 Suites · 156 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -1098,7 +1110,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1120,6 +1132,7 @@
 - ✔ `ignores invalid or placeholder titles when calling updateBookMetadata`
 - ✔ `flushes outbox with polymorphic dispatchers for UPSERT and DELETE actions`
 - ✔ `retains failing actions in outbox when dispatcher throws error`
+- ✔ `toggles marginaliaSourceFilter and spoilerShieldEnabled and fetches fellow annotations for a book`
 
 </details>
 
@@ -1206,6 +1219,17 @@
 </details>
 
 <details>
+<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `invites a Fellow Scholar by @username via RPC lookup and accepts invitation`
+- ✔ `validates empty and self @username invitations and handles missing handles`
+- ✔ `creates a Literary Symposium invite, accepts it, and synchronizes reading progress to completion`
+- ✔ `calculates incoming pending invite count and cascades fellow removal to symposiums`
+- ✔ `fetches fellowship data and exposes hydrated fellowship hook`
+
+</details>
+
+<details>
 <summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `initializes with default values`
@@ -1287,7 +1311,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (32 Suites · 342 Tests)
+### 📚 Gutenberg Parsers & Metadata (32 Suites · 343 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1689,7 +1713,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -1697,6 +1721,7 @@
 - ✔ `sorts multiple disjoint annotations in start order`
 - ✔ `resolves overlapping annotations by prioritizing earlier non-overlapping spans`
 - ✔ `captures multiple occurrences of the same phrase`
+- ✔ `preserves both selfAnnotation and fellowAnnotation when overlapping`
 
 </details>
 
@@ -2176,7 +2201,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (51 Suites · 255 Tests)
+### 🧩 UI Primitives & Motion (53 Suites · 261 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2365,13 +2390,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (4 tests)</summary>
 
-- ✔ `renders verified reader badge when email_confirmed_at is present`
+- ✔ `renders slim scholar identity ribbon with inline clickable stat pills and toggles quick name editor`
 - ✔ `renders unverified badge and handles resend verification click`
 - ✔ `renders sending spinner and cooldown timer during resend verification states`
-- ✔ `displays save error alert when profile update fails`
-- ✔ `displays save success and verification alert banners`
+- ✔ `displays save error and save success alert banners`
 
 </details>
 
@@ -2393,7 +2417,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
 - ✔ `renders read-aloud section and handles speed selection`
@@ -2406,11 +2430,12 @@
 - ✔ `handles file input change and shows error on corrupted file`
 - ✔ `shows error when backup file exceeds 10MB limit`
 - ✔ `handles exportLibraryData utility directly`
+- ✔ `switches between Appearance & Scroll, Read-Aloud Studio, and Backup & Restore sub-tabs`
 
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders public scholar profile section with profile data`
 - ✔ `toggles master public profile switch and updates badge`
@@ -2420,6 +2445,7 @@
 - ✔ `blocks submission and displays error when public is enabled without username`
 - ✔ `displays error message if update fails`
 - ✔ `allows toggling Saved Works and Custom Shelves independently`
+- ✔ `switches between Identity & Bio and Sanctuary & Privacy sub-tabs`
 
 </details>
 
@@ -2438,6 +2464,13 @@
 <summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `renders password fields, strength meter, and buttons`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountSymposiumSection.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `switches between Active Symposiums, Reader Circle, and Invitations sub-tabs`
 
 </details>
 
@@ -2486,7 +2519,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders public scholar view with profile info, telemetry, and bookshelves`
 - ✔ `renders PrivateProfileNotice when is_public is false`
@@ -2495,6 +2528,8 @@
 - ✔ `falls back to username handle when display_name is missing`
 - ✔ `falls back to Bookarium Scholar when both display_name and username are missing`
 - ✔ `copies public profile link when share button is clicked`
+- ✔ `renders Invite to Reader Circle button for authenticated visitor and dispatches invite`
+- ✔ `renders Start Symposium button when visitor is already an accepted Fellow Scholar`
 
 </details>
 
@@ -2504,6 +2539,14 @@
 - ✔ `renders null without throwing`
 - ✔ `attempts registration in production when serviceWorker is available`
 - ✔ `does not attempt registration in development mode`
+
+</details>
+
+<details>
+<summary><b><code>src/components/symposium/SymposiumInviteModal.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders quick Reader Circle handle invite when no accepted fellows exist`
+- ✔ `dispatches a Literary Symposium pact for an accepted fellow scholar`
 
 </details>
 
@@ -2743,7 +2786,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 
