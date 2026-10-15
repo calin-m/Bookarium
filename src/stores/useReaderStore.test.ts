@@ -266,11 +266,34 @@ describe('useReaderStore', () => {
           user_id: 'test-user-123',
           book_id: 1342,
           book_title: 'Pride and Prejudice',
-          book_authors: ['Austen, Jane'],
+          book_authors: ['Austen, Jane, 1775-1817'],
           cover_url: 'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
           progress_percent: 10,
         }),
         { onConflict: 'user_id,book_id' }
+      );
+    });
+
+    it('upgrades stored readingPositions with author lifespans via enrichReadingPositions', () => {
+      useReaderStore.setState({
+        readingPositions: {
+          1342: {
+            chapterIndex: 2,
+            chapterPage: 3,
+            globalPage: 15,
+            lastReadAt: '2026-09-01T10:00:00.000Z',
+            bookTitle: 'Pride and Prejudice',
+            bookAuthors: ['Austen, Jane'],
+          },
+        },
+      });
+
+      useReaderStore.getState().enrichReadingPositions([mockBooks[0]]);
+
+      const enriched = useReaderStore.getState().getReadingPosition(1342);
+      expect(enriched?.bookAuthors).toEqual(['Austen, Jane, 1775-1817']);
+      expect(enriched?.coverUrl).toBe(
+        'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg'
       );
     });
 

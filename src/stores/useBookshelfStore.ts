@@ -292,8 +292,14 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       enrichSavedBooks: async (freshBooks) => {
-        const { savedBooks, recentBooks, cloudBookshelfItems } = get();
-        if (!freshBooks || freshBooks.length === 0 || (savedBooks.length === 0 && recentBooks.length === 0)) return;
+        const { savedBooks, recentBooks, favoriteBooks = [], cloudBookshelfItems } = get();
+        if (
+          !freshBooks ||
+          freshBooks.length === 0 ||
+          (savedBooks.length === 0 && recentBooks.length === 0 && favoriteBooks.length === 0)
+        ) {
+          return;
+        }
 
         const freshMap = new Map<number, GutendexBook>();
         for (const fb of freshBooks) {
@@ -302,61 +308,54 @@ export const useBookshelfStore = create<BookshelfState>()(
           }
         }
 
-        let hasSavedChanges = false;
-        const nextSaved = savedBooks.map((sb) => {
-          const fresh = freshMap.get(sb.id);
-          if (!fresh) return sb;
+        const enrichBookItem = (item: GutendexBook, markChanged: () => void): GutendexBook => {
+          const fresh = freshMap.get(item.id);
+          if (!fresh) return item;
 
-          const sbHasLifespans = Boolean(sb.authors?.some((a) => a.birth_year != null || a.death_year != null));
+          const itemHasLifespans = Boolean(item.authors?.some((a) => a.birth_year != null || a.death_year != null));
           const freshHasLifespans = Boolean(fresh.authors?.some((a) => a.birth_year != null || a.death_year != null));
-          const hasNewLifespans = freshHasLifespans && !sbHasLifespans;
-          const hasNewFormats = Boolean(fresh.formats) && Object.keys(fresh.formats).some((key) => !sb.formats?.[key]);
+          const hasNewLifespans = freshHasLifespans && !itemHasLifespans;
+          const hasNewFormats = Boolean(fresh.formats) && Object.keys(fresh.formats).some((key) => !item.formats?.[key]);
           const hasNewTranslators = Boolean(
             fresh.translators &&
               fresh.translators.length > 0 &&
-              (!sb.translators || sb.translators.length === 0)
+              (!item.translators || item.translators.length === 0)
           );
 
           if (hasNewLifespans || hasNewFormats || hasNewTranslators) {
-            hasSavedChanges = true;
+            markChanged();
             return {
-              ...sb,
-              authors: hasNewLifespans && fresh.authors ? fresh.authors : sb.authors,
-              translators: hasNewTranslators && fresh.translators ? fresh.translators : sb.translators,
-              formats: { ...sb.formats, ...fresh.formats },
+              ...item,
+              authors: hasNewLifespans && fresh.authors ? fresh.authors : item.authors,
+              translators: hasNewTranslators && fresh.translators ? fresh.translators : item.translators,
+              formats: { ...item.formats, ...fresh.formats },
             };
           }
-          return sb;
-        });
+          return item;
+        };
+
+        let hasSavedChanges = false;
+        const nextSaved = savedBooks.map((sb) =>
+          enrichBookItem(sb, () => {
+            hasSavedChanges = true;
+          })
+        );
 
         let hasRecentChanges = false;
-        const nextRecent = recentBooks.map((rb) => {
-          const fresh = freshMap.get(rb.id);
-          if (!fresh) return rb;
-
-          const rbHasLifespans = Boolean(rb.authors?.some((a) => a.birth_year != null || a.death_year != null));
-          const freshHasLifespans = Boolean(fresh.authors?.some((a) => a.birth_year != null || a.death_year != null));
-          const hasNewLifespans = freshHasLifespans && !rbHasLifespans;
-          const hasNewFormats = Boolean(fresh.formats) && Object.keys(fresh.formats).some((key) => !rb.formats?.[key]);
-          const hasNewTranslators = Boolean(
-            fresh.translators &&
-              fresh.translators.length > 0 &&
-              (!rb.translators || rb.translators.length === 0)
-          );
-
-          if (hasNewLifespans || hasNewFormats || hasNewTranslators) {
+        const nextRecent = recentBooks.map((rb) =>
+          enrichBookItem(rb, () => {
             hasRecentChanges = true;
-            return {
-              ...rb,
-              authors: hasNewLifespans && fresh.authors ? fresh.authors : rb.authors,
-              translators: hasNewTranslators && fresh.translators ? fresh.translators : rb.translators,
-              formats: { ...rb.formats, ...fresh.formats },
-            };
-          }
-          return rb;
-        });
+          })
+        );
 
-        if (!hasSavedChanges && !hasRecentChanges) return;
+        let hasFavoriteChanges = false;
+        const nextFavorites = favoriteBooks.map((fb) =>
+          enrichBookItem(fb, () => {
+            hasFavoriteChanges = true;
+          })
+        );
+
+        if (!hasSavedChanges && !hasRecentChanges && !hasFavoriteChanges) return;
 
         const nextItems = cloudBookshelfItems.map((item) => {
           const fresh = freshMap.get(item.book_id);
@@ -372,6 +371,7 @@ export const useBookshelfStore = create<BookshelfState>()(
         set({
           ...(hasSavedChanges ? { savedBooks: nextSaved } : {}),
           ...(hasRecentChanges ? { recentBooks: nextRecent } : {}),
+          ...(hasFavoriteChanges ? { favoriteBooks: nextFavorites } : {}),
           ...(hasSavedChanges ? { cloudBookshelfItems: nextItems } : {}),
         });
 
@@ -479,10 +479,43 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       syncFavoriteBooks: (books) => {
         const { favoriteBooks = [], favoriteBookIds } = get();
-        const existingIds = new Set(favoriteBooks.map((b) => b.id));
-        const newBooks = books.filter((b) => favoriteBookIds.includes(b.id) && !existingIds.has(b.id));
-        if (newBooks.length === 0) return;
-        set({ favoriteBooks: [...favoriteBooks, ...newBooks] });
+        const existingMap = new Map(favoriteBooks.map((b) => [b.id, b]));
+        let hasChanges = false;
+        const nextFavorites = [...favoriteBooks];
+
+        for (const fresh of books) {
+          if (!favoriteBookIds.includes(fresh.id)) continue;
+          const existing = existingMap.get(fresh.id);
+          if (!existing) {
+            nextFavorites.push(fresh);
+            hasChanges = true;
+          } else {
+            const existingHasDates = Boolean(
+              existing.authors?.some((a) => a.birth_year != null || a.death_year != null)
+            );
+            const freshHasDates = Boolean(
+              fresh.authors?.some((a) => a.birth_year != null || a.death_year != null)
+            );
+            if (freshHasDates && !existingHasDates) {
+              const idx = nextFavorites.findIndex((b) => b.id === fresh.id);
+              if (idx !== -1) {
+                nextFavorites[idx] = {
+                  ...existing,
+                  authors: fresh.authors,
+                  translators:
+                    fresh.translators && fresh.translators.length > 0
+                      ? fresh.translators
+                      : existing.translators,
+                  formats: { ...existing.formats, ...fresh.formats },
+                };
+                hasChanges = true;
+              }
+            }
+          }
+        }
+
+        if (!hasChanges) return;
+        set({ favoriteBooks: nextFavorites });
       },
 
       clearFavoriteBooks: () => {

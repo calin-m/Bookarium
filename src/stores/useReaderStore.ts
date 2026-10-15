@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { GutendexBook, Book } from '@/types/book.types';
+import type { GutendexBook, Book, Author } from '@/types/book.types';
 import { useThemeStore, applyThemeToDocument } from './useThemeStore';
 import { useAuthStore } from './useAuthStore';
 import { createClient } from '@/lib/supabase/client';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { formatAuthorWithLifespan } from '@/lib/adapters/book.adapter';
+import { parseLifespansFromName } from '@/lib/copyright-engine';
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
@@ -50,6 +52,7 @@ export interface ReaderState {
   setProgress: (bookId: number, progress: number) => void;
   getProgress: (bookId: number) => number;
   saveReadingPosition: (bookId: number, position: BookReadingPosition, userId?: string) => void;
+  enrichReadingPositions: (freshBooks: GutendexBook[]) => void;
   getReadingPosition: (bookId: number) => BookReadingPosition | null;
   clearReadingPosition: (bookId: number, userId?: string) => Promise<void>;
   clearAllVolumes: (userId?: string) => Promise<void>;
@@ -59,6 +62,14 @@ export interface ReaderState {
 }
 
 const progressDebounceTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+function hasEmbeddedLifespans(authors?: string[]): boolean {
+  if (!Array.isArray(authors) || authors.length === 0) return false;
+  return authors.some((a) => {
+    const parsed = parseLifespansFromName(a);
+    return parsed.birthYear != null || parsed.deathYear != null;
+  });
+}
 
 export const useReaderStore = create<ReaderState>()(
   persist(
@@ -125,20 +136,48 @@ export const useReaderStore = create<ReaderState>()(
 
       saveReadingPosition: (bookId, position, userId) => {
         const currentBook = get().currentBook;
+        const existingPos = get().readingPositions[bookId];
         let enrichedPosition: BookReadingPosition = position;
-        if (!position.bookTitle && currentBook && currentBook.id === bookId) {
-          const authors = (currentBook.authors || [])
-            .map((a: any) => (typeof a === 'string' ? a : a?.name || ''))
-            .filter(Boolean);
+
+        if (currentBook && currentBook.id === bookId) {
+          const rawAuthorSources: (string | Author)[] =
+            (currentBook as Book).authorDetails && (currentBook as Book).authorDetails!.length > 0
+              ? (currentBook as Book).authorDetails!
+              : (currentBook.authors || []);
+          const authors = rawAuthorSources
+            .map((a) => formatAuthorWithLifespan(a))
+            .filter((name) => Boolean(name && name !== 'Anonymous'));
           const coverUrl =
             (currentBook as any).formats?.['image/jpeg'] ||
             (currentBook as any).coverUrl ||
             null;
+
+          if (!position.bookTitle) {
+            enrichedPosition = {
+              ...position,
+              bookTitle: currentBook.title || existingPos?.bookTitle,
+              bookAuthors:
+                authors.length > 0
+                  ? authors
+                  : existingPos?.bookAuthors || [],
+              coverUrl: coverUrl ?? existingPos?.coverUrl ?? null,
+            };
+          } else if (
+            !hasEmbeddedLifespans(position.bookAuthors) &&
+            hasEmbeddedLifespans(authors)
+          ) {
+            enrichedPosition = {
+              ...position,
+              bookAuthors: authors,
+              coverUrl: position.coverUrl ?? coverUrl,
+            };
+          }
+        } else if (!position.bookTitle && existingPos?.bookTitle) {
           enrichedPosition = {
             ...position,
-            bookTitle: currentBook.title,
-            bookAuthors: authors,
-            coverUrl,
+            bookTitle: existingPos.bookTitle,
+            ...(existingPos.bookAuthors ? { bookAuthors: existingPos.bookAuthors } : {}),
+            ...(existingPos.coverUrl !== undefined ? { coverUrl: existingPos.coverUrl } : {}),
           };
         }
 
@@ -163,6 +202,44 @@ export const useReaderStore = create<ReaderState>()(
         }, 2000);
 
         progressDebounceTimers.set(bookId, timer);
+      },
+
+      enrichReadingPositions: (freshBooks) => {
+        if (!freshBooks || freshBooks.length === 0) return;
+        const { readingPositions } = get();
+        let hasChanges = false;
+        const nextPositions = { ...readingPositions };
+
+        for (const fresh of freshBooks) {
+          if (!fresh || typeof fresh.id !== 'number') continue;
+          const pos = nextPositions[fresh.id];
+          if (!pos) continue;
+
+          const freshAuthors = (fresh.authors || [])
+            .map((a) => formatAuthorWithLifespan(a))
+            .filter((name) => Boolean(name && name !== 'Anonymous'));
+          const posHasLifespans = hasEmbeddedLifespans(pos.bookAuthors);
+          const freshHasLifespans = hasEmbeddedLifespans(freshAuthors);
+          const freshCover = fresh.formats?.['image/jpeg'] || null;
+
+          if (
+            (!pos.bookTitle && fresh.title) ||
+            (!posHasLifespans && freshHasLifespans) ||
+            (!pos.coverUrl && freshCover)
+          ) {
+            hasChanges = true;
+            nextPositions[fresh.id] = {
+              ...pos,
+              bookTitle: pos.bookTitle || fresh.title,
+              bookAuthors: freshHasLifespans ? freshAuthors : pos.bookAuthors || freshAuthors,
+              coverUrl: pos.coverUrl || freshCover,
+            };
+          }
+        }
+
+        if (hasChanges) {
+          set({ readingPositions: nextPositions });
+        }
       },
 
       syncReadingPositionToCloud: async (bookId, position, userId) => {

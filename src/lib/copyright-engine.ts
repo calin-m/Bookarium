@@ -114,8 +114,8 @@ export function parseLifespansFromName(rawName?: string | null): { birthYear: nu
     return { birthYear: null, deathYear: null };
   }
 
-  // Pattern 1: Standard YYYY-YYYY or YYYY–YYYY e.g. "1775-1817", "1890-1976", "[1835-1910]"
-  const rangeMatch = rawName.match(/(?:^|[(\[\,\s])(\d{3,4})\s*[-–—]\s*(\d{3,4})(?:$|[)\]\,\s])/);
+  // Pattern 1: Standard or BCE/early-CE range e.g. "1775-1817", "-428--348", "-70--19", "56-120", "[1835-1910]"
+  const rangeMatch = rawName.match(/(?:^|[(\[\,\s])(-?\d{1,4})\s*[-–—]\s*(-?\d{1,4})(?:$|[)\]\,\s])/);
   if (rangeMatch) {
     const b = parseInt(rangeMatch[1], 10);
     const d = parseInt(rangeMatch[2], 10);
@@ -124,8 +124,8 @@ export function parseLifespansFromName(rawName?: string | null): { birthYear: nu
     }
   }
 
-  // Pattern 2: Died / d. YYYY e.g. "d. 1817", "died 1925"
-  const diedMatch = rawName.match(/(?:d\.|died|death)\s*(\d{3,4})/i);
+  // Pattern 2: Died / d. YYYY e.g. "d. 1817", "died 1925", "d. -399"
+  const diedMatch = rawName.match(/(?:d\.|died|death)\s*(-?\d{1,4})/i);
   if (diedMatch) {
     const d = parseInt(diedMatch[1], 10);
     if (Number.isFinite(d)) {
@@ -133,8 +133,8 @@ export function parseLifespansFromName(rawName?: string | null): { birthYear: nu
     }
   }
 
-  // Pattern 3: Born / b. YYYY e.g. "b. 1775", "born 1850"
-  const bornMatch = rawName.match(/(?:b\.|born|birth)\s*(\d{3,4})/i);
+  // Pattern 3: Born / b. YYYY e.g. "b. 1775", "born 1850", "b. -470"
+  const bornMatch = rawName.match(/(?:b\.|born|birth)\s*(-?\d{1,4})/i);
   if (bornMatch) {
     const b = parseInt(bornMatch[1], 10);
     if (Number.isFinite(b)) {

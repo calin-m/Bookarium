@@ -56,6 +56,7 @@ describe('useContinueReadingLedger', () => {
     });
     useBookshelfStore.setState({
       savedBooks: [],
+      favoriteBooks: [],
       recentBooks: [],
       bookStatuses: {},
     });
@@ -588,6 +589,69 @@ describe('useContinueReadingLedger', () => {
       result.current.setSortBy('progress_asc');
     });
     expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([1, 3, 2]);
+  });
+
+  it('extracts authorDetails lifespans and normalizes display names from embedded dates in readingPosition.bookAuthors', () => {
+    act(() => {
+      useReaderStore.setState({
+        readingPositions: {
+          7777: {
+            chapterIndex: 2,
+            chapterPage: 3,
+            globalPage: 12,
+            lastReadAt: '2026-09-05T12:00:00Z',
+            bookTitle: 'Persuasion',
+            bookAuthors: ['Austen, Jane, 1775-1817'],
+          },
+        },
+        readingProgress: {
+          7777: 25,
+        },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    expect(result.current.volumes).toHaveLength(1);
+    const vol = result.current.volumes[0];
+    expect(vol.book.authors).toEqual(['Jane Austen']);
+    expect(vol.book.authorDetails).toEqual([
+      {
+        name: 'Austen, Jane, 1775-1817',
+        birth_year: 1775,
+        death_year: 1817,
+      },
+    ]);
+  });
+
+  it('preserves verified authorDetails lifespans from favoriteBooks/savedBooks when currentBook is a partial book', () => {
+    act(() => {
+      useBookshelfStore.setState({
+        favoriteBooks: [mockBook],
+      });
+      useReaderStore.setState({
+        currentBook: {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: ['Jane Austen'],
+          coverUrl: null,
+          epubUrl: null,
+          htmlUrl: null,
+          txtUrl: null,
+          downloadCount: 0,
+          subjects: [],
+          languages: ['en'],
+        },
+        readingProgress: { 1342: 50 },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    expect(result.current.volumes).toHaveLength(1);
+    expect(result.current.volumes[0].book.authorDetails).toEqual([
+      { name: 'Austen, Jane', birth_year: 1775, death_year: 1817 },
+    ]);
   });
 });
 

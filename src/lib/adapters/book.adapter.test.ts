@@ -6,6 +6,7 @@ import {
   toCanonicalBook,
   toGutendexBookFromCloudRow,
   toCloudBookInsert,
+  formatAuthorWithLifespan,
 } from './book.adapter';
 import type { GutendexBook, Book } from '@/types/book.types';
 
@@ -299,6 +300,44 @@ describe('book.adapter', () => {
       const result = toCloudBookInsert(book, 'user-123');
       expect('bookshelf_id' in result).toBe(false);
       expect(result.cover_url).toBeNull();
+    });
+  });
+
+  describe('formatAuthorWithLifespan', () => {
+    it('formats Author objects with birth/death years, single bounds, and avoids duplicating existing lifespans', () => {
+      expect(
+        formatAuthorWithLifespan({ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 })
+      ).toBe('Austen, Jane, 1775-1817');
+      expect(
+        formatAuthorWithLifespan({ name: 'Homer', birth_year: -800, death_year: -750 })
+      ).toBe('Homer, -800--750');
+      expect(
+        formatAuthorWithLifespan({ name: 'Malory, Thomas', birth_year: null, death_year: 1471 })
+      ).toBe('Malory, Thomas, d. 1471');
+      expect(
+        formatAuthorWithLifespan({ name: 'Austen, Jane, 1775-1817', birth_year: 1775, death_year: 1817 })
+      ).toBe('Austen, Jane, 1775-1817');
+    });
+
+    it('extracts authorDetails lifespans when toCanonicalBook receives string authors with embedded dates', () => {
+      const canonicalWithEmbeddedDates: Book = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: ['Austen, Jane, 1775-1817'],
+        subjects: ['Classic Literature'],
+        languages: ['en'],
+        coverUrl: null,
+        epubUrl: null,
+        htmlUrl: null,
+        txtUrl: null,
+        downloadCount: 1000,
+      };
+
+      const normalized = toCanonicalBook(canonicalWithEmbeddedDates);
+      expect(normalized.authors).toEqual(['Jane Austen']);
+      expect(normalized.authorDetails).toEqual([
+        { name: 'Austen, Jane, 1775-1817', birth_year: 1775, death_year: 1817 },
+      ]);
     });
   });
 });

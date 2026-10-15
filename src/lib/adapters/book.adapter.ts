@@ -1,6 +1,7 @@
 import type { GutendexBook, Author, Book } from '@/types/book.types';
 import { formatAuthorName } from '@/lib/utils';
 import { cleanBookTitle } from '@/lib/book-metadata';
+import { parseLifespansFromName } from '@/lib/copyright-engine';
 
 /**
  * Normalizes Gutenberg author name formatting ("Austen, Jane" -> "Jane Austen")
@@ -76,8 +77,29 @@ export function toCanonicalBook(
     };
   }
 
-  // Idempotent fast-path
+  // Idempotent fast-path (enriches authorDetails if embedded lifespans exist in string authors)
   if (isCanonicalBook(input)) {
+    if (!input.authorDetails || input.authorDetails.length === 0) {
+      const parsedDetails: Author[] = [];
+      const normalizedAuthors = input.authors.map((raw) => {
+        const parsed = parseLifespansFromName(raw);
+        if (parsed.birthYear != null || parsed.deathYear != null) {
+          parsedDetails.push({
+            name: raw,
+            birth_year: parsed.birthYear,
+            death_year: parsed.deathYear,
+          });
+        }
+        return normalizeAuthorName(raw);
+      });
+      if (parsedDetails.length > 0) {
+        return {
+          ...input,
+          authors: normalizedAuthors,
+          authorDetails: parsedDetails,
+        };
+      }
+    }
     return { ...input };
   }
 
@@ -86,7 +108,17 @@ export function toCanonicalBook(
   const authorDetails: Author[] = [];
   if (Array.isArray(input.authors)) {
     authors = input.authors.map((author: string | Author) => {
-      if (typeof author === 'string') return normalizeAuthorName(author);
+      if (typeof author === 'string') {
+        const parsed = parseLifespansFromName(author);
+        if (parsed.birthYear != null || parsed.deathYear != null) {
+          authorDetails.push({
+            name: author,
+            birth_year: parsed.birthYear,
+            death_year: parsed.deathYear,
+          });
+        }
+        return normalizeAuthorName(author);
+      }
       if (author && typeof author === 'object' && 'name' in author) {
         authorDetails.push(author as Author);
         return normalizeAuthorName(author.name);
@@ -98,7 +130,11 @@ export function toCanonicalBook(
     authors = ['Anonymous'];
   }
   if ('authorDetails' in input && Array.isArray(input.authorDetails)) {
-    authorDetails.push(...input.authorDetails);
+    for (const detail of input.authorDetails) {
+      if (!authorDetails.some((existing) => existing.name === detail.name && (existing.birth_year != null || existing.death_year != null))) {
+        authorDetails.push(detail);
+      }
+    }
   }
 
   const rawTranslators = 'translators' in input && Array.isArray(input.translators) ? input.translators : [];
@@ -153,7 +189,32 @@ export interface CloudBookRow {
   cover_url: string | null;
 }
 
-import { parseLifespansFromName } from '@/lib/copyright-engine';
+/**
+ * Formats an Author object or string into a lifespan-preserving string representation
+ * (e.g. "Austen, Jane, 1775-1817", "Author, d. 1920", "Author, b. 1850").
+ */
+export function formatAuthorWithLifespan(author: string | Author): string {
+  if (typeof author === 'string') return author;
+  if (author && typeof author === 'object') {
+    const hasDates = author.birth_year != null || author.death_year != null;
+    if (hasDates) {
+      const parsed = parseLifespansFromName(author.name);
+      if (parsed.deathYear == null && parsed.birthYear == null) {
+        if (author.birth_year != null && author.death_year != null) {
+          return `${author.name}, ${author.birth_year}-${author.death_year}`;
+        }
+        if (author.death_year != null) {
+          return `${author.name}, d. ${author.death_year}`;
+        }
+        if (author.birth_year != null) {
+          return `${author.name}, b. ${author.birth_year}`;
+        }
+      }
+    }
+    return author.name;
+  }
+  return 'Anonymous';
+}
 
 /**
  * Reconstructs a full GutendexBook from a cloud database row (bookshelf_items or user_favorites).
@@ -238,25 +299,7 @@ export function toCloudBookInsert(
   userId: string,
   bookshelfId?: string
 ): CloudFavoriteInsertPayload | CloudBookshelfItemInsertPayload {
-  // Format authors to preserve lifespans across text[] and jsonb storage
-  const formattedAuthors: string[] = (book.authors || []).map((author) => {
-    if (typeof author === 'string') return author;
-    if (author && typeof author === 'object') {
-      const hasDates = author.birth_year != null || author.death_year != null;
-      if (hasDates) {
-        // If the name doesn't already have dates, embed them for text[] backwards compatibility
-        const parsed = parseLifespansFromName(author.name);
-        if (parsed.deathYear == null && author.death_year != null) {
-          const dateSuffix = author.birth_year != null
-            ? `${author.birth_year}-${author.death_year}`
-            : `d. ${author.death_year}`;
-          return `${author.name}, ${dateSuffix}`;
-        }
-      }
-      return author.name;
-    }
-    return 'Anonymous';
-  });
+  const formattedAuthors: string[] = (book.authors || []).map(formatAuthorWithLifespan);
 
   const base: CloudFavoriteInsertPayload = {
     user_id: userId,

@@ -218,6 +218,7 @@ function generateMarkdown() {
     '    Nav --> Views',
     '    FavView --> HookAutoHeal',
     '    ShelfView --> HookAutoHeal',
+    '    MarksView --> HookAutoHeal',
     '    HookCopyright --> EngineCore',
     '    ContentAdvisory --> ContentScanner',
     '    DownDrawer --> ContentAdvisory',

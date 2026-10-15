@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { useCollectionAutoHeal } from './useCollectionAutoHeal';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 import type { GutendexBook } from '@/types/book.types';
 
 // Mock useBooks hook
@@ -68,7 +69,13 @@ describe('useCollectionAutoHeal', () => {
       favoriteBookIds: [],
       favoriteBooks: [],
       savedBooks: [],
+      recentBooks: [],
       cloudBookshelfItems: [],
+    });
+    useReaderStore.setState({
+      readingPositions: {},
+      readingProgress: {},
+      currentBook: null,
     });
     mockUseBooks.mockReturnValue({
       data: undefined,
@@ -299,6 +306,57 @@ describe('useCollectionAutoHeal', () => {
     expect(result.current.incompleteSavedIds).toEqual([]);
     expect(result.current.totalMissingCount).toBe(0);
     expect(mockUseBooks).toHaveBeenCalledWith(undefined, { enabled: false });
+  });
+
+  it('detects and heals incomplete favoriteBooks and readingPositions lacking author lifespans', async () => {
+    useBookshelfStore.setState({
+      favoriteBookIds: [21839],
+      favoriteBooks: [mockIncompleteBook],
+      savedBooks: [],
+    });
+    useReaderStore.setState({
+      readingPositions: {
+        161: {
+          chapterIndex: 1,
+          chapterPage: 2,
+          globalPage: 10,
+          lastReadAt: '2026-09-01T12:00:00Z',
+          bookTitle: 'Sense and Sensibility',
+          bookAuthors: ['Austen, Jane'], // lacks embedded lifespan
+        },
+      },
+    });
+
+    mockUseBooks.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    });
+
+    const { result, rerender } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.missingFavoriteIds).toEqual([21839]);
+    expect(result.current.incompleteSavedIds).toEqual([161]);
+    expect(result.current.totalMissingCount).toBe(2);
+
+    const healedFavorite: GutendexBook = {
+      ...mockIncompleteBook,
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+    };
+
+    mockUseBooks.mockReturnValue({
+      data: { results: [healedFavorite, mockCompleteBook] },
+      isLoading: false,
+    });
+    rerender();
+
+    await waitFor(() => {
+      const favs = useBookshelfStore.getState().favoriteBooks;
+      expect(favs[0].authors[0].death_year).toBe(1817);
+      const pos161 = useReaderStore.getState().readingPositions[161];
+      expect(pos161.bookAuthors).toEqual(['Austen, Jane, 1775-1817']);
+    });
   });
 });
 

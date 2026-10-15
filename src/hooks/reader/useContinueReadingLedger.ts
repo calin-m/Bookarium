@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { useBooks } from '@/hooks/queries/useBooks';
-import { toCanonicalBook } from '@/lib/adapters/book.adapter';
+import { toCanonicalBook, normalizeAuthorName } from '@/lib/adapters/book.adapter';
 import { resolveBookMetadata, cleanBookTitle } from '@/lib/book-metadata';
+import { parseLifespansFromName } from '@/lib/copyright-engine';
 import type {
   ActiveReadingVolume,
+  Author,
   LedgerFilter,
   LedgerItemStatus,
   ReadingStatus,
@@ -60,6 +62,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   const setProgress = useReaderStore((s) => s.setProgress);
 
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
+  const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks);
   const recentBooks = useBookshelfStore((s) => s.recentBooks);
   const bookStatuses = useBookshelfStore((s) => s.bookStatuses);
   const setReadingStatus = useBookshelfStore((s) => s.setReadingStatus);
@@ -93,6 +96,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   const missingIds = useMemo(() => {
     const known = new Set<number>();
     savedBooks.forEach((b) => b?.id && known.add(b.id));
+    favoriteBooks.forEach((b) => b?.id && known.add(b.id));
     recentBooks.forEach((b) => b?.id && known.add(b.id));
     const current = useReaderStore.getState().currentBook;
     if (current?.id) known.add(current.id);
@@ -105,50 +109,109 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     });
 
     return allActiveIds.filter((id) => !known.has(id));
-  }, [allActiveIds, savedBooks, recentBooks, readingPositions]);
+  }, [allActiveIds, savedBooks, favoriteBooks, recentBooks, readingPositions]);
 
   const idsParam = useMemo(() => missingIds.join(','), [missingIds]);
   const { data: missingBooksData, isLoading: isMissingBooksLoading } = useBooks(
-    { ids: idsParam, copyright: false },
+    { ids: idsParam, copyright: false, includeRestrictedMetadata: true },
     { enabled: missingIds.length > 0 }
   );
+
+  useEffect(() => {
+    if (missingBooksData?.results && missingBooksData.results.length > 0) {
+      useBookshelfStore.getState().enrichSavedBooks(missingBooksData.results);
+      useReaderStore.getState().enrichReadingPositions(missingBooksData.results);
+    }
+  }, [missingBooksData]);
 
   const volumes: ActiveReadingVolume[] = useMemo(() => {
     if (!hasMounted) return [];
 
     const bookDictionary = new Map<number, ReturnType<typeof toCanonicalBook>>();
 
-    // Prioritize metadata sources: recentBooks, then savedBooks, then currentBook, then fetched missing books
+    const hasLifespan = (b: ReturnType<typeof toCanonicalBook>) =>
+      Boolean(b.authorDetails?.some((a) => a.birth_year != null || a.death_year != null));
+
+    const setOrMergeBook = (candidate: ReturnType<typeof toCanonicalBook>) => {
+      const existing = bookDictionary.get(candidate.id);
+      if (!existing) {
+        bookDictionary.set(candidate.id, candidate);
+        return;
+      }
+      if (hasLifespan(existing) && !hasLifespan(candidate)) {
+        bookDictionary.set(candidate.id, {
+          ...candidate,
+          authorDetails: existing.authorDetails,
+          translators: candidate.translators?.length ? candidate.translators : existing.translators,
+        });
+      } else {
+        bookDictionary.set(candidate.id, candidate);
+      }
+    };
+
+    // Prioritize metadata sources while never overwriting verified authorDetails lifespans with partial data
+    favoriteBooks.forEach((b) => {
+      if (b && typeof b.id === 'number') {
+        setOrMergeBook(toCanonicalBook(b));
+      }
+    });
+
     savedBooks.forEach((b) => {
       if (b && typeof b.id === 'number') {
-        bookDictionary.set(b.id, toCanonicalBook(b));
+        setOrMergeBook(toCanonicalBook(b));
       }
     });
 
     recentBooks.forEach((b) => {
       if (b && typeof b.id === 'number') {
-        bookDictionary.set(b.id, toCanonicalBook(b));
+        setOrMergeBook(toCanonicalBook(b));
       }
     });
 
     const currentBook = useReaderStore.getState().currentBook;
     if (currentBook && typeof currentBook.id === 'number') {
-      bookDictionary.set(currentBook.id, toCanonicalBook(currentBook));
+      setOrMergeBook(toCanonicalBook(currentBook));
     }
 
     if (missingBooksData?.results) {
       missingBooksData.results.forEach((b) => {
         if (b && typeof b.id === 'number') {
-          bookDictionary.set(b.id, toCanonicalBook(b));
+          setOrMergeBook(toCanonicalBook(b));
         }
       });
     }
+
+    const extractAuthorsFromPosition = (rawAuthors: string[] | undefined): {
+      displayAuthors: string[];
+      parsedDetails: Author[];
+    } => {
+      if (!rawAuthors || rawAuthors.length === 0) {
+        return { displayAuthors: [], parsedDetails: [] };
+      }
+      const displayAuthors = rawAuthors
+        .map((name) => normalizeAuthorName(name))
+        .filter((name) => name.length > 0);
+      const parsedDetails: Author[] = [];
+      for (const raw of rawAuthors) {
+        const parsed = parseLifespansFromName(raw);
+        if (parsed.birthYear !== null || parsed.deathYear !== null) {
+          parsedDetails.push({
+            name: raw,
+            birth_year: parsed.birthYear,
+            death_year: parsed.deathYear,
+          });
+        }
+      }
+      return { displayAuthors, parsedDetails };
+    };
 
     const items: ActiveReadingVolume[] = [];
 
     allActiveIds.forEach((bookId) => {
       let book = bookDictionary.get(bookId);
       const position = readingPositions[bookId];
+      const { displayAuthors: posDisplayAuthors, parsedDetails: posAuthorDetails } =
+        extractAuthorsFromPosition(position?.bookAuthors);
 
       if (!book) {
         const resolved = resolveBookMetadata({
@@ -156,17 +219,24 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
           currentBook: currentBook?.id === bookId ? currentBook : undefined,
         });
 
+        const effectiveAuthorDetails =
+          posAuthorDetails.length > 0
+            ? posAuthorDetails
+            : resolved.authors.length > 0
+            ? resolved.authors
+            : undefined;
+
         if (position?.bookTitle) {
           book = {
             id: bookId,
             title: cleanBookTitle(position.bookTitle),
             authors:
-              position.bookAuthors && position.bookAuthors.length > 0
-                ? position.bookAuthors
+              posDisplayAuthors.length > 0
+                ? posDisplayAuthors
                 : resolved.authors.length > 0
-                ? resolved.authors.map((a) => a.name)
+                ? resolved.authors.map((a) => normalizeAuthorName(a.name))
                 : ['Public Domain Author'],
-            ...(resolved.authors.length > 0 ? { authorDetails: resolved.authors } : {}),
+            ...(effectiveAuthorDetails ? { authorDetails: effectiveAuthorDetails } : {}),
             ...(resolved.translators.length > 0 ? { translators: resolved.translators } : {}),
             subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
             languages: resolved.languages || ['en'],
@@ -182,11 +252,11 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
             title: cleanBookTitle(resolved.title) || `Volume #${bookId}`,
             authors:
               resolved.authors.length > 0
-                ? resolved.authors.map((a) => a.name)
+                ? resolved.authors.map((a) => normalizeAuthorName(a.name))
                 : resolved.author
-                ? [resolved.author]
+                ? [normalizeAuthorName(resolved.author)]
                 : ['Public Domain Author'],
-            ...(resolved.authors.length > 0 ? { authorDetails: resolved.authors } : {}),
+            ...(effectiveAuthorDetails ? { authorDetails: effectiveAuthorDetails } : {}),
             ...(resolved.translators.length > 0 ? { translators: resolved.translators } : {}),
             subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
             languages: resolved.languages || ['en'],
@@ -198,9 +268,21 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
           };
         }
       } else {
+        let enrichedDetails = book.authorDetails;
+        if (!hasLifespan(book)) {
+          if (posAuthorDetails.length > 0) {
+            enrichedDetails = posAuthorDetails;
+          } else {
+            const resolved = resolveBookMetadata({ id: bookId });
+            if (resolved.authors.some((a) => a.birth_year != null || a.death_year != null)) {
+              enrichedDetails = resolved.authors;
+            }
+          }
+        }
         book = {
           ...book,
           title: cleanBookTitle(book.title),
+          ...(enrichedDetails ? { authorDetails: enrichedDetails } : {}),
         };
       }
 
@@ -246,6 +328,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     readingProgress,
     recentBooks,
     savedBooks,
+    favoriteBooks,
     bookStatuses,
     missingBooksData,
   ]);

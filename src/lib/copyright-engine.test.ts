@@ -8,6 +8,7 @@ import {
   getCountryDisplayName,
   getJurisdictionShortLabel,
   partitionBooksByJurisdiction,
+  parseLifespansFromName,
 } from './copyright-engine';
 import type { GutendexBook, Book } from '@/types/book.types';
 
@@ -543,6 +544,31 @@ describe('copyright-engine', () => {
       const { downloadableBooks, restrictedBooks } = partitionBooksByJurisdiction([], 'RO', currentYear);
       expect(downloadableBooks).toEqual([]);
       expect(restrictedBooks).toEqual([]);
+    });
+  });
+
+  describe('parseLifespansFromName', () => {
+    it('parses standard 4-digit year ranges, BCE negative ranges, and single-bound death/birth dates', () => {
+      expect(parseLifespansFromName('Austen, Jane, 1775-1817')).toEqual({
+        birthYear: 1775,
+        deathYear: 1817,
+      });
+      expect(parseLifespansFromName('Homer, -800--750')).toEqual({
+        birthYear: -800,
+        deathYear: -750,
+      });
+      expect(parseLifespansFromName('Augustus, -63-14')).toEqual({
+        birthYear: -63,
+        deathYear: 14,
+      });
+      expect(parseLifespansFromName('Malory, Thomas, Sir, d. 1471')).toEqual({
+        birthYear: null,
+        deathYear: 1471,
+      });
+      expect(parseLifespansFromName('Modern Author, b. 1905')).toEqual({
+        birthYear: 1905,
+        deathYear: null,
+      });
     });
   });
 });

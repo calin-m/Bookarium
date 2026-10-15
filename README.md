@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-178%20Suites%20%7C%201696%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.51%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-178%20Suites%20%7C%201703%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.49%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -46,6 +46,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 - **Reader Circles & Literary Symposiums Schema (`supabase/schema.sql`, `src/types/database.types.ts`, `src/stores/useFellowshipStore.ts`)**: Provisioned idempotent `public.reader_circles` and `public.symposium_sessions` tables with strict RLS participant isolation, `lookup_scholar_by_username` RPC, and scoped `user_annotations` RLS policy allowing Literary Fellows in active symposiums to view shared marginalia.
 - **Symposium Invitations & Fellowship Hub (`src/components/account/AccountSymposiumSection.tsx`, `src/components/symposium/SymposiumInviteModal.tsx`, `src/components/profile/PublicProfileView.tsx`, `src/components/presentation/BookmarkCard.tsx`)**: Added Literary Fellowship invitations by `@username` or direct `/u/[username]` profile CTA, active symposium progress cards, and 1-click "Read with a Fellow" symposium invitations.
 - **Dedicated Public Profile Tab Extraction (`src/components/account/AccountIdentityCard.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/components/account/AccountPreferencesSection.tsx`)**: Extracted Public Scholar Profile controls into a dedicated studio sub-tab and relocated Territorial Copyright Jurisdiction settings into Account Preferences.
+- **Bookmark & Collection Copyright Lifespan Persistence & Auto-Healing (`src/stores/useReaderStore.ts`, `src/hooks/reader/useContinueReadingLedger.ts`, `src/hooks/useCollectionAutoHeal.ts`, `src/stores/useBookshelfStore.ts`, `src/lib/adapters/book.adapter.ts`, `src/lib/copyright-engine.ts`)**: Embedded author birth/death years in `readingPositions.bookAuthors` and cloud `reading_progress` payloads via `formatAuthorWithLifespan`, prevented partial book records from overwriting verified `authorDetails` lifespans in `useContinueReadingLedger`, extended `useCollectionAutoHeal` to heal incomplete `favoriteBooks` and `readingPositions`, and generalized `parseLifespansFromName` for BCE and 1–4 digit year ranges.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -642,7 +643,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1696 tests across 178 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1703 tests across 178 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

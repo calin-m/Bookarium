@@ -112,8 +112,10 @@ export function formatAuthorName(rawName?: string): string {
   cleaned = cleaned.replace(/\s*\([^)]*\)/g, '').trim();
   // Strip bracketed expansions e.g. "[1896-1940]"
   cleaned = cleaned.replace(/\s*\[[^\]]*\]/g, '').trim();
-  // Strip birth-death dates like ", 1775-1817"
-  cleaned = cleaned.replace(/[\(\[\,]\s*\d{3,4}\s*[-–—]\s*\d{3,4}\s*[\)\]]?/g, '').trim();
+  // Strip birth-death dates like ", 1775-1817", ", -428--348", ", 56-120"
+  cleaned = cleaned.replace(/[\(\[\,]\s*-?\d{1,4}\s*[-–—]\s*-?\d{1,4}\s*[\)\]]?/g, '').trim();
+  // Strip single-bound death/birth suffixes like ", d. 1817" or ", b. 1775"
+  cleaned = cleaned.replace(/[\(\[\,]\s*(?:d\.|died|death|b\.|born|birth)\s*-?\d{1,4}\s*[\)\]]?/gi, '').trim();
   // Strip trailing punctuation
   cleaned = cleaned.replace(/[,;]+$/, '').trim();
 

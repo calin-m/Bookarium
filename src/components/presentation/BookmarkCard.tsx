@@ -175,7 +175,11 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                   {book.title}
                 </span>
               ) : (
-                <Link href={ROUTES.READ(book.id)} className="group-hover:text-primary">
+                <Link
+                  href={ROUTES.READ(book.id)}
+                  onClick={() => useReaderStore.getState().openReader(book)}
+                  className="group-hover:text-primary"
+                >
                   {book.title}
                 </Link>
               )}

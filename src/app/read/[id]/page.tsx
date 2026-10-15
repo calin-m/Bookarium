@@ -250,6 +250,7 @@ function BookReaderContent() {
       useBookshelfStore.getState().addRecentBook(apiBook);
       useReaderStore.getState().openReader(apiBook);
       useBookshelfStore.getState().enrichSavedBooks([apiBook]);
+      useReaderStore.getState().enrichReadingPositions([apiBook]);
     } else if (
       resolvedIdentity.title &&
       !isPlaceholderTitle(resolvedIdentity.title) &&
@@ -280,6 +281,7 @@ function BookReaderContent() {
       useReaderStore.getState().openReader(bookObj);
       if (resolvedIdentity.authors.some((a) => a.birth_year != null || a.death_year != null)) {
         useBookshelfStore.getState().enrichSavedBooks([bookObj]);
+        useReaderStore.getState().enrichReadingPositions([bookObj]);
       }
     }
   }, [numericId, booksData, resolvedIdentity]);

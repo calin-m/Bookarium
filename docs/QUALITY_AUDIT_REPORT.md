@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 15 Oct 2026 16:04:37 GMT  
+**Last Generated**: Thu, 15 Oct 2026 18:01:44 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 178 passed  
-**Total Verified Tests**: 1696 passed  
+**Total Verified Tests**: 1703 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **178/178 test suites passed** (1696 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **178/178 test suites passed** (1703 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 55 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.51%** (7977/8717) — *Target: $ge$ 80%*
-- **Statements**: **89.97%** (8653/9617) — *Target: $ge$ 80%*
-- **Functions**: **87.88%** (1878/2137) — *Target: $ge$ 80%*
-- **Branches**: **80.51%** (7694/9556) — *Target: $ge$ 80%*
+- **Lines**: **91.49%** (8122/8877) — *Target: $ge$ 80%*
+- **Statements**: **89.99%** (8813/9793) — *Target: $ge$ 80%*
+- **Functions**: **87.86%** (1904/2167) — *Target: $ge$ 80%*
+- **Branches**: **80.32%** (7824/9740) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (178 Suites / 1696 Tests)
+## 🧪 Comprehensive Test Suite Catalog (178 Suites / 1703 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 163 Tests)
 
@@ -1093,7 +1093,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 156 Tests)
+### ⚡ Zustand State Stores (10 Suites · 157 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -1274,7 +1274,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1288,6 +1288,7 @@
 - ✔ `debounces cloud upsert by 2000ms when authenticated`
 - ✔ `restores reading position and progress from cloud`
 - ✔ `enriches cloud upsert with book metadata from currentBook`
+- ✔ `upgrades stored readingPositions with author lifespans via enrichReadingPositions`
 - ✔ `bulk synchronizes all user reading progress via syncWithCloud`
 - ✔ `deletes from Supabase when clearReadingPosition is invoked while authenticated`
 - ✔ `deletes all user records from Supabase on clearAllVolumes while authenticated`
@@ -1311,7 +1312,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (32 Suites · 343 Tests)
+### 📚 Gutenberg Parsers & Metadata (32 Suites · 346 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1332,7 +1333,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `normalizes "LastName, FirstName" to "FirstName LastName"`
 - ✔ `returns single word or standard formatted names unchanged`
@@ -1351,6 +1352,8 @@
 - ✔ `formats a GutendexBook into a standardized Supabase insert payload`
 - ✔ `preserves birth and death years in author strings when present`
 - ✔ `omits bookshelf_id when not provided`
+- ✔ `formats Author objects with birth/death years, single bounds, and avoids duplicating existing lifespans`
+- ✔ `extracts authorDetails lifespans when toCanonicalBook receives string authors with embedded dates`
 
 </details>
 
@@ -1498,7 +1501,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/copyright-engine.test.ts</code></b> (33 tests)</summary>
+<summary><b><code>src/lib/copyright-engine.test.ts</code></b> (34 tests)</summary>
 
 - ✔ `normalizes valid 2-letter codes to uppercase`
 - ✔ `defaults null, undefined, or empty values to US`
@@ -1533,6 +1536,7 @@
 - ✔ `partitions all books into downloadable in US jurisdiction`
 - ✔ `partitions books accurately in Life + 70 jurisdiction (e.g. GB / RO)`
 - ✔ `handles empty collection gracefully`
+- ✔ `parses standard 4-digit year ranges, BCE negative ranges, and single-bound death/birth dates`
 
 </details>
 
@@ -1848,7 +1852,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 219 Tests)
+### 🔄 Hooks & React Query (22 Suites · 222 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
@@ -1920,7 +1924,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -1941,6 +1945,8 @@
 - ✔ `resolves authorDetails and lifespans for featured volumes without savedBooks or API data`
 - ✔ `excludes legacy 0% Page-1 books from volumes unless they advance or have curation status`
 - ✔ `supports multi-attribute sorting by title, author, and progress`
+- ✔ `extracts authorDetails lifespans and normalizes display names from embedded dates in readingPosition.bookAuthors`
+- ✔ `preserves verified authorDetails lifespans from favoriteBooks/savedBooks when currentBook is a partial book`
 
 </details>
 
@@ -2081,7 +2087,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `stays dormant with 0 query params when all collections are healthy`
 - ✔ `detects missing favorite IDs and queries /api/books`
@@ -2092,6 +2098,7 @@
 - ✔ `detects incomplete books with empty authors array and queries /api/books`
 - ✔ `returns empty collections and does not query when not mounted`
 - ✔ `suppresses redundant network queries for book IDs already attempted in sessionStorage`
+- ✔ `detects and heals incomplete favoriteBooks and readingPositions lacking author lifespans`
 
 </details>
 
