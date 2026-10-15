@@ -10,6 +10,7 @@ interface RateLimitRecord {
 export interface RateLimitOptions {
   windowMs?: number; // Time window in milliseconds (default: 60,000ms / 1 min)
   maxRequests?: number; // Max requests allowed within window (default: 60)
+  maxKeys?: number; // Maximum tracked keys in memory to prevent unbounded Map growth (default: 10,000)
 }
 
 export interface RateLimitResult {
@@ -23,11 +24,13 @@ export class InMemoryRateLimiter {
   private records = new Map<string, RateLimitRecord>();
   private windowMs: number;
   private maxRequests: number;
+  private maxKeys: number;
   private lastCleanup: number = Date.now();
 
   constructor(options: RateLimitOptions = {}) {
     this.windowMs = options.windowMs ?? 60_000;
     this.maxRequests = options.maxRequests ?? 60;
+    this.maxKeys = options.maxKeys ?? 10_000;
   }
 
   /**
@@ -39,6 +42,15 @@ export class InMemoryRateLimiter {
 
     let record = this.records.get(key);
     if (!record) {
+      if (this.records.size >= this.maxKeys) {
+        this.pruneStaleRecords(now);
+        if (this.records.size >= this.maxKeys) {
+          const oldestKey = this.records.keys().next().value;
+          if (oldestKey !== undefined) {
+            this.records.delete(oldestKey);
+          }
+        }
+      }
       record = { timestamps: [] };
       this.records.set(key, record);
     }
@@ -81,7 +93,10 @@ export class InMemoryRateLimiter {
     // Run garbage collection at most once every 30 seconds
     if (now - this.lastCleanup < 30_000) return;
     this.lastCleanup = now;
+    this.pruneStaleRecords(now);
+  }
 
+  private pruneStaleRecords(now: number): void {
     const windowStart = now - this.windowMs;
     for (const [key, record] of this.records.entries()) {
       record.timestamps = record.timestamps.filter((ts) => ts > windowStart);

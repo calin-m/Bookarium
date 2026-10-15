@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 12 Oct 2026 11:05:49 GMT  
+**Last Generated**: Thu, 15 Oct 2026 10:31:57 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 175 passed  
-**Total Verified Tests**: 1665 passed  
+**Total Verified Tests**: 1670 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1665 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **175/175 test suites passed** (1670 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 53 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.01%** (7596/8255) — *Target: $ge$ 80%*
-- **Statements**: **90.48%** (8239/9105) — *Target: $ge$ 80%*
-- **Functions**: **88.85%** (1770/1992) — *Target: $ge$ 80%*
-- **Branches**: **80.92%** (7196/8892) — *Target: $ge$ 80%*
+- **Lines**: **92.05%** (7620/8278) — *Target: $ge$ 80%*
+- **Statements**: **90.5%** (8262/9129) — *Target: $ge$ 80%*
+- **Functions**: **88.86%** (1772/1994) — *Target: $ge$ 80%*
+- **Branches**: **80.95%** (7243/8947) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1665 Tests)
+## 🧪 Comprehensive Test Suite Catalog (175 Suites / 1670 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 162 Tests)
 
@@ -282,7 +282,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 348 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 349 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -666,13 +666,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `should render section heading, kicker, and 3 literary quote cards`
 - ✔ `should shuffle quotes when clicking Discover More button`
 - ✔ `should have links pointing to valid /read/[id] routes`
 - ✔ `should cleanly unmount without errors during active shuffle`
 - ✔ `filters out quotes from protected authors in Life+100 jurisdiction (Mexico)`
+- ✔ `maintains strictly unique quote IDs and Project Gutenberg bookIds across all anthology entries`
 
 </details>
 
@@ -1286,7 +1287,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (32 Suites · 338 Tests)
+### 📚 Gutenberg Parsers & Metadata (32 Suites · 342 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1429,7 +1430,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (25 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (26 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -1456,6 +1457,7 @@
 - ✔ `returns empty array for invalid bookId`
 - ✔ `returns translations when cluster exists`
 - ✔ `gracefully returns empty array on database error`
+- ✔ `filters out translation editions that are copyrighted or restricted in the caller jurisdiction`
 
 </details>
 
@@ -1616,12 +1618,13 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/library-backup.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/lib/library-backup.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `generates a complete, structured backup payload from active stores`
 - ✔ `creates a download blob and triggers click in DOM`
 - ✔ `generates a valid CSV string with proper escaping and headers`
 - ✔ `escapes cells containing commas, quotes, and newlines`
+- ✔ `neutralizes spreadsheet formula prefixes (CWE-1236) in exported CSV cells`
 - ✔ `accepts a valid backup payload`
 - ✔ `rejects non-object raw inputs`
 - ✔ `rejects payloads from foreign applications`
@@ -1633,6 +1636,7 @@
 - ✔ `overwrites state completely when replace strategy is selected`
 - ✔ `triggers cloud sync if userId is provided`
 - ✔ `restores readingQueue correctly in replace mode`
+- ✔ `restores light theme, readerDisplay typography settings, and custom shelf isPublic flags`
 - ✔ `rejects payloads containing prototype pollution keys`
 - ✔ `validates all items in large savedBooks arrays beyond index 50`
 - ✔ `rejects malformed customShelves missing bookIds array`
@@ -1671,7 +1675,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/rate-limiter.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/lib/rate-limiter.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `allows requests within the configured max limit`
 - ✔ `blocks requests exceeding the max limit within the sliding window`
@@ -1680,6 +1684,7 @@
 - ✔ `cleans up stale records during periodic garbage collection and preserves active ones`
 - ✔ `allows manual reset of all records`
 - ✔ `supports default options in constructor and global exports`
+- ✔ `evicts the oldest tracked key when maxKeys capacity is exceeded`
 
 </details>
 

@@ -118,6 +118,18 @@ describe('useAuthStore', () => {
     const res1 = await useAuthStore.getState().signUpWithPassword('new@bookarium.test', 'password123', 'New User');
     expect(res1.error).toBeNull();
     expect(res1.needsEmailConfirmation).toBe(true);
+    expect(mockSignUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'new@bookarium.test',
+        password: 'password123',
+        options: expect.objectContaining({
+          data: {
+            full_name: 'New User',
+            display_name: 'New User',
+          },
+        }),
+      })
+    );
 
     // Immediate session
     mockSignUp.mockResolvedValueOnce({

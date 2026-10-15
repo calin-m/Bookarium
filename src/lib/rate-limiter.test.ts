@@ -107,6 +107,25 @@ describe('InMemoryRateLimiter', () => {
     expect(res.limit).toBe(60);
     expect(res.remaining).toBe(59);
   });
+
+  it('evicts the oldest tracked key when maxKeys capacity is exceeded', () => {
+    const boundedLimiter = new InMemoryRateLimiter({
+      windowMs: 60_000,
+      maxRequests: 1,
+      maxKeys: 2,
+    });
+
+    expect(boundedLimiter.check('client-a').success).toBe(true);
+    expect(boundedLimiter.check('client-a').success).toBe(false);
+
+    expect(boundedLimiter.check('client-b').success).toBe(true);
+
+    // Adding client-c exceeds maxKeys=2, evicting client-a
+    expect(boundedLimiter.check('client-c').success).toBe(true);
+
+    // client-a was evicted so its next request succeeds as a fresh key
+    expect(boundedLimiter.check('client-a').success).toBe(true);
+  });
 });
 
 

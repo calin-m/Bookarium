@@ -64,11 +64,15 @@ describe('GET /api/books/translations', () => {
 
     vi.mocked(supabaseCatalogProvider.getBookTranslations).mockResolvedValue(mockTranslations);
 
-    const req = new NextRequest('http://localhost:3000/api/books/translations?id=1342');
+    const req = new NextRequest('http://localhost:3000/api/books/translations?id=1342', {
+      headers: { 'x-vercel-ip-country': 'DE' },
+    });
     const res = await GET(req);
 
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(res.headers.get('Vary')).toBe('x-vercel-ip-country');
+    expect(supabaseCatalogProvider.getBookTranslations).toHaveBeenCalledWith(1342, 'DE');
     const json = await res.json();
     expect(json.results).toEqual(mockTranslations);
   });

@@ -331,7 +331,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
           </div>
 
           {/* Right Column: Booksaw Standing 3D Book Spotlight with Realistic 3D Opening Physics */}
-          <div className="lg:col-span-5 flex justify-center xl:justify-end">
+          <div className="lg:col-span-5 flex justify-center 2xl:justify-end">
             <HeroFeaturedBook3D
               featuredBook={activeFeatured}
               onReadFeaturedBook={onReadFeaturedBook}

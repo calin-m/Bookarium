@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { booksApiRateLimiter } from '@/lib/rate-limiter';
 import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
 import { supabaseCatalogProvider } from '@/lib/catalog/supabase-provider';
+import { resolveClientCountry } from '@/lib/country-resolver';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15; // seconds
@@ -34,7 +35,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const translations = await supabaseCatalogProvider.getBookTranslations(bookId);
+    const clientCountry = resolveClientCountry(request);
+    const translations = await supabaseCatalogProvider.getBookTranslations(bookId, clientCountry);
 
     return NextResponse.json(
       { results: translations },
@@ -42,6 +44,7 @@ export async function GET(request: NextRequest) {
         status: 200,
         headers: {
           'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+          'Vary': 'x-vercel-ip-country',
         },
       }
     );

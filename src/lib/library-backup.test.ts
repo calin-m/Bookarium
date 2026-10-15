@@ -210,6 +210,21 @@ describe('library-backup domain engine', () => {
       const csv = exportLibraryToCSV(customBackup);
       expect(csv).toContain('""Quotes""');
     });
+
+    it('neutralizes spreadsheet formula prefixes (CWE-1236) in exported CSV cells', () => {
+      const formulaBook: GutendexBook = {
+        ...mockBook1,
+        id: 7777,
+        title: '=HYPERLINK("https://evil.example","Click")',
+        authors: [{ name: '+CMD|"/C calc"!A0', birth_year: null, death_year: null }],
+      };
+
+      const customBackup = createLibraryBackup();
+      customBackup.library.savedBooks.push(formulaBook);
+
+      const csv = exportLibraryToCSV(customBackup);
+      expect(csv).toContain('"\'=HYPERLINK(""https://evil.example"",""Click"")"');
+    });
   });
 
   describe('validateLibraryBackup', () => {
@@ -464,6 +479,43 @@ describe('library-backup domain engine', () => {
       const queue = useBookshelfStore.getState().readingQueue;
       expect(queue).toHaveLength(1);
       expect(queue[0].id).toBe(84);
+    });
+
+    it('restores light theme, readerDisplay typography settings, and custom shelf isPublic flags', async () => {
+      const backupWithReaderDisplay: LibraryBackupPayload = {
+        ...incomingBackup,
+        library: {
+          ...incomingBackup.library,
+          customShelves: [
+            {
+              id: 'shelf-private',
+              name: 'Private Study',
+              isDefault: false,
+              isPublic: false,
+              bookIds: [84],
+            },
+          ],
+        },
+        preferences: {
+          ...incomingBackup.preferences,
+          theme: 'light',
+          readerDisplay: {
+            fontSize: 22,
+            lineHeight: 1.8,
+            fontFamily: 'sans',
+            theme: 'light',
+          },
+        },
+      };
+
+      await restoreLibraryBackup(backupWithReaderDisplay, 'replace');
+
+      expect(useThemeStore.getState().theme).toBe('light');
+      expect(useReaderStore.getState().fontSize).toBe(22);
+      expect(useReaderStore.getState().lineHeight).toBe(1.8);
+      expect(useReaderStore.getState().fontFamily).toBe('sans');
+      expect(useReaderStore.getState().theme).toBe('light');
+      expect(useBookshelfStore.getState().cloudBookshelves[0].is_public).toBe(false);
     });
   });
 

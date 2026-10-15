@@ -61,6 +61,7 @@ describe('EditorialQuoteSection component', () => {
     const authorObj = typeof firstAuthor === 'object' && firstAuthor !== null ? firstAuthor : null;
     expect(authorObj?.birth_year).toBe(expectedBook.authorBirthYear ?? null);
     expect(authorObj?.death_year).toBe(expectedBook.authorDeathYear ?? null);
+    expect(currentBook?.translators).toEqual(expectedBook.translators || []);
   });
 
   it('filters out books protected in Life+100 jurisdiction (Mexico)', async () => {

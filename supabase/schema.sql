@@ -121,6 +121,7 @@ CREATE POLICY "Public bookshelves viewable when owner profile is public"
         SELECT 1 FROM public.profiles
         WHERE profiles.id = bookshelves.user_id
           AND profiles.is_public = true
+          AND profiles.show_bookshelves = true
           AND (
             (bookshelves.is_default = true AND profiles.show_saved_books = true AND bookshelves.is_public = true)
             OR
@@ -185,6 +186,7 @@ CREATE POLICY "Public bookshelf items viewable when owner profile is public"
         JOIN public.profiles ON profiles.id = bookshelves.user_id
         WHERE bookshelves.id = bookshelf_items.bookshelf_id
           AND profiles.is_public = true
+          AND profiles.show_bookshelves = true
           AND bookshelves.is_public = true
           AND (
             (bookshelves.is_default = true AND profiles.show_saved_books = true)
@@ -427,7 +429,12 @@ BEGIN
   INSERT INTO public.profiles (id, display_name, preferred_theme)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'display_name', 'Reader'),
+    COALESCE(
+      NULLIF(TRIM(NEW.raw_user_meta_data->>'display_name'), ''),
+      NULLIF(TRIM(NEW.raw_user_meta_data->>'full_name'), ''),
+      NULLIF(TRIM(NEW.raw_user_meta_data->>'name'), ''),
+      'Reader'
+    ),
     'light'
   )
   ON CONFLICT (id) DO NOTHING;

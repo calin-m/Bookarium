@@ -65,7 +65,7 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
           death_year: book.authorDeathYear ?? null,
         },
       ],
-      translators: [],
+      translators: book.translators || [],
       subjects: [book.primarySubject || 'Classic Literature'],
       bookshelves: [],
       languages: ['en'],

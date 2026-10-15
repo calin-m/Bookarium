@@ -53,6 +53,11 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
+  // Ignore cross-origin requests (e.g., Supabase REST/Auth APIs, external CDNs)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   // 1. Dynamic API routes: Network-only with graceful offline fallback
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
@@ -74,18 +79,25 @@ self.addEventListener('fetch', (event) => {
 
   // 2. Navigation requests: Network-first, fallback to cached App Shell ('/')
   if (request.mode === 'navigate') {
+    const isPrivateAuthRoute =
+      url.pathname === '/account' ||
+      url.pathname.startsWith('/account/') ||
+      url.pathname.startsWith('/auth/');
+
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response && response.status === 200) {
+          if (response && response.status === 200 && !isPrivateAuthRoute) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           }
           return response;
         })
         .catch(async () => {
-          const cached = await caches.match(request);
-          if (cached) return cached;
+          if (!isPrivateAuthRoute) {
+            const cached = await caches.match(request);
+            if (cached) return cached;
+          }
           return caches.match('/');
         })
     );

@@ -67,5 +67,14 @@ describe('LiteraryQuotes component', () => {
       useJurisdictionStore.getState().setCountry('US');
     });
   });
+
+  it('maintains strictly unique quote IDs and Project Gutenberg bookIds across all anthology entries', async () => {
+    const { LITERARY_QUOTES } = await import('@/config/literary-quotes');
+    const quoteIds = LITERARY_QUOTES.map((q) => q.id);
+    const bookIds = LITERARY_QUOTES.map((q) => q.bookId);
+
+    expect(new Set(quoteIds).size).toBe(LITERARY_QUOTES.length);
+    expect(new Set(bookIds).size).toBe(LITERARY_QUOTES.length);
+  });
 });
 

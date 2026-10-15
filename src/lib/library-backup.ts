@@ -19,6 +19,7 @@ export interface LibraryBackupShelf {
   id: string;
   name: string;
   isDefault: boolean;
+  isPublic?: boolean;
   bookIds: number[];
 }
 
@@ -105,6 +106,7 @@ export function createLibraryBackup(): LibraryBackupPayload {
     id: shelf.id,
     name: shelf.name,
     isDefault: shelf.is_default,
+    isPublic: shelf.is_public ?? true,
     bookIds: shelfItems
       .filter((item) => item.bookshelf_id === shelf.id)
       .map((item) => item.book_id),
@@ -187,11 +189,13 @@ export function exportLibraryToCSV(backup?: LibraryBackupPayload, filename?: str
 
   const escapeCell = (val: string | number | boolean | null | undefined): string => {
     if (val === null || val === undefined) return '""';
-    const str = String(val);
-    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-      return `"${str.replace(/"/g, '""')}"`;
+    const rawStr = String(val);
+    // Defend against CSV Formula Injection (CWE-1236) on untrusted string cells
+    const safeStr = typeof val === 'string' && /^[=+\-@\t\r]/.test(rawStr) ? `'${rawStr}` : rawStr;
+    if (safeStr.includes(',') || safeStr.includes('"') || safeStr.includes('\n') || safeStr.includes('\r')) {
+      return `"${safeStr.replace(/"/g, '""')}"`;
     }
-    return `"${str}"`;
+    return `"${safeStr}"`;
   };
 
   const rows: string[] = [headers.map(escapeCell).join(',')];
@@ -340,6 +344,7 @@ export function validateLibraryBackup(raw: unknown): ValidationResult {
         id: typeof s.id === 'string' ? s.id : `shelf-${Date.now()}-${i}`,
         name: s.name.trim() || 'Untitled Shelf',
         isDefault: Boolean(s.isDefault),
+        isPublic: typeof s.isPublic === 'boolean' ? s.isPublic : true,
         bookIds: validBookIds,
       });
     }
@@ -479,6 +484,7 @@ export async function restoreLibraryBackup(
           user_id: userId || 'local-guest',
           name: cs.name,
           is_default: cs.isDefault ?? false,
+          is_public: cs.isPublic ?? true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -585,6 +591,7 @@ export async function restoreLibraryBackup(
             user_id: userId || 'local-guest',
             name: cs.name,
             is_default: cs.isDefault ?? false,
+            is_public: cs.isPublic ?? true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
@@ -639,8 +646,9 @@ export async function restoreLibraryBackup(
   });
 
   if (backup.preferences) {
-    if (backup.preferences.theme && ['day', 'sepia', 'dark'].includes(backup.preferences.theme)) {
-      themeStore.setTheme(backup.preferences.theme as any);
+    if (backup.preferences.theme && ['light', 'day', 'sepia', 'dark'].includes(backup.preferences.theme)) {
+      const normalizedTheme = backup.preferences.theme === 'day' ? 'light' : backup.preferences.theme;
+      themeStore.setTheme(normalizedTheme as any);
     }
     if (typeof backup.preferences.stickyScrollEnabled === 'boolean') {
       prefsStore.setStickyScrollEnabled(backup.preferences.stickyScrollEnabled);
@@ -658,6 +666,19 @@ export async function restoreLibraryBackup(
       if (typeof backup.preferences.speech.highlightEnabled === 'boolean') {
         prefsStore.setSpeechHighlightEnabled(backup.preferences.speech.highlightEnabled);
       }
+    }
+    if (backup.preferences.readerDisplay) {
+      const rd = backup.preferences.readerDisplay;
+      useReaderStore.setState({
+        ...(typeof rd.fontSize === 'number' && Number.isFinite(rd.fontSize) ? { fontSize: rd.fontSize } : {}),
+        ...(typeof rd.lineHeight === 'number' && Number.isFinite(rd.lineHeight) ? { lineHeight: rd.lineHeight } : {}),
+        ...(typeof rd.fontFamily === 'string' && ['serif', 'sans', 'mono'].includes(rd.fontFamily)
+          ? { fontFamily: rd.fontFamily as any }
+          : {}),
+        ...(typeof rd.theme === 'string' && ['light', 'day', 'sepia', 'dark'].includes(rd.theme)
+          ? { theme: (rd.theme === 'day' ? 'light' : rd.theme) as any }
+          : {}),
+      });
     }
   }
 

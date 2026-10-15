@@ -154,6 +154,7 @@ export const useAuthStore = create<AuthState>()(
       options: {
         data: {
           full_name: fullName || '',
+          display_name: fullName || '',
         },
         emailRedirectTo: redirectTo,
       },
@@ -372,6 +373,8 @@ export const useAuthStore = create<AuthState>()(
       await supabase.from('user_annotations').delete().eq('user_id', user.id);
       await supabase.from('reading_progress').delete().eq('user_id', user.id);
       await supabase.from('user_favorites').delete().eq('user_id', user.id);
+      await supabase.from('user_book_curation').delete().eq('user_id', user.id);
+      await supabase.from('user_reading_habits').delete().eq('user_id', user.id);
       await supabase.from('bookshelf_items').delete().eq('user_id', user.id);
       await supabase.from('bookshelves').delete().eq('user_id', user.id);
       // 2. Clean up profile
@@ -382,9 +385,15 @@ export const useAuthStore = create<AuthState>()(
       } catch {
         // Non-blocking fallback if RPC is not provisioned
       }
-      // 4. Terminate auth session
+      // 4. Terminate auth session and clear local persisted state
       await supabase.auth.signOut();
       set({ user: null, profile: null, isAuthModalOpen: false, error: null });
+      try {
+        const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+        useBookshelfStore.getState().clearBookshelf();
+      } catch {
+        // Non-blocking fallback
+      }
       return { error: null };
     } catch (err: unknown) {
       return { error: err instanceof Error ? err : new Error(String(err)) };

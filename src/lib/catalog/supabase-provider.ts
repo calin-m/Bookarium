@@ -287,9 +287,13 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
 
   /**
    * Retrieves verified multi-language translations and editions for a specific volume ID.
-   * Performs an indexed relational join via public.book_translations using IN subquery defense.
+   * Performs an indexed relational join via public.book_translations using IN subquery defense,
+   * strictly enforcing public domain copyright and regional jurisdiction rules.
    */
-  public async getBookTranslations(bookId: number): Promise<RelationalTranslationOption[]> {
+  public async getBookTranslations(
+    bookId: number,
+    country: string = 'US'
+  ): Promise<RelationalTranslationOption[]> {
     if (!bookId || bookId <= 0) return [];
 
     try {
@@ -320,18 +324,42 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       const editions = clusterEditions as { book_id: number; language: string; is_original: boolean }[];
       const editionBookIds = editions.map((e) => e.book_id);
 
-      // 3. Fetch title and download_count for discovered books
+      // 3. Fetch title, download_count, copyright, and creator lifespans for discovered books
       const { data: books, error: booksErr } = await supabase
         .from('books')
-        .select('id, title, download_count')
+        .select('id, title, download_count, copyright, authors, translators')
         .in('id', editionBookIds);
 
       if (booksErr || !books) {
         return [];
       }
 
-      const typedBooks = books as { id: number; title: string; download_count: number }[];
-      const booksMap = new Map(typedBooks.map((b) => [b.id, b]));
+      const typedBooks = books as {
+        id: number;
+        title: string;
+        download_count: number;
+        copyright?: boolean | null;
+        authors?: DatabaseBook['authors'] | null;
+        translators?: DatabaseBook['translators'] | null;
+      }[];
+
+      // Filter out any edition that is under copyright or restricted in the caller's jurisdiction
+      const allowedBooks = typedBooks.filter((b) => {
+        if (b.copyright === true) return false;
+        const evaluation = isBookPublicDomainInJurisdiction(
+          {
+            id: b.id,
+            title: b.title,
+            authors: Array.isArray(b.authors) ? (b.authors as unknown as Author[]) : [],
+            translators: Array.isArray(b.translators) ? (b.translators as unknown as Author[]) : [],
+            copyright: b.copyright ?? false,
+          },
+          country
+        );
+        return evaluation.isAllowed;
+      });
+
+      const booksMap = new Map(allowedBooks.map((b) => [b.id, b]));
 
       const results: RelationalTranslationOption[] = [];
       for (const ed of editions) {

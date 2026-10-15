@@ -1,8 +1,8 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-10-12`  
-> **Topology Health**: `187` Modules Analyzed • `637` Static Linkages • `0` Circular Dependencies • `2` Orphaned Modules
+> **Last Synchronized**: `2026-10-15`  
+> **Topology Health**: `187` Modules Analyzed • `638` Static Linkages • `0` Circular Dependencies • `2` Orphaned Modules
 
 ---
 
@@ -514,7 +514,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`route.ts`](src/app/api/books/content/route.ts) | `config/site-config`, `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `lib/country-resolver`, `./url-validator`, `./metadata-cache`, `lib/catalog/supabase-provider`, `lib/supabase/client` | _App Route Entry_ | Production Module |
 | [`url-validator.ts`](src/app/api/books/content/url-validator.ts) | _Root Primitive_ | `route.ts` | Production Module |
 | [`route.ts`](src/app/api/books/route.ts) | `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `lib/catalog/query-parser`, `lib/catalog/gutendex-provider`, `lib/catalog/supabase-provider`, `types/catalog.types`, `types/catalog.types` | _App Route Entry_ | Production Module |
-| [`route.ts`](src/app/api/books/translations/route.ts) | `lib/rate-limiter`, `lib/api-utils`, `lib/catalog/supabase-provider` | _App Route Entry_ | Production Module |
+| [`route.ts`](src/app/api/books/translations/route.ts) | `lib/rate-limiter`, `lib/api-utils`, `lib/catalog/supabase-provider`, `lib/country-resolver` | _App Route Entry_ | Production Module |
 | [`route.ts`](src/app/auth/callback/route.ts) | `lib/supabase/server` | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/auth/confirm-deletion/page.tsx) | `stores/useAuthStore`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `config/routes` | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/copyright/page.tsx) | `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/BackToTop`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
@@ -656,7 +656,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) | `types/catalog.types`, `types/catalog.types`, `types/book.types`, `types/database.types`, `lib/supabase/client`, `lib/copyright-engine` | `metadata-cache.ts`, `route.ts`, `route.ts`, `route.ts`, `reader-layout-utils.ts` | Production Module |
 | [`content-advisory.ts`](src/lib/content-advisory.ts) | _Root Primitive_ | `BookPreviewModal.tsx`, `DownloadDrawer.tsx`, `GutenbergInfoModal.tsx` | Production Module |
 | [`copyright-engine.ts`](src/lib/copyright-engine.ts) | `types/book.types` | `metadata-cache.ts`, `route.ts`, `route.ts`, `layout.tsx`, `BookshelfRack.tsx`, `NotebookView.tsx`, `featured-books.ts`, `literary-quotes.ts`, `useBookContent.ts`, `useBooks.ts`, `useBookCopyright.ts`, `book.adapter.ts`, `gutendex-provider.ts`, `supabase-provider.ts`, `useJurisdictionStore.ts`, `catalog.types.ts` | Production Module |
-| [`country-resolver.ts`](src/lib/country-resolver.ts) | _Root Primitive_ | `route.ts`, `query-parser.ts`, `proxy.ts`, `useJurisdictionStore.ts` | Production Module |
+| [`country-resolver.ts`](src/lib/country-resolver.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `query-parser.ts`, `proxy.ts`, `useJurisdictionStore.ts` | Production Module |
 | [`gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | `./gutenberg` | `page.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx`, `useGutenbergParserWorker.ts`, `useReaderSession.ts`, `in-book-search.ts`, `gutenberg.worker.ts` | Production Module |
 | [`index.ts`](src/lib/gutenberg/index.ts) | `./types`, `./reflow`, `./pagination`, `./metadata`, `./segmentation`, `./passages` | `gutenberg-parser.ts` | Production Module |
 | [`metadata.ts`](src/lib/gutenberg/metadata.ts) | `./types` | `index.ts` | Production Module |

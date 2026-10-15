@@ -409,7 +409,7 @@ export const LITERARY_QUOTES: LiteraryQuote[] = [
   },
   {
     id: 30,
-    bookId: 1399,
+    bookId: 2944,
     category: 'ESSAY & NATURE',
     year: '1841',
     bookTitle: 'Essays: First Series',
@@ -461,13 +461,14 @@ export const LITERARY_QUOTES: LiteraryQuote[] = [
   },
   {
     id: 34,
-    bookId: 996,
+    bookId: 8800,
     category: 'ITALIAN EPIC',
     year: '1320',
     bookTitle: 'The Divine Comedy',
     author: 'Dante Alighieri',
     authorBirthYear: 1265,
     authorDeathYear: 1321,
+    translators: [{ name: 'Henry Francis Cary', birth_year: 1772, death_year: 1844 }],
     quote:
       'The darkest places in hell are reserved for those who maintain their neutrality in times of moral crisis.',
     citation: 'Inferno, Canto III',

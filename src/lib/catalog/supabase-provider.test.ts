@@ -534,6 +534,64 @@ describe('SupabaseCatalogProvider', () => {
       const results = await provider.getBookTranslations(1342);
       expect(results).toEqual([]);
     });
+
+    it('filters out translation editions that are copyrighted or restricted in the caller jurisdiction', async () => {
+      const mockSupabase = {
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'book_translations') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({
+                  data: [{ work_id: 'Q170583' }],
+                  error: null,
+                }),
+                in: vi.fn().mockResolvedValue({
+                  data: [
+                    { book_id: 1342, language: 'en', is_original: true },
+                    { book_id: 43647, language: 'fr', is_original: false },
+                  ],
+                  error: null,
+                }),
+              }),
+            };
+          }
+          if (table === 'books') {
+            return {
+              select: vi.fn().mockReturnValue({
+                in: vi.fn().mockResolvedValue({
+                  data: [
+                    {
+                      id: 1342,
+                      title: 'Pride and Prejudice',
+                      download_count: 50000,
+                      copyright: false,
+                      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+                      translators: [],
+                    },
+                    {
+                      id: 43647,
+                      title: 'Orgueil et Préjugé (Modern Translation)',
+                      download_count: 1200,
+                      copyright: false,
+                      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+                      translators: [{ name: 'Modern Translator', birth_year: 1920, death_year: 1995 }],
+                    },
+                  ],
+                  error: null,
+                }),
+              }),
+            };
+          }
+          return {};
+        }),
+      };
+
+      const provider = new SupabaseCatalogProvider(mockSupabase as any);
+      // In GB (Life + 70), a translator who died in 1995 is protected until 2066
+      const gbResults = await provider.getBookTranslations(1342, 'GB');
+      expect(gbResults).toHaveLength(1);
+      expect(gbResults[0].bookId).toBe(1342);
+    });
   });
 });
 
