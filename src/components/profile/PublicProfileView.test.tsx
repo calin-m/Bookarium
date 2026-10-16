@@ -218,4 +218,22 @@ describe('PublicProfileView', () => {
     useAuthStore.setState({ user: null });
     useFellowshipStore.getState().clearFellowshipState();
   });
+
+  it('uses solid border-border across header, telemetry tiles, and bookshelf items without fractional border-border/* or hover:border-primary/40', () => {
+    const { container } = render(
+      <PublicProfileView
+        profile={mockProfile}
+        habits={mockHabits}
+        bookshelves={mockBookshelves}
+      />
+    );
+
+    const html = container.innerHTML;
+    expect(html).not.toContain('border-border/60');
+    expect(html).not.toContain('border-border/80');
+    expect(html).not.toContain('border-primary/20');
+    expect(html).not.toContain('hover:border-primary/40');
+    expect(html).toContain('hover:shadow-booksaw-hover');
+  });
 });
+

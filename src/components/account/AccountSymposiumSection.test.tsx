@@ -72,6 +72,10 @@ describe('AccountSymposiumSection', () => {
     expect(screen.getByText('35%')).toBeInTheDocument();
     expect(screen.getByText('60%')).toBeInTheDocument();
 
+    const section = screen.getByTestId('account-symposium-section');
+    expect(section.innerHTML).not.toContain('border-border/60');
+    expect(section.innerHTML).not.toContain('border-primary/20');
+
     // Switch to Reader Circle sub-tab
     fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
     expect(screen.getByText('Charlotte Brontë')).toBeInTheDocument();

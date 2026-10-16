@@ -218,8 +218,8 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
   };
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+    <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border pb-4">
         <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
           Reading & Navigation Preferences
         </h2>
@@ -228,51 +228,57 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
         <div
           role="tablist"
           aria-label="Preferences sub-sections"
-          className="inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start sm:self-auto"
+          className="w-full sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
         >
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === 'appearance'}
+            aria-label="Appearance & Scroll"
             onClick={() => setActiveSubTab('appearance')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeSubTab === 'appearance'
-                ? 'bg-card text-primary shadow-xs border border-border'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-primary shadow-xs border-border'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Appearance & Scroll</span>
+            <Sliders className="w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden">Appearance</span>
+            <span className="hidden sm:inline">Appearance & Scroll</span>
           </button>
 
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === 'narration'}
+            aria-label="Read-Aloud Studio"
             onClick={() => setActiveSubTab('narration')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeSubTab === 'narration'
-                ? 'bg-card text-primary shadow-xs border border-border'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-primary shadow-xs border-border'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Headphones className="w-3.5 h-3.5" />
-            <span>Read-Aloud Studio</span>
+            <Headphones className="w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden">Read-Aloud</span>
+            <span className="hidden sm:inline">Read-Aloud Studio</span>
           </button>
 
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === 'portability'}
+            aria-label="Backup & Restore"
             onClick={() => setActiveSubTab('portability')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeSubTab === 'portability'
-                ? 'bg-card text-primary shadow-xs border border-border'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-primary shadow-xs border-border'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Database className="w-3.5 h-3.5" />
-            <span>Backup & Restore</span>
+            <Database className="w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden">Backups</span>
+            <span className="hidden sm:inline">Backup & Restore</span>
           </button>
         </div>
       </div>
@@ -291,39 +297,39 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             <button
               type="button"
               onClick={() => onThemeChange('light')}
-              className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-mono font-bold whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 theme === 'light'
                   ? 'bg-primary/10 border-primary text-primary shadow-xs'
                   : 'bg-muted/30 border-border hover:bg-muted text-muted-foreground'
               }`}
             >
-              <Sun className="w-4 h-4 text-amber-500" />
+              <Sun className="w-4 h-4 text-amber-500 shrink-0" />
               <span>Light</span>
             </button>
 
             <button
               type="button"
               onClick={() => onThemeChange('sepia')}
-              className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-mono font-bold whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 theme === 'sepia'
                   ? 'bg-amber-500/15 border-amber-500 text-amber-500 dark:text-amber-400 shadow-xs'
                   : 'bg-muted/30 border-border hover:bg-muted text-muted-foreground'
               }`}
             >
-              <Coffee className="w-4 h-4 text-amber-700 dark:text-amber-500" />
+              <Coffee className="w-4 h-4 text-amber-700 dark:text-amber-500 shrink-0" />
               <span>Sepia</span>
             </button>
 
             <button
               type="button"
               onClick={() => onThemeChange('dark')}
-              className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-mono font-bold whitespace-nowrap transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 theme === 'dark'
                   ? 'bg-primary/10 border-primary text-primary shadow-xs'
                   : 'bg-muted/30 border-border hover:bg-muted text-muted-foreground'
               }`}
             >
-              <Moon className="w-4 h-4 text-indigo-400" />
+              <Moon className="w-4 h-4 text-indigo-400 shrink-0" />
               <span>Dark</span>
             </button>
           </div>
@@ -344,7 +350,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             <button
               type="button"
               onClick={() => onStickyScrollChange(true)}
-              className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border text-left transition-all cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border text-left transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 stickyScrollEnabled
                   ? 'bg-primary/10 border-primary text-foreground shadow-xs'
                   : 'bg-card border-border hover:bg-muted/60 text-muted-foreground'
@@ -364,7 +370,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             <button
               type="button"
               onClick={() => onStickyScrollChange(false)}
-              className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border text-left transition-all cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border text-left transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 !stickyScrollEnabled
                   ? 'bg-primary/10 border-primary text-foreground shadow-xs'
                   : 'bg-card border-border hover:bg-muted/60 text-muted-foreground'
@@ -389,7 +395,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-primary/15 border border-border flex items-center justify-center shrink-0">
               <Headphones className="w-3.5 h-3.5 text-primary" />
             </div>
             <div>
@@ -406,7 +412,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             <button
               type="button"
               onClick={onResetSpeechPreferences}
-              className="text-[11px] font-mono text-muted-foreground hover:text-foreground flex items-center gap-1 p-1.5 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+              className="text-[11px] font-mono text-muted-foreground hover:text-foreground flex items-center gap-1 p-1.5 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer shrink-0"
               title="Reset speech settings to defaults"
             >
               <RotateCcw className="w-3 h-3" />
@@ -432,9 +438,9 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
                 key={preset}
                 type="button"
                 onClick={() => onSpeechRateChange(preset)}
-                className={`py-2 px-3 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer text-center ${
+                className={`py-2 px-3 rounded-xl border text-xs font-mono font-bold whitespace-nowrap transition-colors cursor-pointer text-center ${
                   speechRate === preset
-                    ? 'bg-primary/10 border-primary text-primary shadow-xs scale-[1.02]'
+                    ? 'bg-primary/10 border-primary text-primary shadow-xs'
                     : 'bg-card border-border hover:bg-muted text-muted-foreground'
                 }`}
               >
@@ -444,41 +450,43 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
           </div>
         </div>
 
-        {/* Preferred Voice Dropdown */}
-        {voices.length > 0 && (
-          <div className="space-y-2">
-            <label className="text-[11px] font-mono font-bold text-foreground block">
-              Preferred System Narrator Voice
-            </label>
+        {/* Preferred Voice Dropdown (Always mounted to eliminate async voice-load CLS) */}
+        <div className="space-y-2">
+          <label
+            htmlFor="preferred-narrator-voice-select"
+            className="text-[11px] font-mono font-bold text-foreground block"
+          >
+            Preferred System Narrator Voice
+          </label>
 
-            <select
-              value={speechVoiceURI || ''}
-              onChange={(e) => onSpeechVoiceChange(e.target.value || null)}
-              aria-label="Preferred narrator voice"
-              className="w-full py-2 px-3 text-base sm:text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer max-w-full truncate"
-            >
-              <option value="">✨ Auto-Select Highest Quality Voice (Recommended)</option>
-              {naturalVoices.length > 0 && (
-                <optgroup label="🌟 Natural & Neural Voices">
-                  {naturalVoices.map((voice) => (
-                    <option key={voice.voiceURI} value={voice.voiceURI}>
-                      {cleanVoiceName(voice.name)} ({voice.lang}) ✨
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {standardVoices.length > 0 && (
-                <optgroup label="🔈 Standard System Voices">
-                  {standardVoices.map((voice) => (
-                    <option key={voice.voiceURI} value={voice.voiceURI}>
-                      {cleanVoiceName(voice.name)} ({voice.lang})
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
-        )}
+          <select
+            id="preferred-narrator-voice-select"
+            value={speechVoiceURI || ''}
+            onChange={(e) => onSpeechVoiceChange(e.target.value || null)}
+            aria-label="Preferred narrator voice"
+            className="w-full py-2 px-3 text-base sm:text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer max-w-full truncate"
+          >
+            <option value="">✨ Auto-Select Highest Quality Voice (Recommended)</option>
+            {naturalVoices.length > 0 && (
+              <optgroup label="🌟 Natural & Neural Voices">
+                {naturalVoices.map((voice) => (
+                  <option key={voice.voiceURI} value={voice.voiceURI}>
+                    {cleanVoiceName(voice.name)} ({voice.lang}) ✨
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {standardVoices.length > 0 && (
+              <optgroup label="🔈 Standard System Voices">
+                {standardVoices.map((voice) => (
+                  <option key={voice.voiceURI} value={voice.voiceURI}>
+                    {cleanVoiceName(voice.name)} ({voice.lang})
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </div>
 
         {/* Reading Assistance Toggles */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -530,7 +538,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
         </div>
 
         {/* Audio Test Preview Button */}
-        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-border/60">
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-border">
           <button
             type="button"
             onClick={handleTogglePreview}

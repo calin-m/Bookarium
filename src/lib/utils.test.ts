@@ -19,6 +19,12 @@ describe('lib/utils', () => {
       expect(cn('px-2 py-1', 'bg-blue-500')).toBe('px-2 py-1 bg-blue-500');
       expect(cn('px-2', false && 'hidden', 'px-4')).toBe('px-4');
     });
+
+    it('resolves Tailwind v4 shadow-xs/2xs and custom design-token shadows without duplicate shadow classes', () => {
+      expect(cn('shadow-xs', 'shadow-booksaw')).toBe('shadow-booksaw');
+      expect(cn('shadow-2xs', 'shadow-modern-sm')).toBe('shadow-modern-sm');
+      expect(cn('shadow-booksaw', 'shadow-none')).toBe('shadow-none');
+    });
   });
 
   describe('extractBookFormats', () => {

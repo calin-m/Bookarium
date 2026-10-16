@@ -32,11 +32,13 @@ describe('PrivateProfileNotice', () => {
     expect(screen.getByText(/return to catalog/i)).toBeInTheDocument();
   });
 
-  it('renders gracefully without username parameter', () => {
-    render(<PrivateProfileNotice />);
+  it('renders gracefully without username parameter and uses solid border-border on epigraph', () => {
+    const { container } = render(<PrivateProfileNotice />);
 
     expect(screen.getByRole('heading', { level: 1, name: /scholar sanctuary not found/i })).toBeInTheDocument();
     expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
+    expect(container.innerHTML).not.toContain('border-border/60');
+    expect(container.innerHTML).toContain('border-t border-b border-border');
   });
 });
 

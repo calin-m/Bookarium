@@ -415,4 +415,37 @@ describe('BookCard component', () => {
     const metadataColumn = title.closest('.min-w-0');
     expect(metadataColumn).toBeInTheDocument();
   });
+
+  it('preserves neutral editorial card border, shadow-booksaw elevation, and clean topic badges without orange hover borders', () => {
+    const book = mockBooks[0];
+    render(<BookCard book={book} onPreviewClick={vi.fn()} onTopicClick={vi.fn()} />);
+
+    const card = screen.getByTestId(`book-card-${book.id}`);
+    expect(card).toHaveClass('border-border', 'shadow-booksaw', 'hover:shadow-booksaw-hover');
+    expect(card).not.toHaveClass('shadow-xs', 'hover:border-primary/50');
+
+    const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
+    expect(coverVisual).toHaveClass('border-b', 'border-border', 'bg-muted', 'dark:bg-secondary/30');
+
+    const likeBtn = screen.getByLabelText('Add to favorites');
+    expect(likeBtn).toHaveClass('bg-card', 'border', 'border-border');
+
+    const saveBtn = screen.getByLabelText('Save to bookshelf');
+    expect(saveBtn).toHaveClass('bg-card', 'border', 'border-border');
+
+    const topicBadges = screen.getAllByText('Classics');
+    expect(topicBadges.length).toBeGreaterThan(0);
+    for (const badge of topicBadges) {
+      expect(badge).toHaveClass('border-border', 'text-foreground', 'hover:text-primary');
+      expect(badge).not.toHaveClass('group-hover:border-primary/60', 'hover:bg-primary/10', 'bg-muted/40');
+    }
+
+    const overflowBtn = screen.getAllByRole('button', { name: /more topics/i })[0];
+    fireEvent.click(overflowBtn);
+    const popoverTag = screen.getByText('Courtship');
+    expect(popoverTag).toHaveClass('border-border', 'hover:bg-muted/80', 'hover:text-primary');
+    expect(popoverTag).not.toHaveClass('hover:border-primary');
+  });
 });
+
+

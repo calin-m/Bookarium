@@ -159,7 +159,7 @@ export const BookCard: React.FC<BookCardProps> = ({
     <Card
       ref={cardRef}
       variant="default"
-      className={`group relative flex flex-col h-full min-w-0 bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover rounded-xl overflow-hidden transition-[box-shadow,border-color,opacity,ring] duration-300 ease-out ${
+      className={`group relative flex flex-col h-full min-w-0 bg-card border border-border shadow-booksaw hover:shadow-booksaw-hover rounded-xl overflow-hidden transition-[box-shadow,border-color,opacity,ring] duration-300 ease-out ${
         isPreviewActive
           ? 'max-lg:opacity-100 max-lg:ring-2 max-lg:ring-primary/60 max-lg:border-primary/60 lg:opacity-0 lg:pointer-events-none'
           : 'opacity-100'
@@ -191,7 +191,7 @@ export const BookCard: React.FC<BookCardProps> = ({
         tabIndex={onPreviewClick ? 0 : undefined}
         role={onPreviewClick ? 'button' : undefined}
         aria-label={onPreviewClick ? `Click to preview quotes for ${book.title}` : undefined}
-        className={`relative aspect-[3/4] w-full bg-muted/60 overflow-hidden flex items-center justify-center p-2.5 sm:p-3 border-b border-border select-none ${
+        className={`relative aspect-[3/4] w-full overflow-hidden flex items-center justify-center p-2.5 sm:p-3 border-b border-border bg-muted dark:bg-secondary/30 select-none ${
           onPreviewClick ? 'cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary' : ''
         }`}
       >
@@ -285,12 +285,12 @@ export const BookCard: React.FC<BookCardProps> = ({
                 setIsConfirmingRemoval(false);
               }
             }}
-            className={`relative touch-manipulation p-2 rounded-full transition-all shadow-xs after:absolute after:-inset-1.5 after:content-[''] ${
+            className={`relative touch-manipulation p-2 rounded-full border transition-all shadow-xs after:absolute after:-inset-1.5 after:content-[''] ${
               isConfirmingRemoval
-                ? 'bg-destructive text-destructive-foreground scale-110 ring-2 ring-destructive/40 animate-pulse'
+                ? 'bg-destructive border-destructive text-destructive-foreground scale-110 ring-2 ring-destructive/40 animate-pulse'
                 : isFavorite
-                ? 'bg-destructive text-destructive-foreground scale-105'
-                : 'bg-card text-muted-foreground hover:text-destructive'
+                ? 'bg-destructive border-destructive text-destructive-foreground scale-105'
+                : 'bg-card border-border text-muted-foreground hover:text-destructive'
             }`}
             aria-label={
               isConfirmingRemoval
@@ -318,10 +318,10 @@ export const BookCard: React.FC<BookCardProps> = ({
               setShowTooltip(true);
             }}
             onMouseLeave={() => setHoveredAction('preview')}
-            className={`relative touch-manipulation p-2 rounded-full transition-all shadow-xs after:absolute after:-inset-1.5 after:content-[''] ${
+            className={`relative touch-manipulation p-2 rounded-full border transition-all shadow-xs after:absolute after:-inset-1.5 after:content-[''] ${
               isSaved
-                ? 'bg-primary text-primary-foreground scale-105'
-                : 'bg-card text-muted-foreground hover:text-primary'
+                ? 'bg-primary border-primary text-primary-foreground scale-105'
+                : 'bg-card border-border text-muted-foreground hover:text-primary'
             }`}
             aria-label={isSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
           >
@@ -361,8 +361,8 @@ export const BookCard: React.FC<BookCardProps> = ({
                         }
                       : undefined
                   }
-                  className={`sm:hidden bg-muted/40 text-[9px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors shadow-2xs py-0.5 px-1.5 shrink-0 ${
-                    onTopicClick ? 'cursor-pointer hover:bg-primary/10 hover:text-primary' : ''
+                  className={`sm:hidden text-[9px] border-border text-foreground font-mono uppercase transition-colors shadow-2xs py-0.5 px-1.5 shrink-0 ${
+                    onTopicClick ? 'cursor-pointer hover:text-primary' : ''
                   }`}
                 >
                   {tag}
@@ -383,8 +383,8 @@ export const BookCard: React.FC<BookCardProps> = ({
                         }
                       : undefined
                   }
-                  className={`hidden sm:inline-flex bg-muted/40 text-[10px] border-border text-foreground font-mono uppercase group-hover:border-primary/60 transition-colors shadow-2xs py-0.5 px-2 shrink-0 ${
-                    onTopicClick ? 'cursor-pointer hover:bg-primary/10 hover:text-primary' : ''
+                  className={`hidden sm:inline-flex text-[10px] border-border text-foreground font-mono uppercase transition-colors shadow-2xs py-0.5 px-2 shrink-0 ${
+                    onTopicClick ? 'cursor-pointer hover:text-primary' : ''
                   }`}
                 >
                   {tag}
@@ -399,7 +399,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                     e.stopPropagation();
                     setIsTagPopoverOpen((prev) => !prev);
                   }}
-                  className="sm:hidden px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-full bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors shrink-0"
+                  className="sm:hidden px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-full hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors shrink-0"
                   aria-label={`View ${tagSet.overflowMobile} more topics for ${book.title}`}
                   title="Click to view all topics"
                 >
@@ -415,7 +415,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                     e.stopPropagation();
                     setIsTagPopoverOpen((prev) => !prev);
                   }}
-                  className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-full bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors shrink-0"
+                  className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] font-mono font-bold rounded-full hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors shrink-0"
                   aria-label={`View ${tagSet.overflowDesktop} more topics for ${book.title}`}
                   title="Click to view all topics"
                 >
@@ -455,7 +455,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                         }
                       }}
                       className={`inline-block text-[10px] px-2 py-0.5 rounded-md bg-muted text-foreground border border-border font-sans ${
-                        onTopicClick ? 'cursor-pointer hover:border-primary hover:text-primary transition-colors' : ''
+                        onTopicClick ? 'cursor-pointer hover:bg-muted/80 hover:text-primary transition-colors' : ''
                       }`}
                     >
                       {tag}

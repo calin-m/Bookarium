@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-10-16`  
-> **Topology Health**: `190` Modules Analyzed • `668` Static Linkages • `0` Circular Dependencies • `2` Orphaned Modules
+> **Topology Health**: `189` Modules Analyzed • `666` Static Linkages • `0` Circular Dependencies • `2` Orphaned Modules
 
 ---
 
@@ -192,7 +192,7 @@ flowchart TD
 
 ## 🧩 Component Catalog & Props Interface Matrix
 
-Auto-extracted dynamically from **79 Production UI Components** using Babel AST:
+Auto-extracted dynamically from **78 Production UI Components** using Babel AST:
 
 | Component | Category | Exported Props Interface | Primary Props & Signals | Module Link |
 | :--- | :--- | :--- | :--- | :--- |
@@ -202,7 +202,6 @@ Auto-extracted dynamically from **79 Production UI Components** using Babel AST:
 | **`AccountDeleteModal`** | Account | `AccountDeleteModalProps` | `isOpen`, `onClose`, `userEmail`, `isSendingDeletionEmail`, `deletionEmailSent`, `deleteError`, `onRequestDeletion` | [`src/components/account/AccountDeleteModal.tsx`](src/components/account/AccountDeleteModal.tsx) |
 | **`AccountHabitsCard`** | Account | `AccountHabitsCardProps` | `userId`, `completedBooksCount` | [`src/components/account/AccountHabitsCard.tsx`](src/components/account/AccountHabitsCard.tsx) |
 | **`AccountIdentityCard`** | Account | `AccountIdentityCardProps` | `user`, `profile`, `formattedDate`, `displayName`, `onDisplayNameChange`, `onSaveProfile`, `isSaving`, `saveSuccess`, `saveError`, `onResendVerification`, `isResendingVerification`, `resendSuccess`, `resendError`, `resendCooldown`, `stats`, `onOpenLibraryBreakdown` | [`src/components/account/AccountIdentityCard.tsx`](src/components/account/AccountIdentityCard.tsx) |
-| **`AccountLibraryStats`** | Account | `AccountLibraryStatsProps` | `savedCount`, `favoriteCount`, `customShelvesCount`, `annotationCount`, `bookmarksCount`, `readingStreak` | [`src/components/account/AccountLibraryStats.tsx`](src/components/account/AccountLibraryStats.tsx) |
 | **`AccountPreferencesSection`** | Account | `AccountPreferencesSectionProps` | `theme`, `onThemeChange`, `stickyScrollEnabled`, `onStickyScrollChange`, `speechRate`, `onSpeechRateChange`, `speechVoiceURI`, `onSpeechVoiceChange`, `speechAutoPageAdvance`, `onSpeechAutoPageAdvanceChange`, `speechHighlightEnabled`, `onSpeechHighlightEnabledChange`, `onResetSpeechPreferences`, `userId` | [`src/components/account/AccountPreferencesSection.tsx`](src/components/account/AccountPreferencesSection.tsx) |
 | **`AccountPublicProfileSection`** | Account | `AccountPublicProfileSectionProps` | `user`, `profile`, `onUpdateProfile` | [`src/components/account/AccountPublicProfileSection.tsx`](src/components/account/AccountPublicProfileSection.tsx) |
 | **`AccountRestoreModal`** | Account | `AccountRestoreModalProps` | `isOpen`, `onClose`, `backupData`, `onRestore`, `isRestoring`, `restoreSuccess`, `restoreError` | [`src/components/account/AccountRestoreModal.tsx`](src/components/account/AccountRestoreModal.tsx) |
@@ -519,7 +518,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | Module / Component | Upstream Dependencies (Imports) | Downstream Consumers (Consumed By) | Role & Responsibilities |
 | :--- | :--- | :--- | :--- |
 | [`layout.tsx`](src/app/account/layout.tsx) | _Root Primitive_ | _App Route Entry_ | Production Module |
-| [`page.tsx`](src/app/account/page.tsx) | `stores/useAuthStore`, `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useThemeStore`, `stores/usePreferencesStore`, `stores/useHabitsStore`, `stores/useFellowshipStore`, `hooks/useScrollDirection`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `components/ui/BackToTop`, `components/account/AccountIdentityCard`, `components/account/AccountLibraryStats`, `components/account/AccountHabitsCard`, `components/account/AccountAccoladesCard`, `components/account/AccountPublicProfileSection`, `components/account/AccountSymposiumSection`, `components/account/AccountSecuritySection`, `components/account/AccountPreferencesSection`, `components/account/AccountDeleteModal`, `lib/password`, `hooks/useMobileViewSwipe`, `config/views.config`, `config/routes` | _App Route Entry_ | Production Module |
+| [`page.tsx`](src/app/account/page.tsx) | `stores/useAuthStore`, `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useThemeStore`, `stores/usePreferencesStore`, `stores/useHabitsStore`, `stores/useFellowshipStore`, `hooks/useScrollDirection`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `components/ui/BackToTop`, `components/account/AccountIdentityCard`, `components/account/AccountHabitsCard`, `components/account/AccountAccoladesCard`, `components/account/AccountPublicProfileSection`, `components/account/AccountSymposiumSection`, `components/account/AccountSecuritySection`, `components/account/AccountPreferencesSection`, `components/account/AccountDeleteModal`, `lib/password`, `hooks/useMobileViewSwipe`, `config/views.config`, `config/routes` | _App Route Entry_ | Production Module |
 | [`metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts) | `config/api-endpoints`, `config/site-config`, `lib/copyright-engine`, `lib/catalog/supabase-provider`, `lib/supabase/client` | `route.ts` | Production Module |
 | [`route.ts`](src/app/api/books/content/route.ts) | `config/site-config`, `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `lib/country-resolver`, `./url-validator`, `./metadata-cache`, `lib/catalog/supabase-provider`, `lib/supabase/client` | _App Route Entry_ | Production Module |
 | [`url-validator.ts`](src/app/api/books/content/url-validator.ts) | _Root Primitive_ | `route.ts` | Production Module |
@@ -549,7 +548,6 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`AccountDeleteModal.tsx`](src/components/account/AccountDeleteModal.tsx) | `components/ui/Modal`, `components/ui/Button` | `page.tsx` | Production Module |
 | [`AccountHabitsCard.tsx`](src/components/account/AccountHabitsCard.tsx) | `stores/useHabitsStore` | `page.tsx` | Production Module |
 | [`AccountIdentityCard.tsx`](src/components/account/AccountIdentityCard.tsx) | `types/database.types`, `components/ui/Button`, `components/ui/Input`, `config/routes` | `page.tsx` | Production Module |
-| [`AccountLibraryStats.tsx`](src/components/account/AccountLibraryStats.tsx) | `config/library-tokens` | `page.tsx` | Production Module |
 | [`AccountPreferencesSection.tsx`](src/components/account/AccountPreferencesSection.tsx) | `stores/useThemeStore`, `lib/speech-utils`, `lib/library-backup`, `./AccountRestoreModal` | `page.tsx` | Production Module |
 | [`AccountPublicProfileSection.tsx`](src/components/account/AccountPublicProfileSection.tsx) | `types/database.types`, `stores/useAuthStore`, `config/routes`, `components/ui/Button`, `components/ui/Input` | `page.tsx` | Production Module |
 | [`AccountRestoreModal.tsx`](src/components/account/AccountRestoreModal.tsx) | `components/ui/Modal`, `components/ui/Button`, `lib/library-backup` | `AccountPreferencesSection.tsx` | Production Module |
@@ -627,7 +625,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`api-endpoints.ts`](src/config/api-endpoints.ts) | _Root Primitive_ | `metadata-cache.ts`, `useBookContent.ts`, `useBooks.ts`, `useOfflineBooks.ts`, `gutendex-provider.ts` | Production Module |
 | [`catalog-filters.ts`](src/config/catalog-filters.ts) | _Root Primitive_ | `AdvancedFilterDrawer.tsx`, `HeroSearch.tsx`, `LanguageSelector.tsx`, `useBookTranslations.ts`, `useCatalogFilters.ts` | Production Module |
 | [`featured-books.ts`](src/config/featured-books.ts) | `lib/utils`, `lib/copyright-engine` | `EditorialQuoteSection.tsx`, `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `ReaderHeader.tsx`, `useBookPassageShuffle.ts`, `useCollectionAutoHeal.ts`, `book-metadata.ts` | Production Module |
-| [`library-tokens.ts`](src/config/library-tokens.ts) | `config/routes` | `AccountLibraryStats.tsx`, `Navbar.tsx`, `views.config.ts` | Production Module |
+| [`library-tokens.ts`](src/config/library-tokens.ts) | `config/routes` | `Navbar.tsx`, `views.config.ts` | Production Module |
 | [`literary-quotes.ts`](src/config/literary-quotes.ts) | `lib/copyright-engine` | `LiteraryQuotes.tsx` | Production Module |
 | [`reader-config.ts`](src/config/reader-config.ts) | _Root Primitive_ | `ReaderControls.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSurface.tsx`, `useReaderGestures.ts`, `useReaderStore.ts` | Production Module |
 | [`reader-themes.ts`](src/config/reader-themes.ts) | `stores/useReaderStore` | `page.tsx`, `GutenbergInfoModal.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderControls.tsx`, `ReaderDrawerShell.tsx`, `ReaderErrorView.tsx`, `ReaderFooter.tsx`, `ReaderHeader.tsx`, `ReaderLanguageDrawer.tsx`, `ReaderLoadingView.tsx`, `ReaderSearchDrawer.tsx`, `ReaderSpeechBar.tsx`, `ReaderSubHeaderRibbon.tsx`, `ReaderSurface.tsx`, `ReaderTocDrawer.tsx` | Production Module |

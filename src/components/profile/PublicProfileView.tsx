@@ -156,7 +156,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
           {/* Avatar & Core Metadata */}
           <div className="flex items-start sm:items-center gap-4 sm:gap-6 min-w-0">
             {/* Monogram Seal Avatar */}
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 via-primary/15 to-muted/40 border border-primary/20 text-primary flex items-center justify-center font-serif font-bold text-xl sm:text-2xl shadow-inner shrink-0 select-none">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 via-primary/15 to-muted/40 border border-border text-primary flex items-center justify-center font-serif font-bold text-xl sm:text-2xl shadow-inner shrink-0 select-none">
               {initials}
             </div>
 
@@ -165,7 +165,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                 <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground truncate">
                   {displayName}
                 </h1>
-                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-primary/10 text-primary border border-primary/20">
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-primary/10 text-primary border border-border">
                   <Globe className="w-3 h-3" />
                   <span>Public Scholar</span>
                 </div>
@@ -254,7 +254,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
 
         {/* Scholar Bio / Motto */}
         {profile.bio && (
-          <div className="mt-6 pt-5 border-t border-border/80">
+          <div className="mt-6 pt-5 border-t border-border">
             <p className="font-serif italic text-sm sm:text-base text-foreground/90 max-w-3xl leading-relaxed">
               &ldquo;{profile.bio}&rdquo;
             </p>
@@ -282,7 +282,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
             <div className="bg-card border border-border rounded-2xl p-6 shadow-booksaw space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-border text-amber-600 dark:text-amber-400 flex items-center justify-center">
                     <Flame className="w-4 h-4" />
                   </div>
                   <h2 className="text-base font-serif font-bold text-foreground">
@@ -293,7 +293,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
               </div>
 
               <div className="grid grid-cols-3 gap-3 text-center pt-2">
-                <div className="bg-muted/30 border border-border/60 rounded-xl p-3">
+                <div className="bg-muted/30 border border-border rounded-xl p-3">
                   <p className="text-2xl font-serif font-bold text-amber-600 dark:text-amber-400">
                     {habits.current_streak}
                   </p>
@@ -301,7 +301,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                     Current Streak
                   </p>
                 </div>
-                <div className="bg-muted/30 border border-border/60 rounded-xl p-3">
+                <div className="bg-muted/30 border border-border rounded-xl p-3">
                   <p className="text-2xl font-serif font-bold text-foreground">
                     {habits.longest_streak}
                   </p>
@@ -309,7 +309,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                     Longest Streak
                   </p>
                 </div>
-                <div className="bg-muted/30 border border-border/60 rounded-xl p-3">
+                <div className="bg-muted/30 border border-border rounded-xl p-3">
                   <p className="text-2xl font-serif font-bold text-foreground">
                     {habits.active_days}
                   </p>
@@ -326,7 +326,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
             <div className="bg-card border border-border rounded-2xl p-6 shadow-booksaw space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-border text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                     <Target className="w-4 h-4" />
                   </div>
                   <h2 className="text-base font-serif font-bold text-foreground">
@@ -345,7 +345,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                     {habits.completed_books_count} / {habits.annual_goal}
                   </span>
                 </div>
-                <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border/60">
+                <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border">
                   <div
                     className="h-full bg-gradient-to-r from-emerald-600 to-primary rounded-full transition-all duration-500"
                     style={{
@@ -367,7 +367,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         <section aria-label="Curated Public Bookshelves" className="space-y-6">
           <div className="flex items-center justify-between border-b border-border pb-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-border text-primary flex items-center justify-center shadow-xs">
                 <Library className="w-4 h-4" />
               </div>
               <h2 className="text-xl font-serif font-bold text-foreground">
@@ -406,7 +406,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                       {shelf.items.map((item) => (
                         <div
                           key={`item-${shelf.id}-${item.book_id}`}
-                          className="group border border-border rounded-xl p-4 bg-muted/20 hover:bg-card hover:border-primary/40 transition-all flex flex-col justify-between space-y-3"
+                          className="group border border-border rounded-xl p-4 bg-muted/20 hover:bg-card hover:shadow-booksaw-hover transition-all flex flex-col justify-between space-y-3"
                         >
                           <div className="space-y-1 min-w-0">
                             <h4 className="font-serif font-bold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2">

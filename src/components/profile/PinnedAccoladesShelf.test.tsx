@@ -45,12 +45,13 @@ describe('PinnedAccoladesShelf', () => {
     expect(screen.getByText(sampleDefinitions[1].title)).toBeInTheDocument();
   });
 
-  it('renders empty showcase state when no bookplates are pinned', () => {
-    render(<PinnedAccoladesShelf pinnedItems={[]} />);
+  it('renders empty showcase state when no bookplates are pinned and uses solid border-border on header badges', () => {
+    const { container } = render(<PinnedAccoladesShelf pinnedItems={[]} />);
 
     expect(screen.getByText('0 Pinned Bookplates')).toBeInTheDocument();
     expect(
       screen.getByText(/this scholar has not pinned any bookplates/i)
     ).toBeInTheDocument();
+    expect(container.innerHTML).not.toContain('border-amber-500/20');
   });
 });

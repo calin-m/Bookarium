@@ -1,8 +1,32 @@
 import { type ClassValue, clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { extendTailwindMerge } from 'tailwind-merge';
+
+const customTwMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      shadow: [
+        {
+          shadow: [
+            'xs',
+            '2xs',
+            'book',
+            'book-hover',
+            'booksaw',
+            'booksaw-hover',
+            'modern-sm',
+            'modern-md',
+            'modern-hover',
+            'spine',
+            'shelf-ledge',
+          ],
+        },
+      ],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]): string {
-  return twMerge(clsx(inputs));
+  return customTwMerge(clsx(inputs));
 }
 
 export interface BookFormatInfo {

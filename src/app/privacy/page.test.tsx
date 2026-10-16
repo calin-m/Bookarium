@@ -28,12 +28,13 @@ describe('PrivacyPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders page header and architectural manifesto', () => {
-    render(<PrivacyPage />);
+  it('renders page header and architectural manifesto with solid border-border', () => {
+    const { container } = render(<PrivacyPage />);
 
     expect(screen.getByRole('heading', { level: 1, name: /Privacy & Data Architecture/i })).toBeInTheDocument();
     expect(screen.getByText(/Transparent Data Architecture/i)).toBeInTheDocument();
     expect(screen.getByText(/zero tracking, zero marketing networks/i)).toBeInTheDocument();
+    expect(container.innerHTML).not.toContain('border-primary/20');
   });
 
   it('renders all core GDPR and ePrivacy disclosure sections', () => {

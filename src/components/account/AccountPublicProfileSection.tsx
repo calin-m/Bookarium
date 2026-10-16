@@ -153,25 +153,25 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
   return (
     <section
       aria-label="Public Scholar Profile Settings"
-      className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6"
+      className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6"
     >
       {/* Header & Focused Sub-Tab Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-border text-primary flex items-center justify-center shadow-xs shrink-0">
               <Globe className="w-4 h-4" />
             </div>
             <h2 className="text-xl font-serif font-bold text-foreground">
               Public Scholar Profile
             </h2>
             {isPublic ? (
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-success/20">
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-border whitespace-nowrap">
                 <Eye className="w-3 h-3" />
                 <span>Public Sanctuary</span>
               </div>
             ) : (
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-muted text-muted-foreground border border-border">
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-muted text-muted-foreground border border-border whitespace-nowrap">
                 <Lock className="w-3 h-3" />
                 <span>Private Sanctuary</span>
               </div>
@@ -186,20 +186,20 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
         <div
           role="tablist"
           aria-label="Scholar profile sub-sections"
-          className="inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start sm:self-auto shrink-0"
+          className="w-full sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
         >
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === 'identity'}
             onClick={() => setActiveSubTab('identity')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-all cursor-pointer flex items-center gap-1.5 ${
               activeSubTab === 'identity'
-                ? 'bg-card text-primary shadow-xs border border-border'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-primary shadow-xs border-border'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <UserIcon className="w-3.5 h-3.5" />
+            <UserIcon className="w-3.5 h-3.5 shrink-0" />
             <span>Identity & Bio</span>
           </button>
 
@@ -208,13 +208,13 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
             role="tab"
             aria-selected={activeSubTab === 'privacy'}
             onClick={() => setActiveSubTab('privacy')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-all cursor-pointer flex items-center gap-1.5 ${
               activeSubTab === 'privacy'
-                ? 'bg-card text-primary shadow-xs border border-border'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-primary shadow-xs border-border'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Shield className="w-3.5 h-3.5" />
+            <Shield className="w-3.5 h-3.5 shrink-0" />
             <span>Sanctuary & Privacy</span>
           </button>
         </div>

@@ -150,7 +150,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
 
   return (
     <section
-      className="bg-card border border-border rounded-2xl p-4 sm:p-7 space-y-6 shadow-booksaw relative overflow-hidden"
+      className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 space-y-6 shadow-booksaw relative overflow-hidden"
       aria-label="Literary Accolades and Ex-Libris Bookplates"
       data-testid="account-accolades-card"
     >
@@ -170,8 +170,8 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-secondary text-secondary-foreground border border-border self-start sm:self-auto">
-          <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-secondary text-secondary-foreground border border-border self-start sm:self-auto whitespace-nowrap">
+          <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
           <span>
             {unlockedCount} / {ACCOLADES_CATALOG.length} Unlocked
           </span>
@@ -239,7 +239,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveCategory(category.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-xs'
                     : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted'

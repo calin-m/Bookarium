@@ -44,7 +44,7 @@ export default function PrivacyPage() {
           </Link>
 
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary/10 border border-border text-primary text-xs font-mono">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Transparent Data Architecture</span>
             </div>
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
           {/* 1. Zero Tracking Manifesto */}
           <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-border text-primary flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
@@ -88,7 +88,7 @@ export default function PrivacyPage() {
           {/* 2. The Cookie Exemption */}
           <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-border text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <Cookie className="w-5 h-5" />
               </div>
               <div>
@@ -130,7 +130,7 @@ export default function PrivacyPage() {
           {/* 3. Local-First Storage */}
           <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-border text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <HardDrive className="w-5 h-5" />
               </div>
               <div>
@@ -164,7 +164,7 @@ export default function PrivacyPage() {
           {/* 4. Account Data & Cloud Sync */}
           <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-border text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                 <Cloud className="w-5 h-5" />
               </div>
               <div>
@@ -188,7 +188,7 @@ export default function PrivacyPage() {
           {/* 5. User Rights & Self-Service Erasure */}
           <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-border text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
                 <UserCheck className="w-5 h-5" />
               </div>
               <div>
@@ -216,7 +216,7 @@ export default function PrivacyPage() {
           {/* 6. US & Global Privacy Compliance */}
           <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-4 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-border text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
                 <Globe className="w-5 h-5" />
               </div>
               <div>
@@ -267,7 +267,7 @@ export default function PrivacyPage() {
           {/* 7. Infrastructure Partners */}
           <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-zinc-500/10 border border-border text-zinc-600 dark:text-zinc-400 flex items-center justify-center shrink-0">
                 <Server className="w-5 h-5" />
               </div>
               <div>

@@ -54,7 +54,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
   userEmail,
 }) => {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6">
+    <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
       {/* Master Card Header */}
       <div className="flex items-center gap-3 border-b border-border pb-4">
         <div className="p-2 rounded-xl bg-primary/10 text-primary border border-border shrink-0">
@@ -77,7 +77,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
             <h3 className="text-xs font-mono uppercase tracking-wider text-foreground font-bold">
               Update Account Password
             </h3>
-            <span className="text-[11px] font-mono text-muted-foreground">
+            <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap">
               Minimum 6 characters
             </span>
           </div>
@@ -85,16 +85,16 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
           <form onSubmit={onUpdatePassword} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between min-h-[1.5rem]">
-                  <label htmlFor="new-password" className="text-xs font-mono text-foreground font-bold">
+                <div className="flex items-center justify-between gap-2 min-h-[1.5rem]">
+                  <label htmlFor="new-password" className="text-xs font-mono text-foreground font-bold whitespace-nowrap">
                     New Password
                   </label>
                   <button
                     type="button"
                     onClick={onGeneratePassword}
-                    className="text-[11px] font-mono text-primary hover:underline flex items-center gap-1 cursor-pointer select-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded"
+                    className="text-[11px] font-mono text-primary hover:underline flex items-center gap-1 whitespace-nowrap cursor-pointer select-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded"
                   >
-                    <KeyRound className="w-3 h-3" />
+                    <KeyRound className="w-3 h-3 shrink-0" />
                     <span>Suggest Strong Password</span>
                   </button>
                 </div>

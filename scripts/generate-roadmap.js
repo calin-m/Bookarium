@@ -148,7 +148,7 @@ const ROADMAP_MILESTONES = [
       {
         title: 'Reading Streaks, Dual Immersion Telemetry & Annual Goal Tracking',
         description: 'Track daily reading and listening timestamps with a 5-minute active streak threshold, idle detection, background TTS audio narration tracking, estimated hours read, and annual reading challenge goals in the Account dashboard.',
-        check: () => fileContains('src/components/account/AccountLibraryStats.tsx', 'readingStreak') || fileExists('src/lib/reading-analytics.ts'),
+        check: () => fileContains('src/components/account/AccountIdentityCard.tsx', 'readingStreak') || fileExists('src/lib/reading-analytics.ts'),
       },
     ],
   },

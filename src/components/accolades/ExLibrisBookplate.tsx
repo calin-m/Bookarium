@@ -127,7 +127,7 @@ export function ExLibrisBookplate({
       style={{
         perspective: '1000px',
         transform: isHovered
-          ? `perspective(1000px) rotateX(${rotate.x}deg) rotateY(${rotate.y}deg) scale3d(1.02, 1.02, 1.02)`
+          ? `perspective(1000px) rotateX(${rotate.x}deg) rotateY(${rotate.y}deg) scale3d(1, 1, 1)`
           : 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
         transition: isHovered ? 'transform 0.05s ease-out' : 'transform 0.3s ease-in-out',
       }}

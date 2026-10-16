@@ -295,6 +295,11 @@ describe('AccountPreferencesSection', () => {
       expect(backupTab).toHaveAttribute('aria-selected', 'true');
       expect(document.getElementById('preferences-subpanel-portability')).not.toHaveClass('hidden');
     });
+
+    it('uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60', () => {
+      const { container } = render(<AccountPreferencesSection {...defaultProps} />);
+      expect(container.innerHTML).not.toContain('border-border/60');
+    });
   });
 });
 

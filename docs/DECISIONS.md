@@ -1055,11 +1055,11 @@
        - **My Marginalia / Fellows' Marginalia**: Source filter taxonomy in the Reader and Commonplace Notebook.
        - **Symposium Companion (`Societas Litterarum`)**: Deterministic Ex-Libris bookplate accolade unlocked via Symposium participation.
   2. **Slim Scholar Identity Ribbon & Two-Tier Account Sub-Tab Architecture (`src/app/account/page.tsx`)**:
-     - **Slim Scholar Identity Ribbon (`AccountIdentityCard.tsx`)**: Replaces the tall top-fold form and standalone library card stack with a compact single-card ribbon displaying the scholar's monogram seal, Display Name, `@username` badge, verified status, and inline clickable library stat pills (`Shelved`, `Favorites`, `Notes`, `Shelves`, `Bookmarks`, `Streak`).
-     - **5 Primary Tabs with Focused Sub-Tabs**:
-       - `Overview & Habits` (`?tab=habits`): Sub-tabs for `Streaks & Challenge` (`AccountHabitsCard`), `Accolades Compendium` (`AccountAccoladesCard`), and `Library Breakdown` (`AccountLibraryStats`).
+     - **Slim Scholar Identity Ribbon (`AccountIdentityCard.tsx`)**: Replaces the tall top-fold form and standalone library card stack with a compact single-card ribbon displaying the scholar's monogram seal, Display Name, `@username` badge, verified status, and a permanent 6-cell 3×2 mobile bento grid of inline clickable library stat pills (`Shelved`, `Favorites`, `Notes`, `Shelves`, `Bookmarks`, `🔥 Nd Streak`).
+     - **5 Primary Tabs with Focused Zero-CLS Sub-Tabs**:
+       - `Habits & Accolades` (`?tab=habits`): Sub-tabs for `Streaks & Challenge` (`AccountHabitsCard`) and `Accolades Compendium` (`AccountAccoladesCard`), retiring the duplicate `Library Breakdown` card (`AccountLibraryStats`).
        - `Symposiums & Circle` (`?tab=symposiums`): Sub-tabs for `Active Symposiums`, `Reader Circle`, and `Invitations` (`AccountSymposiumSection`).
-       - `Scholar Profile` (`?tab=profile`): Sub-tabs for `Identity & Bio` (relocated Display Name editor, `@username`, and Bio) and `Public Sanctuary & Privacy` (`AccountPublicProfileSection`).
+       - `Public Scholar` (`?tab=profile`): Sub-tabs for `Identity & Bio` (relocated Display Name editor, `@username`, and Bio) and `Sanctuary & Privacy` (`AccountPublicProfileSection`).
        - `Preferences` (`?tab=preferences`): Sub-tabs for `Appearance & Scroll`, `Read-Aloud Studio`, and `Backup & Restore` (`AccountPreferencesSection`).
        - `Security` (`?tab=security`): Password generator/updater, active session, and account deletion (`AccountSecuritySection`).
   3. **Two-Layer Idempotent Supabase Schema, RLS Governance & Private-Sanctuary Handle Lookup (Rule 9)**:
@@ -1069,7 +1069,7 @@
      - **Private-Sanctuary Handle Lookup (`public.lookup_scholar_by_username`)**: Provides a `SECURITY DEFINER` RPC returning minimal non-PII `(id, username, display_name)` for exact `@username` handle invitations without requiring either scholar to make their general profile public (`is_public = true`).
      - **Cascading Privacy & Account Deletion**: Leaving a Symposium, removing a Fellow Scholar, or executing `delete_current_user()` immediately revokes access and purges relational records with zero orphaned data.
   4. **Strict Store Isolation, Progressive Disclosure & Overlapping Highlight Resolution**:
-     - **Store Isolation (`src/stores/useAnnotationStore.ts`)**: Companion notes are stored in a dedicated read-only `fellowAnnotations: FellowAnnotation[]` slice, completely decoupled from personal `annotations: Annotation[]`. Personal backups (`library-backup.ts`), annotation counts (`AccountLibraryStats.tsx`), and *"Clear All Notes"* strictly operate only on `annotations`.
+     - **Store Isolation (`src/stores/useAnnotationStore.ts`)**: Companion notes are stored in a dedicated read-only `fellowAnnotations: FellowAnnotation[]` slice, completely decoupled from personal `annotations: Annotation[]`. Personal backups (`library-backup.ts`), annotation counts (`AccountIdentityCard.tsx`), and *"Clear All Notes"* strictly operate only on `annotations`.
      - **Progressive Disclosure (Solo & Guest Immunity)**: Source filter pills, Spoiler Guard controls, and companion progress indicators only render when `hasActiveSymposium || fellowAnnotations.length > 0`.
      - **Overlapping Highlight Preservation (`src/lib/reader-annotator.ts`)**: `computeAnnotationSpans` preserves both `selfAnnotation` and `fellowAnnotation` on overlapping character intervals (`ReaderSurface.tsx` combines solid pastel fill with dashed archival underline), and `TextHighlightPopover.tsx` renders a `[ My Note | @username's Note ]` 2-pill switcher when both scholars annotated the same passage.
   5. **Filter-First Ergonomics, Spoiler Guard & Cross-Device UI Safeguards**:
@@ -1091,14 +1091,18 @@
      - Legacy file-globbing libraries (`braces@3.0.3`, `micromatch@4.0.8`, `fast-glob@3.3.3`, and `chokidar@3.6.0`) triggered 7 high-severity `npm audit` warnings due to stack-exhaustion regular expression patterns in `braces`.
      - These packages entered the dependency graph strictly via two `devDependencies`: `tailwindcss@3.4.19` and `@next/eslint-plugin-next@16.4.2`.
   2. **Zero-Regression Styling Requirement**:
-     - Bookarium relies on an extensive custom editorial theme in `tailwind.config.ts` (`booksaw`, `paper`, `shelf` palettes, custom `shadow-booksaw` / `shadow-spine` elevations, class-based `.dark` and `.sepia` themes) and 180 co-located test suites. Upgrading to Tailwind CSS v4 must preserve 100% visual and behavioral parity without rewriting component class names.
+     - Bookarium relies on an extensive custom editorial theme in `tailwind.config.ts` (`booksaw`, `paper`, `shelf` palettes, custom `shadow-booksaw` / `shadow-spine` elevations, class-based `.dark` and `.sepia` themes) and 177 co-located test suites. Upgrading to Tailwind CSS v4 must preserve 100% visual and behavioral parity without rewriting component class names.
 - **Decision**:
-  1. **Tailwind CSS v4 Oxide Engine with `@config` Bridge (`src/app/globals.css`, `postcss.config.mjs`, `package.json`)**:
+  1. **Tailwind CSS v4 Oxide Engine with `@config` Bridge, Cross-Theme Border Harmonization & `tailwind-merge` Parity (`src/app/globals.css`, `postcss.config.mjs`, `src/lib/utils.ts`, `src/components/presentation/BookCard.tsx`)**:
      - Upgraded `tailwindcss` to `^4.3.3` with `@tailwindcss/postcss@^4.3.3` (removing legacy `autoprefixer`, as LightningCSS handles vendor prefixing natively).
      - Linked the existing `tailwind.config.ts` via `@import "tailwindcss"; @config "../../tailwind.config.ts";` and declared `@custom-variant dark (&:where(.dark, .dark *));` in `src/app/globals.css`.
      - Added Preflight v3 parity rules inside `@layer base` (`border-color: var(--border, currentColor)` on universal selectors and `cursor: pointer` on enabled buttons) and replaced `@apply` custom token usages with explicit CSS rules.
+     - Configured `extendTailwindMerge` in `src/lib/utils.ts` with Tailwind v4 (`xs`, `2xs`) and custom design-token shadow classes (`booksaw`, `booksaw-hover`, `book`, `book-hover`, `modern-sm`, `modern-md`, `modern-hover`, `spine`, `shelf-ledge`) so `cn()` properly strips base `shadow-xs` overrides.
+     - Standardized borders across `Light`, `Sepia`, and `Dark` themes (`BookCard.tsx`, `/account`, `SymposiumInviteModal.tsx`, `/u/[username]`, `/privacy`) to solid `border-border`, restored `bg-muted dark:bg-secondary/30` on the `BookCard` cover pedestal, added `border-border` to top-right floating action buttons, and eliminated all vanishing fractional `border-border/60..80` and dormant `border-primary/20..30` modifiers.
   2. **Supply-Chain `tinyglobby` Override (`package.json`)**:
      - Added `"fast-glob": "npm:tinyglobby@^0.2.17"` to `package.json` `"overrides"`, routing `@next/eslint-plugin-next`'s `globSync(rootDir, { onlyDirectories: true })` call to `tinyglobby` (`fdir` + `picomatch`) and completely removing `braces`, `micromatch`, and `chokidar@3` from `node_modules`.
 - **Consequences**:
   - `npm audit` reports **0 vulnerabilities** across both production and development dependency trees, reducing `node_modules` by 46 legacy packages.
-  - Faster CSS compilation via Tailwind v4's Rust Oxide engine with 100% visual and test parity across all 180 test suites.
+  - Faster CSS compilation via Tailwind v4's Rust Oxide engine with 100% visual and test parity across all 177 test suites and all three reading atmospheres (`Light`, `Sepia`, `Dark`).
+
+

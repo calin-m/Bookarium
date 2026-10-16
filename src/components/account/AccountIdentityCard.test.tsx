@@ -59,8 +59,8 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(screen.getByText('Verified Reader')).toBeInTheDocument();
     const statStrip = screen.getByTestId('identity-ribbon-stat-strip');
     expect(statStrip).toBeInTheDocument();
-    expect(statStrip).toHaveClass('grid', 'grid-cols-3', 'gap-1.5', 'sm:flex', 'sm:flex-wrap');
-    expect(statStrip).not.toHaveClass('overflow-x-auto');
+    expect(statStrip).toHaveClass('grid', 'grid-cols-3', 'gap-1.5', 'sm:flex', 'sm:flex-wrap', 'border-t', 'border-border');
+    expect(statStrip).not.toHaveClass('overflow-x-auto', 'border-border/70');
     expect(screen.getByText('🔥 7d Streak')).toBeInTheDocument();
 
     // Toggle quick name editor
@@ -77,6 +77,40 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
     fireEvent.click(saveBtn);
     expect(handleSaveProfile).toHaveBeenCalled();
+  });
+
+  it('always renders a neutral 6th 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS', () => {
+    const onOpenLibraryBreakdown = vi.fn();
+
+    render(
+      <AccountIdentityCard
+        user={mockVerifiedUser}
+        profile={mockProfile}
+        formattedDate="January 2026"
+        displayName="Test Reader"
+        onDisplayNameChange={vi.fn()}
+        onSaveProfile={vi.fn()}
+        isSaving={false}
+        saveSuccess={false}
+        saveError={null}
+        stats={{
+          savedCount: 0,
+          favoriteCount: 0,
+          annotationCount: 0,
+          customShelvesCount: 0,
+          bookmarksCount: 0,
+          readingStreak: 0,
+        }}
+        onOpenLibraryBreakdown={onOpenLibraryBreakdown}
+      />
+    );
+
+    const zeroStreakPill = screen.getByRole('button', { name: '🔥 0d Streak' });
+    expect(zeroStreakPill).toBeInTheDocument();
+    expect(zeroStreakPill).toHaveClass('bg-muted/30', 'text-muted-foreground', 'whitespace-nowrap');
+
+    fireEvent.click(zeroStreakPill);
+    expect(onOpenLibraryBreakdown).toHaveBeenCalledTimes(1);
   });
 
   it('renders unverified badge and handles resend verification click', () => {

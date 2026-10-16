@@ -88,7 +88,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5 min-w-0">
           <div
-            className="w-11 h-11 rounded-2xl bg-primary/10 border border-primary/25 text-primary font-serif font-bold text-lg flex items-center justify-center shrink-0 shadow-xs"
+            className="w-11 h-11 rounded-2xl bg-primary/10 border border-border text-primary font-serif font-bold text-lg flex items-center justify-center shrink-0 shadow-xs"
             aria-hidden="true"
           >
             {monogram}
@@ -151,12 +151,12 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
       {/* Inline Clickable Stat Strip (Replaces Tall Top-Fold Library Stack) */}
       {stats && (
         <div
-          className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2 pt-2.5 border-t border-border/70"
+          className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2 pt-2.5 border-t border-border"
           data-testid="identity-ribbon-stat-strip"
         >
           <Link
             href={ROUTES.BOOKSHELF}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono min-w-0 transition-colors"
+            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
           >
             <Library className="w-3.5 h-3.5 text-primary shrink-0" />
             <span className="font-bold text-foreground">{stats.savedCount}</span>
@@ -165,7 +165,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
           <Link
             href={ROUTES.FAVORITES}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono min-w-0 transition-colors"
+            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
           >
             <Heart className="w-3.5 h-3.5 text-rose-500 shrink-0" />
             <span className="font-bold text-foreground">{stats.favoriteCount}</span>
@@ -174,7 +174,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
           <Link
             href={ROUTES.VIEW('notebook')}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono min-w-0 transition-colors"
+            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
           >
             <Highlighter className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <span className="font-bold text-foreground">{stats.annotationCount}</span>
@@ -183,7 +183,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
           <Link
             href={ROUTES.BOOKSHELF}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono min-w-0 transition-colors"
+            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
           >
             <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
             <span className="font-bold text-foreground">{stats.customShelvesCount}</span>
@@ -192,22 +192,24 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
           <Link
             href={ROUTES.VIEW('bookmarks')}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono min-w-0 transition-colors"
+            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
           >
             <Bookmark className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
             <span className="font-bold text-foreground">{stats.bookmarksCount}</span>
             <span className="text-muted-foreground truncate">Bookmarks</span>
           </Link>
 
-          {stats.readingStreak !== undefined && stats.readingStreak > 0 && (
-            <button
-              type="button"
-              onClick={onOpenLibraryBreakdown}
-              className="inline-flex items-center justify-center sm:justify-start gap-1 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-mono font-bold min-w-0 transition-colors cursor-pointer"
-            >
-              <span className="truncate">🔥 {stats.readingStreak}d Streak</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onOpenLibraryBreakdown}
+            className={`inline-flex items-center justify-center sm:justify-start gap-1 px-1.5 sm:px-2.5 py-1 rounded-xl border text-xs font-mono font-bold whitespace-nowrap min-w-0 transition-colors cursor-pointer ${
+              (stats.readingStreak ?? 0) > 0
+                ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+            }`}
+          >
+            <span className="truncate">🔥 {stats.readingStreak ?? 0}d Streak</span>
+          </button>
         </div>
       )}
 

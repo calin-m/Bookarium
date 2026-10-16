@@ -93,6 +93,11 @@ describe('SymposiumInviteModal', () => {
         screen.getByText(/Literary Symposium invitation sent to @shelley for "Frankenstein"/i)
       ).toBeInTheDocument();
     });
+
+    const modalContent = screen.getByTestId('symposium-invite-modal');
+    expect(modalContent.innerHTML).not.toContain('border-border/80');
+    expect(modalContent.innerHTML).not.toContain('border-primary/20');
+    expect(modalContent.innerHTML).not.toContain('border-success/20');
   });
 });
 

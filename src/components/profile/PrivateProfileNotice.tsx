@@ -38,7 +38,7 @@ export const PrivateProfileNotice: React.FC<PrivateProfileNoticeProps> = () => {
         </div>
 
         {/* Classical Epigraph */}
-        <div className="border-t border-b border-border/60 py-3.5 my-2">
+        <div className="border-t border-b border-border py-3.5 my-2">
           <p className="font-serif italic text-xs text-muted-foreground">
             &ldquo;In a library we are surrounded by many hundreds of dear friends, imprisoned by an enchanter in their paper and leathern boxes.&rdquo;
           </p>

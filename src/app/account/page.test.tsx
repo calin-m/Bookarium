@@ -105,28 +105,29 @@ describe('AccountPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
     expect(mockUpdateProfile).toHaveBeenCalledWith({ display_name: 'Jane Austen CBE' });
 
-    // Switch to Library Breakdown sub-tab and verify Library Statistics
-    fireEvent.click(screen.getByRole('tab', { name: /Library Breakdown/i }));
-    const librarySubpanel = document.getElementById('habits-subpanel-library')!;
-    expect(within(librarySubpanel).getByRole('heading', { level: 2, name: 'Library' })).toBeInTheDocument();
-    const shelvedLink = within(librarySubpanel).getByRole('link', { name: /View Shelved Volumes in Bookshelf/i });
+    // Verify Collection stats in Slim Scholar Identity Ribbon
+    const statStrip = screen.getByTestId('identity-ribbon-stat-strip');
+    const shelvedLink = within(statStrip).getByRole('link', { name: /1 Shelved/i });
     expect(shelvedLink).toHaveAttribute('href', ROUTES.BOOKSHELF);
-    expect(within(librarySubpanel).getByText('Shelved Volumes')).toBeInTheDocument();
 
-    const favoritesLink = within(librarySubpanel).getByRole('link', { name: /View Favorite Titles in Favorites/i });
+    const favoritesLink = within(statStrip).getByRole('link', { name: /3 Favorites/i });
     expect(favoritesLink).toHaveAttribute('href', ROUTES.FAVORITES);
-    expect(within(librarySubpanel).getByText('Favorite Titles')).toBeInTheDocument();
 
-    const customShelvesLink = within(librarySubpanel).getByRole('link', { name: /View Custom Shelves in Bookshelf/i });
-    expect(customShelvesLink).toHaveAttribute('href', ROUTES.BOOKSHELF);
-    expect(within(customShelvesLink).getByText('Custom Shelves')).toBeInTheDocument();
-    expect(within(librarySubpanel).getByTestId('custom-shelves-count')).toHaveTextContent('2');
-    expect(within(librarySubpanel).getByTestId('notes-quotes-count')).toHaveTextContent('1');
+    const notesLink = within(statStrip).getByRole('link', { name: /1 Notes/i });
+    expect(notesLink).toHaveAttribute('href', ROUTES.NOTEBOOK);
+
+    const shelvesLink = within(statStrip).getByRole('link', { name: /2 Shelves/i });
+    expect(shelvesLink).toHaveAttribute('href', ROUTES.BOOKSHELF);
 
     // Switch to Accolades Compendium sub-tab and verify Accolades Showcase
     fireEvent.click(screen.getByRole('tab', { name: /Accolades Compendium/i }));
     expect(screen.getByText('Ex-Libris Bookplates & Accolades')).toBeInTheDocument();
     expect(screen.getByTestId('account-accolades-card')).toBeInTheDocument();
+
+    // Clicking the Streak pill in AccountIdentityCard switches back to Habits -> Streaks & Challenge
+    const streakPillBtn = within(statStrip).getByRole('button', { name: /🔥 \d+d Streak/i });
+    fireEvent.click(streakPillBtn);
+    expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
 
     useAnnotationStore.setState({ annotations: [] });
   });
@@ -165,11 +166,11 @@ describe('AccountPage', () => {
     expect(securityTab).toHaveAttribute('title', 'Security');
 
     // Verify adaptive mobile classes: active tab expands with text, inactive tabs collapse to icons
-    expect(habitsTab).toHaveClass('flex-1', 'min-w-0');
-    expect(profileTab).toHaveClass('shrink-0');
-    expect(symposiumsTab).toHaveClass('shrink-0');
-    expect(preferencesTab).toHaveClass('shrink-0');
-    expect(securityTab).toHaveClass('shrink-0');
+    expect(habitsTab).toHaveClass('flex-1', 'min-w-0', 'font-semibold', 'whitespace-nowrap', 'border');
+    expect(profileTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
+    expect(symposiumsTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
+    expect(preferencesTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
+    expect(securityTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
 
     // Verify truncation and visibility contracts on the text labels
     const habitsLabel = habitsTab.querySelector('span');
@@ -177,25 +178,22 @@ describe('AccountPage', () => {
     expect(habitsLabel).toHaveClass('truncate', 'min-w-0', 'inline');
     expect(profileLabel).toHaveClass('truncate', 'min-w-0', 'hidden', 'sm:inline');
 
-    // Verify Tier-2 Sub-Tabs inside Habits & Accolades
+    // Verify Tier-2 Sub-Tabs inside Habits & Accolades (2 tabs: Streaks & Challenge, Accolades Compendium)
     const habitsSubTablist = screen.getByRole('tablist', { name: /Habits and library sub-sections/i });
     expect(habitsSubTablist).toHaveClass('w-full', 'sm:w-auto', 'flex', 'sm:inline-flex');
 
     const streaksSubTab = within(habitsSubTablist).getByRole('tab', { name: /Streaks & Challenge/i });
     const accoladesSubTab = within(habitsSubTablist).getByRole('tab', { name: /Accolades Compendium/i });
-    const librarySubTab = within(habitsSubTablist).getByRole('tab', { name: /Library Breakdown/i });
+    expect(within(habitsSubTablist).queryByRole('tab', { name: /Library Breakdown/i })).not.toBeInTheDocument();
 
-    expect(streaksSubTab).toHaveClass('flex-1', 'sm:flex-none');
-    expect(accoladesSubTab).toHaveClass('flex-1', 'sm:flex-none');
-    expect(librarySubTab).toHaveClass('flex-1', 'sm:flex-none');
+    expect(streaksSubTab).toHaveClass('flex-1', 'sm:flex-none', 'whitespace-nowrap', 'border');
+    expect(accoladesSubTab).toHaveClass('flex-1', 'sm:flex-none', 'whitespace-nowrap', 'border');
 
     // Verify concise mobile labels and full desktop labels
     expect(within(streaksSubTab).getByText('Streaks')).toHaveClass('sm:hidden');
     expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('hidden', 'sm:inline');
     expect(within(accoladesSubTab).getByText('Accolades')).toHaveClass('sm:hidden');
     expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('hidden', 'sm:inline');
-    expect(within(librarySubTab).getByText('Library')).toHaveClass('sm:hidden');
-    expect(within(librarySubTab).getByText('Library Breakdown')).toHaveClass('hidden', 'sm:inline');
 
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveAttribute('hidden');
@@ -204,9 +202,6 @@ describe('AccountPage', () => {
     fireEvent.click(accoladesSubTab);
     expect(document.getElementById('habits-subpanel-accolades')).not.toHaveClass('hidden');
     expect(document.getElementById('habits-subpanel-accolades')).not.toHaveAttribute('hidden');
-    fireEvent.click(librarySubTab);
-    expect(document.getElementById('habits-subpanel-library')).not.toHaveClass('hidden');
-    expect(document.getElementById('habits-subpanel-library')).not.toHaveAttribute('hidden');
 
     // Tab panels
     expect(document.getElementById('account-tabpanel-habits')).not.toHaveClass('hidden');
@@ -622,7 +617,7 @@ describe('AccountPage', () => {
       }
     });
 
-    it('enforces overflow-x-clip on root and main layout containers to prevent mobile swipe horizontal overflow', () => {
+    it('enforces overflow-x-clip on root and main layout containers and solid border-border on active Tier-2 Habits sub-tabs', () => {
       render(<AccountPage />);
 
       const main = screen.getByRole('main');
@@ -630,6 +625,10 @@ describe('AccountPage', () => {
 
       const root = main.parentElement;
       expect(root).toHaveClass('overflow-x-clip');
+
+      const streaksTab = screen.getByRole('tab', { name: 'Streaks & Challenge' });
+      expect(streaksTab).toHaveClass('border-border');
+      expect(streaksTab).not.toHaveClass('border-primary/30');
     });
   });
 });

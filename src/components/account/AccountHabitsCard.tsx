@@ -96,7 +96,7 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
 
   return (
     <section
-      className="bg-card border border-border rounded-2xl p-4 sm:p-7 space-y-5 shadow-booksaw relative overflow-hidden"
+      className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 space-y-5 shadow-booksaw relative overflow-hidden"
       aria-label="Reading Habits and Annual Goal"
       data-testid="account-habits-card"
     >
@@ -116,8 +116,8 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-secondary text-secondary-foreground border border-border self-start sm:self-auto">
-          <Calendar className="w-3.5 h-3.5" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-secondary text-secondary-foreground border border-border self-start sm:self-auto whitespace-nowrap">
+          <Calendar className="w-3.5 h-3.5 shrink-0" />
           <span>{annualGoalYear} Challenge</span>
         </div>
       </div>
@@ -126,7 +126,7 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
       <div className="space-y-4">
         {/* Strip 1: Consecutive Reading Streak */}
         <div
-          className="bg-muted/30 border border-border rounded-xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors hover:border-primary/40 hover:bg-muted/50"
+          className="bg-muted/30 border border-border rounded-xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
           data-testid="reading-streak-metric"
         >
           <div className="space-y-1.5">
@@ -135,13 +135,13 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
                 Reading Streak
               </span>
               <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold ${
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold whitespace-nowrap ${
                   streakStats.currentStreak > 0
                     ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
                     : 'bg-muted text-muted-foreground'
                 }`}
               >
-                <Flame className="w-3 h-3" />
+                <Flame className="w-3 h-3 shrink-0" />
                 <span>{streakStats.currentStreak > 0 ? 'Active' : 'Idle'}</span>
               </span>
             </div>
@@ -216,7 +216,7 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
 
         {/* Strip 2: Total Time Immersed (Reading + Listening) */}
         <div
-          className="bg-muted/30 border border-border rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors hover:border-primary/40 hover:bg-muted/50"
+          className="bg-muted/30 border border-border rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
           data-testid="reading-time-metric"
         >
           <div className="space-y-1.5">
@@ -233,14 +233,14 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
 
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-primary/10 text-primary border border-border"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-primary/10 text-primary border border-border whitespace-nowrap"
                 data-testid="reading-duration-badge"
               >
                 <span>📖</span>
                 <span>{isHydrated ? durationBreakdown.reading : '0 min'} reading</span>
               </span>
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-secondary text-secondary-foreground border border-border"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-secondary text-secondary-foreground border border-border whitespace-nowrap"
                 data-testid="listening-duration-badge"
               >
                 <span>🎧</span>
@@ -269,22 +269,22 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
 
         {/* Strip 3: Annual Reading Challenge (Canonical 4-Tier Milestone Ladder) */}
         <div
-          className="bg-muted/30 border border-border rounded-xl p-4 sm:p-5 space-y-4 transition-colors hover:border-primary/40 hover:bg-muted/50"
+          className="bg-muted/30 border border-border rounded-xl p-4 sm:p-5 space-y-4"
           data-testid="annual-goal-metric"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
               <span className="text-xs font-mono uppercase text-muted-foreground tracking-wider font-semibold">
                 {annualGoalYear} Reading Challenge
               </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-border">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-border whitespace-nowrap">
                 {isMasterworkCompleted ? 'Masterwork Attained' : `${nextTier.title} in sight`}
               </span>
             </div>
 
-            <div className="text-[11px] font-mono text-muted-foreground flex items-center gap-1.5 self-start sm:self-auto">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <div className="text-[11px] font-mono text-muted-foreground flex items-center gap-1.5 self-start sm:self-auto whitespace-nowrap">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
               <span>4 Canonical Accolade Tiers</span>
             </div>
           </div>

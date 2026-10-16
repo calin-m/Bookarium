@@ -106,8 +106,8 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
     >
       <div className="p-5 sm:p-6 space-y-4 sm:space-y-5" data-testid="symposium-invite-modal">
         {/* Symposium Volume Card */}
-        <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 flex items-start gap-3.5 shadow-xs">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+        <div className="p-4 rounded-2xl bg-primary/5 border border-border flex items-start gap-3.5 shadow-xs">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-border text-primary flex items-center justify-center shrink-0 mt-0.5">
             <BookOpen className="w-4 h-4" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
@@ -146,7 +146,7 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
         {preselectedFellow ? (
           <div className="p-4 rounded-2xl border border-border bg-muted/20 flex items-center justify-between gap-3 shadow-xs">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 via-primary/15 to-muted/40 border border-primary/20 text-primary flex items-center justify-center font-serif font-bold text-sm shrink-0 select-none">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 via-primary/15 to-muted/40 border border-border text-primary flex items-center justify-center font-serif font-bold text-sm shrink-0 select-none">
                 {preselectedFellow.displayName.slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 space-y-0.5">
@@ -158,7 +158,7 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-mono uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-bold shrink-0">
+            <span className="text-[10px] font-mono uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-border font-bold shrink-0">
               Fellow Scholar
             </span>
           </div>
@@ -214,7 +214,7 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
           </form>
         )}
 
-        <div className="p-3 rounded-xl bg-muted/30 border border-border/80 flex items-start gap-2.5 text-[11px] text-muted-foreground leading-relaxed">
+        <div className="p-3 rounded-xl bg-muted/30 border border-border flex items-start gap-2.5 text-[11px] text-muted-foreground leading-relaxed">
           <Sparkles className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
           <span>
             Once accepted, both scholars can view and filter shared marginalia in this volume while keeping all other books private.
@@ -222,13 +222,13 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
         </div>
 
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-xs font-mono text-destructive flex items-start gap-2" role="alert">
+          <div className="p-3 rounded-xl bg-destructive/10 border border-border text-xs font-mono text-destructive flex items-start gap-2" role="alert">
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 rounded-xl bg-success/10 border border-success/20 text-xs font-mono text-success flex items-start gap-2" role="status">
+          <div className="p-3 rounded-xl bg-success/10 border border-border text-xs font-mono text-success flex items-start gap-2" role="status">
             <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>{successMsg}</span>
           </div>

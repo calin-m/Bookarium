@@ -83,17 +83,17 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
 
   return (
     <div
-      className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-booksaw space-y-6"
+      className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6"
       data-testid="account-symposium-section"
     >
       {/* Header & Focused Sub-Tab Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-border text-primary flex items-center justify-center shadow-xs shrink-0">
               <Users className="w-4 h-4" />
             </div>
-            <h2 className="text-xl font-serif font-bold text-foreground">
+            <h2 className="text-lg sm:text-xl font-serif font-bold text-foreground">
               Literary Symposiums & Reader Circle
             </h2>
           </div>
@@ -106,54 +106,60 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
         <div
           role="tablist"
           aria-label="Symposium and Reader Circle sections"
-          className="inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start sm:self-auto"
+          className="w-full sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
         >
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === 'symposiums'}
+            aria-label={`Active Symposiums (${activeSymposiums.length})`}
             onClick={() => setActiveSubTab('symposiums')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeSubTab === 'symposiums'
-                ? 'bg-card text-primary shadow-xs border border-border'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-primary shadow-xs border-border'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Active Symposiums ({activeSymposiums.length})</span>
+            <BookOpen className="w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden">Symposiums ({activeSymposiums.length})</span>
+            <span className="hidden sm:inline">Active Symposiums ({activeSymposiums.length})</span>
           </button>
 
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === 'circle'}
+            aria-label={`Reader Circle (${acceptedFellows.length})`}
             onClick={() => setActiveSubTab('circle')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeSubTab === 'circle'
-                ? 'bg-card text-primary shadow-xs border border-border'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-primary shadow-xs border-border'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Users className="w-3.5 h-3.5" />
-            <span>Reader Circle ({acceptedFellows.length})</span>
+            <Users className="w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden">Circle ({acceptedFellows.length})</span>
+            <span className="hidden sm:inline">Reader Circle ({acceptedFellows.length})</span>
           </button>
 
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === 'invitations'}
+            aria-label="Invitations"
             onClick={() => setActiveSubTab('invitations')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeSubTab === 'invitations'
-                ? 'bg-card text-primary shadow-xs border border-border'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-primary shadow-xs border-border'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Mail className="w-3.5 h-3.5" />
-            <span>Invitations</span>
+            <Mail className="w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden">Invites</span>
+            <span className="hidden sm:inline">Invitations</span>
             {pendingCount > 0 && (
               <span
-                className="px-1.5 py-0.2 rounded-full text-[10px] bg-primary text-primary-foreground font-bold"
+                className="px-1.5 py-0.2 rounded-full text-[10px] bg-primary text-primary-foreground font-bold shrink-0"
                 data-testid="symposium-pending-badge"
               >
                 {pendingCount}
@@ -166,7 +172,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
       {/* Sub-Tab 1: Active & Completed Symposiums */}
       {activeSubTab === 'symposiums' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-bold">
               Shared Reading Pacts
             </h3>
@@ -178,9 +184,9 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                 setModalPreselectedFellow(undefined);
                 setIsSymposiumModalOpen(true);
               }}
-              className="font-mono text-xs"
+              className="font-mono text-xs whitespace-nowrap shrink-0"
             >
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              <Sparkles className="w-3.5 h-3.5 mr-1.5 shrink-0" />
               <span>New Symposium Pact</span>
             </Button>
           </div>
@@ -261,7 +267,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end pt-2 border-t border-border/60">
+                    <div className="flex items-center justify-end pt-2 border-t border-border">
                       <button
                         type="button"
                         onClick={() => leaveSymposium(session.id)}

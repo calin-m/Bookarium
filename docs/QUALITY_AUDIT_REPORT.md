@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 16 Oct 2026 12:28:36 GMT  
+**Last Generated**: Fri, 16 Oct 2026 15:29:35 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 178 passed  
-**Total Verified Tests**: 1710 passed  
+**Total Test Suites**: 177 passed  
+**Total Verified Tests**: 1705 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **178/178 test suites passed** (1710 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **177/177 test suites passed** (1705 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 56 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.48%** (8128/8885) — *Target: $ge$ 80%*
-- **Statements**: **89.95%** (8817/9802) — *Target: $ge$ 80%*
-- **Functions**: **87.72%** (1909/2176) — *Target: $ge$ 80%*
-- **Branches**: **80.24%** (7869/9806) — *Target: $ge$ 80%*
+- **Lines**: **91.5%** (8083/8833) — *Target: $ge$ 80%*
+- **Statements**: **89.96%** (8772/9750) — *Target: $ge$ 80%*
+- **Functions**: **87.76%** (1901/2166) — *Target: $ge$ 80%*
+- **Branches**: **80.22%** (7834/9765) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (178 Suites / 1710 Tests)
+## 🧪 Comprehensive Test Suite Catalog (177 Suites / 1705 Tests)
 
 ### 🚀 App Routes & Pages (14 Suites · 164 Tests)
 
@@ -284,7 +284,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 357 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 358 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -314,7 +314,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (21 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (22 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -337,6 +337,7 @@
 - ✔ `applies opacity and grayscale to cover image when book is restricted`
 - ✔ `opens unconstrained popover when clicking +N tag and invokes onTopicClick`
 - ✔ `enforces min-w-0 on card root and inner metadata flex column to prevent mobile grid blowout`
+- ✔ `preserves neutral editorial card border, shadow-booksaw elevation, and clean topic badges without orange hover borders`
 
 </details>
 
@@ -1317,7 +1318,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (32 Suites · 346 Tests)
+### 📚 Gutenberg Parsers & Metadata (32 Suites · 347 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1827,9 +1828,10 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/utils.test.ts</code></b> (25 tests)</summary>
+<summary><b><code>src/lib/utils.test.ts</code></b> (26 tests)</summary>
 
 - ✔ `should merge class names correctly`
+- ✔ `resolves Tailwind v4 shadow-xs/2xs and custom design-token shadows without duplicate shadow classes`
 - ✔ `should extract standard Gutenberg format keys`
 - ✔ `should handle empty or undefined formats gracefully`
 - ✔ `should generate canonical Project Gutenberg fallback URLs when bookId is provided`
@@ -2213,7 +2215,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (53 Suites · 263 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 256 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2242,7 +2244,7 @@
 - ✔ `applies animate-view-slide-right when ?dir=backward is present and settles on animationEnd`
 - ✔ `swipes left on Account to wrap forward to Catalog with ?dir=forward`
 - ✔ `swipes right on Account to return backward to Bookmarks with ?dir=backward`
-- ✔ `enforces overflow-x-clip on root and main layout containers to prevent mobile swipe horizontal overflow`
+- ✔ `enforces overflow-x-clip on root and main layout containers and solid border-border on active Tier-2 Habits sub-tabs`
 
 </details>
 
@@ -2305,7 +2307,7 @@
 <details>
 <summary><b><code>src/app/privacy/page.test.tsx</code></b> (5 tests)</summary>
 
-- ✔ `renders page header and architectural manifesto`
+- ✔ `renders page header and architectural manifesto with solid border-border`
 - ✔ `renders all core GDPR and ePrivacy disclosure sections`
 - ✔ `provides working navigation links to catalog and account settings`
 - ✔ `handles Navbar view change callback by navigating via router`
@@ -2398,14 +2400,15 @@
 - ✔ `elevates milestone target dynamically as reader completes books`
 - ✔ `does not expose arbitrary user edit buttons or input fields (anti-tamper integrity)`
 - ✔ `triggers cloud sync on mount when authenticated userId is provided`
-- ✔ `applies theme-aware solid borders and surfaces without fractional opacity variants that vanish in Sepia or Dark mode`
+- ✔ `applies theme-aware solid borders and static surfaces without false hover affordances or fractional opacity variants`
 
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders slim scholar identity ribbon with inline clickable stat pills and toggles quick name editor`
+- ✔ `always renders a neutral 6th 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS`
 - ✔ `renders unverified badge and handles resend verification click`
 - ✔ `renders sending spinner and cooldown timer during resend verification states`
 - ✔ `displays save error and save success alert banners`
@@ -2413,24 +2416,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountLibraryStats.test.tsx</code></b> (11 tests)</summary>
-
-- ✔ `renders library statistics with links and values including notes and quotes`
-- ✔ `renders default 0 for annotationCount and bookmarksCount when omitted`
-- ✔ `applies theme-tokenized hover border and focus classes on each library card`
-- ✔ `renders all 5 library cards with uniform horizontal flex layout`
-- ✔ `renders clean vertical flex column layout for all library cards`
-- ✔ `calculates active card with equal scroll progression stepper in single-column mode`
-- ✔ `prioritizes mouse hover over scroll position on narrow desktop windows`
-- ✔ `resets active spotlight when library container is scrolled outside focal travel range`
-- ✔ `disables scroll focal spotlight on widescreen desktop displays`
-- ✔ `cleans up scroll and resize listeners when component unmounts`
-- ✔ `renders reading streak badge when readingStreak is greater than 0`
-
-</details>
-
-<details>
-<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
 - ✔ `renders read-aloud section and handles speed selection`
@@ -2444,11 +2430,12 @@
 - ✔ `shows error when backup file exceeds 10MB limit`
 - ✔ `handles exportLibraryData utility directly`
 - ✔ `switches between Appearance & Scroll, Read-Aloud Studio, and Backup & Restore sub-tabs`
+- ✔ `uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60`
 
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders public scholar profile section with profile data`
 - ✔ `toggles master public profile switch and updates badge`
@@ -2459,6 +2446,7 @@
 - ✔ `displays error message if update fails`
 - ✔ `allows toggling Saved Works and Custom Shelves independently`
 - ✔ `switches between Identity & Bio and Sanctuary & Privacy sub-tabs`
+- ✔ `uses solid border-border on header icon box and Public Sanctuary badge without fractional borders`
 
 </details>
 
@@ -2518,7 +2506,7 @@
 <summary><b><code>src/components/profile/PinnedAccoladesShelf.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `renders pinned bookplate items and badge count`
-- ✔ `renders empty showcase state when no bookplates are pinned`
+- ✔ `renders empty showcase state when no bookplates are pinned and uses solid border-border on header badges`
 
 </details>
 
@@ -2527,12 +2515,12 @@
 
 - ✔ `renders neutral not-found sanctuary title and classical description without echoing username`
 - ✔ `renders catalog navigation buttons with proper hrefs`
-- ✔ `renders gracefully without username parameter`
+- ✔ `renders gracefully without username parameter and uses solid border-border on epigraph`
 
 </details>
 
 <details>
-<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders public scholar view with profile info, telemetry, and bookshelves`
 - ✔ `renders PrivateProfileNotice when is_public is false`
@@ -2543,6 +2531,7 @@
 - ✔ `copies public profile link when share button is clicked`
 - ✔ `renders Invite to Reader Circle button for authenticated visitor and dispatches invite`
 - ✔ `renders Start Symposium button when visitor is already an accepted Fellow Scholar`
+- ✔ `uses solid border-border across header, telemetry tiles, and bookshelf items without fractional border-border/* or hover:border-primary/40`
 
 </details>
 

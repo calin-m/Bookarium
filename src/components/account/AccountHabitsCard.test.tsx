@@ -16,7 +16,7 @@ describe('AccountHabitsCard', () => {
 
     render(<AccountHabitsCard completedBooksCount={5} />);
 
-    expect(screen.getByTestId('account-habits-card')).toHaveClass('p-4', 'sm:p-7');
+    expect(screen.getByTestId('account-habits-card')).toHaveClass('p-4', 'sm:p-6', 'lg:p-7');
     expect(screen.getByRole('heading', { level: 2, name: /Reading Habits & Challenges/i })).toBeInTheDocument();
     expect(screen.getByTestId('reading-streak-metric')).toBeInTheDocument();
     expect(screen.getByTestId('reading-time-metric')).toBeInTheDocument();
@@ -132,10 +132,10 @@ describe('AccountHabitsCard', () => {
     expect(syncMock).toHaveBeenCalledWith('user-sync-1');
   });
 
-  it('applies theme-aware solid borders and surfaces without fractional opacity variants that vanish in Sepia or Dark mode', () => {
+  it('applies theme-aware solid borders and static surfaces without false hover affordances or fractional opacity variants', () => {
     const { container } = render(<AccountHabitsCard completedBooksCount={3} />);
 
-    // 3 Strips should use bg-muted/30 and tactile hover:border-primary/40, never bg-background/60 or hover:border-border/80
+    // 3 Strips should use bg-muted/30 and solid border-border without false hover affordance
     const streakStrip = screen.getByTestId('reading-streak-metric');
     const timeStrip = screen.getByTestId('reading-time-metric');
     const goalStrip = screen.getByTestId('annual-goal-metric');
@@ -143,7 +143,7 @@ describe('AccountHabitsCard', () => {
     [streakStrip, timeStrip, goalStrip].forEach((strip) => {
       expect(strip).toHaveClass('bg-muted/30');
       expect(strip).toHaveClass('border-border');
-      expect(strip).toHaveClass('hover:border-primary/40');
+      expect(strip.className).not.toContain('hover:border-primary/40');
       expect(strip.className).not.toContain('bg-background/60');
       expect(strip.className).not.toContain('hover:border-border/80');
     });

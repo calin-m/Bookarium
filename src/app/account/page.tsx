@@ -14,7 +14,6 @@ import {
   ShieldCheck,
   Flame,
   Award,
-  Library,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -31,7 +30,6 @@ import { Footer } from '@/components/presentation/Footer';
 import { Button } from '@/components/ui/Button';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { AccountIdentityCard } from '@/components/account/AccountIdentityCard';
-import { AccountLibraryStats } from '@/components/account/AccountLibraryStats';
 import { AccountHabitsCard } from '@/components/account/AccountHabitsCard';
 import { AccountAccoladesCard } from '@/components/account/AccountAccoladesCard';
 import { AccountPublicProfileSection } from '@/components/account/AccountPublicProfileSection';
@@ -48,7 +46,7 @@ import type { NavViewId } from '@/config/views.config';
 import { ROUTES } from '@/config/routes';
 
 type AccountTabId = 'habits' | 'profile' | 'symposiums' | 'preferences' | 'security';
-type HabitsSubTabId = 'streaks' | 'accolades' | 'library';
+type HabitsSubTabId = 'streaks' | 'accolades';
 
 interface AccountTabConfig {
   id: AccountTabId;
@@ -560,7 +558,7 @@ function AccountDashboardContent() {
               }}
               onOpenLibraryBreakdown={() => {
                 handleTabChange('habits');
-                setHabitsSubTab('library');
+                setHabitsSubTab('streaks');
               }}
             />
 
@@ -571,7 +569,7 @@ function AccountDashboardContent() {
                 aria-label="Account sections"
                 onKeyDown={handleTabKeyDown}
                 onTouchStart={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 sm:gap-2 p-1.5 bg-card border border-border rounded-2xl shadow-booksaw w-full"
+                className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 p-1.5 bg-card border border-border rounded-2xl shadow-booksaw w-full"
               >
                 {ACCOUNT_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -589,10 +587,10 @@ function AccountDashboardContent() {
                       title={tab.label}
                       tabIndex={isActive ? 0 : -1}
                       onClick={() => handleTabChange(tab.id)}
-                      className={`relative flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
+                      className={`relative flex items-center justify-center gap-1.5 lg:gap-2 py-2.5 rounded-xl text-xs sm:text-xs lg:text-sm font-semibold whitespace-nowrap border transition-colors duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
                         isActive
-                          ? 'flex-1 min-w-0 px-3 sm:px-4 bg-primary text-primary-foreground font-semibold shadow-xs'
-                          : 'shrink-0 px-2.5 sm:flex-1 sm:px-4 text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          ? 'flex-1 min-w-0 px-3 sm:px-3 lg:px-4 bg-primary text-primary-foreground border-primary shadow-xs'
+                          : 'shrink-0 px-2.5 sm:flex-1 sm:min-w-0 sm:px-2.5 lg:px-4 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
                       }`}
                     >
                       <Icon
@@ -609,7 +607,7 @@ function AccountDashboardContent() {
                       </span>
                       {showBadge && (
                         <span
-                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold shrink-0 ${
                             isActive
                               ? 'bg-primary-foreground text-primary'
                               : 'bg-primary text-primary-foreground'
@@ -624,7 +622,7 @@ function AccountDashboardContent() {
               </div>
             </div>
 
-            {/* Tab Panel 1: Habits, Accolades & Library Breakdown (With Tier-2 Focused Sub-Tabs) */}
+            {/* Tab Panel 1: Habits & Accolades (With Unified 2-Pill Sub-Tabs) */}
             <section
               id="account-tabpanel-habits"
               role="tabpanel"
@@ -633,11 +631,11 @@ function AccountDashboardContent() {
               hidden={activeTab !== 'habits'}
               className={
                 activeTab === 'habits'
-                  ? 'space-y-5 animate-in fade-in duration-150'
+                  ? 'space-y-4 animate-in fade-in duration-150'
                   : 'hidden'
               }
             >
-              {/* Tier 2 Sub-Tab Bar for Overview & Habits */}
+              {/* Tier 2 Sub-Tab Bar for Streaks & Accolades */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div
                   role="tablist"
@@ -650,10 +648,10 @@ function AccountDashboardContent() {
                     aria-selected={habitsSubTab === 'streaks'}
                     aria-label="Streaks & Challenge"
                     onClick={() => setHabitsSubTab('streaks')}
-                    className={`flex-1 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+                    className={`flex-1 sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
                       habitsSubTab === 'streaks'
-                        ? 'bg-primary/10 text-primary border border-primary/30'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-primary/10 text-primary border-border'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
                     }`}
                   >
                     <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
@@ -667,32 +665,15 @@ function AccountDashboardContent() {
                     aria-selected={habitsSubTab === 'accolades'}
                     aria-label="Accolades Compendium"
                     onClick={() => setHabitsSubTab('accolades')}
-                    className={`flex-1 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+                    className={`flex-1 sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
                       habitsSubTab === 'accolades'
-                        ? 'bg-primary/10 text-primary border border-primary/30'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-primary/10 text-primary border-border'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
                     }`}
                   >
                     <Award className="w-3.5 h-3.5 text-primary shrink-0" />
                     <span className="sm:hidden">Accolades</span>
                     <span className="hidden sm:inline">Accolades Compendium</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={habitsSubTab === 'library'}
-                    aria-label="Library Breakdown"
-                    onClick={() => setHabitsSubTab('library')}
-                    className={`flex-1 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
-                      habitsSubTab === 'library'
-                        ? 'bg-primary/10 text-primary border border-primary/30'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Library className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span className="sm:hidden">Library</span>
-                    <span className="hidden sm:inline">Library Breakdown</span>
                   </button>
                 </div>
               </div>
@@ -714,21 +695,6 @@ function AccountDashboardContent() {
                 className={habitsSubTab === 'accolades' ? 'block' : 'hidden'}
               >
                 <AccountAccoladesCard userId={user?.id} />
-              </div>
-
-              <div
-                id="habits-subpanel-library"
-                hidden={habitsSubTab !== 'library'}
-                className={habitsSubTab === 'library' ? 'block' : 'hidden'}
-              >
-                <AccountLibraryStats
-                  savedCount={savedCount}
-                  favoriteCount={favoriteCount}
-                  customShelvesCount={customShelvesCount}
-                  annotationCount={annotationCount}
-                  bookmarksCount={bookmarksCount}
-                  readingStreak={readingStreak}
-                />
               </div>
             </section>
 

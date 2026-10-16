@@ -239,5 +239,14 @@ describe('AccountPublicProfileSection', () => {
     expect(document.getElementById('profile-subpanel-privacy')).not.toHaveClass('hidden');
     expect(document.getElementById('profile-subpanel-identity')).toHaveClass('hidden');
   });
+
+  it('uses solid border-border on header icon box and Public Sanctuary badge without fractional borders', () => {
+    const { container } = render(
+      <AccountPublicProfileSection user={mockUser} profile={{ ...mockProfile, is_public: true }} />
+    );
+
+    expect(container.innerHTML).not.toContain('border-primary/20');
+    expect(container.innerHTML).not.toContain('border-success/20');
+  });
 });
 
