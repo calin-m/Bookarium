@@ -60,12 +60,18 @@ describe('AccountPage', () => {
 
   it('renders authenticated dashboard with profile identity, library statistics, and accolades', async () => {
     const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
-    await useAnnotationStore.getState().addAnnotation({
-      bookId: 1342,
-      chapterIndex: 0,
-      chapterPage: 1,
-      selectedText: 'Passage in account test',
-      color: 'yellow',
+    useAnnotationStore.setState({
+      annotations: [
+        {
+          id: 'a1',
+          bookId: 1342,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Passage in account test',
+          color: 'yellow',
+          createdAt: '2026-01-01T00:00:00Z',
+        } as any,
+      ],
     });
 
     const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
@@ -83,7 +89,7 @@ describe('AccountPage', () => {
       cloudBookshelves: [
         { id: 's0', user_id: 'u1', name: 'General', is_default: true, created_at: '', updated_at: '' },
         { id: 's1', user_id: 'u1', name: 'Philosophy', is_default: false, created_at: '', updated_at: '' },
-        { id: 's2', user_id: 'u1', name: 'Gothic Tales', is_default: false, created_at: '', updated_at: '' },
+        { id: 's2', user_id: 'u1', name: 'Gothic Tales', is_default: false, created_at: '' , updated_at: '' },
       ],
     });
 
@@ -99,27 +105,30 @@ describe('AccountPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
     expect(mockUpdateProfile).toHaveBeenCalledWith({ display_name: 'Jane Austen CBE' });
 
-    // Library Statistics
-    expect(screen.getByRole('heading', { level: 2, name: 'Library' })).toBeInTheDocument();
-    const shelvedLink = screen.getByRole('link', { name: /View Shelved Volumes in Bookshelf/i });
+    // Switch to Library Breakdown sub-tab and verify Library Statistics
+    fireEvent.click(screen.getByRole('tab', { name: /Library Breakdown/i }));
+    const librarySubpanel = document.getElementById('habits-subpanel-library')!;
+    expect(within(librarySubpanel).getByRole('heading', { level: 2, name: 'Library' })).toBeInTheDocument();
+    const shelvedLink = within(librarySubpanel).getByRole('link', { name: /View Shelved Volumes in Bookshelf/i });
     expect(shelvedLink).toHaveAttribute('href', ROUTES.BOOKSHELF);
-    expect(screen.getByText('Shelved Volumes')).toBeInTheDocument();
+    expect(within(librarySubpanel).getByText('Shelved Volumes')).toBeInTheDocument();
 
-    const favoritesLink = screen.getByRole('link', { name: /View Favorite Titles in Favorites/i });
+    const favoritesLink = within(librarySubpanel).getByRole('link', { name: /View Favorite Titles in Favorites/i });
     expect(favoritesLink).toHaveAttribute('href', ROUTES.FAVORITES);
-    expect(screen.getByText('Favorite Titles')).toBeInTheDocument();
+    expect(within(librarySubpanel).getByText('Favorite Titles')).toBeInTheDocument();
 
-    const customShelvesLink = screen.getByRole('link', { name: /View Custom Shelves in Bookshelf/i });
+    const customShelvesLink = within(librarySubpanel).getByRole('link', { name: /View Custom Shelves in Bookshelf/i });
     expect(customShelvesLink).toHaveAttribute('href', ROUTES.BOOKSHELF);
     expect(within(customShelvesLink).getByText('Custom Shelves')).toBeInTheDocument();
-    expect(screen.getByTestId('custom-shelves-count')).toHaveTextContent('2');
-    expect(screen.getByTestId('notes-quotes-count')).toHaveTextContent('1');
+    expect(within(librarySubpanel).getByTestId('custom-shelves-count')).toHaveTextContent('2');
+    expect(within(librarySubpanel).getByTestId('notes-quotes-count')).toHaveTextContent('1');
 
-    // Accolades Showcase
+    // Switch to Accolades Compendium sub-tab and verify Accolades Showcase
+    fireEvent.click(screen.getByRole('tab', { name: /Accolades Compendium/i }));
     expect(screen.getByText('Ex-Libris Bookplates & Accolades')).toBeInTheDocument();
     expect(screen.getByTestId('account-accolades-card')).toBeInTheDocument();
 
-    useAnnotationStore.getState().clearAllAnnotations();
+    useAnnotationStore.setState({ annotations: [] });
   });
 
   it('renders segmented sub-tabs navigation and switches active tabs', () => {
@@ -136,11 +145,11 @@ describe('AccountPage', () => {
     expect(tablist).toBeInTheDocument();
     expect(tablist).toHaveClass('flex', 'w-full');
 
-    const habitsTab = screen.getByRole('tab', { name: /Habits & Accolades/i });
-    const profileTab = screen.getByRole('tab', { name: /Public Scholar/i });
-    const symposiumsTab = screen.getByRole('tab', { name: /Symposiums & Circle/i });
-    const preferencesTab = screen.getByRole('tab', { name: /Preferences/i });
-    const securityTab = screen.getByRole('tab', { name: /Security/i });
+    const habitsTab = within(tablist).getByRole('tab', { name: /Habits & Accolades/i });
+    const profileTab = within(tablist).getByRole('tab', { name: /Public Scholar/i });
+    const symposiumsTab = within(tablist).getByRole('tab', { name: /Symposiums & Circle/i });
+    const preferencesTab = within(tablist).getByRole('tab', { name: /Preferences/i });
+    const securityTab = within(tablist).getByRole('tab', { name: /Security/i });
 
     expect(habitsTab).toHaveAttribute('aria-selected', 'true');
     expect(profileTab).toHaveAttribute('aria-selected', 'false');
@@ -172,9 +181,9 @@ describe('AccountPage', () => {
     const habitsSubTablist = screen.getByRole('tablist', { name: /Habits and library sub-sections/i });
     expect(habitsSubTablist).toHaveClass('w-full', 'sm:w-auto', 'flex', 'sm:inline-flex');
 
-    const streaksSubTab = screen.getByRole('tab', { name: /Streaks & Challenge/i });
-    const accoladesSubTab = screen.getByRole('tab', { name: /Accolades Compendium/i });
-    const librarySubTab = screen.getByRole('tab', { name: /Library Breakdown/i });
+    const streaksSubTab = within(habitsSubTablist).getByRole('tab', { name: /Streaks & Challenge/i });
+    const accoladesSubTab = within(habitsSubTablist).getByRole('tab', { name: /Accolades Compendium/i });
+    const librarySubTab = within(habitsSubTablist).getByRole('tab', { name: /Library Breakdown/i });
 
     expect(streaksSubTab).toHaveClass('flex-1', 'sm:flex-none');
     expect(accoladesSubTab).toHaveClass('flex-1', 'sm:flex-none');
@@ -189,15 +198,21 @@ describe('AccountPage', () => {
     expect(within(librarySubTab).getByText('Library Breakdown')).toHaveClass('hidden', 'sm:inline');
 
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
+    expect(document.getElementById('habits-subpanel-streaks')).not.toHaveAttribute('hidden');
     expect(document.getElementById('habits-subpanel-accolades')).toHaveClass('hidden');
+    expect(document.getElementById('habits-subpanel-accolades')).toHaveAttribute('hidden');
     fireEvent.click(accoladesSubTab);
     expect(document.getElementById('habits-subpanel-accolades')).not.toHaveClass('hidden');
+    expect(document.getElementById('habits-subpanel-accolades')).not.toHaveAttribute('hidden');
     fireEvent.click(librarySubTab);
     expect(document.getElementById('habits-subpanel-library')).not.toHaveClass('hidden');
+    expect(document.getElementById('habits-subpanel-library')).not.toHaveAttribute('hidden');
 
     // Tab panels
     expect(document.getElementById('account-tabpanel-habits')).not.toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-habits')).not.toHaveAttribute('hidden');
     expect(document.getElementById('account-tabpanel-profile')).toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-profile')).toHaveAttribute('hidden');
 
     // Switch to Public Scholar
     fireEvent.click(profileTab);
@@ -208,12 +223,15 @@ describe('AccountPage', () => {
     expect(profileTab.querySelector('span')).toHaveClass('inline');
     expect(habitsTab.querySelector('span')).toHaveClass('hidden', 'sm:inline');
     expect(document.getElementById('account-tabpanel-profile')).not.toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-profile')).not.toHaveAttribute('hidden');
     expect(document.getElementById('account-tabpanel-habits')).toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-habits')).toHaveAttribute('hidden');
 
     // Switch to Symposiums & Circle
     fireEvent.click(symposiumsTab);
     expect(symposiumsTab).toHaveAttribute('aria-selected', 'true');
     expect(document.getElementById('account-tabpanel-symposiums')).not.toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-symposiums')).not.toHaveAttribute('hidden');
 
     // Switch to Preferences
     fireEvent.click(preferencesTab);
@@ -221,6 +239,7 @@ describe('AccountPage', () => {
     expect(preferencesTab).toHaveClass('flex-1', 'min-w-0');
     expect(profileTab).toHaveClass('shrink-0');
     expect(document.getElementById('account-tabpanel-preferences')).not.toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-preferences')).not.toHaveAttribute('hidden');
 
     // Switch to Security
     fireEvent.click(securityTab);
@@ -228,6 +247,7 @@ describe('AccountPage', () => {
     expect(securityTab).toHaveClass('flex-1', 'min-w-0');
     expect(preferencesTab).toHaveClass('shrink-0');
     expect(document.getElementById('account-tabpanel-security')).not.toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-security')).not.toHaveAttribute('hidden');
   });
 
   it('supports keyboard navigation across sub-tabs with ArrowRight and ArrowLeft', () => {
@@ -319,23 +339,24 @@ describe('AccountPage', () => {
 
     // Switch to Preferences sub-tab
     fireEvent.click(screen.getByRole('tab', { name: /Preferences/i }));
+    const preferencesPanel = document.getElementById('account-tabpanel-preferences')!;
 
     // Theme Switcher
-    const sepiaBtn = screen.getByRole('button', { name: /Sepia/i });
+    const sepiaBtn = within(preferencesPanel).getByRole('button', { name: /Sepia/i });
     fireEvent.click(sepiaBtn);
     expect(useThemeStore.getState().theme).toBe('sepia');
     expect(mockUpdateProfile).toHaveBeenCalledWith({ preferred_theme: 'sepia' });
 
     // Sticky Scroll Navigation Setting
-    expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
+    expect(within(preferencesPanel).getByText('Smart Auto-Hide Active')).toBeInTheDocument();
 
-    const alwaysFixedBtn = screen.getByRole('button', { name: /Always Fixed/i });
+    const alwaysFixedBtn = within(preferencesPanel).getByRole('button', { name: /Always Fixed/i });
     fireEvent.click(alwaysFixedBtn);
-    expect(screen.getByText('Always Fixed Active')).toBeInTheDocument();
+    expect(within(preferencesPanel).getByText('Always Fixed Active')).toBeInTheDocument();
 
-    const smartAutoHideBtn = screen.getByRole('button', { name: /Smart Auto-Hide/i });
+    const smartAutoHideBtn = within(preferencesPanel).getByRole('button', { name: /Smart Auto-Hide/i });
     fireEvent.click(smartAutoHideBtn);
-    expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
+    expect(within(preferencesPanel).getByText('Smart Auto-Hide Active')).toBeInTheDocument();
   });
 
   it('handles password security lifecycle: mismatch validation, strong password generation, and password update', async () => {
@@ -352,25 +373,26 @@ describe('AccountPage', () => {
 
     // Switch to Security sub-tab
     fireEvent.click(screen.getByRole('tab', { name: /Security/i }));
+    const securityPanel = document.getElementById('account-tabpanel-security')!;
 
-    const newPwdInput = screen.getByLabelText('New Password') as HTMLInputElement;
-    const confirmPwdInput = screen.getByLabelText('Confirm New Password') as HTMLInputElement;
-    const updateBtn = screen.getByRole('button', { name: /Update Password/i });
+    const newPwdInput = within(securityPanel).getByLabelText('New Password') as HTMLInputElement;
+    const confirmPwdInput = within(securityPanel).getByLabelText('Confirm New Password') as HTMLInputElement;
+    const updateBtn = within(securityPanel).getByRole('button', { name: /Update Password/i });
 
     // 1. Mismatch validation
     fireEvent.change(newPwdInput, { target: { value: 'password123' } });
     fireEvent.change(confirmPwdInput, { target: { value: 'different123' } });
     fireEvent.click(updateBtn);
-    expect(screen.getByText('Passwords do not match.')).toBeInTheDocument();
+    expect(within(securityPanel).getByText('Passwords do not match.')).toBeInTheDocument();
     expect(mockUpdatePassword).not.toHaveBeenCalled();
 
     // 2. Suggest Strong Password
-    const suggestBtn = screen.getByRole('button', { name: /Suggest Strong Password/i });
+    const suggestBtn = within(securityPanel).getByRole('button', { name: /Suggest Strong Password/i });
     expect(suggestBtn).toBeInTheDocument();
     fireEvent.click(suggestBtn);
     expect(newPwdInput.value.length).toBeGreaterThanOrEqual(12);
     expect(newPwdInput.value).toBe(confirmPwdInput.value);
-    expect(screen.getByText('Password strength:')).toBeInTheDocument();
+    expect(within(securityPanel).getByText('Password strength:')).toBeInTheDocument();
 
     // 3. Valid update submission
     fireEvent.change(newPwdInput, { target: { value: 'password123' } });
@@ -379,7 +401,7 @@ describe('AccountPage', () => {
 
     await waitFor(() => {
       expect(mockUpdatePassword).toHaveBeenCalledWith('password123');
-      expect(screen.getByText('Password successfully updated')).toBeInTheDocument();
+      expect(within(securityPanel).getByText('Password successfully updated')).toBeInTheDocument();
     });
   });
 
@@ -397,34 +419,37 @@ describe('AccountPage', () => {
 
     // Switch to Security sub-tab
     fireEvent.click(screen.getByRole('tab', { name: /Security/i }));
+    const securityPanel = document.getElementById('account-tabpanel-security')!;
 
-    expect(screen.getByText(/Danger Zone: Delete Account/i)).toBeInTheDocument();
+    expect(within(securityPanel).getByText(/Danger Zone: Delete Account/i)).toBeInTheDocument();
 
     // 1. Open and Cancel
-    const deleteBtn = screen.getByRole('button', { name: /Delete Account/i });
+    const deleteBtn = within(securityPanel).getByRole('button', { name: /Delete Account/i });
     fireEvent.click(deleteBtn);
-    expect(screen.getByText('Request Account Deletion')).toBeInTheDocument();
-    expect(screen.getByText('Security Verification Required')).toBeInTheDocument();
-    expect(screen.getByText(/For your security, deleting your account requires email confirmation/i)).toBeInTheDocument();
+    const modal = screen.getByRole('dialog');
+    expect(within(modal).getByText('Request Account Deletion')).toBeInTheDocument();
+    expect(within(modal).getByText('Security Verification Required')).toBeInTheDocument();
+    expect(within(modal).getByText(/For your security, deleting your account requires email confirmation/i)).toBeInTheDocument();
 
-    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    const cancelBtn = within(modal).getByRole('button', { name: /Cancel/i });
     fireEvent.click(cancelBtn);
     expect(mockRequestAccountDeletion).not.toHaveBeenCalled();
     expect(screen.queryByText('Security Verification Required')).not.toBeInTheDocument();
 
     // 2. Re-open and Submit
     fireEvent.click(deleteBtn);
-    const sendLinkBtn = screen.getByRole('button', { name: /Send Deletion Link/i });
+    const reopenedModal = screen.getByRole('dialog');
+    const sendLinkBtn = within(reopenedModal).getByRole('button', { name: /Send Deletion Link/i });
     fireEvent.click(sendLinkBtn);
 
     await waitFor(() => {
       expect(mockRequestAccountDeletion).toHaveBeenCalled();
-      expect(screen.getByText('Verification Link Sent')).toBeInTheDocument();
-      expect(screen.getByText(/We sent a secure deletion confirmation link to/i)).toBeInTheDocument();
+      expect(within(reopenedModal).getByText('Verification Link Sent')).toBeInTheDocument();
+      expect(within(reopenedModal).getByText(/We sent a secure deletion confirmation link to/i)).toBeInTheDocument();
     });
 
     // 3. Dismiss confirmation screen
-    const closeBtn = screen.getByRole('button', { name: /^Close$/i });
+    const closeBtn = within(reopenedModal).getByRole('button', { name: /^Close$/i });
     fireEvent.click(closeBtn);
     expect(screen.queryByText('Verification Link Sent')).not.toBeInTheDocument();
   });
@@ -505,12 +530,13 @@ describe('AccountPage', () => {
 
     // Switch to Public Scholar sub-tab
     fireEvent.click(screen.getByRole('tab', { name: /Public Scholar/i }));
+    const profilePanel = document.getElementById('account-tabpanel-profile')!;
 
-    expect(screen.getByRole('region', { name: /public scholar profile settings/i })).toBeInTheDocument();
-    expect(screen.getByDisplayValue('scholar_one')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Devoted scholar of classical literature.')).toBeInTheDocument();
+    expect(within(profilePanel).getByRole('region', { name: /public scholar profile settings/i })).toBeInTheDocument();
+    expect(within(profilePanel).getByDisplayValue('scholar_one')).toBeInTheDocument();
+    expect(within(profilePanel).getByDisplayValue('Devoted scholar of classical literature.')).toBeInTheDocument();
 
-    const submitBtn = screen.getByRole('button', { name: /save public settings/i });
+    const submitBtn = within(profilePanel).getByRole('button', { name: /save public settings/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {

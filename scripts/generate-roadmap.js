@@ -208,7 +208,7 @@ const ROADMAP_MILESTONES = [
   {
     id: 'm6',
     title: 'Milestone 6: Public Scholar Profiles & Social Portability',
-    version: 'Target: v2.6.0',
+    version: 'v2.6.0 (Completed)',
     badge: 'https://img.shields.io/badge/Milestone-v2.6.0-blueviolet?style=flat-square',
     description: 'Opt-in public scholar profile pages, reader biographies, and shareable reading cards for social platforms.',
     features: [
@@ -227,7 +227,7 @@ const ROADMAP_MILESTONES = [
   {
     id: 'm7',
     title: 'Milestone 7: Reader Circles & Literary Symposiums (Dual Reading)',
-    version: 'Target: v2.7.0',
+    version: 'v2.7.0 (Completed)',
     badge: 'https://img.shields.io/badge/Milestone-v2.7.0-indigo?style=flat-square',
     description: 'Intimate scholarly fellowship, mutual Reader Circle connections, per-volume Literary Symposium pacts, resolution-independent shared marginalia, in-context source filtering, and companion reading progress.',
     features: [

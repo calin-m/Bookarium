@@ -630,6 +630,7 @@ function AccountDashboardContent() {
               role="tabpanel"
               aria-labelledby="account-tab-habits"
               tabIndex={0}
+              hidden={activeTab !== 'habits'}
               className={
                 activeTab === 'habits'
                   ? 'space-y-5 animate-in fade-in duration-150'
@@ -698,6 +699,7 @@ function AccountDashboardContent() {
 
               <div
                 id="habits-subpanel-streaks"
+                hidden={habitsSubTab !== 'streaks'}
                 className={habitsSubTab === 'streaks' ? 'block' : 'hidden'}
               >
                 <AccountHabitsCard
@@ -708,6 +710,7 @@ function AccountDashboardContent() {
 
               <div
                 id="habits-subpanel-accolades"
+                hidden={habitsSubTab !== 'accolades'}
                 className={habitsSubTab === 'accolades' ? 'block' : 'hidden'}
               >
                 <AccountAccoladesCard userId={user?.id} />
@@ -715,6 +718,7 @@ function AccountDashboardContent() {
 
               <div
                 id="habits-subpanel-library"
+                hidden={habitsSubTab !== 'library'}
                 className={habitsSubTab === 'library' ? 'block' : 'hidden'}
               >
                 <AccountLibraryStats
@@ -734,6 +738,7 @@ function AccountDashboardContent() {
               role="tabpanel"
               aria-labelledby="account-tab-profile"
               tabIndex={0}
+              hidden={activeTab !== 'profile'}
               className={
                 activeTab === 'profile'
                   ? 'space-y-6 animate-in fade-in duration-150'
@@ -753,6 +758,7 @@ function AccountDashboardContent() {
               role="tabpanel"
               aria-labelledby="account-tab-symposiums"
               tabIndex={0}
+              hidden={activeTab !== 'symposiums'}
               className={
                 activeTab === 'symposiums'
                   ? 'space-y-6 animate-in fade-in duration-150'
@@ -768,6 +774,7 @@ function AccountDashboardContent() {
               role="tabpanel"
               aria-labelledby="account-tab-preferences"
               tabIndex={0}
+              hidden={activeTab !== 'preferences'}
               className={
                 activeTab === 'preferences'
                   ? 'space-y-6 animate-in fade-in duration-150'
@@ -798,6 +805,7 @@ function AccountDashboardContent() {
               role="tabpanel"
               aria-labelledby="account-tab-security"
               tabIndex={0}
+              hidden={activeTab !== 'security'}
               className={
                 activeTab === 'security'
                   ? 'space-y-6 animate-in fade-in duration-150'

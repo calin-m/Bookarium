@@ -10,8 +10,8 @@ Security patches, dependency updates, and bug fixes are applied to the active re
 
 | Version | Supported | Notes |
 |---|:---:|---|
-| **1.9.x** | ✅ | **Active Release** (Recommended for all users and deployments) |
-| < 1.9.0 | ❌ | Older releases are not actively maintained; please upgrade to the latest release |
+| **2.7.x** | ✅ | **Active Release** (Recommended for all users and deployments) |
+| < 2.7.0 | ❌ | Older releases are not actively maintained; please upgrade to the latest release |
 
 ---
 
@@ -50,7 +50,7 @@ Bookarium incorporates multi-layered security controls designed into its archite
 3. **Continuous Cloud Code Scanning (GitHub CodeQL)**:
    - GitHub Actions automated analysis continuously inspects all commits to `master` for semantic code flaws, security regressions, and tainted data flows.
 4. **PostgreSQL Row Level Security (RLS)**:
-   - Cloud synchronization utilizes Supabase PostgreSQL with strict RLS policies (`auth.uid() = user_id`) on `public.user_bookshelves` and `public.user_annotations`. Users cannot read, mutate, or delete records belonging to other accounts.
+   - Cloud synchronization utilizes Supabase PostgreSQL with strict RLS policies (`auth.uid() = user_id` and participant isolation) across `public.profiles`, `public.bookshelves`, `public.bookshelf_items`, `public.user_favorites`, `public.reading_progress`, `public.user_annotations`, `public.user_book_curation`, `public.user_reading_habits`, `public.user_accolades`, `public.reader_circles`, and `public.symposium_sessions`. Users cannot read, mutate, or delete private records belonging to other accounts.
 5. **Public Domain Integrity & Safe Ingestion**:
    - All catalog queries strictly enforce `copyright=false`. Ingested Gutenberg texts are parsed through isolated Web Workers and sanitized reflow algorithms to guard against script injection (XSS).
 6. **Offline-First Data Isolation**:

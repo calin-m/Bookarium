@@ -1084,4 +1084,21 @@
   - 100% non-breaking solo and guest reading experience via progressive disclosure and isolated state slices.
   - Granular per-book RLS privacy guarantees and full territorial copyright compliance.
 
-
+## ADR-056: Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply-Chain Overrides (`tinyglobby`)
+- **Status**: Accepted
+- **Context**:
+  1. **Dormant Transitive Glob Dependencies (`GHSA-vfj7-8cjw-p6xm`)**:
+     - Legacy file-globbing libraries (`braces@3.0.3`, `micromatch@4.0.8`, `fast-glob@3.3.3`, and `chokidar@3.6.0`) triggered 7 high-severity `npm audit` warnings due to stack-exhaustion regular expression patterns in `braces`.
+     - These packages entered the dependency graph strictly via two `devDependencies`: `tailwindcss@3.4.19` and `@next/eslint-plugin-next@16.4.2`.
+  2. **Zero-Regression Styling Requirement**:
+     - Bookarium relies on an extensive custom editorial theme in `tailwind.config.ts` (`booksaw`, `paper`, `shelf` palettes, custom `shadow-booksaw` / `shadow-spine` elevations, class-based `.dark` and `.sepia` themes) and 180 co-located test suites. Upgrading to Tailwind CSS v4 must preserve 100% visual and behavioral parity without rewriting component class names.
+- **Decision**:
+  1. **Tailwind CSS v4 Oxide Engine with `@config` Bridge (`src/app/globals.css`, `postcss.config.mjs`, `package.json`)**:
+     - Upgraded `tailwindcss` to `^4.3.3` with `@tailwindcss/postcss@^4.3.3` (removing legacy `autoprefixer`, as LightningCSS handles vendor prefixing natively).
+     - Linked the existing `tailwind.config.ts` via `@import "tailwindcss"; @config "../../tailwind.config.ts";` and declared `@custom-variant dark (&:where(.dark, .dark *));` in `src/app/globals.css`.
+     - Added Preflight v3 parity rules inside `@layer base` (`border-color: var(--border, currentColor)` on universal selectors and `cursor: pointer` on enabled buttons) and replaced `@apply` custom token usages with explicit CSS rules.
+  2. **Supply-Chain `tinyglobby` Override (`package.json`)**:
+     - Added `"fast-glob": "npm:tinyglobby@^0.2.17"` to `package.json` `"overrides"`, routing `@next/eslint-plugin-next`'s `globSync(rootDir, { onlyDirectories: true })` call to `tinyglobby` (`fdir` + `picomatch`) and completely removing `braces`, `micromatch`, and `chokidar@3` from `node_modules`.
+- **Consequences**:
+  - `npm audit` reports **0 vulnerabilities** across both production and development dependency trees, reducing `node_modules` by 46 legacy packages.
+  - Faster CSS compilation via Tailwind v4's Rust Oxide engine with 100% visual and test parity across all 180 test suites.

@@ -10,11 +10,14 @@ describe('metadata-cache', () => {
   beforeEach(() => {
     clearBookMetadataCache();
     vi.restoreAllMocks();
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
   });
 
   afterEach(() => {
     clearBookMetadataCache();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it('stores and retrieves cached metadata correctly', () => {

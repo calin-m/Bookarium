@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
 import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
@@ -8,7 +8,13 @@ import { sampleBookText } from '@/mocks/handlers';
 describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
     bookContentRateLimiter.reset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   describe('OWASP SSRF (Server-Side Request Forgery) Defense', () => {

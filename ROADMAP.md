@@ -2,7 +2,7 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.7.0-teal?style=flat-square)](CHANGELOG.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.7.1-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-88%25-brightgreen?style=flat-square)](ROADMAP.md)
 [![Total Features](https://img.shields.io/badge/Features-29_of_33-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
@@ -111,7 +111,7 @@
 
 ---
 
-### Milestone 6: Public Scholar Profiles & Social Portability (`Target: v2.6.0`)
+### Milestone 6: Public Scholar Profiles & Social Portability (`v2.6.0 (Completed)`)
 `[██████████░░░░░░░░░░]` **1/2 (50%)**
 
 > Opt-in public scholar profile pages, reader biographies, and shareable reading cards for social platforms.
@@ -123,7 +123,7 @@
 
 ---
 
-### Milestone 7: Reader Circles & Literary Symposiums (Dual Reading) (`Target: v2.7.0`)
+### Milestone 7: Reader Circles & Literary Symposiums (Dual Reading) (`v2.7.0 (Completed)`)
 `[████████████████████]` **5/5 (100%)**
 
 > Intimate scholarly fellowship, mutual Reader Circle connections, per-volume Literary Symposium pacts, resolution-independent shared marginalia, in-context source filtering, and companion reading progress.

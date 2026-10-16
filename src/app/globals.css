@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   :root {
@@ -76,6 +76,19 @@
     --ring: #f59e0b;
   }
 
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border, currentColor);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
   html {
     overflow-y: scroll;
     overflow-x: clip;
@@ -83,10 +96,26 @@
   }
 
   body {
-    @apply bg-background text-foreground transition-colors duration-theme antialiased selection:bg-amber-200 dark:selection:bg-amber-950/60;
+    background-color: var(--background);
+    color: var(--foreground);
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow-x: clip;
     scrollbar-gutter: stable;
+  }
+
+  body ::selection,
+  body::selection {
+    background-color: #fde68a;
+  }
+
+  .dark body ::selection,
+  .dark body::selection {
+    background-color: rgba(69, 26, 3, 0.6);
   }
 
   .sepia ::selection,
@@ -684,8 +713,8 @@
 
 @layer utilities {
   .theme-transition {
-    @apply transition-colors duration-theme;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
   }
 }
-
-

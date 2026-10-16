@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
 import { clearBookMetadataCache } from './metadata-cache';
@@ -9,8 +9,14 @@ import { bookContentRateLimiter } from '@/lib/rate-limiter';
 describe('GET /api/books/content', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
     bookContentRateLimiter.reset();
     clearBookMetadataCache();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('should return 429 when client exceeds rate limits', async () => {

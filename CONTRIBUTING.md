@@ -30,7 +30,7 @@ Before opening a PR, familiarize yourself with Bookarium's state and rendering p
 - **Local-First State Management**: Zustand (`useBookshelfStore`, `useReaderStore`, `useAnnotationStore`, `useThemeStore`).
 - **Background Threading**: Web Workers (`src/workers/gutenberg.worker.ts`, `useGutenbergParserWorker.ts`) offloading chapter regex splitting and pagination spread math.
 - **Offline Persistence**: Dual-layer browser storage (localStorage for positions/preferences; IndexedDB for multi-megabyte unabridged book volumes) backed by an App Shell Service Worker (`public/sw.js`).
-- **Styling**: Tailwind CSS with hardware-accelerated Framer Motion transitions.
+- **Styling**: Tailwind CSS v4 (Oxide) with hardware-accelerated Framer Motion transitions.
 
 ---
 

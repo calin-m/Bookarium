@@ -1216,24 +1216,30 @@ describe('NotebookView component', () => {
       expect(headings[0]).toHaveTextContent('Frankenstein');
     });
 
-    it('paginates chronological quotes with 12 items per page and scrolls to top on page change', async () => {
+    it('paginates chronological quotes with 12 items per page and scrolls to top on page change', () => {
       const scrollToMock = vi.fn();
       window.scrollTo = scrollToMock;
       const scrollIntoViewMock = vi.fn();
       window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
 
-      // Add 15 annotations with distinct non-substring text
-      for (let i = 1; i <= 15; i++) {
-        await useAnnotationStore.getState().addAnnotation({
-          bookId: 1342,
-          bookTitle: 'Pride and Prejudice',
-          bookAuthor: 'Jane Austen',
-          chapterIndex: 0,
-          chapterPage: i,
-          selectedText: `Chronological quote sentence #${String(i).padStart(2, '0')}`,
-          color: 'yellow',
-        });
-      }
+      // Seed 15 annotations in a single deterministic batch
+      useAnnotationStore.setState({
+        annotations: Array.from({ length: 15 }, (_, idx) => {
+          const i = idx + 1;
+          return {
+            id: `chrono-ann-${i}`,
+            bookId: 1300 + i,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: i,
+            selectedText: `Chronological quote sentence #${String(i).padStart(2, '0')}`,
+            color: 'yellow' as const,
+            createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+            updatedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+          };
+        }),
+      });
 
       render(<NotebookView />);
       fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
@@ -1248,9 +1254,10 @@ describe('NotebookView component', () => {
       expect(within(topPagination).getByTestId('top-pagination-indicator')).toHaveTextContent(/1\s*\/\s*2/);
 
       // Bottom pagination bar should also be visible
-      expect(screen.getByRole('navigation', { name: /Pagination navigation/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Go to page 1' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Go to page 2' })).toBeInTheDocument();
+      const paginationNav = screen.getByRole('navigation', { name: /Pagination navigation/i });
+      expect(paginationNav).toBeInTheDocument();
+      expect(within(paginationNav).getByRole('button', { name: 'Go to page 1' })).toBeInTheDocument();
+      expect(within(paginationNav).getByRole('button', { name: 'Go to page 2' })).toBeInTheDocument();
 
       // Navigate to Page 2 via top pagination Next button
       const nextBtn = within(topPagination).getByRole('button', { name: 'Next page' });
@@ -1264,19 +1271,25 @@ describe('NotebookView component', () => {
       expect(scrollToMock).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
     });
 
-    it('paginates volume groups with 6 books per page in By-Book mode', async () => {
-      // Add 7 annotations across 7 different books
-      for (let i = 1; i <= 7; i++) {
-        await useAnnotationStore.getState().addAnnotation({
-          bookId: 1000 + i,
-          bookTitle: `Book Volume Title ${String.fromCharCode(65 + i)}`,
-          bookAuthor: `Author ${String.fromCharCode(65 + i)}`,
-          chapterIndex: 0,
-          chapterPage: 1,
-          selectedText: `Quote in volume #${String(i).padStart(2, '0')}`,
-          color: 'yellow',
-        });
-      }
+    it('paginates volume groups with 6 books per page in By-Book mode', () => {
+      // Seed 7 annotations across 7 different books in a single batch
+      useAnnotationStore.setState({
+        annotations: Array.from({ length: 7 }, (_, idx) => {
+          const i = idx + 1;
+          return {
+            id: `vol-ann-${i}`,
+            bookId: 1000 + i,
+            bookTitle: `Book Volume Title ${String.fromCharCode(65 + i)}`,
+            bookAuthor: `Author ${String.fromCharCode(65 + i)}`,
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: `Quote in volume #${String(i).padStart(2, '0')}`,
+            color: 'yellow' as const,
+            createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+            updatedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+          };
+        }),
+      });
 
       render(<NotebookView />);
       const getBookHeadings = () =>
@@ -1287,7 +1300,8 @@ describe('NotebookView component', () => {
       expect(headings).toHaveLength(6);
 
       // Navigate to Page 2
-      const nextBtn = screen.getByRole('button', { name: 'Go to next page' });
+      const paginationNav = screen.getByRole('navigation', { name: /Pagination navigation/i });
+      const nextBtn = within(paginationNav).getByRole('button', { name: 'Go to next page' });
       fireEvent.click(nextBtn);
 
       // Page 2 should render 1 book group
@@ -1295,53 +1309,67 @@ describe('NotebookView component', () => {
       expect(headings).toHaveLength(1);
     });
 
-    it('resets page to 1 when changing search query, color filter, or sort order', async () => {
-      // Add 26 annotations (13 mint, 13 rose)
-      for (let i = 1; i <= 26; i++) {
-        await useAnnotationStore.getState().addAnnotation({
-          bookId: 1342,
-          bookTitle: 'Pride and Prejudice',
-          bookAuthor: 'Jane Austen',
-          chapterIndex: 0,
-          chapterPage: i,
-          selectedText: `Reset page test quote sentence #${String(i).padStart(2, '0')}`,
-          color: i % 2 === 0 ? 'mint' : 'rose',
-        });
-      }
+    it('resets page to 1 when changing search query, color filter, or sort order', () => {
+      // Seed 26 annotations (13 mint, 13 rose) across distinct bookIds so initial By-Book render paginates cleanly
+      useAnnotationStore.setState({
+        annotations: Array.from({ length: 26 }, (_, idx) => {
+          const i = idx + 1;
+          return {
+            id: `reset-ann-${i}`,
+            bookId: 2000 + i,
+            bookTitle: `Pride and Prejudice Vol ${i}`,
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: i,
+            selectedText: `Reset page test quote sentence #${String(i).padStart(2, '0')}`,
+            color: (i % 2 === 0 ? 'mint' : 'rose') as 'mint' | 'rose',
+            createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+            updatedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+          };
+        }),
+      });
 
       render(<NotebookView />);
       fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
 
+      const getPaginationNav = () => screen.getByRole('navigation', { name: /Pagination navigation/i });
+
       // Navigate to Page 2
-      fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
-      expect(screen.getByRole('button', { name: 'Go to page 2' })).toHaveAttribute('aria-current', 'page');
+      fireEvent.click(within(getPaginationNav()).getByRole('button', { name: 'Go to page 2' }));
+      expect(within(getPaginationNav()).getByRole('button', { name: 'Go to page 2' })).toHaveAttribute('aria-current', 'page');
 
       // Filter by color -> resets to page 1 (13 mint items > 12, so page 1 is active)
       fireEvent.click(screen.getByTestId('notebook-filter-mint'));
-      expect(screen.getByRole('button', { name: 'Go to page 1' })).toHaveAttribute('aria-current', 'page');
+      expect(within(getPaginationNav()).getByRole('button', { name: 'Go to page 1' })).toHaveAttribute('aria-current', 'page');
 
       // Navigate to Page 2 of mint items
-      fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
-      expect(screen.getByRole('button', { name: 'Go to page 2' })).toHaveAttribute('aria-current', 'page');
+      fireEvent.click(within(getPaginationNav()).getByRole('button', { name: 'Go to page 2' }));
+      expect(within(getPaginationNav()).getByRole('button', { name: 'Go to page 2' })).toHaveAttribute('aria-current', 'page');
 
       // Change sort order -> resets to page 1
       const sortSelect = screen.getByLabelText('Sort quotes chronologically');
       fireEvent.change(sortSelect, { target: { value: 'date_asc' } });
-      expect(screen.getByRole('button', { name: 'Go to page 1' })).toHaveAttribute('aria-current', 'page');
+      expect(within(getPaginationNav()).getByRole('button', { name: 'Go to page 1' })).toHaveAttribute('aria-current', 'page');
     });
 
-    it('applies tactile animate-page-turn to notebook-content-anchor across grouping, color filter, and pagination transitions', async () => {
-      for (let i = 1; i <= 30; i++) {
-        await useAnnotationStore.getState().addAnnotation({
-          bookId: 84,
-          bookTitle: 'Frankenstein',
-          bookAuthor: 'Mary Shelley',
-          chapterIndex: 1,
-          chapterPage: i,
-          selectedText: `Animation test quote #${i}`,
-          color: i % 2 === 0 ? 'mint' : 'rose',
-        });
-      }
+    it('applies tactile animate-page-turn to notebook-content-anchor across grouping, color filter, and pagination transitions', () => {
+      useAnnotationStore.setState({
+        annotations: Array.from({ length: 30 }, (_, idx) => {
+          const i = idx + 1;
+          return {
+            id: `anim-ann-${i}`,
+            bookId: 3000 + i,
+            bookTitle: `Frankenstein Vol ${i}`,
+            bookAuthor: 'Mary Shelley',
+            chapterIndex: 1,
+            chapterPage: i,
+            selectedText: `Animation test quote #${i}`,
+            color: (i % 2 === 0 ? 'mint' : 'rose') as 'mint' | 'rose',
+            createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+            updatedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+          };
+        }),
+      });
 
       const { container } = render(<NotebookView />);
       const anchor = container.querySelector('#notebook-content-anchor');
@@ -1357,7 +1385,8 @@ describe('NotebookView component', () => {
       expect(container.querySelector('#notebook-content-anchor')).toHaveClass('animate-page-turn');
 
       // Paginate to page 2
-      fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
+      const paginationNav = screen.getByRole('navigation', { name: /Pagination navigation/i });
+      fireEvent.click(within(paginationNav).getByRole('button', { name: 'Go to page 2' }));
       expect(container.querySelector('#notebook-content-anchor')).toHaveClass('animate-page-turn');
     });
 

@@ -4,22 +4,22 @@
 
 [![Developed with Antigravity](https://img.shields.io/badge/Developed%20with-Google%20AI%20%2F%20Antigravity-4285F4?style=flat-square&logo=google)](https://antigravity.google)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
-[![Next.js](https://img.shields.io/badge/Next.js-16.3.8%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.2.8-blue?style=flat-square&logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7.2-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.4.2%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.3.1-blue?style=flat-square&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.3-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![Vitest](https://img.shields.io/badge/Vitest-178%20Suites%20%7C%201710%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.5%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.48%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
 
-An open-source, offline-first web application and reader for discovering, reading, and downloading public domain books (Project Gutenberg / CC0). Built with **Next.js 16 App Router**, **Tailwind CSS**, and **Zustand** persistence, deployed on the **Vercel Edge Platform**, developed with **[Google AI / Antigravity](https://antigravity.google)**, and verified by a deterministic **7-Gateway Quality Engine**.
+An open-source, offline-first web application and reader for discovering, reading, and downloading public domain books (Project Gutenberg / CC0). Built with **Next.js 16 App Router**, **Tailwind CSS v4**, and **Zustand** persistence, deployed on the **Vercel Edge Platform**, developed with **[Google AI / Antigravity](https://antigravity.google)**, and verified by a deterministic **7-Gateway Quality Engine**.
 
 Bookarium is powered by a self-hosted **Supabase PostgreSQL** catalog (78,000+ volumes) featuring GIN full-text search and pre-computed author lifespan indexes, delivering sub-50ms single-book lookups and dependable ~1–2s catalog page queries (compared to 20–60s queue delays on public APIs). To guarantee continuous uptime and zero-configuration setups, it includes an automatic failover to the upstream **Gutendex REST API** and Project Gutenberg mirrors whenever the database is unseeded, unreachable, or undergoing maintenance.
 
@@ -42,6 +42,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v2.7.1)
 
+- **Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply Chain (`package.json`, `postcss.config.mjs`, `src/app/globals.css`, `ADR-056`)**: Upgraded to `tailwindcss@4.3.3` and `@tailwindcss/postcss@4.3.3` using the `@config "../../tailwind.config.ts"` compatibility bridge, `@custom-variant dark`, and Preflight v3 border/cursor parity rules, and aliased `"fast-glob": "npm:tinyglobby@^0.2.17"` in `package.json` `"overrides"` to eliminate all 7 transitive `braces`/`micromatch` audit warnings (`0 vulnerabilities`).
 - **Mobile Swipe & Favorites Horizontal Overflow Prevention (`src/app/globals.css`, `src/app/page.tsx`, `src/app/account/page.tsx`, `src/components/presentation/BookCard.tsx`)**: Enforced `overflow-x: clip` on `html, body` and `overflow-x-clip` on root layout and `<main>` containers so `translateX(±20px)` swipe animations never expand scrollWidth or offset the sticky Navbar, and added `min-w-0` to `BookCard` and its inner metadata column preventing 2-column mobile cards from blowing out their 1fr track.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -645,7 +646,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 55 validated ADRs (ADR-001 through ADR-055) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, and Reader Circles & Literary Symposiums (Dual Reading). | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 56 validated ADRs (ADR-001 through ADR-056) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), and Tailwind CSS v4 Oxide & supply-chain hardening. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

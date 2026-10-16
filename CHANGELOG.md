@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [2.7.1] - 2026-10-16
-### *Mobile Viewport Ergonomics, Horizontal Overflow Clipping, 3×2 Account Bento Grid & Responsive Toolbar Fits*
+### *Mobile Viewport Ergonomics, Horizontal Overflow Clipping, 3×2 Account Bento Grid & Non-Breaking Tailwind CSS v4 Supply-Chain Upgrade*
+
+### Added
+- Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply Chain (`package.json`, `postcss.config.mjs`, `src/app/globals.css`, `ADR-056`): Upgraded to `tailwindcss@4.3.3` and `@tailwindcss/postcss@4.3.3` using the `@config "../../tailwind.config.ts"` compatibility bridge, `@custom-variant dark`, and Preflight v3 border/cursor parity rules, and aliased `"fast-glob": "npm:tinyglobby@^0.2.17"` in `package.json` `"overrides"` to eliminate all 7 transitive `braces`/`micromatch` audit warnings (`0 vulnerabilities`).
 
 ### Fixed
 - Mobile Swipe & Favorites Horizontal Overflow Prevention (`src/app/globals.css`, `src/app/page.tsx`, `src/app/account/page.tsx`, `src/components/presentation/BookCard.tsx`): Enforced `overflow-x: clip` on `html, body` and `overflow-x-clip` on root layout and `<main>` containers so `translateX(±20px)` swipe animations never expand scrollWidth or offset the sticky Navbar, and added `min-w-0` to `BookCard` and its inner metadata column preventing 2-column mobile cards from blowing out their 1fr track.
@@ -16,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Account Canonical Milestone Ladder Mobile Stacking (`src/components/account/AccountHabitsCard.tsx`): Updated Milestone Ladder grid to `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`, stacking the 4 canonical accolade milestones in a single column on mobile (< 640px) for balanced horizontal breathing room.
 - Account Identity 3×2 Non-Scrolling Bento Grid (`src/components/account/AccountIdentityCard.tsx`): Replaced the scrolling stat strip with a compact 3×2 non-scrolling bento grid (`grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap`), keeping all 6 pills inside the card without horizontal scrollbars.
 - Mobile Spacing & Account Ergonomics Decluttering (`src/components/account/AccountHabitsCard.tsx`, `src/components/account/AccountAccoladesCard.tsx`, `src/app/account/page.tsx`, `src/components/ui/SectionHeader.tsx`, `src/components/presentation/BookGrid.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/presentation/BookmarksView.tsx`): Reduced nested account card padding on mobile (`p-4 sm:p-7`), spaced 7-day sparkline circles evenly (`justify-between sm:justify-start gap-1 sm:gap-2.5`), compressed Tier-2 Habits sub-tabs to a single mobile row with concise labels, made `SectionHeader` / `SectionTitle` responsive (`text-2xl sm:text-4xl`, flank lines `w-6 sm:w-12 shrink`, `mb-5 sm:mb-10`), tightened collection vertical padding (`py-6 sm:py-12` / `pt-6 sm:pt-12`), and tightened mobile 2-column grid gap (`gap-2.5 sm:gap-6`).
+- WCAG `[hidden]` Account Tabpanel Semantics & Vitest Suite Speed/Isolation Optimization (`src/app/account/page.tsx`, `src/app/account/page.test.tsx`, `src/app/api/books/content/route.test.ts`, `src/app/api/books/content/route.security.test.ts`, `src/app/api/books/content/metadata-cache.test.ts`, `src/components/presentation/NotebookView.test.tsx`, `src/app/page.test.tsx`): Added native HTML `hidden` attributes alongside `.hidden` classes on inactive `<section role="tabpanel">` and Tier-2 sub-panel containers, isolated `NEXT_PUBLIC_SUPABASE_URL` in Tier 2 Gutenberg content route tests (`~75x` faster offline execution), and scoped pagination/landmark queries with `within(...)` (`~8–12x` speedup).
 
 
 ## [2.7.0] - 2026-10-15
@@ -698,3 +702,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-053: Semantic Book Tag Normalization, Zero-Truncation Single-Row Card Protection & Interactive Unabridged Taxonomy Popovers**
 - **ADR-054: Root Body Modal Portaling, Clean Transform Keyframes, Transparent Collection Modals & Dual-Surface Speech Bar Isolation**
 - **ADR-055: Reader Circles, Literary Symposiums (Dual Reading), Filter-First Shared Marginalia & Two-Tier Account Workspace Architecture**
+- **ADR-056: Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply-Chain Overrides (`tinyglobby`)**

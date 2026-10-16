@@ -809,11 +809,12 @@ describe('Home page integration', () => {
       renderHome();
 
       // Switch to Bookshelf
-      const bookshelfBtn = screen.getByRole('button', { name: /^Bookshelf$/i });
+      const banner = screen.getByRole('banner');
+      const bookshelfBtn = within(banner).getByRole('button', { name: /^Bookshelf$/i });
       fireEvent.click(bookshelfBtn);
 
       // Verify sort dropdown is present
-      const sortSelect = screen.getByRole('combobox', { name: 'Sort bookshelf' });
+      const sortSelect = screen.getByLabelText('Sort bookshelf');
       expect(sortSelect).toBeInTheDocument();
 
       // Verify volume count badge
@@ -845,9 +846,10 @@ describe('Home page integration', () => {
       renderHome();
 
       // Switch to Bookshelf
-      fireEvent.click(screen.getByRole('button', { name: /^Bookshelf$/i }));
+      const banner = screen.getByRole('banner');
+      fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf$/i }));
 
-      const sortSelect = screen.getByRole('combobox', { name: 'Sort bookshelf' });
+      const sortSelect = screen.getByLabelText('Sort bookshelf');
 
       // Sort by Title A-Z
       fireEvent.change(sortSelect, { target: { value: 'title_asc' } });
@@ -868,11 +870,12 @@ describe('Home page integration', () => {
       renderHome();
 
       // Switch to Favorites
-      const favoritesBtn = screen.getByRole('button', { name: /^Favorites$/i });
+      const banner = screen.getByRole('banner');
+      const favoritesBtn = within(banner).getByRole('button', { name: /^Favorites$/i });
       fireEvent.click(favoritesBtn);
 
       // Verify sort dropdown
-      const sortSelect = screen.getByRole('combobox', { name: 'Sort favorites' });
+      const sortSelect = screen.getByLabelText('Sort favorites');
       expect(sortSelect).toBeInTheDocument();
 
       // Verify volume count badge
@@ -895,11 +898,12 @@ describe('Home page integration', () => {
       renderHome();
 
       // Switch to Bookshelf
-      fireEvent.click(screen.getByRole('button', { name: /^Bookshelf$/i }));
+      const banner = screen.getByRole('banner');
+      fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf$/i }));
 
       // Navigate to Page 2
       const paginationNav = screen.getByTestId('pagination-nav');
-      const nextBtn = screen.getByRole('button', { name: 'Go to next page' });
+      const nextBtn = within(paginationNav).getByRole('button', { name: 'Go to next page' });
       fireEvent.click(nextBtn);
       expect(paginationNav).toHaveTextContent(/Showing 25–28 of 28 items/i);
 
