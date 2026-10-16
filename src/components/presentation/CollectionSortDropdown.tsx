@@ -25,7 +25,7 @@ export const CollectionSortDropdown: React.FC<CollectionSortDropdownProps> = ({
 }) => {
   return (
     <div
-      className={`relative inline-flex items-center min-w-[125px] sm:min-w-[145px] max-w-[165px] sm:max-w-[195px] ${className}`}
+      className={`relative inline-flex items-center flex-1 min-w-[105px] max-w-[155px] sm:flex-none sm:min-w-[145px] sm:max-w-[195px] ${className}`}
       data-testid="collection-sort-dropdown"
     >
       <div className="absolute left-2.5 sm:left-3 pointer-events-none flex items-center justify-center text-muted-foreground">

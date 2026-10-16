@@ -169,8 +169,25 @@ describe('AccountPage', () => {
     expect(profileLabel).toHaveClass('truncate', 'min-w-0', 'hidden', 'sm:inline');
 
     // Verify Tier-2 Sub-Tabs inside Habits & Accolades
+    const habitsSubTablist = screen.getByRole('tablist', { name: /Habits and library sub-sections/i });
+    expect(habitsSubTablist).toHaveClass('w-full', 'sm:w-auto', 'flex', 'sm:inline-flex');
+
+    const streaksSubTab = screen.getByRole('tab', { name: /Streaks & Challenge/i });
     const accoladesSubTab = screen.getByRole('tab', { name: /Accolades Compendium/i });
     const librarySubTab = screen.getByRole('tab', { name: /Library Breakdown/i });
+
+    expect(streaksSubTab).toHaveClass('flex-1', 'sm:flex-none');
+    expect(accoladesSubTab).toHaveClass('flex-1', 'sm:flex-none');
+    expect(librarySubTab).toHaveClass('flex-1', 'sm:flex-none');
+
+    // Verify concise mobile labels and full desktop labels
+    expect(within(streaksSubTab).getByText('Streaks')).toHaveClass('sm:hidden');
+    expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('hidden', 'sm:inline');
+    expect(within(accoladesSubTab).getByText('Accolades')).toHaveClass('sm:hidden');
+    expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('hidden', 'sm:inline');
+    expect(within(librarySubTab).getByText('Library')).toHaveClass('sm:hidden');
+    expect(within(librarySubTab).getByText('Library Breakdown')).toHaveClass('hidden', 'sm:inline');
+
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
     expect(document.getElementById('habits-subpanel-accolades')).toHaveClass('hidden');
     fireEvent.click(accoladesSubTab);
@@ -577,6 +594,16 @@ describe('AccountPage', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it('enforces overflow-x-clip on root and main layout containers to prevent mobile swipe horizontal overflow', () => {
+      render(<AccountPage />);
+
+      const main = screen.getByRole('main');
+      expect(main).toHaveClass('overflow-x-clip');
+
+      const root = main.parentElement;
+      expect(root).toHaveClass('overflow-x-clip');
     });
   });
 });

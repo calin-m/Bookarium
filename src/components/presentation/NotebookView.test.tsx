@@ -65,6 +65,7 @@ describe('NotebookView component', () => {
 
     render(<NotebookView />);
 
+    expect(screen.getByRole('region', { name: /Literary Commonplace Notebook/i })).toHaveClass('py-6', 'sm:py-12');
     expect(screen.getByText('Literary Notebook')).toBeInTheDocument();
     expect(screen.getAllByText('Pride and Prejudice').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/by Jane Austen/i).length).toBeGreaterThanOrEqual(1);
@@ -294,11 +295,13 @@ describe('NotebookView component', () => {
     render(<NotebookView />);
 
     const chronoBtn = screen.getByRole('button', { name: /Chronological/i });
+    expect(chronoBtn.querySelector('span')).toHaveClass('hidden', 'sm:inline');
     fireEvent.click(chronoBtn);
 
     expect(screen.getByText(/Book quote 1/i)).toBeInTheDocument();
 
     const byBookBtn = screen.getByRole('button', { name: /By Book/i });
+    expect(byBookBtn.querySelector('span')).toHaveClass('hidden', 'sm:inline');
     fireEvent.click(byBookBtn);
     expect(screen.getByText(/Book quote 1/i)).toBeInTheDocument();
   });

@@ -110,5 +110,12 @@ describe('BookGrid component', () => {
     expect(screen.getByText('General')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /download all books on this shelf/i })).toBeInTheDocument();
   });
+
+  it('applies tightened 2-column mobile grid gap classes to prevent grid blowout', () => {
+    const { container } = render(<BookGrid books={mockBooks} />);
+
+    const gridContainer = container.querySelector('#book-grid-content > div');
+    expect(gridContainer).toHaveClass('grid-cols-2', 'gap-2.5', 'sm:gap-6');
+  });
 });
 

@@ -150,7 +150,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
 
   return (
     <section
-      className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-6 shadow-booksaw relative overflow-hidden"
+      className="bg-card border border-border rounded-2xl p-4 sm:p-7 space-y-6 shadow-booksaw relative overflow-hidden"
       aria-label="Literary Accolades and Ex-Libris Bookplates"
       data-testid="account-accolades-card"
     >

@@ -55,5 +55,23 @@ describe('SectionHeader', () => {
     expect(screen.getByRole('heading', { name: 'My Shelf' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Clear Shelf' })).toBeInTheDocument();
   });
+
+  it('applies responsive mobile typography, flank line sizing, and vertical margins', () => {
+    const { container } = render(
+      <SectionHeader
+        title="Responsive Section"
+        subtitle="Subtitle text"
+      />
+    );
+
+    const heading = screen.getByRole('heading', { level: 2, name: 'Responsive Section' });
+    expect(heading).toHaveClass('text-2xl', 'sm:text-4xl');
+
+    const lines = container.querySelectorAll('[aria-hidden="true"]');
+    expect(lines[0]).toHaveClass('w-6', 'sm:w-12', 'shrink');
+
+    const rootContainer = container.firstElementChild;
+    expect(rootContainer).toHaveClass('mb-5', 'sm:mb-10');
+  });
 });
 

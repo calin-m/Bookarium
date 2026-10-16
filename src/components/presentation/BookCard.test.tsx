@@ -403,4 +403,16 @@ describe('BookCard component', () => {
     fireEvent.pointerDown(document.body);
     expect(screen.queryByText(/All Topics/i)).not.toBeInTheDocument();
   });
+
+  it('enforces min-w-0 on card root and inner metadata flex column to prevent mobile grid blowout', () => {
+    const book = mockBooks[0];
+    render(<BookCard book={book} />);
+
+    const card = screen.getByTestId(`book-card-${book.id}`);
+    expect(card).toHaveClass('min-w-0');
+
+    const title = screen.getByText('Pride and Prejudice');
+    const metadataColumn = title.closest('.min-w-0');
+    expect(metadataColumn).toBeInTheDocument();
+  });
 });

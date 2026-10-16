@@ -159,7 +159,7 @@ export const BookCard: React.FC<BookCardProps> = ({
     <Card
       ref={cardRef}
       variant="default"
-      className={`group relative flex flex-col h-full bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover rounded-xl overflow-hidden transition-[box-shadow,border-color,opacity,ring] duration-300 ease-out ${
+      className={`group relative flex flex-col h-full min-w-0 bg-card border border-border hover:border-primary/50 shadow-booksaw hover:shadow-booksaw-hover rounded-xl overflow-hidden transition-[box-shadow,border-color,opacity,ring] duration-300 ease-out ${
         isPreviewActive
           ? 'max-lg:opacity-100 max-lg:ring-2 max-lg:ring-primary/60 max-lg:border-primary/60 lg:opacity-0 lg:pointer-events-none'
           : 'opacity-100'
@@ -331,7 +331,7 @@ export const BookCard: React.FC<BookCardProps> = ({
       </div>
 
       {/* Book Metadata Content */}
-      <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between gap-2 sm:gap-3">
+      <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between gap-2 sm:gap-3 min-w-0">
         {/* Top Header: Title & Author */}
         <div>
           <h3 className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors text-balance">

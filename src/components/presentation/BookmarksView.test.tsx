@@ -511,6 +511,12 @@ describe('BookmarksView', () => {
     // Verify smart scroll was triggered
     expect(scrollToSpy).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
   });
+
+  it('applies tightened vertical padding on bookmarks-ledger-section', () => {
+    const { container } = renderWithClient(<BookmarksView />);
+    const section = container.querySelector('#bookmarks-ledger-section');
+    expect(section).toHaveClass('py-6', 'sm:py-12');
+  });
 });
 
 

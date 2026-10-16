@@ -105,6 +105,10 @@ describe('CollectionToolbar', () => {
     expect(select).toBeInTheDocument();
     expect(select).toHaveValue('recent');
 
+    const dropdown = screen.getByTestId('collection-sort-dropdown');
+    expect(dropdown).toHaveClass('flex-1', 'min-w-[105px]', 'max-w-[155px]', 'sm:flex-none', 'sm:min-w-[145px]', 'sm:max-w-[195px]');
+    expect(dropdown.parentElement).toHaveClass('flex-1', 'min-w-0', 'sm:flex-none');
+
     fireEvent.change(select, { target: { value: 'title_asc' } });
     expect(onSortChange).toHaveBeenCalledWith('title_asc');
   });

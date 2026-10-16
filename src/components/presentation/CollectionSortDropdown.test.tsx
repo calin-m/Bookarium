@@ -50,5 +50,18 @@ describe('CollectionSortDropdown', () => {
     render(<CollectionSortDropdown value="recent" onChange={vi.fn()} options={options} />);
     expect(screen.getByRole('combobox', { name: 'Sort items' })).toBeInTheDocument();
   });
+
+  it('applies responsive mobile flex classes to prevent toolbar overflow', () => {
+    render(<CollectionSortDropdown value="recent" onChange={vi.fn()} options={options} />);
+    const dropdown = screen.getByTestId('collection-sort-dropdown');
+    expect(dropdown).toHaveClass(
+      'flex-1',
+      'min-w-[105px]',
+      'max-w-[155px]',
+      'sm:flex-none',
+      'sm:min-w-[145px]',
+      'sm:max-w-[195px]'
+    );
+  });
 });
 

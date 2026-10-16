@@ -78,12 +78,14 @@
 
   html {
     overflow-y: scroll;
+    overflow-x: clip;
     scrollbar-gutter: stable;
   }
 
   body {
     @apply bg-background text-foreground transition-colors duration-theme antialiased selection:bg-amber-200 dark:selection:bg-amber-950/60;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: clip;
     scrollbar-gutter: stable;
   }
 

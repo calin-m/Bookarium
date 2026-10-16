@@ -385,7 +385,7 @@ function HomeContent() {
 
   return (
     <div
-      className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme touch-pan-y"
+      className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme touch-pan-y overflow-x-clip"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
@@ -400,7 +400,7 @@ function HomeContent() {
       />
 
       <main
-        className={`flex-1 transition-all duration-300 touch-pan-y ${isFilterDrawerOpen ? 'xl:pl-96' : 'xl:pl-0'}`}
+        className={`flex-1 transition-all duration-300 touch-pan-y overflow-x-clip ${isFilterDrawerOpen ? 'xl:pl-96' : 'xl:pl-0'}`}
       >
         {activeView === 'catalog' && (
           <HeroSearch
@@ -516,7 +516,7 @@ function HomeContent() {
               }}
             />
           ) : (
-            <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24 sm:pb-12">
+            <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-12 pb-24 sm:pb-12">
               {/* Booksaw Centered Section Header */}
               <SectionHeader
                 eyebrow={viewConfig.eyebrow}

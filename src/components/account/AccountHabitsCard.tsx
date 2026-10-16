@@ -96,7 +96,7 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
 
   return (
     <section
-      className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-5 shadow-booksaw relative overflow-hidden"
+      className="bg-card border border-border rounded-2xl p-4 sm:p-7 space-y-5 shadow-booksaw relative overflow-hidden"
       aria-label="Reading Habits and Annual Goal"
       data-testid="account-habits-card"
     >
@@ -186,7 +186,7 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
               Past 7 Days
             </span>
             <div
-              className="flex items-center gap-2 sm:gap-2.5"
+              className="flex items-center justify-between sm:justify-start gap-1 sm:gap-2.5"
               role="group"
               aria-label="7-day activity"
             >
@@ -333,7 +333,7 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
             <span className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider block mb-2.5">
               Canonical Milestone Ladder
             </span>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
               {CANONICAL_CHALLENGE_TIERS.map((tier) => {
                 const isAttained = currentCompleted >= tier.target;
                 const isCurrentTarget = !isAttained && nextTier.id === tier.id;

@@ -19,18 +19,18 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
   return (
     <div className={cn('flex items-center justify-center gap-3', className)}>
       {showFlankLines && (
-        <div className="h-[1px] w-12 bg-border shrink-0" aria-hidden="true" />
+        <div className="h-[1px] w-6 sm:w-12 bg-border shrink" aria-hidden="true" />
       )}
       <Component
         className={cn(
-          'text-3xl sm:text-4xl font-serif font-bold text-foreground tracking-tight text-center',
+          'text-2xl sm:text-4xl font-serif font-bold text-foreground tracking-tight text-center',
           titleClassName
         )}
       >
         {children}
       </Component>
       {showFlankLines && (
-        <div className="h-[1px] w-12 bg-border shrink-0" aria-hidden="true" />
+        <div className="h-[1px] w-6 sm:w-12 bg-border shrink" aria-hidden="true" />
       )}
     </div>
   );
@@ -58,7 +58,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   children,
 }) => {
   return (
-    <div className={cn('text-center max-w-2xl mx-auto mb-10 space-y-2', className)}>
+    <div className={cn('text-center max-w-2xl mx-auto mb-5 sm:mb-10 space-y-2', className)}>
       {eyebrow && (
         <div className="text-[11px] font-mono tracking-widest uppercase text-muted-foreground font-semibold">
           {eyebrow}

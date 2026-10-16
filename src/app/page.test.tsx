@@ -911,6 +911,19 @@ describe('Home page integration', () => {
       expect(paginationNav).toHaveTextContent(/Showing 1–24 of 28 items/i);
     });
   });
+
+  it('enforces overflow-x-clip on root and main containers and tightens catalog-section padding', () => {
+    const utils = renderHome();
+
+    const main = screen.getByRole('main');
+    expect(main).toHaveClass('overflow-x-clip');
+
+    const root = main.parentElement;
+    expect(root).toHaveClass('overflow-x-clip');
+
+    const catalogSection = utils.container.querySelector('#catalog-section');
+    expect(catalogSection).toHaveClass('pt-6', 'sm:pt-12');
+  });
 });
 
 

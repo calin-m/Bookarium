@@ -27,6 +27,7 @@ describe('AccountAccoladesCard', () => {
   it('renders card title, subtitle, and category tabs', () => {
     render(<AccountAccoladesCard />);
 
+    expect(screen.getByTestId('account-accolades-card')).toHaveClass('p-4', 'sm:p-7');
     expect(screen.getByText('Ex-Libris Bookplates & Accolades')).toBeInTheDocument();
     expect(screen.getByText(/Classical honors for scholarly streaks/i)).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'All Bookplates' })).toBeInTheDocument();

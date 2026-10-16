@@ -57,7 +57,10 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(screen.getByText('reader@bookarium.test')).toBeInTheDocument();
     expect(screen.getByText('January 2026')).toBeInTheDocument();
     expect(screen.getByText('Verified Reader')).toBeInTheDocument();
-    expect(screen.getByTestId('identity-ribbon-stat-strip')).toBeInTheDocument();
+    const statStrip = screen.getByTestId('identity-ribbon-stat-strip');
+    expect(statStrip).toBeInTheDocument();
+    expect(statStrip).toHaveClass('grid', 'grid-cols-3', 'gap-1.5', 'sm:flex', 'sm:flex-wrap');
+    expect(statStrip).not.toHaveClass('overflow-x-auto');
     expect(screen.getByText('🔥 7d Streak')).toBeInTheDocument();
 
     // Toggle quick name editor

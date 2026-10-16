@@ -16,6 +16,7 @@ describe('AccountHabitsCard', () => {
 
     render(<AccountHabitsCard completedBooksCount={5} />);
 
+    expect(screen.getByTestId('account-habits-card')).toHaveClass('p-4', 'sm:p-7');
     expect(screen.getByRole('heading', { level: 2, name: /Reading Habits & Challenges/i })).toBeInTheDocument();
     expect(screen.getByTestId('reading-streak-metric')).toBeInTheDocument();
     expect(screen.getByTestId('reading-time-metric')).toBeInTheDocument();
@@ -30,13 +31,14 @@ describe('AccountHabitsCard', () => {
     expect(goalMetric).toHaveTextContent(/Bibliophile Novice in sight/i);
   });
 
-  it('renders 7-day activity indicators in the streak strip', () => {
+  it('renders 7-day activity indicators in the streak strip with even mobile spacing', () => {
     useHabitsStore.getState().recordDailyActivity('2026-09-06');
 
     render(<AccountHabitsCard completedBooksCount={0} />);
 
     const weekGroup = screen.getByRole('group', { name: '7-day activity' });
     expect(weekGroup).toBeInTheDocument();
+    expect(weekGroup).toHaveClass('justify-between', 'sm:justify-start', 'gap-1', 'sm:gap-2.5');
     expect(weekGroup.children.length).toBe(7);
   });
 
@@ -76,6 +78,8 @@ describe('AccountHabitsCard', () => {
     render(<AccountHabitsCard completedBooksCount={0} />);
 
     expect(screen.getByText('Canonical Milestone Ladder')).toBeInTheDocument();
+    const ladderGrid = screen.getByTestId('milestone-tier-bibliophile-novice').parentElement;
+    expect(ladderGrid).toHaveClass('grid', 'grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-4');
     expect(screen.getByTestId('milestone-tier-bibliophile-novice')).toBeInTheDocument();
     expect(screen.getByTestId('milestone-tier-canonical-scholar')).toBeInTheDocument();
     expect(screen.getByTestId('milestone-tier-master-of-the-canon')).toBeInTheDocument();

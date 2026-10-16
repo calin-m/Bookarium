@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 15 Oct 2026 18:01:44 GMT  
+**Last Generated**: Fri, 16 Oct 2026 11:28:36 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 178 passed  
-**Total Verified Tests**: 1703 passed  
+**Total Verified Tests**: 1710 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **178/178 test suites passed** (1703 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **178/178 test suites passed** (1710 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 55 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.49%** (8122/8877) — *Target: $ge$ 80%*
+- **Lines**: **91.5%** (8123/8877) — *Target: $ge$ 80%*
 - **Statements**: **89.99%** (8813/9793) — *Target: $ge$ 80%*
 - **Functions**: **87.86%** (1904/2167) — *Target: $ge$ 80%*
 - **Branches**: **80.32%** (7824/9740) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (178 Suites / 1703 Tests)
+## 🧪 Comprehensive Test Suite Catalog (178 Suites / 1710 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 163 Tests)
+### 🚀 App Routes & Pages (14 Suites · 164 Tests)
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
@@ -166,7 +166,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (29 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (30 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -197,6 +197,7 @@
 - ✔ `sorts saved books on Bookshelf by title ascending and author descending`
 - ✔ `renders sort dropdown, volume badge, and pagination on Favorites when exceeding 24 items`
 - ✔ `resets pagination page to 1 when collection search query changes`
+- ✔ `enforces overflow-x-clip on root and main containers and tightens catalog-section padding`
 
 </details>
 
@@ -283,7 +284,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 353 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 357 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -313,7 +314,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (20 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -335,11 +336,12 @@
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is protected in UK`
 - ✔ `applies opacity and grayscale to cover image when book is restricted`
 - ✔ `opens unconstrained popover when clicking +N tag and invokes onTopicClick`
+- ✔ `enforces min-w-0 on card root and inner metadata flex column to prevent mobile grid blowout`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `should render loading skeletons when isLoading is true`
 - ✔ `should render error state with retry button`
@@ -350,6 +352,7 @@
 - ✔ `applies responsive active preview classes when activePreviewBookId matches`
 - ✔ `omits personal shelf management buttons in shelf view when in catalog mode`
 - ✔ `renders personal shelf management buttons in shelf view when activeView is bookshelf`
+- ✔ `applies tightened 2-column mobile grid gap classes to prevent grid blowout`
 
 </details>
 
@@ -375,7 +378,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
@@ -392,6 +395,7 @@
 - ✔ `renders completed volume with 100% progress and Read Again action`
 - ✔ `renders sort dropdown and allows changing sort order`
 - ✔ `renders pagination when volumes exceed 12 items and navigates between pages`
+- ✔ `applies tightened vertical padding on bookmarks-ledger-section`
 
 </details>
 
@@ -523,11 +527,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionSortDropdown.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionSortDropdown.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders all options with currently selected value`
 - ✔ `calls onChange with new value when an option is chosen`
 - ✔ `uses default ariaLabel when not explicitly provided`
+- ✔ `applies responsive mobile flex classes to prevent toolbar overflow`
 
 </details>
 
@@ -2208,7 +2213,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (53 Suites · 261 Tests)
+### 🧩 UI Primitives & Motion (53 Suites · 263 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -2219,7 +2224,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top`
 - ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
@@ -2237,6 +2242,7 @@
 - ✔ `applies animate-view-slide-right when ?dir=backward is present and settles on animationEnd`
 - ✔ `swipes left on Account to wrap forward to Catalog with ?dir=forward`
 - ✔ `swipes right on Account to return backward to Bookmarks with ?dir=backward`
+- ✔ `enforces overflow-x-clip on root and main layout containers to prevent mobile swipe horizontal overflow`
 
 </details>
 
@@ -2384,7 +2390,7 @@
 <summary><b><code>src/components/account/AccountHabitsCard.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders reading habits card with streak, duration, and canonical challenge horizontal strips`
-- ✔ `renders 7-day activity indicators in the streak strip`
+- ✔ `renders 7-day activity indicators in the streak strip with even mobile spacing`
 - ✔ `displays today 5-minute reading logged indicator when read today`
 - ✔ `displays remaining streak progress prompt when partially read today`
 - ✔ `renders dual immersion breakdown badges for reading and listening time`
@@ -2647,12 +2653,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/SectionHeader.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/ui/SectionHeader.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders title text inside default h2 with decorative flank lines`
 - ✔ `supports custom semantic heading tag and hiding flank lines`
 - ✔ `renders eyebrow, title, and subtitle correctly`
 - ✔ `renders optional children like buttons or badges`
+- ✔ `applies responsive mobile typography, flank line sizing, and vertical margins`
 
 </details>
 

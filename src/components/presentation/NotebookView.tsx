@@ -510,7 +510,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   };
 
   return (
-    <section id="literary-notebook-section" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" aria-label="Literary Commonplace Notebook">
+    <section id="literary-notebook-section" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12" aria-label="Literary Commonplace Notebook">
       {/* Booksaw Centered Section Header */}
         <SectionHeader
           eyebrow="PERSONAL COMMONPLACE NOTEBOOK • MARGINALIA & REFLECTIONS"
@@ -594,8 +594,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden min-[420px]:inline">By </span>
-                  <span className="hidden min-[380px]:inline">Book</span>
+                  <span className="hidden sm:inline">By Book</span>
                 </button>
                 <button
                   type="button"
@@ -610,8 +609,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                   }`}
                 >
                   <Clock className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden min-[420px]:inline">Chronological</span>
-                  <span className="hidden min-[380px]:inline min-[420px]:hidden">Chrono</span>
+                  <span className="hidden sm:inline">Chronological</span>
                 </button>
               </div>
             }

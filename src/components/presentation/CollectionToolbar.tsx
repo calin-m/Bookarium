@@ -125,7 +125,7 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
       <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 min-w-0">
         {/* Sort Dropdown */}
         {hasSort && (
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 sm:flex-none">
             <span className="hidden sm:inline text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
               Sort:
             </span>

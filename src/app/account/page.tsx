@@ -452,7 +452,7 @@ function AccountDashboardContent() {
 
   return (
     <div
-      className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme touch-pan-y"
+      className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme touch-pan-y overflow-x-clip"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
@@ -466,7 +466,7 @@ function AccountDashboardContent() {
       />
 
       <main
-        className={`flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6 touch-pan-y ${
+        className={`flex-1 w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6 touch-pan-y overflow-x-clip ${
           isTransitioning
             ? swipeDirection === 'forward'
               ? 'animate-view-slide-left'
@@ -641,51 +641,57 @@ function AccountDashboardContent() {
                 <div
                   role="tablist"
                   aria-label="Habits and library sub-sections"
-                  className="inline-flex items-center gap-1 p-1 rounded-xl bg-card border border-border shadow-xs"
+                  className="w-full sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-card border border-border shadow-xs"
                 >
                   <button
                     type="button"
                     role="tab"
                     aria-selected={habitsSubTab === 'streaks'}
+                    aria-label="Streaks & Challenge"
                     onClick={() => setHabitsSubTab('streaks')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    className={`flex-1 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                       habitsSubTab === 'streaks'
                         ? 'bg-primary/10 text-primary border border-primary/30'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    <Flame className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Streaks & Challenge</span>
+                    <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span className="sm:hidden">Streaks</span>
+                    <span className="hidden sm:inline">Streaks & Challenge</span>
                   </button>
 
                   <button
                     type="button"
                     role="tab"
                     aria-selected={habitsSubTab === 'accolades'}
+                    aria-label="Accolades Compendium"
                     onClick={() => setHabitsSubTab('accolades')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    className={`flex-1 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                       habitsSubTab === 'accolades'
                         ? 'bg-primary/10 text-primary border border-primary/30'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    <Award className="w-3.5 h-3.5 text-primary" />
-                    <span>Accolades Compendium</span>
+                    <Award className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="sm:hidden">Accolades</span>
+                    <span className="hidden sm:inline">Accolades Compendium</span>
                   </button>
 
                   <button
                     type="button"
                     role="tab"
                     aria-selected={habitsSubTab === 'library'}
+                    aria-label="Library Breakdown"
                     onClick={() => setHabitsSubTab('library')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    className={`flex-1 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                       habitsSubTab === 'library'
                         ? 'bg-primary/10 text-primary border border-primary/30'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    <Library className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>Library Breakdown</span>
+                    <Library className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span className="sm:hidden">Library</span>
+                    <span className="hidden sm:inline">Library Breakdown</span>
                   </button>
                 </div>
               </div>
