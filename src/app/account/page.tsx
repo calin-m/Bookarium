@@ -44,6 +44,8 @@ import {
 import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
 import type { NavViewId } from '@/config/views.config';
 import { ROUTES } from '@/config/routes';
+import type { User } from '@supabase/supabase-js';
+import type { Profile } from '@/types/database.types';
 
 type AccountTabId = 'habits' | 'profile' | 'symposiums' | 'preferences' | 'security';
 type HabitsSubTabId = 'streaks' | 'accolades';
@@ -144,7 +146,7 @@ function AccountDashboardContent() {
           email: 'scholar@bookarium.test',
           user_metadata: { display_name: 'Scholar Reader' },
           created_at: '2024-01-01T00:00:00Z',
-        } as any)
+        } as unknown as User)
       : null);
 
   const profile =
@@ -154,7 +156,7 @@ function AccountDashboardContent() {
           id: 'preview-scholar',
           display_name: 'Scholar Reader',
           created_at: '2024-01-01T00:00:00Z',
-        } as any)
+        } as unknown as Profile)
       : null);
   const { savedCount, favoriteCount, cloudBookshelves, bookStatuses } =
     useHydratedBookshelf();

@@ -104,7 +104,8 @@ function getAllTestFiles(dir, fileList = []) {
 }
 
 function indexTestSuites() {
-  const testFiles = getAllTestFiles(srcDir);
+  const scriptsDir = path.join(rootDir, 'scripts');
+  const testFiles = [...getAllTestFiles(srcDir), ...getAllTestFiles(scriptsDir)];
   const domainMap = {
     '🚀 App Routes & Pages': [],
     '🎨 Catalog & Presentation': [],
@@ -167,15 +168,7 @@ function indexTestSuites() {
       tests: testMatches,
     };
 
-    if (
-      relPath.startsWith('src/app/api') ||
-      relPath.startsWith('src/app/auth') ||
-      relPath.startsWith('src/app/page') ||
-      relPath.startsWith('src/app/profile') ||
-      relPath.startsWith('src/app/read') ||
-      relPath.startsWith('src/app/layout') ||
-      relPath.startsWith('src/app/providers')
-    ) {
+    if (relPath.startsWith('src/app/')) {
       domainMap['🚀 App Routes & Pages'].push(suiteInfo);
     } else if (relPath.startsWith('src/components/presentation')) {
       domainMap['🎨 Catalog & Presentation'].push(suiteInfo);
@@ -185,7 +178,7 @@ function indexTestSuites() {
       domainMap['🔐 Authentication & Security'].push(suiteInfo);
     } else if (relPath.startsWith('src/stores')) {
       domainMap['⚡ Zustand State Stores'].push(suiteInfo);
-    } else if (relPath.startsWith('src/lib')) {
+    } else if (relPath.startsWith('src/lib') || relPath.startsWith('scripts/')) {
       domainMap['📚 Gutenberg Parsers & Metadata'].push(suiteInfo);
     } else if (relPath.startsWith('src/hooks')) {
       domainMap['🔄 Hooks & React Query'].push(suiteInfo);
@@ -238,6 +231,10 @@ if (fs.existsSync(readmePath)) {
   readme = readme.replace(
     /complete index of all \d+ tests across \d+ test suites\./,
     `complete index of all ${totalTestCount} tests across ${totalSuitesCount} test suites.`
+  );
+  readme = readme.replace(
+    /\d+ validated ADRs \(ADR-001 through ADR-\d+\)/,
+    `${adrCount} validated ADRs (ADR-001 through ADR-${String(adrCount).padStart(3, '0')})`
   );
   if (readme !== originalReadme) {
     fs.writeFileSync(readmePath, readme, 'utf-8');
@@ -312,7 +309,7 @@ let mdContent = `# Quality Audit & Test Suite Catalog Report
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | \`docs/ARCHITECTURE.md\`, \`CHANGELOG.md\`, & \`docs/QUALITY_AUDIT_REPORT.md\` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | ${adrCount} Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ${eslintErrors === 0 && knipIssues.length === 0 ? '✅ Passed' : '❌ Failed'} | ${eslintErrors} lint errors, ${knipIssues.length} unused exports / dead files |
-| **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
+| **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
 ---
 

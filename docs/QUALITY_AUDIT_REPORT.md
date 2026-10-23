@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 23 Oct 2026 13:26:13 GMT  
+**Last Generated**: Fri, 23 Oct 2026 15:55:24 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 178 passed  
-**Total Verified Tests**: 1708 passed  
+**Total Test Suites**: 184 passed  
+**Total Verified Tests**: 1746 passed  
 
 ---
 
@@ -14,27 +14,58 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **178/178 test suites passed** (1708 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **184/184 test suites passed** (1746 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 57 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 58 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
-| **Pass 7** | Next.js Production Build | ✅ Passed | Turbopack production bundle compiled cleanly |
+| **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
 ---
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **91.49%** (8082/8833) — *Target: $ge$ 80%*
-- **Statements**: **89.95%** (8771/9750) — *Target: $ge$ 80%*
-- **Functions**: **87.76%** (1901/2166) — *Target: $ge$ 80%*
-- **Branches**: **80.21%** (7825/9755) — *Target: $ge$ 80%*
+- **Lines**: **92.51%** (8316/8989) — *Target: $ge$ 80%*
+- **Statements**: **90.98%** (9028/9923) — *Target: $ge$ 80%*
+- **Functions**: **88.96%** (1967/2211) — *Target: $ge$ 80%*
+- **Branches**: **81.2%** (8023/9880) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (178 Suites / 1708 Tests)
+## 🧪 Comprehensive Test Suite Catalog (184 Suites / 1746 Tests)
 
-### 🚀 App Routes & Pages (14 Suites · 164 Tests)
+### 🚀 App Routes & Pages (26 Suites · 221 Tests)
+
+<details>
+<summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `exposes accurate account metadata and blocks search engine indexing`
+- ✔ `renders children transparently without modifying DOM tree`
+
+</details>
+
+<details>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (17 tests)</summary>
+
+- ✔ `renders guest prompt when unauthenticated and handles scroll to top`
+- ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
+- ✔ `renders segmented sub-tabs navigation and switches active tabs`
+- ✔ `supports keyboard navigation across sub-tabs with ArrowRight and ArrowLeft`
+- ✔ `initializes active tab from URL search parameters (?tab=preferences) and handles tab delete when switching back to habits`
+- ✔ `falls back to habits tab when search param has invalid value`
+- ✔ `handles user preferences: atmosphere themes and catalog sticky scroll navigation`
+- ✔ `handles password security lifecycle: mismatch validation, strong password generation, and password update`
+- ✔ `handles account deletion modal lifecycle: opening, cancellation, submission, and confirmation dismissal`
+- ✔ `handles resending email verification on unverified account`
+- ✔ `navigates back to bookmarks when swiping right on mobile`
+- ✔ `renders Public Scholar Profile section and handles saving public preferences`
+- ✔ `applies animate-view-slide-left when ?dir=forward is present and settles on animationEnd`
+- ✔ `applies animate-view-slide-right when ?dir=backward is present and settles on animationEnd`
+- ✔ `swipes left on Account to wrap forward to Catalog with ?dir=forward`
+- ✔ `swipes right on Account to return backward to Bookmarks with ?dir=backward`
+- ✔ `enforces overflow-x-clip on root and main layout containers and solid border-border on active Tier-2 Habits sub-tabs`
+
+</details>
 
 <details>
 <summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
@@ -156,12 +187,60 @@
 </details>
 
 <details>
+<summary><b><code>src/app/copyright/page.test.tsx</code></b> (10 tests)</summary>
+
+- ✔ `renders page header, badge, and back link to catalog`
+- ✔ `renders Section 1: 100% CC0 & Public Domain Manifesto`
+- ✔ `renders Section 2: Multi-Jurisdiction Legal Matrix with Berne Convention rules`
+- ✔ `renders Section 3: Project Gutenberg Compliance and policy links`
+- ✔ `renders Section 4: HTTP 451, geolocation, and fail-closed heuristics`
+- ✔ `renders Section 5: Notice & Takedown Protocol with GitHub tracker fallback when form is unconfigured`
+- ✔ `renders Section 5: Notice & Takedown Protocol with confidential intake portal when configured`
+- ✔ `renders Section 6: Open Cultural Preservation Partners and footer`
+- ✔ `handles navigation actions from Navbar`
+- ✔ `renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top`
+
+</details>
+
+<details>
+<summary><b><code>src/app/error.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders heading, description, and action buttons`
+- ✔ `renders error digest when provided`
+- ✔ `calls reset handler when Try Again button is clicked`
+
+</details>
+
+<details>
+<summary><b><code>src/app/global-error.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders critical error message and reset button`
+- ✔ `displays error digest when available`
+
+</details>
+
+<details>
 <summary><b><code>src/app/layout.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `should expose valid metadata with OpenGraph, Twitter, and canonical alternates`
 - ✔ `should render children within html structure alongside analytics and performance telemetry`
 - ✔ `should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities`
 - ✔ `should gracefully handle cookie exception and fallback to US`
+
+</details>
+
+<details>
+<summary><b><code>src/app/manifest.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `returns valid metadata complying with PWA standards`
+- ✔ `includes required icon sizes and purposes for desktop and mobile installation`
+
+</details>
+
+<details>
+<summary><b><code>src/app/not-found.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders heading, literary quote, and navigation links`
 
 </details>
 
@@ -198,6 +277,25 @@
 - ✔ `renders sort dropdown, volume badge, and pagination on Favorites when exceeding 24 items`
 - ✔ `resets pagination page to 1 when collection search query changes`
 - ✔ `enforces overflow-x-clip on root and main containers and tightens catalog-section padding`
+
+</details>
+
+<details>
+<summary><b><code>src/app/privacy/layout.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `exposes accurate privacy metadata and canonical url`
+- ✔ `renders children transparently without modifying DOM tree`
+
+</details>
+
+<details>
+<summary><b><code>src/app/privacy/page.test.tsx</code></b> (5 tests)</summary>
+
+- ✔ `renders page header and architectural manifesto with solid border-border`
+- ✔ `renders all core GDPR and ePrivacy disclosure sections`
+- ✔ `provides working navigation links to catalog and account settings`
+- ✔ `handles Navbar view change callback by navigating via router`
+- ✔ `renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top`
 
 </details>
 
@@ -284,7 +382,38 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 358 Tests)
+<details>
+<summary><b><code>src/app/robots.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `returns valid crawler rules and sitemap location`
+- ✔ `allows public canonical pages while strictly disallowing query parameter search crawling and private routes`
+
+</details>
+
+<details>
+<summary><b><code>src/app/sitemap.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `generates canonical sitemap entries for root and privacy routes`
+- ✔ `indexes featured public domain classic books`
+- ✔ `provides valid timestamps across all entries`
+
+</details>
+
+<details>
+<summary><b><code>src/app/u/[username]/page.test.tsx</code></b> (8 tests)</summary>
+
+- ✔ `renders public scholar profile with habits, accolades, and bookshelves`
+- ✔ `renders PrivateProfileNotice when profile does not exist in Supabase`
+- ✔ `renders PrivateProfileNotice when profile has is_public = false`
+- ✔ `resolves authenticated user profile from local store fallback when viewing own public profile`
+- ✔ `filters out private bookshelves and respects show_saved_books and show_custom_shelves toggles`
+- ✔ `handles empty username parameter and Navbar view navigation cleanly`
+- ✔ `resolves array username parameter, computes streak fallbacks from active_dates, and uses local store shelf fallbacks when viewing own profile`
+- ✔ `falls back to savedBooks General shelf when viewing own profile with no cloud shelves and handles Supabase query exceptions cleanly`
+
+</details>
+
+### 🎨 Catalog & Presentation (28 Suites · 359 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -686,11 +815,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (22 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (23 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
 - ✔ `triggers onViewChange with notebook when Notebook tab is clicked`
+- ✔ `falls back to router.push when onViewChange is not provided`
 - ✔ `applies active styling when activeView is notebook`
 - ✔ `triggers onViewChange with bookmarks when Bookmarks tab is clicked`
 - ✔ `applies active styling when activeView is bookmarks`
@@ -812,7 +942,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 150 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 152 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -874,7 +1004,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders children when open`
 - ✔ `does not render when isOpen is false`
@@ -884,6 +1014,8 @@
 - ✔ `applies min-h-0 and overflow-hidden to the panel by default`
 - ✔ `allows custom className to override overflow using cn/twMerge`
 - ✔ `renders mobile grab handle and bottom sheet responsive classes`
+- ✔ `traps focus with Tab and Shift+Tab within the drawer panel`
+- ✔ `restores focus to previous element when unmounted`
 
 </details>
 
@@ -983,12 +1115,12 @@
 - ✔ `renders categorized optgroups for Natural and Standard voices with quality badge`
 - ✔ `allows selecting speed rates from the popover menu`
 - ✔ `calls onClose when clicking close button`
-- ✔ `adapts properly to sepia and dark themes`
+- ✔ `adapts properly to sepia and dark themes across playing and idle states`
 - ✔ `renders with mobile-responsive positioning and WCAG touch target classes`
-- ✔ `correctly uses UseReaderSpeechReturn facade prop when provided`
+- ✔ `correctly uses UseReaderSpeechReturn facade prop for play, pause, resume, skip, rate, and voice callbacks`
 - ✔ `renders expanded card by default and allows manual toggling to minimized mini-pill and back with isolated DOM surfaces`
 - ✔ `automatically enters minimized mode and docks at the top when isDrawerOpen is true`
-- ✔ `handles playback toggling and skipping inside minimized mode`
+- ✔ `handles playback toggling, pause, themes, and empty sentence counts inside minimized mode`
 
 </details>
 
@@ -1066,10 +1198,10 @@
 
 </details>
 
-### 🔐 Authentication & Security (2 Suites · 19 Tests)
+### 🔐 Authentication & Security (2 Suites · 23 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
@@ -1086,6 +1218,10 @@
 - ✔ `navigates from sign in view to forgot password view`
 - ✔ `submits password reset request and displays check email confirmation`
 - ✔ `navigates back to sign in from confirmation screen`
+- ✔ `closes modal on Escape key press`
+- ✔ `binds dynamic unique useId to dialog header`
+- ✔ `traps Tab and Shift+Tab focus within the auth dialog card`
+- ✔ `restores focus to previous active element when unmounted`
 
 </details>
 
@@ -1318,7 +1454,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (33 Suites · 350 Tests)
+### 📚 Gutenberg Parsers & Metadata (37 Suites · 396 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1377,6 +1513,17 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/backup-validator.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `rejects non-object inputs and arrays`
+- ✔ `rejects payloads containing prototype pollution keys at root or nested levels`
+- ✔ `rejects unrecognized application names and missing library sections`
+- ✔ `validates individual book items, custom shelves, readingQueue, annotations, and favorite lists`
+- ✔ `normalizes valid backup payloads, sanitizes ratings/statuses, and falls back to likedBookIds`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/book-metadata.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `strips Gutenberg preamble prefixes cleanly`
@@ -1419,6 +1566,15 @@
 - ✔ `safely falls back to Classics on undefined, null, or empty inputs`
 - ✔ `guarantees that every resolved badge never contains ellipsis and is <= 14 chars`
 - ✔ `strips administrative Category and Banned Books prefixes from unabridged tags`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `applies deterministic item ordering when order method is single-level or chainable`
+- ✔ `flushes outbox actions and retains only actions that fail`
+- ✔ `executes custom shelf creation, rename, privacy toggle, move, migration, and deletion`
 
 </details>
 
@@ -1679,7 +1835,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/offline-storage.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/lib/offline-storage.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `saves book text to offline storage`
 - ✔ `retrieves offline book text correctly`
@@ -1691,6 +1847,12 @@
 - ✔ `clears all offline books`
 - ✔ `returns storage quota metrics from navigator.storage.estimate`
 - ✔ `evicts oldest downloaded books first to free requested space`
+- ✔ `returns null from getStorageQuota when storage API is unavailable or throws`
+- ✔ `returns 0 freed bytes when offline store is empty or eviction fails`
+- ✔ `triggers pre-emptive eviction during saveOfflineBook when storage buffer is low`
+- ✔ `recovers from QuotaExceededError by evicting emergency space and retrying`
+- ✔ `throws error when QuotaExceededError cannot free sufficient space`
+- ✔ `returns empty array from getOfflineBookIds when store error occurs`
 
 </details>
 
@@ -1868,10 +2030,54 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 222 Tests)
+<details>
+<summary><b><code>scripts/ingest-translations.test.ts</code></b> (14 tests)</summary>
+
+- ✔ `normalizes common language names and variants to ISO codes`
+- ✔ `extracts primary identifying surname across various international conventions`
+- ✔ `identifies and quarantines omnibus multi-work collections`
+- ✔ `strips subtitles and volume numbers to reveal significant keywords`
+- ✔ `blocks disparate authors (Zero False Positive Enforcement)`
+- ✔ `permits authentic translations sharing primary authors or translators`
+- ✔ `rejects different works by the same prolific author`
+- ✔ `matches authentic translations via cognates or subjects`
+- ✔ `quarantines omnibuses even if author matches (Defense 2)`
+- ✔ `loads offline backup snapshot successfully`
+- ✔ `generates atomic transaction with foreign key safe join on public.books`
+- ✔ `returns all candidate IDs when supabase client is not provided`
+- ✔ `filters out book IDs that do not exist in public.books table`
+- ✔ `gracefully falls back to candidates when database query fails`
+
+</details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (18 tests)</summary>
+
+- ✔ `parses empty or missing strings safely`
+- ✔ `parses single author with standard birth and death years`
+- ✔ `parses multiple authors separated by semicolons`
+- ✔ `correctly categorizes translators based on role annotations`
+- ✔ `correctly ignores illustrators and visual contributors from authors array`
+- ✔ `handles BCE year dates correctly`
+- ✔ `handles death-only notation`
+- ✔ `handles birth-only notation with b., born, or trailing hyphen`
+- ✔ `safely parses authors with single-letter initials without mistaking them for birth years`
+- ✔ `handles authors without any lifespan dates`
+- ✔ `returns nulls for empty inputs`
+- ✔ `calculates min birth and max death spanning authors and translators`
+- ✔ `constructs deterministic Gutenberg mirror endpoints for book id`
+- ✔ `returns null for malformed or non-text rows`
+- ✔ `normalizes valid Gutenberg CSV row into complete Book schema object`
+- ✔ `normalizes multi-line and whitespace title strings cleanly`
+- ✔ `successfully upserts a batch when Supabase returns no error`
+- ✔ `adaptively splits the batch in half when encountering statement timeout`
+
+</details>
+
+### 🔄 Hooks & React Query (22 Suites · 226 Tests)
+
+<details>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
@@ -1881,6 +2087,10 @@
 - ✔ `should throw LegalRestrictionError when proxy returns HTTP 451`
 - ✔ `should allow non-US international visitors to read verified public domain books from offline cache`
 - ✔ `should block non-US visitors with LegalRestrictionError if cached offline book is protected in their country`
+- ✔ `falls back to useReaderStore or useBookshelfStore when cached book authors are omitted from offline record`
+- ✔ `allows offline fallback when device is offline without author metadata`
+- ✔ `falls back to offline storage when upstream fetch fails with network error`
+- ✔ `throws an error when upstream response returns empty text`
 
 </details>
 
@@ -2224,133 +2434,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 256 Tests)
-
-<details>
-<summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
-
-- ✔ `exposes accurate account metadata and blocks search engine indexing`
-- ✔ `renders children transparently without modifying DOM tree`
-
-</details>
-
-<details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (17 tests)</summary>
-
-- ✔ `renders guest prompt when unauthenticated and handles scroll to top`
-- ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
-- ✔ `renders segmented sub-tabs navigation and switches active tabs`
-- ✔ `supports keyboard navigation across sub-tabs with ArrowRight and ArrowLeft`
-- ✔ `initializes active tab from URL search parameters (?tab=preferences) and handles tab delete when switching back to habits`
-- ✔ `falls back to habits tab when search param has invalid value`
-- ✔ `handles user preferences: atmosphere themes and catalog sticky scroll navigation`
-- ✔ `handles password security lifecycle: mismatch validation, strong password generation, and password update`
-- ✔ `handles account deletion modal lifecycle: opening, cancellation, submission, and confirmation dismissal`
-- ✔ `handles resending email verification on unverified account`
-- ✔ `navigates back to bookmarks when swiping right on mobile`
-- ✔ `renders Public Scholar Profile section and handles saving public preferences`
-- ✔ `applies animate-view-slide-left when ?dir=forward is present and settles on animationEnd`
-- ✔ `applies animate-view-slide-right when ?dir=backward is present and settles on animationEnd`
-- ✔ `swipes left on Account to wrap forward to Catalog with ?dir=forward`
-- ✔ `swipes right on Account to return backward to Bookmarks with ?dir=backward`
-- ✔ `enforces overflow-x-clip on root and main layout containers and solid border-border on active Tier-2 Habits sub-tabs`
-
-</details>
-
-<details>
-<summary><b><code>src/app/copyright/page.test.tsx</code></b> (10 tests)</summary>
-
-- ✔ `renders page header, badge, and back link to catalog`
-- ✔ `renders Section 1: 100% CC0 & Public Domain Manifesto`
-- ✔ `renders Section 2: Multi-Jurisdiction Legal Matrix with Berne Convention rules`
-- ✔ `renders Section 3: Project Gutenberg Compliance and policy links`
-- ✔ `renders Section 4: HTTP 451, geolocation, and fail-closed heuristics`
-- ✔ `renders Section 5: Notice & Takedown Protocol with GitHub tracker fallback when form is unconfigured`
-- ✔ `renders Section 5: Notice & Takedown Protocol with confidential intake portal when configured`
-- ✔ `renders Section 6: Open Cultural Preservation Partners and footer`
-- ✔ `handles navigation actions from Navbar`
-- ✔ `renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top`
-
-</details>
-
-<details>
-<summary><b><code>src/app/error.test.tsx</code></b> (3 tests)</summary>
-
-- ✔ `renders heading, description, and action buttons`
-- ✔ `renders error digest when provided`
-- ✔ `calls reset handler when Try Again button is clicked`
-
-</details>
-
-<details>
-<summary><b><code>src/app/global-error.test.tsx</code></b> (2 tests)</summary>
-
-- ✔ `renders critical error message and reset button`
-- ✔ `displays error digest when available`
-
-</details>
-
-<details>
-<summary><b><code>src/app/manifest.test.ts</code></b> (2 tests)</summary>
-
-- ✔ `returns valid metadata complying with PWA standards`
-- ✔ `includes required icon sizes and purposes for desktop and mobile installation`
-
-</details>
-
-<details>
-<summary><b><code>src/app/not-found.test.tsx</code></b> (1 tests)</summary>
-
-- ✔ `renders heading, literary quote, and navigation links`
-
-</details>
-
-<details>
-<summary><b><code>src/app/privacy/layout.test.tsx</code></b> (2 tests)</summary>
-
-- ✔ `exposes accurate privacy metadata and canonical url`
-- ✔ `renders children transparently without modifying DOM tree`
-
-</details>
-
-<details>
-<summary><b><code>src/app/privacy/page.test.tsx</code></b> (5 tests)</summary>
-
-- ✔ `renders page header and architectural manifesto with solid border-border`
-- ✔ `renders all core GDPR and ePrivacy disclosure sections`
-- ✔ `provides working navigation links to catalog and account settings`
-- ✔ `handles Navbar view change callback by navigating via router`
-- ✔ `renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top`
-
-</details>
-
-<details>
-<summary><b><code>src/app/robots.test.ts</code></b> (2 tests)</summary>
-
-- ✔ `returns valid crawler rules and sitemap location`
-- ✔ `allows public canonical pages while strictly disallowing query parameter search crawling and private routes`
-
-</details>
-
-<details>
-<summary><b><code>src/app/sitemap.test.ts</code></b> (3 tests)</summary>
-
-- ✔ `generates canonical sitemap entries for root and privacy routes`
-- ✔ `indexes featured public domain classic books`
-- ✔ `provides valid timestamps across all entries`
-
-</details>
-
-<details>
-<summary><b><code>src/app/u/[username]/page.test.tsx</code></b> (5 tests)</summary>
-
-- ✔ `renders public scholar profile with habits, accolades, and bookshelves`
-- ✔ `renders PrivateProfileNotice when profile does not exist in Supabase`
-- ✔ `renders PrivateProfileNotice when profile has is_public = false`
-- ✔ `resolves authenticated user profile from local store fallback when viewing own public profile`
-- ✔ `filters out private bookshelves and respects show_saved_books and show_custom_shelves toggles`
-
-</details>
+### 🧩 UI Primitives & Motion (42 Suites · 212 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2425,6 +2509,21 @@
 </details>
 
 <details>
+<summary><b><code>src/components/account/AccountNarrationSubPanel.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders speed presets, voice select, and assistance toggles when active`
+- ✔ `applies hidden class when isActive is false and omits Reset button if callback is undefined`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountPortabilitySubPanel.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders export and import buttons, triggers file picker, and validates valid/invalid backup files`
+
+</details>
+
+<details>
 <summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
@@ -2478,9 +2577,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountSymposiumSection.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/account/AccountSymposiumSection.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `switches between Active Symposiums, Reader Circle, and Invitations sub-tabs`
+- ✔ `renders empty states when there are zero symposiums, circle fellows, or invitations`
+- ✔ `handles fellow invitation form submission with error and success banners`
+- ✔ `allows declining an incoming circle invitation`
 
 </details>
 
@@ -2616,13 +2718,17 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/Modal.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/ui/Modal.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `should not render anything when isOpen is false`
 - ✔ `should render modal content when isOpen is true`
 - ✔ `should trigger onClose when clicking backdrop or pressing Escape`
 - ✔ `supports custom backdropClassName to override default dimming`
 - ✔ `portals modal dialog directly into document.body outside transformed parent containers and sets data-no-swipe`
+- ✔ `binds dynamic unique useId to dialog title and aria-labelledby`
+- ✔ `traps keyboard Tab and Shift+Tab navigation within modal dialog`
+- ✔ `restores focus to previously active element on modal unmount`
+- ✔ `preserves input focus when parent re-renders with a new inline onClose callback`
 
 </details>
 
@@ -2798,7 +2904,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

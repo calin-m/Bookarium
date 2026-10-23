@@ -219,8 +219,18 @@ describe('ReaderSpeechBar', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('adapts properly to sepia and dark themes', () => {
+  it('adapts properly to sepia and dark themes across playing and idle states', () => {
     const { rerender } = render(<ReaderSpeechBar {...defaultProps} theme="sepia" isPlaying={true} />);
+    expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
+
+    rerender(<ReaderSpeechBar {...defaultProps} theme="sepia" isPlaying={false} />);
+    expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
+
+    // Open speed menu in sepia theme to verify sepia hover classes
+    fireEvent.click(screen.getByRole('button', { name: 'Speech rate: 1.15x' }));
+    expect(screen.getByRole('button', { name: '1.5x' })).toBeInTheDocument();
+
+    rerender(<ReaderSpeechBar {...defaultProps} theme="dark" isPlaying={true} />);
     expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
 
     rerender(<ReaderSpeechBar {...defaultProps} theme="dark" isPlaying={false} />);
@@ -245,7 +255,7 @@ describe('ReaderSpeechBar', () => {
     expect(prevBtn).toHaveClass('min-h-[40px]');
   });
 
-  it('correctly uses UseReaderSpeechReturn facade prop when provided', () => {
+  it('correctly uses UseReaderSpeechReturn facade prop for play, pause, resume, skip, rate, and voice callbacks', () => {
     const play = vi.fn();
     const pause = vi.fn();
     const resume = vi.fn();
@@ -264,7 +274,7 @@ describe('ReaderSpeechBar', () => {
       sentences: [],
       currentSentence: '',
       rate: 1.0,
-      availableVoices: [],
+      availableVoices: mockVoices,
       naturalVoices: [],
       standardVoices: [],
       selectedVoice: null,
@@ -278,7 +288,7 @@ describe('ReaderSpeechBar', () => {
       setVoice,
     };
 
-    render(
+    const { rerender } = render(
       <ReaderSpeechBar
         speech={mockSpeechFacade}
         isOpen={true}
@@ -288,17 +298,47 @@ describe('ReaderSpeechBar', () => {
 
     expect(screen.getByText(/Sentence 3\s*\/\s*10/)).toBeInTheDocument();
 
-    const playBtn = screen.getByRole('button', { name: 'Play narration' });
-    fireEvent.click(playBtn);
+    // Play
+    fireEvent.click(screen.getByRole('button', { name: 'Play narration' }));
     expect(play).toHaveBeenCalledTimes(1);
 
-    const nextBtn = screen.getByRole('button', { name: 'Next sentence' });
-    fireEvent.click(nextBtn);
+    // Skip Next & Prev
+    fireEvent.click(screen.getByRole('button', { name: 'Next sentence' }));
     expect(skipNext).toHaveBeenCalledTimes(1);
-
-    const prevBtn = screen.getByRole('button', { name: 'Previous sentence' });
-    fireEvent.click(prevBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous sentence' }));
     expect(skipPrev).toHaveBeenCalledTimes(1);
+
+    // Voice change via facade
+    const voiceSelect = screen.getByRole('combobox', { name: 'Narrator voice' });
+    fireEvent.change(voiceSelect, { target: { value: 'Guy' } });
+    expect(setVoice).toHaveBeenCalledWith('Guy');
+
+    // Rate change via facade
+    fireEvent.click(screen.getByRole('button', { name: 'Speech rate: 1x' }));
+    fireEvent.click(screen.getByRole('button', { name: '1.25x' }));
+    expect(setRate).toHaveBeenCalledWith(1.25);
+
+    // Pause via facade when playing
+    rerender(
+      <ReaderSpeechBar
+        speech={{ ...mockSpeechFacade, isPlaying: true }}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Pause narration' }));
+    expect(pause).toHaveBeenCalledTimes(1);
+
+    // Resume via facade when paused
+    rerender(
+      <ReaderSpeechBar
+        speech={{ ...mockSpeechFacade, isPlaying: false, isPaused: true }}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Play narration' }));
+    expect(resume).toHaveBeenCalledTimes(1);
   });
 
   it('renders expanded card by default and allows manual toggling to minimized mini-pill and back with isolated DOM surfaces', () => {
@@ -353,18 +393,21 @@ describe('ReaderSpeechBar', () => {
     expect(screen.queryByTestId('speech-bar-expanded')).not.toBeInTheDocument();
   });
 
-  it('handles playback toggling and skipping inside minimized mode', () => {
+  it('handles playback toggling, pause, themes, and empty sentence counts inside minimized mode', () => {
     const onPlay = vi.fn();
     const onPause = vi.fn();
     const onSkipNext = vi.fn();
     const onSkipPrev = vi.fn();
     const onClose = vi.fn();
 
-    render(
+    const { rerender } = render(
       <ReaderSpeechBar
         {...defaultProps}
         isDrawerOpen={true}
         isPlaying={false}
+        totalSentences={0}
+        bookTitle={undefined}
+        theme="sepia"
         onPlay={onPlay}
         onPause={onPause}
         onSkipNext={onSkipNext}
@@ -374,11 +417,48 @@ describe('ReaderSpeechBar', () => {
     );
 
     expect(screen.getByTestId('speech-bar-minimized')).toBeInTheDocument();
+    expect(screen.getByText('Read Aloud')).toBeInTheDocument();
 
-    // Play/Pause inside minimized pill
+    // Play inside minimized pill
     const playBtn = screen.getByRole('button', { name: 'Play narration' });
     fireEvent.click(playBtn);
     expect(onPlay).toHaveBeenCalledTimes(1);
+
+    // Playing state in minimized mode across sepia, dark, and light themes
+    rerender(
+      <ReaderSpeechBar
+        {...defaultProps}
+        isDrawerOpen={true}
+        isPlaying={true}
+        theme="sepia"
+        onPause={onPause}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Pause narration' }));
+    expect(onPause).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ReaderSpeechBar
+        {...defaultProps}
+        isDrawerOpen={true}
+        isPlaying={true}
+        theme="dark"
+        onPause={onPause}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Pause narration' })).toBeInTheDocument();
+
+    rerender(
+      <ReaderSpeechBar
+        {...defaultProps}
+        isDrawerOpen={true}
+        isPlaying={true}
+        theme="light"
+        onSkipNext={onSkipNext}
+        onSkipPrev={onSkipPrev}
+        onClose={onClose}
+      />
+    );
 
     // Skip Next & Prev
     const nextBtn = screen.getByRole('button', { name: 'Next sentence' });
@@ -395,4 +475,3 @@ describe('ReaderSpeechBar', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
-

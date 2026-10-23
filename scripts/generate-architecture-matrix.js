@@ -129,6 +129,9 @@ function generateMarkdown() {
     '            CopyrightView["Copyright Governance (/copyright)\\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]',
     '            HabitsCard["AccountHabitsCard.tsx\\n(Reading Streaks, Daily Progress, Annual Challenge)"]',
     '            AccoladesCard["AccountAccoladesCard.tsx\\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]',
+    '            SymposiumCard["AccountSymposiumSection.tsx\\n(Reader Circles & Literary Symposiums)"]',
+    '            PrefsCard["AccountPreferencesSection.tsx\\n(AccountNarrationSubPanel • AccountPortabilitySubPanel)"]',
+    '            ProfilePage["Public Scholar Sanctuary (/u/[username])\\n(Public Profile, Pinned Accolades & Fellowship CTA)"]',
     '            ReaderPage["Focus Reader Page (/read/[id])\\n(Continuous Pagination, Subtitles, AST)"]',
     '        end',
     '        ',
@@ -150,6 +153,9 @@ function generateMarkdown() {
     '            StoreAnnot[("🖍️ useAnnotationStore\\n(pastel highlights, notes, tags)")]',
     '            StoreHabits[("🔥 useHabitsStore\\n(streak, 5m threshold, dual immersion, cloud)")]',
     '            StoreAccolades[("🎖️ useAccoladesStore\\n(accolades, showcase pinning, celebrations, cloud)")]',
+    '            StoreFellowship[("🤝 useFellowshipStore\\n(reader circles, symposiums, companion progress, cloud)")]',
+    '            BookshelfSyncEngine["🔄 bookshelf-cloud-sync.ts\\n(Outbox Replay, Tombstone Filtering & Cloud Sync)"]',
+    '            BackupValidator["🛡️ backup-validator.ts\\n(Schema v1.0–v2.2 Validation & Sanitization)"]',
     '            StoreJurisdiction[("🌐 useJurisdictionStore\\n(country, rule, dev override, cookie sync)")]',
     '            StoreOffline[("📦 IndexedDB Engine\\n(unabridged offline volume cache)")]',
     '        end',
@@ -224,6 +230,14 @@ function generateMarkdown() {
     '    DownDrawer --> ContentAdvisory',
     '    AccView --> HabitsCard',
     '    AccView --> AccoladesCard',
+    '    AccView --> SymposiumCard',
+    '    AccView --> PrefsCard',
+    '    PrefsCard --> BackupValidator',
+    '    SymposiumCard --> StoreFellowship',
+    '    ProfilePage --> StoreFellowship',
+    '    StoreShelf --> BookshelfSyncEngine',
+    '    BookshelfSyncEngine -->|Cloud Sync via RLS| SupabaseCloud',
+    '    StoreFellowship -->|Circles & Symposium Sync| SupabaseCloud',
     '    ShelfView --> CollectionToolbarNode',
     '    FavView --> CollectionToolbarNode',
     '    MarksView --> CollectionToolbarNode',
@@ -314,7 +328,7 @@ function generateMarkdown() {
     useAuthStore:
       'Supabase session authentication, guest status, password generation, and cloud profile synchronization.',
     useBookshelfStore:
-      'Personal library collections, reading queue, reading history, custom named shelves, deletion tombstones, and ratings.',
+      'Personal library collections, reading queue, reading history, custom named shelves, deletion tombstones, ratings, and cloud outbox reconciliation via `bookshelf-cloud-sync.ts`.',
     useFellowshipStore:
       'Opt-in 1-on-1 Reader Circle fellowships, per-volume Literary Symposium sessions, companion progress coordinates, pending invitation badges, and bi-directional Supabase cloud synchronization.',
     useHabitsStore:
@@ -419,6 +433,10 @@ function generateMarkdown() {
       'Bidirectional domain transformation between Gutendex API schemas, canonical Book models, and Supabase cloud persistence payloads.',
     'api-utils':
       'Server-side API route helpers, IP address extraction, and standardized rate limit error response generation.',
+    'backup-validator':
+      'Strict JSON schema validator and defensive sanitizer for Bookarium library backups (v1.0–v2.2), validating bookshelves, favorite books, reading positions, annotations, session logs, and preferences.',
+    'bookshelf-cloud-sync':
+      'Bidirectional cloud reconciliation engine for bookshelves, shelf items, and favorite books, managing outbox mutation replay, tombstone filtering, and deterministic ordering.',
     'book-metadata':
       'Author and title cleaning, placeholder author heuristics, and defensive editorial metadata normalization.',
     cache:
@@ -463,6 +481,8 @@ function generateMarkdown() {
       'Scholarly marginalia interval partitioning and non-destructive HTML text-node highlighter.',
     'reading-analytics':
       'Streak calculation, 5-minute immersion thresholds, reading speed metrics, and annual reading goal progress.',
+    'redirect-sanitizer':
+      'Open-redirect prevention utility validating and normalizing internal OAuth callback redirect paths (`sanitizeRedirectPath`).',
     'smart-search':
       'Fuzzy multi-token search engine querying titles, authors, and subjects with punctuation normalization.',
     'speech-utils':
@@ -680,7 +700,7 @@ function generateMarkdown() {
     '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md |',
     '| **Pass 5** | ADR Schema & Ledger Validation | Markdown AST verification | Validates all ADRs conform to Status, Context, Decision, Consequences |',
     '| **Pass 6** | Code Quality & Dead Code Audit | ESLint 9 & Knip | Zero linter warnings/errors, zero unreferenced dead files/exports |',
-    '| **Pass 7** | Production Application Build | `next build` | Optimized production bundle compilation within byte budget |',
+    '| **Pass 7** | Production Application Build | `next build --webpack` | Optimized production bundle compilation within byte budget |',
     '',
     '---',
     '',

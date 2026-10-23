@@ -1,8 +1,5 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   ShieldCheck,
   Cookie,
@@ -22,15 +19,9 @@ import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 
 export default function PrivacyPage() {
-  const router = useRouter();
-
   return (
     <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
-      <Navbar
-        onViewChange={(view) => {
-          router.push(ROUTES.VIEW(view));
-        }}
-      />
+      <Navbar />
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-10">
         {/* Back Link & Header */}

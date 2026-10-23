@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake } from 'lucide-react';
@@ -10,7 +11,11 @@ import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { formatAuthorNames, formatRelativeTime } from '@/lib/utils';
-import { SymposiumInviteModal } from '@/components/symposium/SymposiumInviteModal';
+
+const SymposiumInviteModal = dynamic(
+  () => import('@/components/symposium/SymposiumInviteModal').then((mod) => mod.SymposiumInviteModal),
+  { ssr: false }
+);
 
 export interface BookmarkCardProps {
   volume: ActiveReadingVolume;

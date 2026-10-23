@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { Award, Sparkles, Pin, AlertCircle } from 'lucide-react';
 import { ACCOLADES_CATALOG, ACCOLADE_CATEGORIES } from '@/config/accolades-config';
 import { AccoladeCategory, AccoladeId } from '@/types/accolades.types';
@@ -14,7 +15,11 @@ import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { buildAccoladeContext, evaluateAccolades } from '@/lib/accolades-engine';
 import { ExLibrisBookplate } from '@/components/accolades/ExLibrisBookplate';
-import { AccoladeCelebrationModal } from '@/components/accolades/AccoladeCelebrationModal';
+
+const AccoladeCelebrationModal = dynamic(
+  () => import('@/components/accolades/AccoladeCelebrationModal').then((mod) => mod.AccoladeCelebrationModal),
+  { ssr: false }
+);
 
 export interface AccountAccoladesCardProps {
   userId?: string;

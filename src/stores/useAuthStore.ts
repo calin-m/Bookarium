@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { User, AuthError } from '@supabase/supabase-js';
+import type { User, Session, AuthError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { Profile } from '@/types/database.types';
 import { ROUTES } from '@/config/routes';
@@ -46,7 +46,7 @@ export interface AuthState {
   signInWithPassword: (email: string, password: string) => Promise<{ user?: User | null; error: AuthError | null }>;
   signUpWithPassword: (email: string, password: string, fullName?: string) => Promise<{
     user?: User | null;
-    session?: any;
+    session?: Session | null;
     needsEmailConfirmation?: boolean;
     error: AuthError | null;
   }>;
@@ -310,7 +310,7 @@ export const useAuthStore = create<AuthState>()(
         profile: state.profile ? ({ ...state.profile, ...payload } as Profile) : null,
       }));
       return { error: null };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return { error: err instanceof Error ? err : new Error(String(err)) };
     }
   },

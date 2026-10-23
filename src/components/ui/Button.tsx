@@ -42,7 +42,7 @@ export const Button = React.forwardRef(
 
     return (
       <Component
-        ref={ref as any}
+        ref={ref as React.ComponentPropsWithRef<C>['ref']}
         disabled={disabled || isLoading}
         className={cn(baseStyles, variants[variant], sizes[size], className)}
         {...props}

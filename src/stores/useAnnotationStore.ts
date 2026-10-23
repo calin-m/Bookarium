@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { createClient } from '@/lib/supabase/client';
+import type { Database } from '@/types/database.types';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { cleanBookTitle, isPlaceholderTitle, isPlaceholderAuthor } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
@@ -34,7 +35,7 @@ export interface FellowAnnotation extends Annotation {
 export interface AnnotationOutboxAction {
   id: string;
   type: 'UPSERT_ANNOTATION' | 'DELETE_ANNOTATION';
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -99,7 +100,7 @@ function generateId(): string {
 type AnnotationOutboxDispatcher = (
   supabase: ReturnType<typeof createClient>,
   userId: string,
-  payload: any
+  payload: Record<string, unknown>
 ) => PromiseLike<{ error: unknown }>;
 
 const ANNOTATION_OUTBOX_DISPATCHERS: Record<
@@ -107,13 +108,10 @@ const ANNOTATION_OUTBOX_DISPATCHERS: Record<
   AnnotationOutboxDispatcher
 > = {
   DELETE_ANNOTATION: (sb, userId, p) =>
-    sb.from('user_annotations').delete().eq('id', p.id).eq('user_id', userId),
+    sb.from('user_annotations').delete().eq('id', String(p.id)).eq('user_id', userId),
   UPSERT_ANNOTATION: (sb, userId, p) =>
     sb.from('user_annotations').upsert(
-      {
-        ...p,
-        user_id: userId,
-      },
+      { ...p, user_id: userId } as Database['public']['Tables']['user_annotations']['Insert'],
       { onConflict: 'id' }
     ),
 };
@@ -154,19 +152,20 @@ export const useAnnotationStore = create<AnnotationState>()(
 
           if (error) throw error;
 
-          const mapped: FellowAnnotation[] = (data || []).map((row: any) => {
-            const fellowInfo = fellowScholarsMap?.[row.user_id];
+          const mapped: FellowAnnotation[] = (data || []).map((row: Record<string, unknown>) => {
+            const fellowUserId = String(row.user_id);
+            const fellowInfo = fellowScholarsMap?.[fellowUserId];
             return {
-              id: row.id,
-              userId: row.user_id,
-              bookId: row.book_id,
-              chapterIndex: row.chapter_index,
-              chapterPage: row.chapter_page,
-              selectedText: row.selected_text,
+              id: String(row.id),
+              userId: fellowUserId,
+              bookId: Number(row.book_id),
+              chapterIndex: Number(row.chapter_index),
+              chapterPage: Number(row.chapter_page),
+              selectedText: String(row.selected_text),
               color: (row.color as HighlightColor) || 'amber',
-              note: row.note || undefined,
-              createdAt: row.created_at,
-              updatedAt: row.updated_at,
+              note: (row.note as string) || undefined,
+              createdAt: String(row.created_at),
+              updatedAt: String(row.updated_at),
               isFellow: true,
               fellowUsername: fellowInfo?.username || 'fellow_scholar',
               fellowDisplayName: fellowInfo?.display_name || undefined,
@@ -487,17 +486,17 @@ export const useAnnotationStore = create<AnnotationState>()(
           if (error) throw error;
 
           const remoteAnnotations: Annotation[] = (data || [])
-            .map((row: any) => ({
-              id: row.id,
-              userId: row.user_id,
-              bookId: row.book_id,
-              chapterIndex: row.chapter_index,
-              chapterPage: row.chapter_page,
-              selectedText: row.selected_text,
+            .map((row: Record<string, unknown>) => ({
+              id: String(row.id),
+              userId: String(row.user_id),
+              bookId: Number(row.book_id),
+              chapterIndex: Number(row.chapter_index),
+              chapterPage: Number(row.chapter_page),
+              selectedText: String(row.selected_text),
               color: row.color as HighlightColor,
-              note: row.note || undefined,
-              createdAt: row.created_at,
-              updatedAt: row.updated_at,
+              note: (row.note as string) || undefined,
+              createdAt: String(row.created_at),
+              updatedAt: String(row.updated_at),
             }))
             .filter((r) => !currentTombstones.includes(r.id));
 

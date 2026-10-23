@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { ROUTES } from '@/config/routes';
 import { ACCOLADES_CATALOG } from '@/config/accolades-config';
+import { calculateStreak } from '@/lib/reading-analytics';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
@@ -16,6 +17,7 @@ import {
   type PublicScholarProfile,
   type PublicReadingHabits,
   type PublicBookshelfWithItems,
+  type PublicBookshelfItem,
 } from '@/components/profile/PublicProfileView';
 import type { PinnedBookplateItem } from '@/components/profile/PinnedAccoladesShelf';
 
@@ -107,7 +109,7 @@ export default function PublicScholarProfilePage() {
 
         if (!isCancelled && accoladesData) {
           const pinned: PinnedBookplateItem[] = [];
-          for (const row of accoladesData as any[]) {
+          for (const row of accoladesData) {
             const def = ACCOLADES_CATALOG.find((d) => d.id === row.accolade_id);
             if (def) {
               pinned.push({
@@ -132,18 +134,24 @@ export default function PublicScholarProfilePage() {
         if (resolvedProfile.show_streak || resolvedProfile.show_challenge) {
           const { data: habitRow } = await supabase
             .from('user_reading_habits')
-            .select('current_streak, longest_streak, active_dates, annual_goal, completed_books_count')
+            .select('*')
             .eq('user_id', resolvedProfile.id)
             .maybeSingle();
 
           if (!isCancelled && habitRow) {
-            const row = habitRow as any;
+            const rawDates = habitRow.active_dates;
+            const activeDates = Array.isArray(rawDates)
+              ? rawDates.filter((d): d is string => typeof d === 'string')
+              : [];
+            const streakStats = calculateStreak(activeDates);
+            const rawHabits = habitRow as unknown as Record<string, unknown>;
+
             setHabits({
-              current_streak: row.current_streak || 0,
-              longest_streak: row.longest_streak || 0,
-              active_days: Array.isArray(row.active_dates) ? row.active_dates.length : 0,
-              annual_goal: row.annual_goal || 0,
-              completed_books_count: row.completed_books_count || 0,
+              current_streak: typeof rawHabits.current_streak === 'number' ? rawHabits.current_streak : streakStats.currentStreak,
+              longest_streak: typeof rawHabits.longest_streak === 'number' ? rawHabits.longest_streak : streakStats.longestStreak,
+              active_days: activeDates.length,
+              annual_goal: habitRow.annual_goal || 0,
+              completed_books_count: typeof rawHabits.completed_books_count === 'number' ? rawHabits.completed_books_count : 0,
             });
           }
         }
@@ -167,7 +175,7 @@ export default function PublicScholarProfilePage() {
           let parsedShelves: PublicBookshelfWithItems[] = [];
 
           if (shelvesData && shelvesData.length > 0) {
-            const eligibleShelves = (shelvesData as any[]).filter((s) => {
+            const eligibleShelves = shelvesData.filter((s) => {
               if (s.is_default) {
                 return showSavedBooks && s.is_public !== false;
               }
@@ -181,12 +189,12 @@ export default function PublicScholarProfilePage() {
                 .select('bookshelf_id, book_id, book_title, book_authors')
                 .in('bookshelf_id', shelfIds);
 
-              const itemsMap: Record<string, any[]> = {};
-              (itemsData || []).forEach((item: any) => {
+              const itemsMap: Record<string, PublicBookshelfItem[]> = {};
+              (itemsData || []).forEach((item) => {
                 if (!itemsMap[item.bookshelf_id]) itemsMap[item.bookshelf_id] = [];
                 const rawAuthors = item.book_authors;
                 const authors = Array.isArray(rawAuthors)
-                  ? rawAuthors.map((a: any) => (typeof a === 'string' ? a : a?.name || '')).filter(Boolean)
+                  ? rawAuthors.map((a: unknown) => (typeof a === 'string' ? a : (a as { name?: string })?.name || '')).filter(Boolean)
                   : [];
 
                 itemsMap[item.bookshelf_id].push({
@@ -222,7 +230,7 @@ export default function PublicScholarProfilePage() {
                     book_id: item.book_id,
                     book_title: item.book_title,
                     book_authors: Array.isArray(item.book_authors)
-                      ? item.book_authors.map((a: any) => (typeof a === 'string' ? a : a?.name || '')).filter(Boolean)
+                      ? item.book_authors.map((a: unknown) => (typeof a === 'string' ? a : (a as { name?: string })?.name || '')).filter(Boolean)
                       : [],
                   })),
               }));

@@ -98,5 +98,96 @@ describe('AccountSymposiumSection', () => {
       expect(useFellowshipStore.getState().getAcceptedFellows('u1')).toHaveLength(2);
     });
   });
+
+  it('renders empty states when there are zero symposiums, circle fellows, or invitations', () => {
+    render(<AccountSymposiumSection userId="u1" />);
+
+    // Empty symposiums
+    expect(screen.getByText('No Active Literary Symposiums')).toBeInTheDocument();
+
+    // Switch to Reader Circle -> Empty
+    fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
+    expect(screen.getByText(/No connected Fellow Scholars yet/i)).toBeInTheDocument();
+
+    // Switch to Invitations -> Empty
+    fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
+    expect(screen.getByText(/No pending Reader Circle or Symposium invitations/i)).toBeInTheDocument();
+  });
+
+  it('handles fellow invitation form submission with error and success banners', async () => {
+    render(<AccountSymposiumSection userId="u1" />);
+
+    // Switch to Reader Circle
+    fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
+
+    const input = screen.getByLabelText(/Invite Fellow Scholar/i);
+    const submitBtn = screen.getByRole('button', { name: /Send Circle Invitation/i });
+
+    // Empty input submission does nothing
+    fireEvent.change(input, { target: { value: '   ' } });
+    fireEvent.click(submitBtn);
+    expect(screen.queryByText(/Fellowship invitation sent/i)).not.toBeInTheDocument();
+
+    // Mock inviteFellowByUsername failure
+    const mockStore = useFellowshipStore.getState();
+    const originalInvite = mockStore.inviteFellowByUsername;
+    mockStore.inviteFellowByUsername = vi.fn().mockResolvedValue({
+      error: { message: 'Scholar handle not found.' },
+      circle: null,
+    });
+
+    fireEvent.change(input, { target: { value: 'unknown_scholar' } });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Scholar handle not found.')).toBeInTheDocument();
+    });
+
+    // Mock inviteFellowByUsername success
+    mockStore.inviteFellowByUsername = vi.fn().mockResolvedValue({
+      error: null,
+      circle: { recipient_username: 'woolf' },
+    });
+
+    fireEvent.change(input, { target: { value: 'woolf' } });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Fellowship invitation sent to @woolf\./i)).toBeInTheDocument();
+    });
+
+    mockStore.inviteFellowByUsername = originalInvite;
+  });
+
+  it('allows declining an incoming circle invitation', async () => {
+    useFellowshipStore.setState({
+      circles: [
+        {
+          id: 'c-decline',
+          requester_id: 'u4',
+          requester_username: 'dickens',
+          requester_display_name: 'Charles Dickens',
+          recipient_id: 'u1',
+          recipient_username: 'jane_austen',
+          recipient_display_name: 'Jane Austen',
+          status: 'pending',
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+    });
+
+    render(<AccountSymposiumSection userId="u1" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
+    expect(screen.getByText(/Charles Dickens \(@dickens\)/i)).toBeInTheDocument();
+
+    const declineBtn = screen.getByRole('button', { name: /Decline/i });
+    fireEvent.click(declineBtn);
+
+    await waitFor(() => {
+      expect(useFellowshipStore.getState().circles.find((c) => c.id === 'c-decline')).toBeUndefined();
+    });
+  });
 });
 

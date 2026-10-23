@@ -112,7 +112,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => onViewChange?.(item.id)}
+                  onClick={() => {
+                    if (onViewChange) {
+                      onViewChange(item.id);
+                    } else {
+                      router.push(ROUTES.VIEW(item.id));
+                    }
+                  }}
                   title={item.title}
                   className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
                     isActive

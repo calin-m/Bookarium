@@ -3,9 +3,13 @@ import React from 'react';
 import { beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { server } from '../mocks/server';
 
-// Start MSW server before tests
-beforeAll(() => {
+// Track top-level next/dynamic loader promises so they resolve before tests execute
+const pendingDynamicImports: Promise<unknown>[] = [];
+
+// Start MSW server and resolve dynamic imports before tests
+beforeAll(async () => {
   server.listen({ onUnhandledRequest: 'bypass' });
+  await Promise.all(pendingDynamicImports);
 });
 
 // Reset handlers after each test
@@ -55,7 +59,7 @@ if (typeof window !== 'undefined') {
     takeRecords() {
       return [];
     }
-  } as any;
+  } as unknown as typeof IntersectionObserver;
 
   // Mock window.scrollTo & Element.prototype.scrollIntoView
   window.scrollTo = vi.fn();
@@ -113,12 +117,58 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
+// Mock next/dynamic for deterministic synchronous resolution in Vitest JSDOM
+vi.mock('next/dynamic', () => ({
+  default: (loader: () => Promise<unknown>) => {
+    let ResolvedComponent: React.ComponentType<Record<string, unknown>> | null = null;
+    const promise = loader().then((mod: unknown) => {
+      if (typeof mod === 'function') {
+        ResolvedComponent = mod as React.ComponentType<Record<string, unknown>>;
+      } else if (
+        mod &&
+        typeof mod === 'object' &&
+        'default' in mod &&
+        typeof (mod as { default: unknown }).default === 'function'
+      ) {
+        ResolvedComponent = (mod as { default: React.ComponentType<Record<string, unknown>> }).default;
+      }
+    });
+    pendingDynamicImports.push(promise);
+
+    const DynamicWrapper: React.FC<Record<string, unknown>> = (props) => {
+      const [, setLoaded] = React.useState(Boolean(ResolvedComponent));
+      React.useEffect(() => {
+        let active = true;
+        if (!ResolvedComponent) {
+          promise.then(() => {
+            if (active) setLoaded(true);
+          });
+        }
+        return () => {
+          active = false;
+        };
+      }, []);
+      return ResolvedComponent ? React.createElement(ResolvedComponent, props) : null;
+    };
+    DynamicWrapper.displayName = 'NextDynamicWrapper';
+    return DynamicWrapper;
+  },
+}));
+
 // Mock framer-motion for instantaneous synchronous test execution
 vi.mock('framer-motion', async () => {
   const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
 
+  const motionComponentCache = new Map<
+    string,
+    React.ForwardRefExoticComponent<
+      React.PropsWithoutRef<Record<string, unknown>> & React.RefAttributes<HTMLElement>
+    >
+  >();
   const createMotionComponent = (tag: string) => {
-    const Component = React.forwardRef(
+    const cached = motionComponentCache.get(tag);
+    if (cached) return cached;
+    const Component = React.forwardRef<HTMLElement, Record<string, unknown>>(
       (
         {
           children,
@@ -143,13 +193,18 @@ vi.mock('framer-motion', async () => {
           onDrag: _onDrag,
           onDragEnd: _onDragEnd,
           ...props
-        }: any,
-        ref: any
+        },
+        ref
       ) => {
-        return React.createElement(tag, { ...props, ref, className }, children);
+        return React.createElement(
+          tag,
+          { ...props, ref, className },
+          children as React.ReactNode
+        );
       }
     );
     Component.displayName = `motion.${tag}`;
+    motionComponentCache.set(tag, Component);
     return Component;
   };
 

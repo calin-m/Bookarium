@@ -166,6 +166,112 @@ describe('useBookContent hook', () => {
       useJurisdictionStore.setState({ country: 'US' });
     }
   });
+
+  it('falls back to useReaderStore or useBookshelfStore when cached book authors are omitted from offline record', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    const { useReaderStore } = await import('@/stores/useReaderStore');
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    const { getOfflineBookRecord } = await import('@/lib/offline-storage');
+
+    useJurisdictionStore.setState({ country: 'RO' });
+    useReaderStore.setState({
+      currentBook: {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+      } as any,
+    });
+
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce({
+      bookId: 1342,
+      title: 'Pride and Prejudice',
+      text: 'Reader store fallback text...',
+      downloadedAt: new Date().toISOString(),
+      byteSize: 1024,
+      authors: undefined,
+    });
+
+    const text1 = await fetchBookContent(undefined, 1342);
+    expect(text1).toBe('Reader store fallback text...');
+
+    // Now test fallback to savedBooks
+    useReaderStore.setState({ currentBook: null });
+    useBookshelfStore.setState({
+      savedBooks: [
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        } as any,
+      ],
+    });
+
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce({
+      bookId: 1342,
+      title: 'Pride and Prejudice',
+      text: 'Bookshelf store fallback text...',
+      downloadedAt: new Date().toISOString(),
+      byteSize: 1024,
+      authors: undefined,
+    });
+
+    const text2 = await fetchBookContent(undefined, 1342);
+    expect(text2).toBe('Bookshelf store fallback text...');
+
+    useJurisdictionStore.setState({ country: 'US' });
+    useReaderStore.setState({ currentBook: null });
+    useBookshelfStore.setState({ savedBooks: [] });
+  });
+
+  it('allows offline fallback when device is offline without author metadata', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    const { getOfflineBookRecord } = await import('@/lib/offline-storage');
+
+    useJurisdictionStore.setState({ country: 'RO' });
+    const originalOnline = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce({
+      bookId: 9999,
+      title: 'Unknown Author Offline Book',
+      text: 'Offline without metadata text...',
+      downloadedAt: new Date().toISOString(),
+      byteSize: 1024,
+      authors: undefined,
+    });
+
+    const content = await fetchBookContent(undefined, 9999);
+    expect(content).toBe('Offline without metadata text...');
+
+    Object.defineProperty(navigator, 'onLine', { value: originalOnline, configurable: true });
+    useJurisdictionStore.setState({ country: 'US' });
+  });
+
+  it('falls back to offline storage when upstream fetch fails with network error', async () => {
+    const { getOfflineBookRecord } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce({
+      bookId: 1342,
+      title: 'Pride and Prejudice',
+      text: 'Network failure fallback text...',
+      downloadedAt: new Date().toISOString(),
+      byteSize: 1024,
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+    });
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Failed to fetch'));
+    const content = await fetchBookContent('https://example.com/stream.txt', 1342);
+    expect(content).toBe('Network failure fallback text...');
+
+    fetchSpy.mockRestore();
+  });
+
+  it('throws an error when upstream response returns empty text', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(new Response('', { status: 200 }));
+    await expect(fetchBookContent('https://example.com/empty.txt', 500)).rejects.toThrow(
+      /Received empty text content from upstream\./
+    );
+    fetchSpy.mockRestore();
+  });
 });
 
 

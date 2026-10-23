@@ -12,6 +12,7 @@ import {
 } from '@/types/accolades.types';
 import { ACCOLADES_CATALOG } from '@/config/accolades-config';
 import { evaluateAccolades } from '@/lib/accolades-engine';
+import type { Json } from '@/types/database.types';
 
 export const MAX_PINNED_ACCOLADES = 3;
 
@@ -205,7 +206,7 @@ export const useAccoladesStore = create<AccoladesState>()(
               accolade_id: acc.id,
               unlocked_at: acc.unlockedAt,
               is_pinned: acc.isPinned,
-              metadata: (acc.metadata || {}) as any,
+              metadata: (acc.metadata || {}) as Json,
             }));
 
             await supabase

@@ -1137,4 +1137,54 @@
 - **Consequences**:
   - Next.js production builds typecheck with zero errors.
   - Verification runs deterministically on Windows without Turbopack IPC worker panics.
+- **Consequences**:
+  - Next.js production builds typecheck with zero errors.
+  - Verification runs deterministically on Windows without Turbopack IPC worker panics.
   - Browser tabs render clean rounded icons with zero white border artifacts.
+
+## ADR-058: WCAG 2.2 AA Modal Focus Management, TypeScript Strictness (no-explicit-any), RSC Static Architecture, Overlay Code-Splitting, and Phase 5 Monolith Decomposition
+- **Status**: Accepted
+- **Context**:
+  1. **WCAG 2.2 AA Modal Ergonomics & ARIA Collision Resistance**:
+     - Generic `Modal.tsx`, `ReaderDrawerShell.tsx`, and `AuthModal.tsx` lacked keyboard focus trapping (`Tab` / `Shift+Tab`) and active element restoration upon dismissal, causing keyboard focus to escape the modal layer into the background DOM or reset focus to document body on close.
+     - Hardcoded ARIA element identifiers (`id="modal-title"`, `id="auth-modal-title"`) risked DOM ID collisions when multiple interactive or nested modals were mounted.
+     - `AuthModal.tsx` lacked Escape key dismissal.
+  2. **React `act(...)` Environment Cleanliness & Co-located Branch Coverage**:
+     - Asynchronous state updates in profile form submission (`account/page.test.tsx`), Zustand outbox reconciliation tests (`BookshelfSpine.test.tsx`, `BookshelfMobileModal.test.tsx`), and `useOfflineBooks` mount effects (`BookshelfRack.test.tsx`) produced React `act(...)` console warnings during Vitest runs.
+     - Deep defensive error and serialization branches in `src/lib/offline-storage.ts`, `src/hooks/queries/useBookContent.ts`, `src/components/account/AccountSymposiumSection.tsx`, `src/app/u/[username]/page.tsx`, and `src/components/reader/ReaderSpeechBar.tsx` required expanded branch coverage to maintain a comfortable buffer above the 80% global branch gate.
+  3. **App Router Bundle Optimization & Dynamic Imports for Closed-by-Default Overlays**:
+     - `src/app/copyright/page.tsx` and `src/app/privacy/page.tsx` were client components (`'use client'`) importing client router hooks despite rendering purely static informational text.
+     - `Navbar.tsx` lacked a default router push fallback when `onViewChange` was omitted in top-level app navigations.
+     - Closed-by-default modal and drawer overlays (`AuthModal`, `AdvancedFilterDrawer`, `DownloadDrawer`, `BookPreviewModal`, `AccoladeCelebrationModal`, and `SymposiumInviteModal`) were statically imported into primary route bundles despite only rendering on user interaction.
+  4. **TypeScript Strict Typing (`no-explicit-any`) & Content Security Policy (CSP)**:
+     - 36 production usages of `any` across stores, lib adapters, and pages, plus 4 `any` annotations in `src/test/setup.ts`, bypassed compiler type safety.
+     - `next.config.ts` allowed `'unsafe-eval'` indiscriminately in both development and production Content-Security-Policy headers.
+  5. **Phase 5 Modular Decomposition of Monolithic Modules**:
+     - `src/stores/useBookshelfStore.ts` (1,379 lines), `src/lib/library-backup.ts` (731 lines), and `src/components/account/AccountPreferencesSection.tsx` (672 lines) blended distinct concerns (local state selectors vs. Supabase cloud reconciliation, backup orchestration vs. schema validation, and editorial/jurisdiction preferences vs. narration and data portability sub-panels) within single large files.
+- **Decision**:
+  1. **WCAG 2.2 AA Focus Trapping & ID Harmonization**:
+     - Integrated `findTabbableElements` and bounded `Tab` / `Shift+Tab` keyboard focus wrapping in `Modal.tsx`, `ReaderDrawerShell.tsx`, and `AuthModal.tsx`, using a stable callback ref pattern so inline `onClose` handlers never re-trigger initial focus stealing on parent re-renders.
+     - Preserved triggering element reference (`document.activeElement`) prior to open and restored focus upon unmount with `{ preventScroll: true }`.
+     - Replaced static element IDs with React's `useId()` hook for dynamic, collision-proof `aria-labelledby` association.
+     - Added global `Escape` key event listener to `AuthModal.tsx`.
+  2. **Test Cleanliness & Deterministic Branch Coverage (`84%+`)**:
+     - Wrapped async state mutations in `act(...)` and `waitFor`, and added no-op functional state guards in `useOfflineBooks.ts`, completely eliminating React `act(...)` warnings across the entire test suite.
+     - Expanded unit tests for quota exhaustion, schema version fallbacks, download failure retries, public scholar bookshelf grouping, and Web Speech synthesis boundaries across `offline-storage.test.ts`, `useBookContent.test.ts`, `AccountSymposiumSection.test.tsx`, `u/[username]/page.test.tsx`, and `ReaderSpeechBar.test.tsx`.
+  3. **React Server Components & Overlay Code Splitting**:
+     - Converted `copyright/page.tsx` and `privacy/page.tsx` to React Server Components (RSC), eliminating client runtime overhead and hydration footprint.
+     - Implemented dynamic lazy-loading via `next/dynamic(..., { ssr: false })` for `AuthModal`, `AdvancedFilterDrawer`, `DownloadDrawer`, `BookPreviewModal`, `AccoladeCelebrationModal`, and `SymposiumInviteModal`, with deterministic pre-test resolution in `src/test/setup.ts`.
+     - Updated `scripts/lib/ast-parser.js` to traverse `CallExpression` nodes for `import(...)` so dynamic imports are tracked by the AST matrix generator.
+  4. **Strict TypeScript & Production CSP Hardening**:
+     - Replaced all production and `src/test/setup.ts` `any` occurrences with precise interfaces (`GutendexBook`, `Database['public']['Tables']['...']['Row']`, `RawBackupCandidate`, `Record<string, unknown>`).
+     - Enforced `"@typescript-eslint/no-explicit-any": "error"` in `eslint.config.mjs` (including `src/test/setup.ts`).
+     - Restricted `'unsafe-eval'` in `next.config.ts` script-src CSP strictly to `process.env.NODE_ENV !== 'production'`.
+  5. **Phase 5 Modular Decomposition with 100% Backward-Compatible Re-Exports**:
+     - Extracted `src/lib/backup-validator.ts` (and `backup-validator.test.ts`) from `src/lib/library-backup.ts`, re-exporting `validateLibraryBackup` and all backup interfaces from `library-backup.ts`.
+     - Extracted `src/components/account/AccountNarrationSubPanel.tsx` and `src/components/account/AccountPortabilitySubPanel.tsx` (with co-located test suites) from `src/components/account/AccountPreferencesSection.tsx`.
+     - Extracted `src/lib/bookshelf-cloud-sync.ts` (and `bookshelf-cloud-sync.test.ts`) from `src/stores/useBookshelfStore.ts`, encapsulating `applyDeterministicItemOrdering`, `replayBookshelfOutbox`, and `executeBookshelfCloudSync` while preserving all store selectors and re-exports.
+- **Consequences**:
+  - Full WCAG 2.2 AA compliance across all dialogs, modals, and reader drawers without focus stealing on parent re-renders.
+  - Zero `any` in production code and `src/test/setup.ts` with compile-time verification in ESLint.
+  - Reduced initial bundle footprint for static routes and closed-by-default modal/drawer overlays.
+  - Modular, single-responsibility architecture across backup validation, account preference sub-panels, and cloud bookshelf synchronization with 100% backward compatibility.
+  - Production deployments no longer expose `'unsafe-eval'` CSP exceptions.

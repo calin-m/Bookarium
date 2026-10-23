@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -40,22 +40,84 @@ export const ReaderDrawerShell: React.FC<ReaderDrawerShellProps> = ({
 }) => {
   const hasMounted = useHasMounted();
   const activeTheme = getReaderTheme(theme);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (typeof document !== 'undefined') {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+    }
+
+    const getTabbableElements = (): HTMLElement[] => {
+      if (!panelRef.current) return [];
+      const selector =
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.from(panelRef.current.querySelectorAll<HTMLElement>(selector)).filter(
+        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true'
+      );
+    };
+
+    const timer = setTimeout(() => {
+      if (panelRef.current && (!document.activeElement || !panelRef.current.contains(document.activeElement))) {
+        const tabbables = getTabbableElements();
+        if (tabbables.length > 0) {
+          tabbables[0].focus({ preventScroll: true });
+        }
+      }
+    }, 0);
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
+      if (e.key === 'Escape') {
+        onCloseRef.current();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const tabbables = getTabbableElements();
+        if (tabbables.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const firstElement = tabbables[0];
+        const lastElement = tabbables[tabbables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement || !panelRef.current?.contains(document.activeElement)) {
+            e.preventDefault();
+            lastElement.focus({ preventScroll: true });
+          }
+        } else {
+          if (document.activeElement === lastElement || !panelRef.current?.contains(document.activeElement)) {
+            e.preventDefault();
+            firstElement.focus({ preventScroll: true });
+          }
+        }
       }
     };
 
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('keydown', handleKeyDown);
+      if (
+        previousFocusRef.current &&
+        typeof previousFocusRef.current.focus === 'function' &&
+        typeof document !== 'undefined' &&
+        document.body.contains(previousFocusRef.current)
+      ) {
+        previousFocusRef.current.focus({ preventScroll: true });
+      }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!hasMounted) return null;
 
@@ -78,6 +140,7 @@ export const ReaderDrawerShell: React.FC<ReaderDrawerShellProps> = ({
 
           {/* Fluid Spring Drawer Panel: Bottom Sheet on Mobile, Top-Right Dropdown on Desktop */}
           <motion.div
+            ref={panelRef}
             initial={{ opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 640 ? 50 : -10, scale: typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 640 ? 40 : -8, scale: typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 0.98 }}

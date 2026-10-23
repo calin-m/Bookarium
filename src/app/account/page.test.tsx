@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AccountPage from './page';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -103,7 +103,9 @@ describe('AccountPage', () => {
     const input = screen.getByLabelText('Display Name');
     fireEvent.change(input, { target: { value: 'Jane Austen CBE' } });
     fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
-    expect(mockUpdateProfile).toHaveBeenCalledWith({ display_name: 'Jane Austen CBE' });
+    await waitFor(() => {
+      expect(mockUpdateProfile).toHaveBeenCalledWith({ display_name: 'Jane Austen CBE' });
+    });
 
     // Verify Collection stats in Slim Scholar Identity Ribbon
     const statStrip = screen.getByTestId('identity-ribbon-stat-strip');
@@ -129,7 +131,9 @@ describe('AccountPage', () => {
     fireEvent.click(streakPillBtn);
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
 
-    useAnnotationStore.setState({ annotations: [] });
+    act(() => {
+      useAnnotationStore.setState({ annotations: [] });
+    });
   });
 
   it('renders segmented sub-tabs navigation and switches active tabs', () => {

@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-178%20Suites%20%7C%201708%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.49%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-184%20Suites%20%7C%201746%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.51%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -40,12 +40,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.7.1)
+## 🛠️ Latest Improvements (v2.8.0)
 
-- **Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply Chain (`package.json`, `postcss.config.mjs`, `src/app/globals.css`, `src/lib/utils.ts`, `src/components/presentation/BookCard.tsx`, `ADR-056`)**: Upgraded to `tailwindcss@4.3.3` and `@tailwindcss/postcss@4.3.3` using the `@config "../../tailwind.config.ts"` compatibility bridge, `@custom-variant dark`, Preflight v3 border/cursor parity rules, `extendTailwindMerge` custom shadow group registration, and pre-v4 editorial `BookCard` border/badge parity, and aliased `"fast-glob": "npm:tinyglobby@^0.2.17"` in `package.json` `"overrides"` to eliminate all 7 transitive `braces`/`micromatch` audit warnings (`0 vulnerabilities`).
-- **Multi-Resolution Transparent Favicon Pipeline (`public/icon.svg`, `public/favicon.ico`, `scripts/generate-pwa-icons.js`, `src/app/layout.tsx`, `ADR-057`)**: Generated standards-compliant 32-bit RGBA binary multi-resolution `.ico` (16x16, 32x32, 48x48) and vector `icon.svg` with squircle edge anti-aliasing (`alpha = 0` outside rounded rect) and transparent exterior corners, eliminating squared white corners in browser tabs, and applied squircle corner masks to non-maskable PWA icons (`icon-192.png`, `icon-512.png`).
-- **Next.js App Router Route Handler Type Isolation (`src/lib/redirect-sanitizer.ts`, `src/lib/redirect-sanitizer.test.ts`, `src/app/auth/callback/route.ts`, `ADR-057`)**: Extracted `sanitizeRedirectPath` into a dedicated utility module with co-located unit tests to satisfy Next.js 16 Route Handler type constraints (TS2344) forbidding non-HTTP exports from `route.ts`.
-- **Bookshelf Icon Semantics Unification (`Library` vs. `Bookmark`) (`src/components/presentation/BookCard.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.tsx`, `src/config/views.config.ts`, `src/components/presentation/HeroSearch.tsx`, `src/app/not-found.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `ADR-057`)**: Replaced the `Bookmark` ribbon icon with `Library` across all "Save to Bookshelf" action buttons, cursor hover tooltips, empty-shelf descriptions, and profile privacy toggles, reserving `Bookmark` strictly for the Bookmarks ledger (`/bookmarks`).
+- **WCAG 2.2 AA Modal Focus Trapping & Focus Restoration (`src/components/ui/Modal.tsx`, `src/components/reader/ReaderDrawerShell.tsx`, `src/components/auth/AuthModal.tsx`, `ADR-058`)**: Added keyboard `Tab` / `Shift+Tab` boundary trapping within all modals and reader drawers using a stable callback ref pattern that preserves input focus across parent re-renders, automatic focus restoration to the previously active element on close with `{ preventScroll: true }`, Escape key dismissal for `AuthModal`, and dynamic `useId()` ARIA labelled-by association.
+- **Zero-Any TypeScript Strictness & Compiler Governance (`eslint.config.mjs`, `src/test/setup.ts`, `src/lib/library-backup.ts`, `src/stores/useBookshelfStore.ts`, `src/stores/useReaderStore.ts`, `src/app/account/page.tsx`, `ADR-058`)**: Eradicated all explicit `any` usages across production stores, adapters, page routes, and `src/test/setup.ts`, replacing them with typed interfaces (`GutendexBook`, `UserBookCurationRow`, `RawBackupCandidate`, `Record<string, unknown>`), and activated `"@typescript-eslint/no-explicit-any": "error"` in ESLint.
+- **React Server Component Conversion for Informational Routes (`src/app/copyright/page.tsx`, `src/app/privacy/page.tsx`, `ADR-058`)**: Converted static informational pages to React Server Components (RSC), eliminating client bundle weight and hydration overhead.
+- **Phase 5 Monolith Decomposition (`src/lib/backup-validator.ts`, `src/lib/library-backup.ts`, `src/components/account/AccountNarrationSubPanel.tsx`, `src/components/account/AccountPortabilitySubPanel.tsx`, `src/components/account/AccountPreferencesSection.tsx`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useBookshelfStore.ts`, `ADR-058`)**: Extracted schema validation (`backup-validator.ts`), account preference sub-panels (`AccountNarrationSubPanel.tsx`, `AccountPortabilitySubPanel.tsx`), and bidirectional cloud bookshelf reconciliation (`bookshelf-cloud-sync.ts`) into dedicated single-responsibility modules with co-located unit tests and 100% backward-compatible re-exports.
+- **React `act(...)` Warning Elimination & Deep Branch Test Coverage (`src/hooks/useOfflineBooks.ts`, `src/components/presentation/BookshelfRack.test.tsx`, `src/app/account/page.test.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.test.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx`, `src/lib/offline-storage.test.ts`, `src/hooks/queries/useBookContent.test.ts`, `src/components/account/AccountSymposiumSection.test.tsx`, `src/app/u/[username]/page.test.tsx`, `src/components/reader/ReaderSpeechBar.test.tsx`, `ADR-058`)**: Added no-op functional state guards in `useOfflineBooks.ts` and wrapped asynchronous state mutations in `act(...)` and `waitFor`, completely eliminating React testing environment stderr warnings while raising branch coverage across storage, speech synthesis, and public profile views.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -120,7 +121,7 @@ Bookarium is structured around five core engineering pillars:
 * **Sanitized Sign-Out & Account Isolation**: Pre-logout outbox drain and clean state wipe (`clearBookshelf()`) prevent cross-account contamination while raw downloaded texts in IndexedDB are preserved on device.
 * **Bi-Directional Cloud Reading Progress**: 2000ms debounced upsert to `public.reading_progress`, restoring chapter and scroll coordinates across devices for authenticated accounts while remaining 0ms/zero-network for guest readers.
 * **Reading Streaks, Dual Immersion Telemetry & Annual Reading Challenges (`/account`)**: Offline-first literary activity tracking calculating consecutive daily streaks with a **5-minute active immersion threshold** (`300s`), longest streaks, 7-day calendar activity indicators, and total literary immersion duration. Disentangles telemetry into distinct **Reading Time** (visual focus with 2-minute idle guard) and **Listening Time** (uninterrupted Text-to-Speech audio narration retaining time in background tabs). Includes an interactive annual reading challenge progress bar with user-adjustable volume targets, real-time pace tracking, dynamic countdown prompts (`Xm / 5m logged today`), and multi-device Supabase cloud synchronization with Last-Write-Wins (LWW) conflict resolution.
-* **Full Data Sovereignty & Portability**: Single-click RFC 4180 CSV export and portable JSON backup (`src/lib/library-backup.ts`) with defensive schema validation and merge/replace restore strategies.
+* **Full Data Sovereignty & Portability**: Single-click RFC 4180 CSV export and portable JSON backup (`src/lib/library-backup.ts` & `src/lib/backup-validator.ts`) with defensive schema validation and merge/replace restore strategies.
 * **Zero-Tracking Privacy Architecture (`/privacy`)**: Zero third-party trackers, zero advertising beacons, cookie-less operation (Art. 5(3) exempt), privacy-first anonymous aggregate telemetry (Vercel Web Analytics & Speed Insights), and self-service account data deletion in User Settings (`/account`).
 * **Technical SEO, Social OpenGraph & Upstream Rate-Shielding**: Native Next.js 16 crawl directives (`robots.ts`) explicitly disallow search query parameters (`?search=*`, `?topic=*`) to protect public upstream catalog servers from bot query exhaustion. Dynamic server layouts (`/read/[id]/layout.tsx`) resolve book identities directly from self-hosted Supabase with an in-memory cache and 24-hour Next.js edge caching (`revalidate: 86400`) to generate rich OpenGraph and Twitter cards (`summary_large_image`) featuring authentic book covers, while injecting safe Schema.org `Book`, `WebSite`, and `WebApplication` (`isAccessibleForFree: true`) JSON-LD structured data.
 
@@ -171,6 +172,9 @@ flowchart TD
             AccView["Account Hub (/account)\n(Library Stats, Cloud Sync & JSON Backup)"]
             HabitsCard["AccountHabitsCard.tsx\n(Reading Streaks, Daily Progress, Annual Challenge)"]
             AccoladesCard["AccountAccoladesCard.tsx\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]
+            SymposiumCard["AccountSymposiumSection.tsx\n(Reader Circles & Literary Symposiums)"]
+            PrefsCard["AccountPreferencesSection.tsx\n(AccountNarrationSubPanel • AccountPortabilitySubPanel)"]
+            ProfilePage["Public Scholar Sanctuary (/u/[username])\n(Public Profile, Pinned Accolades & Fellowship CTA)"]
             ReaderPage["Focus Reader Page (/read/[id])\n(Continuous Pagination, Subtitles, AST)"]
         end
         
@@ -191,6 +195,9 @@ flowchart TD
             StoreAnnot[("🖍️ useAnnotationStore\n(pastel highlights, notes, tags)")]
             StoreHabits[("🔥 useHabitsStore\n(streak, 5m threshold, dual immersion, cloud)")]
             StoreAccolades[("🎖️ useAccoladesStore\n(accolades, showcase pinning, celebrations, cloud)")]
+            StoreFellowship[("🤝 useFellowshipStore\n(reader circles, symposiums, companion progress, cloud)")]
+            BookshelfSyncEngine["🔄 bookshelf-cloud-sync.ts\n(Outbox Replay, Tombstone Filtering & Cloud Sync)"]
+            BackupValidator["🛡️ backup-validator.ts\n(Schema v1.0–v2.2 Validation & Sanitization)"]
             StoreJurisdiction[("🌐 useJurisdictionStore\n(country, rule, dev override, cookie sync)")]
             StoreOffline[("📦 IndexedDB Engine\n(unabridged offline volume cache)")]
         end
@@ -254,6 +261,14 @@ flowchart TD
     HookCopyright --> EngineCore
     AccView --> HabitsCard
     AccView --> AccoladesCard
+    AccView --> SymposiumCard
+    AccView --> PrefsCard
+    PrefsCard --> BackupValidator
+    SymposiumCard --> StoreFellowship
+    ProfilePage --> StoreFellowship
+    StoreShelf --> BookshelfSyncEngine
+    BookshelfSyncEngine -->|Cloud Sync via RLS| SupabaseCloud
+    StoreFellowship -->|Circles & Symposium Sync| SupabaseCloud
     
     Grid --> QueryBooks
     QueryBooks --> ProxyBooks
@@ -340,9 +355,9 @@ flowchart LR
         SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]
         LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]
         Controls["Appearance & Typography Popover (ReaderControls)"]
-        AudioBar["Speech Narration Bar (ReaderAudioToolbar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]
+        AudioBar["Speech Narration Bar (ReaderSpeechBar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]
         TransBar["Bilingual Translation Bar (ReaderTranslationBar)\n(useBookTranslation • 40+ Languages)"]
-        AnnotDrawer["Annotations Drawer (ReaderAnnotationDrawer)\n(4 Pastel Highlighters • Canary, Amber, Mint, Rose)"]
+        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(4 Pastel Highlighters • Canary, Amber, Mint, Rose)"]
         InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
     end
 
@@ -577,10 +592,10 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 | Security Vector | Implementation & File Path | Protection Mechanism |
 |---|---|---|
 | **Sliding-Window Rate Limiting** | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) & [`src/lib/api-utils.ts`](src/lib/api-utils.ts) | Zero-dependency in-memory sliding-window rate limiter protecting upstream Project Gutenberg APIs (60 req/min on `/api/books`, 30 req/min on `/api/books/content`) with automatic 30s garbage collection, anti-spoofing IP resolution (prioritizing edge platform headers and rightmost hop extraction), and `429 Too Many Requests` status with `Retry-After`. |
-| **Dual-Provider Failover & Cloud Outage Immunity** | [`src/lib/catalog/`](src/lib/catalog/) & [`src/stores/useBookshelfStore.ts`](src/stores/useBookshelfStore.ts) | Automatic Strangler Fig failover transparently degrading `/api/books` and `/api/books/content` from primary Supabase PostgreSQL to the upstream Gutendex REST API and secondary Gutenberg mirrors (`aleph.gutenberg.org`, `gutenberg.readingroo.ms`) upon database latency or cloud outages. Reading positions, bookmarks, audio telemetry, and downloaded texts remain 100% functional offline via IndexedDB and local Zustand storage, with non-blocking post-outage reconciliation (`flushOutbox`). |
+| **Dual-Provider Failover & Cloud Outage Immunity** | [`src/lib/catalog/`](src/lib/catalog/), [`src/stores/useBookshelfStore.ts`](src/stores/useBookshelfStore.ts) & [`src/lib/bookshelf-cloud-sync.ts`](src/lib/bookshelf-cloud-sync.ts) | Automatic Strangler Fig failover transparently degrading `/api/books` and `/api/books/content` from primary Supabase PostgreSQL to the upstream Gutendex REST API and secondary Gutenberg mirrors (`aleph.gutenberg.org`, `gutenberg.readingroo.ms`) upon database latency or cloud outages. Reading positions, bookmarks, audio telemetry, and downloaded texts remain 100% functional offline via IndexedDB and local Zustand storage, with non-blocking post-outage reconciliation (`flushOutbox`). |
 | **HTTP Security Headers** | [`next.config.ts`](next.config.ts) | Enforces Content-Security-Policy (`default-src 'self'`, `frame-ancestors 'none'`), Cross-Origin-Opener-Policy (`same-origin`), HSTS (`max-age=63072000; includeSubDomains; preload`), Clickjacking defense (`X-Frame-Options: SAMEORIGIN`), MIME-type sniffing prevention (`X-Content-Type-Options: nosniff`), Referrer Policy (`strict-origin-when-cross-origin`), and Permissions Policy (`camera=(), microphone=(), geolocation=()`). |
 | **SSRF & Upstream Stream Bounding** | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) & [`src/app/api/books/content/url-validator.ts`](src/app/api/books/content/url-validator.ts) | Upstream URL whitelisting (`isSafeUpstreamUrl`) restricting fetches strictly to official Project Gutenberg domains (`gutenberg.org`, `www.gutenberg.org`), strict numeric ID regex verification (`^\d{1,8}$`), `redirect: 'manual'` preventing open redirect hops, and a 15MB payload streaming threshold preventing memory exhaustion DoS. |
-| **Open Redirect Defense** | [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) | Path sanitization (`sanitizeRedirectPath`) guaranteeing OAuth and magic-link redirect paths strictly originate from trusted relative roots (`/^\/[^\/\\]/`) preventing off-site phishing redirects. |
+| **Open Redirect Defense** | [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) & [`src/lib/redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) | Path sanitization (`sanitizeRedirectPath`) guaranteeing OAuth and magic-link redirect paths strictly originate from trusted relative roots (`/^\/[^\/\\]/`) preventing off-site phishing redirects. |
 | **Next.js Edge Session Proxy** | [`src/proxy.ts`](src/proxy.ts) & [`src/lib/supabase/middleware.ts`](src/lib/supabase/middleware.ts) | Lightweight edge proxy invoking `@supabase/ssr` `updateSession` to seamlessly refresh auth tokens and cookies across route transitions with non-blocking fallback handling. |
 | **ReDoS & Main Thread Protection** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | Non-backtracking regular expressions (`[^\n]{0,80}`) and bounded passage analysis window (capped at 120,000 characters) eliminating regular expression denial of service (ReDoS) and event loop freezing on massive multi-megabyte classical tomes. |
 | **LRU Pagination Memory Cache** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | 500-entry memory cache (`Map<string, string[]>`) for paginated chapter views, delivering instant sub-millisecond virtual page turns with zero redundant recalculation. |
@@ -642,13 +657,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1708 tests across 178 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1746 tests across 184 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 56 validated ADRs (ADR-001 through ADR-056) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), and Tailwind CSS v4 Oxide & supply-chain hardening. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 58 validated ADRs (ADR-001 through ADR-058) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), Tailwind CSS v4 Oxide & supply-chain hardening, WCAG 2.2 AA focus trapping, zero-any TypeScript strictness, overlay dynamic code-splitting, and Phase 5 monolith decomposition. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

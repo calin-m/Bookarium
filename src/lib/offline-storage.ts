@@ -123,22 +123,25 @@ export async function saveOfflineBook(bookId: number, title: string, text: strin
       const request = store.put(record);
       request.onsuccess = () => resolve();
       request.onerror = (e) => {
-        reject(request.error || (e.target as any)?.error || new Error(`Failed to save book ${bookId} offline.`));
+        const targetError = e?.target && 'error' in e.target ? (e.target as { error?: DOMException }).error : null;
+        reject(request.error || targetError || new Error(`Failed to save book ${bookId} offline.`));
       };
       transaction.onerror = (e) => {
-        reject(transaction.error || (e.target as any)?.error || new Error(`Transaction error saving book ${bookId}.`));
+        const txnTargetError = e?.target && 'error' in e.target ? (e.target as { error?: DOMException }).error : null;
+        reject(transaction.error || txnTargetError || new Error(`Transaction error saving book ${bookId}.`));
       };
     });
   };
 
   try {
     await putRecord(db);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If QuotaExceededError, try emergency eviction of 20MB and retry once
+    const errorObj = error as { name?: string; code?: number; message?: string } | null;
     const isQuotaError =
-      error?.name === 'QuotaExceededError' ||
-      error?.code === 22 ||
-      error?.message?.includes('quota');
+      errorObj?.name === 'QuotaExceededError' ||
+      errorObj?.code === 22 ||
+      errorObj?.message?.includes('quota');
 
     if (isQuotaError) {
       const freed = await evictOldestBooksToFreeSpace(20 * 1024 * 1024);

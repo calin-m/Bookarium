@@ -19,11 +19,15 @@ export const defaultServerInfo: PerformanceInfo = Object.freeze({
 // Cache frozen instances by composite key for referential stability without mutable globals
 const snapshotCache = new Map<string, PerformanceInfo>();
 
+interface NavigatorWithDeviceMemory extends Navigator {
+  deviceMemory?: number;
+}
+
 export function getClientSnapshot(): PerformanceInfo {
   if (typeof window === 'undefined') return defaultServerInfo;
 
   const cores = navigator.hardwareConcurrency || 4;
-  const memory = (navigator as any).deviceMemory || 8;
+  const memory = (navigator as NavigatorWithDeviceMemory).deviceMemory || 8;
   const prefersReducedMotion = window.matchMedia
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;

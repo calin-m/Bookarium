@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { BookshelfSpine } from './BookshelfSpine';
 import type { GutendexBook } from '@/mocks/handlers';
@@ -149,7 +149,9 @@ describe('BookshelfSpine Component', () => {
 
   it('renders muted spine, restriction badge, banner, and disabled buttons for copyright-protected books', async () => {
     const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
-    useJurisdictionStore.setState({ country: 'RO' });
+    act(() => {
+      useJurisdictionStore.setState({ country: 'RO' });
+    });
 
     const restrictedBook: GutendexBook = {
       id: 863,
@@ -194,6 +196,8 @@ describe('BookshelfSpine Component', () => {
     const restrictedOfflineBtn = screen.getByRole('button', { name: `Offline storage unavailable for ${restrictedBook.title}` });
     expect(restrictedOfflineBtn).toBeDisabled();
 
-    useJurisdictionStore.setState({ country: 'US' });
+    act(() => {
+      useJurisdictionStore.setState({ country: 'US' });
+    });
   });
 });

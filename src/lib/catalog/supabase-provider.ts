@@ -103,8 +103,9 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         .from('books')
         .select('id', { count: 'estimated', head: true });
 
-      if (typeof (query as any).abortSignal === 'function') {
-        query = (query as any).abortSignal(AbortSignal.timeout(2500));
+      const abortableQuery = query as typeof query & { abortSignal?: (signal: AbortSignal) => typeof query };
+      if (typeof abortableQuery.abortSignal === 'function') {
+        query = abortableQuery.abortSignal(AbortSignal.timeout(2500));
       }
 
       const { count, error } = await query;

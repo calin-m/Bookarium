@@ -156,5 +156,56 @@ describe('ReaderDrawerShell Component', () => {
     const backdrop = screen.getByTestId('test-backdrop');
     expect(backdrop).toHaveClass('touch-none');
   });
+
+  it('traps focus with Tab and Shift+Tab within the drawer panel', () => {
+    render(
+      <ReaderDrawerShell
+        isOpen={true}
+        onClose={vi.fn()}
+        title="Focus Trap Drawer"
+        ariaLabel="Focus Trap Drawer"
+        closeAriaLabel="Close Focus Trap Drawer"
+      >
+        <button type="button">Drawer Item 1</button>
+        <button type="button">Drawer Item 2</button>
+      </ReaderDrawerShell>
+    );
+
+    const closeBtn = screen.getByRole('button', { name: 'Close Focus Trap Drawer' });
+    const item2 = screen.getByRole('button', { name: 'Drawer Item 2' });
+
+    // Close button (first) + Shift+Tab wraps to Item 2 (last)
+    closeBtn.focus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(item2);
+
+    // Item 2 (last) + Tab wraps to Close button (first)
+    item2.focus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
+    expect(document.activeElement).toBe(closeBtn);
+  });
+
+  it('restores focus to previous element when unmounted', () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open Drawer';
+    document.body.appendChild(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    const { unmount } = render(
+      <ReaderDrawerShell
+        isOpen={true}
+        onClose={vi.fn()}
+        title="Restore Focus Drawer"
+        ariaLabel="Restore Focus Drawer"
+      >
+        <div>Content</div>
+      </ReaderDrawerShell>
+    );
+
+    unmount();
+    expect(document.activeElement).toBe(trigger);
+    document.body.removeChild(trigger);
+  });
 });
 

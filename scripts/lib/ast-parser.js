@@ -79,6 +79,7 @@ function analyzeDependencyGraph(srcDir, rootDir) {
     const content = fs.readFileSync(file, 'utf-8');
     const rawImports = [];
     const internalImports = [];
+    const staticImports = [];
     const exportedProps = [];
     const exportedInterfaces = [];
 
@@ -94,6 +95,9 @@ function analyzeDependencyGraph(srcDir, rootDir) {
           rawImports.push(importSource);
           if (importSource.startsWith('@/') || importSource.startsWith('.')) {
             internalImports.push(importSource);
+            if (node.importKind !== 'type') {
+              staticImports.push(importSource);
+            }
           }
         },
         ExportAllDeclaration({ node }) {
@@ -102,6 +106,9 @@ function analyzeDependencyGraph(srcDir, rootDir) {
             rawImports.push(importSource);
             if (importSource.startsWith('@/') || importSource.startsWith('.')) {
               internalImports.push(importSource);
+              if (node.exportKind !== 'type') {
+                staticImports.push(importSource);
+              }
             }
           }
         },
@@ -111,6 +118,21 @@ function analyzeDependencyGraph(srcDir, rootDir) {
             rawImports.push(importSource);
             if (importSource.startsWith('@/') || importSource.startsWith('.')) {
               internalImports.push(importSource);
+              if (node.exportKind !== 'type') {
+                staticImports.push(importSource);
+              }
+            }
+          }
+        },
+        CallExpression({ node }) {
+          if (node.callee && node.callee.type === 'Import') {
+            const arg = node.arguments && node.arguments[0];
+            if (arg && (arg.type === 'StringLiteral' || arg.type === 'Literal') && arg.value) {
+              const importSource = arg.value;
+              rawImports.push(importSource);
+              if (importSource.startsWith('@/') || importSource.startsWith('.')) {
+                internalImports.push(importSource);
+              }
             }
           }
         },
@@ -147,7 +169,7 @@ function analyzeDependencyGraph(srcDir, rootDir) {
       });
     } catch (_err) {
       // Regex fallback for unparseable chunks
-      const importRegex = /(?:import|export\s+.*?from)\s+['"](@\/.*?|\..*?)['"]/g;
+      const importRegex = /(?:import|export\s+.*?from|import\s*\()\s*['"](@\/.*?|\..*?)['"]/g;
       let match;
       while ((match = importRegex.exec(content)) !== null) {
         internalImports.push(match[1]);
@@ -164,10 +186,12 @@ function analyzeDependencyGraph(srcDir, rootDir) {
       file: relativePath,
       absolutePath: file,
       imports: internalImports,
+      staticImports,
       rawImports,
       exportedProps,
       exportedInterfaces,
       resolvedImports: [],
+      resolvedStaticImports: [],
       consumedBy: [],
     });
   }
@@ -184,6 +208,12 @@ function analyzeDependencyGraph(srcDir, rootDir) {
         if (!targetData.consumedBy.includes(fileRel)) {
           targetData.consumedBy.push(fileRel);
         }
+      }
+    }
+    for (const imp of data.staticImports) {
+      const resolved = resolveImportPath(imp, fileRel, allFilesSet);
+      if (resolved && graph.has(resolved) && !data.resolvedStaticImports.includes(resolved)) {
+        data.resolvedStaticImports.push(resolved);
       }
     }
   }
@@ -207,7 +237,8 @@ function detectCircularDependencies(graph) {
 
     const nodeData = graph.get(node);
     if (nodeData) {
-      for (const neighbor of nodeData.resolvedImports) {
+      const neighbors = nodeData.resolvedStaticImports || nodeData.resolvedImports;
+      for (const neighbor of neighbors) {
         if (!visited.has(neighbor)) {
           dfs(neighbor, [...pathStack]);
         } else if (recStack.has(neighbor)) {

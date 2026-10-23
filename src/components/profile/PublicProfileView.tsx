@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   Globe,
@@ -22,7 +23,11 @@ import { PrivateProfileNotice } from '@/components/profile/PrivateProfileNotice'
 import { PinnedAccoladesShelf, type PinnedBookplateItem } from '@/components/profile/PinnedAccoladesShelf';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
-import { SymposiumInviteModal } from '@/components/symposium/SymposiumInviteModal';
+
+const SymposiumInviteModal = dynamic(
+  () => import('@/components/symposium/SymposiumInviteModal').then((mod) => mod.SymposiumInviteModal),
+  { ssr: false }
+);
 
 export interface PublicScholarProfile {
   id: string;

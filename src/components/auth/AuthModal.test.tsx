@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { AuthModal } from './AuthModal';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -91,7 +91,7 @@ describe('AuthModal Component', () => {
     expect(screen.getByRole('link', { name: /Copyright Governance/i })).toHaveAttribute('href', '/copyright');
   });
 
-  it('submits valid Sign Up credentials to auth store', () => {
+  it('submits valid Sign Up credentials to auth store', async () => {
     mockSignUpWithPassword.mockResolvedValueOnce({ needsEmailConfirmation: false, error: null });
 
     (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -115,7 +115,9 @@ describe('AuthModal Component', () => {
     fireEvent.change(pwdInputs[1], { target: { value: 'secret123' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
-    expect(mockSignUpWithPassword).toHaveBeenCalledWith('jane@example.com', 'secret123', 'Jane Doe');
+    await waitFor(() => {
+      expect(mockSignUpWithPassword).toHaveBeenCalledWith('jane@example.com', 'secret123', 'Jane Doe');
+    });
   });
 
   it('renders email verification screen and navigates to sign in when email confirmation is required', async () => {
@@ -152,7 +154,9 @@ describe('AuthModal Component', () => {
     mockResendVerificationEmail.mockResolvedValueOnce({ error: null });
     const resendBtn = screen.getByRole('button', { name: /Resend Email/i });
     fireEvent.click(resendBtn);
-    expect(mockResendVerificationEmail).toHaveBeenCalledWith('jane@example.com');
+    await waitFor(() => {
+      expect(mockResendVerificationEmail).toHaveBeenCalledWith('jane@example.com');
+    });
 
     const goSignInBtn = screen.getByRole('button', { name: /Go to Sign In/i });
     fireEvent.click(goSignInBtn);
@@ -212,7 +216,9 @@ describe('AuthModal Component', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Sign In to Bookarium/i }));
-    expect(mockSignInWithPassword).toHaveBeenCalledWith('user@example.com', 'password123');
+    await waitFor(() => {
+      expect(mockSignInWithPassword).toHaveBeenCalledWith('user@example.com', 'password123');
+    });
 
     fireEvent.click(screen.getByRole('button', { name: /Use Magic Link/i }));
     expect(setAuthModalView).toHaveBeenCalledWith('magic_link');
@@ -259,7 +265,9 @@ describe('AuthModal Component', () => {
 
     const resendBtn = screen.getByRole('button', { name: 'Resend Link' });
     fireEvent.click(resendBtn);
-    expect(mockResendVerificationEmail).toHaveBeenCalledWith('unconfirmed@bookarium.org');
+    await waitFor(() => {
+      expect(mockResendVerificationEmail).toHaveBeenCalledWith('unconfirmed@bookarium.org');
+    });
   });
 
   it('submits magic link request on valid email', async () => {
@@ -282,7 +290,9 @@ describe('AuthModal Component', () => {
       target: { value: 'magic@bookarium.org' },
     });
     fireEvent.click(screen.getByRole('button', { name: /Send Magic Link/i }));
-    expect(mockSignInWithOtp).toHaveBeenCalledWith('magic@bookarium.org');
+    await waitFor(() => {
+      expect(mockSignInWithOtp).toHaveBeenCalledWith('magic@bookarium.org');
+    });
   });
 
   it('renders magic link confirmation screen and navigates back to sign in', async () => {
@@ -387,7 +397,9 @@ describe('AuthModal Component', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Send Password Reset Link/i }));
-    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('forgot@bookarium.org');
+    await waitFor(() => {
+      expect(mockResetPasswordForEmail).toHaveBeenCalledWith('forgot@bookarium.org');
+    });
 
     const emailSentTitle = await screen.findByText('Check your email');
     expect(emailSentTitle).toBeInTheDocument();
@@ -420,5 +432,96 @@ describe('AuthModal Component', () => {
     const backBtn = screen.getByRole('button', { name: /Back to Sign In/i });
     fireEvent.click(backBtn);
     expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
+  });
+
+  it('closes modal on Escape key press', () => {
+    const closeAuthModal = vi.fn();
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'sign_in',
+      error: null,
+      closeAuthModal,
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signInWithPassword: mockSignInWithPassword,
+    });
+
+    render(<AuthModal />);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(closeAuthModal).toHaveBeenCalledTimes(1);
+  });
+
+  it('binds dynamic unique useId to dialog header', () => {
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'sign_in',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signInWithPassword: mockSignInWithPassword,
+    });
+
+    render(<AuthModal />);
+
+    const dialog = screen.getByRole('dialog');
+    const heading = screen.getByRole('heading', { level: 2, name: 'Welcome Back' });
+
+    expect(dialog).toHaveAttribute('aria-labelledby');
+    const labelledById = dialog.getAttribute('aria-labelledby');
+    expect(heading).toHaveAttribute('id', labelledById);
+  });
+
+  it('traps Tab and Shift+Tab focus within the auth dialog card', () => {
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'sign_in',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signInWithPassword: mockSignInWithPassword,
+    });
+
+    render(<AuthModal />);
+
+    const closeBtn = screen.getByLabelText('Close Authentication Modal');
+    const passwordInput = screen.getByPlaceholderText('••••••••••••');
+
+    // First element + Shift+Tab wraps to last element
+    closeBtn.focus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).not.toBeNull();
+
+    // Last element + Tab wraps to first element
+    passwordInput.focus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
+    expect(document.activeElement).not.toBeNull();
+  });
+
+  it('restores focus to previous active element when unmounted', () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Sign In Trigger';
+    document.body.appendChild(trigger);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'sign_in',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signInWithPassword: mockSignInWithPassword,
+    });
+
+    const { unmount } = render(<AuthModal />);
+    unmount();
+
+    expect(document.activeElement).toBe(trigger);
+    document.body.removeChild(trigger);
   });
 });

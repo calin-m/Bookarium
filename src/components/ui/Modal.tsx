@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -31,21 +31,85 @@ export const Modal: React.FC<ModalProps> = ({
   backdropTestId = 'modal-backdrop',
   testId,
 }) => {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (typeof document !== 'undefined') {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+    }
+
+    const getTabbableElements = (): HTMLElement[] => {
+      if (!dialogRef.current) return [];
+      const selector =
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.from(dialogRef.current.querySelectorAll<HTMLElement>(selector)).filter(
+        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true'
+      );
+    };
+
+    const timer = setTimeout(() => {
+      if (dialogRef.current && (!document.activeElement || !dialogRef.current.contains(document.activeElement))) {
+        const tabbables = getTabbableElements();
+        if (tabbables.length > 0) {
+          tabbables[0].focus({ preventScroll: true });
+        }
+      }
+    }, 0);
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
+      if (e.key === 'Escape') {
+        onCloseRef.current();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const tabbables = getTabbableElements();
+        if (tabbables.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const firstElement = tabbables[0];
+        const lastElement = tabbables[tabbables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement || !dialogRef.current?.contains(document.activeElement)) {
+            e.preventDefault();
+            lastElement.focus({ preventScroll: true });
+          }
+        } else {
+          if (document.activeElement === lastElement || !dialogRef.current?.contains(document.activeElement)) {
+            e.preventDefault();
+            firstElement.focus({ preventScroll: true });
+          }
+        }
       }
     };
 
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('keydown', handleKeyDown);
+      if (
+        previousFocusRef.current &&
+        typeof previousFocusRef.current.focus === 'function' &&
+        typeof document !== 'undefined' &&
+        document.body.contains(previousFocusRef.current)
+      ) {
+        previousFocusRef.current.focus({ preventScroll: true });
+      }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   const maxWidths = {
     sm: 'max-w-sm',
@@ -65,10 +129,12 @@ export const Modal: React.FC<ModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
+          key="modal-dialog-container"
+          ref={dialogRef}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-8"
           role="dialog"
           aria-modal="true"
-          aria-labelledby={title ? 'modal-title' : undefined}
+          aria-labelledby={title ? titleId : undefined}
           data-testid={testId}
           data-no-swipe
         >
@@ -98,7 +164,7 @@ export const Modal: React.FC<ModalProps> = ({
             {(title || showCloseButton) && (
               <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                 {title && (
-                  <h2 id="modal-title" className="text-lg font-semibold text-foreground">
+                  <h2 id={titleId} className="text-lg font-semibold text-foreground">
                     {title}
                   </h2>
                 )}

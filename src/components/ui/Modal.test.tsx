@@ -80,5 +80,84 @@ describe('Modal component', () => {
     expect(document.body.contains(dialog)).toBe(true);
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
+
+  it('binds dynamic unique useId to dialog title and aria-labelledby', () => {
+    render(
+      <Modal isOpen={true} onClose={() => {}} title="Dynamic Accessible Dialog">
+        <div>Accessible Body</div>
+      </Modal>
+    );
+
+    const dialog = screen.getByRole('dialog');
+    const heading = screen.getByRole('heading', { level: 2, name: 'Dynamic Accessible Dialog' });
+
+    expect(dialog).toHaveAttribute('aria-labelledby');
+    const labelledById = dialog.getAttribute('aria-labelledby');
+    expect(heading).toHaveAttribute('id', labelledById);
+  });
+
+  it('traps keyboard Tab and Shift+Tab navigation within modal dialog', () => {
+    render(
+      <Modal isOpen={true} onClose={() => {}} title="Focus Trap Dialog">
+        <button type="button">Action 1</button>
+        <button type="button">Action 2</button>
+      </Modal>
+    );
+
+    const closeBtn = screen.getByLabelText('Close modal');
+    const action2Btn = screen.getByRole('button', { name: 'Action 2' });
+
+    // Focus close button (first tabbable) and press Shift+Tab -> wraps to last button
+    closeBtn.focus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(action2Btn);
+
+    // Focus last button and press Tab -> wraps to first button (close button)
+    action2Btn.focus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
+    expect(document.activeElement).toBe(closeBtn);
+  });
+
+  it('restores focus to previously active element on modal unmount', () => {
+    const triggerBtn = document.createElement('button');
+    triggerBtn.textContent = 'Open Dialog';
+    document.body.appendChild(triggerBtn);
+    triggerBtn.focus();
+    expect(document.activeElement).toBe(triggerBtn);
+
+    const { unmount } = render(
+      <Modal isOpen={true} onClose={() => {}} title="Restoring Focus">
+        <div>Content</div>
+      </Modal>
+    );
+
+    unmount();
+    expect(document.activeElement).toBe(triggerBtn);
+    document.body.removeChild(triggerBtn);
+  });
+
+  it('preserves input focus when parent re-renders with a new inline onClose callback', () => {
+    const ParentWithInput: React.FC = () => {
+      const [val, setVal] = React.useState('');
+      return (
+        <Modal isOpen={true} onClose={() => setVal('')} title="Create Shelf">
+          <input
+            aria-label="Shelf Name"
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+          />
+        </Modal>
+      );
+    };
+
+    render(<ParentWithInput />);
+    const input = screen.getByLabelText('Shelf Name');
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    fireEvent.change(input, { target: { value: 'Gothic Classics' } });
+    expect(document.activeElement).toBe(input);
+    expect(input).toHaveValue('Gothic Classics');
+  });
 });
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { BookshelfMobileModal } from './BookshelfMobileModal';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -173,7 +173,9 @@ describe('BookshelfMobileModal Component', () => {
 
   it('renders regional copyright notice banner and disables read and offline actions for restricted books', async () => {
     const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
-    useJurisdictionStore.setState({ country: 'RO' });
+    act(() => {
+      useJurisdictionStore.setState({ country: 'RO' });
+    });
 
     const restrictedBook: GutendexBook = {
       id: 863,
@@ -213,7 +215,9 @@ describe('BookshelfMobileModal Component', () => {
     const offlineBtn = screen.getByRole('button', { name: `Offline storage unavailable for ${restrictedBook.title}` });
     expect(offlineBtn).toBeDisabled();
 
-    useJurisdictionStore.setState({ country: 'US' });
+    act(() => {
+      useJurisdictionStore.setState({ country: 'US' });
+    });
   });
 });
 

@@ -104,10 +104,10 @@ export const useFellowshipStore = create<FellowshipState>()(
               !symposiumsRes.error && symposiumsRes.data ? symposiumsRes.data : state.symposiums,
             isLoading: false,
           }));
-        } catch (err: any) {
+        } catch (err: unknown) {
           set({
             isLoading: false,
-            error: err?.message || 'Unable to synchronize Reader Circle data.',
+            error: err instanceof Error ? err.message : 'Unable to synchronize Reader Circle data.',
           });
         }
       },

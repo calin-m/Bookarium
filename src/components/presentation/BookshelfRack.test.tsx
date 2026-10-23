@@ -7,6 +7,7 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
+import { getOfflineBookIds, getStorageQuota } from '@/lib/offline-storage';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -25,8 +26,11 @@ vi.mock('@/lib/offline-storage', () => ({
 describe('BookshelfRack Component', () => {
   beforeEach(() => {
     pushMock.mockClear();
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+    vi.mocked(getStorageQuota).mockResolvedValue(null);
     useAuthStore.setState({ user: null, profile: null });
     useBookshelfStore.getState().clearBookshelf();
+    useBookshelfStore.setState({ syncWithCloud: vi.fn().mockResolvedValue(undefined) });
     useReaderStore.getState().closeReader();
     useJurisdictionStore.setState({
       country: 'US',

@@ -312,5 +312,216 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     // Private shelf is hidden because is_public = false
     expect(screen.queryByText('Private Notes')).not.toBeInTheDocument();
   });
+
+  it('handles empty username parameter and Navbar view navigation cleanly', async () => {
+    mockParams = { username: '' };
+    render(<PublicScholarProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
+    });
+
+    const bookshelfNavBtn = screen.getByRole('button', { name: /^Bookshelf$/i });
+    bookshelfNavBtn.click();
+    expect(mockPush).toHaveBeenCalledWith('/bookshelf');
+  });
+
+  it('resolves array username parameter, computes streak fallbacks from active_dates, and uses local store shelf fallbacks when viewing own profile', async () => {
+    mockParams = { username: ['jane_austen'] as unknown as string };
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+
+    useAuthStore.setState({
+      user: { id: 'u-self-1' } as any,
+      profile: null,
+    });
+
+    useBookshelfStore.setState({
+      cloudBookshelves: [
+        {
+          id: 'local-shelf-1',
+          user_id: 'u-self-1',
+          name: 'Local Classics',
+          is_default: false,
+          is_public: true,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      cloudBookshelfItems: [
+        {
+          id: 'local-item-1',
+          bookshelf_id: 'local-shelf-1',
+          user_id: 'u-self-1',
+          book_id: 1342,
+          book_title: 'Emma',
+          book_authors: [{ name: 'Jane Austen' } as unknown as string],
+          cover_url: null,
+          added_at: '',
+        },
+      ],
+      syncWithCloud: vi.fn().mockResolvedValue(undefined),
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    id: 'u-self-1',
+                    display_name: '',
+                    username: 'jane_austen',
+                    is_public: true,
+                    show_streak: true,
+                    show_challenge: false,
+                    show_bookshelves: true,
+                    created_at: '2025-01-01T00:00:00.000Z',
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_accolades') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [{ accolade_id: 'unknown-accolade', unlocked_at: '', is_pinned: true }],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_reading_habits') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  active_dates: 'invalid-non-array',
+                  annual_goal: 0,
+                },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'bookshelves') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      };
+    });
+
+    render(<PublicScholarProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Local Classics')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Emma')).toBeInTheDocument();
+  });
+
+  it('falls back to savedBooks General shelf when viewing own profile with no cloud shelves and handles Supabase query exceptions cleanly', async () => {
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    useAuthStore.setState({
+      user: { id: 'u-self-2' } as any,
+      profile: null,
+    });
+    useBookshelfStore.setState({
+      cloudBookshelves: [],
+      cloudBookshelfItems: [],
+      savedBooks: [
+        {
+          id: 84,
+          title: 'Frankenstein',
+          authors: [{ name: 'Mary Shelley', birth_year: 1797, death_year: 1851 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 100,
+        },
+      ],
+      syncWithCloud: vi.fn().mockResolvedValue(undefined),
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    id: 'u-self-2',
+                    display_name: 'Mary Shelley',
+                    username: 'mary_shelley',
+                    is_public: true,
+                    show_streak: false,
+                    show_challenge: false,
+                    show_bookshelves: true,
+                    created_at: '2025-01-01T00:00:00.000Z',
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'bookshelves') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      };
+    });
+
+    const { unmount } = render(<PublicScholarProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Frankenstein')).toBeInTheDocument();
+    });
+    unmount();
+
+    // Verify exception catch fallback sets PrivateProfileNotice
+    mockFrom.mockImplementation(() => {
+      throw new Error('Supabase connection error');
+    });
+
+    render(<PublicScholarProfilePage />);
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
+    });
+  });
 });
 

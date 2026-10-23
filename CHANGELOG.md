@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.8.0] - 2026-10-23
+### *WCAG 2.2 AA Focus Trapping & Dynamic ARIA, Zero-Any Strict TypeScript, Overlay Code-Splitting, Monolith Decomposition & Hardened Production CSP*
+
+### Added
+- WCAG 2.2 AA Modal Focus Trapping & Focus Restoration (`src/components/ui/Modal.tsx`, `src/components/reader/ReaderDrawerShell.tsx`, `src/components/auth/AuthModal.tsx`, `ADR-058`): Added keyboard `Tab` / `Shift+Tab` boundary trapping within all modals and reader drawers using a stable callback ref pattern that preserves input focus across parent re-renders, automatic focus restoration to the previously active element on close with `{ preventScroll: true }`, Escape key dismissal for `AuthModal`, and dynamic `useId()` ARIA labelled-by association.
+- Zero-Any TypeScript Strictness & Compiler Governance (`eslint.config.mjs`, `src/test/setup.ts`, `src/lib/library-backup.ts`, `src/stores/useBookshelfStore.ts`, `src/stores/useReaderStore.ts`, `src/app/account/page.tsx`, `ADR-058`): Eradicated all explicit `any` usages across production stores, adapters, page routes, and `src/test/setup.ts`, replacing them with typed interfaces (`GutendexBook`, `UserBookCurationRow`, `RawBackupCandidate`, `Record<string, unknown>`), and activated `"@typescript-eslint/no-explicit-any": "error"` in ESLint.
+- React Server Component Conversion for Informational Routes (`src/app/copyright/page.tsx`, `src/app/privacy/page.tsx`, `ADR-058`): Converted static informational pages to React Server Components (RSC), eliminating client bundle weight and hydration overhead.
+- Dynamic Code-Splitting for Closed-by-Default Overlays (`src/app/providers.tsx`, `src/app/page.tsx`, `src/components/account/AccountAccoladesCard.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/components/profile/PublicProfileView.tsx`, `scripts/lib/ast-parser.js`, `ADR-058`): Converted `AuthModal`, `AdvancedFilterDrawer`, `DownloadDrawer`, `BookPreviewModal`, `AccoladeCelebrationModal`, and `SymposiumInviteModal` to lazy `next/dynamic(..., { ssr: false })` loading, and extended AST matrix parser for dynamic `import()` expressions.
+
+### Fixed
+- React `act(...)` Warning Elimination & Deep Branch Test Coverage (`src/hooks/useOfflineBooks.ts`, `src/components/presentation/BookshelfRack.test.tsx`, `src/app/account/page.test.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.test.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx`, `src/lib/offline-storage.test.ts`, `src/hooks/queries/useBookContent.test.ts`, `src/components/account/AccountSymposiumSection.test.tsx`, `src/app/u/[username]/page.test.tsx`, `src/components/reader/ReaderSpeechBar.test.tsx`, `ADR-058`): Added no-op functional state guards in `useOfflineBooks.ts` and wrapped asynchronous state mutations in `act(...)` and `waitFor`, completely eliminating React testing environment stderr warnings while raising branch coverage across storage, speech synthesis, and public profile views.
+- Hardened Production Content Security Policy (`next.config.ts`, `ADR-058`): Removed 'unsafe-eval' from script-src in production builds, restricting evaluation exceptions strictly to `process.env.NODE_ENV !== 'production'`.
+- Top-Level Navigation Fallback (`src/components/presentation/Navbar.tsx`, `src/components/presentation/Navbar.test.tsx`): Added router fallback navigation (`router.push(ROUTES.VIEW(item.id))`) to `Navbar.tsx` when `onViewChange` callback is omitted.
+
+### Refactored
+- Phase 5 Monolith Decomposition (`src/lib/backup-validator.ts`, `src/lib/library-backup.ts`, `src/components/account/AccountNarrationSubPanel.tsx`, `src/components/account/AccountPortabilitySubPanel.tsx`, `src/components/account/AccountPreferencesSection.tsx`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useBookshelfStore.ts`, `ADR-058`): Extracted schema validation (`backup-validator.ts`), account preference sub-panels (`AccountNarrationSubPanel.tsx`, `AccountPortabilitySubPanel.tsx`), and bidirectional cloud bookshelf reconciliation (`bookshelf-cloud-sync.ts`) into dedicated single-responsibility modules with co-located unit tests and 100% backward-compatible re-exports.
+
+
 ## [2.7.1] - 2026-10-16
 ### *Mobile Viewport Ergonomics, Horizontal Overflow Clipping, 3×2 Account Bento Grid & Non-Breaking Tailwind CSS v4 Supply-Chain Upgrade*
 
@@ -711,3 +729,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-055: Reader Circles, Literary Symposiums (Dual Reading), Filter-First Shared Marginalia & Two-Tier Account Workspace Architecture**
 - **ADR-056: Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply-Chain Overrides (`tinyglobby`)**
 - **ADR-057: App Router Route Handler Type Isolation, Upstream Mirror Header Defensiveness, and Webpack Build Stability**
+- **ADR-058: WCAG 2.2 AA Modal Focus Management, TypeScript Strictness (no-explicit-any), RSC Static Architecture, Overlay Code-Splitting, and Phase 5 Monolith Decomposition**

@@ -147,9 +147,10 @@ export const useReaderStore = create<ReaderState>()(
           const authors = rawAuthorSources
             .map((a) => formatAuthorWithLifespan(a))
             .filter((name) => Boolean(name && name !== 'Anonymous'));
+          const bookWithCover = currentBook as { formats?: Record<string, string>; coverUrl?: string | null };
           const coverUrl =
-            (currentBook as any).formats?.['image/jpeg'] ||
-            (currentBook as any).coverUrl ||
+            bookWithCover.formats?.['image/jpeg'] ||
+            bookWithCover.coverUrl ||
             null;
 
           if (!position.bookTitle) {

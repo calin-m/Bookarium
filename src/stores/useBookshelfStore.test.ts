@@ -1536,7 +1536,7 @@ describe('useBookshelfStore', () => {
     });
 
     it('returns original query if query has no order function', () => {
-      const mockQuery = { select: vi.fn() };
+      const mockQuery = { select: vi.fn(), order: undefined };
       expect(applyDeterministicItemOrdering(mockQuery)).toBe(mockQuery);
     });
   });

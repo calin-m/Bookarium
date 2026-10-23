@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Navbar } from './Navbar';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { mockBooks } from '@/mocks/handlers';
+
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}));
 
 describe('Navbar component', () => {
   beforeEach(() => {
@@ -26,12 +33,14 @@ describe('Navbar component', () => {
 
   it('should fill highlighter icon when annotations are saved in notebook', async () => {
     const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
-    await useAnnotationStore.getState().addAnnotation({
-      bookId: 1342,
-      chapterIndex: 0,
-      chapterPage: 1,
-      selectedText: 'Test quote',
-      color: 'yellow',
+    await act(async () => {
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Test quote',
+        color: 'yellow',
+      });
     });
 
     const { container } = render(<Navbar activeView="catalog" />);
@@ -39,7 +48,10 @@ describe('Navbar component', () => {
     expect(highlighterSvg).toHaveClass('fill-amber-500');
     expect(highlighterSvg).toHaveClass('text-amber-500');
     expect(screen.queryByTestId('navbar-notebook-badge')).not.toBeInTheDocument();
-    useAnnotationStore.getState().clearAllAnnotations();
+
+    act(() => {
+      useAnnotationStore.getState().clearAllAnnotations();
+    });
   });
 
   it('triggers onViewChange with notebook when Notebook tab is clicked', () => {
@@ -49,6 +61,15 @@ describe('Navbar component', () => {
     const notebookBtn = screen.getByLabelText('Notebook');
     fireEvent.click(notebookBtn);
     expect(handleViewChange).toHaveBeenCalledWith('notebook');
+  });
+
+  it('falls back to router.push when onViewChange is not provided', () => {
+    mockPush.mockClear();
+    render(<Navbar activeView="catalog" />);
+
+    const bookshelfBtn = screen.getByLabelText('Bookshelf');
+    fireEvent.click(bookshelfBtn);
+    expect(mockPush).toHaveBeenCalledWith('/bookshelf');
   });
 
   it('applies active styling when activeView is notebook', () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import Link from 'next/link';
 import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, Eye, EyeOff, KeyRound, Check } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
@@ -82,6 +82,87 @@ export const AuthModal: React.FC = () => {
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  const titleId = useId();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const closeAuthModalRef = useRef(closeAuthModal);
+
+  useEffect(() => {
+    closeAuthModalRef.current = closeAuthModal;
+  }, [closeAuthModal]);
+
+  // Focus trap & Escape dismissal effect
+  useEffect(() => {
+    if (!isAuthModalOpen) return;
+
+    if (typeof document !== 'undefined') {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+    }
+
+    const getTabbableElements = (): HTMLElement[] => {
+      if (!cardRef.current) return [];
+      const selector =
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      return Array.from(cardRef.current.querySelectorAll<HTMLElement>(selector)).filter(
+        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true'
+      );
+    };
+
+    const timer = setTimeout(() => {
+      if (cardRef.current && (!document.activeElement || !cardRef.current.contains(document.activeElement))) {
+        const tabbables = getTabbableElements();
+        if (tabbables.length > 0) {
+          tabbables[0].focus({ preventScroll: true });
+        }
+      }
+    }, 0);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeAuthModalRef.current();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const tabbables = getTabbableElements();
+        if (tabbables.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const firstElement = tabbables[0];
+        const lastElement = tabbables[tabbables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement || !cardRef.current?.contains(document.activeElement)) {
+            e.preventDefault();
+            lastElement.focus({ preventScroll: true });
+          }
+        } else {
+          if (document.activeElement === lastElement || !cardRef.current?.contains(document.activeElement)) {
+            e.preventDefault();
+            firstElement.focus({ preventScroll: true });
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+      if (
+        previousFocusRef.current &&
+        typeof previousFocusRef.current.focus === 'function' &&
+        typeof document !== 'undefined' &&
+        document.body.contains(previousFocusRef.current)
+      ) {
+        previousFocusRef.current.focus({ preventScroll: true });
+      }
+    };
+  }, [isAuthModalOpen]);
 
   // Cooldown countdown effect
   useEffect(() => {
@@ -185,11 +266,12 @@ export const AuthModal: React.FC = () => {
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="auth-modal-title"
+      aria-labelledby={titleId}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={closeAuthModal}
     >
       <div
+        ref={cardRef}
         className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-8 text-foreground space-y-6"
         onClick={(e) => e.stopPropagation()}
       >
@@ -200,7 +282,7 @@ export const AuthModal: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5" />
               <span>Bookarium Cloud</span>
             </div>
-            <h2 id="auth-modal-title" className="text-xl sm:text-2xl font-serif font-bold text-foreground">
+            <h2 id={titleId} className="text-xl sm:text-2xl font-serif font-bold text-foreground">
               {AUTH_VIEW_CONFIG[authModalView].title}
             </h2>
             <p className="text-xs text-muted-foreground font-sans">

@@ -201,6 +201,231 @@ describe('offline-storage (IndexedDB engine)', () => {
       expect(store.has(1)).toBe(false); // Old Book was evicted
       expect(store.has(2)).toBe(true);  // New Book remains
     });
+
+    it('returns null from getStorageQuota when storage API is unavailable or throws', async () => {
+      const { getStorageQuota } = await import('./offline-storage');
+      const originalStorage = navigator.storage;
+
+      // 1. undefined storage
+      Object.defineProperty(navigator, 'storage', {
+        value: undefined,
+        configurable: true,
+      });
+      expect(await getStorageQuota()).toBeNull();
+
+      // 2. throwing estimate()
+      Object.defineProperty(navigator, 'storage', {
+        value: {
+          estimate: vi.fn().mockRejectedValue(new Error('Storage failure')),
+        },
+        configurable: true,
+      });
+      expect(await getStorageQuota()).toBeNull();
+
+      // 3. quota === 0
+      Object.defineProperty(navigator, 'storage', {
+        value: {
+          estimate: vi.fn().mockResolvedValue({ usage: 0, quota: 0 }),
+        },
+        configurable: true,
+      });
+      const zeroQuota = await getStorageQuota();
+      expect(zeroQuota?.percentUsed).toBe(0);
+      expect(zeroQuota?.isNearQuota).toBe(false);
+
+      // 4. near quota (>85%)
+      Object.defineProperty(navigator, 'storage', {
+        value: {
+          estimate: vi.fn().mockResolvedValue({ usage: 90 * 1024 * 1024, quota: 100 * 1024 * 1024 }),
+        },
+        configurable: true,
+      });
+      const nearQuota = await getStorageQuota();
+      expect(nearQuota?.percentUsed).toBe(90);
+      expect(nearQuota?.isNearQuota).toBe(true);
+
+      Object.defineProperty(navigator, 'storage', {
+        value: originalStorage,
+        configurable: true,
+      });
+    });
+
+    it('returns 0 freed bytes when offline store is empty or eviction fails', async () => {
+      const { evictOldestBooksToFreeSpace } = await import('./offline-storage');
+      store.clear();
+      expect(await evictOldestBooksToFreeSpace(5000)).toBe(0);
+    });
+
+    it('triggers pre-emptive eviction during saveOfflineBook when storage buffer is low', async () => {
+      const originalStorage = navigator.storage;
+      Object.defineProperty(navigator, 'storage', {
+        value: {
+          estimate: vi.fn().mockResolvedValue({
+            usage: 95 * 1024 * 1024,
+            quota: 100 * 1024 * 1024, // only 5MB free, needs > 10MB buffer
+          }),
+        },
+        configurable: true,
+      });
+
+      store.set(10, {
+        bookId: 10,
+        title: 'Old Book To Evict',
+        text: 'Old Text',
+        downloadedAt: '2024-01-01T00:00:00.000Z',
+        byteSize: 100000,
+      });
+
+      await saveOfflineBook(11, 'New Low Space Book', 'New text content');
+      expect(store.has(11)).toBe(true);
+      expect(store.has(10)).toBe(false);
+
+      Object.defineProperty(navigator, 'storage', {
+        value: originalStorage,
+        configurable: true,
+      });
+    });
+
+    it('recovers from QuotaExceededError by evicting emergency space and retrying', async () => {
+      store.set(1, {
+        bookId: 1,
+        title: 'Emergency Eviction Book',
+        text: 'Old Text',
+        downloadedAt: '2024-01-01T00:00:00.000Z',
+        byteSize: 25 * 1024 * 1024,
+      });
+
+      let putCount = 0;
+      const originalIndexedDB = (globalThis as any).indexedDB;
+
+      const mockObjectStore = {
+        put: vi.fn((record: OfflineBookRecord) => {
+          putCount++;
+          const req: any = { onsuccess: null, onerror: null, error: null };
+          setTimeout(() => {
+            if (putCount === 1) {
+              const err = new Error('Quota exceeded');
+              err.name = 'QuotaExceededError';
+              (req as any).error = err;
+              req.onerror?.({ target: req });
+            } else {
+              store.set(record.bookId, record);
+              req.onsuccess?.();
+            }
+          }, 0);
+          return req;
+        }),
+        getAll: vi.fn(() => {
+          const req: any = { result: Array.from(store.values()), onsuccess: null, onerror: null };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+        delete: vi.fn((key: number) => {
+          store.delete(key);
+          const req: any = { onsuccess: null, onerror: null };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+      };
+
+      const mockTransaction = {
+        objectStore: vi.fn(() => mockObjectStore),
+      };
+
+      const mockDB = {
+        transaction: vi.fn(() => mockTransaction),
+        objectStoreNames: { contains: vi.fn(() => true) },
+      };
+
+      const mockOpenRequest: any = {
+        result: mockDB,
+        onsuccess: null,
+        onerror: null,
+      };
+
+      (globalThis as any).indexedDB = {
+        open: vi.fn(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      await saveOfflineBook(99, 'Retry After Quota', 'Sample book text');
+      expect(store.has(99)).toBe(true);
+      expect(putCount).toBe(2);
+
+      (globalThis as any).indexedDB = originalIndexedDB;
+    });
+
+    it('throws error when QuotaExceededError cannot free sufficient space', async () => {
+      store.clear(); // nothing to evict
+
+      const originalIndexedDB = (globalThis as any).indexedDB;
+      const mockObjectStore = {
+        put: vi.fn(() => {
+          const req: any = { onsuccess: null, onerror: null, error: null };
+          setTimeout(() => {
+            const err = new Error('Quota exceeded');
+            err.name = 'QuotaExceededError';
+            req.error = err;
+            req.onerror?.({ target: req });
+          }, 0);
+          return req;
+        }),
+        getAll: vi.fn(() => {
+          const req: any = { result: [], onsuccess: null, onerror: null };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+      };
+
+      const mockTransaction = {
+        objectStore: vi.fn(() => mockObjectStore),
+      };
+
+      const mockDB = {
+        transaction: vi.fn(() => mockTransaction),
+        objectStoreNames: { contains: vi.fn(() => true) },
+      };
+
+      const mockOpenRequest: any = {
+        result: mockDB,
+        onsuccess: null,
+      };
+
+      (globalThis as any).indexedDB = {
+        open: vi.fn(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      await expect(saveOfflineBook(100, 'Unrecoverable Quota', 'text')).rejects.toThrow(
+        /Storage quota exceeded\. Please clear some offline books\./
+      );
+
+      (globalThis as any).indexedDB = originalIndexedDB;
+    });
+
+    it('returns empty array from getOfflineBookIds when store error occurs', async () => {
+      const { getOfflineBookIds } = await import('./offline-storage');
+      const originalIndexedDB = (globalThis as any).indexedDB;
+
+      (globalThis as any).indexedDB = {
+        open: vi.fn(() => {
+          const req: any = { onsuccess: null, onerror: null };
+          setTimeout(() => {
+            req.onerror?.();
+          }, 0);
+          return req;
+        }),
+      };
+
+      const ids = await getOfflineBookIds();
+      expect(ids).toEqual([]);
+
+      (globalThis as any).indexedDB = originalIndexedDB;
+    });
   });
 });
 

@@ -26,7 +26,7 @@ export function useOfflineBooks() {
   const refreshStorageQuota = useCallback(async () => {
     try {
       const quota = await getStorageQuota();
-      setStorageQuota(quota);
+      setStorageQuota((prev) => (prev === quota ? prev : quota));
     } catch {
       // Non-blocking fallback
     }
@@ -35,7 +35,7 @@ export function useOfflineBooks() {
   const refreshOfflineIds = useCallback(async () => {
     try {
       const ids = await getOfflineBookIds();
-      setOfflineBookIds(ids);
+      setOfflineBookIds((prev) => (prev.length === 0 && ids.length === 0 ? prev : ids));
       await refreshStorageQuota();
     } catch {
       // Non-blocking fallback
@@ -47,7 +47,7 @@ export function useOfflineBooks() {
     getOfflineBookIds()
       .then((ids) => {
         if (isMounted) {
-          setOfflineBookIds(ids);
+          setOfflineBookIds((prev) => (prev.length === 0 && ids.length === 0 ? prev : ids));
         }
       })
       .catch(() => {});
@@ -55,7 +55,7 @@ export function useOfflineBooks() {
     getStorageQuota()
       .then((quota) => {
         if (isMounted) {
-          setStorageQuota(quota);
+          setStorageQuota((prev) => (prev === quota ? prev : quota));
         }
       })
       .catch(() => {});

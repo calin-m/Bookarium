@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   Users,
@@ -16,8 +17,12 @@ import {
 import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { SymposiumInviteModal } from '@/components/symposium/SymposiumInviteModal';
 import { ROUTES } from '@/config/routes';
+
+const SymposiumInviteModal = dynamic(
+  () => import('@/components/symposium/SymposiumInviteModal').then((mod) => mod.SymposiumInviteModal),
+  { ssr: false }
+);
 
 export interface AccountSymposiumSectionProps {
   userId: string;

@@ -20,9 +20,15 @@ const eslintConfig = defineConfig([
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
       ],
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-explicit-any": "error",
       "react/display-name": "off",
       "@next/next/no-img-element": "off"
+    }
+  },
+  {
+    files: ["**/*.test.ts", "**/*.test.tsx", "src/mocks/**"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off"
     }
   }
 ]);

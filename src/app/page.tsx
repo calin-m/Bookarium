@@ -1,17 +1,28 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/presentation/Navbar';
 import { HeroSearch } from '@/components/presentation/HeroSearch';
 import { StickyCatalogToolbar, type ActiveFilterChip } from '@/components/presentation/StickyCatalogToolbar';
-import { AdvancedFilterDrawer } from '@/components/presentation/AdvancedFilterDrawer';
 import { BookGrid } from '@/components/presentation/BookGrid';
 import { EditorialQuoteSection } from '@/components/presentation/EditorialQuoteSection';
 import { LiteraryQuotes } from '@/components/presentation/LiteraryQuotes';
-import { DownloadDrawer } from '@/components/presentation/DownloadDrawer';
-import { BookPreviewModal } from '@/components/presentation/BookPreviewModal';
 import { BookshelfMobileModal } from '@/components/presentation/bookshelf/BookshelfMobileModal';
+
+const AdvancedFilterDrawer = dynamic(
+  () => import('@/components/presentation/AdvancedFilterDrawer').then((mod) => mod.AdvancedFilterDrawer),
+  { ssr: false }
+);
+const DownloadDrawer = dynamic(
+  () => import('@/components/presentation/DownloadDrawer').then((mod) => mod.DownloadDrawer),
+  { ssr: false }
+);
+const BookPreviewModal = dynamic(
+  () => import('@/components/presentation/BookPreviewModal').then((mod) => mod.BookPreviewModal),
+  { ssr: false }
+);
 import { NotebookView } from '@/components/presentation/NotebookView';
 import { BookmarksView } from '@/components/presentation/BookmarksView';
 import { Modal } from '@/components/ui/Modal';

@@ -9,7 +9,7 @@ import {
 
 interface ReaderLayoutProps {
   children: React.ReactNode;
-  params: Promise<any>;
+  params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata({

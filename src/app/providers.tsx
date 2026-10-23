@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { initializeJurisdiction } from '@/stores/useJurisdictionStore';
 import { syncAllStoresWithCloud } from '@/lib/sync-utils';
-import { AuthModal } from '@/components/auth/AuthModal';
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
+
+const AuthModal = dynamic(
+  () => import('@/components/auth/AuthModal').then((mod) => mod.AuthModal),
+  { ssr: false }
+);
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -33,6 +38,7 @@ export function Providers({ children, initialCountry }: ProvidersProps) {
 
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
   const user = useAuthStore((s) => s.user);
+  const isAuthModalOpen = useAuthStore((s) => s.isAuthModalOpen);
 
   useEffect(() => {
     const unsubscribe = initializeAuth();
@@ -81,7 +87,7 @@ export function Providers({ children, initialCountry }: ProvidersProps) {
     <QueryClientProvider client={queryClient}>
       <ServiceWorkerRegister />
       {children}
-      <AuthModal />
+      {isAuthModalOpen && <AuthModal />}
     </QueryClientProvider>
   );
 }
