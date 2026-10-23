@@ -45,21 +45,28 @@ describe('useAuthStore', () => {
       isAuthModalOpen: false,
       authModalView: 'sign_in',
       error: null,
+      statusMessage: null,
     });
   });
 
-  it('manages modal open, close, and view state transitions', () => {
+  it('manages modal open, close, view, and statusMessage state transitions', () => {
     const store = useAuthStore.getState();
 
     store.openAuthModal('sign_up');
     expect(useAuthStore.getState().isAuthModalOpen).toBe(true);
     expect(useAuthStore.getState().authModalView).toBe('sign_up');
 
+    store.setStatusMessage('Email verified!');
+    expect(useAuthStore.getState().statusMessage).toBe('Email verified!');
+
     store.setAuthModalView('magic_link');
     expect(useAuthStore.getState().authModalView).toBe('magic_link');
+    expect(useAuthStore.getState().statusMessage).toBeNull();
 
+    store.setStatusMessage('Another notice');
     store.closeAuthModal();
     expect(useAuthStore.getState().isAuthModalOpen).toBe(false);
+    expect(useAuthStore.getState().statusMessage).toBeNull();
   });
 
   it('handles signInWithPassword success and error states', async () => {
@@ -170,10 +177,18 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().error).toBe('Too many requests');
   });
 
-  it('handles signInWithOtp (magic link) success and error', async () => {
+  it('handles signInWithOtp (magic link) success and error with /auth/callback redirect', async () => {
     mockSignInWithOtp.mockResolvedValueOnce({ error: null });
     const res1 = await useAuthStore.getState().signInWithOtp('reader@bookarium.org');
     expect(res1.error).toBeNull();
+    expect(mockSignInWithOtp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'reader@bookarium.org',
+        options: expect.objectContaining({
+          emailRedirectTo: expect.stringContaining('/auth/callback'),
+        }),
+      })
+    );
 
     mockSignInWithOtp.mockResolvedValueOnce({ error: { message: 'Rate limit exceeded' } });
     const res2 = await useAuthStore.getState().signInWithOtp('reader@bookarium.org');
@@ -181,10 +196,18 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().error).toBe('Rate limit exceeded');
   });
 
-  it('handles signInWithOAuth success and error', async () => {
+  it('handles signInWithOAuth success and error with /auth/callback redirect', async () => {
     mockSignInWithOAuth.mockResolvedValueOnce({ error: null });
     const res1 = await useAuthStore.getState().signInWithOAuth('google');
     expect(res1.error).toBeNull();
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'google',
+        options: expect.objectContaining({
+          redirectTo: expect.stringContaining('/auth/callback'),
+        }),
+      })
+    );
 
     mockSignInWithOAuth.mockResolvedValueOnce({ error: { message: 'OAuth failed' } });
     const res2 = await useAuthStore.getState().signInWithOAuth('github');
@@ -332,7 +355,7 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().error).toBe('Auth rate limit');
   });
 
-  it('handles deleteAccount success and failure', async () => {
+  it('handles deleteAccount success, 11-table database purge, and 6-store local state reset', async () => {
     // Logged out
     useAuthStore.setState({ user: null });
     const res1 = await useAuthStore.getState().deleteAccount();
@@ -340,18 +363,75 @@ describe('useAuthStore', () => {
 
     // Logged in success
     useAuthStore.setState({ user: { id: 'user-delete' } as any, profile: { id: 'user-delete' } as any });
+    const mockEq = vi.fn().mockResolvedValue({ error: null });
+    const mockOr = vi.fn().mockResolvedValue({ error: null });
     const mockDelete = vi.fn().mockReturnValue({
-      eq: vi.fn().mockResolvedValue({ error: null }),
+      eq: mockEq,
+      or: mockOr,
     });
     mockFrom.mockReturnValue({
       delete: mockDelete,
     });
     mockSignOut.mockResolvedValueOnce({ error: null });
 
+    const [
+      { useBookshelfStore },
+      { useAnnotationStore },
+      { useHabitsStore },
+      { useAccoladesStore },
+      { useFellowshipStore },
+      { useReaderStore },
+    ] = await Promise.all([
+      import('@/stores/useBookshelfStore'),
+      import('@/stores/useAnnotationStore'),
+      import('@/stores/useHabitsStore'),
+      import('@/stores/useAccoladesStore'),
+      import('@/stores/useFellowshipStore'),
+      import('@/stores/useReaderStore'),
+    ]);
+
+    const clearBookshelfSpy = vi.spyOn(useBookshelfStore.getState(), 'clearBookshelf');
+    const clearAllAnnotationsSpy = vi.spyOn(useAnnotationStore.getState(), 'clearAllAnnotations');
+    const resetHabitsSpy = vi.spyOn(useHabitsStore.getState(), 'resetHabits');
+    const resetAccoladesSpy = vi.spyOn(useAccoladesStore.getState(), 'resetAccolades');
+    const clearFellowshipStateSpy = vi.spyOn(useFellowshipStore.getState(), 'clearFellowshipState');
+    const clearAllVolumesSpy = vi.spyOn(useReaderStore.getState(), 'clearAllVolumes').mockResolvedValue(undefined);
+
     const res2 = await useAuthStore.getState().deleteAccount();
     expect(res2.error).toBeNull();
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().profile).toBeNull();
+
+    // Verify all 11 relational tables were purged
+    const expectedTables = [
+      'symposium_sessions',
+      'reader_circles',
+      'user_accolades',
+      'user_annotations',
+      'reading_progress',
+      'user_favorites',
+      'user_book_curation',
+      'user_reading_habits',
+      'bookshelf_items',
+      'bookshelves',
+      'profiles',
+    ];
+    for (const table of expectedTables) {
+      expect(mockFrom).toHaveBeenCalledWith(table);
+    }
+    expect(mockOr).toHaveBeenCalledWith('host_id.eq.user-delete,fellow_id.eq.user-delete');
+    expect(mockOr).toHaveBeenCalledWith('requester_id.eq.user-delete,recipient_id.eq.user-delete');
+    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-delete');
+    expect(mockEq).toHaveBeenCalledWith('id', 'user-delete');
+    expect(mockRpc).toHaveBeenCalledWith('delete_current_user');
+
+    // Verify all 6 local persistent stores were wiped
+    expect(clearBookshelfSpy).toHaveBeenCalled();
+    expect(clearAllAnnotationsSpy).toHaveBeenCalled();
+    expect(resetHabitsSpy).toHaveBeenCalled();
+    expect(resetAccoladesSpy).toHaveBeenCalled();
+    expect(clearFellowshipStateSpy).toHaveBeenCalled();
+    expect(clearAllVolumesSpy).toHaveBeenCalled();
   });
 
   describe('validateUsername', () => {
@@ -464,10 +544,12 @@ describe('useAuthStore', () => {
   });
 
   describe('signOut', () => {
-    it('signs out from Supabase, clears user profile, flushes outbox, and cleanses local bookshelf', async () => {
+    it('signs out from Supabase, clears user profile, flushes outbox, and cleanses local bookshelf and fellowship state', async () => {
       const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+      const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
       const flushOutboxSpy = vi.spyOn(useBookshelfStore.getState(), 'flushOutbox').mockResolvedValue(undefined);
       const clearBookshelfSpy = vi.spyOn(useBookshelfStore.getState(), 'clearBookshelf');
+      const clearFellowshipStateSpy = vi.spyOn(useFellowshipStore.getState(), 'clearFellowshipState');
 
       useAuthStore.setState({
         user: { id: 'user-to-logout' } as any,
@@ -479,6 +561,7 @@ describe('useAuthStore', () => {
       expect(mockSignOut).toHaveBeenCalled();
       expect(flushOutboxSpy).toHaveBeenCalledWith('user-to-logout');
       expect(clearBookshelfSpy).toHaveBeenCalled();
+      expect(clearFellowshipStateSpy).toHaveBeenCalled();
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().profile).toBeNull();
     });

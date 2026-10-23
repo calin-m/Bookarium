@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 23 Oct 2026 15:55:24 GMT  
+**Last Generated**: Fri, 23 Oct 2026 17:37:28 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 184 passed  
-**Total Verified Tests**: 1746 passed  
+**Total Verified Tests**: 1760 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **184/184 test suites passed** (1746 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **184/184 test suites passed** (1760 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 58 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.51%** (8316/8989) — *Target: $ge$ 80%*
-- **Statements**: **90.98%** (9028/9923) — *Target: $ge$ 80%*
-- **Functions**: **88.96%** (1967/2211) — *Target: $ge$ 80%*
-- **Branches**: **81.2%** (8023/9880) — *Target: $ge$ 80%*
+- **Lines**: **92.43%** (8440/9131) — *Target: $ge$ 80%*
+- **Statements**: **90.92%** (9160/10074) — *Target: $ge$ 80%*
+- **Functions**: **89.1%** (1995/2239) — *Target: $ge$ 80%*
+- **Branches**: **80.82%** (8144/10076) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (184 Suites / 1746 Tests)
+## 🧪 Comprehensive Test Suite Catalog (184 Suites / 1760 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 221 Tests)
+### 🚀 App Routes & Pages (26 Suites · 228 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -168,11 +168,16 @@
 </details>
 
 <details>
-<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (8 tests)</summary>
 
-- ✔ `exchanges code for session and redirects to valid destination`
-- ✔ `sanitizes open redirect attempts to safe root destination`
-- ✔ `redirects with auth error if exchange fails or code is missing`
+- ✔ `exchanges PKCE code for session and redirects to sanitized next path on localhost`
+- ✔ `normalizes Vercel preview deployment origins to the canonical production domain`
+- ✔ `redirects to /?auth_notice=email_verified when PKCE code exchange fails due to cross-device missing code_verifier`
+- ✔ `redirects to /?auth_notice=email_verified when PKCE code exchange fails with flow_state_not_found`
+- ✔ `verifies token_hash and type via verifyOtp for stateless cross-device email confirmation`
+- ✔ `redirects to /?auth_error=verification_failed when upstream error query param is present`
+- ✔ `redirects to /?auth_error=verification_failed when verifyOtp fails or parameters are missing`
+- ✔ `redirects to /?auth_error=verification_failed when exchangeCodeForSession fails with a generic error`
 
 </details>
 
@@ -300,12 +305,14 @@
 </details>
 
 <details>
-<summary><b><code>src/app/providers.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/app/providers.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
 - ✔ `should call syncAllStoresWithCloud when user is logged in`
 - ✔ `should trigger syncAllStoresWithCloud on window online event when user is logged in`
 - ✔ `should trigger syncAllStoresWithCloud on document visibilitychange when user is logged in and cooldown passed`
+- ✔ `opens AuthModal with confirmation statusMessage when ?auth_notice=email_verified is present on mount`
+- ✔ `opens AuthModal with expired link error when ?auth_error=verification_failed is present on mount`
 
 </details>
 
@@ -1198,10 +1205,10 @@
 
 </details>
 
-### 🔐 Authentication & Security (2 Suites · 23 Tests)
+### 🔐 Authentication & Security (2 Suites · 24 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (20 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
@@ -1211,6 +1218,7 @@
 - ✔ `validates password mismatch on Sign Up`
 - ✔ `handles form submission in sign in mode`
 - ✔ `renders error alert when error exists`
+- ✔ `renders status notice banner when statusMessage exists`
 - ✔ `renders resend link when error indicates email not confirmed and executes resend`
 - ✔ `submits magic link request on valid email`
 - ✔ `renders magic link confirmation screen and navigates back to sign in`
@@ -1235,7 +1243,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 157 Tests)
+### ⚡ Zustand State Stores (10 Suites · 158 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
@@ -1252,7 +1260,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (21 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1275,20 +1283,21 @@
 - ✔ `flushes outbox with polymorphic dispatchers for UPSERT and DELETE actions`
 - ✔ `retains failing actions in outbox when dispatcher throws error`
 - ✔ `toggles marginaliaSourceFilter and spoilerShieldEnabled and fetches fellow annotations for a book`
+- ✔ `auto-resolves fellow identity from useFellowshipStore when fellowScholarsMap is omitted and heals cached fellow_scholar entries via enrichFellowAnnotations`
 
 </details>
 
 <details>
 <summary><b><code>src/stores/useAuthStore.test.ts</code></b> (27 tests)</summary>
 
-- ✔ `manages modal open, close, and view state transitions`
+- ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
 - ✔ `handles sign in error and sets error message`
 - ✔ `handles signOut`
 - ✔ `handles signUpWithPassword success (with session and unconfirmed)`
 - ✔ `handles resendVerificationEmail success and error`
-- ✔ `handles signInWithOtp (magic link) success and error`
-- ✔ `handles signInWithOAuth success and error`
+- ✔ `handles signInWithOtp (magic link) success and error with /auth/callback redirect`
+- ✔ `handles signInWithOAuth success and error with /auth/callback redirect`
 - ✔ `hydrates user on initializeAuth when active session exists`
 - ✔ `updates auth state when onAuthStateChange triggers SIGNED_OUT`
 - ✔ `unsubscribes cleanly when initializeAuth cleanup function is called`
@@ -1298,7 +1307,7 @@
 - ✔ `handles resetPasswordForEmail success and failure`
 - ✔ `handles updatePassword success and failure`
 - ✔ `handles requestAccountDeletion success and failure`
-- ✔ `handles deleteAccount success and failure`
+- ✔ `handles deleteAccount success, 11-table database purge, and 6-store local state reset`
 - ✔ `rejects empty or whitespace-only username`
 - ✔ `rejects username shorter than 3 characters`
 - ✔ `rejects username longer than 30 characters`
@@ -1307,7 +1316,7 @@
 - ✔ `rejects update when username is invalid`
 - ✔ `normalizes username to lowercase and updates public profile preferences`
 - ✔ `normalizes empty string username to null`
-- ✔ `signs out from Supabase, clears user profile, flushes outbox, and cleanses local bookshelf`
+- ✔ `signs out from Supabase, clears user profile, flushes outbox, and cleanses local bookshelf and fellowship state`
 
 </details>
 
@@ -1454,7 +1463,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (37 Suites · 396 Tests)
+### 📚 Gutenberg Parsers & Metadata (37 Suites · 401 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1923,11 +1932,16 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/redirect-sanitizer.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/lib/redirect-sanitizer.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `returns default root slash for null, undefined, or empty path`
 - ✔ `allows safe absolute paths starting with a single slash`
 - ✔ `blocks open redirect protocol-relative double slashes and backslashes`
+- ✔ `preserves localhost and 127.0.0.1 origins for local development`
+- ✔ `normalizes Vercel preview deployment origins to the canonical production site URL`
+- ✔ `returns canonical fallback when currentOrigin is undefined or malformed`
+- ✔ `builds a sanitized redirect URL using the canonical origin`
+- ✔ `sanitizes unsafe redirect paths back to root on canonical origin`
 
 </details>
 

@@ -482,7 +482,7 @@ function generateMarkdown() {
     'reading-analytics':
       'Streak calculation, 5-minute immersion thresholds, reading speed metrics, and annual reading goal progress.',
     'redirect-sanitizer':
-      'Open-redirect prevention utility validating and normalizing internal OAuth callback redirect paths (`sanitizeRedirectPath`).',
+      'Open-redirect prevention and canonical authentication origin resolver (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`, `buildAuthRedirectUrl`).',
     'smart-search':
       'Fuzzy multi-token search engine querying titles, authors, and subjects with punctuation normalization.',
     'speech-utils':

@@ -100,10 +100,16 @@ export function useGutenbergParserWorker(
 
     let worker = workerRef.current;
     if (!worker) {
+      if (
+        workerFactory === createGutenbergWorker &&
+        (typeof window === 'undefined' || typeof window.Worker === 'undefined')
+      ) {
+        return;
+      }
       worker = workerFactory();
       if (!worker) {
         queueMicrotask(() => {
-          setWorkerFailed(true);
+          setWorkerFailed((prev) => (prev ? prev : true));
         });
         return;
       }

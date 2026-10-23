@@ -121,9 +121,11 @@ function BookReaderContent() {
     deleteAnnotation,
     syncWithCloud,
     fetchFellowAnnotationsForBook,
+    enrichFellowAnnotations,
     updateBookMetadata,
   } = useHydratedAnnotations();
   const {
+    circles,
     symposiums,
     fetchFellowshipData,
     syncSymposiumProgress,
@@ -134,12 +136,30 @@ function BookReaderContent() {
   useEffect(() => {
     if (user?.id) {
       syncWithCloud(user.id);
-      fetchFellowshipData(user.id);
-      if (numericId > 0) {
-        fetchFellowAnnotationsForBook(numericId, user.id);
-      }
+      const syncFellowshipAndMarginalia = async () => {
+        await fetchFellowshipData(user.id);
+        if (numericId > 0) {
+          await fetchFellowAnnotationsForBook(numericId, user.id);
+        }
+        enrichFellowAnnotations();
+      };
+      void syncFellowshipAndMarginalia();
     }
-  }, [user?.id, numericId, syncWithCloud, fetchFellowshipData, fetchFellowAnnotationsForBook]);
+  }, [
+    user?.id,
+    numericId,
+    syncWithCloud,
+    fetchFellowshipData,
+    fetchFellowAnnotationsForBook,
+    enrichFellowAnnotations,
+  ]);
+
+  // Self-heal any cached 'fellow_scholar' marginalia when fellowship records hydrate or update
+  useEffect(() => {
+    if (fellowAnnotations.length > 0 && (symposiums.length > 0 || circles.length > 0)) {
+      enrichFellowAnnotations();
+    }
+  }, [fellowAnnotations.length, symposiums, circles, enrichFellowAnnotations]);
 
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [selectionPopover, setSelectionPopover] = useState<{
@@ -882,6 +902,8 @@ function BookReaderContent() {
         annotations={bookAnnotations}
         fellowAnnotations={bookFellowAnnotations}
         hasActiveSymposium={Boolean(activeSymposium)}
+        symposiumCompanionUsername={symposiumCompanion?.username}
+        symposiumCompanionDisplayName={symposiumCompanion?.displayName}
         activeChapterIndex={activeChapterIndex}
         spoilerShieldEnabled={spoilerShieldEnabled}
         onToggleSpoilerShield={setSpoilerShieldEnabled}

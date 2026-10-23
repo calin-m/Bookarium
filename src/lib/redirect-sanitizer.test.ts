@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeRedirectPath } from './redirect-sanitizer';
+import {
+  sanitizeRedirectPath,
+  resolveCanonicalAuthOrigin,
+  buildAuthRedirectUrl,
+} from './redirect-sanitizer';
 
 describe('sanitizeRedirectPath', () => {
   it('returns default root slash for null, undefined, or empty path', () => {
@@ -21,4 +25,66 @@ describe('sanitizeRedirectPath', () => {
     expect(sanitizeRedirectPath('https://evil.com')).toBe('/');
   });
 });
+
+describe('resolveCanonicalAuthOrigin', () => {
+  it('preserves localhost and 127.0.0.1 origins for local development', () => {
+    expect(resolveCanonicalAuthOrigin('http://localhost:3000')).toBe('http://localhost:3000');
+    expect(resolveCanonicalAuthOrigin('http://127.0.0.1:3005')).toBe('http://127.0.0.1:3005');
+  });
+
+  it('normalizes Vercel preview deployment origins to the canonical production site URL', () => {
+    expect(
+      resolveCanonicalAuthOrigin(
+        'https://bookarium-git-master-calins-projects.vercel.app',
+        'https://bookarium.vercel.app/'
+      )
+    ).toBe('https://bookarium.vercel.app');
+    expect(
+      resolveCanonicalAuthOrigin(
+        'https://bookarium-8f9a1b2c.vercel.app',
+        'https://bookarium.vercel.app'
+      )
+    ).toBe('https://bookarium.vercel.app');
+  });
+
+  it('returns canonical fallback when currentOrigin is undefined or malformed', () => {
+    expect(resolveCanonicalAuthOrigin(undefined, 'https://bookarium.vercel.app')).toBe(
+      'https://bookarium.vercel.app'
+    );
+    expect(resolveCanonicalAuthOrigin('not-a-valid-url', 'https://bookarium.vercel.app')).toBe(
+      'https://bookarium.vercel.app'
+    );
+  });
+});
+
+describe('buildAuthRedirectUrl', () => {
+  it('builds a sanitized redirect URL using the canonical origin', () => {
+    expect(
+      buildAuthRedirectUrl(
+        '/auth/callback',
+        'https://bookarium-preview-123.vercel.app',
+        'https://bookarium.vercel.app'
+      )
+    ).toBe('https://bookarium.vercel.app/auth/callback');
+
+    expect(
+      buildAuthRedirectUrl(
+        '/account',
+        'http://localhost:3000',
+        'https://bookarium.vercel.app'
+      )
+    ).toBe('http://localhost:3000/account');
+  });
+
+  it('sanitizes unsafe redirect paths back to root on canonical origin', () => {
+    expect(
+      buildAuthRedirectUrl(
+        '//malicious.example.com',
+        'https://bookarium.vercel.app',
+        'https://bookarium.vercel.app'
+      )
+    ).toBe('https://bookarium.vercel.app/');
+  });
+});
+
 

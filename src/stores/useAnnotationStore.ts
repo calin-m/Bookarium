@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database.types';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { cleanBookTitle, isPlaceholderTitle, isPlaceholderAuthor } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
@@ -58,6 +59,9 @@ export interface AnnotationState {
     currentUserId?: string,
     fellowScholarsMap?: Record<string, { username: string; display_name?: string | null }>
   ) => Promise<FellowAnnotation[]>;
+  enrichFellowAnnotations: (
+    fellowScholarsMap?: Record<string, { username: string; display_name?: string | null }>
+  ) => void;
   getFellowAnnotationsForBook: (bookId: number) => FellowAnnotation[];
 
   queueOutboxAction: (action: Omit<AnnotationOutboxAction, 'id' | 'timestamp'>) => void;
@@ -95,6 +99,57 @@ function generateId(): string {
     return crypto.randomUUID();
   }
   return `ann-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/**
+ * Builds a lookup map of scholar identities (`user_id -> { username, display_name }`)
+ * from `useFellowshipStore` (`symposiums` and `circles`) merged with any explicit caller map.
+ */
+export function buildFellowScholarsMap(
+  explicitMap?: Record<string, { username: string; display_name?: string | null }>
+): Record<string, { username: string; display_name?: string | null }> {
+  const map: Record<string, { username: string; display_name?: string | null }> = {};
+  const fellowshipState = useFellowshipStore.getState();
+
+  for (const circle of fellowshipState.circles || []) {
+    if (circle.requester_id && circle.requester_username) {
+      map[circle.requester_id] = {
+        username: circle.requester_username,
+        display_name: circle.requester_display_name || undefined,
+      };
+    }
+    if (circle.recipient_id && circle.recipient_username) {
+      map[circle.recipient_id] = {
+        username: circle.recipient_username,
+        display_name: circle.recipient_display_name || undefined,
+      };
+    }
+  }
+
+  for (const sym of fellowshipState.symposiums || []) {
+    if (sym.host_id && sym.host_username) {
+      map[sym.host_id] = {
+        username: sym.host_username,
+        display_name: sym.host_display_name || map[sym.host_id]?.display_name || undefined,
+      };
+    }
+    if (sym.fellow_id && sym.fellow_username) {
+      map[sym.fellow_id] = {
+        username: sym.fellow_username,
+        display_name: sym.fellow_display_name || map[sym.fellow_id]?.display_name || undefined,
+      };
+    }
+  }
+
+  if (explicitMap) {
+    for (const [uid, info] of Object.entries(explicitMap)) {
+      if (info && info.username) {
+        map[uid] = info;
+      }
+    }
+  }
+
+  return map;
 }
 
 type AnnotationOutboxDispatcher = (
@@ -139,6 +194,56 @@ export const useAnnotationStore = create<AnnotationState>()(
         return get().fellowAnnotations.filter((a) => a.bookId === bookId);
       },
 
+      enrichFellowAnnotations: (fellowScholarsMap) => {
+        const resolvedMap = buildFellowScholarsMap(fellowScholarsMap);
+        const fellowshipSymposiums = useFellowshipStore.getState().symposiums || [];
+
+        set((state) => {
+          let modified = false;
+          const nextFellowAnnotations = state.fellowAnnotations.map((fa) => {
+            const directInfo = fa.userId ? resolvedMap[fa.userId] : undefined;
+            let resolvedUsername = directInfo?.username;
+            let resolvedDisplayName = directInfo?.display_name || undefined;
+
+            if (!resolvedUsername && fa.bookId) {
+              const matchingSym = fellowshipSymposiums.find(
+                (s) =>
+                  s.book_id === fa.bookId &&
+                  (s.status === 'active' || s.status === 'completed') &&
+                  (!fa.userId || s.host_id === fa.userId || s.fellow_id === fa.userId)
+              );
+              if (matchingSym) {
+                const isFellowTheHost = fa.userId ? matchingSym.host_id === fa.userId : false;
+                resolvedUsername = isFellowTheHost
+                  ? matchingSym.host_username
+                  : matchingSym.fellow_username;
+                resolvedDisplayName =
+                  (isFellowTheHost
+                    ? matchingSym.host_display_name
+                    : matchingSym.fellow_display_name) || undefined;
+              }
+            }
+
+            if (
+              resolvedUsername &&
+              (fa.fellowUsername === 'fellow_scholar' ||
+                fa.fellowUsername !== resolvedUsername ||
+                (!fa.fellowDisplayName && resolvedDisplayName))
+            ) {
+              modified = true;
+              return {
+                ...fa,
+                fellowUsername: resolvedUsername,
+                fellowDisplayName: resolvedDisplayName || fa.fellowDisplayName,
+              };
+            }
+            return fa;
+          });
+
+          return modified ? { fellowAnnotations: nextFellowAnnotations } : state;
+        });
+      },
+
       fetchFellowAnnotationsForBook: async (bookId, currentUserId, fellowScholarsMap) => {
         if (!currentUserId || !bookId) return [];
         try {
@@ -152,9 +257,74 @@ export const useAnnotationStore = create<AnnotationState>()(
 
           if (error) throw error;
 
-          const mapped: FellowAnnotation[] = (data || []).map((row: Record<string, unknown>) => {
+          const rows = (data || []) as Record<string, unknown>[];
+          const resolvedMap = buildFellowScholarsMap(fellowScholarsMap);
+
+          // Also cross-reference active/completed symposiums for this volume if any row user_id is missing
+          const fellowshipSymposiums = useFellowshipStore.getState().symposiums || [];
+          const bookSymposium = fellowshipSymposiums.find(
+            (s) =>
+              s.book_id === bookId &&
+              (s.status === 'active' || s.status === 'completed') &&
+              (s.host_id === currentUserId || s.fellow_id === currentUserId)
+          );
+          if (bookSymposium) {
+            const companionId =
+              bookSymposium.host_id === currentUserId
+                ? bookSymposium.fellow_id
+                : bookSymposium.host_id;
+            const companionUsername =
+              bookSymposium.host_id === currentUserId
+                ? bookSymposium.fellow_username
+                : bookSymposium.host_username;
+            const companionDisplayName =
+              bookSymposium.host_id === currentUserId
+                ? bookSymposium.fellow_display_name
+                : bookSymposium.host_display_name;
+            if (companionId && companionUsername && !resolvedMap[companionId]) {
+              resolvedMap[companionId] = {
+                username: companionUsername,
+                display_name: companionDisplayName || undefined,
+              };
+            }
+          }
+
+          // Fallback profile lookup for any fellow user_id still absent from resolvedMap
+          const missingIds = Array.from(
+            new Set(
+              rows
+                .map((r) => String(r.user_id || ''))
+                .filter((uid) => uid && !resolvedMap[uid]?.username)
+            )
+          );
+          if (missingIds.length > 0) {
+            try {
+              const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, username, display_name')
+                .in('id', missingIds);
+              if (Array.isArray(profilesData)) {
+                for (const prof of profilesData as Array<{
+                  id: string;
+                  username: string | null;
+                  display_name: string | null;
+                }>) {
+                  if (prof.id && (prof.username || prof.display_name)) {
+                    resolvedMap[prof.id] = {
+                      username: prof.username || prof.display_name || 'fellow_scholar',
+                      display_name: prof.display_name || undefined,
+                    };
+                  }
+                }
+              }
+            } catch {
+              // Non-blocking if profiles query is unavailable or offline
+            }
+          }
+
+          const mapped: FellowAnnotation[] = rows.map((row: Record<string, unknown>) => {
             const fellowUserId = String(row.user_id);
-            const fellowInfo = fellowScholarsMap?.[fellowUserId];
+            const fellowInfo = resolvedMap[fellowUserId];
             return {
               id: String(row.id),
               userId: fellowUserId,
@@ -569,6 +739,7 @@ export function useHydratedAnnotations() {
   const setMarginaliaSourceFilter = useAnnotationStore((s) => s.setMarginaliaSourceFilter);
   const setSpoilerShieldEnabled = useAnnotationStore((s) => s.setSpoilerShieldEnabled);
   const fetchFellowAnnotationsForBook = useAnnotationStore((s) => s.fetchFellowAnnotationsForBook);
+  const enrichFellowAnnotations = useAnnotationStore((s) => s.enrichFellowAnnotations);
   const getFellowAnnotationsForBook = useAnnotationStore((s) => s.getFellowAnnotationsForBook);
   const addAnnotation = useAnnotationStore((s) => s.addAnnotation);
   const updateAnnotationColor = useAnnotationStore((s) => s.updateAnnotationColor);
@@ -590,6 +761,7 @@ export function useHydratedAnnotations() {
     setMarginaliaSourceFilter,
     setSpoilerShieldEnabled,
     fetchFellowAnnotationsForBook,
+    enrichFellowAnnotations,
     getFellowAnnotationsForBook,
     addAnnotation,
     updateAnnotationColor,

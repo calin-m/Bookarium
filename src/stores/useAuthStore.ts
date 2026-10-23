@@ -4,6 +4,7 @@ import type { User, Session, AuthError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { Profile } from '@/types/database.types';
 import { ROUTES } from '@/config/routes';
+import { buildAuthRedirectUrl } from '@/lib/redirect-sanitizer';
 
 export type AuthModalView = 'sign_in' | 'sign_up' | 'magic_link' | 'forgot_password';
 
@@ -36,6 +37,7 @@ export interface AuthState {
   isAuthModalOpen: boolean;
   authModalView: AuthModalView;
   error: string | null;
+  statusMessage: string | null;
 
   // Actions
   initializeAuth: () => () => void;
@@ -43,6 +45,7 @@ export interface AuthState {
   closeAuthModal: () => void;
   setAuthModalView: (view: AuthModalView) => void;
   setError: (error: string | null) => void;
+  setStatusMessage: (statusMessage: string | null) => void;
   signInWithPassword: (email: string, password: string) => Promise<{ user?: User | null; error: AuthError | null }>;
   signUpWithPassword: (email: string, password: string, fullName?: string) => Promise<{
     user?: User | null;
@@ -83,6 +86,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthModalOpen: false,
       authModalView: 'sign_in',
       error: null,
+      statusMessage: null,
 
   initializeAuth: () => {
     const supabase = createClient();
@@ -116,38 +120,42 @@ export const useAuthStore = create<AuthState>()(
   },
 
   openAuthModal: (view = 'sign_in') => {
-    set({ isAuthModalOpen: true, authModalView: view, error: null });
+    set({ isAuthModalOpen: true, authModalView: view, error: null, statusMessage: null });
   },
 
   closeAuthModal: () => {
-    set({ isAuthModalOpen: false, error: null });
+    set({ isAuthModalOpen: false, error: null, statusMessage: null });
   },
 
   setAuthModalView: (view) => {
-    set({ authModalView: view, error: null });
+    set({ authModalView: view, error: null, statusMessage: null });
   },
 
   setError: (error) => {
     set({ error });
   },
 
+  setStatusMessage: (statusMessage) => {
+    set({ statusMessage });
+  },
+
   signInWithPassword: async (email, password) => {
-    set({ error: null });
+    set({ error: null, statusMessage: null });
     const supabase = createClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       set({ error: error.message });
       return { error };
     }
-    set({ user: data.user, isAuthModalOpen: false });
+    set({ user: data.user, isAuthModalOpen: false, statusMessage: null });
     get().fetchProfile();
     return { error: null, user: data.user };
   },
 
   signUpWithPassword: async (email, password, fullName) => {
-    set({ error: null });
+    set({ error: null, statusMessage: null });
     const supabase = createClient();
-    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined;
+    const redirectTo = buildAuthRedirectUrl('/auth/callback');
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -166,7 +174,7 @@ export const useAuthStore = create<AuthState>()(
 
     const hasSession = !!data.session;
     if (hasSession) {
-      set({ user: data.user, isAuthModalOpen: false });
+      set({ user: data.user, isAuthModalOpen: false, statusMessage: null });
       get().fetchProfile();
     }
     return {
@@ -180,7 +188,7 @@ export const useAuthStore = create<AuthState>()(
   resendVerificationEmail: async (email: string) => {
     set({ error: null });
     const supabase = createClient();
-    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined;
+    const redirectTo = buildAuthRedirectUrl('/auth/callback');
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email,
@@ -196,12 +204,13 @@ export const useAuthStore = create<AuthState>()(
   },
 
   signInWithOtp: async (email) => {
-    set({ error: null });
+    set({ error: null, statusMessage: null });
     const supabase = createClient();
+    const redirectTo = buildAuthRedirectUrl('/auth/callback');
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        emailRedirectTo: redirectTo,
       },
     });
     if (error) {
@@ -212,12 +221,13 @@ export const useAuthStore = create<AuthState>()(
   },
 
   signInWithOAuth: async (provider) => {
-    set({ error: null });
+    set({ error: null, statusMessage: null });
     const supabase = createClient();
+    const redirectTo = buildAuthRedirectUrl('/auth/callback');
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        redirectTo,
       },
     });
     if (error) {
@@ -240,11 +250,18 @@ export const useAuthStore = create<AuthState>()(
 
     const supabase = createClient();
     await supabase.auth.signOut();
-    set({ user: null, profile: null, isAuthModalOpen: false, error: null });
+    set({ user: null, profile: null, isAuthModalOpen: false, error: null, statusMessage: null });
 
     try {
       const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
       useBookshelfStore.getState().clearBookshelf();
+    } catch {
+      // Non-blocking fallback
+    }
+
+    try {
+      const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+      useFellowshipStore.getState().clearFellowshipState();
     } catch {
       // Non-blocking fallback
     }
@@ -316,9 +333,9 @@ export const useAuthStore = create<AuthState>()(
   },
 
   resetPasswordForEmail: async (email) => {
-    set({ error: null });
+    set({ error: null, statusMessage: null });
     const supabase = createClient();
-    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}${ROUTES.ACCOUNT}` : undefined;
+    const redirectTo = buildAuthRedirectUrl(ROUTES.ACCOUNT);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
     });
@@ -348,7 +365,7 @@ export const useAuthStore = create<AuthState>()(
 
     set({ error: null });
     const supabase = createClient();
-    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/auth/confirm-deletion` : undefined;
+    const redirectTo = buildAuthRedirectUrl('/auth/confirm-deletion');
     const { error } = await supabase.auth.signInWithOtp({
       email: user.email,
       options: {
@@ -369,7 +386,16 @@ export const useAuthStore = create<AuthState>()(
 
     try {
       const supabase = createClient();
-      // 1. Clean up user's relational records across valid schema tables
+      // 1. Clean up user's relational records across all 11 schema tables
+      await supabase
+        .from('symposium_sessions')
+        .delete()
+        .or(`host_id.eq.${user.id},fellow_id.eq.${user.id}`);
+      await supabase
+        .from('reader_circles')
+        .delete()
+        .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
+      await supabase.from('user_accolades').delete().eq('user_id', user.id);
       await supabase.from('user_annotations').delete().eq('user_id', user.id);
       await supabase.from('reading_progress').delete().eq('user_id', user.id);
       await supabase.from('user_favorites').delete().eq('user_id', user.id);
@@ -385,15 +411,38 @@ export const useAuthStore = create<AuthState>()(
       } catch {
         // Non-blocking fallback if RPC is not provisioned
       }
-      // 4. Terminate auth session and clear local persisted state
+      // 4. Terminate auth session and clear all local persisted user stores
       await supabase.auth.signOut();
-      set({ user: null, profile: null, isAuthModalOpen: false, error: null });
-      try {
-        const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
-        useBookshelfStore.getState().clearBookshelf();
-      } catch {
-        // Non-blocking fallback
-      }
+      set({ user: null, profile: null, isAuthModalOpen: false, error: null, statusMessage: null });
+
+      const localCleanupTasks: Array<() => Promise<unknown>> = [
+        async () => {
+          const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+          useBookshelfStore.getState().clearBookshelf();
+        },
+        async () => {
+          const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+          useAnnotationStore.getState().clearAllAnnotations();
+        },
+        async () => {
+          const { useHabitsStore } = await import('@/stores/useHabitsStore');
+          useHabitsStore.getState().resetHabits();
+        },
+        async () => {
+          const { useAccoladesStore } = await import('@/stores/useAccoladesStore');
+          useAccoladesStore.getState().resetAccolades();
+        },
+        async () => {
+          const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+          useFellowshipStore.getState().clearFellowshipState();
+        },
+        async () => {
+          const { useReaderStore } = await import('@/stores/useReaderStore');
+          await useReaderStore.getState().clearAllVolumes();
+        },
+      ];
+
+      await Promise.allSettled(localCleanupTasks.map((task) => task()));
       return { error: null };
     } catch (err: unknown) {
       return { error: err instanceof Error ? err : new Error(String(err)) };

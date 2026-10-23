@@ -184,7 +184,9 @@ describe('NotebookQuoteCard', () => {
 
     render(<NotebookQuoteCard {...defaultProps} annotation={fellowAnnotation} />);
 
-    expect(screen.getByTestId('notebook-fellow-badge-fellow-ann-1')).toHaveTextContent('@clara_v');
+    expect(screen.getByTestId('notebook-fellow-badge-fellow-ann-1')).toHaveTextContent(
+      'Clara Vance (@clara_v)'
+    );
     expect(screen.queryByTestId('edit-quote-btn-fellow-ann-1')).not.toBeInTheDocument();
     expect(screen.queryByTestId('delete-quote-btn-fellow-ann-1')).not.toBeInTheDocument();
     expect(screen.getByTestId('jump-reader-btn-fellow-ann-1')).toBeInTheDocument();

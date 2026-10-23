@@ -51,6 +51,7 @@ describe('ConfirmDeletionPage', () => {
     expect(screen.getByText('Confirm Account Deletion')).toBeInTheDocument();
     expect(screen.getByText('delete-me@bookarium.test')).toBeInTheDocument();
     expect(screen.getByText(/Final Warning: Permanent Data Loss/i)).toBeInTheDocument();
+    expect(screen.getByText(/accolades, and Reader Circle & Symposium connections across cloud and local storage/i)).toBeInTheDocument();
 
     const deleteBtn = screen.getByRole('button', { name: /Permanently Delete Account/i });
     fireEvent.click(deleteBtn);
@@ -58,6 +59,7 @@ describe('ConfirmDeletionPage', () => {
     await waitFor(() => {
       expect(mockDeleteAccount).toHaveBeenCalled();
       expect(screen.getByText('Account Permanently Deleted')).toBeInTheDocument();
+      expect(screen.getByText(/accolades, and Reader Circle & Symposium records have been permanently purged/i)).toBeInTheDocument();
     });
   });
 

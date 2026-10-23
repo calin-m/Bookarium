@@ -46,6 +46,7 @@ describe('AccountDeleteModal', () => {
 
     expect(screen.getByText('Verification Link Sent')).toBeInTheDocument();
     expect(screen.getByText(/We sent a secure deletion confirmation link to/i)).toBeInTheDocument();
+    expect(screen.getByText(/accolades, and Reader Circle connections/i)).toBeInTheDocument();
   });
 });
 

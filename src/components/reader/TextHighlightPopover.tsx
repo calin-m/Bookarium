@@ -213,7 +213,10 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                   : 'text-amber-700 dark:text-amber-400 hover:bg-amber-500/10'
               }`}
             >
-              @{fellowAnnotation.fellowUsername}&apos;s Note
+              {fellowAnnotation.fellowDisplayName &&
+              fellowAnnotation.fellowDisplayName !== fellowAnnotation.fellowUsername
+                ? `${fellowAnnotation.fellowDisplayName}'s Note`
+                : `@${fellowAnnotation.fellowUsername}'s Note`}
             </button>
           </div>
         )}
@@ -229,6 +232,12 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 font-serif font-bold text-[10px] shrink-0">
                   <Feather className="w-3 h-3" />
                 </span>
+                {fellowAnnotation.fellowDisplayName &&
+                  fellowAnnotation.fellowDisplayName !== fellowAnnotation.fellowUsername && (
+                    <span className="font-serif font-bold text-xs text-stone-900 dark:text-stone-100 truncate">
+                      {fellowAnnotation.fellowDisplayName}
+                    </span>
+                  )}
                 <span className="font-mono font-bold text-xs text-amber-700 dark:text-amber-300 truncate">
                   @{fellowAnnotation.fellowUsername}
                 </span>

@@ -45,7 +45,7 @@ export const AccountDeleteModal: React.FC<AccountDeleteModalProps> = ({
                 We sent a secure deletion confirmation link to <strong className="text-foreground">{userEmail}</strong>.
               </p>
               <p className="text-[11px] text-muted-foreground font-sans leading-relaxed pt-1">
-                Please open the email on your device and click the link to finalize the permanent deletion of your account and cloud bookshelves.
+                Please open the email on your device and click the link to finalize the permanent deletion of your account, bookshelves, annotations, reading telemetry, accolades, and Reader Circle connections.
               </p>
             </div>
             <div className="pt-2">

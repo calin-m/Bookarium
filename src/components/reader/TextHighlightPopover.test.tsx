@@ -235,6 +235,7 @@ describe('TextHighlightPopover', () => {
       updatedAt: '2026-10-15T10:00:00Z',
       isFellow: true as const,
       fellowUsername: 'plato',
+      fellowDisplayName: 'Plato of Athens',
     };
 
     render(
@@ -246,6 +247,7 @@ describe('TextHighlightPopover', () => {
     );
 
     expect(screen.getByTestId('popover-fellow-attribution')).toBeInTheDocument();
+    expect(screen.getByText('Plato of Athens')).toBeInTheDocument();
     expect(screen.getByText('@plato')).toBeInTheDocument();
     expect(screen.getByText(/Profound soliloquy reflection by Plato/i)).toBeInTheDocument();
     expect(screen.queryByTestId('highlight-delete-btn')).not.toBeInTheDocument();

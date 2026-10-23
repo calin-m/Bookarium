@@ -62,7 +62,7 @@ export default function ConfirmDeletionPage() {
             <div className="space-y-1">
               <h2 className="text-xl font-serif font-bold text-foreground">Account Permanently Deleted</h2>
               <p className="text-xs text-muted-foreground font-sans">
-                Your profile, cloud custom bookshelves, and reading records have been purged. Redirecting you home...
+                Your profile, bookshelves, favorites, reading progress, annotations, reading habits, accolades, and Reader Circle &amp; Symposium records have been permanently purged. Redirecting you home...
               </p>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function ConfirmDeletionPage() {
                 <span>Final Warning: Permanent Data Loss</span>
               </div>
               <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                Executing deletion will permanently delete your account profile, custom cloud bookshelves, and remote reading progress. This action is irreversible.
+                Executing deletion will permanently erase your account profile, custom bookshelves, favorites, ratings, reading progress, scholarly annotations, reading streaks, accolades, and Reader Circle &amp; Symposium connections across cloud and local storage. This action is irreversible.
               </p>
             </div>
 

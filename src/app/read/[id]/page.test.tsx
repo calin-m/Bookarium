@@ -802,7 +802,9 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.queryByTestId('symposium-milestone-banner')).not.toBeInTheDocument();
     expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent('@clara_v: Sec. 2 (50%)');
 
-    useFellowshipStore.getState().clearFellowshipState();
+    act(() => {
+      useFellowshipStore.getState().clearFellowshipState();
+    });
   });
 });
 

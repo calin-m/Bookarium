@@ -41,6 +41,7 @@ export const AuthModal: React.FC = () => {
     isAuthModalOpen,
     authModalView,
     error,
+    statusMessage,
     closeAuthModal,
     setAuthModalView,
     setError,
@@ -55,6 +56,7 @@ export const AuthModal: React.FC = () => {
       isAuthModalOpen: s.isAuthModalOpen,
       authModalView: s.authModalView,
       error: s.error,
+      statusMessage: s.statusMessage,
       closeAuthModal: s.closeAuthModal,
       setAuthModalView: s.setAuthModalView,
       setError: s.setError,
@@ -299,6 +301,17 @@ export const AuthModal: React.FC = () => {
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Status / Verification Notice Banner */}
+        {statusMessage && (
+          <div
+            role="status"
+            className="flex items-center gap-2.5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-mono"
+          >
+            <Check className="w-4 h-4 shrink-0" />
+            <span>{statusMessage}</span>
+          </div>
+        )}
 
         {/* Error Alert with Optional Resend Action if Email Not Confirmed */}
         {error && (

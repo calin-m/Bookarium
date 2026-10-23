@@ -12,7 +12,14 @@ vi.mock('@/lib/sync-utils', () => ({
 describe('Providers component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useAuthStore.setState({ user: null });
+    window.location.search = '';
+    useAuthStore.setState({
+      user: null,
+      isAuthModalOpen: false,
+      error: null,
+      statusMessage: null,
+      initializeAuth: vi.fn(() => () => {}),
+    });
   });
 
   it('should render children within QueryClientProvider', () => {
@@ -92,6 +99,40 @@ describe('Providers component', () => {
 
     expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-vis-1');
     vi.useRealTimers();
+  });
+
+  it('opens AuthModal with confirmation statusMessage when ?auth_notice=email_verified is present on mount', () => {
+    window.location.search = '?auth_notice=email_verified';
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    render(
+      <Providers>
+        <div>Child Content</div>
+      </Providers>
+    );
+
+    const authState = useAuthStore.getState();
+    expect(authState.isAuthModalOpen).toBe(true);
+    expect(authState.authModalView).toBe('sign_in');
+    expect(authState.statusMessage).toContain('Email verified!');
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
+  });
+
+  it('opens AuthModal with expired link error when ?auth_error=verification_failed is present on mount', () => {
+    window.location.search = '?auth_error=verification_failed';
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    render(
+      <Providers>
+        <div>Child Content</div>
+      </Providers>
+    );
+
+    const authState = useAuthStore.getState();
+    expect(authState.isAuthModalOpen).toBe(true);
+    expect(authState.authModalView).toBe('sign_in');
+    expect(authState.error).toContain('expired or was already used');
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
   });
 });
 

@@ -37,6 +37,7 @@ describe('AccountSecuritySection', () => {
     expect(screen.getByText('Security & Password')).toBeInTheDocument();
     expect(screen.getByText('scholar@bookarium.test')).toBeInTheDocument();
     expect(screen.getByText('Moderate')).toBeInTheDocument();
+    expect(screen.getByText(/accolades, and Reader Circle & Symposium connections/i)).toBeInTheDocument();
 
     const generateBtn = screen.getByRole('button', { name: /Suggest Strong Password/i });
     fireEvent.click(generateBtn);

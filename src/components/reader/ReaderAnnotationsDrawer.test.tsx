@@ -207,6 +207,7 @@ describe('ReaderAnnotationsDrawer', () => {
         updatedAt: '2026-10-15T10:00:00Z',
         isFellow: true as const,
         fellowUsername: 'plato',
+        fellowDisplayName: 'Plato of Athens',
       },
       {
         id: 'fellow-2',
@@ -220,6 +221,7 @@ describe('ReaderAnnotationsDrawer', () => {
         updatedAt: '2026-10-15T10:05:00Z',
         isFellow: true as const,
         fellowUsername: 'plato',
+        fellowDisplayName: 'Plato of Athens',
       },
     ];
 
@@ -232,6 +234,8 @@ describe('ReaderAnnotationsDrawer', () => {
     );
 
     expect(screen.getByTestId('drawer-symposium-filter-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('drawer-source-fellows')).toHaveTextContent('Plato of Athens (1)');
+    expect(screen.getByTestId('drawer-fellow-badge-fellow-1')).toHaveTextContent('Plato of Athens (@plato)');
     expect(screen.getByTestId('drawer-spoiler-shield-btn')).toHaveTextContent('Ch. 1–3');
 
     // Spoiler Shield is ON by default -> fellow-1 (chapter 0 <= 2) is shown, fellow-2 (chapter 5 > 2) is hidden

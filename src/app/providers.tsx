@@ -37,6 +37,9 @@ export function Providers({ children, initialCountry }: ProvidersProps) {
   );
 
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
+  const openAuthModal = useAuthStore((s) => s.openAuthModal);
+  const setError = useAuthStore((s) => s.setError);
+  const setStatusMessage = useAuthStore((s) => s.setStatusMessage);
   const user = useAuthStore((s) => s.user);
   const isAuthModalOpen = useAuthStore((s) => s.isAuthModalOpen);
 
@@ -46,6 +49,33 @@ export function Providers({ children, initialCountry }: ProvidersProps) {
       unsubscribe?.();
     };
   }, [initializeAuth]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const authNotice = params.get('auth_notice');
+    const authError = params.get('auth_error');
+
+    if (!authNotice && !authError) return;
+
+    if (authNotice === 'email_verified') {
+      openAuthModal('sign_in');
+      setStatusMessage(
+        'Email verified! Please sign in to access your bookshelf on this device.'
+      );
+      params.delete('auth_notice');
+    } else if (authError === 'verification_failed') {
+      openAuthModal('sign_in');
+      setError(
+        'This verification link has expired or was already used. Please sign in or request a new link.'
+      );
+      params.delete('auth_error');
+    }
+
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname || '/'}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [openAuthModal, setError, setStatusMessage]);
 
   useEffect(() => {
     if (user?.id) {

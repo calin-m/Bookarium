@@ -16,6 +16,8 @@ export interface ReaderAnnotationsDrawerProps {
   annotations: Annotation[];
   fellowAnnotations?: FellowAnnotation[];
   hasActiveSymposium?: boolean;
+  symposiumCompanionUsername?: string;
+  symposiumCompanionDisplayName?: string;
   activeChapterIndex?: number;
   marginaliaSourceFilter?: MarginaliaSourceFilter;
   onSourceFilterChange?: (filter: MarginaliaSourceFilter) => void;
@@ -34,6 +36,8 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   annotations,
   fellowAnnotations = [],
   hasActiveSymposium = false,
+  symposiumCompanionUsername,
+  symposiumCompanionDisplayName,
   activeChapterIndex = 0,
   marginaliaSourceFilter,
   onSourceFilterChange,
@@ -69,8 +73,16 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   };
 
   const showSymposiumBar = fellowAnnotations.length > 0 || hasActiveSymposium;
-  const primaryFellowHandle = fellowAnnotations[0]?.fellowUsername
-    ? `@${fellowAnnotations[0].fellowUsername}`
+  const primaryFellowUsername =
+    fellowAnnotations[0]?.fellowUsername && fellowAnnotations[0].fellowUsername !== 'fellow_scholar'
+      ? fellowAnnotations[0].fellowUsername
+      : symposiumCompanionUsername || fellowAnnotations[0]?.fellowUsername;
+  const primaryFellowDisplayName =
+    fellowAnnotations[0]?.fellowDisplayName || symposiumCompanionDisplayName;
+  const primaryFellowHandle = primaryFellowDisplayName && primaryFellowDisplayName !== primaryFellowUsername
+    ? primaryFellowDisplayName
+    : primaryFellowUsername
+    ? `@${primaryFellowUsername}`
     : 'Fellows';
 
   const visibleFellowAnnotations = useMemo(() => {
@@ -317,7 +329,11 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-bold"
                         >
                           <Feather className="w-2.5 h-2.5" />
-                          <span>@{item.fellowUsername}</span>
+                          <span>
+                            {item.fellowDisplayName && item.fellowDisplayName !== item.fellowUsername
+                              ? `${item.fellowDisplayName} (@${item.fellowUsername})`
+                              : `@${item.fellowUsername}`}
+                          </span>
                         </span>
                       )}
                     </div>

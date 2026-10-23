@@ -221,7 +221,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">Permanent Account Deletion</p>
               <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                Deleting your account purges your cloud profile and synced custom shelves. Requires email link verification.
+                Deleting your account permanently purges your profile, custom bookshelves, favorites, reading progress, annotations, reading streaks, accolades, and Reader Circle &amp; Symposium connections. Requires email link verification.
               </p>
             </div>
 

@@ -200,7 +200,11 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0"
             >
               <Feather className="w-2.5 h-2.5" />
-              <span>@{ann.fellowUsername}</span>
+              <span>
+                {ann.fellowDisplayName && ann.fellowDisplayName !== ann.fellowUsername
+                  ? `${ann.fellowDisplayName} (@${ann.fellowUsername})`
+                  : `@${ann.fellowUsername}`}
+              </span>
             </span>
           ) : (
             /* Quick Color Swatch Badge & Popover */

@@ -232,6 +232,7 @@ describe('AuthModal Component', () => {
       isAuthModalOpen: true,
       authModalView: 'sign_in',
       error: 'Invalid email or password',
+      statusMessage: null,
       closeAuthModal: vi.fn(),
       setAuthModalView: vi.fn(),
       setError: vi.fn(),
@@ -240,6 +241,24 @@ describe('AuthModal Component', () => {
 
     render(<AuthModal />);
     expect(screen.getByText('Invalid email or password')).toBeInTheDocument();
+  });
+
+  it('renders status notice banner when statusMessage exists', () => {
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'sign_in',
+      error: null,
+      statusMessage: 'Email verified! Please sign in to access your bookshelf on this device.',
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signInWithPassword: mockSignInWithPassword,
+    });
+
+    render(<AuthModal />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Email verified! Please sign in to access your bookshelf on this device.'
+    );
   });
 
   it('renders resend link when error indicates email not confirmed and executes resend', async () => {

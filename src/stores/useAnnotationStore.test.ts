@@ -624,6 +624,92 @@ describe('useAnnotationStore', () => {
     expect(fetched[0].fellowDisplayName).toBe('Plato of Athens');
     expect(useAnnotationStore.getState().getFellowAnnotationsForBook(1342)).toHaveLength(1);
   });
+
+  it('auto-resolves fellow identity from useFellowshipStore when fellowScholarsMap is omitted and heals cached fellow_scholar entries via enrichFellowAnnotations', async () => {
+    const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+    useFellowshipStore.setState({
+      circles: [
+        {
+          id: 'circle-1',
+          requester_id: 'user-123',
+          requester_username: 'host_reader',
+          requester_display_name: 'Host Reader',
+          recipient_id: 'fellow-user-99',
+          recipient_username: 'hypatia_alexandria',
+          recipient_display_name: 'Hypatia of Alexandria',
+          status: 'accepted',
+          created_at: '2026-10-15T10:00:00Z',
+          updated_at: '2026-10-15T10:00:00Z',
+        },
+      ],
+      symposiums: [
+        {
+          id: 'sym-1',
+          book_id: 1342,
+          book_title: 'Pride and Prejudice',
+          host_id: 'user-123',
+          host_username: 'host_reader',
+          host_display_name: 'Host Reader',
+          fellow_id: 'fellow-user-99',
+          fellow_username: 'hypatia_alexandria',
+          fellow_display_name: 'Hypatia of Alexandria',
+          status: 'active',
+          host_chapter: 1,
+          host_progress: 25,
+          fellow_chapter: 2,
+          fellow_progress: 40,
+          created_at: '2026-10-15T10:00:00Z',
+          updated_at: '2026-10-15T10:00:00Z',
+        },
+      ],
+    });
+
+    mockSelect.mockReturnValueOnce({
+      eq: vi.fn().mockReturnValue({
+        neq: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValueOnce({
+            data: [
+              {
+                id: 'fellow-ann-auto',
+                user_id: 'fellow-user-99',
+                book_id: 1342,
+                chapter_index: 1,
+                chapter_page: 2,
+                selected_text: 'Auto-resolved fellow quote',
+                color: 'amber',
+                note: 'Marginalia without explicit map',
+                created_at: '2026-10-15T12:00:00Z',
+                updated_at: '2026-10-15T12:00:00Z',
+              },
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    // Call without 3rd argument (matching Reader page invocation)
+    const fetched = await useAnnotationStore.getState().fetchFellowAnnotationsForBook(1342, 'user-123');
+    expect(fetched).toHaveLength(1);
+    expect(fetched[0].fellowUsername).toBe('hypatia_alexandria');
+    expect(fetched[0].fellowDisplayName).toBe('Hypatia of Alexandria');
+
+    // Simulate a legacy cached entry with 'fellow_scholar' and heal via enrichFellowAnnotations
+    useAnnotationStore.setState({
+      fellowAnnotations: [
+        {
+          ...fetched[0],
+          fellowUsername: 'fellow_scholar',
+          fellowDisplayName: undefined,
+        },
+      ],
+    });
+
+    useAnnotationStore.getState().enrichFellowAnnotations();
+    const healed = useAnnotationStore.getState().getFellowAnnotationsForBook(1342);
+    expect(healed[0].fellowUsername).toBe('hypatia_alexandria');
+    expect(healed[0].fellowDisplayName).toBe('Hypatia of Alexandria');
+  });
 });
 
 
