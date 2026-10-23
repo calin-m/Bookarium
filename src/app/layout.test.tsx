@@ -31,6 +31,12 @@ describe('RootLayout', () => {
     expect(og?.type).toBe('website');
     expect(og?.images).toBeDefined();
     expect(tw?.card).toBe('summary');
+    expect(metadata.icons).toBeDefined();
+    const icons = metadata.icons as { icon: Array<{ url: string }>; apple: string };
+    expect(icons.icon).toEqual([
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+    ]);
   });
 
   it('should render children within html structure alongside analytics and performance telemetry', async () => {

@@ -228,7 +228,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
         <div
           role="tablist"
           aria-label="Preferences sub-sections"
-          className="w-full sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
+          className="w-full max-w-full min-w-0 overflow-hidden sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
         >
           <button
             type="button"
@@ -236,14 +236,14 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             aria-selected={activeSubTab === 'appearance'}
             aria-label="Appearance & Scroll"
             onClick={() => setActiveSubTab('appearance')}
-            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
               activeSubTab === 'appearance'
                 ? 'bg-card text-primary shadow-xs border-border'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden">Appearance</span>
+            <Sliders className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden truncate">Appearance</span>
             <span className="hidden sm:inline">Appearance & Scroll</span>
           </button>
 
@@ -253,14 +253,14 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             aria-selected={activeSubTab === 'narration'}
             aria-label="Read-Aloud Studio"
             onClick={() => setActiveSubTab('narration')}
-            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
               activeSubTab === 'narration'
                 ? 'bg-card text-primary shadow-xs border-border'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Headphones className="w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden">Read-Aloud</span>
+            <Headphones className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden truncate">Read-Aloud</span>
             <span className="hidden sm:inline">Read-Aloud Studio</span>
           </button>
 
@@ -270,14 +270,14 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             aria-selected={activeSubTab === 'portability'}
             aria-label="Backup & Restore"
             onClick={() => setActiveSubTab('portability')}
-            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
               activeSubTab === 'portability'
                 ? 'bg-card text-primary shadow-xs border-border'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Database className="w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden">Backups</span>
+            <Database className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden truncate">Backups</span>
             <span className="hidden sm:inline">Backup & Restore</span>
           </button>
         </div>

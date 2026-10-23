@@ -1,6 +1,6 @@
 /**
- * Zero-dependency PNG icon generator for Bookarium PWA assets.
- * Generates valid RGBA PNG files using native Node.js zlib and Buffer.
+ * Zero-dependency PNG and ICO icon generator for Bookarium PWA & browser tab assets.
+ * Generates valid RGBA PNG and binary ICO files using native Node.js zlib and Buffer.
  */
 
 const fs = require('fs');
@@ -8,6 +8,7 @@ const path = require('path');
 const zlib = require('zlib');
 
 const outDir = path.resolve(__dirname, '..', 'public', 'icons');
+const publicDir = path.resolve(__dirname, '..', 'public');
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
@@ -43,7 +44,7 @@ function createChunk(type, data) {
   return chunk;
 }
 
-function generatePng(size, isMaskable = false) {
+function generatePng(size, { isMaskable = false, isOpaque = false } = {}) {
   const width = size;
   const height = size;
 
@@ -58,6 +59,7 @@ function generatePng(size, isMaskable = false) {
   const cx = width / 2;
   const cy = height / 2;
   const radius = (width / 2) * (isMaskable ? 0.65 : 0.85);
+  const rx = Math.max(2, Math.round(width * (7 / 32)));
 
   for (let y = 0; y < height; y++) {
     const rowOffset = y * rowSize;
@@ -65,9 +67,36 @@ function generatePng(size, isMaskable = false) {
 
     for (let x = 0; x < width; x++) {
       const pxOffset = rowOffset + 1 + x * 4;
+
+      // Anti-aliased rounded squircle mask for non-maskable / non-opaque icons
+      let cornerAlpha = 1.0;
+      if (!isMaskable && !isOpaque) {
+        let dx = 0;
+        let dy = 0;
+        if (x < rx) dx = rx - x;
+        else if (x >= width - rx) dx = x - (width - 1 - rx);
+
+        if (y < rx) dy = rx - y;
+        else if (y >= height - rx) dy = y - (height - 1 - rx);
+
+        if (dx > 0 && dy > 0) {
+          const distCorner = Math.hypot(dx, dy);
+          if (distCorner > rx + 0.5) cornerAlpha = 0.0;
+          else if (distCorner > rx - 0.5) cornerAlpha = rx + 0.5 - distCorner;
+        }
+      }
+
+      if (cornerAlpha <= 0.001) {
+        rawData[pxOffset] = 0;
+        rawData[pxOffset + 1] = 0;
+        rawData[pxOffset + 2] = 0;
+        rawData[pxOffset + 3] = 0;
+        continue;
+      }
+
       const dx = x - cx;
       const dy = y - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dist = Math.hypot(dx, dy);
 
       // Background
       let r = bgR;
@@ -110,7 +139,7 @@ function generatePng(size, isMaskable = false) {
       rawData[pxOffset] = r;
       rawData[pxOffset + 1] = g;
       rawData[pxOffset + 2] = b;
-      rawData[pxOffset + 3] = a;
+      rawData[pxOffset + 3] = Math.round(a * cornerAlpha);
     }
   }
 
@@ -137,18 +166,55 @@ function generatePng(size, isMaskable = false) {
   return Buffer.concat([signature, ihdrChunk, idatChunk, iendChunk]);
 }
 
+function generateIco(entries) {
+  // ICONDIR header (6 bytes)
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0); // Reserved. Must always be 0.
+  header.writeUInt16LE(1, 2); // 1 = ICO
+  header.writeUInt16LE(entries.length, 4); // Number of images
+
+  const dirEntries = [];
+  let imageOffset = 6 + entries.length * 16;
+
+  for (const entry of entries) {
+    const dir = Buffer.alloc(16);
+    dir[0] = entry.size >= 256 ? 0 : entry.size; // Width
+    dir[1] = entry.size >= 256 ? 0 : entry.size; // Height
+    dir[2] = 0; // Color count (0 = no palette)
+    dir[3] = 0; // Reserved
+    dir.writeUInt16LE(1, 4); // Color planes
+    dir.writeUInt16LE(32, 6); // Bits per pixel (32-bit RGBA)
+    dir.writeUInt32LE(entry.png.length, 8); // Size of image data
+    dir.writeUInt32LE(imageOffset, 12); // Offset of image data
+    imageOffset += entry.png.length;
+    dirEntries.push(dir);
+  }
+
+  return Buffer.concat([header, ...dirEntries, ...entries.map((e) => e.png)]);
+}
+
 const icons = [
-  { name: 'icon-192.png', size: 192, maskable: false },
-  { name: 'icon-512.png', size: 512, maskable: false },
-  { name: 'icon-maskable-192.png', size: 192, maskable: true },
-  { name: 'icon-maskable-512.png', size: 512, maskable: true },
-  { name: 'apple-touch-icon.png', size: 180, maskable: false },
+  { name: 'icon-192.png', size: 192, isMaskable: false, isOpaque: false },
+  { name: 'icon-512.png', size: 512, isMaskable: false, isOpaque: false },
+  { name: 'icon-maskable-192.png', size: 192, isMaskable: true, isOpaque: true },
+  { name: 'icon-maskable-512.png', size: 512, isMaskable: true, isOpaque: true },
+  { name: 'apple-touch-icon.png', size: 180, isMaskable: false, isOpaque: true },
 ];
 
 for (const icon of icons) {
-  const buf = generatePng(icon.size, icon.maskable);
+  const buf = generatePng(icon.size, { isMaskable: icon.isMaskable, isOpaque: icon.isOpaque });
   const target = path.join(outDir, icon.name);
   fs.writeFileSync(target, buf);
-  console.log(`Generated: ${target} (${icon.size}x${icon.size}, maskable=${icon.maskable})`);
+  console.log(`Generated: ${target} (${icon.size}x${icon.size}, maskable=${icon.isMaskable})`);
 }
 
+// Generate multi-resolution binary favicon.ico (16x16, 32x32, 48x48) with transparent corners
+const icoSizes = [16, 32, 48];
+const icoEntries = icoSizes.map((size) => ({
+  size,
+  png: generatePng(size, { isMaskable: false, isOpaque: false }),
+}));
+const icoBuf = generateIco(icoEntries);
+const icoTarget = path.join(publicDir, 'favicon.ico');
+fs.writeFileSync(icoTarget, icoBuf);
+console.log(`Generated: ${icoTarget} (binary multi-res ICO with transparent corners, sizes: ${icoSizes.join(',')})`);

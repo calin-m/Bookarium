@@ -83,6 +83,7 @@ describe('views.config', () => {
       const shelf = VIEW_CONTENT_CONFIG.bookshelf;
       expect(shelf.getTitle()).toBe('Reading Shelf');
       expect(shelf.getSubtitle({ count: 5 })).toBe('You have 5 titles preserved on your personal shelf');
+      expect(shelf.emptyDescription).toContain('bookshelf icon');
       expect(shelf.collectionName).toBe('bookshelf');
       expect(shelf.clearType).toBe('shelf');
 

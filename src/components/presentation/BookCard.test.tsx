@@ -76,6 +76,8 @@ describe('BookCard component', () => {
     expect(unlikeBtn).toBeInTheDocument();
 
     const bookmarkBtn = screen.getByLabelText('Save to bookshelf');
+    expect(bookmarkBtn.querySelector('svg')).toHaveClass('w-3.5', 'h-3.5');
+    expect(bookmarkBtn.querySelector('svg')).not.toHaveClass('fill-current');
     fireEvent.click(bookmarkBtn);
     expect(useBookshelfStore.getState().isBookSaved(book.id)).toBe(true);
   });

@@ -106,7 +106,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
         <div
           role="tablist"
           aria-label="Symposium and Reader Circle sections"
-          className="w-full sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
+          className="w-full max-w-full min-w-0 overflow-hidden sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
         >
           <button
             type="button"
@@ -114,14 +114,14 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
             aria-selected={activeSubTab === 'symposiums'}
             aria-label={`Active Symposiums (${activeSymposiums.length})`}
             onClick={() => setActiveSubTab('symposiums')}
-            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
               activeSubTab === 'symposiums'
                 ? 'bg-card text-primary shadow-xs border-border'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden">Symposiums ({activeSymposiums.length})</span>
+            <BookOpen className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden truncate">Symposiums ({activeSymposiums.length})</span>
             <span className="hidden sm:inline">Active Symposiums ({activeSymposiums.length})</span>
           </button>
 
@@ -131,14 +131,14 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
             aria-selected={activeSubTab === 'circle'}
             aria-label={`Reader Circle (${acceptedFellows.length})`}
             onClick={() => setActiveSubTab('circle')}
-            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
               activeSubTab === 'circle'
                 ? 'bg-card text-primary shadow-xs border-border'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Users className="w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden">Circle ({acceptedFellows.length})</span>
+            <Users className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden truncate">Circle ({acceptedFellows.length})</span>
             <span className="hidden sm:inline">Reader Circle ({acceptedFellows.length})</span>
           </button>
 
@@ -148,14 +148,14 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
             aria-selected={activeSubTab === 'invitations'}
             aria-label="Invitations"
             onClick={() => setActiveSubTab('invitations')}
-            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
               activeSubTab === 'invitations'
                 ? 'bg-card text-primary shadow-xs border-border'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Mail className="w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden">Invites</span>
+            <Mail className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden truncate">Invites</span>
             <span className="hidden sm:inline">Invitations</span>
             {pendingCount > 0 && (
               <span

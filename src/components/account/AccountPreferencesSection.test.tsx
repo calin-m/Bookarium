@@ -35,6 +35,13 @@ describe('AccountPreferencesSection', () => {
     expect(screen.getByText('Reading & Navigation Preferences')).toBeInTheDocument();
     expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
 
+    const tablist = screen.getByRole('tablist', { name: /Preferences sub-sections/i });
+    expect(tablist).toHaveClass('min-w-0', 'overflow-hidden', 'max-w-full');
+    const tabs = screen.getAllByRole('tab');
+    tabs.forEach((tab) => {
+      expect(tab).toHaveClass('min-w-0');
+    });
+
     const sepiaBtn = screen.getByRole('button', { name: /Sepia/i });
     fireEvent.click(sepiaBtn);
     expect(handleThemeChange).toHaveBeenCalledWith('sepia');

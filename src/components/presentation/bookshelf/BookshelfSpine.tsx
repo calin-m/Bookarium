@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Bookmark, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star, AlertTriangle } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -117,7 +117,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         };
       case 'bookshelf':
         return {
-          icon: <Bookmark className={`w-3 h-3 text-primary shrink-0 ${isSaved ? 'fill-current' : ''}`} />,
+          icon: <Library className="w-3 h-3 text-primary shrink-0" />,
           text: isSaved ? 'Remove from Bookshelf' : 'Save to Bookshelf',
         };
       case 'favorite':
@@ -378,7 +378,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             }`}
             aria-label={isSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
           >
-            <Bookmark className={`w-3 h-3 ${isSaved ? 'fill-current' : ''}`} />
+            <Library className="w-3 h-3" />
           </button>
 
           <button

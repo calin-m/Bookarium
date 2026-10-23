@@ -180,19 +180,19 @@ describe('AccountPage', () => {
 
     // Verify Tier-2 Sub-Tabs inside Habits & Accolades (2 tabs: Streaks & Challenge, Accolades Compendium)
     const habitsSubTablist = screen.getByRole('tablist', { name: /Habits and library sub-sections/i });
-    expect(habitsSubTablist).toHaveClass('w-full', 'sm:w-auto', 'flex', 'sm:inline-flex');
+    expect(habitsSubTablist).toHaveClass('w-full', 'sm:w-auto', 'flex', 'sm:inline-flex', 'min-w-0', 'overflow-hidden');
 
     const streaksSubTab = within(habitsSubTablist).getByRole('tab', { name: /Streaks & Challenge/i });
     const accoladesSubTab = within(habitsSubTablist).getByRole('tab', { name: /Accolades Compendium/i });
     expect(within(habitsSubTablist).queryByRole('tab', { name: /Library Breakdown/i })).not.toBeInTheDocument();
 
-    expect(streaksSubTab).toHaveClass('flex-1', 'sm:flex-none', 'whitespace-nowrap', 'border');
-    expect(accoladesSubTab).toHaveClass('flex-1', 'sm:flex-none', 'whitespace-nowrap', 'border');
+    expect(streaksSubTab).toHaveClass('flex-1', 'min-w-0', 'sm:flex-none', 'whitespace-nowrap', 'border');
+    expect(accoladesSubTab).toHaveClass('flex-1', 'min-w-0', 'sm:flex-none', 'whitespace-nowrap', 'border');
 
     // Verify concise mobile labels and full desktop labels
-    expect(within(streaksSubTab).getByText('Streaks')).toHaveClass('sm:hidden');
+    expect(within(streaksSubTab).getByText('Streaks')).toHaveClass('sm:hidden', 'truncate');
     expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('hidden', 'sm:inline');
-    expect(within(accoladesSubTab).getByText('Accolades')).toHaveClass('sm:hidden');
+    expect(within(accoladesSubTab).getByText('Accolades')).toHaveClass('sm:hidden', 'truncate');
     expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('hidden', 'sm:inline');
 
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GET, sanitizeRedirectPath } from './route';
+import { GET } from './route';
+import { sanitizeRedirectPath } from '@/lib/redirect-sanitizer';
 
 const mockExchangeCodeForSession = vi.fn();
 

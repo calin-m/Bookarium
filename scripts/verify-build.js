@@ -389,7 +389,7 @@ function pass6QualityAudit() {
 // -------------------------------------------------------------
 function pass7ProductionBuild() {
   logHeader('Pass 7: Next.js Production Build & Chunk Budget');
-  const buildRes = runCommand(`${npxCmd} next build`, true);
+  const buildRes = runCommand(`${npxCmd} next build --webpack`, true);
   if (!buildRes.success) {
     logFail('Next.js production build failed.');
     return false;

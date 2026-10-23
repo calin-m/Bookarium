@@ -640,7 +640,7 @@ function AccountDashboardContent() {
                 <div
                   role="tablist"
                   aria-label="Habits and library sub-sections"
-                  className="w-full sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-card border border-border shadow-xs"
+                  className="w-full max-w-full min-w-0 overflow-hidden sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-card border border-border shadow-xs"
                 >
                   <button
                     type="button"
@@ -648,14 +648,14 @@ function AccountDashboardContent() {
                     aria-selected={habitsSubTab === 'streaks'}
                     aria-label="Streaks & Challenge"
                     onClick={() => setHabitsSubTab('streaks')}
-                    className={`flex-1 sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                    className={`flex-1 min-w-0 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                       habitsSubTab === 'streaks'
                         ? 'bg-primary/10 text-primary border-border'
                         : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
                     }`}
                   >
-                    <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span className="sm:hidden">Streaks</span>
+                    <Flame className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span className="sm:hidden truncate">Streaks</span>
                     <span className="hidden sm:inline">Streaks & Challenge</span>
                   </button>
 
@@ -665,14 +665,14 @@ function AccountDashboardContent() {
                     aria-selected={habitsSubTab === 'accolades'}
                     aria-label="Accolades Compendium"
                     onClick={() => setHabitsSubTab('accolades')}
-                    className={`flex-1 sm:flex-none justify-center px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                    className={`flex-1 min-w-0 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
                       habitsSubTab === 'accolades'
                         ? 'bg-primary/10 text-primary border-border'
                         : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
                     }`}
                   >
-                    <Award className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="sm:hidden">Accolades</span>
+                    <Award className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="sm:hidden truncate">Accolades</span>
                     <span className="hidden sm:inline">Accolades Compendium</span>
                   </button>
                 </div>

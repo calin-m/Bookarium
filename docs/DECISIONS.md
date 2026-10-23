@@ -1106,3 +1106,35 @@
   - Faster CSS compilation via Tailwind v4's Rust Oxide engine with 100% visual and test parity across all 177 test suites and all three reading atmospheres (`Light`, `Sepia`, `Dark`).
 
 
+## ADR-057: App Router Route Handler Type Isolation, Upstream Mirror Header Defensiveness, and Webpack Build Stability
+- **Status**: Accepted
+- **Context**:
+  1. **Next.js 16 App Router Route Handler Type Isolation (`TS2344`)**:
+     - Next.js strictly requires that App Router `route.ts` modules only export valid HTTP request handlers (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`) and route segment options.
+     - Exporting utility functions like `sanitizeRedirectPath` directly from `src/app/auth/callback/route.ts` caused Next.js's internal route type generator (`.next/types/app/auth/callback/route.ts`) to throw `error TS2344: Type 'OmitWithTag<...>' does not satisfy the constraint '{ [x: string]: never; }'`.
+  2. **Defensive Header Parsing on Upstream Streaming Mirrors**:
+     - In `src/app/api/books/content/route.ts`, accessing `response.headers.get('content-length')` without optional chaining caused uncaught `TypeError` when consuming mock/synthetic responses in test harnesses or unconventional CDN mirror responses.
+  3. **Windows Turbopack IPC Process Exit & Webpack Build Stability**:
+     - Turbopack in Next.js 16 intermittently crashes when invoked from within Node child processes on Windows due to an IPC worker disconnection (`node process exited before we could connect to it with exit code: 0` during PostCSS / `globals.css` compilation).
+     - Next.js `package.json` already specified `--webpack` for `dev` (`next dev --webpack`); aligning Pass 7 in `scripts/verify-build.js` to execute `next build --webpack` ensures deterministic, crash-free production verification across all platforms.
+  4. **Bookshelf Icon Semantics & Mobile Sub-Tab Containment**:
+     - Unified `Library` icon usage across all bookshelf surfaces to eliminate semantic overlap with `Bookmark`, and added strict flex containment (`max-w-full min-w-0 overflow-hidden`) across all Account Tier-2 sub-tabs.
+  5. **Favicon Transparency & Asset Modernization**:
+     - Replaced raw XML `<svg>` masquerading as `.ico` with true 32-bit RGBA binary multi-resolution `.ico` (16, 32, 48px) and standalone vector `icon.svg` with squircle edge anti-aliasing to eliminate squared white corners.
+- **Decision**:
+  1. **Modularized Redirect Sanitization (`src/lib/redirect-sanitizer.ts`, `src/app/auth/callback/route.ts`)**:
+     - Extracted `sanitizeRedirectPath` into dedicated `src/lib/redirect-sanitizer.ts` with co-located unit test suite `src/lib/redirect-sanitizer.test.ts`.
+     - Restricted `src/app/auth/callback/route.ts` strictly to the `GET` route handler.
+  2. **Defensive Streaming Headers (`src/app/api/books/content/route.ts`)**:
+     - Added optional chaining to `response.headers?.get(...)` in `src/app/api/books/content/route.ts` to defend against non-standard or mock fetch responses.
+  3. **Production Build Stability via Webpack (`scripts/verify-build.js`)**:
+     - Configured Pass 7 in `scripts/verify-build.js` to invoke `next build --webpack`, mirroring `next dev --webpack` and guaranteeing reliable production builds on Windows.
+  4. **Bookshelf Semantic Icon Alignment & Mobile Sub-Tab Containment**:
+     - Substituted `Bookmark` with `Library` across all "Save to Bookshelf" touchpoints and aligned Account privacy toggles.
+     - Added `w-full max-w-full min-w-0 overflow-hidden` to Account Tier-2 sub-tab bars with responsive text and mobile icon concealment.
+  5. **Multi-Resolution Transparent Favicon Pipeline (`scripts/generate-pwa-icons.js`, `public/icon.svg`, `public/favicon.ico`)**:
+     - Generated standards-compliant binary `.ico` and vector `.svg` favicons with transparent corners (`alpha = 0`), and added squircle masks for non-maskable PWA icons.
+- **Consequences**:
+  - Next.js production builds typecheck with zero errors.
+  - Verification runs deterministically on Windows without Turbopack IPC worker panics.
+  - Browser tabs render clean rounded icons with zero white border artifacts.

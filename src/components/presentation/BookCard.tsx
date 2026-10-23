@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Bookmark, Heart, Sparkles, Trash2, AlertTriangle, X } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, Trash2, AlertTriangle, X } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount } from '@/lib/utils';
 import { resolveBookTags } from '@/lib/book-tags';
@@ -109,7 +109,7 @@ export const BookCard: React.FC<BookCardProps> = ({
     }
     if (hoveredAction === 'bookshelf') {
       return {
-        icon: <Bookmark className={`w-3 h-3 text-primary shrink-0 ${isSaved ? 'fill-current' : ''}`} />,
+        icon: <Library className="w-3 h-3 text-primary shrink-0" />,
         text: isSaved ? 'Remove from Bookshelf' : 'Add to Bookshelf',
       };
     }
@@ -325,7 +325,7 @@ export const BookCard: React.FC<BookCardProps> = ({
             }`}
             aria-label={isSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
           >
-            <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
+            <Library className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

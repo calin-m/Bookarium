@@ -4,7 +4,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Download, Bookmark, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -283,7 +283,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                   }`}
                   aria-label={effectiveIsSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
                 >
-                  <Bookmark className={`w-4 h-4 ${effectiveIsSaved ? 'fill-current' : ''}`} />
+                  <Library className="w-4 h-4" />
                 </button>
 
                 <button

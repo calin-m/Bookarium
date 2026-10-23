@@ -108,7 +108,10 @@ export const metadata: Metadata = {
     title: 'Bookarium',
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+    ],
     apple: '/icons/apple-touch-icon.png',
   },
 };

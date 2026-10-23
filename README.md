@@ -11,8 +11,8 @@
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-177%20Suites%20%7C%201705%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-91.5%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-178%20Suites%20%7C%201708%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-91.49%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -43,7 +43,9 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 ## 🛠️ Latest Improvements (v2.7.1)
 
 - **Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply Chain (`package.json`, `postcss.config.mjs`, `src/app/globals.css`, `src/lib/utils.ts`, `src/components/presentation/BookCard.tsx`, `ADR-056`)**: Upgraded to `tailwindcss@4.3.3` and `@tailwindcss/postcss@4.3.3` using the `@config "../../tailwind.config.ts"` compatibility bridge, `@custom-variant dark`, Preflight v3 border/cursor parity rules, `extendTailwindMerge` custom shadow group registration, and pre-v4 editorial `BookCard` border/badge parity, and aliased `"fast-glob": "npm:tinyglobby@^0.2.17"` in `package.json` `"overrides"` to eliminate all 7 transitive `braces`/`micromatch` audit warnings (`0 vulnerabilities`).
-- **Mobile Swipe & Favorites Horizontal Overflow Prevention (`src/app/globals.css`, `src/app/page.tsx`, `src/app/account/page.tsx`, `src/components/presentation/BookCard.tsx`)**: Enforced `overflow-x: clip` on `html, body` and `overflow-x-clip` on root layout and `<main>` containers so `translateX(±20px)` swipe animations never expand scrollWidth or offset the sticky Navbar, and added `min-w-0` to `BookCard` and its inner metadata column preventing 2-column mobile cards from blowing out their 1fr track.
+- **Multi-Resolution Transparent Favicon Pipeline (`public/icon.svg`, `public/favicon.ico`, `scripts/generate-pwa-icons.js`, `src/app/layout.tsx`, `ADR-057`)**: Generated standards-compliant 32-bit RGBA binary multi-resolution `.ico` (16x16, 32x32, 48x48) and vector `icon.svg` with squircle edge anti-aliasing (`alpha = 0` outside rounded rect) and transparent exterior corners, eliminating squared white corners in browser tabs, and applied squircle corner masks to non-maskable PWA icons (`icon-192.png`, `icon-512.png`).
+- **Next.js App Router Route Handler Type Isolation (`src/lib/redirect-sanitizer.ts`, `src/lib/redirect-sanitizer.test.ts`, `src/app/auth/callback/route.ts`, `ADR-057`)**: Extracted `sanitizeRedirectPath` into a dedicated utility module with co-located unit tests to satisfy Next.js 16 Route Handler type constraints (TS2344) forbidding non-HTTP exports from `route.ts`.
+- **Bookshelf Icon Semantics Unification (`Library` vs. `Bookmark`) (`src/components/presentation/BookCard.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.tsx`, `src/config/views.config.ts`, `src/components/presentation/HeroSearch.tsx`, `src/app/not-found.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `ADR-057`)**: Replaced the `Bookmark` ribbon icon with `Library` across all "Save to Bookshelf" action buttons, cursor hover tooltips, empty-shelf descriptions, and profile privacy toggles, reserving `Bookmark` strictly for the Bookmarks ledger (`/bookmarks`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -640,7 +642,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1705 tests across 177 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1708 tests across 178 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

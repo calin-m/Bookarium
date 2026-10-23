@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import { BookOpen, Bookmark, Compass } from 'lucide-react';
+import { BookOpen, Library, Compass } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 
 export default function NotFound() {
@@ -39,7 +39,7 @@ export default function NotFound() {
           </Link>
           <Link href={ROUTES.BOOKSHELF} className="w-full sm:w-auto">
             <Button variant="outline" className="w-full gap-2">
-              <Bookmark className="w-4 h-4" />
+              <Library className="w-4 h-4" />
               My Bookshelf
             </Button>
           </Link>

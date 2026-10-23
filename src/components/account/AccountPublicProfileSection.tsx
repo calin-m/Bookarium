@@ -14,7 +14,7 @@ import {
   Flame,
   Target,
   Library,
-  Bookmark,
+  Layers,
   AtSign,
   Sparkles,
   User as UserIcon,
@@ -186,36 +186,40 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
         <div
           role="tablist"
           aria-label="Scholar profile sub-sections"
-          className="w-full sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
+          className="w-full max-w-full min-w-0 overflow-hidden sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
         >
           <button
             type="button"
             role="tab"
+            aria-label="Identity & Bio"
             aria-selected={activeSubTab === 'identity'}
             onClick={() => setActiveSubTab('identity')}
-            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
               activeSubTab === 'identity'
                 ? 'bg-card text-primary shadow-xs border-border'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <UserIcon className="w-3.5 h-3.5 shrink-0" />
-            <span>Identity & Bio</span>
+            <UserIcon className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden truncate">Identity</span>
+            <span className="hidden sm:inline">Identity & Bio</span>
           </button>
 
           <button
             type="button"
             role="tab"
+            aria-label="Sanctuary & Privacy"
             aria-selected={activeSubTab === 'privacy'}
             onClick={() => setActiveSubTab('privacy')}
-            className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
               activeSubTab === 'privacy'
                 ? 'bg-card text-primary shadow-xs border-border'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Shield className="w-3.5 h-3.5 shrink-0" />
-            <span>Sanctuary & Privacy</span>
+            <Shield className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
+            <span className="sm:hidden truncate">Privacy</span>
+            <span className="hidden sm:inline">Sanctuary & Privacy</span>
           </button>
         </div>
       </div>
@@ -433,7 +437,7 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
                 />
                 <div className="space-y-0.5 min-w-0">
                   <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
-                    <Bookmark className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <Library className="w-3.5 h-3.5 text-primary shrink-0" />
                     <span>Saved Works</span>
                   </span>
                   <p className="text-[11px] text-muted-foreground font-sans leading-tight">
@@ -452,7 +456,7 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
                 />
                 <div className="space-y-0.5 min-w-0">
                   <span className="text-xs font-serif font-bold text-foreground flex items-center gap-1.5">
-                    <Library className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                     <span>Custom Shelves</span>
                   </span>
                   <p className="text-[11px] text-muted-foreground font-sans leading-tight">

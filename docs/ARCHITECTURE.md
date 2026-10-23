@@ -1,8 +1,8 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-10-16`  
-> **Topology Health**: `189` Modules Analyzed • `666` Static Linkages • `0` Circular Dependencies • `2` Orphaned Modules
+> **Last Synchronized**: `2026-10-23`  
+> **Topology Health**: `190` Modules Analyzed • `667` Static Linkages • `0` Circular Dependencies • `2` Orphaned Modules
 
 ---
 
@@ -363,7 +363,7 @@ Zustand client-side state stores programmatically verified across **10 Persisten
 
 ## 🧠 Domain Engines & Pure Computational Utilities
 
-Pure business logic, historical engines, and layout algorithms verified across **36 Domain Modules** using Babel AST:
+Pure business logic, historical engines, and layout algorithms verified across **37 Domain Modules** using Babel AST:
 
 | Engine / Utility | Subsystem / Layer | Source File | Primary Exported Primitives | Architectural Responsibility |
 | :--- | :--- | :--- | :--- | :--- |
@@ -395,6 +395,7 @@ Pure business logic, historical engines, and layout algorithms verified across *
 | **`rate-limiter`** | Core Domain | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) | `RateLimitOptions`, `RateLimitResult`, `InMemoryRateLimiter`, `booksApiRateLimiter`, `bookContentRateLimiter` | In-memory sliding-window rate limiter with burst mitigation for API routes. |
 | **`reader-annotator`** | Core Domain | [`src/lib/reader-annotator.ts`](src/lib/reader-annotator.ts) | `AnyAnnotation`, `isFellowAnnotation`, `AnnotationSpan`, `computeAnnotationSpans` | Scholarly marginalia interval partitioning and non-destructive HTML text-node highlighter. |
 | **`reading-analytics`** | Core Domain | [`src/lib/reading-analytics.ts`](src/lib/reading-analytics.ts) | `DayActivity`, `StreakStats`, `AnnualGoalProgress`, `ReadingSessionTelemetry`, `formatLocalDate` _(+3 more)_ | Streak calculation, 5-minute immersion thresholds, reading speed metrics, and annual reading goal progress. |
+| **`redirect-sanitizer`** | Core Domain | [`src/lib/redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) | `sanitizeRedirectPath` | Domain utility module. |
 | **`scroll-utils`** | Core Domain | [`src/lib/scroll-utils.ts`](src/lib/scroll-utils.ts) | `SmartScrollOptions`, `smartScrollToContent` | Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, and header avoidance. |
 | **`smart-search`** | Core Domain | [`src/lib/smart-search.ts`](src/lib/smart-search.ts) | `normalizeSearchText`, `extractSearchTokens`, `matchesSmartSearch`, `getBookSearchHaystack`, `filterBooksSmart` | Fuzzy multi-token search engine querying titles, authors, and subjects with punctuation normalization. |
 | **`speech-utils`** | Core Domain | [`src/lib/speech-utils.ts`](src/lib/speech-utils.ts) | `isNaturalVoice`, `cleanVoiceName` | Web Speech API voice selection heuristics identifying natural/neural synthesis voices. |
@@ -524,7 +525,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`url-validator.ts`](src/app/api/books/content/url-validator.ts) | _Root Primitive_ | `route.ts` | Production Module |
 | [`route.ts`](src/app/api/books/route.ts) | `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `lib/catalog/query-parser`, `lib/catalog/gutendex-provider`, `lib/catalog/supabase-provider`, `types/catalog.types`, `types/catalog.types` | _App Route Entry_ | Production Module |
 | [`route.ts`](src/app/api/books/translations/route.ts) | `lib/rate-limiter`, `lib/api-utils`, `lib/catalog/supabase-provider`, `lib/country-resolver` | _App Route Entry_ | Production Module |
-| [`route.ts`](src/app/auth/callback/route.ts) | `lib/supabase/server` | _App Route Entry_ | Production Module |
+| [`route.ts`](src/app/auth/callback/route.ts) | `lib/supabase/server`, `lib/redirect-sanitizer` | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/auth/confirm-deletion/page.tsx) | `stores/useAuthStore`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `config/routes` | _App Route Entry_ | Production Module |
 | [`page.tsx`](src/app/copyright/page.tsx) | `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/BackToTop`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
 | [`error.tsx`](src/app/error.tsx) | `components/ui/Button`, `config/routes` | _Direct Root Consumer_ | Production Module |
@@ -682,6 +683,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`rate-limiter.ts`](src/lib/rate-limiter.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `route.ts` | Production Module |
 | [`reader-annotator.ts`](src/lib/reader-annotator.ts) | `stores/useAnnotationStore` | `NotebookQuoteCard.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSurface.tsx` | Production Module |
 | [`reading-analytics.ts`](src/lib/reading-analytics.ts) | _Root Primitive_ | `useHabitsStore.ts` | Production Module |
+| [`redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) | _Root Primitive_ | `route.ts` | Production Module |
 | [`scroll-utils.ts`](src/lib/scroll-utils.ts) | _Root Primitive_ | `page.tsx`, `BookmarksView.tsx`, `NotebookView.tsx` | Production Module |
 | [`smart-search.ts`](src/lib/smart-search.ts) | `types/book.types` | `page.tsx`, `in-book-search.ts` | Production Module |
 | [`speech-utils.ts`](src/lib/speech-utils.ts) | _Root Primitive_ | `AccountPreferencesSection.tsx`, `ReaderSpeechBar.tsx`, `useReaderSpeech.ts` | Production Module |

@@ -106,7 +106,7 @@ export const VIEW_CONTENT_CONFIG: Record<'catalog' | 'bookshelf' | 'favorites', 
       `You have ${count} titles preserved on your personal shelf`,
     emptyTitle: 'Your personal shelf is currently empty',
     emptyDescription:
-      'Click the bookmark ribbon on any volume to place it on your shelf for offline access.',
+      'Click the bookshelf icon on any volume to place it on your shelf for offline access.',
     collectionName: 'bookshelf',
     searchPlaceholder: 'Search your bookshelf by title, author, or subject...',
     clearType: 'shelf',

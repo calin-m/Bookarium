@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Follow redirects only if the target location is verified safe (anti-SSRF)
-      if ((response.status === 301 || response.status === 302) && response.headers.get('location')) {
+      if ((response.status === 301 || response.status === 302) && response.headers?.get('location')) {
         const redirectLocation = response.headers.get('location')!;
         if (isSafeUpstreamUrl(redirectLocation)) {
           response = await fetch(redirectLocation, {
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        const contentLength = response.headers.get('content-length');
+        const contentLength = response.headers?.get('content-length');
         if (contentLength && parseInt(contentLength, 10) > MAX_BOOK_BYTES) {
           continue;
         }

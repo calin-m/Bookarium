@@ -7,7 +7,7 @@ import {
   ShieldCheck,
   Zap,
   Download,
-  Bookmark,
+  Library,
   Compass,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -67,7 +67,7 @@ const FEATURES = [
     desc: 'Direct EPUB, Kindle MOBI, & Text.',
   },
   {
-    icon: Bookmark,
+    icon: Library,
     title: 'Offline Reading Shelf',
     desc: 'Local browser storage & progress.',
   },

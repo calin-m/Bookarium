@@ -55,6 +55,13 @@ describe('AccountPublicProfileSection', () => {
     expect(screen.getByRole('region', { name: /public scholar profile settings/i })).toBeInTheDocument();
     expect(screen.getByText('Public Sanctuary')).toBeInTheDocument();
 
+    const tablist = screen.getByRole('tablist', { name: /scholar profile sub-sections/i });
+    expect(tablist).toHaveClass('min-w-0', 'overflow-hidden', 'max-w-full');
+    const tabs = screen.getAllByRole('tab');
+    tabs.forEach((tab) => {
+      expect(tab).toHaveClass('min-w-0');
+    });
+
     const usernameInput = screen.getByLabelText(/scholar handle/i);
     expect(usernameInput).toHaveValue('jane_austen');
 
@@ -78,6 +85,13 @@ describe('AccountPublicProfileSection', () => {
     fireEvent.click(toggle);
     expect(toggle).toBeChecked();
     expect(screen.getByText('Public Sanctuary')).toBeInTheDocument();
+
+    const tablist = screen.getByRole('tablist', { name: /scholar profile sub-sections/i });
+    expect(tablist).toHaveClass('min-w-0', 'overflow-hidden', 'max-w-full');
+    const tabs = screen.getAllByRole('tab');
+    tabs.forEach((tab) => {
+      expect(tab).toHaveClass('min-w-0');
+    });
   });
 
   it('validates username format and displays descriptive error', () => {
