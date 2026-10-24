@@ -1,27 +1,83 @@
-# Pipeline & Quality Governance Guide - Bookarium
+# Pipeline & Quality Governance Guide — Bookarium
 
-This document outlines the automated governance, linting, testing, and release gates configured for Bookarium.
+This document outlines the automated governance, security analysis, linting, testing, and release gates configured for Bookarium.
 
-## 7-Gateway Closed-Loop Quality Engine
+---
 
-The core verification workflow is executed via:
+## 🟢 Node.js Engine & Runtime Prerequisites
+
+Bookarium executes and compiles on Node.js with strict engine boundaries defined in `package.json`:
+
+- **Node.js Runtime**: `>= 20.0.0` (Node 22 LTS recommended)
+- **Package Manager**: npm `>= 10.0.0`
+- **CI Environment**: Node.js 20 on Ubuntu Latest (`.github/workflows/ci.yml`)
+
+---
+
+## 🛡️ 7-Gateway Closed-Loop Quality Engine
+
+The core verification workflow is executed deterministically via:
 ```bash
 npm run verify
 ```
 
-| Pass | Gateway | Action |
-|---|---|---|
-| Pass 0.5 | Secret Scanner | Scans all repository files for private keys, AWS/GCP tokens, or exposed API credentials |
-| Pass 1 | TypeScript Engine | Verifies 0 compile errors via `tsc --noEmit` |
-| Pass 2 | Vitest Server Mocks | Validates MSW v2 network interception and React Query hooks |
-| Pass 3 | Vitest Unit Suite | Asserts all unit/integration tests pass with $\ge$ 80% code coverage |
-| Pass 4 | Living Docs Sync | Programmatically recompiles `docs/ARCHITECTURE.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from AST |
-| Pass 5 | ADR Validation | Validates sequential numbering and schema conformance in `docs/DECISIONS.md` |
-| Pass 6 | Quality Suite | Validates 0 ESLint errors and 0 unused dependencies/exports via Knip |
-| Pass 7 | Production Build | Compiles Next.js production bundle within performance chunk budget |
+Every commit and pull request must pass all quality gateways with zero blockers:
 
-## CI Workflow
+| Pass | Gateway | Stage Name | Target & Tooling | Enforcement & Governance |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pass 0.5** | Pre-Commit | Secret Scanner | Regex scan across all files | Scans all repository files for private keys, AWS/GCP tokens, or exposed API credentials (`0 exposed secrets`). |
+| **Pass 0.75** | Pre-Commit | SAST & OWASP Security Suite | `npm audit`, SSRF AST & XSS AST guards | Audits dependencies for high/critical CVEs, prevents dynamic fetch SSRF taint flows, blocks dangerous client-side injection, sanitizes redirects, and verifies public domain licenses. |
+| **Pass 1** | Compiler | TypeScript Engine Strict Verification | `tsc --noEmit` | Strict type safety across all components, stores, hooks, route handlers, and types (`0 compile errors`, `0 any`). |
+| **Pass 2** | Network | MSW Server & React Query Validation | Vitest + MSW v2 | Validates Mock Service Worker v2 network interception, error fallbacks, and TanStack React Query hooks. |
+| **Pass 3** | Test Suite | Vitest Unit Suite & Coverage Floor | `vitest run --coverage` | Asserts all 184 unit/integration test suites pass with $\ge$ 80% code coverage across lines, statements, functions, and branches. |
+| **Pass 4** | Living Docs | Living AST Documentation Sync | `docs:sync` toolchain | Programmatically recompiles `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `ROADMAP.md`, `docs/GUTENBERG_PARSER.md`, and `docs/QUALITY_AUDIT_REPORT.md` from AST with zero drift. |
+| **Pass 5** | ADR Ledger | ADR Schema & Ledger Validation | Markdown AST verification | Validates sequential numbering and strict schema conformance (Status, Context, Decision, Consequences) in `docs/DECISIONS.md`. |
+| **Pass 6** | Quality Suite | Code Quality & Dead Code Audit | ESLint 9 & Knip | Zero ESLint warnings/errors, zero unreferenced dead files/exports, and zero orphan dependencies. |
+| **Pass 7** | Production Build | Next.js Production Build & Chunk Budget | `next build --webpack` | Optimized production Next.js bundle compilation within performance chunk budget. |
 
-The CI workflow in `.github/workflows/ci.yml` runs on every push and pull request:
-1. `npm ci`
-2. `npm run verify`
+---
+
+## 🛠️ Node.js CLI & Automation Commands
+
+Bookarium provides a comprehensive suite of Node.js scripts in `scripts/` to automate catalog synchronization, multilingual translation clustering, living architecture compilation, and quality auditing:
+
+| Command | Script File | Architectural Purpose |
+| :--- | :--- | :--- |
+| `npm run verify` | [`scripts/verify-build.js`](../scripts/verify-build.js) | Full 7-Gateway Closed-Loop Quality Engine verification. |
+| `npm run security:audit` | [`scripts/verify-build.js`](../scripts/verify-build.js) `--security-only` | Rapid standalone execution of Pass 0.5 (Secrets) and Pass 0.75 (SAST & OWASP Security Suite). |
+| `npm run docs:sync` | Living Docs Toolchain | Programmatically re-compiles `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `ROADMAP.md`, `docs/GUTENBERG_PARSER.md`, and `docs/QUALITY_AUDIT_REPORT.md`. |
+| `npm run matrix:generate` | [`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js) | Analyzes Babel AST of all `src/` modules and `scripts/` to compile the living architecture matrix. |
+| `npm run changelog:generate` | [`scripts/generate-changelog.js`](../scripts/generate-changelog.js) | Compiles `CHANGELOG.md` and updates the `README.md` Latest Release block. |
+| `npm run docs:parser` | [`scripts/generate-parser-docs.js`](../scripts/generate-parser-docs.js) | Analyzes `src/lib/gutenberg-parser.ts` AST to document reflow and segmentation rules. |
+| `npm run audit:quality` | [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js) | Generates `docs/QUALITY_AUDIT_REPORT.md` and `docs/quality-audit-results.json`. |
+| `npm run roadmap:generate` | [`scripts/generate-roadmap.js`](../scripts/generate-roadmap.js) | Generates living `ROADMAP.md` verifying features against source AST with 0% drift. |
+| `npm run catalog:sync` | [`scripts/sync-gutenberg-catalog.js`](../scripts/sync-gutenberg-catalog.js) | Streams and decompresses `pg_catalog.csv.gz` from Project Gutenberg, syncing 78,000+ volumes into Supabase. |
+| `npm run catalog:ingest` | [`scripts/ingest-catalog.js`](../scripts/ingest-catalog.js) | Direct CLI tool for batch ingesting local Gutenberg CSV/JSON metadata dumps into Supabase. |
+| `npm run translations:sync` | [`scripts/ingest-translations.js`](../scripts/ingest-translations.js) | Queries Wikidata SPARQL for multilingual FRBR work clusters and populates `public.book_translations`. |
+| `npm run adr:new -- "Title"` | [`scripts/new-adr.js`](../scripts/new-adr.js) | Scaffolds a new sequential Architectural Decision Record in `docs/DECISIONS.md`. |
+| `npm run gate:approve` | [`scripts/approval-gate.js`](../scripts/approval-gate.js) | Pre-commit mutation gate verifying `.agents/hooks.json` approval tokens. |
+| `npm run dev:open` | [`scripts/open-browser.js`](../scripts/open-browser.js) | Spawns local development server and automatically opens the browser at `http://localhost:3000`. |
+
+> 📖 **Comprehensive Module Graph**: For complete topological dependency graphs, Node.js package breakdowns, and database entity schemas, see [**`docs/ARCHITECTURE.md`**](ARCHITECTURE.md).
+
+---
+
+## 🚀 CI/CD Workflow
+
+The GitHub Actions CI pipeline in `.github/workflows/ci.yml` runs on every push and pull request against `main`, `master`, and `dev`:
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/setup-node@v4
+    with:
+      node-version: 20
+      cache: 'npm'
+  - run: npm ci
+  - run: npm run lint
+  - run: npm run typecheck
+  - run: npm run test:coverage
+  - run: npm run matrix:generate
+  - run: npm run audit:quality
+  - run: npm run verify:build
+```

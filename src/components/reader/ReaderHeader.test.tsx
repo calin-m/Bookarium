@@ -285,27 +285,30 @@ describe('ReaderHeader', () => {
     expect(screen.queryByText('1')).not.toBeInTheDocument();
   });
 
-  it('renders language button with count badge when multiple editions exist', () => {
+  it('renders language button with count badge when multiple editions exist and maintains invariant border across themes for zero CLS', () => {
     const onToggleTranslations = vi.fn();
-    render(
+    const editions = [
+      {
+        bookId: 1342,
+        title: 'Pride and Prejudice',
+        languageCode: 'en',
+        languageLabel: 'English',
+        isCurrent: true,
+      },
+      {
+        bookId: 67890,
+        title: 'Orgueil et Préjugés',
+        languageCode: 'fr',
+        languageLabel: 'French (Français)',
+        isCurrent: false,
+      },
+    ];
+
+    const { rerender } = render(
       <ReaderHeader
         {...defaultProps}
-        translations={[
-          {
-            bookId: 1342,
-            title: 'Pride and Prejudice',
-            languageCode: 'en',
-            languageLabel: 'English',
-            isCurrent: true,
-          },
-          {
-            bookId: 67890,
-            title: 'Orgueil et Préjugés',
-            languageCode: 'fr',
-            languageLabel: 'French (Français)',
-            isCurrent: false,
-          },
-        ]}
+        theme="light"
+        translations={editions}
         onToggleTranslations={onToggleTranslations}
       />
     );
@@ -313,7 +316,36 @@ describe('ReaderHeader', () => {
     const langBtn = screen.getByTestId('lang-dropdown-button');
     expect(langBtn).toBeInTheDocument();
     expect(langBtn).toHaveTextContent('EN');
-    expect(screen.getByText('2')).toBeInTheDocument();
+    const badgeLight = screen.getByText('2');
+    expect(badgeLight).toBeInTheDocument();
+    expect(badgeLight.className).toContain('border');
+    expect(badgeLight.className).toContain('border-primary/20');
+
+    // Sepia preserves border for 0 CLS
+    rerender(
+      <ReaderHeader
+        {...defaultProps}
+        theme="sepia"
+        translations={editions}
+        onToggleTranslations={onToggleTranslations}
+      />
+    );
+    const badgeSepia = screen.getByText('2');
+    expect(badgeSepia.className).toContain('border');
+    expect(badgeSepia.className).toContain('border-amber-500/30');
+
+    // Dark preserves border for 0 CLS
+    rerender(
+      <ReaderHeader
+        {...defaultProps}
+        theme="dark"
+        translations={editions}
+        onToggleTranslations={onToggleTranslations}
+      />
+    );
+    const badgeDark = screen.getByText('2');
+    expect(badgeDark.className).toContain('border');
+    expect(badgeDark.className).toContain('border-primary/20');
   });
 
   it('handles link copying when share button is clicked', async () => {

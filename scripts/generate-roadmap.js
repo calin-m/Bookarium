@@ -248,7 +248,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'Shared Symposium Marginalia, Source Filters & Spoiler Guard',
-        description: 'Resolution-independent rendering of Fellows\' Marginalia in `ReaderSurface.tsx` (dashed archival underlines, monogram badges, and overlapping highlight preservation), read-only scholar attribution popovers in `TextHighlightPopover.tsx`, isolated `fellowAnnotations` state in `useAnnotationStore.ts`, chapter-bound Spoiler Guard (Up to My Chapter vs. All Chapters), and progressive-disclosure `All Marginalia | My Marginalia | Fellows\' Marginalia` filter pills across `ReaderAnnotationsDrawer.tsx` and `NotebookView.tsx`.',
+        description: 'Resolution-independent rendering of Fellows\' Marginalia in `ReaderSurface.tsx` (dashed archival underlines, monogram badges, and palette-matched overlap rings), unified overlapping marginalia cards (`You + @username`) in `All` mode, 1-click fellow passage saving (`TextHighlightPopover.tsx`, `ReaderAnnotationsDrawer.tsx`, `NotebookQuoteCard.tsx`), chapter-bound Spoiler Guard (Up to My Chapter vs. All Chapters), and `All | Mine | Fellows` source filters across `ReaderAnnotationsDrawer.tsx` and `NotebookView.tsx`.',
         check: () =>
           fileContains('src/stores/useAnnotationStore.ts', 'fellowAnnotations') &&
           fileContains('src/components/presentation/NotebookView.tsx', 'fellow') &&
@@ -271,7 +271,7 @@ const ROADMAP_MILESTONES = [
   {
     id: 'm8',
     title: 'Milestone 8: Community Hub & Public Literary Agora',
-    version: 'Target: v2.8.0',
+    version: 'Target: v2.9.0',
     badge: 'https://img.shields.io/badge/Milestone-v2.8.0-violet?style=flat-square',
     description: 'Open literary agora, public volume discussions, community-wide reading challenges, and curated commonplace quote showcases.',
     features: [

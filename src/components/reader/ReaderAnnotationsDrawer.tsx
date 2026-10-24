@@ -4,10 +4,16 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Highlighter, Search, Trash2, Edit3, ArrowRight, BookOpen, Check, X, Shield, Unlock, Feather } from 'lucide-react';
 import { ReaderDrawerShell } from './ReaderDrawerShell';
 import type { Annotation, FellowAnnotation, HighlightColor, MarginaliaSourceFilter } from '@/stores/useAnnotationStore';
-import { isFellowAnnotation, type AnyAnnotation } from '@/lib/reader-annotator';
+import {
+  isFellowAnnotation,
+  pairOverlappingAnnotations,
+  computeSharedQuoteSegments,
+  type AnyAnnotation,
+} from '@/lib/reader-annotator';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { ANNOTATION_COLOR_CONFIG, ANNOTATION_COLOR_LIST } from '@/config/annotation-tokens';
+import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
 import { DeleteAnnotationModal } from './DeleteAnnotationModal';
 
 export interface ReaderAnnotationsDrawerProps {
@@ -28,7 +34,12 @@ export interface ReaderAnnotationsDrawerProps {
   onJumpToAnnotation: (chapterIndex: number, chapterPage: number, annotationId?: string) => void;
   onDeleteAnnotation: (id: string) => void;
   onUpdateNote: (id: string, note: string) => void;
+  onSaveFellowAnnotation?: (fellow: FellowAnnotation, note?: string, color?: HighlightColor) => Promise<void> | void;
 }
+
+export type DrawerDisplayItem = AnyAnnotation & {
+  pairedFellowAnnotation?: FellowAnnotation;
+};
 
 export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = ({
   isOpen,
@@ -48,6 +59,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   onJumpToAnnotation,
   onDeleteAnnotation,
   onUpdateNote,
+  onSaveFellowAnnotation,
 }) => {
   const activeTheme = getReaderTheme(theme);
   const [selectedColorFilter, setSelectedColorFilter] = useState<HighlightColor | 'all'>('all');
@@ -56,6 +68,8 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   const [searchQuery, setSearchQuery] = useState('');
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState('');
+  const [savingFellowId, setSavingFellowId] = useState<string | null>(null);
+  const [savingFellowText, setSavingFellowText] = useState('');
   const [itemToDelete, setItemToDelete] = useState<Annotation | null>(null);
 
   const effectiveSourceFilter = marginaliaSourceFilter ?? localSourceFilter;
@@ -90,10 +104,19 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
     return fellowAnnotations.filter((fa) => fa.chapterIndex <= activeChapterIndex);
   }, [fellowAnnotations, effectiveSpoilerShield, activeChapterIndex]);
 
-  const combinedSourceAnnotations: AnyAnnotation[] = useMemo(() => {
+  const combinedSourceAnnotations: DrawerDisplayItem[] = useMemo(() => {
     if (effectiveSourceFilter === 'mine') return annotations;
     if (effectiveSourceFilter === 'fellows') return visibleFellowAnnotations;
-    return [...annotations, ...visibleFellowAnnotations];
+    const paired = pairOverlappingAnnotations(annotations, visibleFellowAnnotations);
+    return paired.map((item) => {
+      if (item.pairedFellowAnnotation) {
+        return {
+          ...item.annotation,
+          pairedFellowAnnotation: item.pairedFellowAnnotation,
+        };
+      }
+      return item.annotation;
+    });
   }, [annotations, visibleFellowAnnotations, effectiveSourceFilter]);
 
   const filteredAnnotations = useMemo(() => {
@@ -103,7 +126,9 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
       const matchesSearch =
         !q ||
         a.selectedText.toLowerCase().includes(q) ||
-        (a.note && a.note.toLowerCase().includes(q));
+        (a.note && a.note.toLowerCase().includes(q)) ||
+        (a.pairedFellowAnnotation?.note && a.pairedFellowAnnotation.note.toLowerCase().includes(q)) ||
+        (a.pairedFellowAnnotation?.selectedText && a.pairedFellowAnnotation.selectedText.toLowerCase().includes(q));
       return matchesColor && matchesSearch;
     });
   }, [combinedSourceAnnotations, selectedColorFilter, searchQuery]);
@@ -128,19 +153,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   useEffect(() => {
     const el = colorTabsRef.current;
     if (!el) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      // If deltaY is dominant (typical mouse wheel scroll)
-      if (Math.abs(e.deltaY) >= Math.abs(e.deltaX) && e.deltaY !== 0) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    };
-
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      el.removeEventListener('wheel', handleWheel);
-    };
+    return attachHorizontalDragAndWheelScroll(el);
   }, [isOpen]);
 
   return (
@@ -247,7 +260,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
           <div
             ref={colorTabsRef}
             data-testid="annotations-color-tabs"
-            className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none overscroll-x-contain shrink-0"
+            className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none overscroll-x-contain shrink-0 cursor-grab select-none"
           >
             <button
               type="button"
@@ -323,6 +336,20 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                       <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 font-semibold text-stone-700 dark:text-stone-300">
                         Sec {item.chapterIndex + 1} · Page {item.chapterPage}
                       </span>
+                      {item.pairedFellowAnnotation && (
+                        <span
+                          data-testid={`drawer-fellow-badge-${item.pairedFellowAnnotation.id}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-bold"
+                        >
+                          <Feather className="w-2.5 h-2.5" />
+                          <span>
+                            {item.pairedFellowAnnotation.fellowDisplayName &&
+                            item.pairedFellowAnnotation.fellowDisplayName !== item.pairedFellowAnnotation.fellowUsername
+                              ? `${item.pairedFellowAnnotation.fellowDisplayName} (@${item.pairedFellowAnnotation.fellowUsername})`
+                              : `@${item.pairedFellowAnnotation.fellowUsername}`}
+                          </span>
+                        </span>
+                      )}
                       {isFellow && (
                         <span
                           data-testid={`drawer-fellow-badge-${item.id}`}
@@ -343,7 +370,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                           type="button"
                           data-testid={`annotation-edit-btn-${item.id}`}
                           aria-label="Edit note"
-                          onClick={() => handleStartEdit(item)}
+                          onClick={() => handleStartEdit(item as Annotation)}
                           className="p-1 rounded hover:bg-stone-200/60 dark:hover:bg-stone-800 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -352,7 +379,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                           type="button"
                           data-testid={`annotation-delete-btn-${item.id}`}
                           aria-label="Delete annotation"
-                          onClick={() => setItemToDelete(item)}
+                          onClick={() => setItemToDelete(item as Annotation)}
                           className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-600 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -362,13 +389,36 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                   </div>
 
                   {/* Highlighted Quote Text */}
-                  <blockquote
-                    data-testid="annotation-quote-text"
-                    onClick={() => handleJump(item)}
-                    className="font-serif italic text-sm text-foreground/90 leading-relaxed cursor-pointer hover:underline decoration-primary/40 underline-offset-2"
-                  >
-                    &ldquo;{item.selectedText}&rdquo;
-                  </blockquote>
+                  {(() => {
+                    const segments = computeSharedQuoteSegments(
+                      item.selectedText,
+                      item.pairedFellowAnnotation?.selectedText
+                    );
+                    return (
+                      <blockquote
+                        data-testid="annotation-quote-text"
+                        onClick={() => handleJump(item)}
+                        className="font-serif italic text-sm text-foreground/90 leading-relaxed cursor-pointer hover:underline decoration-primary/40 underline-offset-2"
+                      >
+                        &ldquo;
+                        {segments.isExact ? (
+                          segments.fullQuote
+                        ) : (
+                          <>
+                            {segments.beforeText}
+                            <mark
+                              data-testid="shared-quote-overlap-span"
+                              className="bg-amber-500/25 border-b-2 border-dashed border-amber-600/75 dark:border-amber-400/75 rounded-xs px-0.5 not-italic"
+                            >
+                              {segments.overlapText}
+                            </mark>
+                            {segments.afterText}
+                          </>
+                        )}
+                        &rdquo;
+                      </blockquote>
+                    );
+                  })()}
 
                   {/* Note Section */}
                   {!isFellow && editingNoteId === item.id ? (
@@ -410,6 +460,86 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                       {item.note}
                     </div>
                   ) : null}
+
+                  {/* Paired Fellow Note Box */}
+                  {item.pairedFellowAnnotation && item.pairedFellowAnnotation.note && (
+                    <div
+                      data-testid={`drawer-paired-fellow-note-${item.pairedFellowAnnotation.id}`}
+                      className="text-xs text-stone-700 dark:text-stone-300 bg-amber-500/10 dark:bg-amber-950/20 p-2.5 rounded-lg font-sans border-l-2 border-amber-500 space-y-1"
+                    >
+                      <div className="text-[10px] font-mono text-amber-800 dark:text-amber-300 font-bold flex items-center gap-1">
+                        <Feather className="w-2.5 h-2.5" />
+                        <span>
+                          {item.pairedFellowAnnotation.fellowDisplayName || `@${item.pairedFellowAnnotation.fellowUsername}`}
+                        </span>
+                      </div>
+                      <p className="leading-relaxed whitespace-pre-wrap">{item.pairedFellowAnnotation.note}</p>
+                    </div>
+                  )}
+
+                  {/* Standalone Fellow Action: Save to My Notes or Reply */}
+                  {isFellow && onSaveFellowAnnotation && (
+                    savingFellowId === item.id ? (
+                      <div className="flex flex-col gap-1.5 pt-1">
+                        <textarea
+                          data-testid={`drawer-reply-textarea-${item.id}`}
+                          value={savingFellowText}
+                          onChange={(e) => setSavingFellowText(e.target.value)}
+                          placeholder="Write your personal note to save with this highlight..."
+                          rows={2}
+                          className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans"
+                          autoFocus
+                        />
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSavingFellowId(null)}
+                            className="px-2 py-1 text-[11px] text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                          >
+                            <X className="w-3.5 h-3.5 inline mr-0.5" /> Cancel
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`drawer-save-fellow-with-note-btn-${item.id}`}
+                            onClick={async () => {
+                              await onSaveFellowAnnotation(item as FellowAnnotation, savingFellowText);
+                              setSavingFellowId(null);
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-semibold rounded bg-primary-600 text-white hover:bg-primary-700"
+                          >
+                            <Check className="w-3.5 h-3.5 inline mr-0.5" /> Save Note
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <button
+                          type="button"
+                          data-testid={`drawer-save-fellow-note-btn-${item.id}`}
+                          onClick={async () => {
+                            await onSaveFellowAnnotation(item as FellowAnnotation);
+                          }}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
+                        >
+                          <Check className="w-3 h-3" />
+                          <span>Save to My Notes</span>
+                        </button>
+                        <span className="text-stone-300 dark:text-stone-700 select-none">•</span>
+                        <button
+                          type="button"
+                          data-testid={`drawer-reply-fellow-note-btn-${item.id}`}
+                          onClick={() => {
+                            setSavingFellowId(item.id);
+                            setSavingFellowText('');
+                          }}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>+ Add My Note</span>
+                        </button>
+                      </div>
+                    )
+                  )}
 
                   {/* Jump to passage button */}
                   <button

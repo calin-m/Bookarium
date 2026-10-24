@@ -732,6 +732,44 @@ describe('NotebookView component', () => {
     expect(wheelUpEvent.defaultPrevented).toBe(true);
   });
 
+  it('allows click-and-drag grab-to-scroll on notebook color tabs and suppresses accidental filter switch on drag', async () => {
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Yellow quote excerpt',
+      color: 'yellow',
+    });
+
+    render(<NotebookView />);
+
+    const colorTabs = screen.getByTestId('notebook-color-tabs');
+    expect(colorTabs).toHaveClass('cursor-grab', 'select-none');
+
+    colorTabs.scrollLeft = 0;
+    const roseFilter = screen.getByTestId('notebook-filter-rose');
+
+    // 1. Mouse down on rose filter pill
+    fireEvent.mouseDown(roseFilter, { clientX: 300, button: 0 });
+
+    // 2. Drag by 50px
+    fireEvent.mouseMove(window, { clientX: 250 });
+    expect(colorTabs.scrollLeft).toBe(50);
+
+    // 3. Mouse up & click
+    fireEvent.mouseUp(window, { clientX: 250 });
+    fireEvent.click(roseFilter);
+
+    // Filter was NOT triggered by drag release: yellow quote remains visible in 'All'
+    expect(screen.getByText(/Yellow quote excerpt/i)).toBeInTheDocument();
+
+    // 4. Normal stationary click on rose filters to empty rose results
+    fireEvent.click(roseFilter);
+    expect(screen.queryByText(/Yellow quote excerpt/i)).not.toBeInTheDocument();
+  });
+
   it('toggles quick color popover and changes highlight color on 1-click swatch', async () => {
     const ann = await useAnnotationStore.getState().addAnnotation({
       bookId: 1342,
@@ -1444,6 +1482,101 @@ describe('NotebookView component', () => {
       fireEvent.click(screen.getByTestId('notebook-source-all'));
       expect(screen.getByText(/My own personal quote/i)).toBeInTheDocument();
       expect(screen.getByText(/Fellow symposium quote/i)).toBeInTheDocument();
+    });
+
+    it('merges overlapping own and fellow annotations into a single unified card in All mode', async () => {
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.',
+        color: 'yellow',
+        note: 'My reflection on society.',
+      });
+
+      useAnnotationStore.setState({
+        fellowAnnotations: [
+          {
+            id: 'fellow-ann-overlap',
+            bookId: 1342,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'It is a truth universally acknowledged',
+            color: 'rose',
+            note: 'Clara reflection on marriage.',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+            isFellow: true,
+            fellowUsername: 'clara_v',
+            fellowDisplayName: 'Clara Vance',
+          },
+        ],
+      });
+
+      render(<NotebookView />);
+
+      // In All mode: should be merged into 1 card, showing both badges and both reflections
+      const cards = screen.getAllByTestId(/^notebook-quote-card-/);
+      expect(cards).toHaveLength(1);
+      expect(screen.getByTestId('notebook-fellow-badge-fellow-ann-overlap')).toBeInTheDocument();
+      expect(screen.getByText('My reflection on society.')).toBeInTheDocument();
+      expect(screen.getByText('Clara reflection on marriage.')).toBeInTheDocument();
+      expect(screen.getByTestId('notebook-paired-fellow-note-fellow-ann-overlap')).toBeInTheDocument();
+
+      // In Fellows mode: displays the fellow's standalone card
+      fireEvent.click(screen.getByTestId('notebook-source-fellows'));
+      expect(screen.getAllByTestId(/^notebook-quote-card-/)).toHaveLength(1);
+      expect(screen.queryByText('My reflection on society.')).not.toBeInTheDocument();
+      expect(screen.getByText('Clara reflection on marriage.')).toBeInTheDocument();
+
+      // In Mine mode: displays the user's standalone card
+      fireEvent.click(screen.getByTestId('notebook-source-mine'));
+      expect(screen.getAllByTestId(/^notebook-quote-card-/)).toHaveLength(1);
+      expect(screen.getByText('My reflection on society.')).toBeInTheDocument();
+      expect(screen.queryByText('Clara reflection on marriage.')).not.toBeInTheDocument();
+    });
+
+    it('allows saving fellow note to own notebook using onSaveFellowAsOwn', async () => {
+      useAnnotationStore.setState({
+        fellowAnnotations: [
+          {
+            id: 'fellow-ann-to-save',
+            bookId: 1342,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'She is tolerable; but not handsome enough to tempt me.',
+            color: 'amber',
+            note: 'Darcy famous slight.',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+            isFellow: true,
+            fellowUsername: 'clara_v',
+            fellowDisplayName: 'Clara Vance',
+          },
+        ],
+        marginaliaSourceFilter: 'fellows',
+      });
+
+      render(<NotebookView />);
+
+      const saveBtn = screen.getByTestId('notebook-save-fellow-btn-fellow-ann-to-save');
+      expect(saveBtn).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(saveBtn);
+      });
+
+      // Verify the annotation was added to own annotations store
+      const ownAnnotations = useAnnotationStore.getState().annotations;
+      expect(ownAnnotations).toHaveLength(1);
+      expect(ownAnnotations[0].selectedText).toBe('She is tolerable; but not handsome enough to tempt me.');
+      expect(ownAnnotations[0].bookId).toBe(1342);
     });
   });
 });

@@ -252,13 +252,50 @@ describe('TextHighlightPopover', () => {
     expect(screen.getByText(/Profound soliloquy reflection by Plato/i)).toBeInTheDocument();
     expect(screen.queryByTestId('highlight-delete-btn')).not.toBeInTheDocument();
 
-    // User can switch to 'My Note' tab even when isFellowOnly is true
+    // User can switch to 'My Note' tab or 1-click save highlight even when isFellowOnly is true
     expect(screen.getByTestId('popover-overlap-switcher')).toBeInTheDocument();
     expect(screen.getByTestId('fellow-popover-add-own-note-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('fellow-popover-save-highlight-btn')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('fellow-popover-add-own-note-btn'));
     expect(screen.getByTestId('highlight-color-yellow')).toBeInTheDocument();
     expect(screen.getByTestId('highlight-note-textarea')).toBeInTheDocument();
+  });
+
+  it('allows 1-click saving of fellow highlight via fellow-popover-save-highlight-btn', () => {
+    const onSelectColor = vi.fn();
+    const onClose = vi.fn();
+    const fellowAnn = {
+      id: 'fellow-ann-save-test',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'To be, or not to be',
+      color: 'amber' as const,
+      note: 'Plato commentary',
+      createdAt: '2026-10-15T10:00:00Z',
+      updatedAt: '2026-10-15T10:00:00Z',
+      isFellow: true as const,
+      fellowUsername: 'plato',
+      fellowDisplayName: 'Plato',
+    };
+
+    render(
+      <TextHighlightPopover
+        {...defaultProps}
+        fellowAnnotation={fellowAnn}
+        isFellowOnly={true}
+        onSelectColor={onSelectColor}
+        onClose={onClose}
+      />
+    );
+
+    const saveHighlightBtn = screen.getByTestId('fellow-popover-save-highlight-btn');
+    expect(saveHighlightBtn).toHaveTextContent('Save Highlight');
+
+    fireEvent.click(saveHighlightBtn);
+    expect(onSelectColor).toHaveBeenCalledWith('amber');
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('renders 2-pill overlap switcher when both self and fellow annotations exist', () => {

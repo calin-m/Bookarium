@@ -434,7 +434,7 @@ function renderContentWithAnnotations(
         {hasOverlap ? (
           <span
             data-testid="overlapping-inner-highlight"
-            className={`py-[0.5px] px-0.5 rounded-xs ring-1 ring-inset ${colorConfig.surfaceHighlightClass}`}
+            className={`py-[0.5px] px-0.5 rounded-xs ring-1 ring-inset ${colorConfig.overlapRingClass} ${colorConfig.surfaceHighlightClass}`}
           >
             {text.slice(span.start, span.end)}
           </span>

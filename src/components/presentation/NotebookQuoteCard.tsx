@@ -13,7 +13,10 @@ import {
   Feather,
 } from 'lucide-react';
 import type { Annotation, FellowAnnotation, HighlightColor } from '@/stores/useAnnotationStore';
-import { isFellowAnnotation } from '@/lib/reader-annotator';
+import {
+  isFellowAnnotation,
+  computeSharedQuoteSegments,
+} from '@/lib/reader-annotator';
 import { Button } from '@/components/ui/Button';
 import {
   ANNOTATION_COLOR_CONFIG,
@@ -52,6 +55,7 @@ export const HIGHLIGHT_CARD_COLORS: Record<HighlightColor, { border: string; bg:
 
 export interface NotebookQuoteCardProps {
   annotation: Annotation | FellowAnnotation;
+  pairedFellowAnnotation?: FellowAnnotation;
   bookTitle: string;
   bookAuthor: string;
   isRestricted?: boolean;
@@ -69,6 +73,11 @@ export interface NotebookQuoteCardProps {
   onRequestDeleteReflection: (ann: Annotation) => void;
   onRequestDeleteAnnotation: (ann: Annotation) => void;
   onJumpToReader: (ann: Annotation | FellowAnnotation) => void;
+  onSaveFellowAsOwn?: (
+    fellow: FellowAnnotation,
+    noteText?: string,
+    color?: HighlightColor
+  ) => Promise<void> | void;
 }
 
 /**
@@ -77,6 +86,7 @@ export interface NotebookQuoteCardProps {
  */
 export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   annotation: ann,
+  pairedFellowAnnotation,
   bookTitle,
   bookAuthor,
   isRestricted = false,
@@ -89,6 +99,7 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   onRequestDeleteReflection,
   onRequestDeleteAnnotation,
   onJumpToReader,
+  onSaveFellowAsOwn,
 }) => {
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [editNoteText, setEditNoteText] = useState(ann.note || '');
@@ -194,68 +205,108 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
             </span>
           </div>
 
-          {isFellow ? (
-            <span
-              data-testid={`notebook-fellow-badge-${ann.id}`}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0"
-            >
-              <Feather className="w-2.5 h-2.5" />
-              <span>
-                {ann.fellowDisplayName && ann.fellowDisplayName !== ann.fellowUsername
-                  ? `${ann.fellowDisplayName} (@${ann.fellowUsername})`
-                  : `@${ann.fellowUsername}`}
-              </span>
-            </span>
-          ) : (
-            /* Quick Color Swatch Badge & Popover */
-            <div className="relative shrink-0" data-testid={`color-badge-container-${ann.id}`}>
-              <button
-                type="button"
-                onClick={() => setIsColorPickerOpen((prev) => !prev)}
-                data-testid={`color-badge-btn-${ann.id}`}
-                aria-label={`Highlight color: ${activeColor}. Click to change color.`}
-                aria-expanded={isColorPickerOpen}
-                title="Click to change highlight color"
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer select-none border border-transparent hover:border-current/30 ${colorStyle.bg} ${colorStyle.text}`}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {pairedFellowAnnotation && (
+              <span
+                data-testid={`notebook-fellow-badge-${pairedFellowAnnotation.id}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0"
               >
-                <span>{activeColor}</span>
-                <Palette className="w-2.5 h-2.5 opacity-70" />
-              </button>
+                <Feather className="w-2.5 h-2.5" />
+                <span>
+                  {pairedFellowAnnotation.fellowDisplayName &&
+                  pairedFellowAnnotation.fellowDisplayName !== pairedFellowAnnotation.fellowUsername
+                    ? `${pairedFellowAnnotation.fellowDisplayName} (@${pairedFellowAnnotation.fellowUsername})`
+                    : `@${pairedFellowAnnotation.fellowUsername}`}
+                </span>
+              </span>
+            )}
 
-              {isColorPickerOpen && (
-                <div
-                  data-testid={`quick-color-popover-${ann.id}`}
-                  className="absolute right-0 top-full mt-1.5 z-20 p-1.5 rounded-xl border border-border bg-card shadow-booksaw flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
+            {isFellow ? (
+              <span
+                data-testid={`notebook-fellow-badge-${ann.id}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0"
+              >
+                <Feather className="w-2.5 h-2.5" />
+                <span>
+                  {ann.fellowDisplayName && ann.fellowDisplayName !== ann.fellowUsername
+                    ? `${ann.fellowDisplayName} (@${ann.fellowUsername})`
+                    : `@${ann.fellowUsername}`}
+                </span>
+              </span>
+            ) : (
+              /* Quick Color Swatch Badge & Popover */
+              <div className="relative shrink-0" data-testid={`color-badge-container-${ann.id}`}>
+                <button
+                  type="button"
+                  onClick={() => setIsColorPickerOpen((prev) => !prev)}
+                  data-testid={`color-badge-btn-${ann.id}`}
+                  aria-label={`Highlight color: ${activeColor}. Click to change color.`}
+                  aria-expanded={isColorPickerOpen}
+                  title="Click to change highlight color"
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer select-none border border-transparent hover:border-current/30 ${colorStyle.bg} ${colorStyle.text}`}
                 >
-                  {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
-                    const isSelected = ann.color === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        aria-label={`Change highlight color to ${c.label}`}
-                        title={`Change to ${c.label}`}
-                        onClick={async () => {
-                          await onUpdateColor(ann.id, c.id);
-                          setIsColorPickerOpen(false);
-                        }}
-                        data-testid={`quick-color-btn-${ann.id}-${c.id}`}
-                        className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
-                          isSelected ? c.activeRing : ''
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+                  <span>{activeColor}</span>
+                  <Palette className="w-2.5 h-2.5 opacity-70" />
+                </button>
+
+                {isColorPickerOpen && (
+                  <div
+                    data-testid={`quick-color-popover-${ann.id}`}
+                    className="absolute right-0 top-full mt-1.5 z-20 p-1.5 rounded-xl border border-border bg-card shadow-booksaw flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
+                  >
+                    {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
+                      const isSelected = ann.color === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          aria-label={`Change highlight color to ${c.label}`}
+                          title={`Change to ${c.label}`}
+                          onClick={async () => {
+                            await onUpdateColor(ann.id, c.id);
+                            setIsColorPickerOpen(false);
+                          }}
+                          data-testid={`quick-color-btn-${ann.id}-${c.id}`}
+                          className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
+                            isSelected ? c.activeRing : ''
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Highlight Quote */}
-        <blockquote className="font-serif italic text-sm sm:text-base text-foreground leading-relaxed">
-          &ldquo;{ann.selectedText}&rdquo;
-        </blockquote>
+        {(() => {
+          const segments = computeSharedQuoteSegments(
+            ann.selectedText,
+            pairedFellowAnnotation?.selectedText
+          );
+          return (
+            <blockquote className="font-serif italic text-sm sm:text-base text-foreground leading-relaxed">
+              &ldquo;
+              {segments.isExact ? (
+                segments.fullQuote
+              ) : (
+                <>
+                  {segments.beforeText}
+                  <mark
+                    data-testid="shared-quote-overlap-span"
+                    className="bg-amber-500/25 border-b-2 border-dashed border-amber-600/75 dark:border-amber-400/75 rounded-xs px-0.5 not-italic"
+                  >
+                    {segments.overlapText}
+                  </mark>
+                  {segments.afterText}
+                </>
+              )}
+              &rdquo;
+            </blockquote>
+          );
+        })()}
 
         {/* Personal Note Box */}
         {isFellow ? (
@@ -380,6 +431,22 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
             <span>Add a personal note...</span>
           </button>
         )}
+
+        {/* Paired Fellow Reflection Box */}
+        {pairedFellowAnnotation && pairedFellowAnnotation.note && (
+          <div
+            data-testid={`notebook-paired-fellow-note-${pairedFellowAnnotation.id}`}
+            className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-sans text-foreground/90 space-y-1"
+          >
+            <div className="flex items-center justify-between text-[10px] font-mono text-amber-800 dark:text-amber-300">
+              <span className="flex items-center gap-1 font-bold">
+                <Feather className="w-3 h-3" />
+                Fellow Reflection ({pairedFellowAnnotation.fellowDisplayName || `@${pairedFellowAnnotation.fellowUsername}`})
+              </span>
+            </div>
+            <p className="leading-relaxed whitespace-pre-wrap">{pairedFellowAnnotation.note}</p>
+          </div>
+        )}
       </div>
 
       {/* Card Action Footer */}
@@ -405,6 +472,19 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               </>
             )}
           </button>
+
+          {isFellow && onSaveFellowAsOwn && (
+            <button
+              type="button"
+              onClick={() => onSaveFellowAsOwn(ann as FellowAnnotation)}
+              data-testid={`notebook-save-fellow-btn-${ann.id}`}
+              className="p-1.5 rounded hover:bg-primary/10 text-primary transition-colors flex items-center gap-1 text-[11px] font-medium cursor-pointer"
+              title="Save passage to your own notes"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Save to My Notes</span>
+            </button>
+          )}
 
           {!isFellow && (
             <>

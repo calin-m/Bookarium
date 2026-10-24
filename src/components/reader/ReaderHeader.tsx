@@ -265,7 +265,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                 type="button"
                 data-testid={action.desktopTestId}
                 onClick={action.onClick}
-                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer active:scale-95 ${
                   action.isOpen ? activeTheme.activePill : activeTheme.button
                 }`}
                 aria-label={action.ariaLabel}
@@ -283,7 +283,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               <button
                 type="button"
                 onClick={onToggleTranslations}
-                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer active:scale-95 ${
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer active:scale-95 ${
                   isTranslationsOpen ? activeTheme.activePill : activeTheme.button
                 }`}
                 aria-label="Language Editions & Translations"
@@ -307,12 +307,14 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                 </span>
                 {translations.length > 1 && (
                   <span
-                    className={`text-[10px] px-1 py-0.2 rounded-full font-bold ${
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold border transition-colors ${
                       theme === 'sepia'
                         ? isTranslationsOpen
-                          ? 'bg-[#2b1d16]/20 text-[#2b1d16]'
-                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : 'bg-primary/10 text-primary'
+                          ? 'bg-[#2b1d16]/20 text-[#2b1d16] border-transparent'
+                          : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                        : isTranslationsOpen
+                        ? 'bg-primary-foreground/20 text-inherit border-transparent'
+                        : 'bg-primary/10 text-primary border-primary/20'
                     }`}
                   >
                     {translations.length}
@@ -328,7 +330,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                 onClick={() => onThemeChange(NEXT_READER_THEME[theme])}
                 aria-label={`Current theme: ${theme}. Click to switch theme.`}
                 title={`Current theme: ${theme === 'light' ? 'Light' : theme === 'sepia' ? 'Sepia' : 'Dark'}. Click to cycle theme.`}
-                className={`p-2 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 shadow-2xs ${activeTheme.button}`}
+                className={`p-2 rounded-lg border shrink-0 transition-colors cursor-pointer active:scale-95 shadow-2xs ${activeTheme.button}`}
               >
                 {theme === 'light' ? (
                   <Sun className="w-4 h-4 text-amber-500" />
@@ -344,7 +346,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             <button
               type="button"
               onClick={handleShare}
-              className={`p-2 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 shadow-2xs ${
+              className={`p-2 rounded-lg border shrink-0 transition-colors cursor-pointer active:scale-95 shadow-2xs ${
                 isCopied
                   ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
                   : activeTheme.button

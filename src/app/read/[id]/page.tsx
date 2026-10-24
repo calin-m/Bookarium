@@ -14,6 +14,7 @@ import {
 import { useGutenbergParserWorker } from '@/hooks/reader/useGutenbergParserWorker';
 import { getReaderTheme } from '@/config/reader-themes';
 import { resolveBookMetadata, isPlaceholderTitle } from '@/lib/book-metadata';
+import { areAnnotationsOverlapping, pairOverlappingAnnotations } from '@/lib/reader-annotator';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
 import { ReaderFooter } from '@/components/reader/ReaderFooter';
 import { ReaderTocDrawer } from '@/components/reader/ReaderTocDrawer';
@@ -417,6 +418,10 @@ function BookReaderContent() {
     );
   }, [bookFellowAnnotations, activeChapterIndex, spoilerShieldEnabled, currentChapterPage]);
 
+  const totalUnifiedAnnotationsCount = useMemo(() => {
+    return pairOverlappingAnnotations(bookAnnotations, bookFellowAnnotations).length;
+  }, [bookAnnotations, bookFellowAnnotations]);
+
   // Active Symposium & Companion Progress Derivation
   const activeSymposium = useMemo(
     () =>
@@ -464,6 +469,7 @@ function BookReaderContent() {
     if (activeSymposium && activeSymposium.status === 'active' && numericId > 0) {
       syncSymposiumProgress(numericId, activeChapterIndex, volumeProgress);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- narrowed to scalar fields to avoid infinite cycles
   }, [
     activeSymposium?.id,
     activeSymposium?.status,
@@ -598,12 +604,12 @@ function BookReaderContent() {
       if (typeof window === 'undefined') return;
       const isFellowClicked = 'isFellow' in annotation && annotation.isFellow === true;
       const ownAnn = isFellowClicked
-        ? activeChapterAnnotations.find((a) => a.selectedText === annotation.selectedText) || null
+        ? activeChapterAnnotations.find((a) => areAnnotationsOverlapping(a, annotation)) || null
         : (annotation as Annotation);
       const fellowAnn = isFellowClicked
         ? (annotation as FellowAnnotation)
         : overlappingFellow ||
-          activeChapterFellowAnnotations.find((a) => a.selectedText === annotation.selectedText) ||
+          activeChapterFellowAnnotations.find((fa) => areAnnotationsOverlapping(annotation, fa)) ||
           null;
       setSelectionPopover({
         isOpen: true,
@@ -738,7 +744,7 @@ function BookReaderContent() {
         }}
         isAnnotationsOpen={isAnnotationsOpen}
         onToggleAnnotations={() => handleToggleDrawer('annotations')}
-        annotationsCount={bookAnnotations.length + bookFellowAnnotations.length}
+        annotationsCount={totalUnifiedAnnotationsCount}
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
         theme={theme}
@@ -938,6 +944,21 @@ function BookReaderContent() {
         }}
         onDeleteAnnotation={(id) => deleteAnnotation(id, user?.id)}
         onUpdateNote={(id, note) => updateAnnotationNote(id, note, user?.id)}
+        onSaveFellowAnnotation={async (fellow, noteText, color) => {
+          await addAnnotation(
+            {
+              bookId: numericId,
+              bookTitle: resolvedIdentity.title,
+              bookAuthor: resolvedIdentity.author,
+              chapterIndex: fellow.chapterIndex,
+              chapterPage: fellow.chapterPage,
+              selectedText: fellow.selectedText,
+              color: color || 'yellow',
+              note: noteText,
+            },
+            user?.id
+          );
+        }}
       />
 
       {/* Delete Single Annotation Confirmation Modal */}

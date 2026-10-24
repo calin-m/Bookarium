@@ -275,18 +275,32 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
               </p>
             )}
             {!existingAnnotationId && (
-              <button
-                type="button"
-                data-testid="fellow-popover-add-own-note-btn"
-                onClick={() => {
-                  setActiveSourceTab('mine');
-                  setIsNoteExpanded(true);
-                }}
-                className="mt-0.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-200 font-mono text-[11px] font-bold border border-stone-200/80 dark:border-stone-700/80 transition-colors cursor-pointer"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-primary" />
-                <span>Add My Note & Highlight</span>
-              </button>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <button
+                  type="button"
+                  data-testid="fellow-popover-save-highlight-btn"
+                  onClick={() => {
+                    onSelectColor(fellowAnnotation?.color || 'yellow');
+                    onClose();
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-mono text-[11px] font-bold border border-primary/30 transition-colors cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Save Highlight</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="fellow-popover-add-own-note-btn"
+                  onClick={() => {
+                    setActiveSourceTab('mine');
+                    setIsNoteExpanded(true);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-200 font-mono text-[11px] font-bold border border-stone-200/80 dark:border-stone-700/80 transition-colors cursor-pointer"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                  <span>+ Add My Note</span>
+                </button>
+              </div>
             )}
           </div>
         ) : (

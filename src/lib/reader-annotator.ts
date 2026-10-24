@@ -15,6 +15,132 @@ export interface AnnotationSpan {
   isFellowEnd?: boolean;
 }
 
+export interface UnifiedAnnotationItem {
+  annotation: AnyAnnotation;
+  selfAnnotation?: Annotation;
+  pairedFellowAnnotation?: FellowAnnotation;
+}
+
+export interface SharedQuoteSegments {
+  isExact: boolean;
+  fullQuote: string;
+  overlapText?: string;
+  beforeText?: string;
+  afterText?: string;
+}
+
+/**
+ * Checks whether a personal annotation and fellow annotation belong to the same
+ * volume, section, and share an overlapping or matching passage of text.
+ */
+export function areAnnotationsOverlapping(
+  a: { bookId: number; chapterIndex: number; selectedText: string; chapterPage?: number },
+  b: { bookId: number; chapterIndex: number; selectedText: string; chapterPage?: number }
+): boolean {
+  if (a.bookId !== b.bookId || a.chapterIndex !== b.chapterIndex) {
+    return false;
+  }
+  const textA = a.selectedText.trim();
+  const textB = b.selectedText.trim();
+  if (!textA || !textB) return false;
+
+  if (textA === textB || textA.includes(textB) || textB.includes(textA)) {
+    return true;
+  }
+
+  // Handle minor whitespace or sentence punct variations
+  const cleanA = textA.toLowerCase().replace(/\s+/g, ' ');
+  const cleanB = textB.toLowerCase().replace(/\s+/g, ' ');
+  return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
+}
+
+/**
+ * Computes presentation segments for a shared quote passage so that partial overlaps
+ * render the encompassing quote with the overlapping sub-phrase highlighted inside it.
+ */
+export function computeSharedQuoteSegments(
+  ownText: string,
+  fellowText?: string | null
+): SharedQuoteSegments {
+  if (!fellowText) {
+    return { isExact: true, fullQuote: ownText };
+  }
+  const trimmedOwn = ownText.trim();
+  const trimmedFellow = fellowText.trim();
+
+  if (trimmedOwn === trimmedFellow) {
+    return { isExact: true, fullQuote: ownText };
+  }
+
+  if (ownText.includes(trimmedFellow)) {
+    const idx = ownText.indexOf(trimmedFellow);
+    return {
+      isExact: false,
+      fullQuote: ownText,
+      overlapText: trimmedFellow,
+      beforeText: ownText.slice(0, idx),
+      afterText: ownText.slice(idx + trimmedFellow.length),
+    };
+  }
+
+  if (fellowText.includes(trimmedOwn)) {
+    const idx = fellowText.indexOf(trimmedOwn);
+    return {
+      isExact: false,
+      fullQuote: fellowText,
+      overlapText: trimmedOwn,
+      beforeText: fellowText.slice(0, idx),
+      afterText: fellowText.slice(idx + trimmedOwn.length),
+    };
+  }
+
+  return { isExact: true, fullQuote: ownText };
+}
+
+/**
+ * Pairs personal and fellow annotations into unified entries for 'All' source filter view.
+ * When both scholars marked the same or overlapping text, they merge into one item
+ * with `pairedFellowAnnotation` attached, preventing duplicate cards.
+ */
+export function pairOverlappingAnnotations(
+  ownAnnotations: Annotation[],
+  fellowAnnotations: FellowAnnotation[]
+): UnifiedAnnotationItem[] {
+  const consumedFellowIds = new Set<string>();
+  const unifiedList: UnifiedAnnotationItem[] = [];
+
+  for (const own of ownAnnotations) {
+    const match = fellowAnnotations.find(
+      (fa) => !consumedFellowIds.has(fa.id) && areAnnotationsOverlapping(own, fa)
+    );
+
+    if (match) {
+      consumedFellowIds.add(match.id);
+      unifiedList.push({
+        annotation: own,
+        selfAnnotation: own,
+        pairedFellowAnnotation: match,
+      });
+    } else {
+      unifiedList.push({
+        annotation: own,
+        selfAnnotation: own,
+      });
+    }
+  }
+
+  for (const fellow of fellowAnnotations) {
+    if (!consumedFellowIds.has(fellow.id)) {
+      unifiedList.push({
+        annotation: fellow,
+        pairedFellowAnnotation: undefined,
+      });
+    }
+  }
+
+  return unifiedList;
+}
+
 /**
  * Computes non-overlapping text spans for annotations within a given text string.
  * Handles multiple occurrences of highlighted text, guarantees ascending intervals,

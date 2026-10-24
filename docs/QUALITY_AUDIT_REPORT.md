@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 24 Oct 2026 06:45:47 GMT  
+**Last Generated**: Sat, 24 Oct 2026 08:30:35 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 184 passed  
-**Total Verified Tests**: 1767 passed  
+**Total Test Suites**: 182 passed  
+**Total Verified Tests**: 1775 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **184/184 test suites passed** (1767 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **182/182 test suites passed** (1775 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 59 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 60 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.43%** (8488/9183) — *Target: $ge$ 80%*
-- **Statements**: **90.91%** (9217/10138) — *Target: $ge$ 80%*
-- **Functions**: **89.07%** (2005/2251) — *Target: $ge$ 80%*
-- **Branches**: **80.93%** (8197/10128) — *Target: $ge$ 80%*
+- **Lines**: **92.41%** (8547/9248) — *Target: $ge$ 80%*
+- **Statements**: **90.88%** (9274/10204) — *Target: $ge$ 80%*
+- **Functions**: **88.87%** (2006/2257) — *Target: $ge$ 80%*
+- **Branches**: **80.98%** (8252/10190) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (184 Suites / 1767 Tests)
+## 🧪 Comprehensive Test Suite Catalog (182 Suites / 1775 Tests)
 
 ### 🚀 App Routes & Pages (26 Suites · 229 Tests)
 
@@ -421,7 +421,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 359 Tests)
+### 🎨 Catalog & Presentation (27 Suites · 353 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -648,23 +648,6 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionSearchBar.test.tsx</code></b> (11 tests)</summary>
-
-- ✔ `should render search input with placeholder and accessible label`
-- ✔ `should call onQueryChange when user types in the input`
-- ✔ `should display clear button and counter badge when query is present`
-- ✔ `should call onQueryChange with empty string when clicking clear button`
-- ✔ `should clear search query when pressing Escape key`
-- ✔ `should not display clear button or counter when query is blank or whitespace`
-- ✔ `should apply compact right padding (pr-4) when idle and expanded padding (pr-24) when filtering`
-- ✔ `should render mobilePlaceholder when screen is mobile viewport and respond to change events`
-- ✔ `should return server and client snapshot correctly and handle undefined matchMedia`
-- ✔ `should render correct accessible labels when collectionName is bookmarks`
-- ✔ `should apply crisp focus-ring styling matching the Notebooks search bar effect`
-
-</details>
-
-<details>
 <summary><b><code>src/components/presentation/CollectionSortDropdown.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders all options with currently selected value`
@@ -862,7 +845,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders book metadata, quote excerpt, and note`
 - ✔ `renders Protected badge when isRestricted is true`
@@ -875,11 +858,13 @@
 - ✔ `copies formatted citation to clipboard and displays Copied state`
 - ✔ `displays Add a personal note prompt when annotation has no note`
 - ✔ `renders Fellow Marginalia attribution badge and hides edit/delete controls for fellow annotations`
+- ✔ `renders paired fellow badge, shared quote overlap span, and stacked reflections when pairedFellowAnnotation is present`
+- ✔ `renders Save to My Notes button on standalone fellow note and calls onSaveFellowAsOwn`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (39 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (42 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -904,6 +889,7 @@
 - ✔ `shows reset filters button when search returns 0 results and resets filters`
 - ✔ `resolves metadata from savedBooks and fallback when bookTitle is not stored`
 - ✔ `translates vertical wheel scroll to horizontal scroll on color filter tabs`
+- ✔ `allows click-and-drag grab-to-scroll on notebook color tabs and suppresses accidental filter switch on drag`
 - ✔ `toggles quick color popover and changes highlight color on 1-click swatch`
 - ✔ `dismisses quick color popover when clicking outside or pressing Escape`
 - ✔ `allows full editing of personal reflection and color via card footer Edit button`
@@ -920,6 +906,8 @@
 - ✔ `resets page to 1 when changing search query, color filter, or sort order`
 - ✔ `applies tactile animate-page-turn to notebook-content-anchor across grouping, color filter, and pagination transitions`
 - ✔ `renders source filter pills when fellowAnnotations are present and filters between All, Mine, and Fellows`
+- ✔ `merges overlapping own and fellow annotations into a single unified card in All mode`
+- ✔ `allows saving fellow note to own notebook using onSaveFellowAsOwn`
 
 </details>
 
@@ -950,7 +938,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 156 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 160 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -982,7 +970,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `renders annotations list with quotes and section pills`
 - ✔ `renders empty state when there are no annotations`
@@ -993,8 +981,11 @@
 - ✔ `shows confirmation modal and calls onDeleteAnnotation when confirmed`
 - ✔ `cancels deletion when clicking cancel in modal`
 - ✔ `translates vertical wheel scroll to horizontal scroll on color filter tags`
+- ✔ `allows click-and-drag grab-to-scroll on color filter tabs and suppresses accidental filter selection on drag`
 - ✔ `renders a vertically scrollable list container with sticky non-compressible controls`
 - ✔ `renders progressive-disclosure Symposium source filter and Spoiler Shield when fellowAnnotations exist`
+- ✔ `merges overlapping own and fellow annotations into a unified item with both badges and reflections in All mode`
+- ✔ `renders Save to My Notes and + Add My Note buttons on standalone fellow annotation and invokes onSaveFellowAnnotation`
 
 </details>
 
@@ -1067,7 +1058,7 @@
 - ✔ `renders integrated resume notice ribbon in sub-header and handles restart and dismiss`
 - ✔ `renders language and translation switcher and handles edition selection`
 - ✔ `renders language button with current language label for single edition`
-- ✔ `renders language button with count badge when multiple editions exist`
+- ✔ `renders language button with count badge when multiple editions exist and maintains invariant border across themes for zero CLS`
 - ✔ `handles link copying when share button is clicked`
 - ✔ `renders mobile quick share button and handles link copying`
 - ✔ `dispatches TOC, Search, and Controls actions from desktop tool row`
@@ -1189,7 +1180,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders all 4 color choices and action buttons`
 - ✔ `calls onSelectColor when a color button is clicked`
@@ -1205,6 +1196,7 @@
 - ✔ `positions docked at bottom on touch devices to avoid native mobile context menu collision`
 - ✔ `positions contextually near anchor on desktop devices`
 - ✔ `renders Read-Only Scholar Attribution view when isFellowOnly is true`
+- ✔ `allows 1-click saving of fellow highlight via fellow-popover-save-highlight-btn`
 - ✔ `renders 2-pill overlap switcher when both self and fellow annotations exist`
 - ✔ `renders privacy-aware fallback text when fellow annotation has no note`
 
@@ -1468,7 +1460,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (37 Suites · 403 Tests)
+### 📚 Gutenberg Parsers & Metadata (36 Suites · 413 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1589,16 +1581,6 @@
 - ✔ `applies deterministic item ordering when order method is single-level or chainable`
 - ✔ `flushes outbox actions and retains only actions that fail`
 - ✔ `executes custom shelf creation, rename, privacy toggle, move, migration, and deletion`
-
-</details>
-
-<details>
-<summary><b><code>src/lib/cache.test.ts</code></b> (4 tests)</summary>
-
-- ✔ `stores and retrieves items correctly`
-- ✔ `evicts the least recently used item when maxEntries is exceeded`
-- ✔ `overwriting an existing key updates its value and recency without exceeding max size`
-- ✔ `supports has, delete, and clear operations`
 
 </details>
 
@@ -1899,7 +1881,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -1910,6 +1892,14 @@
 - ✔ `preserves both selfAnnotation and fellowAnnotation when identical text is highlighted`
 - ✔ `splits intervals at exact boundaries when fellow annotation extends beyond self annotation`
 - ✔ `splits intervals when self annotation starts first and fellow overlaps beyond`
+- ✔ `returns false when books or chapters differ`
+- ✔ `returns true when selectedText matches exactly or as substring`
+- ✔ `returns false when text passages do not overlap`
+- ✔ `returns exact match structure when passages are identical`
+- ✔ `identifies sub-span when personal text contains fellow text`
+- ✔ `identifies sub-span when fellow text contains personal text`
+- ✔ `merges overlapping own and fellow annotations into a single unified item`
+- ✔ `preserves standalone fellow annotations that do not overlap with own notes`
 
 </details>
 
@@ -1953,13 +1943,19 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `returns false when element does not exist in DOM`
 - ✔ `does not scroll when element top is already comfortably in view`
 - ✔ `scrolls smoothly to element when top is scrolled off-screen above viewport`
 - ✔ `scrolls smoothly to element when top is far below the threshold ratio`
 - ✔ `clamps targetY to minimum 0 if target position is negative`
+- ✔ `translates vertical wheel events to horizontal scroll`
+- ✔ `ignores horizontal wheel events with dominant deltaX`
+- ✔ `pans scrollLeft during mouse drag and suppresses click when drag exceeds threshold`
+- ✔ `allows button click to fire when movement is within threshold (stationary click)`
+- ✔ `ignores secondary and tertiary mouse buttons`
+- ✔ `cleans up listeners on returned cleanup invocation`
 
 </details>
 
@@ -2925,7 +2921,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **2 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

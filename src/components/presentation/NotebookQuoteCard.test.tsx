@@ -201,6 +201,81 @@ describe('NotebookQuoteCard', () => {
     rerender(<NotebookQuoteCard {...defaultProps} annotation={anonymousFellowAnn} />);
     expect(screen.getByText('Fellow Reflection (@clara_v)')).toBeInTheDocument();
   });
+
+  it('renders paired fellow badge, shared quote overlap span, and stacked reflections when pairedFellowAnnotation is present', () => {
+    const pairedFellow = {
+      id: 'fellow-ann-paired',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.',
+      color: 'amber' as const,
+      note: 'A timeless classical satire on matrimonial economics.',
+      createdAt: '2026-09-02T00:00:00.000Z',
+      updatedAt: '2026-09-02T00:00:00.000Z',
+      fellowUserId: 'user-fellow-1',
+      fellowUsername: 'clara_v',
+      fellowDisplayName: 'Clara Vance',
+      isFellow: true as const,
+    };
+
+    render(
+      <NotebookQuoteCard
+        {...defaultProps}
+        annotation={{
+          ...mockAnnotation,
+          selectedText: 'It is a truth universally acknowledged',
+        }}
+        pairedFellowAnnotation={pairedFellow}
+      />
+    );
+
+    // Both badges present
+    expect(screen.getByTestId('color-badge-btn-ann-1')).toBeInTheDocument();
+    expect(screen.getByTestId('notebook-fellow-badge-fellow-ann-paired')).toHaveTextContent(
+      'Clara Vance (@clara_v)'
+    );
+
+    // Shared quote markup
+    expect(screen.getByTestId('shared-quote-overlap-span')).toHaveTextContent(
+      'It is a truth universally acknowledged'
+    );
+
+    // Both reflections present: own note and fellow paired note
+    expect(screen.getByText('Initial reflection')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('notebook-paired-fellow-note-fellow-ann-paired')
+    ).toHaveTextContent('A timeless classical satire on matrimonial economics.');
+    expect(screen.getByText('Fellow Reflection (Clara Vance)')).toBeInTheDocument();
+  });
+
+  it('renders Save to My Notes button on standalone fellow note and calls onSaveFellowAsOwn', async () => {
+    const fellowAnnotation = {
+      ...mockAnnotation,
+      id: 'fellow-ann-saveable',
+      isFellow: true as const,
+      fellowUsername: 'marcus_a',
+      fellowDisplayName: 'Marcus Aurelius',
+    };
+    const onSaveFellowAsOwnMock = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <NotebookQuoteCard
+        {...defaultProps}
+        annotation={fellowAnnotation}
+        onSaveFellowAsOwn={onSaveFellowAsOwnMock}
+      />
+    );
+
+    const saveBtn = screen.getByTestId('notebook-save-fellow-btn-fellow-ann-saveable');
+    expect(saveBtn).toHaveTextContent('Save to My Notes');
+
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+
+    expect(onSaveFellowAsOwnMock).toHaveBeenCalledWith(fellowAnnotation);
+  });
 });
 
 

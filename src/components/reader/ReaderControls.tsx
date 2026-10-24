@@ -69,7 +69,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               type="button"
               onClick={() => onThemeChange('light')}
               aria-pressed={theme === 'light'}
-              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
+              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${
                 theme === 'light'
                   ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
                   : `${activeTheme.pill} ${activeTheme.inactivePill}`
@@ -81,7 +81,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               type="button"
               onClick={() => onThemeChange('sepia')}
               aria-pressed={theme === 'sepia'}
-              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
+              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${
                 theme === 'sepia'
                   ? `${activeTheme.activePill} border-[#f59e0b] font-bold shadow-xs`
                   : `${activeTheme.pill} ${activeTheme.inactivePill}`
@@ -93,7 +93,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
               type="button"
               onClick={() => onThemeChange('dark')}
               aria-pressed={theme === 'dark'}
-              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-all ${
+              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${
                 theme === 'dark'
                   ? `${activeTheme.activePill} border-primary-500 font-bold shadow-xs`
                   : `${activeTheme.pill} ${activeTheme.inactivePill}`
@@ -117,7 +117,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 onClick={() => onFontFamilyChange(fam)}
                 aria-pressed={fontFamily === fam}
                 aria-label={`Font family ${fam}`}
-                className={`p-2 rounded-lg border text-sm capitalize transition-all ${
+                className={`p-2 rounded-lg border text-sm capitalize transition-colors ${
                   fam === 'serif' ? 'font-serif' : fam === 'mono' ? 'font-mono' : 'font-sans'
                 } ${
                   fontFamily === fam
@@ -163,7 +163,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   key={s}
                   type="button"
                   onClick={() => onFontSizeChange(s)}
-                  className={`py-0.5 rounded text-[9px] font-mono border transition-all ${
+                  className={`py-0.5 rounded text-[9px] font-mono border transition-colors ${
                     fontSize === s
                       ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'} font-bold`
                       : `${activeTheme.pill} ${activeTheme.inactivePill}`
@@ -205,7 +205,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   key={lh}
                   type="button"
                   onClick={() => onLineHeightChange(lh)}
-                  className={`py-0.5 rounded text-[9px] font-mono border transition-all ${
+                  className={`py-0.5 rounded text-[9px] font-mono border transition-colors ${
                     lineHeight === lh
                       ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'} font-bold`
                       : `${activeTheme.pill} ${activeTheme.inactivePill}`
@@ -227,7 +227,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 type="button"
                 onClick={() => onReadingModeChange('paginated')}
                 aria-pressed={readingMode === 'paginated'}
-                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-all ${
+                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-colors ${
                   readingMode === 'paginated'
                     ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
                     : `${activeTheme.pill} ${activeTheme.inactivePill}`
@@ -239,7 +239,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 type="button"
                 onClick={() => onReadingModeChange('scroll')}
                 aria-pressed={readingMode === 'scroll'}
-                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-all ${
+                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-colors ${
                   readingMode === 'scroll'
                     ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
                     : `${activeTheme.pill} ${activeTheme.inactivePill}`
@@ -259,7 +259,7 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   type="button"
                   onClick={() => onColumnWidthChange(w)}
                   aria-pressed={columnWidth === w}
-                  className={`py-1.5 px-1 rounded text-[10px] sm:text-[11px] font-mono border capitalize text-center transition-all ${
+                  className={`py-1.5 px-1 rounded text-[10px] sm:text-[11px] font-mono border capitalize text-center transition-colors ${
                     columnWidth === w
                       ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
                       : `${activeTheme.pill} ${activeTheme.inactivePill}`

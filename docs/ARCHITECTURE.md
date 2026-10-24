@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-10-24`  
-> **Topology Health**: `194` Modules Analyzed • `696` Static Linkages • `0` Circular Dependencies • `2` Orphaned Modules
+> **Topology Health**: `192` Modules Analyzed • `700` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -206,7 +206,7 @@ flowchart TD
 
 ## 🧩 Component Catalog & Props Interface Matrix
 
-Auto-extracted dynamically from **80 Production UI Components** using Babel AST:
+Auto-extracted dynamically from **79 Production UI Components** using Babel AST:
 
 | Component | Category | Exported Props Interface | Primary Props & Signals | Module Link |
 | :--- | :--- | :--- | :--- | :--- |
@@ -239,7 +239,6 @@ Auto-extracted dynamically from **80 Production UI Components** using Babel AST:
 | **`BookshelfMobileModal`** | Presentation | `BookshelfMobileModalProps` | `selectedMobileBook`, `isClosingMobileSheet`, `onClose`, `readingProgress`, `isSaved`, `isFavorite`, `isOffline`, `onToggleSave`, `onToggleFavorite`, `onToggleOffline`, `onBookClick`, `onDownloadClick`, `cloudBookshelves`, `cloudBookshelfItems`, `defaultShelfId`, `currentActiveShelfId`, `userId`, `onMoveBookToShelf`, `activeView`, `className` | [`src/components/presentation/bookshelf/BookshelfMobileModal.tsx`](src/components/presentation/bookshelf/BookshelfMobileModal.tsx) |
 | **`BookshelfRack`** | Presentation | `BookshelfRackProps` | `books`, `onBookClick`, `onDownloadClick`, `onBrowseCatalog`, `searchQuery`, `onClearSearch`, `showShelfControls`, `totalBooksCount` | [`src/components/presentation/BookshelfRack.tsx`](src/components/presentation/BookshelfRack.tsx) |
 | **`BookshelfSpine`** | Presentation | `BookshelfSpineProps` | `book`, `bookIndex`, `readingProgress`, `isSaved`, `isFavorite`, `isOffline`, `onToggleSave`, `onToggleFavorite`, `onToggleOffline`, `onSpineClick`, `onBookClick`, `onDownloadClick`, `cloudBookshelves`, `cloudBookshelfItems`, `defaultShelfId`, `currentActiveShelfId`, `userId`, `onMoveBookToShelf` | [`src/components/presentation/bookshelf/BookshelfSpine.tsx`](src/components/presentation/bookshelf/BookshelfSpine.tsx) |
-| **`CollectionSearchBar`** | Presentation | `CollectionSearchBarProps` | `query`, `onQueryChange`, `placeholder`, `mobilePlaceholder`, `totalCount`, `filteredCount`, `collectionName`, `className` | [`src/components/presentation/CollectionSearchBar.tsx`](src/components/presentation/CollectionSearchBar.tsx) |
 | **`CollectionSortDropdown`** | Presentation | `CollectionSortDropdownProps` | `value`, `onChange`, `options`, `ariaLabel`, `className` | [`src/components/presentation/CollectionSortDropdown.tsx`](src/components/presentation/CollectionSortDropdown.tsx) |
 | **`CollectionToolbar`** | Presentation | `CollectionToolbarProps` | `searchQuery`, `onSearchChange`, `searchPlaceholder`, `searchAriaLabel`, `clearAriaLabel`, `searchTestId`, `totalCount`, `filteredCount`, `sortValue`, `onSortChange`, `sortOptions`, `sortAriaLabel`, `currentPage`, `totalPages`, `onPageChange`, `paginationAriaLabel`, `itemCountLabel`, `extraControls`, `className` | [`src/components/presentation/CollectionToolbar.tsx`](src/components/presentation/CollectionToolbar.tsx) |
 | **`CollectionTopPagination`** | Presentation | `CollectionTopPaginationProps` | `currentPage`, `totalPages`, `onPageChange`, `className`, `ariaLabel` | [`src/components/presentation/CollectionTopPagination.tsx`](src/components/presentation/CollectionTopPagination.tsx) |
@@ -254,7 +253,7 @@ Auto-extracted dynamically from **80 Production UI Components** using Babel AST:
 | **`LiteraryQuotes`** | Presentation | _Autonomous_ | None (Self-Contained) | [`src/components/presentation/LiteraryQuotes.tsx`](src/components/presentation/LiteraryQuotes.tsx) |
 | **`Navbar`** | Presentation | `NavbarProps` | `activeView`, `onViewChange`, `isVisible` | [`src/components/presentation/Navbar.tsx`](src/components/presentation/Navbar.tsx) |
 | **`NotablePassagesSpread`** | Presentation | `NotablePassagesSpreadProps` | `passage`, `isRestricted`, `country` | [`src/components/presentation/NotablePassagesSpread.tsx`](src/components/presentation/NotablePassagesSpread.tsx) |
-| **`NotebookQuoteCard`** | Presentation | `NotebookQuoteCardProps` | `annotation`, `bookTitle`, `bookAuthor`, `isRestricted`, `jurisdictionCountry`, `isEditing`, `onStartEdit`, `onCancelEdit`, `onSaveNote`, `onUpdateColor`, `onRequestDeleteReflection`, `onRequestDeleteAnnotation`, `onJumpToReader` | [`src/components/presentation/NotebookQuoteCard.tsx`](src/components/presentation/NotebookQuoteCard.tsx) |
+| **`NotebookQuoteCard`** | Presentation | `NotebookQuoteCardProps` | `annotation`, `pairedFellowAnnotation`, `bookTitle`, `bookAuthor`, `isRestricted`, `jurisdictionCountry`, `isEditing`, `onStartEdit`, `onCancelEdit`, `onSaveNote`, `onUpdateColor`, `onRequestDeleteReflection`, `onRequestDeleteAnnotation`, `onJumpToReader`, `onSaveFellowAsOwn` | [`src/components/presentation/NotebookQuoteCard.tsx`](src/components/presentation/NotebookQuoteCard.tsx) |
 | **`NotebookView`** | Presentation | `NotebookViewProps` | `onBrowseCatalog` | [`src/components/presentation/NotebookView.tsx`](src/components/presentation/NotebookView.tsx) |
 | **`StickyCatalogToolbar`** | Presentation | `StickyCatalogToolbarProps` | `page`, `onPageChange`, `hasNextPage`, `viewMode`, `onViewModeChange`, `onOpenFilters`, `isFiltersOpen`, `activeFilterCount`, `activeFilterChips`, `onClearAllFilters`, `isFetching`, `onPrefetchNext`, `latencyMs`, `isError`, `pageSize`, `onPageSizeChange`, `isHeaderVisible`, `isVisible`, `isMobileDockVisible`, `mobileDockThreshold`, `mobileDockIdleTimeoutMs` | [`src/components/presentation/StickyCatalogToolbar.tsx`](src/components/presentation/StickyCatalogToolbar.tsx) |
 | **`PinnedAccoladesShelf`** | Profile | `PinnedAccoladesShelfProps` | `pinnedItems` | [`src/components/profile/PinnedAccoladesShelf.tsx`](src/components/profile/PinnedAccoladesShelf.tsx) |
@@ -264,7 +263,7 @@ Auto-extracted dynamically from **80 Production UI Components** using Babel AST:
 | **`DeleteAnnotationModal`** | Reader | `DeleteAnnotationModalProps` | `isOpen`, `onClose`, `onConfirm`, `annotation`, `title`, `description` | [`src/components/reader/DeleteAnnotationModal.tsx`](src/components/reader/DeleteAnnotationModal.tsx) |
 | **`GutenbergInfoModal`** | Reader | `GutenbergInfoModalProps` | `isOpen`, `onClose`, `bookId`, `title`, `author`, `theme`, `subjects`, `bookshelves` | [`src/components/reader/GutenbergInfoModal.tsx`](src/components/reader/GutenbergInfoModal.tsx) |
 | **`QuoteDeletePreview`** | Reader | `QuoteDeletePreviewProps` | `selectedText`, `note` | [`src/components/reader/QuoteDeletePreview.tsx`](src/components/reader/QuoteDeletePreview.tsx) |
-| **`ReaderAnnotationsDrawer`** | Reader | `ReaderAnnotationsDrawerProps` | `isOpen`, `onClose`, `annotations`, `fellowAnnotations`, `hasActiveSymposium`, `symposiumCompanionUsername`, `symposiumCompanionDisplayName`, `activeChapterIndex`, `marginaliaSourceFilter`, `onSourceFilterChange`, `spoilerShieldEnabled`, `onToggleSpoilerShield`, `bookTitle`, `theme`, `onJumpToAnnotation`, `onDeleteAnnotation`, `onUpdateNote` | [`src/components/reader/ReaderAnnotationsDrawer.tsx`](src/components/reader/ReaderAnnotationsDrawer.tsx) |
+| **`ReaderAnnotationsDrawer`** | Reader | `ReaderAnnotationsDrawerProps` | `isOpen`, `onClose`, `annotations`, `fellowAnnotations`, `hasActiveSymposium`, `symposiumCompanionUsername`, `symposiumCompanionDisplayName`, `activeChapterIndex`, `marginaliaSourceFilter`, `onSourceFilterChange`, `spoilerShieldEnabled`, `onToggleSpoilerShield`, `bookTitle`, `theme`, `onJumpToAnnotation`, `onDeleteAnnotation`, `onUpdateNote`, `onSaveFellowAnnotation` | [`src/components/reader/ReaderAnnotationsDrawer.tsx`](src/components/reader/ReaderAnnotationsDrawer.tsx) |
 | **`ReaderControls`** | Reader | `ReaderControlsProps` | `isOpen`, `onClose`, `fontSize`, `onFontSizeChange`, `lineHeight`, `onLineHeightChange`, `fontFamily`, `onFontFamilyChange`, `theme`, `onThemeChange`, `readingMode`, `onReadingModeChange`, `columnWidth`, `onColumnWidthChange` | [`src/components/reader/ReaderControls.tsx`](src/components/reader/ReaderControls.tsx) |
 | **`ReaderDrawerShell`** | Reader | `ReaderDrawerShellProps` | `isOpen`, `onClose`, `title`, `titleIcon`, `theme`, `children`, `ariaLabel`, `closeAriaLabel`, `backdropTestId`, `panelTestId`, `className`, `role` | [`src/components/reader/ReaderDrawerShell.tsx`](src/components/reader/ReaderDrawerShell.tsx) |
 | **`ReaderErrorView`** | Reader | `ReaderErrorViewProps` | `activeTheme`, `onRetry`, `error`, `bookTitle`, `bookAuthor` | [`src/components/reader/ReaderErrorView.tsx`](src/components/reader/ReaderErrorView.tsx) |
@@ -379,7 +378,7 @@ Zustand client-side state stores programmatically verified across **10 Persisten
 
 ## 🧠 Domain Engines & Pure Computational Utilities
 
-Pure business logic, historical engines, and layout algorithms verified across **39 Domain Modules** using Babel AST:
+Pure business logic, historical engines, and layout algorithms verified across **38 Domain Modules** using Babel AST:
 
 | Engine / Utility | Subsystem / Layer | Source File | Primary Exported Primitives | Architectural Responsibility |
 | :--- | :--- | :--- | :--- | :--- |
@@ -391,7 +390,6 @@ Pure business logic, historical engines, and layout algorithms verified across *
 | **`book-sorting`** | Core Domain | [`src/lib/book-sorting.ts`](src/lib/book-sorting.ts) | `BookshelfSortOption`, `FavoritesSortOption`, `BOOKSHELF_SORT_OPTIONS`, `FAVORITES_SORT_OPTIONS`, `sortBooks` | Deterministic multi-attribute book sorting algorithms for title, author, year, downloads, reading progress, and recency. |
 | **`book-tags`** | Core Domain | [`src/lib/book-tags.ts`](src/lib/book-tags.ts) | `BookTagSet`, `resolveBookTags` | Semantic book tag normalizer mapping verbose Library of Congress subjects and Gutenberg bookshelves to canonical zero-truncation badges (<= 14 chars) with responsive mobile/desktop allocation and administrative prefix sanitization. |
 | **`bookshelf-cloud-sync`** | Core Domain | [`src/lib/bookshelf-cloud-sync.ts`](src/lib/bookshelf-cloud-sync.ts) | `OutboxActionInput`, `OutboxAction`, `BookshelfSyncSlice`, `BookshelfGetState`, `BookshelfSetState` _(+9 more)_ | Bidirectional cloud reconciliation engine for bookshelves, shelf items, and favorite books, managing outbox mutation replay, tombstone filtering, and deterministic ordering. |
-| **`cache`** | Core Domain | [`src/lib/cache.ts`](src/lib/cache.ts) | `SimpleLRUCache` | Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions. |
 | **`gutendex-provider`** | Catalog | [`src/lib/catalog/gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts) | `GutendexCatalogProvider`, `gutendexProvider` | Upstream Gutendex REST catalog provider implementing ICatalogProvider with 15s timeout control, error mapping, and jurisdictional copyright filtering. |
 | **`query-parser`** | Catalog | [`src/lib/catalog/query-parser.ts`](src/lib/catalog/query-parser.ts) | `parseCatalogQuery` | Canonical query parameter extractor and sanitizer for catalog queries, normalizing whitespace, pagination, author lifespans, and edge geo-country fallback cascades. |
 | **`supabase-provider`** | Catalog | [`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) | `CATALOG_METADATA_COLUMNS`, `isSupabaseConfigured`, `mapDatabaseBookToGutendexBook`, `SupabaseCatalogProvider`, `RelationalTranslationOption` _(+1 more)_ | Self-hosted Supabase PostgreSQL catalog provider implementing ICatalogProvider with cached healthcheck (60s TTL), GIN full-text search_vector queries, and author lifespan bounds for sub-50ms single-book lookups and ~1-2s catalog page queries. |
@@ -411,10 +409,10 @@ Pure business logic, historical engines, and layout algorithms verified across *
 | **`offline-storage`** | Core Domain | [`src/lib/offline-storage.ts`](src/lib/offline-storage.ts) | `OfflineBookMetadata`, `StorageQuotaInfo`, `OfflineBookRecord`, `getStorageQuota`, `evictOldestBooksToFreeSpace` _(+8 more)_ | IndexedDB storage abstraction providing offline book content caching, quota calculation, and LRU eviction. |
 | **`password`** | Core Domain | [`src/lib/password.ts`](src/lib/password.ts) | `PasswordStrength`, `generateStrongPassword`, `evaluatePasswordStrength` | Cryptographically secure password generation and multi-factor entropy evaluation engine. |
 | **`rate-limiter`** | Core Domain | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) | `RateLimitOptions`, `RateLimitResult`, `InMemoryRateLimiter`, `booksApiRateLimiter`, `bookContentRateLimiter` | In-memory sliding-window rate limiter with burst mitigation for API routes. |
-| **`reader-annotator`** | Core Domain | [`src/lib/reader-annotator.ts`](src/lib/reader-annotator.ts) | `AnyAnnotation`, `isFellowAnnotation`, `AnnotationSpan`, `computeAnnotationSpans` | Scholarly marginalia interval partitioning and non-destructive HTML text-node highlighter. |
+| **`reader-annotator`** | Core Domain | [`src/lib/reader-annotator.ts`](src/lib/reader-annotator.ts) | `AnyAnnotation`, `isFellowAnnotation`, `AnnotationSpan`, `UnifiedAnnotationItem`, `SharedQuoteSegments` _(+4 more)_ | Scholarly marginalia interval partitioning, non-destructive HTML text-node highlighter, overlapping annotation pairing (`pairOverlappingAnnotations`), and shared quote span segmentation (`computeSharedQuoteSegments`). |
 | **`reading-analytics`** | Core Domain | [`src/lib/reading-analytics.ts`](src/lib/reading-analytics.ts) | `DayActivity`, `StreakStats`, `AnnualGoalProgress`, `ReadingSessionTelemetry`, `formatLocalDate` _(+3 more)_ | Streak calculation, 5-minute immersion thresholds, reading speed metrics, and annual reading goal progress. |
 | **`redirect-sanitizer`** | Core Domain | [`src/lib/redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) | `sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`, `buildAuthRedirectUrl` | Open-redirect prevention and canonical authentication origin resolver (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`, `buildAuthRedirectUrl`). |
-| **`scroll-utils`** | Core Domain | [`src/lib/scroll-utils.ts`](src/lib/scroll-utils.ts) | `SmartScrollOptions`, `smartScrollToContent` | Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, and header avoidance. |
+| **`scroll-utils`** | Core Domain | [`src/lib/scroll-utils.ts`](src/lib/scroll-utils.ts) | `SmartScrollOptions`, `smartScrollToContent`, `HorizontalScrollOptions`, `attachHorizontalDragAndWheelScroll` | Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, header avoidance, and horizontal pointer click-and-drag + wheel scrolling (`attachHorizontalDragAndWheelScroll`). |
 | **`smart-search`** | Core Domain | [`src/lib/smart-search.ts`](src/lib/smart-search.ts) | `normalizeSearchText`, `extractSearchTokens`, `matchesSmartSearch`, `getBookSearchHaystack`, `filterBooksSmart` | Fuzzy multi-token search engine querying titles, authors, and subjects with punctuation normalization. |
 | **`speech-utils`** | Core Domain | [`src/lib/speech-utils.ts`](src/lib/speech-utils.ts) | `isNaturalVoice`, `cleanVoiceName` | Web Speech API voice selection heuristics identifying natural/neural synthesis voices. |
 | **`client`** | Supabase | [`src/lib/supabase/client.ts`](src/lib/supabase/client.ts) | `sanitizeSupabaseUrl`, `createClient` | Browser-side Supabase client initialization with credential sanitization and local session persistence. |
@@ -556,7 +554,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`page.tsx`](src/app/privacy/page.tsx) | `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/BackToTop`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
 | [`providers.tsx`](src/app/providers.tsx) | `stores/useAuthStore`, `stores/useJurisdictionStore`, `lib/sync-utils`, `components/pwa/ServiceWorkerRegister`, `components/auth/AuthModal` | `layout.tsx` | Production Module |
 | [`layout.tsx`](src/app/read/[id]/layout.tsx) | `config/site-config`, `lib/book-metadata`, `./reader-layout-utils` | _App Route Entry_ | Production Module |
-| [`page.tsx`](src/app/read/[id]/page.tsx) | `hooks/queries/useBookContent`, `hooks/queries/useBooks`, `hooks/queries/useBookTranslations`, `stores/useReaderStore`, `stores/useThemeStore`, `types/book.types`, `lib/gutenberg-parser`, `hooks/reader/useGutenbergParserWorker`, `config/reader-themes`, `lib/book-metadata`, `components/reader/ReaderHeader`, `components/reader/ReaderFooter`, `components/reader/ReaderTocDrawer`, `components/reader/ReaderSearchDrawer`, `components/reader/ReaderControls`, `components/reader/ReaderLanguageDrawer`, `components/reader/ReaderSpeechBar`, `components/reader/ReaderSurface`, `components/reader/ReaderLoadingView`, `components/reader/TextHighlightPopover`, `components/reader/ReaderAnnotationsDrawer`, `components/reader/DeleteAnnotationModal`, `hooks/reader/useReaderDrawers`, `hooks/reader/useReaderSpeech`, `hooks/reader/useReaderSession`, `hooks/useReadingTimer`, `stores/usePreferencesStore`, `stores/useAnnotationStore`, `stores/useFellowshipStore`, `stores/useAuthStore`, `stores/useBookshelfStore`, `components/ui/StarRating`, `components/ui/Modal`, `components/ui/Button`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
+| [`page.tsx`](src/app/read/[id]/page.tsx) | `hooks/queries/useBookContent`, `hooks/queries/useBooks`, `hooks/queries/useBookTranslations`, `stores/useReaderStore`, `stores/useThemeStore`, `types/book.types`, `lib/gutenberg-parser`, `hooks/reader/useGutenbergParserWorker`, `config/reader-themes`, `lib/book-metadata`, `lib/reader-annotator`, `components/reader/ReaderHeader`, `components/reader/ReaderFooter`, `components/reader/ReaderTocDrawer`, `components/reader/ReaderSearchDrawer`, `components/reader/ReaderControls`, `components/reader/ReaderLanguageDrawer`, `components/reader/ReaderSpeechBar`, `components/reader/ReaderSurface`, `components/reader/ReaderLoadingView`, `components/reader/TextHighlightPopover`, `components/reader/ReaderAnnotationsDrawer`, `components/reader/DeleteAnnotationModal`, `hooks/reader/useReaderDrawers`, `hooks/reader/useReaderSpeech`, `hooks/reader/useReaderSession`, `hooks/useReadingTimer`, `stores/usePreferencesStore`, `stores/useAnnotationStore`, `stores/useFellowshipStore`, `stores/useAuthStore`, `stores/useBookshelfStore`, `components/ui/StarRating`, `components/ui/Modal`, `components/ui/Button`, `config/routes`, `config/site-config` | _App Route Entry_ | Production Module |
 | [`reader-layout-utils.ts`](src/app/read/[id]/reader-layout-utils.ts) | `types/book.types`, `lib/catalog/supabase-provider`, `lib/supabase/client`, `types/database.types` | `layout.tsx` | Production Module |
 | [`robots.ts`](src/app/robots.ts) | `config/site-config` | _Direct Root Consumer_ | Production Module |
 | [`sitemap.ts`](src/app/sitemap.ts) | `config/site-config` | _Direct Root Consumer_ | Production Module |
@@ -587,7 +585,6 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`BookmarkCard.tsx`](src/components/presentation/BookmarkCard.tsx) | `types/book.types`, `components/ui/Button`, `config/routes`, `stores/useReaderStore`, `hooks/useBookCopyright`, `lib/utils`, `components/symposium/SymposiumInviteModal` | `BookmarksView.tsx` | Production Module |
 | [`BookmarksView.tsx`](src/components/presentation/BookmarksView.tsx) | `hooks/reader/useContinueReadingLedger`, `hooks/useOfflineBooks`, `stores/useReaderStore`, `./BookmarkCard`, `./CollectionToolbar`, `lib/scroll-utils`, `components/ui/Button`, `components/ui/Modal`, `components/ui/Pagination`, `components/ui/SectionHeader`, `config/routes`, `types/book.types` | `page.tsx` | Production Module |
 | [`BookshelfRack.tsx`](src/components/presentation/BookshelfRack.tsx) | `types/book.types`, `stores/useBookshelfStore`, `stores/useReaderStore`, `stores/useAuthStore`, `hooks/useOfflineBooks`, `stores/useJurisdictionStore`, `lib/copyright-engine`, `components/ui/Button`, `./bookshelf/BookshelfSpine`, `./bookshelf/BookshelfMobileModal`, `./bookshelf/BookshelfManageModals`, `config/routes` | `BookGrid.tsx` | Production Module |
-| [`CollectionSearchBar.tsx`](src/components/presentation/CollectionSearchBar.tsx) | _Root Primitive_ | _Direct Root Consumer_ | Production Module |
 | [`CollectionSortDropdown.tsx`](src/components/presentation/CollectionSortDropdown.tsx) | _Root Primitive_ | `CollectionToolbar.tsx`, `NotebookView.tsx`, `book-sorting.ts` | Production Module |
 | [`CollectionToolbar.tsx`](src/components/presentation/CollectionToolbar.tsx) | `./CollectionSortDropdown`, `./CollectionTopPagination` | `page.tsx`, `BookmarksView.tsx`, `NotebookView.tsx` | Production Module |
 | [`CollectionTopPagination.tsx`](src/components/presentation/CollectionTopPagination.tsx) | _Root Primitive_ | `CollectionToolbar.tsx` | Production Module |
@@ -603,7 +600,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`Navbar.tsx`](src/components/presentation/Navbar.tsx) | `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useThemeStore`, `stores/useAuthStore`, `stores/useFellowshipStore`, `components/ui/Button`, `config/routes`, `config/site-config`, `config/library-tokens`, `config/views.config` | `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx`, `page.tsx` | Production Module |
 | [`NotablePassagesSpread.tsx`](src/components/presentation/NotablePassagesSpread.tsx) | _Root Primitive_ | `BookPreviewModal.tsx` | Production Module |
 | [`NotebookQuoteCard.tsx`](src/components/presentation/NotebookQuoteCard.tsx) | `stores/useAnnotationStore`, `lib/reader-annotator`, `components/ui/Button`, `config/annotation-tokens` | `NotebookView.tsx` | Production Module |
-| [`NotebookView.tsx`](src/components/presentation/NotebookView.tsx) | `./NotebookQuoteCard`, `./CollectionToolbar`, `./CollectionSortDropdown`, `lib/scroll-utils`, `components/reader/DeleteAnnotationModal`, `stores/useAnnotationStore`, `stores/useBookshelfStore`, `stores/useAuthStore`, `stores/useJurisdictionStore`, `lib/copyright-engine`, `config/featured-books`, `hooks/queries/useBooks`, `components/ui/Button`, `components/ui/Modal`, `components/ui/Pagination`, `components/ui/SectionHeader`, `lib/book-metadata`, `lib/utils`, `types/book.types`, `config/annotation-tokens` | `page.tsx` | Production Module |
+| [`NotebookView.tsx`](src/components/presentation/NotebookView.tsx) | `./NotebookQuoteCard`, `./CollectionToolbar`, `./CollectionSortDropdown`, `lib/scroll-utils`, `components/reader/DeleteAnnotationModal`, `stores/useAnnotationStore`, `stores/useBookshelfStore`, `stores/useAuthStore`, `stores/useJurisdictionStore`, `lib/copyright-engine`, `config/featured-books`, `hooks/queries/useBooks`, `components/ui/Button`, `components/ui/Modal`, `components/ui/Pagination`, `components/ui/SectionHeader`, `lib/book-metadata`, `lib/utils`, `lib/scroll-utils`, `lib/reader-annotator`, `types/book.types`, `config/annotation-tokens` | `page.tsx` | Production Module |
 | [`StickyCatalogToolbar.tsx`](src/components/presentation/StickyCatalogToolbar.tsx) | `components/ui/Button`, `hooks/useHasMounted` | `page.tsx` | Production Module |
 | [`BookshelfManageModals.tsx`](src/components/presentation/bookshelf/BookshelfManageModals.tsx) | `components/ui/Button`, `components/ui/Input`, `components/ui/Modal` | `BookshelfRack.tsx` | Production Module |
 | [`BookshelfMobileModal.tsx`](src/components/presentation/bookshelf/BookshelfMobileModal.tsx) | `types/book.types`, `types/database.types`, `stores/useReaderStore`, `stores/useBookshelfStore`, `hooks/useBookCopyright`, `components/presentation/CopyrightNoticeBanner`, `components/ui/StarRating`, `components/bookshelf/ReadingStatusSelector`, `components/ui/Button`, `hooks/useHasMounted`, `lib/utils`, `config/routes` | `page.tsx`, `BookshelfRack.tsx` | Production Module |
@@ -615,7 +612,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`DeleteAnnotationModal.tsx`](src/components/reader/DeleteAnnotationModal.tsx) | `components/ui/Modal`, `components/ui/Button`, `./QuoteDeletePreview` | `page.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx` | Production Module |
 | [`GutenbergInfoModal.tsx`](src/components/reader/GutenbergInfoModal.tsx) | `config/site-config`, `config/reader-themes`, `components/ui/Modal`, `lib/utils`, `components/presentation/ContentAdvisoryBanner`, `lib/content-advisory` | `ReaderHeader.tsx` | Production Module |
 | [`QuoteDeletePreview.tsx`](src/components/reader/QuoteDeletePreview.tsx) | _Root Primitive_ | `DeleteAnnotationModal.tsx` | Production Module |
-| [`ReaderAnnotationsDrawer.tsx`](src/components/reader/ReaderAnnotationsDrawer.tsx) | `./ReaderDrawerShell`, `stores/useAnnotationStore`, `lib/reader-annotator`, `stores/useReaderStore`, `config/reader-themes`, `config/annotation-tokens`, `./DeleteAnnotationModal` | `page.tsx` | Production Module |
+| [`ReaderAnnotationsDrawer.tsx`](src/components/reader/ReaderAnnotationsDrawer.tsx) | `./ReaderDrawerShell`, `stores/useAnnotationStore`, `lib/reader-annotator`, `stores/useReaderStore`, `config/reader-themes`, `config/annotation-tokens`, `lib/scroll-utils`, `./DeleteAnnotationModal` | `page.tsx` | Production Module |
 | [`ReaderControls.tsx`](src/components/reader/ReaderControls.tsx) | `stores/useReaderStore`, `config/reader-themes`, `config/reader-config`, `./ReaderDrawerShell` | `page.tsx` | Production Module |
 | [`ReaderDrawerShell.tsx`](src/components/reader/ReaderDrawerShell.tsx) | `stores/useReaderStore`, `config/reader-themes`, `hooks/useHasMounted`, `lib/utils` | `ReaderAnnotationsDrawer.tsx`, `ReaderControls.tsx`, `ReaderLanguageDrawer.tsx`, `ReaderSearchDrawer.tsx`, `ReaderTocDrawer.tsx` | Production Module |
 | [`ReaderErrorView.tsx`](src/components/reader/ReaderErrorView.tsx) | `config/reader-themes`, `hooks/queries/useBookContent`, `config/routes` | `ReaderSurface.tsx` | Production Module |
@@ -683,7 +680,6 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`book-sorting.ts`](src/lib/book-sorting.ts) | `types/book.types`, `lib/book-metadata`, `lib/utils`, `components/presentation/CollectionSortDropdown` | `page.tsx` | Production Module |
 | [`book-tags.ts`](src/lib/book-tags.ts) | _Root Primitive_ | `BookCard.tsx` | Production Module |
 | [`bookshelf-cloud-sync.ts`](src/lib/bookshelf-cloud-sync.ts) | `types/book.types`, `lib/supabase/client`, `types/database.types`, `lib/adapters/book.adapter` | `useBookshelfStore.ts` | Production Module |
-| [`cache.ts`](src/lib/cache.ts) | _Root Primitive_ | _Direct Root Consumer_ | Production Module |
 | [`gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts) | `types/catalog.types`, `types/catalog.types`, `types/book.types`, `config/api-endpoints`, `lib/copyright-engine` | `route.ts` | Production Module |
 | [`query-parser.ts`](src/lib/catalog/query-parser.ts) | `types/catalog.types`, `lib/country-resolver` | `route.ts` | Production Module |
 | [`supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) | `types/catalog.types`, `types/catalog.types`, `types/book.types`, `types/database.types`, `lib/supabase/client`, `lib/copyright-engine` | `metadata-cache.ts`, `route.ts`, `route.ts`, `route.ts`, `reader-layout-utils.ts` | Production Module |
@@ -703,10 +699,10 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`offline-storage.ts`](src/lib/offline-storage.ts) | `types/book.types` | `useBookContent.ts`, `useOfflineBooks.ts`, `library-backup.ts` | Production Module |
 | [`password.ts`](src/lib/password.ts) | _Root Primitive_ | `page.tsx`, `AccountSecuritySection.tsx`, `AuthModal.tsx`, `PasswordStrengthMeter.tsx` | Production Module |
 | [`rate-limiter.ts`](src/lib/rate-limiter.ts) | _Root Primitive_ | `route.ts`, `route.ts`, `route.ts` | Production Module |
-| [`reader-annotator.ts`](src/lib/reader-annotator.ts) | `stores/useAnnotationStore` | `NotebookQuoteCard.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSurface.tsx` | Production Module |
+| [`reader-annotator.ts`](src/lib/reader-annotator.ts) | `stores/useAnnotationStore` | `page.tsx`, `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSurface.tsx` | Production Module |
 | [`reading-analytics.ts`](src/lib/reading-analytics.ts) | _Root Primitive_ | `page.tsx`, `useHabitsStore.ts` | Production Module |
 | [`redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) | `config/site-config` | `route.ts`, `useAuthStore.ts` | Production Module |
-| [`scroll-utils.ts`](src/lib/scroll-utils.ts) | _Root Primitive_ | `page.tsx`, `BookmarksView.tsx`, `NotebookView.tsx` | Production Module |
+| [`scroll-utils.ts`](src/lib/scroll-utils.ts) | _Root Primitive_ | `page.tsx`, `BookmarksView.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx` | Production Module |
 | [`smart-search.ts`](src/lib/smart-search.ts) | `types/book.types` | `page.tsx`, `in-book-search.ts` | Production Module |
 | [`speech-utils.ts`](src/lib/speech-utils.ts) | _Root Primitive_ | `AccountNarrationSubPanel.tsx`, `ReaderSpeechBar.tsx`, `useReaderSpeech.ts` | Production Module |
 | [`client.ts`](src/lib/supabase/client.ts) | `types/database.types` | `metadata-cache.ts`, `route.ts`, `reader-layout-utils.ts`, `page.tsx`, `bookshelf-cloud-sync.ts`, `supabase-provider.ts`, `middleware.ts`, `server.ts`, `useAccoladesStore.ts`, `useAnnotationStore.ts`, `useAuthStore.ts`, `useBookshelfStore.ts`, `useFellowshipStore.ts`, `useHabitsStore.ts`, `useReaderStore.ts` | Production Module |
@@ -743,6 +739,77 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 6. **Multi-Tier Text Streaming & Multi-Mirror Failover**: Plain text is served on-demand from Tier 1 (self-hosted Supabase plain-text cache if present) or Tier 2 (multi-mirror fallback across `aleph.gutenberg.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.
 7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.
 8. **Autonomous Weekly Catalog Synchronization**: Project Gutenberg official catalog dump (`pg_catalog.csv.gz`, 78,000+ public domain titles) is streamed and decompressed on-the-fly via GitHub Actions (`.github/workflows/catalog-sync.yml`) or `npm run catalog:sync`, updating Supabase with zero manual SQL intervention and minimal storage footprint (~105 MB).
+
+---
+
+## 🟢 Node.js Runtime, Dependency Stack & Supply-Chain Governance
+
+Bookarium executes on **Node.js `>=20.0.0`** with **npm `>=10.0.0`** (Node 22 LTS recommended). All dependency versions are programmatically synchronized from `package.json` via AST compilation (Rule 2):
+
+| Package | Live Version | Classification & Tier | Architectural Responsibility in Bookarium |
+| :--- | :--- | :--- | :--- |
+| **`@supabase/ssr`** | `^0.12.7` | Production Runtime | Server-Side Rendering (SSR) cookie-based authentication and Supabase client creation. |
+| **`@supabase/supabase-js`** | `^2.118.0` | Production Runtime | Universal client for PostgreSQL, Row-Level Security, GIN search & cloud synchronization. |
+| **`@tanstack/react-query`** | `^5.104.3` | Production Runtime | Asynchronous server-state management, cache deduplication & windowed predictive prefetching. |
+| **`@vercel/analytics`** | `^2.0.1` | Production Runtime | Privacy-preserving, cookie-less audience telemetry on Vercel Edge. |
+| **`@vercel/speed-insights`** | `^2.0.0` | Production Runtime | Real User Monitoring (RUM) for Core Web Vitals (LCP, FID, CLS, INP). |
+| **`clsx`** | `^2.1.1` | Production Runtime | Utility for constructing conditional classNames efficiently. |
+| **`framer-motion`** | `^11.18.2` | Production Runtime | Hardware-accelerated 3D leaf-flip, FLIP modal geometry and page transitions. |
+| **`lucide-react`** | `^1.58.0` | Production Runtime | Accessible SVG icon primitives across reading workbench and UI dialogs. |
+| **`next`** | `^16.4.3` | Production Runtime | Next.js 16 App Router full-stack framework with React Server Components and Turbopack. |
+| **`react`** | `^19.3.1` | Production Runtime | React 19 declarative component and rendering engine. |
+| **`react-dom`** | `^19.3.1` | Production Runtime | DOM renderer for React 19. |
+| **`tailwind-merge`** | `^3.7.0` | Production Runtime | Deterministic conflict resolution for Tailwind utility classes with custom shadow groups. |
+| **`zustand`** | `^5.0.2` | Production Runtime | Lightweight client-side persistent state stores (IndexedDB, localStorage, outbox reconciliation). |
+| **`@babel/parser`** | `^7.29.9` | Development & AST Tooling | Babel parser generating ESTree AST for living documentation and architectural analysis. |
+| **`@babel/traverse`** | `^7.29.10` | Development & AST Tooling | AST node traversal for programmatic dependency graph and import/export extraction. |
+| **`@tailwindcss/postcss`** | `^4.3.3` | Development & AST Tooling | PostCSS integration for Tailwind CSS v4 Oxide compilation. |
+| **`@testing-library/jest-dom`** | `^7.0.1` | Development & AST Tooling | Custom DOM matchers for accessible assertion verification. |
+| **`@testing-library/react`** | `^16.1.0` | Development & AST Tooling | Framework-agnostic React component testing verifying authentic user journeys. |
+| **`@testing-library/user-event`** | `^14.6.8` | Development & AST Tooling | Simulates authentic pointer and keyboard interactions in test suites. |
+| **`@types/babel__traverse`** | `^7.20.6` | Development & AST Tooling | TypeScript definitions for Babel AST traversal. |
+| **`@types/node`** | `^22.20.5` | Development & AST Tooling | TypeScript definitions for Node.js runtime and standard library APIs. |
+| **`@types/react`** | `^19.3.0` | Development & AST Tooling | TypeScript definitions for React 19 core primitives. |
+| **`@types/react-dom`** | `^19.3.0` | Development & AST Tooling | TypeScript definitions for React DOM. |
+| **`@vitejs/plugin-react`** | `^6.1.2` | Development & AST Tooling | Fast React transform plugin for Vitest test execution. |
+| **`@vitest/coverage-v8`** | `^4.1.12` | Development & AST Tooling | Native V8 code coverage provider enforcing >=80% test threshold. |
+| **`@vitest/ui`** | `^4.1.12` | Development & AST Tooling | Interactive graphical browser interface for Vitest execution. |
+| **`concurrently`** | `^10.0.6` | Development & AST Tooling | Parallel task orchestration for dev servers, watchers, and browser launchers. |
+| **`eslint`** | `^9.39.5` | Development & AST Tooling | Pluggable static analysis linter enforcing code quality and type safety. |
+| **`eslint-config-next`** | `^16.4.3` | Development & AST Tooling | Next.js 16 ESLint ruleset enforcing App Router, Core Web Vitals, and TypeScript standards. |
+| **`husky`** | `^9.1.7` | Development & AST Tooling | Git hooks orchestration gating pre-commit verification. |
+| **`jsdom`** | `^25.0.1` | Development & AST Tooling | Headless browser DOM environment for Node.js Vitest test execution. |
+| **`knip`** | `^6.41.0` | Development & AST Tooling | Static analysis auditor detecting unused dependencies, dead exports, and orphaned files. |
+| **`msw`** | `^2.15.0` | Development & AST Tooling | Mock Service Worker v2 intercepting network requests for isolated deterministic testing. |
+| **`postcss`** | `^8.5.30` | Development & AST Tooling | CSS transformer tool for Tailwind CSS v4 processing. |
+| **`tailwindcss`** | `^4.3.3` | Development & AST Tooling | Utility-first CSS framework v4 with Oxide compiler engine. |
+| **`typescript`** | `^5.9.3` | Development & AST Tooling | Static type system verifying strict compile-time safety (zero any). |
+| **`vitest`** | `^4.1.12` | Development & AST Tooling | Fast Vite-native test runner executing all 184 unit and integration suites. |
+| **`postcss-selector-parser`** | `^7.1.6` | Supply-Chain Security Override | Supply-chain override pinning selector parser to patched secure release. |
+| **`fast-glob`** | `npm:tinyglobby@^0.2.17` | Supply-Chain Security Override | Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities. |
+
+---
+
+## 🛠️ Node.js CLI & Automation Scripts Catalog (`scripts/`)
+
+Comprehensive inventory of standalone Node.js automation, ingestion, and verification modules in `scripts/`:
+
+| Script Module | File Path | Primary Invocation | Core Node.js APIs & Engines | Architectural Responsibility |
+| :--- | :--- | :--- | :--- | :--- |
+| **`verify-build.js`** | [`scripts/verify-build.js`](scripts/verify-build.js) | `npm run verify` | `fs`, `path`, `child_process` | Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets, Pass 0.75 SAST/OWASP, Pass 1 types, Pass 2 MSW, Pass 3 Vitest >=80%, Pass 4 docs sync, Pass 5 ADR, Pass 6 ESLint/Knip, Pass 7 Next.js build). |
+| **`lib/ast-parser.js`** | [`scripts/lib/ast-parser.js`](scripts/lib/ast-parser.js) | _Internal Generator Engine_ | `fs`, `path`, `@babel/parser`, `@babel/traverse` | Babel AST parsing engine extracting module dependency graphs, component catalogs, stores, hooks, utilities, and detecting circular dependencies with zero bloat. |
+| **`generate-architecture-matrix.js`** | [`scripts/generate-architecture-matrix.js`](scripts/generate-architecture-matrix.js) | `npm run matrix:generate` (in `docs:sync`) | `fs`, `path`, `scripts/lib/ast-parser.js` | Programmatically compiles docs/ARCHITECTURE.md directly from source AST, mapping topology, databases, Node.js packages, and CLI automation scripts. |
+| **`generate-changelog.js`** | [`scripts/generate-changelog.js`](scripts/generate-changelog.js) | `npm run changelog:generate` (in `docs:sync`) | `fs`, `path` | Compiles CHANGELOG.md from SemVer release ledgers and synchronizes README.md Latest Release section. |
+| **`generate-parser-docs.js`** | [`scripts/generate-parser-docs.js`](scripts/generate-parser-docs.js) | `npm run docs:parser` (in `docs:sync`) | `fs`, `path`, `@babel/parser`, `@babel/traverse` | Analyzes src/lib/gutenberg-parser.ts AST to generate living docs/GUTENBERG_PARSER.md. |
+| **`generate-quality-report.js`** | [`scripts/generate-quality-report.js`](scripts/generate-quality-report.js) | `npm run audit:quality` (in `docs:sync`) | `fs`, `path`, `child_process` | Collects test coverage, suite catalogs, ADR counts, ESLint/Knip metrics, and generates docs/QUALITY_AUDIT_REPORT.md and docs/quality-audit-results.json. |
+| **`generate-roadmap.js`** | [`scripts/generate-roadmap.js`](scripts/generate-roadmap.js) | `npm run roadmap:generate` (in `docs:sync`) | `fs`, `path` | Scans source files and AST features to generate living ROADMAP.md with 0% drift. |
+| **`generate-pwa-icons.js`** | [`scripts/generate-pwa-icons.js`](scripts/generate-pwa-icons.js) | `node scripts/generate-pwa-icons.js` | `fs`, `path`, `zlib` | Compiles standards-compliant 32-bit RGBA binary multi-resolution .ico (16, 32, 48) and vector squircle PWA icons with alpha anti-aliasing. |
+| **`sync-gutenberg-catalog.js`** | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` | `fs`, `path`, `zlib`, `https`, `readline` | Streams pg_catalog.csv.gz from Project Gutenberg, parses CSV metadata on-the-fly, and synchronizes 78,000+ volumes into Supabase with author lifespan bounds. |
+| **`ingest-catalog.js`** | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` | `fs`, `path`, `readline` | Direct CLI tool for batch ingesting local Gutenberg CSV/JSON metadata dumps into Supabase. |
+| **`ingest-translations.js`** | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` | `fs`, `path`, `https` | Queries Wikidata SPARQL endpoint for multilingual FRBR work clusters and populates public.book_translations with zero false positives. |
+| **`new-adr.js`** | [`scripts/new-adr.js`](scripts/new-adr.js) | `npm run adr:new -- "Title"` | `fs`, `path` | Scaffolds new Architectural Decision Records in docs/DECISIONS.md with auto-incremented sequential ID and schema verification. |
+| **`approval-gate.js`** | [`scripts/approval-gate.js`](scripts/approval-gate.js) | `npm run gate:approve` | `fs`, `path` | Pre-commit hook governance verifying mutation approval tokens (.agents/hooks.json). |
+| **`open-browser.js`** | [`scripts/open-browser.js`](scripts/open-browser.js) | `npm run dev:open` | `child_process` | Cross-platform development utility spawning default system browser with connection wait delay. |
 
 ---
 

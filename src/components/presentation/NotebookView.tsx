@@ -43,6 +43,14 @@ import {
   isPlaceholderTitle,
 } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
+import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
+import {
+  pairOverlappingAnnotations,
+} from '@/lib/reader-annotator';
+
+export type NotebookDisplayItem = (Annotation | FellowAnnotation) & {
+  pairedFellowAnnotation?: FellowAnnotation;
+};
 import type { GutendexBook } from '@/types/book.types';
 
 import {
@@ -98,6 +106,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     fellowAnnotations,
     marginaliaSourceFilter,
     setMarginaliaSourceFilter,
+    addAnnotation,
     updateAnnotationColor,
     updateAnnotationNote,
     deleteAnnotation,
@@ -176,19 +185,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   useEffect(() => {
     const el = colorTabsRef.current;
     if (!el) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      // If deltaY is dominant (typical mouse wheel scroll)
-      if (Math.abs(e.deltaY) >= Math.abs(e.deltaX) && e.deltaY !== 0) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    };
-
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      el.removeEventListener('wheel', handleWheel);
-    };
+    return attachHorizontalDragAndWheelScroll(el);
   }, []);
 
   // Helper to resolve literary metadata for an annotation
@@ -341,10 +338,19 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     [savedBooks, favoriteBooks, recentBooks, remoteBooksData, country]
   );
 
-  const sourceFilteredAnnotations = useMemo(() => {
+  const sourceFilteredAnnotations: NotebookDisplayItem[] = useMemo(() => {
     if (marginaliaSourceFilter === 'mine') return annotations;
     if (marginaliaSourceFilter === 'fellows') return fellowAnnotations;
-    return [...annotations, ...fellowAnnotations];
+    const paired = pairOverlappingAnnotations(annotations, fellowAnnotations);
+    return paired.map((item) => {
+      if (item.pairedFellowAnnotation) {
+        return {
+          ...item.annotation,
+          pairedFellowAnnotation: item.pairedFellowAnnotation,
+        };
+      }
+      return item.annotation;
+    });
   }, [annotations, fellowAnnotations, marginaliaSourceFilter]);
 
   // Filtered list of annotations
@@ -370,7 +376,16 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   // Grouped by Volume mapping
   const groupedByVolume = useMemo(() => {
-    const map = new Map<number, { title: string; author: string; isRestricted?: boolean; country?: string; items: Array<Annotation | (typeof fellowAnnotations)[number]> }>();
+    const map = new Map<
+      number,
+      {
+        title: string;
+        author: string;
+        isRestricted?: boolean;
+        country?: string;
+        items: NotebookDisplayItem[];
+      }
+    >();
 
     filteredAnnotations.forEach((ann) => {
       if (!map.has(ann.bookId)) {
@@ -620,7 +635,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             ref={colorTabsRef}
             data-testid="notebook-color-tabs"
             data-no-swipe
-            className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] overscroll-x-contain"
+            className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] overscroll-x-contain cursor-grab select-none"
           >
             {fellowAnnotations.length > 0 && (
               <>
@@ -909,13 +924,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   );
 
   // Quote Card Renderer
-  function renderQuoteCard(ann: Annotation | FellowAnnotation) {
+  function renderQuoteCard(ann: NotebookDisplayItem) {
     const { title, author, isRestricted, country } = resolveBookDetails(ann);
 
     return (
       <NotebookQuoteCard
         key={ann.id}
         annotation={ann}
+        pairedFellowAnnotation={ann.pairedFellowAnnotation}
         bookTitle={title}
         bookAuthor={author}
         isRestricted={isRestricted}
@@ -928,6 +944,20 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         onRequestDeleteReflection={(target) => setReflectionToDelete(target)}
         onRequestDeleteAnnotation={(target) => setAnnotationToDelete(target)}
         onJumpToReader={handleJumpToReader}
+        onSaveFellowAsOwn={async (fellow) => {
+          await addAnnotation(
+            {
+              bookId: fellow.bookId,
+              bookTitle: title,
+              bookAuthor: author,
+              chapterIndex: fellow.chapterIndex,
+              chapterPage: fellow.chapterPage,
+              selectedText: fellow.selectedText,
+              color: 'yellow',
+            },
+            user?.id
+          );
+        }}
       />
     );
   }

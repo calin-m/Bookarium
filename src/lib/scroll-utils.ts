@@ -54,3 +54,96 @@ export function smartScrollToContent(
   return true;
 }
 
+export interface HorizontalScrollOptions {
+  /** Movement in pixels before pointer down is treated as a drag instead of a click (default: 5) */
+  dragThreshold?: number;
+}
+
+/**
+ * Attaches seamless vertical mouse-wheel and pointer click-and-drag (grab-to-scroll)
+ * behavior to a horizontally scrollable container, with automatic click-suppression
+ * on child buttons when dragging.
+ *
+ * @returns Cleanup function removing all registered event listeners.
+ */
+export function attachHorizontalDragAndWheelScroll(
+  el: HTMLElement,
+  options: HorizontalScrollOptions = {}
+): () => void {
+  if (!el || typeof window === 'undefined') return () => {};
+
+  const { dragThreshold = 5 } = options;
+
+  let isPointerDown = false;
+  let hasDragged = false;
+  let startX = 0;
+  let startScrollLeft = 0;
+
+  // 1. Mouse wheel translation (vertical deltaY -> horizontal scrollLeft)
+  const handleWheel = (e: WheelEvent) => {
+    if (Math.abs(e.deltaY) >= Math.abs(e.deltaX) && e.deltaY !== 0) {
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    }
+  };
+
+  // 2. Mouse down initiation
+  const handleMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0) return;
+
+    isPointerDown = true;
+    hasDragged = false;
+    startX = e.clientX;
+    startScrollLeft = el.scrollLeft;
+  };
+
+  // 3. Mouse move dragging on window
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isPointerDown) return;
+
+    const dx = e.clientX - startX;
+
+    if (!hasDragged && Math.abs(dx) > dragThreshold) {
+      hasDragged = true;
+      el.classList.add('cursor-grabbing');
+      el.classList.remove('cursor-grab');
+    }
+
+    if (hasDragged) {
+      e.preventDefault();
+      el.scrollLeft = startScrollLeft - dx;
+    }
+  };
+
+  // 4. Mouse up / cancel dragging
+  const handleMouseUp = () => {
+    if (!isPointerDown) return;
+    isPointerDown = false;
+    el.classList.remove('cursor-grabbing');
+    el.classList.add('cursor-grab');
+  };
+
+  // 5. Capture-phase click suppression (prevents button click if user dragged > dragThreshold)
+  const handleClickCapture = (e: MouseEvent) => {
+    if (hasDragged) {
+      e.preventDefault();
+      e.stopPropagation();
+      hasDragged = false;
+    }
+  };
+
+  el.addEventListener('wheel', handleWheel, { passive: false });
+  el.addEventListener('mousedown', handleMouseDown);
+  el.addEventListener('click', handleClickCapture, { capture: true });
+  window.addEventListener('mousemove', handleMouseMove);
+  window.addEventListener('mouseup', handleMouseUp);
+
+  return () => {
+    el.removeEventListener('wheel', handleWheel);
+    el.removeEventListener('mousedown', handleMouseDown);
+    el.removeEventListener('click', handleClickCapture, { capture: true });
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
+  };
+}
+

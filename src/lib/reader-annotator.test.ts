@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { computeAnnotationSpans } from './reader-annotator';
-import type { Annotation } from '@/stores/useAnnotationStore';
+import {
+  computeAnnotationSpans,
+  areAnnotationsOverlapping,
+  computeSharedQuoteSegments,
+  pairOverlappingAnnotations,
+} from './reader-annotator';
+import type { Annotation, FellowAnnotation } from '@/stores/useAnnotationStore';
 
 describe('computeAnnotationSpans', () => {
   const createAnnotation = (id: string, text: string): Annotation => ({
@@ -160,6 +165,123 @@ describe('computeAnnotationSpans', () => {
     expect(spans[2].selfAnnotation).toBeUndefined();
     expect(spans[2].fellowAnnotation?.id).toBe('fellow-1');
     expect(spans[2].isFellowEnd).toBe(true);
+  });
+});
+
+describe('areAnnotationsOverlapping', () => {
+  it('returns false when books or chapters differ', () => {
+    const a = { bookId: 1, chapterIndex: 0, selectedText: 'Ahab' };
+    const b = { bookId: 2, chapterIndex: 0, selectedText: 'Ahab' };
+    const c = { bookId: 1, chapterIndex: 1, selectedText: 'Ahab' };
+    expect(areAnnotationsOverlapping(a, b)).toBe(false);
+    expect(areAnnotationsOverlapping(a, c)).toBe(false);
+  });
+
+  it('returns true when selectedText matches exactly or as substring', () => {
+    const a = { bookId: 1, chapterIndex: 0, selectedText: 'Call me Ishmael.' };
+    const b = { bookId: 1, chapterIndex: 0, selectedText: 'Call me Ishmael.' };
+    const c = { bookId: 1, chapterIndex: 0, selectedText: 'Ishmael.' };
+    expect(areAnnotationsOverlapping(a, b)).toBe(true);
+    expect(areAnnotationsOverlapping(a, c)).toBe(true);
+    expect(areAnnotationsOverlapping(c, a)).toBe(true);
+  });
+
+  it('returns false when text passages do not overlap', () => {
+    const a = { bookId: 1, chapterIndex: 0, selectedText: 'Call me Ishmael.' };
+    const b = { bookId: 1, chapterIndex: 0, selectedText: 'Some years ago—never mind how long' };
+    expect(areAnnotationsOverlapping(a, b)).toBe(false);
+  });
+});
+
+describe('computeSharedQuoteSegments', () => {
+  it('returns exact match structure when passages are identical', () => {
+    const res = computeSharedQuoteSegments('Call me Ishmael.', 'Call me Ishmael.');
+    expect(res.isExact).toBe(true);
+    expect(res.fullQuote).toBe('Call me Ishmael.');
+    expect(res.overlapText).toBeUndefined();
+  });
+
+  it('identifies sub-span when personal text contains fellow text', () => {
+    const res = computeSharedQuoteSegments('Call me Ishmael, some years ago.', 'Ishmael');
+    expect(res.isExact).toBe(false);
+    expect(res.fullQuote).toBe('Call me Ishmael, some years ago.');
+    expect(res.overlapText).toBe('Ishmael');
+    expect(res.beforeText).toBe('Call me ');
+    expect(res.afterText).toBe(', some years ago.');
+  });
+
+  it('identifies sub-span when fellow text contains personal text', () => {
+    const res = computeSharedQuoteSegments('Ishmael', 'Call me Ishmael, some years ago.');
+    expect(res.isExact).toBe(false);
+    expect(res.fullQuote).toBe('Call me Ishmael, some years ago.');
+    expect(res.overlapText).toBe('Ishmael');
+    expect(res.beforeText).toBe('Call me ');
+    expect(res.afterText).toBe(', some years ago.');
+  });
+});
+
+describe('pairOverlappingAnnotations', () => {
+  const ownAnn: Annotation = {
+    id: 'own-1',
+    bookId: 84,
+    chapterIndex: 2,
+    chapterPage: 4,
+    selectedText: 'It is a truth universally acknowledged',
+    color: 'yellow',
+    note: 'Classic opening sentence',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  };
+
+  const matchingFellow: FellowAnnotation = {
+    id: 'fellow-1',
+    bookId: 84,
+    chapterIndex: 2,
+    chapterPage: 4,
+    selectedText: 'It is a truth universally acknowledged',
+    color: 'amber',
+    note: 'Irony at its best',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    isFellow: true,
+    fellowUsername: 'hypatia',
+    fellowDisplayName: 'Hypatia of Alexandria',
+  };
+
+  const standaloneFellow: FellowAnnotation = {
+    id: 'fellow-2',
+    bookId: 84,
+    chapterIndex: 3,
+    chapterPage: 1,
+    selectedText: 'A single man in possession of a good fortune',
+    color: 'amber',
+    note: 'Second key theme',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    isFellow: true,
+    fellowUsername: 'hypatia',
+  };
+
+  it('merges overlapping own and fellow annotations into a single unified item', () => {
+    const result = pairOverlappingAnnotations([ownAnn], [matchingFellow]);
+    expect(result).toHaveLength(1);
+    expect(result[0].annotation.id).toBe('own-1');
+    expect(result[0].selfAnnotation?.id).toBe('own-1');
+    expect(result[0].pairedFellowAnnotation?.id).toBe('fellow-1');
+    expect(result[0].pairedFellowAnnotation?.fellowDisplayName).toBe('Hypatia of Alexandria');
+  });
+
+  it('preserves standalone fellow annotations that do not overlap with own notes', () => {
+    const result = pairOverlappingAnnotations([ownAnn], [matchingFellow, standaloneFellow]);
+    expect(result).toHaveLength(2);
+
+    // Item 1: Unified
+    expect(result[0].annotation.id).toBe('own-1');
+    expect(result[0].pairedFellowAnnotation?.id).toBe('fellow-1');
+
+    // Item 2: Standalone fellow
+    expect(result[1].annotation.id).toBe('fellow-2');
+    expect(result[1].pairedFellowAnnotation).toBeUndefined();
   });
 });
 

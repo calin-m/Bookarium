@@ -823,8 +823,10 @@ describe('ReaderSurface', () => {
       />
     );
 
-    // Overlapping sub-span (0..7: "Call me") has inner highlight
-    expect(screen.getByTestId('overlapping-inner-highlight')).toHaveTextContent('Call me');
+    // Overlapping sub-span (0..7: "Call me") has inner highlight with color-matched nuance ring
+    const innerHighlight = screen.getByTestId('overlapping-inner-highlight');
+    expect(innerHighlight).toHaveTextContent('Call me');
+    expect(innerHighlight).toHaveClass('ring-rose-400/65');
 
     // Trailing non-overlapping fellow sub-span (7..16: " Ishmael.")
     const fellowTrailingMark = screen.getByTestId('fellow-annotation-highlight');

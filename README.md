@@ -3,17 +3,18 @@
 > **Pure Literature. Zero Paywalls. Zero API Keys Required.**
 
 [![Developed with Antigravity](https://img.shields.io/badge/Developed%20with-Google%20AI%20%2F%20Antigravity-4285F4?style=flat-square&logo=google)](https://antigravity.google)
-[![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js-16.4.3%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.3.1-blue?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.3-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20%20LTS-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
+[![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-184%20Suites%20%7C%201767%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-92.43%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-182%20Suites%20%7C%201775%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-92.41%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -44,7 +45,8 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 - **Layered Dual-Band Overlapping Highlights (Option A) (`src/lib/reader-annotator.ts`, `src/components/reader/ReaderSurface.tsx`, `ADR-059`)**: Implemented elementary non-overlapping interval partitioning to split intersecting highlight boundaries with `isFellowEnd` tag, and rendered an outer taller amber Fellow highlight frame (`py-[3.5px] px-0.5 border-dashed border-amber-600/85`) enclosing an inner, tighter personal highlight (`py-[0.5px] px-0.5 ring-1 ring-inset`) with single trailing companion badge.
 - **Privacy-Preserving Fellow Scholar Display Name Attribution (`src/components/reader/ReaderSurface.tsx`, `src/components/reader/ReaderSubHeaderRibbon.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/components/presentation/NotebookQuoteCard.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `ADR-059`)**: Replaced `@username` with `displayName` (with `@username` fallback) across in-book highlight badges, milestone dispatch banners, companion progress micro-pills, popover empty-note fallbacks, notebook reflection cards, and account symposium progress bars, while strictly preserving `is_public = false` RLS boundary protections for uninvited public profile visitors.
-- **Symposium Continuous Progress Infinite Re-Render Loop Resolution (`src/stores/useFellowshipStore.ts`, `src/app/read/[id]/page.tsx`, `ADR-059`)**: Resolved Next.js `Maximum update depth exceeded` in `syncSymposiumProgress` by adding coordinate equality diff checks before calling store `set(...)`, and narrowed `read/[id]/page.tsx` effect dependencies from mutable `activeSymposium` to scalar primitives.
+- **Unified Overlapping Marginalia Cards & Inline Shared Span Highlighting (`src/lib/reader-annotator.ts`, `src/components/presentation/NotebookQuoteCard.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/reader/ReaderAnnotationsDrawer.tsx`, `ADR-060`)**: Implemented `areAnnotationsOverlapping`, `computeSharedQuoteSegments`, and `pairOverlappingAnnotations` so that when `sourceFilter === 'all'` is active, overlapping personal and Fellow highlights coalesce into a single unified card displaying the union quote, a highlighted inner span (`data-testid="shared-quote-overlap-span"`), dual attribution badges (`You + @username`), and stacked reflection callouts.
+- **Color-Nuanced Overlap Highlight Rings (`src/config/annotation-tokens.ts`, `src/components/reader/ReaderSurface.tsx`, `ADR-060`)**: Replaced the unthemed black/white border (`ring-1 ring-foreground/20`) on overlapping personal + fellow highlights with palette-harmonized `overlapRingClass` tokens (`ring-yellow-500/45`, `ring-amber-500/45`, `ring-emerald-500/45`, `ring-rose-500/45`) across Light, Sepia, and Dark themes.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -111,8 +113,10 @@ Bookarium is structured around five core engineering pillars:
   * **Two-Way Dynamic Hydration**: Resolves un-shelved book identities via TanStack React Query and automatically pre-seeds warm reader state for instant 0ms transitions.
   * **Completed Reading Progress Latch & "Read Again" Flow**: Resuming a finished volume safely locks 100% progress and the "Completed" badge without regressions. Completed bookmark cards feature a dedicated "Read Again" action allowing readers to restart reading from Page 1 without destroying historical ledger completion achievements.
 * **In-Reader Highlighting & Literary Commonplace Notebook (`/notebook`)**:
-  * 4 editorial pastel highlighters (Canary Yellow, Vintage Amber, Calm Mint, Soft Rose) with coarse-pointer touch dismissal and chapter-scoped annotation drawer.
-  * Comprehensive reading journal organizing highlighted excerpts, personal reflections, pastel color filters, full-text search, volume grouping, and 1-click academic citation copying.
+  * **4 Editorial Pastel Highlighters** (Warm Canary, Antique Amber, Sage Mint, Dusty Rose) with palette-harmonized `overlapRingClass` borders across Light, Sepia, and Dark themes, coarse-pointer touch dismissal, and a chapter-scoped annotation drawer (`ReaderAnnotationsDrawer.tsx`).
+  * **Unified Overlapping Marginalia Cards (`All` Mode)**: Automatic pairing of intersecting personal and Fellow Scholar highlights (`pairOverlappingAnnotations` & `computeSharedQuoteSegments`) into a single composite card displaying the union quote, an inline highlighted overlap span, dual attribution (`You + Fellow`), and stacked reflection callouts.
+  * **1-Click Save Fellow Passage**: Instant `+ Save to My Notes` / `+ Add My Note` actions across the in-book highlight popover (`TextHighlightPopover.tsx`), the in-reader Annotations Drawer, and the Commonplace Notebook.
+  * **Click-and-Drag & Wheel Filter Carousels**: Desktop pointer click-and-drag (with 5px deadzone and capture-phase click suppression) and vertical-wheel-to-horizontal scrolling (`attachHorizontalDragAndWheelScroll`) across note color filter pill bars, paired with full-text search, volume/chronological grouping, and 1-click academic citation copying.
 * **Native IndexedDB Offline Book Storage**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading in airplane mode. Downloading a volume automatically links it to the user's personal bookshelf.
 * **Authoritative Cloud State Reconciliation (`lastBookshelfSyncAt`)**: Optional Supabase PostgreSQL cloud sync with Row Level Security (RLS). Initial sync migrates local guest books to the cloud; subsequent syncs treat Supabase as the authoritative source of truth, gracefully pruning titles deleted on another device while pre-sync outbox flushing (`flushOutbox`) safeguards offline additions.
 * **High-Performance Database Query Planner Optimization**: Implemented `{ count: 'estimated' }` planner statistics in `src/lib/catalog/supabase-provider.ts` across 78,000+ catalog rows, completely eliminating PostgreSQL `57014` statement timeouts and slashing query latency from `>3,000ms` down to **`~275ms`**.
@@ -123,7 +127,17 @@ Bookarium is structured around five core engineering pillars:
 * **Zero-Tracking Privacy Architecture (`/privacy`)**: Zero third-party trackers, zero advertising beacons, cookie-less operation (Art. 5(3) exempt), privacy-first anonymous aggregate telemetry (Vercel Web Analytics & Speed Insights), and self-service account data deletion in User Settings (`/account`).
 * **Technical SEO, Social OpenGraph & Upstream Rate-Shielding**: Native Next.js 16 crawl directives (`robots.ts`) explicitly disallow search query parameters (`?search=*`, `?topic=*`) to protect public upstream catalog servers from bot query exhaustion. Dynamic server layouts (`/read/[id]/layout.tsx`) resolve book identities directly from self-hosted Supabase with an in-memory cache and 24-hour Next.js edge caching (`revalidate: 86400`) to generate rich OpenGraph and Twitter cards (`summary_large_image`) featuring authentic book covers, while injecting safe Schema.org `Book`, `WebSite`, and `WebApplication` (`isAccessibleForFree: true`) JSON-LD structured data.
 
-### 5. ⚖️ 100% Airtight Jurisdictional Copyright Governance & Legal Compliance
+### 5. 🤝 Reader Circles, Literary Symposiums & Scholarly Honors
+* **Reader Circles & Literary Symposiums (Dual Reading)**:
+  * **Mutual Reader Circle Fellowships (`public.reader_circles`)**: Opt-in two-way fellowship connections (`useFellowshipStore.ts`, `AccountSymposiumSection.tsx`) with zero-PII `@username` resolution (`public.lookup_scholar_by_username`) and privacy-preserving `display_name` attribution.
+  * **Per-Volume Literary Symposium Pacts (`public.symposium_sessions`)**: Co-read specific volumes (`SymposiumInviteModal.tsx`) with synchronized companion progress micro-pills, chapter-milestone dispatches (`ReaderSubHeaderRibbon.tsx`), layered dual-band in-book highlights (`ReaderSurface.tsx`), `All | Mine | Fellows` source filters, and a chapter-bound **Spoiler Shield** (`Up to Ch. X` vs. `All Chapters`).
+* **Deterministic Literary Accolades & Ex-Libris Bookplates**:
+  * **Pure Client-Side Accolades Engine (`src/lib/accolades-engine.ts`)**: Evaluates reading streaks, historical eras, commonplace marginalia, and Symposium companionship (*Seven-Day Sage*, *Ancient Antiquarian*, *Century Voyager*, *Commonplace Scholar*, *Societas Litterarum*, and the 4-tier canonical volume ladder: *Bibliophile Novice*, *Canonical Scholar*, *Master of the Canon*, and *The Laureate's Crown*).
+  * **Tactile Ex-Libris Bookplates (`ExLibrisBookplate.tsx`)**: Archival woodcut-bordered bookplates with desktop 3D perspective tilt, specular sheen gradients, unlock celebration modals (`AccoladeCelebrationModal.tsx`), and 3-plate showcase pinning (`public.user_accolades`).
+* **Opt-In Public Scholar Sanctuaries (`/u/[username]`)**:
+  * Dedicated public profile page (`PublicProfileView.tsx`, `PinnedAccoladesShelf.tsx`) showcasing scholar biography, pinned Ex-Libris bookplates, public bookshelves, annual reading challenge progress, and 1-click *Invite to Reader Circle* / *Invite to Symposium* actions, protected by strict `is_public` Row-Level Security (`PrivateProfileNotice.tsx`).
+
+### 6. ⚖️ 100% Airtight Jurisdictional Copyright Governance & Legal Compliance
 * **Autonomous Multi-Jurisdiction Engine (`src/lib/copyright-engine.ts`)**: Decoupled, zero-dependency validation engine enforcing exact public domain thresholds based on the user's geographic jurisdiction (year 2026 cutoff calculations):
   * **United States (17 U.S.C. § 304)**: Published on or before 1930 or cleared by Project Gutenberg US (`copyright === false`).
   * **Life + 70 (EU 27, UK, Canada, Australia, New Zealand, Japan)**: Author and translator death year $\le 1955$ ($2026 - 71$).
@@ -315,7 +329,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph ReaderState ["Zustand Reader Store (useReaderStore)"]
+    subgraph ReaderState ["Zustand Reader & Fellowship Stores (useReaderStore • useFellowshipStore)"]
         ActiveBook["Active Book Metadata"]
         FontSize["Font Size: 12px - 36px"]
         FontFamily["Font Family: Serif | Sans | Mono"]
@@ -325,6 +339,7 @@ flowchart LR
         Theme["Theme: Light | Dark | Sepia"]
         Progress["Global Page & Book Progress %"]
         Positions["Reading Positions Map\n(exact chapter & page restore)"]
+        FellowState["Active Symposium & Companion Coordinates\n(useFellowshipStore)"]
     end
 
     subgraph ParsingEngine ["Gutenberg Typography & Segmentation AST"]
@@ -354,8 +369,8 @@ flowchart LR
         LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]
         Controls["Appearance & Typography Popover (ReaderControls)"]
         AudioBar["Speech Narration Bar (ReaderSpeechBar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]
-        TransBar["Bilingual Translation Bar (ReaderTranslationBar)\n(useBookTranslation • 40+ Languages)"]
-        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(4 Pastel Highlighters • Canary, Amber, Mint, Rose)"]
+        HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]
+        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(4 Pastel Highlighters • Symposium Marginalia • Spoiler Shield)"]
         InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
     end
 
@@ -364,11 +379,13 @@ flowchart LR
         LSAnnot[("bookarium-annotations-storage\n(useAnnotationStore highlights & reflections)")]
         IDBStorage[("IndexedDB (useOfflineBooks)\n(unabridged offline volumes)")]
         CloudProgress[("⚡ Supabase Cloud\npublic.reading_progress\n(2s Debounced Sync & Restore)")]
+        CloudSymposium[("⚡ Supabase Cloud\npublic.symposium_sessions & user_annotations\n(Companion Progress & Fellow Marginalia)")]
     end
 
     Toolbar -->|"Adjust Size / Family / Width / Mode / Theme"| ReaderState
     VirtualPages --> ReaderView
     ReaderState --> ContentArea
+    FellowState -->|"Companion Progress & Milestone Dispatches"| SubHeader
     ReaderState --> ProgressBar
     ReaderState --> ResumeToast
     FooterBar -->|"Page Flip / Jump"| ReaderState
@@ -377,9 +394,11 @@ flowchart LR
     LangDrawer -->|"Switch Translation"| ReaderState
     Controls -->|"Tweak Settings"| ReaderState
     AudioBar -->|"Sentence Highlight Sync"| ContentArea
-    TransBar -->|"Parallel Bilingual Text"| ContentArea
+    HighlightPop <-->|"Select / Save Passage"| ContentArea
     AnnotDrawer -->|"Render Highlights"| ContentArea
     AnnotDrawer <--> LSAnnot
+    AnnotDrawer <-->|"Symposium RLS"| CloudSymposium
+    FellowState <-->|"Authenticated RLS"| CloudSymposium
     ReaderView <--> IDBStorage
     ReaderState <--> LSPrefs
     ReaderState <-->|"Authenticated"| CloudProgress
@@ -652,13 +671,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1767 tests across 184 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1775 tests across 182 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 59 validated ADRs (ADR-001 through ADR-059) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), Tailwind CSS v4 Oxide & supply-chain hardening, WCAG 2.2 AA focus trapping, zero-any TypeScript strictness, overlay dynamic code-splitting, Phase 5 monolith decomposition, and canonical auth redirect origin hardening. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 60 validated ADRs (ADR-001 through ADR-060) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), Tailwind CSS v4 Oxide & supply-chain hardening, WCAG 2.2 AA focus trapping, zero-any TypeScript strictness, overlay dynamic code-splitting, Phase 5 monolith decomposition, and canonical auth redirect origin hardening. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

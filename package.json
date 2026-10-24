@@ -4,6 +4,10 @@
   "private": true,
   "description": "High-performance frontend for discovering, reading, and downloading 100% legal, public domain books.",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "dev:open": "concurrently -n next,browser -c blue,green \"next dev --webpack\" \"node scripts/open-browser.js http://localhost:3000 2500\"",

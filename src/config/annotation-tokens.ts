@@ -15,6 +15,7 @@ export interface AnnotationColorTheme {
   readonly cardTextClass: string;
   readonly drawerCardClass: string;
   readonly surfaceHighlightClass: string;
+  readonly overlapRingClass: string;
 }
 
 export const ANNOTATION_COLOR_CONFIG: Record<HighlightColor, AnnotationColorTheme> = {
@@ -34,6 +35,7 @@ export const ANNOTATION_COLOR_CONFIG: Record<HighlightColor, AnnotationColorThem
     drawerCardClass: 'border-l-amber-400 bg-amber-500/5',
     surfaceHighlightClass:
       'bg-amber-300/40 dark:bg-amber-400/25 border-b-2 border-amber-400/80 text-inherit cursor-pointer rounded-xs px-0.5 transition-colors hover:bg-amber-300/60 dark:hover:bg-amber-400/40 selection:bg-amber-300/70 dark:selection:bg-amber-400/50 selection:text-inherit',
+    overlapRingClass: 'ring-amber-400/65 dark:ring-amber-400/50',
   },
   amber: {
     id: 'amber',
@@ -51,6 +53,7 @@ export const ANNOTATION_COLOR_CONFIG: Record<HighlightColor, AnnotationColorThem
     drawerCardClass: 'border-l-orange-400 bg-orange-500/5',
     surfaceHighlightClass:
       'bg-orange-300/40 dark:bg-orange-400/25 border-b-2 border-orange-400/80 text-inherit cursor-pointer rounded-xs px-0.5 transition-colors hover:bg-orange-300/60 dark:hover:bg-orange-400/40 selection:bg-orange-300/70 dark:selection:bg-orange-400/50 selection:text-inherit',
+    overlapRingClass: 'ring-orange-400/65 dark:ring-orange-400/50',
   },
   mint: {
     id: 'mint',
@@ -68,6 +71,7 @@ export const ANNOTATION_COLOR_CONFIG: Record<HighlightColor, AnnotationColorThem
     drawerCardClass: 'border-l-emerald-400 bg-emerald-500/5',
     surfaceHighlightClass:
       'bg-emerald-300/40 dark:bg-emerald-400/25 border-b-2 border-emerald-400/80 text-inherit cursor-pointer rounded-xs px-0.5 transition-colors hover:bg-emerald-300/60 dark:hover:bg-emerald-400/40 selection:bg-emerald-300/70 dark:selection:bg-emerald-400/50 selection:text-inherit',
+    overlapRingClass: 'ring-emerald-400/65 dark:ring-emerald-400/50',
   },
   rose: {
     id: 'rose',
@@ -85,6 +89,7 @@ export const ANNOTATION_COLOR_CONFIG: Record<HighlightColor, AnnotationColorThem
     drawerCardClass: 'border-l-rose-400 bg-rose-500/5',
     surfaceHighlightClass:
       'bg-rose-300/40 dark:bg-rose-400/25 border-b-2 border-rose-400/80 text-inherit cursor-pointer rounded-xs px-0.5 transition-colors hover:bg-rose-300/60 dark:hover:bg-rose-400/40 selection:bg-rose-300/70 dark:selection:bg-rose-400/50 selection:text-inherit',
+    overlapRingClass: 'ring-rose-400/65 dark:ring-rose-400/50',
   },
 };
 

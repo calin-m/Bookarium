@@ -133,7 +133,7 @@
 - [x] **Literary Symposium Sessions, Per-Volume Pacts & Two-Tier Account Hub (`public.symposium_sessions`)** `✅ VERIFIED`
   Per-book Symposium invitations ("Invite Fellow to Symposium"), active shared reading sessions scoped to specific volumes (`book_id`), and Two-Tier Account Sub-Tab management (`AccountSymposiumSection.tsx` & `SymposiumInviteModal.tsx`).
 - [x] **Shared Symposium Marginalia, Source Filters & Spoiler Guard** `✅ VERIFIED`
-  Resolution-independent rendering of Fellows' Marginalia in `ReaderSurface.tsx` (dashed archival underlines, monogram badges, and overlapping highlight preservation), read-only scholar attribution popovers in `TextHighlightPopover.tsx`, isolated `fellowAnnotations` state in `useAnnotationStore.ts`, chapter-bound Spoiler Guard (Up to My Chapter vs. All Chapters), and progressive-disclosure `All Marginalia | My Marginalia | Fellows' Marginalia` filter pills across `ReaderAnnotationsDrawer.tsx` and `NotebookView.tsx`.
+  Resolution-independent rendering of Fellows' Marginalia in `ReaderSurface.tsx` (dashed archival underlines, monogram badges, and palette-matched overlap rings), unified overlapping marginalia cards (`You + @username`) in `All` mode, 1-click fellow passage saving (`TextHighlightPopover.tsx`, `ReaderAnnotationsDrawer.tsx`, `NotebookQuoteCard.tsx`), chapter-bound Spoiler Guard (Up to My Chapter vs. All Chapters), and `All | Mine | Fellows` source filters across `ReaderAnnotationsDrawer.tsx` and `NotebookView.tsx`.
 - [x] **Companion Progress Telemetry & Chapter-Milestone Dispatches** `✅ VERIFIED`
   Synchronized per-volume reading coordinates between Symposium companions, featuring a toggleable companion progress micro-pill (`@username • X%`) and non-intrusive chapter-milestone sub-header dispatches in `ReaderSubHeaderRibbon.tsx`.
 - [x] **Symposium Ex-Libris Accolade (`Societas Litterarum`)** `✅ VERIFIED`
@@ -141,7 +141,7 @@
 
 ---
 
-### Milestone 8: Community Hub & Public Literary Agora (`Target: v2.8.0`)
+### Milestone 8: Community Hub & Public Literary Agora (`Target: v2.9.0`)
 `[░░░░░░░░░░░░░░░░░░░░]` **0/3 (0%)**
 
 > Open literary agora, public volume discussions, community-wide reading challenges, and curated commonplace quote showcases.

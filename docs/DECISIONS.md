@@ -1234,3 +1234,36 @@
   - Fellow companions are addressed by their friendly display names throughout all reading and fellowship workflows while preserving private profile boundaries.
   - Zero infinite re-render loops during continuous reading and pagination.
   - Full compatibility with Next.js 16.4.3 across all 7 verification quality gateways.
+
+## ADR-060: Color-Nuanced Overlap Rings, Unified Symposium Marginalia Cards, 1-Click Fellow Saving, and Zero-CLS Reader Theme Cycling
+- **Status**: Accepted
+- **Context**:
+  1. **Overlapping Highlight Border Nuance**:
+     - In `ReaderSurface.tsx`, the inner highlight of overlapping personal and fellow annotations used a generic `ring-1 ring-inset` class that defaulted to black in day/sepia modes and white in dark mode. Readers requested a nuanced border that harmonizes with the highlight's individual color palette (yellow, amber, mint, rose).
+  2. **Notebook & Drawer Overlapping Note Deduplication in `All` Mode**:
+     - When both user and Fellow Scholar highlighted overlapping text passages, viewing notes with filter `All` produced duplicate distinct cards for the exact same passage, cluttering both the Notebook (`/notebook`) and Reader `Notes & Highlights` drawer.
+  3. **1-Click Save Fellow Passage to Personal Notes**:
+     - When inspecting interesting highlights shared by Fellow Scholars (in reader popover, notes drawer, or notebook), readers lacked a direct, frictionless action to save the passage into their own personal notebook.
+  4. **Reader Theme Cycling Layout Shift (CLS)**:
+     - Rapidly cycling reading themes (Light $\to$ Sepia $\to$ Dark) exhibited micro layout shifts caused by asymmetric 1px borders on header translation badges and scrollbar class recomputation on the reader surface container.
+  5. **Horizontal Filter Pill Carousel Click-and-Drag**:
+     - In both the Reader Notes & Highlights drawer (`ReaderAnnotationsDrawer.tsx`) and the Notebook view (`NotebookView.tsx`), the horizontal filter pill carousels hide native scrollbars (`scrollbar-none`). Desktop mouse users could previously only use vertical mouse wheel scrolling (`deltaY` translation), but lacked tactile pointer click-and-drag (grab-to-scroll) interaction.
+- **Decision**:
+  1. **Color-Nuanced Inset Ring Tokens (`src/config/annotation-tokens.ts`, `ReaderSurface.tsx`)**:
+     - Added `overlapRingClass` to `ANNOTATION_COLOR_CONFIG` (`ring-amber-400/65`, `ring-orange-400/65`, `ring-emerald-400/65`, `ring-rose-400/65` with dark mode counterparts) replacing unthemed black/white borders.
+  2. **Unified Marginalia Card Pairing (`src/lib/reader-annotator.ts`, `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`)**:
+     - Introduced `areAnnotationsOverlapping`, `computeSharedQuoteSegments`, and `pairOverlappingAnnotations` to consolidate intersecting own and fellow notes into unified composite cards when `effectiveSourceFilter === 'all'`.
+     - Cards render dual attribution badges, `<mark data-testid="shared-quote-overlap-span">` for partially shared excerpts, and stacked reflections (own editable note + fellow companion thought bubble).
+  3. **1-Click Fellow Saving (`TextHighlightPopover.tsx`, `ReaderAnnotationsDrawer.tsx`, `NotebookQuoteCard.tsx`)**:
+     - Added "Save to My Notes" (`notebook-save-fellow-btn`, `drawer-save-fellow-note-btn`) and popover quick-save (`fellow-popover-save-highlight-btn`) across all fellow note entry points.
+  4. **Zero-CLS Theme Invariance (`ReaderHeader.tsx`, `reader-themes.ts`, `ReaderControls.tsx`, `globals.css`)**:
+     - Enforced invariant 1px borders across all themes on `lang-dropdown-button` and `activePill`.
+     - Swapped CSS scrollbar styling in `globals.css` from per-class pseudo-elements to CSS custom properties (`--reader-sb-track`, `--reader-sb-thumb`, `--reader-sb-hover`), guaranteeing zero layout shift upon theme toggles.
+  5. **Shared Click-and-Drag & Wheel Scroll Utility with Accidental Click Suppression (`src/lib/scroll-utils.ts`, `ReaderAnnotationsDrawer.tsx`, `NotebookView.tsx`)**:
+     - Implemented `attachHorizontalDragAndWheelScroll` featuring a 5px drag deadzone threshold and capture-phase click guard (`onClickCapture`). Normal clicks ($\le 5\text{px}$) fire button filters immediately, while drags ($> 5\text{px}$) pan `scrollLeft` smoothly with `cursor-grab` / `cursor-grabbing` and suppress accidental filter switches on mouse release.
+- **Consequences**:
+  - Overlapping highlights render with pleasant, color-harmonized borders across all reading themes.
+  - The Notebook and Reader Notes drawer present a clean, collaborative view without duplicate cards for co-highlighted passages.
+  - Readers can save companion discoveries into their own notebooks with 1 click.
+  - Zero cumulative layout shift (CLS = 0) achieved across all theme cycling transitions.
+  - Filter pill strips in both Notes & Highlights and Notebook support seamless, tactile click-and-drag mouse scrolling without accidental filter activations.

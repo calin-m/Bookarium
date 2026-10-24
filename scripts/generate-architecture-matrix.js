@@ -69,6 +69,215 @@ function extractDatabaseCatalog(rootDirPath) {
   return tables;
 }
 
+function extractNodeEcosystemCatalog(rootDirPath) {
+  const pkgPath = path.join(rootDirPath, 'package.json');
+  if (!fs.existsSync(pkgPath)) return { engines: {}, packages: [] };
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+
+  const packages = [];
+  const purposeMap = {
+    // Dependencies
+    '@supabase/ssr': 'Server-Side Rendering (SSR) cookie-based authentication and Supabase client creation.',
+    '@supabase/supabase-js': 'Universal client for PostgreSQL, Row-Level Security, GIN search & cloud synchronization.',
+    '@tanstack/react-query': 'Asynchronous server-state management, cache deduplication & windowed predictive prefetching.',
+    '@vercel/analytics': 'Privacy-preserving, cookie-less audience telemetry on Vercel Edge.',
+    '@vercel/speed-insights': 'Real User Monitoring (RUM) for Core Web Vitals (LCP, FID, CLS, INP).',
+    clsx: 'Utility for constructing conditional classNames efficiently.',
+    'framer-motion': 'Hardware-accelerated 3D leaf-flip, FLIP modal geometry and page transitions.',
+    'lucide-react': 'Accessible SVG icon primitives across reading workbench and UI dialogs.',
+    next: 'Next.js 16 App Router full-stack framework with React Server Components and Turbopack.',
+    react: 'React 19 declarative component and rendering engine.',
+    'react-dom': 'DOM renderer for React 19.',
+    'tailwind-merge': 'Deterministic conflict resolution for Tailwind utility classes with custom shadow groups.',
+    zustand: 'Lightweight client-side persistent state stores (IndexedDB, localStorage, outbox reconciliation).',
+
+    // DevDependencies
+    '@babel/parser': 'Babel parser generating ESTree AST for living documentation and architectural analysis.',
+    '@babel/traverse': 'AST node traversal for programmatic dependency graph and import/export extraction.',
+    '@tailwindcss/postcss': 'PostCSS integration for Tailwind CSS v4 Oxide compilation.',
+    '@testing-library/jest-dom': 'Custom DOM matchers for accessible assertion verification.',
+    '@testing-library/react': 'Framework-agnostic React component testing verifying authentic user journeys.',
+    '@testing-library/user-event': 'Simulates authentic pointer and keyboard interactions in test suites.',
+    '@types/babel__traverse': 'TypeScript definitions for Babel AST traversal.',
+    '@types/node': 'TypeScript definitions for Node.js runtime and standard library APIs.',
+    '@types/react': 'TypeScript definitions for React 19 core primitives.',
+    '@types/react-dom': 'TypeScript definitions for React DOM.',
+    '@vitejs/plugin-react': 'Fast React transform plugin for Vitest test execution.',
+    '@vitest/coverage-v8': 'Native V8 code coverage provider enforcing >=80% test threshold.',
+    '@vitest/ui': 'Interactive graphical browser interface for Vitest execution.',
+    concurrently: 'Parallel task orchestration for dev servers, watchers, and browser launchers.',
+    eslint: 'Pluggable static analysis linter enforcing code quality and type safety.',
+    'eslint-config-next': 'Next.js 16 ESLint ruleset enforcing App Router, Core Web Vitals, and TypeScript standards.',
+    husky: 'Git hooks orchestration gating pre-commit verification.',
+    jsdom: 'Headless browser DOM environment for Node.js Vitest test execution.',
+    knip: 'Static analysis auditor detecting unused dependencies, dead exports, and orphaned files.',
+    msw: 'Mock Service Worker v2 intercepting network requests for isolated deterministic testing.',
+    postcss: 'CSS transformer tool for Tailwind CSS v4 processing.',
+    tailwindcss: 'Utility-first CSS framework v4 with Oxide compiler engine.',
+    typescript: 'Static type system verifying strict compile-time safety (zero any).',
+    vitest: 'Fast Vite-native test runner executing all 184 unit and integration suites.',
+
+    // Overrides
+    'fast-glob': 'Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities.',
+    'postcss-selector-parser': 'Supply-chain override pinning selector parser to patched secure release.',
+  };
+
+  if (pkg.dependencies) {
+    for (const [name, version] of Object.entries(pkg.dependencies)) {
+      packages.push({
+        name,
+        version,
+        tier: 'Production Runtime',
+        purpose: purposeMap[name] || 'Production runtime library.',
+      });
+    }
+  }
+
+  if (pkg.devDependencies) {
+    for (const [name, version] of Object.entries(pkg.devDependencies)) {
+      packages.push({
+        name,
+        version,
+        tier: 'Development & AST Tooling',
+        purpose: purposeMap[name] || 'Development or verification tooling.',
+      });
+    }
+  }
+
+  if (pkg.overrides) {
+    for (const [name, version] of Object.entries(pkg.overrides)) {
+      packages.push({
+        name,
+        version,
+        tier: 'Supply-Chain Security Override',
+        purpose: purposeMap[name] || 'Dependency security override.',
+      });
+    }
+  }
+
+  return {
+    engines: pkg.engines || { node: '>=20.0.0', npm: '>=10.0.0' },
+    packages,
+  };
+}
+
+function extractNodeScriptsCatalog() {
+  return [
+    {
+      name: 'verify-build.js',
+      file: 'scripts/verify-build.js',
+      npmCommand: '`npm run verify`',
+      nodeApis: '`fs`, `path`, `child_process`',
+      responsibility:
+        'Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets, Pass 0.75 SAST/OWASP, Pass 1 types, Pass 2 MSW, Pass 3 Vitest >=80%, Pass 4 docs sync, Pass 5 ADR, Pass 6 ESLint/Knip, Pass 7 Next.js build).',
+    },
+    {
+      name: 'lib/ast-parser.js',
+      file: 'scripts/lib/ast-parser.js',
+      npmCommand: '_Internal Generator Engine_',
+      nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
+      responsibility:
+        'Babel AST parsing engine extracting module dependency graphs, component catalogs, stores, hooks, utilities, and detecting circular dependencies with zero bloat.',
+    },
+    {
+      name: 'generate-architecture-matrix.js',
+      file: 'scripts/generate-architecture-matrix.js',
+      npmCommand: '`npm run matrix:generate` (in `docs:sync`)',
+      nodeApis: '`fs`, `path`, `scripts/lib/ast-parser.js`',
+      responsibility:
+        'Programmatically compiles docs/ARCHITECTURE.md directly from source AST, mapping topology, databases, Node.js packages, and CLI automation scripts.',
+    },
+    {
+      name: 'generate-changelog.js',
+      file: 'scripts/generate-changelog.js',
+      npmCommand: '`npm run changelog:generate` (in `docs:sync`)',
+      nodeApis: '`fs`, `path`',
+      responsibility:
+        'Compiles CHANGELOG.md from SemVer release ledgers and synchronizes README.md Latest Release section.',
+    },
+    {
+      name: 'generate-parser-docs.js',
+      file: 'scripts/generate-parser-docs.js',
+      npmCommand: '`npm run docs:parser` (in `docs:sync`)',
+      nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
+      responsibility:
+        'Analyzes src/lib/gutenberg-parser.ts AST to generate living docs/GUTENBERG_PARSER.md.',
+    },
+    {
+      name: 'generate-quality-report.js',
+      file: 'scripts/generate-quality-report.js',
+      npmCommand: '`npm run audit:quality` (in `docs:sync`)',
+      nodeApis: '`fs`, `path`, `child_process`',
+      responsibility:
+        'Collects test coverage, suite catalogs, ADR counts, ESLint/Knip metrics, and generates docs/QUALITY_AUDIT_REPORT.md and docs/quality-audit-results.json.',
+    },
+    {
+      name: 'generate-roadmap.js',
+      file: 'scripts/generate-roadmap.js',
+      npmCommand: '`npm run roadmap:generate` (in `docs:sync`)',
+      nodeApis: '`fs`, `path`',
+      responsibility:
+        'Scans source files and AST features to generate living ROADMAP.md with 0% drift.',
+    },
+    {
+      name: 'generate-pwa-icons.js',
+      file: 'scripts/generate-pwa-icons.js',
+      npmCommand: '`node scripts/generate-pwa-icons.js`',
+      nodeApis: '`fs`, `path`, `zlib`',
+      responsibility:
+        'Compiles standards-compliant 32-bit RGBA binary multi-resolution .ico (16, 32, 48) and vector squircle PWA icons with alpha anti-aliasing.',
+    },
+    {
+      name: 'sync-gutenberg-catalog.js',
+      file: 'scripts/sync-gutenberg-catalog.js',
+      npmCommand: '`npm run catalog:sync`',
+      nodeApis: '`fs`, `path`, `zlib`, `https`, `readline`',
+      responsibility:
+        'Streams pg_catalog.csv.gz from Project Gutenberg, parses CSV metadata on-the-fly, and synchronizes 78,000+ volumes into Supabase with author lifespan bounds.',
+    },
+    {
+      name: 'ingest-catalog.js',
+      file: 'scripts/ingest-catalog.js',
+      npmCommand: '`npm run catalog:ingest`',
+      nodeApis: '`fs`, `path`, `readline`',
+      responsibility:
+        'Direct CLI tool for batch ingesting local Gutenberg CSV/JSON metadata dumps into Supabase.',
+    },
+    {
+      name: 'ingest-translations.js',
+      file: 'scripts/ingest-translations.js',
+      npmCommand: '`npm run translations:sync`',
+      nodeApis: '`fs`, `path`, `https`',
+      responsibility:
+        'Queries Wikidata SPARQL endpoint for multilingual FRBR work clusters and populates public.book_translations with zero false positives.',
+    },
+    {
+      name: 'new-adr.js',
+      file: 'scripts/new-adr.js',
+      npmCommand: '`npm run adr:new -- "Title"`',
+      nodeApis: '`fs`, `path`',
+      responsibility:
+        'Scaffolds new Architectural Decision Records in docs/DECISIONS.md with auto-incremented sequential ID and schema verification.',
+    },
+    {
+      name: 'approval-gate.js',
+      file: 'scripts/approval-gate.js',
+      npmCommand: '`npm run gate:approve`',
+      nodeApis: '`fs`, `path`',
+      responsibility:
+        'Pre-commit hook governance verifying mutation approval tokens (.agents/hooks.json).',
+    },
+    {
+      name: 'open-browser.js',
+      file: 'scripts/open-browser.js',
+      npmCommand: '`npm run dev:open`',
+      nodeApis: '`child_process`',
+      responsibility:
+        'Cross-platform development utility spawning default system browser with connection wait delay.',
+    },
+  ];
+}
+
 function generateMarkdown() {
   const graph = analyzeDependencyGraph(srcDir, rootDir);
   const circularHealth = detectCircularDependencies(graph);
@@ -439,8 +648,6 @@ function generateMarkdown() {
       'Bidirectional cloud reconciliation engine for bookshelves, shelf items, and favorite books, managing outbox mutation replay, tombstone filtering, and deterministic ordering.',
     'book-metadata':
       'Author and title cleaning, placeholder author heuristics, and defensive editorial metadata normalization.',
-    cache:
-      'Generic in-memory Least Recently Used (LRU) cache with bounded capacity and evictions.',
     'content-advisory':
       'Autonomous content advisory evaluation engine scanning Library of Congress subject classifications and bookshelves for mature themes, erotic literature, and sensitive historical context with non-blocking user guidance.',
     'copyright-engine':
@@ -478,7 +685,7 @@ function generateMarkdown() {
     'rate-limiter':
       'In-memory sliding-window rate limiter with burst mitigation for API routes.',
     'reader-annotator':
-      'Scholarly marginalia interval partitioning and non-destructive HTML text-node highlighter.',
+      'Scholarly marginalia interval partitioning, non-destructive HTML text-node highlighter, overlapping annotation pairing (`pairOverlappingAnnotations`), and shared quote span segmentation (`computeSharedQuoteSegments`).',
     'reading-analytics':
       'Streak calculation, 5-minute immersion thresholds, reading speed metrics, and annual reading goal progress.',
     'redirect-sanitizer':
@@ -502,7 +709,7 @@ function generateMarkdown() {
     'book-tags':
       'Semantic book tag normalizer mapping verbose Library of Congress subjects and Gutenberg bookshelves to canonical zero-truncation badges (<= 14 chars) with responsive mobile/desktop allocation and administrative prefix sanitization.',
     'scroll-utils':
-      'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, and header avoidance.',
+      'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, header avoidance, and horizontal pointer click-and-drag + wheel scrolling (`attachHorizontalDragAndWheelScroll`).',
     utils:
       'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, format badges, and blob downloads.',
   };
@@ -683,6 +890,43 @@ function generateMarkdown() {
     '6. **Multi-Tier Text Streaming & Multi-Mirror Failover**: Plain text is served on-demand from Tier 1 (self-hosted Supabase plain-text cache if present) or Tier 2 (multi-mirror fallback across `aleph.gutenberg.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.',
     '7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.',
     '8. **Autonomous Weekly Catalog Synchronization**: Project Gutenberg official catalog dump (`pg_catalog.csv.gz`, 78,000+ public domain titles) is streamed and decompressed on-the-fly via GitHub Actions (`.github/workflows/catalog-sync.yml`) or `npm run catalog:sync`, updating Supabase with zero manual SQL intervention and minimal storage footprint (~105 MB).',
+    '',
+    '---',
+    '',
+    '## 🟢 Node.js Runtime, Dependency Stack & Supply-Chain Governance',
+    ''
+  );
+
+  const nodeEcosystem = extractNodeEcosystemCatalog(rootDir);
+  lines.push(
+    `Bookarium executes on **Node.js \`${nodeEcosystem.engines.node || '>=20.0.0'}\`** with **npm \`${nodeEcosystem.engines.npm || '>=10.0.0'}\`** (Node 22 LTS recommended). All dependency versions are programmatically synchronized from \`package.json\` via AST compilation (Rule 2):`,
+    '',
+    '| Package | Live Version | Classification & Tier | Architectural Responsibility in Bookarium |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  for (const pkg of nodeEcosystem.packages) {
+    lines.push(`| **\`${pkg.name}\`** | \`${pkg.version}\` | ${pkg.tier} | ${pkg.purpose} |`);
+  }
+
+  const nodeScripts = extractNodeScriptsCatalog();
+  lines.push(
+    '',
+    '---',
+    '',
+    '## 🛠️ Node.js CLI & Automation Scripts Catalog (`scripts/`)',
+    '',
+    'Comprehensive inventory of standalone Node.js automation, ingestion, and verification modules in `scripts/`:',
+    '',
+    '| Script Module | File Path | Primary Invocation | Core Node.js APIs & Engines | Architectural Responsibility |',
+    '| :--- | :--- | :--- | :--- | :--- |'
+  );
+
+  for (const s of nodeScripts) {
+    lines.push(`| **\`${s.name}\`** | [\`${s.file}\`](${s.file}) | ${s.npmCommand} | ${s.nodeApis} | ${s.responsibility} |`);
+  }
+
+  lines.push(
     '',
     '---',
     '',

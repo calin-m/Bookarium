@@ -176,6 +176,36 @@ describe('ReaderAnnotationsDrawer', () => {
     expect(wheelUpEvent.defaultPrevented).toBe(true);
   });
 
+  it('allows click-and-drag grab-to-scroll on color filter tabs and suppresses accidental filter selection on drag', () => {
+    render(<ReaderAnnotationsDrawer {...defaultProps} />);
+
+    const colorTabs = screen.getByTestId('annotations-color-tabs');
+    expect(colorTabs).toHaveClass('cursor-grab', 'select-none');
+
+    colorTabs.scrollLeft = 0;
+    const mintPill = screen.getByTestId('filter-color-mint');
+
+    // 1. Mouse down on mint pill
+    fireEvent.mouseDown(mintPill, { clientX: 200, button: 0 });
+
+    // 2. Drag by 60px
+    fireEvent.mouseMove(window, { clientX: 140 });
+    expect(colorTabs.scrollLeft).toBe(60);
+
+    // 3. Mouse up & click
+    fireEvent.mouseUp(window, { clientX: 140 });
+    fireEvent.click(mintPill);
+
+    // Filter was NOT triggered by drag release: all items remain visible
+    expect(screen.getByTestId('annotation-item-ann-1')).toBeInTheDocument();
+    expect(screen.getByTestId('annotation-item-ann-2')).toBeInTheDocument();
+
+    // 4. Normal stationary click on yellow pill filters immediately
+    fireEvent.click(screen.getByTestId('filter-color-yellow'));
+    expect(screen.getByTestId('annotation-item-ann-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('annotation-item-ann-2')).not.toBeInTheDocument();
+  });
+
   it('renders a vertically scrollable list container with sticky non-compressible controls', () => {
     render(<ReaderAnnotationsDrawer {...defaultProps} />);
 
@@ -250,6 +280,87 @@ describe('ReaderAnnotationsDrawer', () => {
     fireEvent.click(screen.getByTestId('drawer-source-fellows'));
     expect(screen.queryByTestId('annotation-item-ann-1')).not.toBeInTheDocument();
     expect(screen.getByTestId('annotation-item-fellow-1')).toBeInTheDocument();
+  });
+
+  it('merges overlapping own and fellow annotations into a unified item with both badges and reflections in All mode', () => {
+    const overlappingFellow = [
+      {
+        id: 'fellow-overlap-1',
+        bookId: 1342,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'It is a truth universally acknowledged',
+        color: 'rose' as const,
+        note: 'Fellow thought on truth',
+        createdAt: '2026-10-15T10:00:00Z',
+        updatedAt: '2026-10-15T10:00:00Z',
+        isFellow: true as const,
+        fellowUsername: 'plato',
+        fellowDisplayName: 'Plato',
+      },
+    ];
+
+    render(
+      <ReaderAnnotationsDrawer
+        {...defaultProps}
+        fellowAnnotations={overlappingFellow}
+        activeChapterIndex={0}
+      />
+    );
+
+    // There should only be 2 total rendered cards (ann-1 paired with fellow-overlap-1, plus ann-2)
+    expect(screen.getByTestId('annotation-item-ann-1')).toBeInTheDocument();
+    expect(screen.getByTestId('annotation-item-ann-2')).toBeInTheDocument();
+    expect(screen.queryByTestId('annotation-item-fellow-overlap-1')).not.toBeInTheDocument();
+
+    // Paired fellow badge and paired fellow reflection note inside ann-1 card
+    expect(screen.getByTestId('drawer-fellow-badge-fellow-overlap-1')).toHaveTextContent('Plato (@plato)');
+    expect(screen.getByTestId('drawer-paired-fellow-note-fellow-overlap-1')).toHaveTextContent('Fellow thought on truth');
+    expect(screen.getByText('Famous opening quote')).toBeInTheDocument();
+  });
+
+  it('renders Save to My Notes and + Add My Note buttons on standalone fellow annotation and invokes onSaveFellowAnnotation', () => {
+    const onSaveFellowAnnotationMock = vi.fn().mockResolvedValue(undefined);
+    const standaloneFellow = [
+      {
+        id: 'fellow-standalone-1',
+        bookId: 1342,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Unique fellow highlighted passage',
+        color: 'mint' as const,
+        note: 'Fellow commentary on passage',
+        createdAt: '2026-10-15T10:00:00Z',
+        updatedAt: '2026-10-15T10:00:00Z',
+        isFellow: true as const,
+        fellowUsername: 'plato',
+        fellowDisplayName: 'Plato',
+      },
+    ];
+
+    render(
+      <ReaderAnnotationsDrawer
+        {...defaultProps}
+        annotations={[]}
+        fellowAnnotations={standaloneFellow}
+        onSaveFellowAnnotation={onSaveFellowAnnotationMock}
+        activeChapterIndex={0}
+      />
+    );
+
+    const saveBtn = screen.getByTestId('drawer-save-fellow-note-btn-fellow-standalone-1');
+    const replyBtn = screen.getByTestId('drawer-reply-fellow-note-btn-fellow-standalone-1');
+
+    expect(saveBtn).toHaveTextContent('Save to My Notes');
+    expect(replyBtn).toHaveTextContent('+ Add My Note');
+
+    // 1-Click Save to My Notes
+    fireEvent.click(saveBtn);
+    expect(onSaveFellowAnnotationMock).toHaveBeenCalledWith(standaloneFellow[0]);
+
+    // Click + Add My Note to open reply textarea
+    fireEvent.click(replyBtn);
+    expect(screen.getByTestId('drawer-reply-textarea-fellow-standalone-1')).toBeInTheDocument();
   });
 });
 
