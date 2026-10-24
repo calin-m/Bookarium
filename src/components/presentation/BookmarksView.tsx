@@ -22,7 +22,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ROUTES } from '@/config/routes';
-import type { LedgerFilter, ActiveReadingVolume, LedgerItemStatus } from '@/types/book.types';
+import type { LedgerFilter, ActiveReadingVolume, LedgerItemStatus, GutendexBook, Book } from '@/types/book.types';
 
 export interface BookmarksViewProps {
   onBrowseCatalog?: () => void;
@@ -46,7 +46,15 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [volumeToDelete, setVolumeToDelete] = useState<ActiveReadingVolume | null>(null);
   const [volumeToFinish, setVolumeToFinish] = useState<ActiveReadingVolume | null>(null);
-  const { isBookOffline } = useOfflineBooks();
+  const { isBookOffline, downloadBook, removeBook, downloadingBookId } = useOfflineBooks();
+
+  const handleToggleOffline = async (book: GutendexBook | Book) => {
+    if (isBookOffline(book.id)) {
+      await removeBook(book.id);
+    } else {
+      await downloadBook(book);
+    }
+  };
 
   const {
     filteredVolumes,
@@ -266,6 +274,8 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
                   key={vol.book.id}
                   volume={vol}
                   isOffline={isBookOffline(vol.book.id)}
+                  isDownloadingOffline={downloadingBookId === vol.book.id}
+                  onToggleOffline={handleToggleOffline}
                   onResume={handleResume}
                   onStatusChange={handleStatusChange}
                   onClear={() => setVolumeToDelete(vol)}

@@ -61,7 +61,7 @@
 - [x] **Literary Commonplace Notebook & Reading Journal** `✅ VERIFIED`
   Dedicated commonplace journal (`/?view=notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, academic citation generation, and deletion protection.
 - [x] **IndexedDB Offline Book Storage** `✅ VERIFIED`
-  Ultra-lightweight local caching of downloaded and saved book texts using IndexedDB (`idb-keyval`), enabling unabridged reading on airplanes or offline.
+  Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, and cross-device controls, enabling unabridged reading on airplanes or offline.
 - [x] **Library Portability: Export & Import** `✅ VERIFIED`
   Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.
 

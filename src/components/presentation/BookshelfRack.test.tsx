@@ -942,5 +942,33 @@ describe('BookshelfRack Component', () => {
       expect(calculateShelfCapacity(320)).toBe(6);
     });
   });
+
+  it('displays Clear Offline button alongside Download Shelf Offline when shelf is partially cached offline', async () => {
+    const { getOfflineBookIds, removeOfflineBook } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
+
+    render(<BookshelfRack books={[mockBooks[0], mockBooks[1]]} />);
+
+    const clearBtn = await screen.findByRole('button', { name: 'Clear Offline Shelf' });
+    expect(clearBtn).toBeInTheDocument();
+    expect(clearBtn).toHaveTextContent(/Clear Offline \(1\)/i);
+
+    const downloadBtn = screen.getByRole('button', {
+      name: 'Download all books on this shelf for offline reading',
+    });
+    expect(downloadBtn).toBeInTheDocument();
+    expect(downloadBtn).toHaveTextContent(/Download Shelf Offline \(1\)/i);
+
+    fireEvent.click(clearBtn);
+    const confirmModal = await screen.findByTestId('clear-offline-shelf-modal');
+    expect(confirmModal).toBeInTheDocument();
+
+    const confirmClearBtn = within(confirmModal).getByRole('button', { name: /Clear Offline Downloads/i });
+    await act(async () => {
+      fireEvent.click(confirmClearBtn);
+    });
+
+    expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
+  });
 });
 

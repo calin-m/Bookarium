@@ -72,7 +72,7 @@ function HomeContent() {
   const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'favorites' | null>(null);
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
 
-  const { isBookOffline, downloadBook, removeBook } = useOfflineBooks();
+  const { isBookOffline, downloadBook, removeBook, downloadingBookId } = useOfflineBooks();
   const handleToggleOffline = async (book: GutendexBook) => {
     if (isBookOffline(book.id)) {
       await removeBook(book.id);
@@ -688,6 +688,9 @@ function HomeContent() {
           originRect={previewOriginRect}
           isOpen={Boolean(selectedPreviewBook)}
           activeView={activeView}
+          isOffline={selectedPreviewBook ? isBookOffline(selectedPreviewBook.id) : false}
+          isDownloadingOffline={selectedPreviewBook ? downloadingBookId === selectedPreviewBook.id : false}
+          onToggleOffline={handleToggleOffline}
           onWillClose={() => {
             setActivePreviewBookId(null);
           }}
@@ -730,6 +733,7 @@ function HomeContent() {
             setSelectedDownloadBook(book);
           }}
           isOffline={selectedPreviewBook ? isBookOffline(selectedPreviewBook.id) : false}
+          isDownloadingOffline={selectedPreviewBook ? downloadingBookId === selectedPreviewBook.id : false}
           onToggleOffline={handleToggleOffline}
         />
 

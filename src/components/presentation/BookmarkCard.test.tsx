@@ -230,5 +230,50 @@ describe('BookmarkCard', () => {
     expect(screen.getByTestId('symposium-invite-modal')).toBeInTheDocument();
     expect(screen.getByText('Symposium Volume')).toBeInTheDocument();
   });
+
+  it('renders interactive offline toggle button and handles save, remove, and downloading states', () => {
+    const handleToggleOffline = vi.fn();
+
+    const { rerender } = render(
+      <BookmarkCard
+        volume={mockVolume}
+        isOffline={false}
+        isDownloadingOffline={false}
+        onToggleOffline={handleToggleOffline}
+      />
+    );
+
+    const toggleBtn = screen.getByTestId('bookmark-card-offline-toggle-btn');
+    expect(toggleBtn).toHaveAttribute('aria-label', `Save ${mockVolume.book.title} for offline reading`);
+    fireEvent.click(toggleBtn);
+    expect(handleToggleOffline).toHaveBeenCalledWith(mockVolume.book);
+
+    rerender(
+      <BookmarkCard
+        volume={mockVolume}
+        isOffline={false}
+        isDownloadingOffline={true}
+        onToggleOffline={handleToggleOffline}
+      />
+    );
+    expect(screen.getByTestId('bookmark-card-offline-toggle-btn')).toBeDisabled();
+    expect(screen.getByTestId('bookmark-card-offline-toggle-btn')).toHaveAttribute(
+      'aria-label',
+      `Downloading ${mockVolume.book.title} for offline reading`
+    );
+
+    rerender(
+      <BookmarkCard
+        volume={mockVolume}
+        isOffline={true}
+        isDownloadingOffline={false}
+        onToggleOffline={handleToggleOffline}
+      />
+    );
+    expect(screen.getByTestId('bookmark-card-offline-toggle-btn')).toHaveAttribute(
+      'aria-label',
+      `Remove offline copy of ${mockVolume.book.title}`
+    );
+  });
 });
 

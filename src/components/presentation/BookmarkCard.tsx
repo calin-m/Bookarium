@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake } from 'lucide-react';
-import type { ActiveReadingVolume, LedgerItemStatus } from '@/types/book.types';
+import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2 } from 'lucide-react';
+import type { ActiveReadingVolume, LedgerItemStatus, GutendexBook, Book } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -20,6 +20,8 @@ const SymposiumInviteModal = dynamic(
 export interface BookmarkCardProps {
   volume: ActiveReadingVolume;
   isOffline?: boolean;
+  isDownloadingOffline?: boolean;
+  onToggleOffline?: (book: GutendexBook | Book) => void;
   onResume?: (bookId: number) => void;
   onStatusChange?: (bookId: number, status: LedgerItemStatus) => void;
   onClear?: (bookId: number) => void;
@@ -28,6 +30,8 @@ export interface BookmarkCardProps {
 export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   volume,
   isOffline,
+  isDownloadingOffline = false,
+  onToggleOffline,
   onResume,
   onStatusChange,
   onClear,
@@ -284,6 +288,44 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             <option value="completed">Finished</option>
             <option value="on_hold">On Hold</option>
           </select>
+        )}
+
+        {!isRestricted && onToggleOffline && (
+          <button
+            type="button"
+            disabled={isDownloadingOffline}
+            onClick={() => onToggleOffline(book)}
+            data-testid="bookmark-card-offline-toggle-btn"
+            aria-label={
+              isDownloadingOffline
+                ? `Downloading ${book.title} for offline reading`
+                : isOffline
+                ? `Remove offline copy of ${book.title}`
+                : `Save ${book.title} for offline reading`
+            }
+            title={
+              isDownloadingOffline
+                ? 'Saving for offline reading...'
+                : isOffline
+                ? 'Offline copy ready (Click to remove)'
+                : 'Save for offline reading'
+            }
+            className={`h-8 w-8 flex items-center justify-center rounded border transition-colors shrink-0 ${
+              isDownloadingOffline
+                ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
+                : isOffline
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer'
+                : 'border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 cursor-pointer'
+            }`}
+          >
+            {isDownloadingOffline ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : isOffline ? (
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            ) : (
+              <HardDriveDownload className="w-3.5 h-3.5" />
+            )}
+          </button>
         )}
 
         {!isRestricted && (

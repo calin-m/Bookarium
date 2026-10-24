@@ -118,7 +118,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'IndexedDB Offline Book Storage',
-        description: 'Ultra-lightweight local caching of downloaded and saved book texts using IndexedDB (`idb-keyval`), enabling unabridged reading on airplanes or offline.',
+        description: 'Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, and cross-device controls, enabling unabridged reading on airplanes or offline.',
         check: () => fileContains('src/hooks/queries/useBookContent.ts', 'idb') || fileExists('src/lib/offline-storage.ts'),
       },
       {

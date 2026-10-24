@@ -73,7 +73,16 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
   const { country } = useJurisdiction();
   const readingProgress = useReaderStore((s) => s.readingProgress);
-  const { isBookOffline, downloadBook, removeBook, downloadAll, removeAll, isDownloading: isDownloadingOffline, downloadAllProgress: offlineProgress } = useOfflineBooks();
+  const {
+    isBookOffline,
+    downloadBook,
+    removeBook,
+    downloadAll,
+    removeAll,
+    isDownloading: isDownloadingOffline,
+    downloadingBookId,
+    downloadAllProgress: offlineProgress,
+  } = useOfflineBooks();
 
   const handleToggleOffline = async (book: GutendexBook) => {
     if (isBookOffline(book.id)) {
@@ -204,6 +213,16 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const { downloadableBooks, restrictedBooks } = useMemo(() => {
     return partitionBooksByJurisdiction(effectiveShelfBooks, country);
   }, [effectiveShelfBooks, country]);
+
+  const offlineShelfBooks = useMemo(
+    () => effectiveShelfBooks.filter((b) => isBookOffline(b.id)),
+    [effectiveShelfBooks, isBookOffline]
+  );
+
+  const remainingDownloadableBooks = useMemo(
+    () => downloadableBooks.filter((b) => !isBookOffline(b.id)),
+    [downloadableBooks, isBookOffline]
+  );
 
   // Chunk books dynamically into shelves based on container width with balanced distribution
   const shelves = useMemo(() => {
@@ -395,7 +414,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     <span className="hidden sm:inline font-medium">All Restricted in {country}</span>
                     <span className="sm:hidden font-medium">Restricted ({country})</span>
                   </div>
-                ) : downloadableBooks.length > 0 && downloadableBooks.every((b) => isBookOffline(b.id)) ? (
+                ) : downloadableBooks.length > 0 && remainingDownloadableBooks.length === 0 ? (
                   <div className="flex items-center gap-1.5">
                     <div
                       role="status"
@@ -435,22 +454,48 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="chip"
-                    onClick={() => downloadAll(downloadableBooks)}
-                    className="text-xs font-mono gap-1.5"
-                    title={
-                      restrictedBooks.length > 0
-                        ? `Download ${downloadableBooks.length} available public domain books for offline reading (${restrictedBooks.length} restricted in ${country} will be skipped)`
-                        : 'Download all books on this shelf for offline reading'
-                    }
-                    aria-label="Download all books on this shelf for offline reading"
-                  >
-                    <HardDriveDownload className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="hidden sm:inline">Download Shelf Offline</span>
-                    <span className="sm:hidden">Download All</span>
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="chip"
+                      onClick={() => downloadAll(downloadableBooks)}
+                      className="text-xs font-mono gap-1.5"
+                      title={
+                        restrictedBooks.length > 0
+                          ? `Download ${remainingDownloadableBooks.length} available public domain books for offline reading (${restrictedBooks.length} restricted in ${country} will be skipped)`
+                          : offlineShelfBooks.length > 0
+                          ? `Download remaining ${remainingDownloadableBooks.length} books on this shelf for offline reading`
+                          : 'Download all books on this shelf for offline reading'
+                      }
+                      aria-label="Download all books on this shelf for offline reading"
+                    >
+                      <HardDriveDownload className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="hidden sm:inline">
+                        {offlineShelfBooks.length > 0
+                          ? `Download Shelf Offline (${remainingDownloadableBooks.length})`
+                          : 'Download Shelf Offline'}
+                      </span>
+                      <span className="sm:hidden">
+                        {offlineShelfBooks.length > 0
+                          ? `Download (${remainingDownloadableBooks.length})`
+                          : 'Download All'}
+                      </span>
+                    </Button>
+                    {offlineShelfBooks.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="chip"
+                        onClick={() => setIsClearingOfflineShelf(true)}
+                        className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
+                        title={`Clear ${offlineShelfBooks.length} downloaded offline ${offlineShelfBooks.length === 1 ? 'book' : 'books'} on this shelf`}
+                        aria-label="Clear Offline Shelf"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        <span className="hidden sm:inline">Clear Offline ({offlineShelfBooks.length})</span>
+                        <span className="sm:hidden">Clear ({offlineShelfBooks.length})</span>
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -543,6 +588,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                       isSaved={checkIsSaved(book.id)}
                       isFavorite={checkIsFavorite(book.id)}
                       isOffline={isBookOffline(book.id)}
+                      isDownloadingOffline={downloadingBookId === book.id}
                       onToggleSave={toggleSave}
                       onToggleFavorite={toggleFavorite}
                       onToggleOffline={handleToggleOffline}
@@ -577,6 +623,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
           isSaved={checkIsSaved(selectedMobileBook.id)}
           isFavorite={checkIsFavorite(selectedMobileBook.id)}
           isOffline={isBookOffline(selectedMobileBook.id)}
+          isDownloadingOffline={downloadingBookId === selectedMobileBook.id}
           onToggleSave={toggleSave}
           onToggleFavorite={toggleFavorite}
           onToggleOffline={handleToggleOffline}

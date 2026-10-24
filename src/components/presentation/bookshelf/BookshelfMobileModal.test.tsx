@@ -219,6 +219,21 @@ describe('BookshelfMobileModal Component', () => {
       useJurisdictionStore.setState({ country: 'US' });
     });
   });
+
+  it('disables offline toggle and shows loading state when isDownloadingOffline is true', () => {
+    render(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        onClose={vi.fn()}
+        isOffline={false}
+        isDownloadingOffline={true}
+        onToggleOffline={vi.fn()}
+      />
+    );
+
+    const downloadingBtn = screen.getByRole('button', { name: 'Downloading for offline reading' });
+    expect(downloadingBtn).toBeDisabled();
+  });
 });
 
 

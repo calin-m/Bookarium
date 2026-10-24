@@ -4,7 +4,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Download, Library, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle, Loader2 } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -26,6 +26,7 @@ export interface BookshelfMobileModalProps {
   isSaved?: boolean;
   isFavorite?: boolean;
   isOffline?: boolean;
+  isDownloadingOffline?: boolean;
   onToggleSave?: (book: GutendexBook) => void;
   onToggleFavorite?: (book: GutendexBook) => void;
   onToggleOffline?: (book: GutendexBook) => void;
@@ -48,6 +49,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
   isSaved,
   isFavorite,
   isOffline = false,
+  isDownloadingOffline = false,
   onToggleSave,
   onToggleFavorite,
   onToggleOffline,
@@ -248,16 +250,37 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                 ) : (
                   <button
                     type="button"
+                    disabled={isDownloadingOffline}
                     onClick={() => onToggleOffline?.(selectedMobileBook)}
-                    className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
-                      isOffline
-                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
-                        : 'border-border hover:bg-muted text-foreground'
+                    className={`p-2.5 rounded-xl border transition-colors shrink-0 ${
+                      isDownloadingOffline
+                        ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
+                        : isOffline
+                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500 cursor-pointer'
+                        : 'border-border hover:bg-muted text-foreground cursor-pointer'
                     }`}
-                    aria-label={isOffline ? 'Remove offline copy' : 'Save for offline reading'}
-                    title={isOffline ? 'Offline copy ready (Click to remove)' : 'Save for offline reading'}
+                    aria-label={
+                      isDownloadingOffline
+                        ? 'Downloading for offline reading'
+                        : isOffline
+                        ? 'Remove offline copy'
+                        : 'Save for offline reading'
+                    }
+                    title={
+                      isDownloadingOffline
+                        ? 'Saving for offline reading...'
+                        : isOffline
+                        ? 'Offline copy ready (Click to remove)'
+                        : 'Save for offline reading'
+                    }
                   >
-                    {isOffline ? <CheckCircle2 className="w-4 h-4" /> : <HardDriveDownload className="w-4 h-4" />}
+                    {isDownloadingOffline ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isOffline ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <HardDriveDownload className="w-4 h-4" />
+                    )}
                   </button>
                 )}
 

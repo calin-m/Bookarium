@@ -9,6 +9,17 @@ const DB_NAME = 'BookariumOfflineDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'offline_books';
 
+export const OFFLINE_BOOKS_UPDATED_EVENT = 'bookarium:offline-updated';
+
+/**
+ * Broadcasts an update event so all mounted useOfflineBooks() hooks re-synchronize.
+ */
+export function notifyOfflineStorageChanged(): void {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent(OFFLINE_BOOKS_UPDATED_EVENT));
+  }
+}
+
 export interface OfflineBookMetadata {
   bookId: number;
   title: string;
@@ -135,6 +146,7 @@ export async function saveOfflineBook(bookId: number, title: string, text: strin
 
   try {
     await putRecord(db);
+    notifyOfflineStorageChanged();
   } catch (error: unknown) {
     // If QuotaExceededError, try emergency eviction of 20MB and retry once
     const errorObj = error as { name?: string; code?: number; message?: string } | null;
@@ -147,6 +159,7 @@ export async function saveOfflineBook(bookId: number, title: string, text: strin
       const freed = await evictOldestBooksToFreeSpace(20 * 1024 * 1024);
       if (freed > 0) {
         await putRecord(db);
+        notifyOfflineStorageChanged();
         return;
       }
       throw new Error('Storage quota exceeded. Please clear some offline books.');
@@ -215,7 +228,10 @@ export async function removeOfflineBook(bookId: number): Promise<void> {
       const store = transaction.objectStore(STORE_NAME);
       const request = store.delete(bookId);
 
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        notifyOfflineStorageChanged();
+        resolve();
+      };
       request.onerror = () => reject(request.error || new Error(`Failed to remove book ${bookId}.`));
     });
   } catch {
@@ -285,7 +301,10 @@ export async function clearAllOfflineBooks(): Promise<void> {
       const store = transaction.objectStore(STORE_NAME);
       const request = store.clear();
 
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        notifyOfflineStorageChanged();
+        resolve();
+      };
       request.onerror = () => reject(request.error || new Error('Failed to clear offline books.'));
     });
   } catch {

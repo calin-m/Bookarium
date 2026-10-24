@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 24 Oct 2026 11:34:10 GMT  
+**Last Generated**: Sat, 24 Oct 2026 12:48:52 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 186 passed  
-**Total Verified Tests**: 1832 passed  
+**Total Verified Tests**: 1841 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **186/186 test suites passed** (1832 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **186/186 test suites passed** (1841 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 60 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **95.95%** (9058/9440) — *Target: $ge$ 85%*
-- **Statements**: **94.59%** (9862/10426) — *Target: $ge$ 85%*
-- **Functions**: **92.92%** (2127/2289) — *Target: $ge$ 85%*
-- **Branches**: **85.04%** (8923/10492) — *Target: $ge$ 85%*
+- **Lines**: **95.95%** (9139/9524) — *Target: $ge$ 85%*
+- **Statements**: **94.57%** (9945/10515) — *Target: $ge$ 85%*
+- **Functions**: **92.74%** (2147/2315) — *Target: $ge$ 85%*
+- **Branches**: **85.07%** (9065/10655) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (186 Suites / 1832 Tests)
+## 🧪 Comprehensive Test Suite Catalog (186 Suites / 1841 Tests)
 
 ### 🚀 App Routes & Pages (26 Suites · 236 Tests)
 
@@ -428,7 +428,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (27 Suites · 356 Tests)
+### 🎨 Catalog & Presentation (27 Suites · 363 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -458,7 +458,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (23 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (24 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -483,6 +483,7 @@
 - ✔ `enforces min-w-0 on card root and inner metadata flex column to prevent mobile grid blowout`
 - ✔ `preserves neutral editorial card border, shadow-booksaw elevation, and clean topic badges without orange hover borders`
 - ✔ `covers rating & reading status badges, direct primary tag clicks, restricted cover clicks, and all favorite/bookshelf tooltip states`
+- ✔ `renders read-only Offline badge on cover when isOffline is true`
 
 </details>
 
@@ -503,7 +504,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -520,6 +521,7 @@
 - ✔ `renders "Read Again" button with RotateCcw icon and accessible label when status is completed`
 - ✔ `renders Protected badge and disabled Restricted button when book is restricted under jurisdiction`
 - ✔ `opens SymposiumInviteModal pre-populated with the volume when Invite Fellow to Symposium button is clicked`
+- ✔ `renders interactive offline toggle button and handles save, remove, and downloading states`
 
 </details>
 
@@ -546,7 +548,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false or book is null`
 - ✔ `renders book preview modal and triggers cover open animation`
@@ -565,6 +567,7 @@
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is restricted`
 - ✔ `renders content advisory banner when previewed book contains mature subjects`
 - ✔ `renders clean literary spread without cluttering tag clouds on the inside pages`
+- ✔ `renders desktop offline toggle button in right-page footer and handles save/remove/downloading states`
 
 </details>
 
@@ -579,7 +582,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `returns null when selectedMobileBook is null`
 - ✔ `renders modal with formatted author names and triggers actions`
@@ -589,11 +592,12 @@
 - ✔ `hides personal curation section when activeView is catalog`
 - ✔ `shows personal curation section when activeView is favorites`
 - ✔ `renders regional copyright notice banner and disables read and offline actions for restricted books`
+- ✔ `disables offline toggle and shows loading state when isDownloadingOffline is true`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders spine title, author, and handles keyboard interaction`
 - ✔ `triggers quick actions from desktop hover card`
@@ -601,11 +605,12 @@
 - ✔ `renders cursor-following portal tooltip on hover card button hover`
 - ✔ `renders muted spine, restriction badge, banner, and disabled buttons for copyright-protected books`
 - ✔ `renders embossed 5-star spine stamp, multi-shelf Move to Shelf selector, full tooltip matrix, and router fallback`
+- ✔ `renders loading spinner and disables offline toggle when isDownloadingOffline is true`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (46 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (47 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -653,6 +658,7 @@
 - ✔ `renders shelf content with tactile animate-page-turn container and updates on shelf change`
 - ✔ `calculates deterministic shelf capacity capped to max-w-7xl (1280px) on wide viewports`
 - ✔ `calculates proportional capacity on tablet and mobile viewports`
+- ✔ `displays Clear Offline button alongside Download Shelf Offline when shelf is partially cached offline`
 
 </details>
 
@@ -710,13 +716,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `should render download formats when opened with a public domain book in US`
 - ✔ `should return null when book is null`
 - ✔ `should neutralize download links and show legal banner when book is protected in UK`
 - ✔ `should provide canonical Gutenberg download links even if book.formats is empty`
 - ✔ `should render content advisory banner when book contains mature subjects`
+- ✔ `renders Browser Offline Cache card and allows saving and removing book for offline reading`
 
 </details>
 
@@ -1253,7 +1260,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 165 Tests)
+### ⚡ Zustand State Stores (10 Suites · 166 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (9 tests)</summary>
@@ -1333,10 +1340,11 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (44 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (45 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
+- ✔ `should clean up orphaned IndexedDB offline cache when removing a book or clearing saved books`
 - ✔ `should manage reading queue`
 - ✔ `should toggle favorite status and store favoriteBooks`
 - ✔ `should sync and clear favorite books`
@@ -2120,7 +2128,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 235 Tests)
+### 🔄 Hooks & React Query (22 Suites · 236 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (14 tests)</summary>
@@ -2423,7 +2431,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `initializes and fetches offline book IDs on mount`
 - ✔ `downloads a single book and updates offline status`
@@ -2433,6 +2441,7 @@
 - ✔ `skips restricted books with HTTP 451 during batch download and saves remaining books`
 - ✔ `removes all books in batch`
 - ✔ `normalizes authorDetails and embedded lifespan strings when saving a book offline`
+- ✔ `synchronizes offlineBookIds across multiple mounted hook instances via window event broadcast`
 
 </details>
 

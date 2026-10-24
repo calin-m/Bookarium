@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Library, Heart, Sparkles, Trash2, AlertTriangle, X } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, Trash2, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount } from '@/lib/utils';
 import { resolveBookTags } from '@/lib/book-tags';
@@ -21,6 +21,7 @@ import { useBookCopyright } from '@/hooks/useBookCopyright';
 
 export interface BookCardProps {
   book: GutendexBook;
+  isOffline?: boolean;
   onDownloadClick?: (book: GutendexBook) => void;
   onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
   isPreviewActive?: boolean;
@@ -30,6 +31,7 @@ export interface BookCardProps {
 
 export const BookCard: React.FC<BookCardProps> = ({
   book,
+  isOffline = false,
   onDownloadClick,
   onPreviewClick,
   isPreviewActive = false,
@@ -241,6 +243,17 @@ export const BookCard: React.FC<BookCardProps> = ({
             {tooltipContent.icon}
             <span>{tooltipContent.text}</span>
           </CursorTooltip>
+        )}
+
+        {/* Read-Only Offline Availability Indicator (Top-Left) */}
+        {isOffline && (
+          <div
+            className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono uppercase tracking-wider font-semibold bg-card/95 backdrop-blur-xs text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-xs pointer-events-none"
+            data-testid={`book-card-offline-badge-${book.id}`}
+          >
+            <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+            <span>Offline</span>
+          </div>
         )}
 
         {/* Quick Action Overlay Badges (Top-Right) with >=44px Hitboxes */}

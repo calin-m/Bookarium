@@ -1,13 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Download, FileText, Globe, Smartphone, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Download, FileText, Globe, Smartphone, ShieldCheck, AlertTriangle, HardDriveDownload, CheckCircle2, Loader2, Trash2 } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { CopyrightNoticeBanner } from '@/components/presentation/CopyrightNoticeBanner';
 import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisoryBanner';
 import { evaluateContentAdvisory } from '@/lib/content-advisory';
@@ -20,8 +21,12 @@ export interface DownloadDrawerProps {
 
 export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, onClose }) => {
   const { country, isRestricted, ruleDescription, publicDomainYear } = useBookCopyright(book);
+  const { isBookOffline, downloadBook, removeBook, downloadingBookId } = useOfflineBooks();
 
   if (!book) return null;
+
+  const isOffline = isBookOffline(book.id);
+  const isDownloadingThisBook = downloadingBookId === book.id;
 
   const contentAdvisory = evaluateContentAdvisory(book.subjects, book.bookshelves);
   const formats = extractBookFormats(book.formats, book.id);
@@ -110,10 +115,98 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
           />
         ) : (
           /* Formats List */
-          <div className="space-y-2.5">
-            <h4 className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-              Available Zero-DRM Formats
-            </h4>
+          <div className="space-y-4">
+            {/* In-App Browser Offline Reading Cache */}
+            <div className="space-y-2">
+              <h4 className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+                In-App Offline Reading
+              </h4>
+              <div
+                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all gap-3 shadow-xs ${
+                  isOffline
+                    ? 'border-emerald-500/40 bg-emerald-500/5'
+                    : 'border-border hover:border-primary/50 bg-card'
+                }`}
+                data-testid="download-drawer-offline-card"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`p-2 rounded-lg shrink-0 ${
+                      isOffline ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-primary'
+                    }`}
+                  >
+                    {isOffline ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <HardDriveDownload className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-serif font-semibold text-foreground">
+                        Browser Offline Cache
+                      </span>
+                      {isOffline ? (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold uppercase">
+                          Saved Offline
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-primary/10 text-primary font-bold">
+                          Instant Reader
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground font-sans truncate">
+                      {isOffline
+                        ? 'Cached in browser storage for instant offline reading in Bookarium.'
+                        : 'Save directly in your browser to read inside Bookarium without internet.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0">
+                  {isDownloadingThisBook ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      className="text-xs font-mono gap-1.5"
+                      aria-label={`Downloading ${book.title} for offline reading`}
+                    >
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                      <span>Saving...</span>
+                    </Button>
+                  ) : isOffline ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeBook(book.id)}
+                      className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10"
+                      aria-label={`Remove offline copy of ${book.title}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      <span>Remove</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => downloadBook(book)}
+                      className="text-xs font-mono font-bold gap-1.5"
+                      aria-label={`Save ${book.title} for offline reading`}
+                    >
+                      <HardDriveDownload className="w-3.5 h-3.5" />
+                      <span>Save Offline</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2.5">
+              <h4 className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+                Available Zero-DRM Formats
+              </h4>
 
             {downloadOptions.map((option) => (
               <div
@@ -161,6 +254,7 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                 </div>
               </div>
             ))}
+            </div>
           </div>
         )}
 

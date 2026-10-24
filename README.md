@@ -13,7 +13,7 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-186%20Suites%20%7C%201832%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-186%20Suites%20%7C%201841%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![Code Coverage](https://img.shields.io/badge/Coverage-95.95%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -118,7 +118,7 @@ Bookarium is structured around five core engineering pillars:
   * **Unified Overlapping Marginalia Cards (`All` Mode)**: Automatic pairing of intersecting personal and Fellow Scholar highlights (`pairOverlappingAnnotations` & `computeSharedQuoteSegments`) into a single composite card displaying the union quote, an inline highlighted overlap span, dual attribution (`You + Fellow`), and stacked reflection callouts.
   * **1-Click Save Fellow Passage**: Instant `+ Save to My Notes` / `+ Add My Note` actions across the in-book highlight popover (`TextHighlightPopover.tsx`), the in-reader Annotations Drawer, and the Commonplace Notebook.
   * **Click-and-Drag & Wheel Filter Carousels**: Desktop pointer click-and-drag (with 5px deadzone and capture-phase click suppression) and vertical-wheel-to-horizontal scrolling (`attachHorizontalDragAndWheelScroll`) across note color filter pill bars, paired with full-text search, volume/chronological grouping, and 1-click academic citation copying.
-* **Native IndexedDB Offline Book Storage**: Zero-dependency browser storage bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading in airplane mode. Downloading a volume automatically links it to the user's personal bookshelf.
+* **Native IndexedDB Offline Book Storage & Cross-Device Controls**: Zero-dependency browser storage (`BookariumOfflineDB`) bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading across desktop, tablet, and mobile. Features reactive cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading spinner telemetry (`OFFLINE_DOWNLOADING_EVENT`), partial-shelf offline clearing (`Clear Offline (N)` in `BookshelfRack`), Desktop 3D preview parity (`BookPreviewModal`), in-app browser cache management in `DownloadDrawer` ("Get" hub), read-only `Offline` badges on `BookCard`, interactive offline toggling on `BookmarkCard`, and automated orphaned cache cleanup upon shelf deletion.
 * **Authoritative Cloud State Reconciliation (`lastBookshelfSyncAt`)**: Optional Supabase PostgreSQL cloud sync with Row Level Security (RLS). Initial sync migrates local guest books to the cloud; subsequent syncs treat Supabase as the authoritative source of truth, gracefully pruning titles deleted on another device while pre-sync outbox flushing (`flushOutbox`) safeguards offline additions.
 * **High-Performance Database Query Planner Optimization**: Implemented `{ count: 'estimated' }` planner statistics in `src/lib/catalog/supabase-provider.ts` across 78,000+ catalog rows, completely eliminating PostgreSQL `57014` statement timeouts and slashing query latency from `>3,000ms` down to **`~275ms`**.
 * **Sanitized Sign-Out & Account Isolation**: Pre-logout outbox drain and clean state wipe (`clearBookshelf()`) prevent cross-account contamination while raw downloaded texts in IndexedDB are preserved on device.
@@ -438,7 +438,7 @@ flowchart TD
         Header["SectionHeader ('Continue Reading & Bookmarks')\n• Eyebrow, Flank lines, Clear Bookmarks modal"]
         Search["CollectionSearchBar (real-time filtering)"]
         Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]
-        Cards["BookmarkCard.tsx\n• Tactile ribbon accent\n• Interactive cover thumbnail\n• Cleaned title & normalized author\n• Reading coordinates badge\n• Offline pill badge\n• Status dropdown selector"]
+        Cards["BookmarkCard.tsx\n• Tactile ribbon accent\n• Interactive cover thumbnail\n• Cleaned title & normalized author\n• Reading coordinates badge\n• Offline pill badge & download/remove toggle\n• Status dropdown selector"]
         ResumeAction["1-Click Resume / Cover Tap\n• Seed useReaderStore.openReader(book) [Warm Cache]\n• router.push('/read/' + id)"]
     end
 
@@ -679,7 +679,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1832 tests across 186 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1841 tests across 186 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |

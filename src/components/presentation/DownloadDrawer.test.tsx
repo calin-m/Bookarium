@@ -1,10 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { DownloadDrawer } from './DownloadDrawer';
 import { mockBooks } from '@/mocks/handlers';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 import type { GutendexBook } from '@/types/book.types';
+
+vi.mock('@/lib/offline-storage', () => ({
+  getOfflineBookIds: vi.fn().mockResolvedValue([]),
+  saveOfflineBook: vi.fn().mockResolvedValue(undefined),
+  removeOfflineBook: vi.fn().mockResolvedValue(undefined),
+  getStorageQuota: vi.fn().mockResolvedValue(null),
+  OFFLINE_BOOKS_UPDATED_EVENT: 'bookarium:offline-updated',
+  notifyOfflineStorageChanged: vi.fn(),
+}));
 
 describe('DownloadDrawer component', () => {
   beforeEach(() => {
@@ -113,5 +122,53 @@ describe('DownloadDrawer component', () => {
 
     expect(screen.getByText('Historical Content Advisory')).toBeInTheDocument();
     expect(screen.getByText(/Erotic literature/i)).toBeInTheDocument();
+  });
+
+  it('renders Browser Offline Cache card and allows saving and removing book for offline reading', async () => {
+    const { getOfflineBookIds, saveOfflineBook, removeOfflineBook } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('Full text for offline cache', { status: 200 }));
+
+    render(
+      <DownloadDrawer
+        book={mockBooks[0]}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId('download-drawer-offline-card')).toBeInTheDocument();
+    const saveOfflineBtn = screen.getByRole('button', { name: `Save ${mockBooks[0].title} for offline reading` });
+    expect(saveOfflineBtn).toBeInTheDocument();
+
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
+
+    await act(async () => {
+      fireEvent.click(saveOfflineBtn);
+    });
+
+    expect(saveOfflineBook).toHaveBeenCalledWith(
+      mockBooks[0].id,
+      mockBooks[0].title,
+      'Full text for offline cache',
+      mockBooks[0].authors
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: `Remove offline copy of ${mockBooks[0].title}` })).toBeInTheDocument();
+    });
+
+    const removeBtn = screen.getByRole('button', { name: `Remove offline copy of ${mockBooks[0].title}` });
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    await act(async () => {
+      fireEvent.click(removeBtn);
+    });
+
+    expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
+    fetchSpy.mockRestore();
   });
 });

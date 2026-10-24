@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Library, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star, AlertTriangle } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star, AlertTriangle, Loader2 } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -32,6 +32,7 @@ export interface BookshelfSpineProps {
   isSaved: boolean;
   isFavorite: boolean;
   isOffline?: boolean;
+  isDownloadingOffline?: boolean;
   onToggleSave: (book: GutendexBook) => void;
   onToggleFavorite: (book: GutendexBook) => void;
   onToggleOffline?: (book: GutendexBook) => void;
@@ -53,6 +54,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   isSaved,
   isFavorite,
   isOffline = false,
+  isDownloadingOffline = false,
   onToggleSave,
   onToggleFavorite,
   onToggleOffline,
@@ -99,13 +101,17 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         };
       case 'offline':
         return {
-          icon: isOffline ? (
+          icon: isDownloadingOffline ? (
+            <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
+          ) : isOffline ? (
             <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
           ) : (
             <HardDriveDownload className="w-3 h-3 text-primary shrink-0" />
           ),
           text: isRestricted
             ? `Protected in ${country}`
+            : isDownloadingOffline
+            ? 'Saving for Offline...'
             : isOffline
             ? 'Remove Offline Copy'
             : 'Save for Offline Reading',
@@ -128,7 +134,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       default:
         return null;
     }
-  }, [hoveredAction, isOffline, isSaved, isFavorite, country, isRestricted]);
+  }, [hoveredAction, isOffline, isDownloadingOffline, isSaved, isFavorite, country, isRestricted]);
 
   return (
     <div
@@ -314,6 +320,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           ) : (
             <button
               type="button"
+              disabled={isDownloadingOffline}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleOffline?.(book);
@@ -327,13 +334,27 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
                 setHoveredAction(null);
               }}
               className={`p-1 rounded-lg border transition-colors ${
-                isOffline
+                isDownloadingOffline
+                  ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
+                  : isOffline
                   ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
                   : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground'
               }`}
-              aria-label={isOffline ? `Remove offline copy of ${book.title}` : `Download ${book.title} for offline reading`}
+              aria-label={
+                isDownloadingOffline
+                  ? `Downloading ${book.title} for offline reading`
+                  : isOffline
+                  ? `Remove offline copy of ${book.title}`
+                  : `Download ${book.title} for offline reading`
+              }
             >
-              {isOffline ? <CheckCircle2 className="w-3 h-3" /> : <HardDriveDownload className="w-3 h-3" />}
+              {isDownloadingOffline ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : isOffline ? (
+                <CheckCircle2 className="w-3 h-3" />
+              ) : (
+                <HardDriveDownload className="w-3 h-3" />
+              )}
             </button>
           )}
 

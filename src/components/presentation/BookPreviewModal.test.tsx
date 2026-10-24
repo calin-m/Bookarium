@@ -479,6 +479,61 @@ describe('BookPreviewModal component', () => {
     expect(screen.getByText('Courtship')).toBeInTheDocument();
     expect(screen.getByText('p. 1')).toBeInTheDocument();
   });
+
+  it('renders desktop offline toggle button in right-page footer and handles save/remove/downloading states', () => {
+    const handleToggleOffline = vi.fn();
+
+    const { rerender } = renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        isOffline={false}
+        isDownloadingOffline={false}
+        onToggleOffline={handleToggleOffline}
+        onClose={vi.fn()}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    const saveBtn = screen.getByTestId(`preview-offline-toggle-${defaultBook.id}`);
+    expect(saveBtn).toHaveTextContent('Save Offline');
+    fireEvent.click(saveBtn);
+    expect(handleToggleOffline).toHaveBeenCalledWith(defaultBook);
+
+    // Rerender in downloading state
+    rerender(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <BookPreviewModal
+          book={defaultBook}
+          isOpen={true}
+          isOffline={false}
+          isDownloadingOffline={true}
+          onToggleOffline={handleToggleOffline}
+          onClose={vi.fn()}
+        />
+      </QueryClientProvider>
+    );
+    expect(screen.getByTestId(`preview-offline-toggle-${defaultBook.id}`)).toBeDisabled();
+    expect(screen.getByTestId(`preview-offline-toggle-${defaultBook.id}`)).toHaveTextContent('Saving...');
+
+    // Rerender in saved offline state
+    rerender(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <BookPreviewModal
+          book={defaultBook}
+          isOpen={true}
+          isOffline={true}
+          isDownloadingOffline={false}
+          onToggleOffline={handleToggleOffline}
+          onClose={vi.fn()}
+        />
+      </QueryClientProvider>
+    );
+    expect(screen.getByTestId(`preview-offline-toggle-${defaultBook.id}`)).toHaveTextContent('Offline');
+  });
 });
 
 

@@ -182,4 +182,28 @@ describe('useOfflineBooks hook', () => {
 
     fetchSpy.mockRestore();
   });
+
+  it('synchronizes offlineBookIds across multiple mounted hook instances via window event broadcast', async () => {
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([11]);
+
+    const instanceA = renderHook(() => useOfflineBooks());
+    const instanceB = renderHook(() => useOfflineBooks());
+
+    await waitFor(() => {
+      expect(instanceA.result.current.isBookOffline(11)).toBe(true);
+      expect(instanceB.result.current.isBookOffline(11)).toBe(true);
+    });
+
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    await act(async () => {
+      await instanceA.result.current.removeBook(11);
+    });
+
+    await waitFor(() => {
+      expect(instanceA.result.current.isBookOffline(11)).toBe(false);
+      expect(instanceB.result.current.isBookOffline(11)).toBe(false);
+    });
+  });
 });

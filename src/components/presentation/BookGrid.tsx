@@ -5,6 +5,7 @@ import type { GutendexBook } from '@/types/book.types';
 import { BookCard } from './BookCard';
 import { BookshelfRack } from './BookshelfRack';
 import { Button } from '@/components/ui/Button';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { LayoutGrid, Library, RotateCcw, AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Loader2, Info } from 'lucide-react';
 
 export type BookViewMode = 'grid' | 'shelf';
@@ -63,6 +64,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   const [internalViewMode, setInternalViewMode] = useState<BookViewMode>(initialViewMode);
   const activeViewMode = controlledViewMode ?? internalViewMode;
   const shouldShowShelfControls = showShelfControls ?? (activeView === 'bookshelf');
+  const { isBookOffline } = useOfflineBooks();
 
   const handleViewToggle = (mode: BookViewMode) => {
     if (onViewModeChange) {
@@ -214,6 +216,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
               <BookCard
                 key={book.id}
                 book={book}
+                isOffline={isBookOffline(book.id)}
                 onDownloadClick={onDownloadClick}
                 onPreviewClick={onPreviewClick}
                 isPreviewActive={activePreviewBookId === book.id}

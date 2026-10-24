@@ -1274,6 +1274,11 @@
      - Expanded `useCollectionAutoHeal` and `NotebookView` to scan `annotations`, `fellowAnnotations`, and active `symposiums` for volumes missing verified lifespans, and updated `useAnnotationStore.updateBookMetadata` to enrich both personal and fellow marginalia.
      - Updated `useBookContent` with `resolveAuthoritativeLocalAuthors` (scanning all local stores and `FEATURED_HERO_BOOKS`) and deferred to `/api/books/content` when online if cached IndexedDB records lack author birth/death years instead of throwing a premature client-side `LegalRestrictionError` (HTTP 451).
      - Added `normalizeOfflineAuthors` in `useOfflineBooks`, a fallback pollution guard and one-shot auto-retry (`autoRetriedBookIdRef`) in `src/app/read/[id]/page.tsx`, and a Tier 3 `FEATURED_HERO_BOOKS` lifespan fallback in server-side `metadata-cache.ts`.
+  8. **Cross-Device Offline Reading Synchronization, Partial-Shelf Removal, Orphaned Cache Cleanup & Universal Access (`src/lib/offline-storage.ts`, `src/hooks/useOfflineBooks.ts`, `src/stores/useBookshelfStore.ts`, `src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.tsx`, `src/components/presentation/BookPreviewModal.tsx`, `src/components/presentation/DownloadDrawer.tsx`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/BookmarkCard.tsx`)**:
+     - Added window event broadcasting (`OFFLINE_BOOKS_UPDATED_EVENT` and `OFFLINE_DOWNLOADING_EVENT`) across `offline-storage.ts` and `useOfflineBooks.ts` so all mounted hook instances stay synchronized in real time.
+     - Enabled partial-shelf offline clearing (`Clear Offline (N)`) in `BookshelfRack.tsx` whenever at least one book on the shelf is cached (`offlineShelfBooks.length > 0`), alongside remaining download counts (`Download Shelf Offline (M)`).
+     - Added `isDownloadingOffline` loading spinners (`Loader2`) and disabled states to `BookshelfSpine`, `BookshelfMobileModal`, `BookPreviewModal`, `DownloadDrawer`, and `BookmarkCard`.
+     - Added Desktop 3D preview parity (`BookPreviewModal.tsx`), an in-app browser offline cache card at the top of `DownloadDrawer.tsx`, a read-only `Offline` badge on `BookCard.tsx`, an interactive offline toggle on `BookmarkCard.tsx`, and automatic orphaned IndexedDB cache cleanup when removing a book from `useBookshelfStore` or clearing the bookshelf.
 - **Consequences**:
   - Overlapping highlights render with pleasant, color-harmonized borders across all reading themes.
   - The Notebook and Reader Notes drawer present a clean, collaborative view without duplicate cards for co-highlighted passages.
@@ -1281,4 +1286,5 @@
   - Zero cumulative layout shift (CLS = 0) achieved across all theme cycling transitions.
   - Filter pill strips in both Notes & Highlights and Notebook support seamless, tactile click-and-drag mouse scrolling without accidental filter activations.
   - Complete elimination of false client-side/server-side `HTTP 451: Unavailable For Legal Reasons` errors across Bookmarks, Shared Fellow Notes, Literary Symposiums, Offline IndexedDB caches, and direct `/read/[id]` links in non-US Berne Convention jurisdictions.
+  - Seamless, synchronized offline reading download and removal across all views (Catalog, Bookshelf, Favorites, Bookmarks, 3D Preview, and Download Hub) and all devices (Desktop, Tablet, Mobile) with zero orphaned IndexedDB entries.
   - All 186 test suites pass with zero `act(...)` warnings and `>= 85%` coverage across every metric.

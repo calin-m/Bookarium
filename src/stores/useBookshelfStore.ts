@@ -9,6 +9,13 @@ import { STORAGE_KEYS } from '@/config/site-config';
 import { useAuthStore } from './useAuthStore';
 import { useReaderStore } from './useReaderStore';
 import { toCloudBookInsert } from '@/lib/adapters/book.adapter';
+import { removeOfflineBook } from '@/lib/offline-storage';
+
+function notifyOfflineUpdated(): void {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('bookarium:offline-updated'));
+  }
+}
 import {
   applyDeterministicItemOrdering,
   executeFlushOutbox,
@@ -156,6 +163,12 @@ export const useBookshelfStore = create<BookshelfState>()(
 
         set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems, deletedBookIds: nextDeleted });
 
+        if (exists) {
+          Promise.resolve(removeOfflineBook?.(book.id))
+            .then(() => notifyOfflineUpdated())
+            .catch(() => {});
+        }
+
         // Cloud sync if authenticated
         if (currentUserId && targetShelfId) {
           try {
@@ -196,12 +209,18 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       clearSavedBooks: () => {
         const { savedBooks, deletedBookIds = {} } = get();
+        const removedIds = savedBooks.map((b) => b.id);
         const now = new Date().toISOString();
         const nextDeleted = { ...deletedBookIds };
         for (const b of savedBooks) {
           nextDeleted[b.id] = now;
         }
         set({ savedBooks: [], deletedBookIds: nextDeleted });
+        if (removedIds.length > 0) {
+          Promise.all(removedIds.map((id) => Promise.resolve(removeOfflineBook?.(id))))
+            .then(() => notifyOfflineUpdated())
+            .catch(() => {});
+        }
       },
 
       enrichSavedBooks: async (freshBooks) => {

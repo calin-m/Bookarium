@@ -288,4 +288,46 @@ describe('BookshelfSpine Component', () => {
     fireEvent.change(shelfSelect, { target: { value: 'shelf-regency' } });
     expect(onMoveBookToShelf).toHaveBeenCalledWith(1342, 'shelf-regency', 'u1');
   });
+
+  it('renders loading spinner and disables offline toggle when isDownloadingOffline is true', () => {
+    const { rerender } = render(
+      <BookshelfSpine
+        book={mockBook}
+        bookIndex={0}
+        isSaved={true}
+        isFavorite={false}
+        isOffline={false}
+        isDownloadingOffline={false}
+        onToggleSave={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onToggleOffline={vi.fn()}
+        onSpineClick={vi.fn()}
+      />
+    );
+
+    const offlineBtn = screen.getByLabelText(`Download ${mockBook.title} for offline reading`);
+    const hoverCard = offlineBtn.closest('div.absolute') as HTMLElement;
+    fireEvent.mouseMove(hoverCard, { clientX: 150, clientY: 200 });
+    fireEvent.mouseEnter(offlineBtn);
+    expect(screen.getByText('Save for Offline Reading')).toBeInTheDocument();
+
+    rerender(
+      <BookshelfSpine
+        book={mockBook}
+        bookIndex={0}
+        isSaved={true}
+        isFavorite={false}
+        isOffline={false}
+        isDownloadingOffline={true}
+        onToggleSave={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onToggleOffline={vi.fn()}
+        onSpineClick={vi.fn()}
+      />
+    );
+
+    const downloadingBtn = screen.getByLabelText(`Downloading ${mockBook.title} for offline reading`);
+    expect(downloadingBtn).toBeDisabled();
+    expect(screen.getByText('Saving for Offline...')).toBeInTheDocument();
+  });
 });

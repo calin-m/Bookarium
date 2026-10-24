@@ -350,7 +350,7 @@ function generateMarkdown() {
     '            ControlsDrawer["ReaderControls\\n(Typography, Speech & Themes)"]',
     '            LangDrawer["ReaderLanguageDrawer\\n(International Editions Handoff)"]',
     '            AnnotDrawer["ReaderAnnotationsDrawer\\n(In-Volume Highlights, Notes & Deep Links)"]',
-    '            DownDrawer["DownloadDrawer\\n(EPUB, MOBI, TXT Direct Streams)"]',
+    '            DownDrawer["DownloadDrawer\\n(In-App Offline Storage & EPUB/MOBI/TXT Direct Streams)"]',
     '        end',
     '        ',
     '        subgraph StateStores ["Zustand Persistent State & Offline Engine"]',
@@ -608,7 +608,7 @@ function generateMarkdown() {
     useCatalogFilters: 'Catalog filter state URL binding, atomic filter staging, multi-era bounding calculation, and multi-filter query synchronization.',
     useScrollDirection: 'Stepped directional scroll detection with user auto-hide preference persistence.',
     usePerformanceTier: 'Hardware concurrency and memory heuristic detection for fluid 60fps animations.',
-    useOfflineBooks: 'IndexedDB cache enumeration, author lifespan normalization (`normalizeOfflineAuthors`), and local offline book deletion management.',
+    useOfflineBooks: 'IndexedDB cache enumeration, reactive cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading state propagation (`OFFLINE_DOWNLOADING_EVENT`), author lifespan normalization (`normalizeOfflineAuthors`), and local offline book download/deletion management.',
     useCursorTooltip: 'Adaptive unconstrained cursor tooltips for interactive bookshelf elements.',
     useBookPassageShuffle: 'Autonomous literary quote selection and multi-chapter shuffle engine.',
     useHasMounted: 'SSR hydration barrier hook preventing client-server markup mismatches.',
@@ -679,7 +679,7 @@ function generateMarkdown() {
     'library-backup':
       'Complete library export and import engine handling JSON backup schemas, CSV export, validation, and merge restoration.',
     'offline-storage':
-      'IndexedDB storage abstraction providing offline book content caching, quota calculation, and LRU eviction.',
+      'IndexedDB storage abstraction providing offline book content caching, storage change notifications (`notifyOfflineStorageChanged`), quota calculation, and LRU eviction.',
     password:
       'Cryptographically secure password generation and multi-factor entropy evaluation engine.',
     'query-parser':

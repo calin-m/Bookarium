@@ -33,19 +33,43 @@ describe('useBookshelfStore', () => {
     expect(state.recentBooks).toEqual([]);
   });
 
-  it('should toggle save book in bookshelf', () => {
+  it('should toggle save book in bookshelf', async () => {
     const book = mockBooks[0];
     const store = useBookshelfStore.getState();
 
     expect(store.isBookSaved(book.id)).toBe(false);
 
-    store.toggleSaveBook(book);
+    await store.toggleSaveBook(book);
     expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
     expect(useBookshelfStore.getState().isBookSaved(book.id)).toBe(true);
 
-    useBookshelfStore.getState().toggleSaveBook(book);
+    await useBookshelfStore.getState().toggleSaveBook(book);
     expect(useBookshelfStore.getState().savedBooks).toHaveLength(0);
     expect(useBookshelfStore.getState().isBookSaved(book.id)).toBe(false);
+  });
+
+  it('should clean up orphaned IndexedDB offline cache when removing a book or clearing saved books', async () => {
+    const offlineStorage = await import('@/lib/offline-storage');
+    const removeSpy = vi.spyOn(offlineStorage, 'removeOfflineBook').mockResolvedValue(undefined);
+
+    const book1 = mockBooks[0];
+    const book2 = mockBooks[1];
+
+    await useBookshelfStore.getState().toggleSaveBook(book1);
+    await useBookshelfStore.getState().toggleSaveBook(book2);
+    expect(removeSpy).not.toHaveBeenCalled();
+
+    // Unsaving book1 removes its offline copy
+    await useBookshelfStore.getState().toggleSaveBook(book1);
+    expect(removeSpy).toHaveBeenCalledWith(book1.id);
+
+    removeSpy.mockClear();
+
+    // Clearing bookshelf removes all remaining saved books' offline copies
+    useBookshelfStore.getState().clearSavedBooks();
+    expect(removeSpy).toHaveBeenCalledWith(book2.id);
+
+    removeSpy.mockRestore();
   });
 
   it('should manage reading queue', () => {

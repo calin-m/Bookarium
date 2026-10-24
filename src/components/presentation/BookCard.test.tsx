@@ -564,6 +564,17 @@ describe('BookCard component', () => {
     fireEvent.click(cardEl.firstElementChild as HTMLElement);
     expect(onDownloadClick).toHaveBeenCalledWith(restrictedBook);
   });
+
+  it('renders read-only Offline badge on cover when isOffline is true', () => {
+    const book = mockBooks[0];
+    const { rerender } = render(<BookCard book={book} isOffline={false} />);
+    expect(screen.queryByTestId(`book-card-offline-badge-${book.id}`)).not.toBeInTheDocument();
+
+    rerender(<BookCard book={book} isOffline={true} />);
+    const badge = screen.getByTestId(`book-card-offline-badge-${book.id}`);
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('Offline');
+  });
 });
 
 
