@@ -5,6 +5,34 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import type { ReaderCircleRow, SymposiumSessionRow } from '@/types/database.types';
 
+export function isPlaceholderUsername(username?: string | null): boolean {
+  if (!username) return true;
+  const clean = username.trim().toLowerCase();
+  return clean === '' || clean === 'scholar' || clean === 'fellow_scholar';
+}
+
+export function formatFellowScholarLabel(
+  displayName?: string | null,
+  username?: string | null
+): string {
+  const cleanDisplayName = displayName?.trim();
+  const cleanUsername = username?.trim();
+  const isPlaceholder = isPlaceholderUsername(cleanUsername);
+
+  if (
+    cleanDisplayName &&
+    !isPlaceholder &&
+    cleanUsername &&
+    cleanDisplayName !== cleanUsername
+  ) {
+    return `${cleanDisplayName} (@${cleanUsername})`;
+  }
+  if (!isPlaceholder && cleanUsername) {
+    return `@${cleanUsername}`;
+  }
+  return cleanDisplayName || 'Fellow Scholar';
+}
+
 export interface AcceptedFellowSummary {
   circleId: string;
   fellowId: string;
@@ -98,12 +126,102 @@ export const useFellowshipStore = create<FellowshipState>()(
               .order('updated_at', { ascending: false }),
           ]);
 
-          set((state) => ({
-            circles: !circlesRes.error && circlesRes.data ? circlesRes.data : state.circles,
-            symposiums:
-              !symposiumsRes.error && symposiumsRes.data ? symposiumsRes.data : state.symposiums,
+          const rawCircles = !circlesRes.error && circlesRes.data ? circlesRes.data : get().circles;
+          const rawSymposiums =
+            !symposiumsRes.error && symposiumsRes.data ? symposiumsRes.data : get().symposiums;
+
+          // Find companion IDs across circles and symposiums to heal stale usernames/names
+          const companionIds = new Set<string>();
+          for (const c of rawCircles) {
+            if (c.requester_id && c.requester_id !== userId) companionIds.add(c.requester_id);
+            if (c.recipient_id && c.recipient_id !== userId) companionIds.add(c.recipient_id);
+          }
+          for (const s of rawSymposiums) {
+            if (s.host_id && s.host_id !== userId) companionIds.add(s.host_id);
+            if (s.fellow_id && s.fellow_id !== userId) companionIds.add(s.fellow_id);
+          }
+
+          let healedCircles = rawCircles;
+          let healedSymposiums = rawSymposiums;
+
+          if (companionIds.size > 0) {
+            try {
+              const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, username, display_name')
+                .in('id', Array.from(companionIds));
+
+              if (Array.isArray(profilesData) && profilesData.length > 0) {
+                const profileMap = new Map<
+                  string,
+                  { username: string | null; display_name: string | null }
+                >();
+                for (const p of profilesData) {
+                  profileMap.set(p.id, { username: p.username, display_name: p.display_name });
+                }
+
+                healedCircles = rawCircles.map((c) => {
+                  let reqU = c.requester_username;
+                  let reqD = c.requester_display_name;
+                  let recU = c.recipient_username;
+                  let recD = c.recipient_display_name;
+
+                  if (profileMap.has(c.requester_id)) {
+                    const p = profileMap.get(c.requester_id)!;
+                    if (p.username && isPlaceholderUsername(reqU)) reqU = p.username;
+                    if (p.display_name) reqD = p.display_name;
+                  }
+                  if (profileMap.has(c.recipient_id)) {
+                    const p = profileMap.get(c.recipient_id)!;
+                    if (p.username && isPlaceholderUsername(recU)) recU = p.username;
+                    if (p.display_name) recD = p.display_name;
+                  }
+
+                  return {
+                    ...c,
+                    requester_username: reqU,
+                    requester_display_name: reqD,
+                    recipient_username: recU,
+                    recipient_display_name: recD,
+                  };
+                });
+
+                healedSymposiums = rawSymposiums.map((s) => {
+                  let hostU = s.host_username;
+                  let hostD = s.host_display_name;
+                  let fellowU = s.fellow_username;
+                  let fellowD = s.fellow_display_name;
+
+                  if (profileMap.has(s.host_id)) {
+                    const p = profileMap.get(s.host_id)!;
+                    if (p.username && isPlaceholderUsername(hostU)) hostU = p.username;
+                    if (p.display_name) hostD = p.display_name;
+                  }
+                  if (profileMap.has(s.fellow_id)) {
+                    const p = profileMap.get(s.fellow_id)!;
+                    if (p.username && isPlaceholderUsername(fellowU)) fellowU = p.username;
+                    if (p.display_name) fellowD = p.display_name;
+                  }
+
+                  return {
+                    ...s,
+                    host_username: hostU,
+                    host_display_name: hostD,
+                    fellow_username: fellowU,
+                    fellow_display_name: fellowD,
+                  };
+                });
+              }
+            } catch {
+              // Non-blocking profiles overlay
+            }
+          }
+
+          set({
+            circles: healedCircles,
+            symposiums: healedSymposiums,
             isLoading: false,
-          }));
+          });
         } catch (err: unknown) {
           set({
             isLoading: false,
@@ -205,15 +323,33 @@ export const useFellowshipStore = create<FellowshipState>()(
           };
         }
 
+        const supabase = createClient();
+        let myUsername = currentProfile?.username || '';
+        let myDisplayName =
+          currentProfile?.display_name || currentUser.user_metadata?.display_name || '';
+
+        if (isPlaceholderUsername(myUsername) && supabase) {
+          try {
+            const { data: selfProf } = await supabase
+              .from('profiles')
+              .select('username, display_name')
+              .eq('id', currentUser.id)
+              .maybeSingle();
+            if (selfProf?.username) myUsername = selfProf.username;
+            if (selfProf?.display_name) myDisplayName = selfProf.display_name;
+          } catch {
+            // Non-blocking fallback
+          }
+        }
+        if (!myUsername) myUsername = 'scholar';
+        if (!myDisplayName) myDisplayName = 'Scholar';
+
         const now = new Date().toISOString();
         const optimisticCircle: ReaderCircleRow = {
           id: generateId(),
           requester_id: currentUser.id,
-          requester_username: currentProfile?.username || 'scholar',
-          requester_display_name:
-            currentProfile?.display_name ||
-            currentUser.user_metadata?.display_name ||
-            'Scholar',
+          requester_username: myUsername,
+          requester_display_name: myDisplayName,
           recipient_id: recipient.id,
           recipient_username: recipient.username,
           recipient_display_name: recipient.displayName,
@@ -222,7 +358,6 @@ export const useFellowshipStore = create<FellowshipState>()(
           updated_at: now,
         };
 
-        const supabase = createClient();
         if (supabase) {
           try {
             const { data, error } = await supabase
@@ -336,17 +471,35 @@ export const useFellowshipStore = create<FellowshipState>()(
           };
         }
 
+        const supabase = createClient();
+        let myUsername = currentProfile?.username || '';
+        let myDisplayName =
+          currentProfile?.display_name || currentUser.user_metadata?.display_name || '';
+
+        if (isPlaceholderUsername(myUsername) && supabase) {
+          try {
+            const { data: selfProf } = await supabase
+              .from('profiles')
+              .select('username, display_name')
+              .eq('id', currentUser.id)
+              .maybeSingle();
+            if (selfProf?.username) myUsername = selfProf.username;
+            if (selfProf?.display_name) myDisplayName = selfProf.display_name;
+          } catch {
+            // Non-blocking fallback
+          }
+        }
+        if (!myUsername) myUsername = 'scholar';
+        if (!myDisplayName) myDisplayName = 'Scholar';
+
         const now = new Date().toISOString();
         const optimisticSession: SymposiumSessionRow = {
           id: generateId(),
           book_id: bookId,
           book_title: bookTitle,
           host_id: currentUser.id,
-          host_username: currentProfile?.username || 'scholar',
-          host_display_name:
-            currentProfile?.display_name ||
-            currentUser.user_metadata?.display_name ||
-            'Scholar',
+          host_username: myUsername,
+          host_display_name: myDisplayName,
           fellow_id: fellowId,
           fellow_username: fellowUsername,
           fellow_display_name: fellowDisplayName,
@@ -359,7 +512,6 @@ export const useFellowshipStore = create<FellowshipState>()(
           updated_at: now,
         };
 
-        const supabase = createClient();
         if (supabase) {
           try {
             const { data, error } = await supabase

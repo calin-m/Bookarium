@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { BookshelfSpine } from './bookshelf/BookshelfSpine';
 import { BookshelfMobileModal } from './bookshelf/BookshelfMobileModal';
 import { BookshelfManageModals } from './bookshelf/BookshelfManageModals';
+import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { ROUTES } from '@/config/routes';
 
 export interface BookshelfRackProps {
@@ -84,9 +85,11 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     downloadAllProgress: offlineProgress,
   } = useOfflineBooks();
 
+  const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | null>(null);
+
   const handleToggleOffline = async (book: GutendexBook) => {
     if (isBookOffline(book.id)) {
-      await removeBook(book.id);
+      setBookToRemoveOffline(book);
     } else {
       await downloadBook(book);
     }
@@ -672,6 +675,19 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
           isSubmitting={isSubmitting}
         />
       )}
+
+      {/* Remove Single Offline Copy Confirmation Modal */}
+      <RemoveOfflineBookModal
+        isOpen={Boolean(bookToRemoveOffline)}
+        bookTitle={bookToRemoveOffline?.title}
+        onClose={() => setBookToRemoveOffline(null)}
+        onConfirm={async () => {
+          if (bookToRemoveOffline) {
+            await removeBook(bookToRemoveOffline.id);
+            setBookToRemoveOffline(null);
+          }
+        }}
+      />
     </div>
   );
 };

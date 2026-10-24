@@ -326,6 +326,18 @@ export const useAuthStore = create<AuthState>()(
       set((state) => ({
         profile: state.profile ? ({ ...state.profile, ...payload } as Profile) : null,
       }));
+
+      if (updates.username !== undefined || updates.display_name !== undefined) {
+        try {
+          const { useFellowshipStore } = await import('./useFellowshipStore');
+          await useFellowshipStore.getState().fetchFellowshipData(user.id);
+          const { useAnnotationStore } = await import('./useAnnotationStore');
+          useAnnotationStore.getState().enrichFellowAnnotations();
+        } catch {
+          // Non-blocking sync
+        }
+      }
+
       return { error: null };
     } catch (err: unknown) {
       return { error: err instanceof Error ? err : new Error(String(err)) };

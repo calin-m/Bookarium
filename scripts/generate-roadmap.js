@@ -118,7 +118,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'IndexedDB Offline Book Storage',
-        description: 'Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, and cross-device controls, enabling unabridged reading on airplanes or offline.',
+        description: 'Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, interactive `Downloaded` status badges, removal confirmation modals (`RemoveOfflineBookModal.tsx`), and cross-device controls, enabling unabridged reading on airplanes or offline.',
         check: () => fileContains('src/hooks/queries/useBookContent.ts', 'idb') || fileExists('src/lib/offline-storage.ts'),
       },
       {
@@ -233,7 +233,7 @@ const ROADMAP_MILESTONES = [
     features: [
       {
         title: 'Reader Circles & Fellow Scholar Invitations (`public.reader_circles`)',
-        description: 'Persistent two-way fellowship connections ("Invite to Reader Circle" on `/u/[username]` and `/account`), accept/decline handshakes, and zero-PII `@username` discovery backed by idempotent Supabase PostgreSQL RLS (`useFellowshipStore.ts`).',
+        description: 'Persistent two-way fellowship connections ("Invite to Reader Circle" on `/u/[username]` and `/account`), accept/decline handshakes, companion identity RLS resolution across Private Sanctuaries (`is_public = false`), automatic profile identity sync (`handle_profile_identity_sync`), and zero-PII `@username` discovery backed by idempotent Supabase PostgreSQL RLS (`useFellowshipStore.ts`).',
         check: () =>
           fileContains('supabase/schema.sql', 'CREATE TABLE IF NOT EXISTS public.reader_circles') &&
           fileExists('src/stores/useFellowshipStore.ts'),

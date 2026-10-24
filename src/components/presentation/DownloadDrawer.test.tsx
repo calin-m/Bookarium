@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { DownloadDrawer } from './DownloadDrawer';
 import { mockBooks } from '@/mocks/handlers';
@@ -166,6 +166,13 @@ describe('DownloadDrawer component', () => {
 
     await act(async () => {
       fireEvent.click(removeBtn);
+    });
+
+    const confirmModal = screen.getByTestId('remove-offline-book-dialog');
+    expect(confirmModal).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(within(confirmModal).getByRole('button', { name: /remove download/i }));
     });
 
     expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);

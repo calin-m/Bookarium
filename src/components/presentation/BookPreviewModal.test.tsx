@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BookPreviewModal } from './BookPreviewModal';
@@ -532,7 +532,12 @@ describe('BookPreviewModal component', () => {
         />
       </QueryClientProvider>
     );
-    expect(screen.getByTestId(`preview-offline-toggle-${defaultBook.id}`)).toHaveTextContent('Offline');
+    expect(screen.getByTestId(`preview-offline-toggle-${defaultBook.id}`)).toHaveTextContent('Downloaded');
+    fireEvent.click(screen.getByTestId(`preview-offline-toggle-${defaultBook.id}`));
+    const confirmModal = screen.getByTestId('remove-offline-book-dialog');
+    expect(confirmModal).toBeInTheDocument();
+    fireEvent.click(within(confirmModal).getByRole('button', { name: /remove download/i }));
+    expect(handleToggleOffline).toHaveBeenCalledWith(defaultBook);
   });
 });
 

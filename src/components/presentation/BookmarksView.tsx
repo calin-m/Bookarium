@@ -19,6 +19,7 @@ import { CollectionToolbar, type SortOption } from './CollectionToolbar';
 import { smartScrollToContent } from '@/lib/scroll-utils';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { Pagination } from '@/components/ui/Pagination';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ROUTES } from '@/config/routes';
@@ -46,11 +47,12 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [volumeToDelete, setVolumeToDelete] = useState<ActiveReadingVolume | null>(null);
   const [volumeToFinish, setVolumeToFinish] = useState<ActiveReadingVolume | null>(null);
+  const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | Book | null>(null);
   const { isBookOffline, downloadBook, removeBook, downloadingBookId } = useOfflineBooks();
 
   const handleToggleOffline = async (book: GutendexBook | Book) => {
     if (isBookOffline(book.id)) {
-      await removeBook(book.id);
+      setBookToRemoveOffline(book);
     } else {
       await downloadBook(book);
     }
@@ -444,6 +446,19 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           </div>
         </div>
       </Modal>
+
+      {/* Remove Single Offline Copy Confirmation Modal */}
+      <RemoveOfflineBookModal
+        isOpen={Boolean(bookToRemoveOffline)}
+        bookTitle={bookToRemoveOffline?.title}
+        onClose={() => setBookToRemoveOffline(null)}
+        onConfirm={async () => {
+          if (bookToRemoveOffline) {
+            await removeBook(bookToRemoveOffline.id);
+            setBookToRemoveOffline(null);
+          }
+        }}
+      />
     </section>
   );
 };

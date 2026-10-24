@@ -94,7 +94,7 @@ describe('BookshelfMobileModal Component', () => {
       />
     );
 
-    expect(screen.getByText('Offline')).toBeInTheDocument();
+    expect(screen.getByText('Downloaded')).toBeInTheDocument();
     const offlineBtn = screen.getByLabelText('Remove offline copy');
     fireEvent.click(offlineBtn);
     expect(handleToggleOffline).toHaveBeenCalledWith(mockBook);

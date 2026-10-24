@@ -565,15 +565,21 @@ describe('BookCard component', () => {
     expect(onDownloadClick).toHaveBeenCalledWith(restrictedBook);
   });
 
-  it('renders read-only Offline badge on cover when isOffline is true', () => {
+  it('renders interactive Downloaded badge on cover when isOffline is true and handles click', () => {
     const book = mockBooks[0];
-    const { rerender } = render(<BookCard book={book} isOffline={false} />);
+    const handleRemoveOffline = vi.fn();
+    const { rerender } = render(
+      <BookCard book={book} isOffline={false} onRemoveOfflineClick={handleRemoveOffline} />
+    );
     expect(screen.queryByTestId(`book-card-offline-badge-${book.id}`)).not.toBeInTheDocument();
 
-    rerender(<BookCard book={book} isOffline={true} />);
+    rerender(<BookCard book={book} isOffline={true} onRemoveOfflineClick={handleRemoveOffline} />);
     const badge = screen.getByTestId(`book-card-offline-badge-${book.id}`);
     expect(badge).toBeInTheDocument();
-    expect(badge).toHaveTextContent('Offline');
+    expect(badge).toHaveTextContent('Downloaded');
+
+    fireEvent.click(badge);
+    expect(handleRemoveOffline).toHaveBeenCalledWith(book);
   });
 });
 

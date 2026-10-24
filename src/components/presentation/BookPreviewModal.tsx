@@ -14,6 +14,7 @@ import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisory
 import { evaluateContentAdvisory } from '@/lib/content-advisory';
 import { BookCard } from './BookCard';
 import { NotablePassagesSpread } from './NotablePassagesSpread';
+import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 
 export interface ElementRect {
   top: number;
@@ -50,6 +51,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const [isGlidedIn, setIsGlidedIn] = useState(false);
   const [isCoverOpen, setIsCoverOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isRemoveOfflineModalOpen, setIsRemoveOfflineModalOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
   const { bookRatings, bookStatuses, setBookRating, setReadingStatus } = useHydratedBookshelf();
@@ -295,13 +297,17 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                         disabled={isDownloadingOffline}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onToggleOffline(book);
+                          if (isOffline) {
+                            setIsRemoveOfflineModalOpen(true);
+                          } else {
+                            onToggleOffline(book);
+                          }
                         }}
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-mono transition-colors ${
                           isDownloadingOffline
                             ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
                             : isOffline
-                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 cursor-pointer'
+                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 cursor-pointer'
                             : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer'
                         }`}
                         aria-label={
@@ -315,7 +321,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                           isDownloadingOffline
                             ? 'Saving for offline reading...'
                             : isOffline
-                            ? 'Offline copy ready (Click to remove)'
+                            ? 'Downloaded for offline reading — Click to remove'
                             : 'Save for offline reading'
                         }
                         data-testid={`preview-offline-toggle-${book.id}`}
@@ -327,7 +333,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                         ) : (
                           <HardDriveDownload className="w-3 h-3 shrink-0" />
                         )}
-                        <span>{isDownloadingOffline ? 'Saving...' : isOffline ? 'Offline' : 'Save Offline'}</span>
+                        <span>{isDownloadingOffline ? 'Saving...' : isOffline ? 'Downloaded' : 'Save Offline'}</span>
                       </button>
                     )}
                     {onReadBook && (
@@ -650,6 +656,18 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
           </div>
         )}
       </div>
+
+      {book && onToggleOffline && (
+        <RemoveOfflineBookModal
+          isOpen={isRemoveOfflineModalOpen}
+          bookTitle={book.title}
+          onClose={() => setIsRemoveOfflineModalOpen(false)}
+          onConfirm={() => {
+            onToggleOffline(book);
+            setIsRemoveOfflineModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

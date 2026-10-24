@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Library, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star, AlertTriangle, Loader2 } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -229,9 +229,21 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           )}
           <div className="flex items-center gap-1.5">
             {isOffline && (
-              <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-semibold flex items-center gap-0.5" title="Saved offline">
-                <CheckCircle2 className="w-2.5 h-2.5" /> Offline
-              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleOffline?.(book);
+                }}
+                className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5 border border-emerald-500/30 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group/offline"
+                title="Downloaded for offline reading — Click to remove"
+                aria-label={`Downloaded for offline reading. Click to remove ${book.title} from offline storage.`}
+              >
+                <CheckCircle2 className="w-2.5 h-2.5 shrink-0 group-hover/offline:hidden" />
+                <Trash2 className="w-2.5 h-2.5 shrink-0 hidden group-hover/offline:inline" />
+                <span className="group-hover/offline:hidden">Downloaded</span>
+                <span className="hidden group-hover/offline:inline">Remove</span>
+              </button>
             )}
             {progressPercent !== null && (
               <span className="text-[10px] font-medium text-muted-foreground">

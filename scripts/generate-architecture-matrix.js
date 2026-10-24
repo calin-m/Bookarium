@@ -42,7 +42,7 @@ function extractDatabaseCatalog(rootDirPath) {
   };
 
   const descMap = {
-    profiles: 'User profile display name, theme preferences, and typography choices (auto-created on signup).',
+    profiles: 'User profile display name, `@username` handle, theme preferences, and typography choices (auto-created on signup, with companion identity RLS resolution for Reader Circles & Symposiums).',
     bookshelves: 'Default master "General" shelf and custom user-created named shelves.',
     bookshelf_items: 'Books filed in specific shelves with user-scoped uniqueness constraints.',
     user_favorites: 'Cross-device synchronized favorited titles.',
@@ -115,7 +115,7 @@ function extractNodeEcosystemCatalog(rootDirPath) {
     postcss: 'CSS transformer tool for Tailwind CSS v4 processing.',
     tailwindcss: 'Utility-first CSS framework v4 with Oxide compiler engine.',
     typescript: 'Static type system verifying strict compile-time safety (zero any).',
-    vitest: 'Fast Vite-native test runner executing all 186 unit and integration suites.',
+    vitest: 'Fast Vite-native test runner executing all 187 unit and integration suites.',
 
     // Overrides
     'fast-glob': 'Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities.',
@@ -535,13 +535,13 @@ function generateMarkdown() {
     useAccoladesStore:
       'Deterministic literary accolades evaluation, celebration queues, personal showcase pinning (max 3 bookplates), and bi-directional Supabase cloud synchronization.',
     useAnnotationStore:
-      'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), reflections, and commonplace book exports.',
+      'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), reflections, and commonplace book exports.',
     useAuthStore:
-      'Supabase session authentication, guest status, password generation, and cloud profile synchronization.',
+      'Supabase session authentication, guest status, password generation, and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
       'Personal library collections, reading queue, reading history, custom named shelves, deletion tombstones, ratings, and cloud outbox reconciliation via `bookshelf-cloud-sync.ts`.',
     useFellowshipStore:
-      'Opt-in 1-on-1 Reader Circle fellowships, per-volume Literary Symposium sessions, companion progress coordinates, pending invitation badges, and bi-directional Supabase cloud synchronization.',
+      'Opt-in 1-on-1 Reader Circle fellowships, per-volume Literary Symposium sessions, companion progress coordinates, scholar handle formatting (`formatFellowScholarLabel`, `isPlaceholderUsername`), pending invitation badges, and bi-directional Supabase cloud synchronization.',
     useHabitsStore:
       'Reading streaks with 5-minute active immersion threshold, daily calendar activity dates, annual volume challenge goals, dual immersion telemetry (reading vs listening), and multi-device Supabase cloud synchronization.',
     useJurisdictionStore:
@@ -778,6 +778,7 @@ function generateMarkdown() {
     '| **`idx_book_translations_work_id`** | B-Tree Index | `public.book_translations` | Canonical literary work grouping index for cluster traversal. |',
     '| **`idx_book_translations_work_lang`** | Composite Index | `public.book_translations` | Composite index on `(work_id, language)` for fast language filtering within a literary work cluster. |',
     '| **`public.handle_new_user()`** | Trigger / Function | `auth.users` -> `public.profiles` | Auto-provisions profile and default General shelf on signup (execution revoked from public/anon/authenticated; immutable search path). |',
+    '| **`public.handle_profile_identity_sync()`** | Trigger / Function | `public.profiles` -> `reader_circles`, `symposium_sessions` | Propagates scholar `@username` and `display_name` updates across active/pending fellowship circles and symposium sessions on profile update (immutable search path). |',
     '| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable search path). |',
     '| **`public.lookup_scholar_by_username()`** | RPC Function | `public.profiles` | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`is_public = false`). |'
   );

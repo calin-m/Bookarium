@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useFellowshipStore, useHydratedFellowship } from './useFellowshipStore';
+import {
+  useFellowshipStore,
+  useHydratedFellowship,
+  isPlaceholderUsername,
+  formatFellowScholarLabel,
+} from './useFellowshipStore';
 import { useAuthStore } from './useAuthStore';
 
 const mockRpc = vi.fn();
@@ -343,6 +348,308 @@ describe('useFellowshipStore', () => {
     });
     await useFellowshipStore.getState().fetchFellowshipData('user-host');
     expect(useFellowshipStore.getState().error).toBe('Database unreachable');
+  });
+
+  it('heals companion placeholder identities during fetchFellowshipData and covers companion progress and fellow removal', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'reader_circles') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          or: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: 'circle-stale-1',
+                requester_id: 'user-host',
+                requester_username: 'jane_austen',
+                requester_display_name: 'Jane Austen',
+                recipient_id: 'user-stale-fellow',
+                recipient_username: 'scholar',
+                recipient_display_name: '',
+                status: 'accepted',
+                created_at: '',
+                updated_at: '',
+              },
+              {
+                id: 'circle-stale-2',
+                requester_id: 'user-stale-fellow',
+                requester_username: 'scholar',
+                requester_display_name: '',
+                recipient_id: 'user-host',
+                recipient_username: 'jane_austen',
+                recipient_display_name: 'Jane Austen',
+                status: 'accepted',
+                created_at: '',
+                updated_at: '',
+              },
+            ],
+            error: null,
+          }),
+        };
+      }
+      if (table === 'symposium_sessions') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          or: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: 'sym-stale-1',
+                book_id: 1342,
+                book_title: 'Pride and Prejudice',
+                host_id: 'user-stale-fellow',
+                host_username: 'fellow_scholar',
+                host_display_name: '',
+                fellow_id: 'user-host',
+                fellow_username: 'jane_austen',
+                fellow_display_name: 'Jane Austen',
+                status: 'active',
+                host_chapter: 3,
+                host_progress: 45,
+                fellow_chapter: 1,
+                fellow_progress: 15,
+                created_at: '',
+                updated_at: '',
+              },
+              {
+                id: 'sym-stale-2',
+                book_id: 84,
+                book_title: 'Frankenstein',
+                host_id: 'user-host',
+                host_username: 'jane_austen',
+                host_display_name: 'Jane Austen',
+                fellow_id: 'user-stale-fellow',
+                fellow_username: 'scholar',
+                fellow_display_name: '',
+                status: 'active',
+                host_chapter: 0,
+                host_progress: 0,
+                fellow_chapter: 0,
+                fellow_progress: 0,
+                created_at: '',
+                updated_at: '',
+              },
+            ],
+            error: null,
+          }),
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          in: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: 'user-stale-fellow',
+                username: 'mary_shelley',
+                display_name: 'Mary Shelley',
+              },
+            ],
+            error: null,
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnThis(),
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      };
+    });
+
+    await useFellowshipStore.getState().fetchFellowshipData('user-host');
+
+    const circles = useFellowshipStore.getState().circles;
+    expect(circles[0].recipient_username).toBe('mary_shelley');
+    expect(circles[0].recipient_display_name).toBe('Mary Shelley');
+
+    const syms = useFellowshipStore.getState().symposiums;
+    expect(syms[0].host_username).toBe('mary_shelley');
+    expect(syms[0].host_display_name).toBe('Mary Shelley');
+
+    // Verify getActiveSymposiumForBook
+    const activeSym = useFellowshipStore
+      .getState()
+      .getActiveSymposiumForBook(1342, 'user-host');
+    expect(activeSym?.host_username).toBe('mary_shelley');
+    expect(activeSym?.host_display_name).toBe('Mary Shelley');
+    expect(activeSym?.host_progress).toBe(45);
+    expect(activeSym?.host_chapter).toBe(3);
+    expect(activeSym?.fellow_progress).toBe(15);
+    expect(activeSym?.fellow_chapter).toBe(1);
+
+    // removeFellow
+    await useFellowshipStore.getState().removeFellow('circle-stale-1');
+    expect(useFellowshipStore.getState().circles).toHaveLength(1);
+    await useFellowshipStore.getState().removeFellow('circle-stale-2');
+    expect(useFellowshipStore.getState().circles).toHaveLength(0);
+    expect(useFellowshipStore.getState().symposiums).toHaveLength(0);
+  });
+
+  it('resolves stale placeholder recipient identities via profiles lookup in inviteFellowByProfile and createSymposiumInvite', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { id: 'user-healed-fellow', username: 'hypatia_real', display_name: 'Hypatia of Alexandria' },
+              error: null,
+            }),
+          }),
+        };
+      }
+      if (table === 'reader_circles') {
+        return {
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: {
+                  id: 'circle-healed-1',
+                  requester_id: 'user-host',
+                  requester_username: 'jane_austen',
+                  recipient_id: 'user-healed-fellow',
+                  recipient_username: 'hypatia_real',
+                  recipient_display_name: 'Hypatia of Alexandria',
+                  status: 'pending',
+                },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'symposium_sessions') {
+        return {
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: {
+                  id: 'sym-healed-1',
+                  book_id: 11,
+                  book_title: 'Alice in Wonderland',
+                  host_id: 'user-host',
+                  fellow_id: 'user-healed-fellow',
+                  fellow_username: 'hypatia_real',
+                  fellow_display_name: 'Hypatia of Alexandria',
+                  status: 'pending',
+                },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      return { select: vi.fn().mockReturnThis() };
+    });
+
+    const inviteRes = await useFellowshipStore.getState().inviteFellowByProfile({
+      id: 'user-healed-fellow',
+      username: 'scholar',
+      displayName: '',
+    });
+    expect(inviteRes.error).toBeNull();
+    expect(inviteRes.circle?.recipient_username).toBe('hypatia_real');
+
+    const symRes = await useFellowshipStore.getState().createSymposiumInvite({
+      bookId: 11,
+      bookTitle: 'Alice in Wonderland',
+      fellowId: 'user-healed-fellow',
+      fellowUsername: 'scholar',
+      fellowDisplayName: '',
+    });
+    expect(symRes.error).toBeNull();
+    expect(symRes.session?.fellow_username).toBe('hypatia_real');
+
+    // Also test when current host profile is not hydrated in useAuthStore (null profile)
+    useAuthStore.setState({
+      user: { id: 'user-host', email: 'jane@bookarium.test' } as any,
+      profile: null,
+    });
+    const inviteFallbackRes = await useFellowshipStore.getState().inviteFellowByProfile({
+      id: 'user-healed-fellow-2',
+      username: 'ada_lovelace',
+      displayName: 'Ada Lovelace',
+    });
+    expect(inviteFallbackRes.error).toBeNull();
+
+    const hostFallbackRes = await useFellowshipStore.getState().createSymposiumInvite({
+      bookId: 84,
+      bookTitle: 'Frankenstein',
+      fellowId: 'user-healed-fellow-2',
+      fellowUsername: 'ada_lovelace',
+      fellowDisplayName: 'Ada Lovelace',
+    });
+    expect(hostFallbackRes.error).toBeNull();
+
+    // Verify syncSymposiumProgress preserves non-matching symposiums
+    useFellowshipStore.setState({
+      symposiums: [
+        {
+          id: 's-other',
+          book_id: 9999,
+          host_id: 'user-host',
+          fellow_id: 'user-other',
+          status: 'pending',
+          host_chapter: 0,
+          host_progress: 0,
+          fellow_chapter: 0,
+          fellow_progress: 0,
+          created_at: '',
+          updated_at: '',
+        } as any,
+        {
+          id: 's-active',
+          book_id: 11,
+          host_id: 'user-host',
+          fellow_id: 'user-healed-fellow',
+          status: 'active',
+          host_chapter: 0,
+          host_progress: 0,
+          fellow_chapter: 0,
+          fellow_progress: 0,
+          created_at: '',
+          updated_at: '',
+        } as any,
+      ],
+    });
+    await useFellowshipStore.getState().syncSymposiumProgress(11, 2, 30);
+    const preservedOther = useFellowshipStore.getState().symposiums.find((s) => s.id === 's-other');
+    expect(preservedOther?.host_progress).toBe(0);
+    const updatedActive = useFellowshipStore.getState().symposiums.find((s) => s.id === 's-active');
+    expect(updatedActive?.host_progress).toBe(30);
+  });
+
+  describe('isPlaceholderUsername and formatFellowScholarLabel helpers', () => {
+    it('correctly identifies placeholder usernames', () => {
+      expect(isPlaceholderUsername(null)).toBe(true);
+      expect(isPlaceholderUsername(undefined)).toBe(true);
+      expect(isPlaceholderUsername('')).toBe(true);
+      expect(isPlaceholderUsername('   ')).toBe(true);
+      expect(isPlaceholderUsername('scholar')).toBe(true);
+      expect(isPlaceholderUsername('SCHOLAR')).toBe(true);
+      expect(isPlaceholderUsername('fellow_scholar')).toBe(true);
+      expect(isPlaceholderUsername('FELLOW_SCHOLAR')).toBe(true);
+
+      expect(isPlaceholderUsername('johndoe')).toBe(false);
+      expect(isPlaceholderUsername('jane_austen')).toBe(false);
+    });
+
+    it('formats fellow scholar labels cleanly avoiding (@scholar)', () => {
+      // With custom handle
+      expect(formatFellowScholarLabel('John Doe', 'johndoe')).toBe('John Doe (@johndoe)');
+      // Identical display name and username
+      expect(formatFellowScholarLabel('johndoe', 'johndoe')).toBe('@johndoe');
+      // Empty display name with custom handle
+      expect(formatFellowScholarLabel('', 'johndoe')).toBe('@johndoe');
+      // Placeholder username with real display name should not append (@scholar)
+      expect(formatFellowScholarLabel('John Doe', 'scholar')).toBe('John Doe');
+      expect(formatFellowScholarLabel('John Doe', 'fellow_scholar')).toBe('John Doe');
+      expect(formatFellowScholarLabel('John Doe', '')).toBe('John Doe');
+      // No display name and placeholder handle
+      expect(formatFellowScholarLabel('', 'scholar')).toBe('Fellow Scholar');
+      expect(formatFellowScholarLabel(null, null)).toBe('Fellow Scholar');
+    });
   });
 });
 

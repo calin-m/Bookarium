@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database.types';
-import { useFellowshipStore } from '@/stores/useFellowshipStore';
+import { useFellowshipStore, isPlaceholderUsername } from '@/stores/useFellowshipStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { cleanBookTitle, isPlaceholderTitle, isPlaceholderAuthor } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
@@ -62,6 +62,7 @@ export interface AnnotationState {
   enrichFellowAnnotations: (
     fellowScholarsMap?: Record<string, { username: string; display_name?: string | null }>
   ) => void;
+  resolveStaleFellowProfiles: () => Promise<void>;
   getFellowAnnotationsForBook: (bookId: number) => FellowAnnotation[];
 
   queueOutboxAction: (action: Omit<AnnotationOutboxAction, 'id' | 'timestamp'>) => void;
@@ -101,6 +102,49 @@ function generateId(): string {
   return `ann-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function setOrUpdateFellowMapEntry(
+  map: Record<string, { username: string; display_name?: string | null }>,
+  userId: string,
+  username: string,
+  displayName?: string | null
+) {
+  const existing = map[userId];
+  if (!existing) {
+    map[userId] = {
+      username,
+      display_name: displayName || undefined,
+    };
+    return;
+  }
+
+  const existingIsPlaceholder = isPlaceholderUsername(existing.username);
+  const nextIsPlaceholder = isPlaceholderUsername(username);
+
+  // If existing already has a real handle and incoming is a placeholder, retain existing real handle
+  const resolvedUsername =
+    existingIsPlaceholder && !nextIsPlaceholder
+      ? username
+      : !existingIsPlaceholder && nextIsPlaceholder
+      ? existing.username
+      : username || existing.username;
+  const displayNameIsPlaceholder =
+    !displayName || isPlaceholderUsername(displayName);
+  const existingDisplayNameIsPlaceholder =
+    !existing.display_name || isPlaceholderUsername(existing.display_name);
+
+  const resolvedDisplayName =
+    !displayNameIsPlaceholder
+      ? displayName
+      : !existingDisplayNameIsPlaceholder
+      ? existing.display_name
+      : displayName || existing.display_name;
+
+  map[userId] = {
+    username: resolvedUsername,
+    display_name: resolvedDisplayName || undefined,
+  };
+}
+
 /**
  * Builds a lookup map of scholar identities (`user_id -> { username, display_name }`)
  * from `useFellowshipStore` (`symposiums` and `circles`) merged with any explicit caller map.
@@ -113,38 +157,46 @@ export function buildFellowScholarsMap(
 
   for (const circle of fellowshipState.circles || []) {
     if (circle.requester_id && circle.requester_username) {
-      map[circle.requester_id] = {
-        username: circle.requester_username,
-        display_name: circle.requester_display_name || undefined,
-      };
+      setOrUpdateFellowMapEntry(
+        map,
+        circle.requester_id,
+        circle.requester_username,
+        circle.requester_display_name
+      );
     }
     if (circle.recipient_id && circle.recipient_username) {
-      map[circle.recipient_id] = {
-        username: circle.recipient_username,
-        display_name: circle.recipient_display_name || undefined,
-      };
+      setOrUpdateFellowMapEntry(
+        map,
+        circle.recipient_id,
+        circle.recipient_username,
+        circle.recipient_display_name
+      );
     }
   }
 
   for (const sym of fellowshipState.symposiums || []) {
     if (sym.host_id && sym.host_username) {
-      map[sym.host_id] = {
-        username: sym.host_username,
-        display_name: sym.host_display_name || map[sym.host_id]?.display_name || undefined,
-      };
+      setOrUpdateFellowMapEntry(
+        map,
+        sym.host_id,
+        sym.host_username,
+        sym.host_display_name
+      );
     }
     if (sym.fellow_id && sym.fellow_username) {
-      map[sym.fellow_id] = {
-        username: sym.fellow_username,
-        display_name: sym.fellow_display_name || map[sym.fellow_id]?.display_name || undefined,
-      };
+      setOrUpdateFellowMapEntry(
+        map,
+        sym.fellow_id,
+        sym.fellow_username,
+        sym.fellow_display_name
+      );
     }
   }
 
   if (explicitMap) {
     for (const [uid, info] of Object.entries(explicitMap)) {
       if (info && info.username) {
-        map[uid] = info;
+        setOrUpdateFellowMapEntry(map, uid, info.username, info.display_name);
       }
     }
   }
@@ -224,10 +276,13 @@ export const useAnnotationStore = create<AnnotationState>()(
               }
             }
 
+            const currentIsPlaceholder = isPlaceholderUsername(fa.fellowUsername);
+            const resolvedIsPlaceholder = isPlaceholderUsername(resolvedUsername);
+
             if (
               resolvedUsername &&
-              (fa.fellowUsername === 'fellow_scholar' ||
-                fa.fellowUsername !== resolvedUsername ||
+              (currentIsPlaceholder ||
+                (!resolvedIsPlaceholder && fa.fellowUsername !== resolvedUsername) ||
                 (!fa.fellowDisplayName && resolvedDisplayName))
             ) {
               modified = true;
@@ -242,6 +297,58 @@ export const useAnnotationStore = create<AnnotationState>()(
 
           return modified ? { fellowAnnotations: nextFellowAnnotations } : state;
         });
+      },
+
+      resolveStaleFellowProfiles: async () => {
+        const { fellowAnnotations } = get();
+        const placeholderAnnotations = fellowAnnotations.filter(
+          (fa) => fa.userId && isPlaceholderUsername(fa.fellowUsername)
+        );
+        if (placeholderAnnotations.length === 0) return;
+
+        const missingUids = Array.from(
+          new Set(placeholderAnnotations.map((fa) => fa.userId as string))
+        );
+        const supabase = createClient();
+        if (!supabase) return;
+
+        try {
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, username, display_name')
+            .in('id', missingUids);
+
+          if (Array.isArray(profilesData) && profilesData.length > 0) {
+            const profileMap = new Map<
+              string,
+              { username: string | null; display_name: string | null }
+            >();
+            for (const p of profilesData) {
+              profileMap.set(p.id, { username: p.username, display_name: p.display_name });
+            }
+
+            set((state) => {
+              let modified = false;
+              const nextFellowAnnotations = state.fellowAnnotations.map((fa) => {
+                if (fa.userId && profileMap.has(fa.userId)) {
+                  const p = profileMap.get(fa.userId)!;
+                  if (p.username && isPlaceholderUsername(fa.fellowUsername)) {
+                    modified = true;
+                    return {
+                      ...fa,
+                      fellowUsername: p.username,
+                      fellowDisplayName: p.display_name || fa.fellowDisplayName,
+                    };
+                  }
+                }
+                return fa;
+              });
+              return modified ? { fellowAnnotations: nextFellowAnnotations } : state;
+            });
+          }
+        } catch {
+          // Non-blocking
+        }
       },
 
       fetchFellowAnnotationsForBook: async (bookId, currentUserId, fellowScholarsMap) => {
@@ -289,12 +396,17 @@ export const useAnnotationStore = create<AnnotationState>()(
             }
           }
 
-          // Fallback profile lookup for any fellow user_id still absent from resolvedMap
+          // Fallback profile lookup for any fellow user_id still absent from resolvedMap or with placeholder handle
           const missingIds = Array.from(
             new Set(
               rows
                 .map((r) => String(r.user_id || ''))
-                .filter((uid) => uid && !resolvedMap[uid]?.username)
+                .filter(
+                  (uid) =>
+                    uid &&
+                    (!resolvedMap[uid]?.username ||
+                      isPlaceholderUsername(resolvedMap[uid]?.username))
+                )
             )
           );
           if (missingIds.length > 0) {

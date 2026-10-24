@@ -94,12 +94,29 @@ describe('BookmarkCard', () => {
   });
 
   it('renders offline badge when isOffline is true', () => {
-    const { rerender } = render(<BookmarkCard volume={mockVolume} isOffline={false} />);
-    expect(screen.queryByLabelText('Available offline')).not.toBeInTheDocument();
+    const handleToggleOffline = vi.fn();
+    const { rerender } = render(
+      <BookmarkCard
+        volume={mockVolume}
+        isOffline={false}
+        onToggleOffline={handleToggleOffline}
+      />
+    );
+    expect(screen.queryByLabelText(/downloaded for offline reading/i)).not.toBeInTheDocument();
 
-    rerender(<BookmarkCard volume={mockVolume} isOffline={true} />);
-    expect(screen.getByLabelText('Available offline')).toBeInTheDocument();
-    expect(screen.getByText('Offline')).toBeInTheDocument();
+    rerender(
+      <BookmarkCard
+        volume={mockVolume}
+        isOffline={true}
+        onToggleOffline={handleToggleOffline}
+      />
+    );
+    const badge = screen.getByLabelText(/downloaded for offline reading/i);
+    expect(badge).toBeInTheDocument();
+    expect(screen.getByText('Downloaded')).toBeInTheDocument();
+
+    fireEvent.click(badge);
+    expect(handleToggleOffline).toHaveBeenCalledWith(mockVolume.book);
   });
 
   it('handles status changes from harmonized select dropdown', () => {

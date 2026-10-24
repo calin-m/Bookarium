@@ -187,10 +187,22 @@ describe('NotebookQuoteCard', () => {
     expect(screen.getByTestId('notebook-fellow-badge-fellow-ann-1')).toHaveTextContent(
       'Clara Vance (@clara_v)'
     );
-    expect(screen.getByText('Fellow Reflection (Clara Vance)')).toBeInTheDocument();
+    expect(screen.getByText('Fellow Reflection (Clara Vance (@clara_v))')).toBeInTheDocument();
     expect(screen.queryByTestId('edit-quote-btn-fellow-ann-1')).not.toBeInTheDocument();
     expect(screen.queryByTestId('delete-quote-btn-fellow-ann-1')).not.toBeInTheDocument();
     expect(screen.getByTestId('jump-reader-btn-fellow-ann-1')).toBeInTheDocument();
+
+    // Rerender with placeholder fellowUsername 'scholar' to assert clean displayName without (@scholar)
+    const placeholderFellowAnn = {
+      ...fellowAnnotation,
+      id: 'fellow-ann-placeholder',
+      fellowUsername: 'scholar',
+    };
+    rerender(<NotebookQuoteCard {...defaultProps} annotation={placeholderFellowAnn} />);
+    expect(screen.getByTestId('notebook-fellow-badge-fellow-ann-placeholder')).toHaveTextContent(
+      'Clara Vance'
+    );
+    expect(screen.getByText('Fellow Reflection (Clara Vance)')).toBeInTheDocument();
 
     // Rerender with empty fellowDisplayName to assert @fellowUsername fallback
     const anonymousFellowAnn = {
@@ -246,7 +258,7 @@ describe('NotebookQuoteCard', () => {
     expect(
       screen.getByTestId('notebook-paired-fellow-note-fellow-ann-paired')
     ).toHaveTextContent('A timeless classical satire on matrimonial economics.');
-    expect(screen.getByText('Fellow Reflection (Clara Vance)')).toBeInTheDocument();
+    expect(screen.getByText('Fellow Reflection (Clara Vance (@clara_v))')).toBeInTheDocument();
   });
 
   it('renders Save to My Notes button on standalone fellow note and calls onSaveFellowAsOwn', async () => {

@@ -250,8 +250,8 @@ describe('BookmarksView', () => {
 
     renderWithClient(<BookmarksView />);
 
-    expect(screen.getByLabelText('Available offline')).toBeInTheDocument();
-    expect(screen.getByText('Offline')).toBeInTheDocument();
+    expect(screen.getByLabelText(/downloaded for offline reading/i)).toBeInTheDocument();
+    expect(screen.getByText('Downloaded')).toBeInTheDocument();
   });
 
   it('allows user to change status of completed volume to reading directly via dropdown', async () => {

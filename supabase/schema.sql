@@ -61,9 +61,27 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone when is_public is true" ON public.profiles;
-CREATE POLICY "Public profiles are viewable by everyone when is_public is true"
+DROP POLICY IF EXISTS "Public profiles or connected fellow profiles are viewable" ON public.profiles;
+CREATE POLICY "Public profiles or connected fellow profiles are viewable"
   ON public.profiles FOR SELECT
-  USING (is_public = true OR auth.uid() = id);
+  USING (
+    is_public = true 
+    OR auth.uid() = id
+    OR (
+      auth.uid() IS NOT NULL AND (
+        EXISTS (
+          SELECT 1 FROM public.reader_circles rc
+          WHERE (rc.requester_id = auth.uid() AND rc.recipient_id = profiles.id)
+             OR (rc.recipient_id = auth.uid() AND rc.requester_id = profiles.id)
+        )
+        OR EXISTS (
+          SELECT 1 FROM public.symposium_sessions ss
+          WHERE (ss.host_id = auth.uid() AND ss.fellow_id = profiles.id)
+             OR (ss.fellow_id = auth.uid() AND ss.host_id = profiles.id)
+        )
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
@@ -887,3 +905,81 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.lookup_scholar_by_username(TEXT) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.lookup_scholar_by_username(TEXT) FROM anon;
 GRANT EXECUTE ON FUNCTION public.lookup_scholar_by_username(TEXT) TO authenticated;
+
+-- Automatic Profile Identity Propagation to Reader Circles and Literary Symposiums
+CREATE OR REPLACE FUNCTION public.handle_profile_identity_sync()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  -- Sync updated username and display_name into reader_circles
+  UPDATE public.reader_circles
+  SET requester_username = COALESCE(NEW.username, requester_username),
+      requester_display_name = COALESCE(NEW.display_name, requester_display_name),
+      updated_at = timezone('utc'::text, now())
+  WHERE requester_id = NEW.id;
+
+  UPDATE public.reader_circles
+  SET recipient_username = COALESCE(NEW.username, recipient_username),
+      recipient_display_name = COALESCE(NEW.display_name, recipient_display_name),
+      updated_at = timezone('utc'::text, now())
+  WHERE recipient_id = NEW.id;
+
+  -- Sync updated username and display_name into symposium_sessions
+  UPDATE public.symposium_sessions
+  SET host_username = COALESCE(NEW.username, host_username),
+      host_display_name = COALESCE(NEW.display_name, host_display_name),
+      updated_at = timezone('utc'::text, now())
+  WHERE host_id = NEW.id;
+
+  UPDATE public.symposium_sessions
+  SET fellow_username = COALESCE(NEW.username, fellow_username),
+      fellow_display_name = COALESCE(NEW.display_name, fellow_display_name),
+      updated_at = timezone('utc'::text, now())
+  WHERE fellow_id = NEW.id;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_profile_identity_sync ON public.profiles;
+CREATE TRIGGER trg_profile_identity_sync
+  AFTER UPDATE OF username, display_name ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_profile_identity_sync();
+
+-- Idempotent data healing for existing reader_circles rows
+UPDATE public.reader_circles rc
+SET requester_username = p.username,
+    requester_display_name = COALESCE(p.display_name, rc.requester_display_name)
+FROM public.profiles p
+WHERE rc.requester_id = p.id
+  AND p.username IS NOT NULL
+  AND (rc.requester_username = '' OR rc.requester_username = 'scholar' OR rc.requester_username <> p.username);
+
+UPDATE public.reader_circles rc
+SET recipient_username = p.username,
+    recipient_display_name = COALESCE(p.display_name, rc.recipient_display_name)
+FROM public.profiles p
+WHERE rc.recipient_id = p.id
+  AND p.username IS NOT NULL
+  AND (rc.recipient_username = '' OR rc.recipient_username = 'scholar' OR rc.recipient_username <> p.username);
+
+-- Idempotent data healing for existing symposium_sessions rows
+UPDATE public.symposium_sessions ss
+SET host_username = p.username,
+    host_display_name = COALESCE(p.display_name, ss.host_display_name)
+FROM public.profiles p
+WHERE ss.host_id = p.id
+  AND p.username IS NOT NULL
+  AND (ss.host_username = '' OR ss.host_username = 'scholar' OR ss.host_username <> p.username);
+
+UPDATE public.symposium_sessions ss
+SET fellow_username = p.username,
+    fellow_display_name = COALESCE(p.display_name, ss.fellow_display_name)
+FROM public.profiles p
+WHERE ss.fellow_id = p.id
+  AND p.username IS NOT NULL
+  AND (ss.fellow_username = '' OR ss.fellow_username = 'scholar' OR ss.fellow_username <> p.username);

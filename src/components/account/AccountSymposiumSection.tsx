@@ -14,7 +14,7 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react';
-import { useHydratedFellowship } from '@/stores/useFellowshipStore';
+import { useHydratedFellowship, formatFellowScholarLabel } from '@/stores/useFellowshipStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ROUTES } from '@/config/routes';
@@ -425,7 +425,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                         {isIncoming ? 'Incoming Circle Request' : 'Sent Circle Request'}
                       </span>
                       <p className="text-sm font-serif font-bold text-foreground mt-1">
-                        {otherName} (@{otherHandle})
+                        {formatFellowScholarLabel(otherName, otherHandle)}
                       </p>
                     </div>
 
@@ -487,7 +487,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                         {sym.book_title || `Volume #${sym.book_id}`}
                       </p>
                       <p className="text-xs font-mono text-muted-foreground">
-                        With {otherName} (@{otherHandle})
+                        With {formatFellowScholarLabel(otherName, otherHandle)}
                       </p>
                     </div>
 

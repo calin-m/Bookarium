@@ -4,7 +4,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Download, Library, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle, Loader2 } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -165,9 +165,21 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                       </>
                     )}
                     {isOffline && (
-                      <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-500 font-semibold flex items-center gap-0.5">
-                        <CheckCircle2 className="w-2.5 h-2.5" /> Offline
-                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleOffline?.(selectedMobileBook);
+                        }}
+                        className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5 border border-emerald-500/30 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group/offline"
+                        title="Downloaded for offline reading — Click to remove"
+                        aria-label={`Downloaded for offline reading. Click to remove ${selectedMobileBook.title} from offline storage.`}
+                      >
+                        <CheckCircle2 className="w-2.5 h-2.5 shrink-0 group-hover/offline:hidden" />
+                        <Trash2 className="w-2.5 h-2.5 shrink-0 hidden group-hover/offline:inline" />
+                        <span className="group-hover/offline:hidden">Downloaded</span>
+                        <span className="hidden group-hover/offline:inline">Remove</span>
+                      </button>
                     )}
                     {readingProgress !== undefined && (
                       <span className="text-muted-foreground ml-1">

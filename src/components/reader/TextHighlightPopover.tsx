@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Copy, Trash2, Check, X, Feather } from 'lucide-react';
 import type { HighlightColor, FellowAnnotation } from '@/stores/useAnnotationStore';
+import { isPlaceholderUsername } from '@/stores/useFellowshipStore';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
@@ -239,7 +240,9 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                     </span>
                   )}
                 <span className="font-mono font-bold text-xs text-amber-700 dark:text-amber-300 truncate">
-                  @{fellowAnnotation.fellowUsername}
+                  {!isPlaceholderUsername(fellowAnnotation.fellowUsername)
+                    ? `@${fellowAnnotation.fellowUsername}`
+                    : (!fellowAnnotation.fellowDisplayName ? 'Fellow Scholar' : '')}
                 </span>
                 <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 shrink-0">
                   Fellow
@@ -271,7 +274,12 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
               </p>
             ) : (
               <p className="text-[11px] font-serif italic text-stone-500 dark:text-stone-400">
-                Highlighted by {fellowAnnotation.fellowDisplayName || `@${fellowAnnotation.fellowUsername}`} in Symposium
+                Highlighted by{' '}
+                {fellowAnnotation.fellowDisplayName ||
+                  (!isPlaceholderUsername(fellowAnnotation.fellowUsername)
+                    ? `@${fellowAnnotation.fellowUsername}`
+                    : 'Fellow Scholar')}{' '}
+                in Symposium
               </p>
             )}
             {!existingAnnotationId && (

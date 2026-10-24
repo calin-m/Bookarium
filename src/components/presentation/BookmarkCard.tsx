@@ -164,14 +164,22 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 </span>
               )}
               {isOffline && (
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 border border-emerald-500/30"
-                  title="Downloaded for offline reading"
-                  aria-label="Available offline"
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleOffline?.(book);
+                  }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 border border-emerald-500/30 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group/offline"
+                  title="Downloaded for offline reading — Click to remove"
+                  aria-label={`Downloaded for offline reading. Click to remove ${book.title} from offline storage.`}
+                  data-testid={`bookmark-card-offline-badge-${book.id}`}
                 >
-                  <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
-                  <span>Offline</span>
-                </span>
+                  <CheckCircle2 className="w-2.5 h-2.5 shrink-0 group-hover/offline:hidden" />
+                  <Trash2 className="w-2.5 h-2.5 shrink-0 hidden group-hover/offline:inline" />
+                  <span className="group-hover/offline:hidden">Downloaded</span>
+                  <span className="hidden group-hover/offline:inline">Remove</span>
+                </button>
               )}
             </div>
 

@@ -105,7 +105,7 @@ describe('BookshelfSpine Component', () => {
       />
     );
 
-    expect(screen.getByText('Offline')).toBeInTheDocument();
+    expect(screen.getByText('Downloaded')).toBeInTheDocument();
     const offlineBtn = screen.getByLabelText(`Remove offline copy of ${mockBook.title}`);
     fireEvent.click(offlineBtn);
     expect(handleToggleOffline).toHaveBeenCalledWith(mockBook);

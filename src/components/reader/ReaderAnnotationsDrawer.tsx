@@ -11,6 +11,7 @@ import {
   type AnyAnnotation,
 } from '@/lib/reader-annotator';
 import type { ReaderTheme } from '@/stores/useReaderStore';
+import { formatFellowScholarLabel } from '@/stores/useFellowshipStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { ANNOTATION_COLOR_CONFIG, ANNOTATION_COLOR_LIST } from '@/config/annotation-tokens';
 import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
@@ -343,10 +344,10 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                         >
                           <Feather className="w-2.5 h-2.5" />
                           <span>
-                            {item.pairedFellowAnnotation.fellowDisplayName &&
-                            item.pairedFellowAnnotation.fellowDisplayName !== item.pairedFellowAnnotation.fellowUsername
-                              ? `${item.pairedFellowAnnotation.fellowDisplayName} (@${item.pairedFellowAnnotation.fellowUsername})`
-                              : `@${item.pairedFellowAnnotation.fellowUsername}`}
+                            {formatFellowScholarLabel(
+                              item.pairedFellowAnnotation.fellowDisplayName,
+                              item.pairedFellowAnnotation.fellowUsername
+                            )}
                           </span>
                         </span>
                       )}
@@ -357,9 +358,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                         >
                           <Feather className="w-2.5 h-2.5" />
                           <span>
-                            {item.fellowDisplayName && item.fellowDisplayName !== item.fellowUsername
-                              ? `${item.fellowDisplayName} (@${item.fellowUsername})`
-                              : `@${item.fellowUsername}`}
+                            {formatFellowScholarLabel(item.fellowDisplayName, item.fellowUsername)}
                           </span>
                         </span>
                       )}

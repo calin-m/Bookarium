@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAnnotationStore } from './useAnnotationStore';
+import { useFellowshipStore } from './useFellowshipStore';
 
 // Mock Supabase client
 const mockInsert = vi.fn().mockResolvedValue({ error: null });
@@ -851,6 +852,88 @@ describe('useAnnotationStore', () => {
     useAnnotationStore.getState().updateBookMetadata(84, 'Frankenstein', 'Mary Wollstonecraft Shelley');
     expect(useAnnotationStore.getState().fellowAnnotations[0].bookTitle).toBe('Frankenstein');
     expect(useAnnotationStore.getState().fellowAnnotations[0].bookAuthor).toBe('Mary Wollstonecraft Shelley');
+  });
+
+  it('heals fellowAnnotations stuck on scholar or fellow_scholar via resolveStaleFellowProfiles', async () => {
+    mockProfilesIn.mockResolvedValueOnce({
+      data: [{ id: 'user-healed-1', username: 'plato_athens', display_name: 'Plato' }],
+      error: null,
+    });
+
+    useAnnotationStore.setState({
+      fellowAnnotations: [
+        {
+          id: 'fa-stale-1',
+          userId: 'user-healed-1',
+          bookId: 1342,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'The mind is everything.',
+          color: 'amber',
+          isFellow: true,
+          fellowUsername: 'scholar',
+          fellowDisplayName: 'Scholar',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+    });
+
+    await useAnnotationStore.getState().resolveStaleFellowProfiles();
+    const updated = useAnnotationStore.getState().fellowAnnotations[0];
+    expect(updated.fellowUsername).toBe('plato_athens');
+    expect(updated.fellowDisplayName).toBe('Plato');
+  });
+
+  it('buildFellowScholarsMap retains real handle when merging placeholder companion records', () => {
+    useFellowshipStore.setState({
+      circles: [
+        {
+          id: 'c1',
+          requester_id: 'user-host',
+          recipient_id: 'user-merge-1',
+          recipient_username: 'ada_lovelace',
+          recipient_display_name: 'Ada Lovelace',
+          status: 'accepted',
+          created_at: '',
+          updated_at: '',
+        } as any,
+      ],
+      symposiums: [
+        {
+          id: 's1',
+          book_id: 1342,
+          host_id: 'user-host',
+          fellow_id: 'user-merge-1',
+          fellow_username: 'scholar',
+          fellow_display_name: 'Scholar',
+          status: 'active',
+        } as any,
+      ],
+    });
+
+    useAnnotationStore.setState({
+      fellowAnnotations: [
+        {
+          id: 'fa-1',
+          userId: 'user-merge-1',
+          bookId: 1342,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Passage',
+          color: 'amber',
+          isFellow: true,
+          fellowUsername: 'scholar',
+          fellowDisplayName: 'Scholar',
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+    });
+
+    useAnnotationStore.getState().enrichFellowAnnotations();
+    expect(useAnnotationStore.getState().fellowAnnotations[0].fellowUsername).toBe('ada_lovelace');
+    expect(useAnnotationStore.getState().fellowAnnotations[0].fellowDisplayName).toBe('Ada Lovelace');
   });
 });
 

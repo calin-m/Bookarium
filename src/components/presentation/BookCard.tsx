@@ -17,12 +17,14 @@ import { Card } from '@/components/ui/Card';
 import { StarRating } from '@/components/ui/StarRating';
 import { ROUTES } from '@/config/routes';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
-
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 
 export interface BookCardProps {
   book: GutendexBook;
   isOffline?: boolean;
   onDownloadClick?: (book: GutendexBook) => void;
+  onRemoveOfflineClick?: (book: GutendexBook) => void;
   onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
   isPreviewActive?: boolean;
   activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
@@ -33,6 +35,7 @@ export const BookCard: React.FC<BookCardProps> = ({
   book,
   isOffline = false,
   onDownloadClick,
+  onRemoveOfflineClick,
   onPreviewClick,
   isPreviewActive = false,
   activeView,
@@ -42,6 +45,8 @@ export const BookCard: React.FC<BookCardProps> = ({
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = React.useState(false);
   const [isConfirmingRemoval, setIsConfirmingRemoval] = React.useState(false);
+  const [isRemoveOfflineModalOpen, setIsRemoveOfflineModalOpen] = React.useState(false);
+  const { removeBook } = useOfflineBooks();
   const confirmTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const clearConfirmTimer = React.useCallback(() => {
@@ -245,15 +250,28 @@ export const BookCard: React.FC<BookCardProps> = ({
           </CursorTooltip>
         )}
 
-        {/* Read-Only Offline Availability Indicator (Top-Left) */}
+        {/* Interactive Downloaded Availability Indicator (Top-Left) */}
         {isOffline && (
-          <div
-            className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono uppercase tracking-wider font-semibold bg-card/95 backdrop-blur-xs text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-xs pointer-events-none"
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onRemoveOfflineClick) {
+                onRemoveOfflineClick(book);
+              } else {
+                setIsRemoveOfflineModalOpen(true);
+              }
+            }}
+            className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono uppercase tracking-wider font-semibold bg-card/95 backdrop-blur-xs text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-xs hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group/offline"
             data-testid={`book-card-offline-badge-${book.id}`}
+            title="Downloaded for offline reading — Click to remove"
+            aria-label={`Downloaded for offline reading. Click to remove ${book.title} from offline storage.`}
           >
-            <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
-            <span>Offline</span>
-          </div>
+            <CheckCircle2 className="w-2.5 h-2.5 shrink-0 group-hover/offline:hidden" />
+            <Trash2 className="w-2.5 h-2.5 shrink-0 hidden group-hover/offline:inline" />
+            <span className="group-hover/offline:hidden">Downloaded</span>
+            <span className="hidden group-hover/offline:inline">Remove</span>
+          </button>
         )}
 
         {/* Quick Action Overlay Badges (Top-Right) with >=44px Hitboxes */}
@@ -563,6 +581,16 @@ export const BookCard: React.FC<BookCardProps> = ({
         </div>
       </div>
     </div>
+
+    <RemoveOfflineBookModal
+      isOpen={isRemoveOfflineModalOpen}
+      bookTitle={book.title}
+      onClose={() => setIsRemoveOfflineModalOpen(false)}
+      onConfirm={async () => {
+        await removeBook(book.id);
+        setIsRemoveOfflineModalOpen(false);
+      }}
+    />
   </Card>
 );
 };

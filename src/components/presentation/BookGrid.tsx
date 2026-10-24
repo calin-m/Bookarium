@@ -19,6 +19,7 @@ export interface BookGridProps {
   onPageChange?: (page: number) => void;
   hasNextPage?: boolean;
   onDownloadClick?: (book: GutendexBook) => void;
+  onRemoveOfflineClick?: (book: GutendexBook) => void;
   onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
   activePreviewBookId?: number | null;
   emptyTitle?: string;
@@ -45,6 +46,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   onPageChange,
   hasNextPage = true,
   onDownloadClick,
+  onRemoveOfflineClick,
   onPreviewClick,
   activePreviewBookId = null,
   emptyTitle = 'No public domain books found',
@@ -218,6 +220,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
                 book={book}
                 isOffline={isBookOffline(book.id)}
                 onDownloadClick={onDownloadClick}
+                onRemoveOfflineClick={onRemoveOfflineClick}
                 onPreviewClick={onPreviewClick}
                 isPreviewActive={activePreviewBookId === book.id}
                 activeView={activeView}

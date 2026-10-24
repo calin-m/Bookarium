@@ -13,6 +13,7 @@ import {
   Feather,
 } from 'lucide-react';
 import type { Annotation, FellowAnnotation, HighlightColor } from '@/stores/useAnnotationStore';
+import { formatFellowScholarLabel } from '@/stores/useFellowshipStore';
 import {
   isFellowAnnotation,
   computeSharedQuoteSegments,
@@ -213,10 +214,10 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               >
                 <Feather className="w-2.5 h-2.5" />
                 <span>
-                  {pairedFellowAnnotation.fellowDisplayName &&
-                  pairedFellowAnnotation.fellowDisplayName !== pairedFellowAnnotation.fellowUsername
-                    ? `${pairedFellowAnnotation.fellowDisplayName} (@${pairedFellowAnnotation.fellowUsername})`
-                    : `@${pairedFellowAnnotation.fellowUsername}`}
+                  {formatFellowScholarLabel(
+                    pairedFellowAnnotation.fellowDisplayName,
+                    pairedFellowAnnotation.fellowUsername
+                  )}
                 </span>
               </span>
             )}
@@ -228,9 +229,7 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               >
                 <Feather className="w-2.5 h-2.5" />
                 <span>
-                  {ann.fellowDisplayName && ann.fellowDisplayName !== ann.fellowUsername
-                    ? `${ann.fellowDisplayName} (@${ann.fellowUsername})`
-                    : `@${ann.fellowUsername}`}
+                  {formatFellowScholarLabel(ann.fellowDisplayName, ann.fellowUsername)}
                 </span>
               </span>
             ) : (
@@ -315,7 +314,7 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               <div className="flex items-center justify-between text-[10px] font-mono text-amber-800 dark:text-amber-300">
                 <span className="flex items-center gap-1 font-bold">
                   <Feather className="w-3 h-3" />
-                  Fellow Reflection ({ann.fellowDisplayName || `@${ann.fellowUsername}`})
+                  Fellow Reflection ({formatFellowScholarLabel(ann.fellowDisplayName, ann.fellowUsername)})
                 </span>
               </div>
               <p className="leading-relaxed whitespace-pre-wrap">{ann.note}</p>
@@ -441,7 +440,7 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
             <div className="flex items-center justify-between text-[10px] font-mono text-amber-800 dark:text-amber-300">
               <span className="flex items-center gap-1 font-bold">
                 <Feather className="w-3 h-3" />
-                Fellow Reflection ({pairedFellowAnnotation.fellowDisplayName || `@${pairedFellowAnnotation.fellowUsername}`})
+                Fellow Reflection ({formatFellowScholarLabel(pairedFellowAnnotation.fellowDisplayName, pairedFellowAnnotation.fellowUsername)})
               </span>
             </div>
             <p className="leading-relaxed whitespace-pre-wrap">{pairedFellowAnnotation.note}</p>

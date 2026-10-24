@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 24 Oct 2026 12:48:52 GMT  
+**Last Generated**: Sat, 24 Oct 2026 14:11:38 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 186 passed  
-**Total Verified Tests**: 1841 passed  
+**Total Test Suites**: 187 passed  
+**Total Verified Tests**: 1852 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **186/186 test suites passed** (1841 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1852 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 60 Architectural Decision Records validated |
@@ -25,14 +25,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **95.95%** (9139/9524) — *Target: $ge$ 85%*
-- **Statements**: **94.57%** (9945/10515) — *Target: $ge$ 85%*
-- **Functions**: **92.74%** (2147/2315) — *Target: $ge$ 85%*
-- **Branches**: **85.07%** (9065/10655) — *Target: $ge$ 85%*
+- **Lines**: **95.78%** (9279/9687) — *Target: $ge$ 85%*
+- **Statements**: **94.42%** (10104/10701) — *Target: $ge$ 85%*
+- **Functions**: **92.39%** (2164/2342) — *Target: $ge$ 85%*
+- **Branches**: **85.04%** (9181/10796) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (186 Suites / 1841 Tests)
+## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1852 Tests)
 
 ### 🚀 App Routes & Pages (26 Suites · 236 Tests)
 
@@ -483,7 +483,7 @@
 - ✔ `enforces min-w-0 on card root and inner metadata flex column to prevent mobile grid blowout`
 - ✔ `preserves neutral editorial card border, shadow-booksaw elevation, and clean topic badges without orange hover borders`
 - ✔ `covers rating & reading status badges, direct primary tag clicks, restricted cover clicks, and all favorite/bookshelf tooltip states`
-- ✔ `renders read-only Offline badge on cover when isOffline is true`
+- ✔ `renders interactive Downloaded badge on cover when isOffline is true and handles click`
 
 </details>
 
@@ -1260,7 +1260,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 166 Tests)
+### ⚡ Zustand State Stores (10 Suites · 172 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (9 tests)</summary>
@@ -1278,7 +1278,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1303,6 +1303,8 @@
 - ✔ `toggles marginaliaSourceFilter and spoilerShieldEnabled and fetches fellow annotations for a book`
 - ✔ `auto-resolves fellow identity from useFellowshipStore when fellowScholarsMap is omitted and heals cached fellow_scholar entries via enrichFellowAnnotations`
 - ✔ `covers fetchFellowAnnotationsForBook profile fallback, early return, error fallback, and enrichFellowAnnotations symposium fallback`
+- ✔ `heals fellowAnnotations stuck on scholar or fellow_scholar via resolveStaleFellowProfiles`
+- ✔ `buildFellowScholarsMap retains real handle when merging placeholder companion records`
 
 </details>
 
@@ -1391,7 +1393,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `invites a Fellow Scholar by @username via RPC lookup and accepts invitation`
 - ✔ `validates empty and self @username invitations and handles missing handles`
@@ -1399,6 +1401,10 @@
 - ✔ `calculates incoming pending invite count and cascades fellow removal to symposiums`
 - ✔ `fetches fellowship data and exposes hydrated fellowship hook`
 - ✔ `covers unauthenticated guards, profile lookup fallback, duplicate symposiums, decline symposium, and error recovery`
+- ✔ `heals companion placeholder identities during fetchFellowshipData and covers companion progress and fellow removal`
+- ✔ `resolves stale placeholder recipient identities via profiles lookup in inviteFellowByProfile and createSymposiumInvite`
+- ✔ `correctly identifies placeholder usernames`
+- ✔ `formats fellow scholar labels cleanly avoiding (@scholar)`
 
 </details>
 
@@ -2498,7 +2504,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (46 Suites · 231 Tests)
+### 🧩 UI Primitives & Motion (47 Suites · 236 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2821,6 +2827,17 @@
 - ✔ `renders nothing when strength is empty or score is 0 without label`
 - ✔ `renders score segments and label for Moderate password`
 - ✔ `renders all 3 segments filled for Strong password`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/RemoveOfflineBookModal.test.tsx</code></b> (5 tests)</summary>
+
+- ✔ `renders modal with book title and reassurance message when open`
+- ✔ `triggers onConfirm when Remove Download button is clicked`
+- ✔ `triggers onClose when Cancel button is clicked`
+- ✔ `renders generic fallback prompt when bookTitle is omitted`
+- ✔ `does not render when isOpen is false`
 
 </details>
 

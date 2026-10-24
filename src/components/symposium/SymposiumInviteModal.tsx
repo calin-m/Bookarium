@@ -4,7 +4,11 @@ import React, { useState } from 'react';
 import { Users, BookOpen, Check, Sparkles, UserPlus, ChevronDown } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { useFellowshipStore, type AcceptedFellowSummary } from '@/stores/useFellowshipStore';
+import {
+  useFellowshipStore,
+  formatFellowScholarLabel,
+  type AcceptedFellowSummary,
+} from '@/stores/useFellowshipStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 
 export interface SymposiumInviteModalProps {
@@ -179,7 +183,7 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
               >
                 {acceptedFellows.map((f) => (
                   <option key={f.fellowId} value={f.fellowId}>
-                    {f.displayName} (@{f.username})
+                    {formatFellowScholarLabel(f.displayName, f.username)}
                   </option>
                 ))}
               </select>

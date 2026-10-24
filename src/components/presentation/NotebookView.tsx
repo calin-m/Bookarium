@@ -26,6 +26,7 @@ import {
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import {
   isBookPublicDomainInJurisdiction,
@@ -179,6 +180,23 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       updateBookMetadata(book.id, book.title, author);
     }
   }, [remoteBooksData, updateBookMetadata]);
+
+  // Hydrate reader circle and symposium companion identities and resolve any stale placeholder usernames
+  useEffect(() => {
+    if (!user?.id) return;
+    const fellowshipStore = useFellowshipStore.getState();
+    const annotationStore = useAnnotationStore.getState();
+
+    fellowshipStore
+      .fetchFellowshipData(user.id)
+      .then(() => {
+        annotationStore.enrichFellowAnnotations();
+        return annotationStore.resolveStaleFellowProfiles();
+      })
+      .catch(() => {
+        // Non-blocking
+      });
+  }, [user?.id]);
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
