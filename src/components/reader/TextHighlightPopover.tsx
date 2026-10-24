@@ -186,7 +186,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
         className={`rounded-xl border p-1.5 flex flex-col gap-1.5 text-xs font-sans select-none backdrop-blur-md ${themeBg}`}
       >
         {/* 2-Pill Overlap Switcher when both user and Fellow Scholar highlighted the same passage */}
-        {fellowAnnotation && !isFellowOnly && (
+        {fellowAnnotation && (
           <div
             data-testid="popover-overlap-switcher"
             className="flex items-center gap-1 p-1 rounded-lg bg-stone-100/80 dark:bg-stone-800/80 border border-stone-200/60 dark:border-stone-700/60 mb-0.5"
@@ -221,8 +221,8 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
           </div>
         )}
 
-        {/* Read-Only Scholar Attribution View (when viewing Fellow's Marginalia) */}
-        {(isFellowOnly || (fellowAnnotation && activeSourceTab === 'fellow')) && fellowAnnotation ? (
+        {/* Scholar Attribution View (when viewing Fellow's Marginalia) */}
+        {fellowAnnotation && activeSourceTab === 'fellow' ? (
           <div
             data-testid="popover-fellow-attribution"
             className="p-2 flex flex-col gap-2 w-64 sm:w-72"
@@ -271,8 +271,22 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
               </p>
             ) : (
               <p className="text-[11px] font-serif italic text-stone-500 dark:text-stone-400">
-                Highlighted by @{fellowAnnotation.fellowUsername} in Symposium
+                Highlighted by {fellowAnnotation.fellowDisplayName || `@${fellowAnnotation.fellowUsername}`} in Symposium
               </p>
+            )}
+            {!existingAnnotationId && (
+              <button
+                type="button"
+                data-testid="fellow-popover-add-own-note-btn"
+                onClick={() => {
+                  setActiveSourceTab('mine');
+                  setIsNoteExpanded(true);
+                }}
+                className="mt-0.5 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-200 font-mono text-[11px] font-bold border border-stone-200/80 dark:border-stone-700/80 transition-colors cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                <span>Add My Note & Highlight</span>
+              </button>
             )}
           </div>
         ) : (

@@ -66,6 +66,7 @@ describe('NotebookView component', () => {
     render(<NotebookView />);
 
     expect(screen.getByRole('region', { name: /Literary Commonplace Notebook/i })).toHaveClass('py-6', 'sm:py-12');
+    expect(screen.getByText('MARGINALIA & REFLECTIONS')).toBeInTheDocument();
     expect(screen.getByText('Literary Notebook')).toBeInTheDocument();
     expect(screen.getAllByText('Pride and Prejudice').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/by Jane Austen/i).length).toBeGreaterThanOrEqual(1);

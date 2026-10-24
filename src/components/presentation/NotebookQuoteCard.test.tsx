@@ -182,14 +182,24 @@ describe('NotebookQuoteCard', () => {
       fellowDisplayName: 'Clara Vance',
     };
 
-    render(<NotebookQuoteCard {...defaultProps} annotation={fellowAnnotation} />);
+    const { rerender } = render(<NotebookQuoteCard {...defaultProps} annotation={fellowAnnotation} />);
 
     expect(screen.getByTestId('notebook-fellow-badge-fellow-ann-1')).toHaveTextContent(
       'Clara Vance (@clara_v)'
     );
+    expect(screen.getByText('Fellow Reflection (Clara Vance)')).toBeInTheDocument();
     expect(screen.queryByTestId('edit-quote-btn-fellow-ann-1')).not.toBeInTheDocument();
     expect(screen.queryByTestId('delete-quote-btn-fellow-ann-1')).not.toBeInTheDocument();
     expect(screen.getByTestId('jump-reader-btn-fellow-ann-1')).toBeInTheDocument();
+
+    // Rerender with empty fellowDisplayName to assert @fellowUsername fallback
+    const anonymousFellowAnn = {
+      ...fellowAnnotation,
+      id: 'fellow-ann-2',
+      fellowDisplayName: '',
+    };
+    rerender(<NotebookQuoteCard {...defaultProps} annotation={anonymousFellowAnn} />);
+    expect(screen.getByText('Fellow Reflection (@clara_v)')).toBeInTheDocument();
   });
 });
 

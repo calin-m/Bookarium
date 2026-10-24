@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 23 Oct 2026 17:37:28 GMT  
+**Last Generated**: Sat, 24 Oct 2026 06:45:47 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 184 passed  
-**Total Verified Tests**: 1760 passed  
+**Total Verified Tests**: 1767 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **184/184 test suites passed** (1760 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **184/184 test suites passed** (1767 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 58 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 59 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.43%** (8440/9131) — *Target: $ge$ 80%*
-- **Statements**: **90.92%** (9160/10074) — *Target: $ge$ 80%*
-- **Functions**: **89.1%** (1995/2239) — *Target: $ge$ 80%*
-- **Branches**: **80.82%** (8144/10076) — *Target: $ge$ 80%*
+- **Lines**: **92.43%** (8488/9183) — *Target: $ge$ 80%*
+- **Statements**: **90.91%** (9217/10138) — *Target: $ge$ 80%*
+- **Functions**: **89.07%** (2005/2251) — *Target: $ge$ 80%*
+- **Branches**: **80.93%** (8197/10128) — *Target: $ge$ 80%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (184 Suites / 1760 Tests)
+## 🧪 Comprehensive Test Suite Catalog (184 Suites / 1767 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 228 Tests)
+### 🚀 App Routes & Pages (26 Suites · 229 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -330,7 +330,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (34 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (35 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -366,6 +366,7 @@
 - ✔ `navigates directly to chapter and page specified in URL search params`
 - ✔ `navigates to targeted annotation and scrolls it into view when annotationId is provided in URL`
 - ✔ `displays Literary Symposium milestone dispatch banner and reveals companion progress micro-pill when dismissed`
+- ✔ `allows user to save own highlight and note on passage previously annotated by a fellow scholar`
 
 </details>
 
@@ -949,7 +950,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 152 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 156 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1132,18 +1133,19 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSubHeaderRibbon.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSubHeaderRibbon.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `renders default archival metadata, section counter, and progress pill`
 - ✔ `renders resume notice when resumeNotice data is provided`
 - ✔ `renders clean completed notice without Resumed prefix when chapterTitle includes Completed`
 - ✔ `renders symposium companion progress micro-pill when symposiumCompanion is provided`
+- ✔ `falls back to @username in companion pill when displayName is absent`
 - ✔ `renders symposium milestone dispatch banner when no resumeNotice is active and yields priority when resumeNotice is active`
 
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (25 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (27 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -1170,6 +1172,8 @@
 - ✔ `triggers onTextSelected with text and coordinate bounds on valid mouseUp`
 - ✔ `scrolls target annotation into view and applies focus ring pulse`
 - ✔ `renders Fellow Scholar highlights with dashed underline and @fellow badge, and supports overlapping highlights`
+- ✔ `correctly partitions partially overlapping highlights into sub-spans with single trailing fellow badge`
+- ✔ `does not clobber active drag text selection when clicking inside fellow annotation mark`
 
 </details>
 
@@ -1185,7 +1189,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders all 4 color choices and action buttons`
 - ✔ `calls onSelectColor when a color button is clicked`
@@ -1202,6 +1206,7 @@
 - ✔ `positions contextually near anchor on desktop devices`
 - ✔ `renders Read-Only Scholar Attribution view when isFellowOnly is true`
 - ✔ `renders 2-pill overlap switcher when both self and fellow annotations exist`
+- ✔ `renders privacy-aware fallback text when fellow annotation has no note`
 
 </details>
 
@@ -1463,7 +1468,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (37 Suites · 401 Tests)
+### 📚 Gutenberg Parsers & Metadata (37 Suites · 403 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1894,7 +1899,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -1902,7 +1907,9 @@
 - ✔ `sorts multiple disjoint annotations in start order`
 - ✔ `resolves overlapping annotations by prioritizing earlier non-overlapping spans`
 - ✔ `captures multiple occurrences of the same phrase`
-- ✔ `preserves both selfAnnotation and fellowAnnotation when overlapping`
+- ✔ `preserves both selfAnnotation and fellowAnnotation when identical text is highlighted`
+- ✔ `splits intervals at exact boundaries when fellow annotation extends beyond self annotation`
+- ✔ `splits intervals when self annotation starts first and fellow overlaps beyond`
 
 </details>
 
@@ -2918,7 +2925,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **1 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **2 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

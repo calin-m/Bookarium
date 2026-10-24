@@ -260,7 +260,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
 
                       <div className="flex items-center justify-between text-muted-foreground pt-1">
                         <span>
-                          @{fellowHandle} (Sec. {fellowChapter + 1})
+                          {fellowName || `@${fellowHandle}`} (Sec. {fellowChapter + 1})
                         </span>
                         <span className="font-bold">{fellowProgress}%</span>
                       </div>

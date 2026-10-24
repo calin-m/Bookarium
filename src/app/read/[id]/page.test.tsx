@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import React from 'react';
 import BookReaderPage from './page';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -98,6 +98,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     mockSearchParams = new URLSearchParams();
     useBookshelfStore.getState().clearBookshelf();
     useAnnotationStore.getState().clearAllAnnotations();
+    useFellowshipStore.getState().clearFellowshipState();
     useReaderStore.getState().setFontSize(18);
     useReaderStore.getState().setTheme('light');
     useReaderStore.setState({
@@ -796,14 +797,88 @@ describe('Dedicated Reader Page (/read/[id])', () => {
 
     const banner = screen.getByTestId('symposium-milestone-banner');
     expect(banner).toBeInTheDocument();
-    expect(banner).toHaveTextContent('@clara_v reached Section 2 (50%) in this Symposium');
+    expect(banner).toHaveTextContent('Clara Vance reached Section 2 (50%) in this Symposium');
 
     fireEvent.click(screen.getByTestId('dismiss-symposium-milestone-btn'));
     expect(screen.queryByTestId('symposium-milestone-banner')).not.toBeInTheDocument();
-    expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent('@clara_v: Sec. 2 (50%)');
+    expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent('Clara Vance: Sec. 2 (50%)');
 
     act(() => {
       useFellowshipStore.getState().clearFellowshipState();
+    });
+  });
+
+  it('allows user to save own highlight and note on passage previously annotated by a fellow scholar', async () => {
+    useAnnotationStore.setState({
+      fellowAnnotations: [
+        {
+          id: 'fellow-ann-symp-1',
+          bookId: 1342,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Pride and Prejudice',
+          color: 'amber',
+          note: 'Fellow reflection on classic work',
+          createdAt: '2026-10-15T10:00:00Z',
+          updatedAt: '2026-10-15T10:00:00Z',
+          isFellow: true,
+          fellowUsername: 'hypatia',
+          fellowDisplayName: 'Hypatia of Alexandria',
+        },
+      ],
+      annotations: [],
+    });
+
+    render(<BookReaderPage />);
+
+    const fellowMark = screen.getByTestId('fellow-annotation-highlight');
+    expect(fellowMark).toBeInTheDocument();
+    expect(screen.getByTestId('fellow-highlight-badge')).toHaveTextContent('Hypatia of Alexandria');
+
+    // Click fellow mark to view fellow annotation
+    await act(async () => {
+      fireEvent.click(fellowMark);
+    });
+
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+    const fellowPopover = screen.getByTestId('popover-fellow-attribution');
+    expect(fellowPopover).toBeInTheDocument();
+    expect(within(fellowPopover).getByText('Hypatia of Alexandria')).toBeInTheDocument();
+    expect(within(fellowPopover).getByText('@hypatia')).toBeInTheDocument();
+
+    // Click "Add My Note & Highlight" in popover
+    const addOwnBtn = screen.getByTestId('fellow-popover-add-own-note-btn');
+    expect(addOwnBtn).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(addOwnBtn);
+    });
+
+    // Color options and note textarea are now visible to the user
+    const colorBtn = screen.getByTestId('highlight-color-mint');
+    expect(colorBtn).toBeInTheDocument();
+    const textarea = screen.getByTestId('highlight-note-textarea');
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'My perspective alongside Hypatia' } });
+    });
+
+    // Save note
+    const saveBtn = screen.getByTestId('highlight-save-note-btn');
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('text-highlight-popover')).not.toBeInTheDocument();
+    });
+
+    // Verify own annotation was saved in store
+    const stored = useAnnotationStore.getState().annotations;
+    expect(stored).toHaveLength(1);
+    expect(stored[0].note).toBe('My perspective alongside Hypatia');
+    expect(stored[0].selectedText).toBe('Pride and Prejudice');
+
+    act(() => {
+      useAnnotationStore.setState({ fellowAnnotations: [], annotations: [] });
     });
   });
 });

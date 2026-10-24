@@ -1089,7 +1089,7 @@
 - **Context**:
   1. **Dormant Transitive Glob Dependencies (`GHSA-vfj7-8cjw-p6xm`)**:
      - Legacy file-globbing libraries (`braces@3.0.3`, `micromatch@4.0.8`, `fast-glob@3.3.3`, and `chokidar@3.6.0`) triggered 7 high-severity `npm audit` warnings due to stack-exhaustion regular expression patterns in `braces`.
-     - These packages entered the dependency graph strictly via two `devDependencies`: `tailwindcss@3.4.19` and `@next/eslint-plugin-next@16.4.2`.
+     - These packages entered the dependency graph strictly via two `devDependencies`: `tailwindcss@3.4.19` and `@next/eslint-plugin-next@16.4.3`.
   2. **Zero-Regression Styling Requirement**:
      - Bookarium relies on an extensive custom editorial theme in `tailwind.config.ts` (`booksaw`, `paper`, `shelf` palettes, custom `shadow-booksaw` / `shadow-spine` elevations, class-based `.dark` and `.sepia` themes) and 177 co-located test suites. Upgrading to Tailwind CSS v4 must preserve 100% visual and behavioral parity without rewriting component class names.
 - **Decision**:
@@ -1200,3 +1200,37 @@
   - Modular, single-responsibility architecture across backup validation, account preference sub-panels, and cloud bookshelf synchronization with 100% backward compatibility.
   - Production deployments no longer expose `'unsafe-eval'` CSP exceptions.
   - Registration and verification links always resolve to the public Bookarium domain (`https://bookarium.vercel.app`) and seamlessly guide users across both same-device and cross-device confirmation flows, while account deletion guarantees 100% cloud and local data erasure across all 11 relational tables and 6 client stores.
+
+
+## ADR-059: Layered Dual-Band Overlapping Highlights, Privacy-Preserving Fellow Scholar Attribution, and Next.js 16.4.3 Compatibility
+- **Status**: Accepted
+- **Context**:
+  1. **Overlapping Marginalia Visual Disambiguation**:
+     - When a reader and a Fellow Scholar in a Literary Symposium highlighted intersecting text ranges, the previous flat rendering combined them into a single continuous dashed underline, rendering sub-phrase boundaries invisible and repeating trailing fellow attribution badges across each fragmented segment.
+     - Readers required distinct visual layering where both notes remain individually legible (Option A: nested dual-band highlight with translucent opacity and inset ring).
+  2. **Fellow Scholar Friendly Identity vs. Public Privacy Boundaries**:
+     - Across Reader headers, companion progress micro-pills, milestone banners, quote cards, and popovers, Fellow Scholars were previously identified by `@username` rather than their human-readable `displayName`.
+     - In alignment with Bookarium's privacy boundary model, private profiles (`is_public = false`) must remain strictly inaccessible to uninvited public visitors, while mutual companions connected via accepted Reader Circles and Symposiums legitimately exchange display names.
+  3. **Symposium Progress Synchronization Infinite Update Loop**:
+     - In `src/stores/useFellowshipStore.ts`, `syncSymposiumProgress` invoked `set(...)` on every scroll or page advance without an equality guard, causing Next.js to trigger `Maximum update depth exceeded` in `src/app/read/[id]/page.tsx`.
+  4. **Next.js & ESLint Supply-Chain Bump**:
+     - Next.js 16.4.3 was released with critical Turbopack and SSR improvements.
+- **Decision**:
+  1. **Elementary Non-Overlapping Interval Partitioning (`src/lib/reader-annotator.ts`)**:
+     - Implemented discrete coordinate boundary extraction across personal and fellow annotations.
+     - Tagged `isFellowEnd: true` exclusively on the terminal segment of each Fellow Annotation's range.
+  2. **Option A: Nested Dual-Band Highlight Rendering (`src/components/reader/ReaderSurface.tsx`)**:
+     - Rendered outer `<mark>` with a taller Fellow amber frame (`py-[3.5px] px-0.5 bg-amber-500/20 border-b-2 border-dashed border-amber-600/85`) enclosing an inner, tighter personal highlight (`py-[0.5px] px-0.5 rounded-xs ring-1 ring-inset ${colorConfig.surfaceHighlightClass}`) with translucent opacity.
+     - Positioned the fellow attribution badge strictly on the final segment of the fellow's passage (`span.fellowAnnotation && span.isFellowEnd !== false`).
+  3. **Privacy-Preserving Display Name Attribution (`ReaderSurface.tsx`, `ReaderSubHeaderRibbon.tsx`, `TextHighlightPopover.tsx`, `NotebookQuoteCard.tsx`, `AccountSymposiumSection.tsx`)**:
+     - Replaced `@username` with `fellowDisplayName || '@' + fellowUsername` across inline highlight badges, milestone dispatch banners, companion progress pills and tooltips, popover empty-note fallbacks, notebook reflection boxes, and account symposium progress bars.
+  4. **Strict Equality Guard & Dependency Stabilization (`useFellowshipStore.ts`, `read/[id]/page.tsx`)**:
+     - Added coordinate diff checks (`currentProgress !== clampedProgress || currentChapter !== chapterIndex`) before calling `set(...)` in `syncSymposiumProgress`.
+     - Narrowed `read/[id]/page.tsx` effect dependencies from the mutable `activeSymposium` object to scalar primitives (`activeSymposium?.id`, `activeSymposium?.status`).
+  5. **Next.js 16.4.3 Upgrade (`package.json`, `package-lock.json`, `README.md`, `docs/DECISIONS.md`)**:
+     - Upgraded `next` and `eslint-config-next` to `16.4.3`.
+- **Consequences**:
+  - Overlapping reader and companion highlights display clear visual depth, allowing distinct perception of both notes even with asymmetrical boundary intersections.
+  - Fellow companions are addressed by their friendly display names throughout all reading and fellowship workflows while preserving private profile boundaries.
+  - Zero infinite re-render loops during continuous reading and pagination.
+  - Full compatibility with Next.js 16.4.3 across all 7 verification quality gateways.

@@ -112,7 +112,7 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
         <div className="flex items-center gap-2 min-w-0">
           <span className="shrink-0" aria-hidden="true">📜</span>
           <span className="truncate font-medium">
-            @{symposiumMilestoneNotice.username} reached Section {symposiumMilestoneNotice.chapterIndex + 1} ({Math.round(symposiumMilestoneNotice.progress)}%) in this Symposium
+            {symposiumMilestoneNotice.displayName || `@${symposiumMilestoneNotice.username}`} reached Section {symposiumMilestoneNotice.chapterIndex + 1} ({Math.round(symposiumMilestoneNotice.progress)}%) in this Symposium
           </span>
         </div>
         {onDismissSymposiumMilestone && (
@@ -190,11 +190,11 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
             <div
               data-testid="symposium-companion-pill"
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-[10px] font-mono font-bold shrink-0"
-              title={`Symposium Fellow @${symposiumCompanion.username} (${symposiumCompanion.displayName}): Section ${symposiumCompanion.currentChapterIndex + 1}, ${Math.round(symposiumCompanion.progress)}%`}
+              title={`Symposium Fellow ${symposiumCompanion.displayName ? `${symposiumCompanion.displayName} (@${symposiumCompanion.username})` : `@${symposiumCompanion.username}`}: Section ${symposiumCompanion.currentChapterIndex + 1}, ${Math.round(symposiumCompanion.progress)}%`}
             >
               <span className="sm:hidden">🤝 {Math.round(symposiumCompanion.progress)}%</span>
               <span className="hidden sm:inline">
-                🤝 @{symposiumCompanion.username}: Sec. {symposiumCompanion.currentChapterIndex + 1} ({Math.round(symposiumCompanion.progress)}%)
+                🤝 {symposiumCompanion.displayName || `@${symposiumCompanion.username}`}: Sec. {symposiumCompanion.currentChapterIndex + 1} ({Math.round(symposiumCompanion.progress)}%)
               </span>
             </div>
           </>

@@ -432,7 +432,7 @@ describe('ReaderHeader', () => {
       />
     );
 
-    expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent('@clara_v: Sec. 15 (75%)');
+    expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent('Clara Vance: Sec. 15 (75%)');
   });
 });
 

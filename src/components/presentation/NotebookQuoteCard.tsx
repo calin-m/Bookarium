@@ -264,7 +264,7 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               <div className="flex items-center justify-between text-[10px] font-mono text-amber-800 dark:text-amber-300">
                 <span className="flex items-center gap-1 font-bold">
                   <Feather className="w-3 h-3" />
-                  Fellow Reflection (@{ann.fellowUsername})
+                  Fellow Reflection ({ann.fellowDisplayName || `@${ann.fellowUsername}`})
                 </span>
               </div>
               <p className="leading-relaxed whitespace-pre-wrap">{ann.note}</p>

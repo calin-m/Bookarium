@@ -127,6 +127,11 @@ describe('useFellowshipStore', () => {
     const completed = useFellowshipStore.getState().getActiveSymposiumForBook(1342, 'user-fellow');
     expect(completed?.status).toBe('completed');
     expect(completed?.fellow_progress).toBe(100);
+
+    // No-op when progress and chapter have not changed (prevents re-render cascades / infinite loops)
+    const stateBefore = useFellowshipStore.getState().symposiums;
+    await useFellowshipStore.getState().syncSymposiumProgress(1342, 10, 100);
+    expect(useFellowshipStore.getState().symposiums).toBe(stateBefore);
   });
 
   it('calculates incoming pending invite count and cascades fellow removal to symposiums', async () => {

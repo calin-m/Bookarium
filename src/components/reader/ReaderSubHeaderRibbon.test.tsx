@@ -93,7 +93,27 @@ describe('ReaderSubHeaderRibbon', () => {
 
     const pill = screen.getByTestId('symposium-companion-pill');
     expect(pill).toBeInTheDocument();
-    expect(pill).toHaveTextContent('@clara_v: Sec. 12 (68%)');
+    expect(pill).toHaveTextContent('Clara Vance: Sec. 12 (68%)');
+  });
+
+  it('falls back to @username in companion pill when displayName is absent', () => {
+    render(
+      <ReaderSubHeaderRibbon
+        bookId={1342}
+        progress={50}
+        totalChapters={20}
+        currentChapterIndex={4}
+        symposiumCompanion={{
+          username: 'anonymous_reader',
+          displayName: '',
+          progress: 25,
+          currentChapterIndex: 2,
+        }}
+      />
+    );
+
+    const pill = screen.getByTestId('symposium-companion-pill');
+    expect(pill).toHaveTextContent('@anonymous_reader: Sec. 3 (25%)');
   });
 
   it('renders symposium milestone dispatch banner when no resumeNotice is active and yields priority when resumeNotice is active', () => {
@@ -140,7 +160,7 @@ describe('ReaderSubHeaderRibbon', () => {
 
     const banner = screen.getByTestId('symposium-milestone-banner');
     expect(banner).toBeInTheDocument();
-    expect(banner).toHaveTextContent('@clara_v reached Section 10 (50%) in this Symposium');
+    expect(banner).toHaveTextContent('Clara Vance reached Section 10 (50%) in this Symposium');
 
     fireEvent.click(screen.getByTestId('dismiss-symposium-milestone-btn'));
     expect(handleDismissMilestone).toHaveBeenCalledTimes(1);

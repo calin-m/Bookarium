@@ -9,6 +9,23 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.8.1',
+    date: '2026-10-24',
+    title: 'Layered Dual-Band Overlapping Highlights, Privacy-Preserving Fellow Scholar Attribution & Next.js 16.4.3 Compatibility',
+    sections: {
+      Added: [
+        'Layered Dual-Band Overlapping Highlights (Option A) (`src/lib/reader-annotator.ts`, `src/components/reader/ReaderSurface.tsx`, `ADR-059`): Implemented elementary non-overlapping interval partitioning to split intersecting highlight boundaries with `isFellowEnd` tag, and rendered an outer taller amber Fellow highlight frame (`py-[3.5px] px-0.5 border-dashed border-amber-600/85`) enclosing an inner, tighter personal highlight (`py-[0.5px] px-0.5 ring-1 ring-inset`) with single trailing companion badge.',
+        'Privacy-Preserving Fellow Scholar Display Name Attribution (`src/components/reader/ReaderSurface.tsx`, `src/components/reader/ReaderSubHeaderRibbon.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/components/presentation/NotebookQuoteCard.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `ADR-059`): Replaced `@username` with `displayName` (with `@username` fallback) across in-book highlight badges, milestone dispatch banners, companion progress micro-pills, popover empty-note fallbacks, notebook reflection cards, and account symposium progress bars, while strictly preserving `is_public = false` RLS boundary protections for uninvited public profile visitors.',
+      ],
+      Fixed: [
+        'Symposium Continuous Progress Infinite Re-Render Loop Resolution (`src/stores/useFellowshipStore.ts`, `src/app/read/[id]/page.tsx`, `ADR-059`): Resolved Next.js `Maximum update depth exceeded` in `syncSymposiumProgress` by adding coordinate equality diff checks before calling store `set(...)`, and narrowed `read/[id]/page.tsx` effect dependencies from mutable `activeSymposium` to scalar primitives.',
+      ],
+      Updated: [
+        'Next.js 16.4.3 Supply-Chain Upgrade (`package.json`, `package-lock.json`, `README.md`, `docs/DECISIONS.md`, `ADR-059`): Upgraded `next` and `eslint-config-next` to `16.4.3`, verifying Turbopack and Webpack production build stability and updating project documentation badges.',
+      ],
+    },
+  },
+  {
     version: '2.8.0',
     date: '2026-10-23',
     title: 'WCAG 2.2 AA Focus Trapping & Dynamic ARIA, Zero-Any Strict TypeScript, Overlay Code-Splitting, Monolith Decomposition & Hardened Production CSP',

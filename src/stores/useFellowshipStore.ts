@@ -446,6 +446,15 @@ export const useFellowshipStore = create<FellowshipState>()(
         );
         if (activeSessions.length === 0) return;
 
+        // Prevent redundant store mutations and render cycles if chapter and progress have not changed
+        const sessionsNeedingUpdate = activeSessions.filter((sym) => {
+          const isHost = sym.host_id === currentUserId;
+          const currentProgress = isHost ? sym.host_progress : sym.fellow_progress;
+          const currentChapter = isHost ? sym.host_chapter : sym.fellow_chapter;
+          return currentProgress !== clampedProgress || currentChapter !== chapterIndex;
+        });
+        if (sessionsNeedingUpdate.length === 0) return;
+
         const now = new Date().toISOString();
         set((s) => ({
           symposiums: s.symposiums.map((sym) => {

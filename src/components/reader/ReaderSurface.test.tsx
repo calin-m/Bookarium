@@ -742,6 +742,7 @@ describe('ReaderSurface', () => {
       updatedAt: '2026-10-15T10:00:00Z',
       isFellow: true as const,
       fellowUsername: 'plato',
+      fellowDisplayName: 'Plato of Athens',
     };
 
     const { rerender } = render(
@@ -755,12 +756,12 @@ describe('ReaderSurface', () => {
     const fellowMark = screen.getByTestId('fellow-annotation-highlight');
     expect(fellowMark).toBeInTheDocument();
     expect(fellowMark).toHaveClass('border-dashed');
-    expect(screen.getByTestId('fellow-highlight-badge')).toHaveTextContent('@plato');
+    expect(screen.getByTestId('fellow-highlight-badge')).toHaveTextContent('Plato of Athens');
 
     fireEvent.click(fellowMark);
     expect(onSelectAnnotation).toHaveBeenCalledWith(fellowAnn, expect.any(Object));
 
-    // Overlapping self + fellow highlight
+    // Overlapping self + fellow highlight (Option A: dual-band layered)
     const selfAnn: Annotation = {
       id: 'self-ann-1',
       bookId: 1,
@@ -783,7 +784,99 @@ describe('ReaderSurface', () => {
 
     const combinedMark = screen.getByTestId('user-annotation-highlight');
     expect(combinedMark).toHaveClass('border-dashed');
+    expect(screen.getByTestId('overlapping-inner-highlight')).toHaveTextContent('Call me Ishmael.');
+    expect(screen.getByTestId('fellow-highlight-badge')).toHaveTextContent('Plato of Athens');
     fireEvent.click(combinedMark);
     expect(onSelectAnnotation).toHaveBeenCalledWith(selfAnn, expect.any(Object), fellowAnn);
+  });
+
+  it('correctly partitions partially overlapping highlights into sub-spans with single trailing fellow badge', () => {
+    const onSelectAnnotation = vi.fn();
+    const selfAnn: Annotation = {
+      id: 'self-prefix',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Call me',
+      color: 'rose',
+      createdAt: '2026-10-15T10:05:00Z',
+      updatedAt: '2026-10-15T10:05:00Z',
+    };
+    const fellowAnn = {
+      id: 'fellow-full',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Call me Ishmael.',
+      color: 'amber' as const,
+      createdAt: '2026-10-15T10:00:00Z',
+      updatedAt: '2026-10-15T10:00:00Z',
+      isFellow: true as const,
+      fellowUsername: 'hypatia',
+    };
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        annotations={[selfAnn, fellowAnn]}
+        onSelectAnnotation={onSelectAnnotation}
+      />
+    );
+
+    // Overlapping sub-span (0..7: "Call me") has inner highlight
+    expect(screen.getByTestId('overlapping-inner-highlight')).toHaveTextContent('Call me');
+
+    // Trailing non-overlapping fellow sub-span (7..16: " Ishmael.")
+    const fellowTrailingMark = screen.getByTestId('fellow-annotation-highlight');
+    expect(fellowTrailingMark).toHaveTextContent('Ishmael.');
+
+    // Exactly one fellow badge is rendered at the end of the fellow passage
+    const badges = screen.getAllByTestId('fellow-highlight-badge');
+    expect(badges).toHaveLength(1);
+    expect(badges[0]).toHaveTextContent('@hypatia');
+  });
+
+  it('does not clobber active drag text selection when clicking inside fellow annotation mark', () => {
+    const onSelectAnnotation = vi.fn();
+    const fellowAnn = {
+      id: 'fellow-ann-1',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Call me Ishmael.',
+      color: 'amber' as const,
+      note: 'Narrator introduction',
+      createdAt: '2026-10-15T10:00:00Z',
+      updatedAt: '2026-10-15T10:00:00Z',
+      isFellow: true as const,
+      fellowUsername: 'plato',
+    };
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        annotations={[fellowAnn]}
+        onSelectAnnotation={onSelectAnnotation}
+      />
+    );
+
+    const fellowMark = screen.getByTestId('fellow-annotation-highlight');
+
+    // Simulate active non-collapsed drag selection
+    const originalGetSelection = window.getSelection;
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'Call me',
+      anchorNode: fellowMark,
+      getRangeAt: () => ({
+        getBoundingClientRect: () => ({ top: 100, bottom: 120, left: 150, width: 60, height: 20 }),
+        cloneContents: () => document.createDocumentFragment(),
+      }),
+    } as unknown as Selection);
+
+    fireEvent.click(fellowMark);
+    expect(onSelectAnnotation).not.toHaveBeenCalled();
+
+    window.getSelection = originalGetSelection;
   });
 });

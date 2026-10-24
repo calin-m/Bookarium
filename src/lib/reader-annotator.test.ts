@@ -83,7 +83,26 @@ describe('computeAnnotationSpans', () => {
     expect(spans[1].end).toBe(18);
   });
 
-  it('preserves both selfAnnotation and fellowAnnotation when overlapping', () => {
+  it('preserves both selfAnnotation and fellowAnnotation when identical text is highlighted', () => {
+    const text = 'It is a truth universally acknowledged';
+    const selfAnn = createAnnotation('self-1', 'truth universally');
+    const fellowAnn = {
+      ...createAnnotation('fellow-1', 'truth universally'),
+      isFellow: true as const,
+      fellowUsername: 'jane_austen',
+    };
+
+    const spans = computeAnnotationSpans(text, [selfAnn, fellowAnn]);
+    expect(spans).toHaveLength(1);
+    expect(spans[0].start).toBe(8);
+    expect(spans[0].end).toBe(25);
+    expect(spans[0].selfAnnotation?.id).toBe('self-1');
+    expect(spans[0].fellowAnnotation?.id).toBe('fellow-1');
+    expect(spans[0].fellowAnnotation?.fellowUsername).toBe('jane_austen');
+    expect(spans[0].isFellowEnd).toBe(true);
+  });
+
+  it('splits intervals at exact boundaries when fellow annotation extends beyond self annotation', () => {
     const text = 'It is a truth universally acknowledged';
     const selfAnn = createAnnotation('self-1', 'truth universally');
     const fellowAnn = {
@@ -93,10 +112,54 @@ describe('computeAnnotationSpans', () => {
     };
 
     const spans = computeAnnotationSpans(text, [selfAnn, fellowAnn]);
-    expect(spans).toHaveLength(1);
+    expect(spans).toHaveLength(2);
+
+    // Segment 1: Dual overlapping segment
+    expect(spans[0].start).toBe(8);
+    expect(spans[0].end).toBe(25);
     expect(spans[0].selfAnnotation?.id).toBe('self-1');
     expect(spans[0].fellowAnnotation?.id).toBe('fellow-1');
-    expect(spans[0].fellowAnnotation?.fellowUsername).toBe('jane_austen');
+    expect(spans[0].isFellowEnd).toBe(false);
+
+    // Segment 2: Fellow-only continuation with single badge at the end
+    expect(spans[1].start).toBe(25);
+    expect(spans[1].end).toBe(38);
+    expect(spans[1].selfAnnotation).toBeUndefined();
+    expect(spans[1].fellowAnnotation?.id).toBe('fellow-1');
+    expect(spans[1].isFellowEnd).toBe(true);
+  });
+
+  it('splits intervals when self annotation starts first and fellow overlaps beyond', () => {
+    const text = 'Call me Ishmael, some years ago';
+    const selfAnn = createAnnotation('self-1', 'Call me Ishmael');
+    const fellowAnn = {
+      ...createAnnotation('fellow-1', 'Ishmael, some years ago'),
+      isFellow: true as const,
+      fellowUsername: 'melville',
+    };
+
+    const spans = computeAnnotationSpans(text, [selfAnn, fellowAnn]);
+    expect(spans).toHaveLength(3);
+
+    // 1. Self-only prefix
+    expect(spans[0].start).toBe(0);
+    expect(spans[0].end).toBe(8);
+    expect(spans[0].selfAnnotation?.id).toBe('self-1');
+    expect(spans[0].fellowAnnotation).toBeUndefined();
+
+    // 2. Dual overlapping shared segment
+    expect(spans[1].start).toBe(8);
+    expect(spans[1].end).toBe(15);
+    expect(spans[1].selfAnnotation?.id).toBe('self-1');
+    expect(spans[1].fellowAnnotation?.id).toBe('fellow-1');
+    expect(spans[1].isFellowEnd).toBe(false);
+
+    // 3. Fellow-only suffix with badge
+    expect(spans[2].start).toBe(15);
+    expect(spans[2].end).toBe(31);
+    expect(spans[2].selfAnnotation).toBeUndefined();
+    expect(spans[2].fellowAnnotation?.id).toBe('fellow-1');
+    expect(spans[2].isFellowEnd).toBe(true);
   });
 });
 

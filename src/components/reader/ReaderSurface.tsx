@@ -122,7 +122,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
 
-    const text = selection.toString().trim();
+    let text = selection.toString().trim();
     if (text.length < 2) return;
 
     // Verify anchor or focus node belongs to reader surface when available
@@ -134,6 +134,22 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
 
     try {
       const range = selection.getRangeAt(0);
+      // Strip any inline fellow username badges (@username) that may have been captured inside <mark>
+      if (typeof range.cloneContents === 'function') {
+        const cloned = range.cloneContents();
+        const badges = cloned.querySelectorAll?.('[data-testid="fellow-highlight-badge"]');
+        if (badges && badges.length > 0) {
+          badges.forEach((b) => b.remove());
+          const cleanedText = cloned.textContent?.trim();
+          if (cleanedText && cleanedText.length >= 2) {
+            text = cleanedText;
+          }
+        }
+      }
+      // Safety strip for trailing @fellow_username badge text
+      text = text.replace(/@[a-zA-Z0-9_-]+$/, '').trim();
+      if (text.length < 2) return;
+
       const rect = range.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
         onTextSelected({
@@ -382,7 +398,7 @@ function renderContentWithAnnotations(
     const highlightClass = isFellowOnly
       ? 'bg-amber-500/15 border-b-2 border-dashed border-amber-600/75 dark:border-amber-400/75 rounded-xs px-0.5 cursor-pointer transition-colors hover:bg-amber-500/25 text-inherit'
       : hasOverlap
-      ? `${colorConfig.surfaceHighlightClass} border-b-2 border-dashed border-amber-600/85 dark:border-amber-400/85`
+      ? 'py-[3.5px] px-0.5 bg-amber-500/20 dark:bg-amber-500/25 border-b-2 border-dashed border-amber-600/85 dark:border-amber-400/85 rounded-xs cursor-pointer transition-colors text-inherit'
       : colorConfig.surfaceHighlightClass;
 
     elements.push(
@@ -392,8 +408,16 @@ function renderContentWithAnnotations(
         data-annotation-id={span.annotation.id}
         data-annotation-color={span.annotation.color}
         data-fellow-username={span.fellowAnnotation?.fellowUsername}
+        data-fellow-display-name={span.fellowAnnotation?.fellowDisplayName}
         onClick={(e) => {
           e.stopPropagation();
+          // If the user has an active non-collapsed text selection (e.g. dragged to select text inside <mark>),
+          // allow handleSelection to handle it without being clobbered by whole-annotation click.
+          const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+          if (sel && !sel.isCollapsed && sel.toString().trim().length >= 2) {
+            return;
+          }
+
           const rect = e.currentTarget.getBoundingClientRect();
           const pos = {
             top: rect.top,
@@ -407,13 +431,22 @@ function renderContentWithAnnotations(
         }}
         className={highlightClass}
       >
-        {text.slice(span.start, span.end)}
-        {span.fellowAnnotation && (
+        {hasOverlap ? (
+          <span
+            data-testid="overlapping-inner-highlight"
+            className={`py-[0.5px] px-0.5 rounded-xs ring-1 ring-inset ${colorConfig.surfaceHighlightClass}`}
+          >
+            {text.slice(span.start, span.end)}
+          </span>
+        ) : (
+          text.slice(span.start, span.end)
+        )}
+        {span.fellowAnnotation && span.isFellowEnd !== false && (
           <sup
             data-testid="fellow-highlight-badge"
             className="ml-0.5 inline-flex items-center px-1 py-0 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 select-none"
           >
-            @{span.fellowAnnotation.fellowUsername}
+            {span.fellowAnnotation.fellowDisplayName || `@${span.fellowAnnotation.fellowUsername}`}
           </sup>
         )}
       </mark>

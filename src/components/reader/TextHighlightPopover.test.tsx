@@ -251,6 +251,14 @@ describe('TextHighlightPopover', () => {
     expect(screen.getByText('@plato')).toBeInTheDocument();
     expect(screen.getByText(/Profound soliloquy reflection by Plato/i)).toBeInTheDocument();
     expect(screen.queryByTestId('highlight-delete-btn')).not.toBeInTheDocument();
+
+    // User can switch to 'My Note' tab even when isFellowOnly is true
+    expect(screen.getByTestId('popover-overlap-switcher')).toBeInTheDocument();
+    expect(screen.getByTestId('fellow-popover-add-own-note-btn')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('fellow-popover-add-own-note-btn'));
+    expect(screen.getByTestId('highlight-color-yellow')).toBeInTheDocument();
+    expect(screen.getByTestId('highlight-note-textarea')).toBeInTheDocument();
   });
 
   it('renders 2-pill overlap switcher when both self and fellow annotations exist', () => {
@@ -286,6 +294,44 @@ describe('TextHighlightPopover', () => {
     fireEvent.click(screen.getByTestId('overlap-tab-fellow'));
     expect(screen.getByTestId('popover-fellow-attribution')).toBeInTheDocument();
     expect(screen.getByText(/Fellow scholar note on Hamlet/i)).toBeInTheDocument();
+  });
+
+  it('renders privacy-aware fallback text when fellow annotation has no note', () => {
+    const fellowWithoutNote = {
+      id: 'fellow-ann-no-note',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'To be, or not to be',
+      color: 'amber' as const,
+      note: undefined,
+      createdAt: '2026-10-15T10:00:00Z',
+      updatedAt: '2026-10-15T10:00:00Z',
+      isFellow: true as const,
+      fellowUsername: 'plato',
+      fellowDisplayName: 'Plato of Athens',
+    };
+
+    const { rerender } = render(
+      <TextHighlightPopover
+        {...defaultProps}
+        fellowAnnotation={fellowWithoutNote}
+        isFellowOnly={true}
+      />
+    );
+
+    expect(screen.getByText('Highlighted by Plato of Athens in Symposium')).toBeInTheDocument();
+
+    // Rerender with empty fellowDisplayName to verify fallback to @fellowUsername
+    rerender(
+      <TextHighlightPopover
+        {...defaultProps}
+        fellowAnnotation={{ ...fellowWithoutNote, fellowDisplayName: '' }}
+        isFellowOnly={true}
+      />
+    );
+
+    expect(screen.getByText('Highlighted by @plato in Symposium')).toBeInTheDocument();
   });
 });
 

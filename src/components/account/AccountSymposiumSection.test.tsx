@@ -71,6 +71,7 @@ describe('AccountSymposiumSection', () => {
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('35%')).toBeInTheDocument();
     expect(screen.getByText('60%')).toBeInTheDocument();
+    expect(screen.getByText('Charlotte Brontë (Sec. 5)')).toBeInTheDocument();
 
     const section = screen.getByTestId('account-symposium-section');
     expect(section.innerHTML).not.toContain('border-border/60');

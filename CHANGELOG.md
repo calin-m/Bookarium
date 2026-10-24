@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.8.1] - 2026-10-24
+### *Layered Dual-Band Overlapping Highlights, Privacy-Preserving Fellow Scholar Attribution & Next.js 16.4.3 Compatibility*
+
+### Added
+- Layered Dual-Band Overlapping Highlights (Option A) (`src/lib/reader-annotator.ts`, `src/components/reader/ReaderSurface.tsx`, `ADR-059`): Implemented elementary non-overlapping interval partitioning to split intersecting highlight boundaries with `isFellowEnd` tag, and rendered an outer taller amber Fellow highlight frame (`py-[3.5px] px-0.5 border-dashed border-amber-600/85`) enclosing an inner, tighter personal highlight (`py-[0.5px] px-0.5 ring-1 ring-inset`) with single trailing companion badge.
+- Privacy-Preserving Fellow Scholar Display Name Attribution (`src/components/reader/ReaderSurface.tsx`, `src/components/reader/ReaderSubHeaderRibbon.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/components/presentation/NotebookQuoteCard.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `ADR-059`): Replaced `@username` with `displayName` (with `@username` fallback) across in-book highlight badges, milestone dispatch banners, companion progress micro-pills, popover empty-note fallbacks, notebook reflection cards, and account symposium progress bars, while strictly preserving `is_public = false` RLS boundary protections for uninvited public profile visitors.
+
+### Fixed
+- Symposium Continuous Progress Infinite Re-Render Loop Resolution (`src/stores/useFellowshipStore.ts`, `src/app/read/[id]/page.tsx`, `ADR-059`): Resolved Next.js `Maximum update depth exceeded` in `syncSymposiumProgress` by adding coordinate equality diff checks before calling store `set(...)`, and narrowed `read/[id]/page.tsx` effect dependencies from mutable `activeSymposium` to scalar primitives.
+
+### Updated
+- Next.js 16.4.3 Supply-Chain Upgrade (`package.json`, `package-lock.json`, `README.md`, `docs/DECISIONS.md`, `ADR-059`): Upgraded `next` and `eslint-config-next` to `16.4.3`, verifying Turbopack and Webpack production build stability and updating project documentation badges.
+
+
 ## [2.8.0] - 2026-10-23
 ### *WCAG 2.2 AA Focus Trapping & Dynamic ARIA, Zero-Any Strict TypeScript, Overlay Code-Splitting, Monolith Decomposition & Hardened Production CSP*
 
@@ -674,61 +688,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Architectural Decision Records (ADRs)
 The following key architectural decisions are recorded in [`docs/DECISIONS.md`](docs/DECISIONS.md):
-- **ADR-001: Next.js 16 App Router & React 19 Adoption**
-- **ADR-002: Public Domain Zero-Copyright Enforcement**
-- **ADR-003: Zustand for Offline Bookshelf and Reader State**
-- **ADR-004: TanStack React Query for Server Data Caching**
-- **ADR-005: Supabase Authentication & Cloud Bookshelf Synchronization with Progressive Enhancement**
-- **ADR-006: Tactile Hardwood Bookshelves & 3D Convex Book Spine Physics**
-- **ADR-007: Single-Source Type-Safe Route Registry & Configuration Singletons**
-- **ADR-008: Order-Independent Multi-Token Client Smart Search Engine**
-- **ADR-009: Stepped Directional Scroll with User-Configurable Sticky Preferences**
-- **ADR-010: Universal Multi-Language Translations & Reader Handoff Engine**
-- **ADR-011: Zero-CLS Header Hydration & Dynamic Active Icon Fill Architecture**
-- **ADR-012: Unified Portaled Drawer Architecture & Mutual Exclusivity for Reader Modals**
-- **ADR-013: Headless Continue Reading Ledger, Authentic Telemetry & Two-Way Metadata Synchronization**
-- **ADR-014: Deletion Tombstones, Cloud Reading Progress Synchronization & Persistent Worker Architecture**
-- **ADR-015: Adoption of Privacy-First Vercel Web Analytics and Real User Speed Insights**
-- **ADR-016: Technical SEO Architecture, Dynamic OpenGraph & Upstream Rate-Shielding**
-- **ADR-017: Canonical Gutenberg Heading Normalization & Reading Coordinate Harmonization**
-- **ADR-018: Browser-Native Web Speech Synthesis Narration Engine**
-- **ADR-019: Commonplace Book, Scholar Annotations & Mobile PWA Manifest**
-- **ADR-020: Unabridged Offline Book Storage via Native IndexedDB Engine & LRU Eviction**
-- **ADR-021: Clean Path URL Architecture via Next.js Edge Rewrites**
-- **ADR-022: API Proxy Hardening, Anti-SSRF Allowlisting & Sliding-Window Rate Limiting**
-- **ADR-023: Library Data Sovereignty, Schema Validation & Headless Backup Engine**
-- **ADR-024: Zero-Latency Client Navigation Fast-Path & Decoupled Crawler Metadata**
-- **ADR-025: Completed Reading State Latch, Native Inset Search Architecture & Library Navigation Streamlining**
-- **ADR-026: Enterprise Polymorphism, Encapsulation & Code Redundancy Elimination**
-- **ADR-027: Reading Habit Telemetry, Annual Goals, and Extensible Accolade Architecture**
-- **ADR-028: Analytical Table of Contents Deduplication & Cross-Reference Protection Invariants**
-- **ADR-029: Dual Immersion Telemetry (Reading vs. Listening) & 5-Minute Active Streak Threshold**
-- **ADR-030: Deterministic Literary Accolades, Tactile Ex-Libris Bookplates & Showcase Architecture**
-- **ADR-031: Global Encapsulation, Polymorphic Strategy Dispatching & Layout DRY Refactoring**
-- **ADR-032: Canonical 4-Tier Reading Challenge Ladder, Anti-Tamper Progression & Accolade Visual Stabilization**
-- **ADR-033: Opt-In Public Scholar Profiles, Zero-PII Privacy Architecture & Dynamic Social Metadata**
-- **ADR-034: Next.js 16 Route Handler Strict Typing, SSRF Validation Separation & Test Performance Architecture**
-- **ADR-035: Authoritative Cloud Synchronization, Next.js 16 Edge Proxy Migration & Zero-CLS Syncing Indicator**
-- **ADR-036: Airtight Jurisdictional Copyright Governance, Regional Streaming Gatekeeper (HTTP 451) & Edge Geo-Context Architecture**
-- **ADR-037: Self-Hosted Supabase PostgreSQL Catalog via Strangler Fig Pattern (Phase 1: Provider Seam Refactoring)**
-- **ADR-038: Self-Hosted Supabase PostgreSQL Catalog via Strangler Fig Pattern (Phase 2: Schema Co-Evolution, Ingestion Pipeline & Dual Provider Fallback)**
-- **ADR-039: Autonomous Public Domain Book Content Pipeline, Supabase Plain-Text Caching & Mirror Resiliency Architecture**
-- **ADR-040: Autonomous Full-Catalog Gutenberg Ingestion & Periodic GitHub Actions Synchronization**
-- **ADR-041: Declarative Copyright Subsystem Encapsulation & Unified Presentation Isolation**
-- **ADR-042: Synchronized Dynamic SSR, Jurisdictional Edge Cookie Seeding & Zero-Flash Pre-Hydration Architecture**
-- **ADR-043: Supabase PostgreSQL Query Statement Timeout Resolution via Estimated Planner Statistics**
-- **ADR-044: Multi-Jurisdiction Copyright Governance, Digital Age Consent & Content Safety Architecture**
-- **ADR-045: Literary Notebook Dynamic Font-Reflow Deep Linking, Transparent Dialogs & Smart Reading Milestones**
-- **ADR-046: Mobile Floating Bottom Capsule Dock, Adaptive Bottom Sheet Filters & 2-Column Catalog Density**
-- **ADR-047: Atomic Filter Staging, Multi-Dimensional Touch-Chip Multi-Selection & Immediate Fetch Feedback Architecture**
-- **ADR-048: Catalog Filter Bar Top-Margin Scroll Docking, Segmented Split-Button Quick Clear & Show Results Smooth Navigation**
-- **ADR-049: Unified Collection Toolbar, Strict 2-Row Mobile Ergonomics, Multi-Shelf Pagination & Viewport-Aware Scroll Architecture**
-- **ADR-050: Mobile Catalog Dock Inactivity Auto-Fade (1.4s), Biomechanical Touch-Swipe Ergonomics (Zero False Negatives) & Directional View Slide Transitions**
-- **ADR-051: Continuous Circular Carousel Navigation, Scoped Mobile Swipe Media Queries & Cross-Route Directional Slide Handoff**
-- **ADR-052: Full-Surface Tactile Mobile Swiping, Unbiased Button/Link Gesture Tracking & Synthetic Click Cancellation**
-- **ADR-053: Semantic Book Tag Normalization, Zero-Truncation Single-Row Card Protection & Interactive Unabridged Taxonomy Popovers**
-- **ADR-054: Root Body Modal Portaling, Clean Transform Keyframes, Transparent Collection Modals & Dual-Surface Speech Bar Isolation**
-- **ADR-055: Reader Circles, Literary Symposiums (Dual Reading), Filter-First Shared Marginalia & Two-Tier Account Workspace Architecture**
-- **ADR-056: Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply-Chain Overrides (`tinyglobby`)**
-- **ADR-057: App Router Route Handler Type Isolation, Upstream Mirror Header Defensiveness, and Webpack Build Stability**
+- **ADR-001: Next.js 16 App Router & React 19 Adoption**
+- **ADR-002: Public Domain Zero-Copyright Enforcement**
+- **ADR-003: Zustand for Offline Bookshelf and Reader State**
+- **ADR-004: TanStack React Query for Server Data Caching**
+- **ADR-005: Supabase Authentication & Cloud Bookshelf Synchronization with Progressive Enhancement**
+- **ADR-006: Tactile Hardwood Bookshelves & 3D Convex Book Spine Physics**
+- **ADR-007: Single-Source Type-Safe Route Registry & Configuration Singletons**
+- **ADR-008: Order-Independent Multi-Token Client Smart Search Engine**
+- **ADR-009: Stepped Directional Scroll with User-Configurable Sticky Preferences**
+- **ADR-010: Universal Multi-Language Translations & Reader Handoff Engine**
+- **ADR-011: Zero-CLS Header Hydration & Dynamic Active Icon Fill Architecture**
+- **ADR-012: Unified Portaled Drawer Architecture & Mutual Exclusivity for Reader Modals**
+- **ADR-013: Headless Continue Reading Ledger, Authentic Telemetry & Two-Way Metadata Synchronization**
+- **ADR-014: Deletion Tombstones, Cloud Reading Progress Synchronization & Persistent Worker Architecture**
+- **ADR-015: Adoption of Privacy-First Vercel Web Analytics and Real User Speed Insights**
+- **ADR-016: Technical SEO Architecture, Dynamic OpenGraph & Upstream Rate-Shielding**
+- **ADR-017: Canonical Gutenberg Heading Normalization & Reading Coordinate Harmonization**
+- **ADR-018: Browser-Native Web Speech Synthesis Narration Engine**
+- **ADR-019: Commonplace Book, Scholar Annotations & Mobile PWA Manifest**
+- **ADR-020: Unabridged Offline Book Storage via Native IndexedDB Engine & LRU Eviction**
+- **ADR-021: Clean Path URL Architecture via Next.js Edge Rewrites**
+- **ADR-022: API Proxy Hardening, Anti-SSRF Allowlisting & Sliding-Window Rate Limiting**
+- **ADR-023: Library Data Sovereignty, Schema Validation & Headless Backup Engine**
+- **ADR-024: Zero-Latency Client Navigation Fast-Path & Decoupled Crawler Metadata**
+- **ADR-025: Completed Reading State Latch, Native Inset Search Architecture & Library Navigation Streamlining**
+- **ADR-026: Enterprise Polymorphism, Encapsulation & Code Redundancy Elimination**
+- **ADR-027: Reading Habit Telemetry, Annual Goals, and Extensible Accolade Architecture**
+- **ADR-028: Analytical Table of Contents Deduplication & Cross-Reference Protection Invariants**
+- **ADR-029: Dual Immersion Telemetry (Reading vs. Listening) & 5-Minute Active Streak Threshold**
+- **ADR-030: Deterministic Literary Accolades, Tactile Ex-Libris Bookplates & Showcase Architecture**
+- **ADR-031: Global Encapsulation, Polymorphic Strategy Dispatching & Layout DRY Refactoring**
+- **ADR-032: Canonical 4-Tier Reading Challenge Ladder, Anti-Tamper Progression & Accolade Visual Stabilization**
+- **ADR-033: Opt-In Public Scholar Profiles, Zero-PII Privacy Architecture & Dynamic Social Metadata**
+- **ADR-034: Next.js 16 Route Handler Strict Typing, SSRF Validation Separation & Test Performance Architecture**
+- **ADR-035: Authoritative Cloud Synchronization, Next.js 16 Edge Proxy Migration & Zero-CLS Syncing Indicator**
+- **ADR-036: Airtight Jurisdictional Copyright Governance, Regional Streaming Gatekeeper (HTTP 451) & Edge Geo-Context Architecture**
+- **ADR-037: Self-Hosted Supabase PostgreSQL Catalog via Strangler Fig Pattern (Phase 1: Provider Seam Refactoring)**
+- **ADR-038: Self-Hosted Supabase PostgreSQL Catalog via Strangler Fig Pattern (Phase 2: Schema Co-Evolution, Ingestion Pipeline & Dual Provider Fallback)**
+- **ADR-039: Autonomous Public Domain Book Content Pipeline, Supabase Plain-Text Caching & Mirror Resiliency Architecture**
+- **ADR-040: Autonomous Full-Catalog Gutenberg Ingestion & Periodic GitHub Actions Synchronization**
+- **ADR-041: Declarative Copyright Subsystem Encapsulation & Unified Presentation Isolation**
+- **ADR-042: Synchronized Dynamic SSR, Jurisdictional Edge Cookie Seeding & Zero-Flash Pre-Hydration Architecture**
+- **ADR-043: Supabase PostgreSQL Query Statement Timeout Resolution via Estimated Planner Statistics**
+- **ADR-044: Multi-Jurisdiction Copyright Governance, Digital Age Consent & Content Safety Architecture**
+- **ADR-045: Literary Notebook Dynamic Font-Reflow Deep Linking, Transparent Dialogs & Smart Reading Milestones**
+- **ADR-046: Mobile Floating Bottom Capsule Dock, Adaptive Bottom Sheet Filters & 2-Column Catalog Density**
+- **ADR-047: Atomic Filter Staging, Multi-Dimensional Touch-Chip Multi-Selection & Immediate Fetch Feedback Architecture**
+- **ADR-048: Catalog Filter Bar Top-Margin Scroll Docking, Segmented Split-Button Quick Clear & Show Results Smooth Navigation**
+- **ADR-049: Unified Collection Toolbar, Strict 2-Row Mobile Ergonomics, Multi-Shelf Pagination & Viewport-Aware Scroll Architecture**
+- **ADR-050: Mobile Catalog Dock Inactivity Auto-Fade (1.4s), Biomechanical Touch-Swipe Ergonomics (Zero False Negatives) & Directional View Slide Transitions**
+- **ADR-051: Continuous Circular Carousel Navigation, Scoped Mobile Swipe Media Queries & Cross-Route Directional Slide Handoff**
+- **ADR-052: Full-Surface Tactile Mobile Swiping, Unbiased Button/Link Gesture Tracking & Synthetic Click Cancellation**
+- **ADR-053: Semantic Book Tag Normalization, Zero-Truncation Single-Row Card Protection & Interactive Unabridged Taxonomy Popovers**
+- **ADR-054: Root Body Modal Portaling, Clean Transform Keyframes, Transparent Collection Modals & Dual-Surface Speech Bar Isolation**
+- **ADR-055: Reader Circles, Literary Symposiums (Dual Reading), Filter-First Shared Marginalia & Two-Tier Account Workspace Architecture**
+- **ADR-056: Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply-Chain Overrides (`tinyglobby`)**
+- **ADR-057: App Router Route Handler Type Isolation, Upstream Mirror Header Defensiveness, and Webpack Build Stability**
 - **ADR-058: WCAG 2.2 AA Modal Focus Management, TypeScript Strictness (no-explicit-any), RSC Static Architecture, Overlay Code-Splitting, and Phase 5 Monolith Decomposition**
+- **ADR-059: Layered Dual-Band Overlapping Highlights, Privacy-Preserving Fellow Scholar Attribution, and Next.js 16.4.3 Compatibility**

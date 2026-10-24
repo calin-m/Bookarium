@@ -126,7 +126,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       <SectionHeader
         eyebrow="READING LEDGER • PROGRESSIVE RESUME"
         title="Bookmarks"
-        subtitle="Pick up right where you left off across all your active public domain volumes."
+        subtitle="Pick up right where you left off across all your volumes."
       >
         {/* Clear Bookmarks Button */}
         {counts.all > 0 && (

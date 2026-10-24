@@ -465,7 +465,8 @@ function BookReaderContent() {
       syncSymposiumProgress(numericId, activeChapterIndex, volumeProgress);
     }
   }, [
-    activeSymposium,
+    activeSymposium?.id,
+    activeSymposium?.status,
     numericId,
     volumeProgress,
     activeChapterIndex,
@@ -582,7 +583,7 @@ function BookReaderContent() {
         position: selection.position,
         activeAnnotation: ownMatch,
         fellowAnnotation: fellowMatch,
-        isFellowOnly: Boolean(fellowMatch && !ownMatch),
+        isFellowOnly: false,
       });
     },
     [activeChapterAnnotations, activeChapterFellowAnnotations]
@@ -596,8 +597,14 @@ function BookReaderContent() {
     ) => {
       if (typeof window === 'undefined') return;
       const isFellowClicked = 'isFellow' in annotation && annotation.isFellow === true;
-      const ownAnn = isFellowClicked ? null : (annotation as Annotation);
-      const fellowAnn = isFellowClicked ? (annotation as FellowAnnotation) : overlappingFellow || null;
+      const ownAnn = isFellowClicked
+        ? activeChapterAnnotations.find((a) => a.selectedText === annotation.selectedText) || null
+        : (annotation as Annotation);
+      const fellowAnn = isFellowClicked
+        ? (annotation as FellowAnnotation)
+        : overlappingFellow ||
+          activeChapterFellowAnnotations.find((a) => a.selectedText === annotation.selectedText) ||
+          null;
       setSelectionPopover({
         isOpen: true,
         selectedText: annotation.selectedText,
@@ -607,7 +614,7 @@ function BookReaderContent() {
         isFellowOnly: Boolean(fellowAnn && !ownAnn),
       });
     },
-    []
+    [activeChapterAnnotations, activeChapterFellowAnnotations]
   );
 
   const handleSelectColor = useCallback(
