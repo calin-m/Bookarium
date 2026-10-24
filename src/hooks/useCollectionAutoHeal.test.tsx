@@ -5,6 +5,8 @@ import React from 'react';
 import { useCollectionAutoHeal } from './useCollectionAutoHeal';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useAnnotationStore } from '@/stores/useAnnotationStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import type { GutendexBook } from '@/types/book.types';
 
 // Mock useBooks hook
@@ -76,6 +78,13 @@ describe('useCollectionAutoHeal', () => {
       readingPositions: {},
       readingProgress: {},
       currentBook: null,
+    });
+    useAnnotationStore.setState({
+      annotations: [],
+      fellowAnnotations: [],
+    });
+    useFellowshipStore.setState({
+      symposiums: [],
     });
     mockUseBooks.mockReturnValue({
       data: undefined,
@@ -356,6 +365,81 @@ describe('useCollectionAutoHeal', () => {
       expect(favs[0].authors[0].death_year).toBe(1817);
       const pos161 = useReaderStore.getState().readingPositions[161];
       expect(pos161.bookAuthors).toEqual(['Austen, Jane, 1775-1817']);
+    });
+  });
+
+  it('detects and heals incomplete fellowAnnotations and active symposiums lacking author lifespans', async () => {
+    useAnnotationStore.setState({
+      fellowAnnotations: [
+        {
+          id: 'fa-11',
+          bookId: 11, // Featured hero book -> healed synchronously on mount
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Down the rabbit-hole',
+          color: 'amber',
+          createdAt: '2026-10-15T10:00:00Z',
+          updatedAt: '2026-10-15T10:00:00Z',
+          isFellow: true,
+          fellowUsername: 'clara_v',
+        },
+        {
+          id: 'fa-55179',
+          bookId: 55179, // Non-featured book -> added to incompleteSavedIds and healed via useBooks
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Along the shore the cloud waves break',
+          color: 'amber',
+          createdAt: '2026-10-15T10:00:00Z',
+          updatedAt: '2026-10-15T10:00:00Z',
+          isFellow: true,
+          fellowUsername: 'clara_v',
+        },
+      ],
+    });
+    useFellowshipStore.setState({
+      symposiums: [
+        {
+          id: 'sym-161',
+          book_id: 161,
+          book_title: 'Sense and Sensibility',
+          book_author: 'Jane Austen',
+          status: 'active',
+        } as any,
+      ],
+    });
+
+    mockUseBooks.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    });
+
+    const { result, rerender } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    // Book 11 is synchronously healed from FEATURED_HERO_BOOKS, while 55179 and 161 are queued for remote healing
+    expect(result.current.incompleteSavedIds).toEqual([55179, 161]);
+    expect(useAnnotationStore.getState().fellowAnnotations[0].bookTitle).toBe("Alice's Adventures in Wonderland");
+    expect(useAnnotationStore.getState().fellowAnnotations[0].bookAuthor).toBe('Lewis Carroll');
+
+    const kingInYellowBook: GutendexBook = {
+      ...mockCompleteBook,
+      id: 55179,
+      title: 'The King in Yellow',
+      authors: [{ name: 'Chambers, Robert W.', birth_year: 1865, death_year: 1933 }],
+    };
+
+    mockUseBooks.mockReturnValue({
+      data: { results: [kingInYellowBook, mockCompleteBook] },
+      isLoading: false,
+    });
+    rerender();
+
+    await waitFor(() => {
+      const fellowAnn = useAnnotationStore.getState().fellowAnnotations[1];
+      expect(fellowAnn.bookTitle).toBe('The King in Yellow');
+      expect(fellowAnn.bookAuthor).toBe('Robert W. Chambers');
     });
   });
 });

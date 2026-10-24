@@ -153,4 +153,33 @@ describe('useOfflineBooks hook', () => {
     expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
     expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[1].id);
   });
+
+  it('normalizes authorDetails and embedded lifespan strings when saving a book offline', async () => {
+    const { saveOfflineBook, getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('Alice offline text...', { status: 200 }));
+
+    const { result } = renderHook(() => useOfflineBooks());
+
+    await act(async () => {
+      await result.current.downloadBook({
+        id: 11,
+        title: "Alice's Adventures in Wonderland",
+        authors: ['Carroll, Lewis, 1832-1898'],
+        authorDetails: [{ name: 'Carroll, Lewis, 1832-1898', birth_year: null, death_year: null }],
+      } as any);
+    });
+
+    expect(saveOfflineBook).toHaveBeenCalledWith(
+      11,
+      "Alice's Adventures in Wonderland",
+      'Alice offline text...',
+      [{ name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 }]
+    );
+
+    fetchSpy.mockRestore();
+  });
 });

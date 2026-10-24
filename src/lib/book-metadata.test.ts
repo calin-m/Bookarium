@@ -293,6 +293,43 @@ describe('src/lib/book-metadata', () => {
         { name: 'Henry Francis Cary', birth_year: 1772, death_year: 1844 },
       ]);
     });
+
+    it('resolves lifespans from canonical Book authorDetails and embedded date strings in storeBook', () => {
+      const canonicalBookWithDetails = {
+        id: 11,
+        title: "Alice's Adventures in Wonderland",
+        authors: ['Lewis Carroll'],
+        authorDetails: [{ name: 'Carroll, Lewis', birth_year: 1832, death_year: 1898 }],
+        subjects: ['Fantasy'],
+        languages: ['en'],
+        coverUrl: null,
+        epubUrl: null,
+        htmlUrl: null,
+        txtUrl: null,
+        downloadCount: 500,
+      };
+
+      const res1 = resolveBookMetadata({
+        id: 11,
+        currentBook: canonicalBookWithDetails,
+      });
+      expect(res1.authors).toEqual([
+        { name: 'Carroll, Lewis', birth_year: 1832, death_year: 1898 },
+      ]);
+
+      const canonicalWithStringDates = {
+        ...canonicalBookWithDetails,
+        authors: ['Carroll, Lewis, 1832-1898'],
+        authorDetails: undefined,
+      };
+      const res2 = resolveBookMetadata({
+        id: 11,
+        currentBook: canonicalWithStringDates,
+      });
+      expect(res2.authors).toEqual([
+        { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
+      ]);
+    });
   });
 });
 

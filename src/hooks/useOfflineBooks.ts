@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { GutendexBook } from '@/types/book.types';
+import type { GutendexBook, Book, Author } from '@/types/book.types';
 import {
   getOfflineBookIds,
   saveOfflineBook,
@@ -10,6 +10,34 @@ import {
   type StorageQuotaInfo,
 } from '@/lib/offline-storage';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { parseLifespansFromName } from '@/lib/copyright-engine';
+
+function normalizeOfflineAuthors(book: GutendexBook | Book): Author[] {
+  const rawList: (Author | string)[] =
+    'authorDetails' in book && Array.isArray(book.authorDetails) && book.authorDetails.length > 0
+      ? book.authorDetails
+      : book.authors || [];
+
+  return rawList.map((a) => {
+    if (typeof a === 'string') {
+      const parsed = parseLifespansFromName(a);
+      return {
+        name: a,
+        birth_year: parsed.birthYear,
+        death_year: parsed.deathYear,
+      };
+    }
+    if (a.birth_year == null && a.death_year == null && a.name) {
+      const parsed = parseLifespansFromName(a.name);
+      return {
+        ...a,
+        birth_year: parsed.birthYear,
+        death_year: parsed.deathYear,
+      };
+    }
+    return a;
+  });
+}
 
 export interface OfflineProgress {
   current: number;
@@ -73,7 +101,7 @@ export function useOfflineBooks() {
         if (!res.ok) throw new Error('Failed to fetch book content');
         const text = await res.text();
         if (!text || text.trim().length === 0) throw new Error('Empty text received');
-        await saveOfflineBook(book.id, book.title, text, book.authors);
+        await saveOfflineBook(book.id, book.title, text, normalizeOfflineAuthors(book));
         await refreshOfflineIds();
 
         try {
@@ -123,7 +151,7 @@ export function useOfflineBooks() {
           if (res.ok) {
             const text = await res.text();
             if (text && text.trim().length > 0) {
-              await saveOfflineBook(book.id, book.title, text, book.authors);
+              await saveOfflineBook(book.id, book.title, text, normalizeOfflineAuthors(book));
             }
           }
         } catch {

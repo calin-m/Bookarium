@@ -3,10 +3,11 @@ import { sampleBookText } from '@/mocks/handlers';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { getOfflineBook, getOfflineBookRecord } from '@/lib/offline-storage';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { isBookPublicDomainInJurisdiction, parseLifespansFromName } from '@/lib/copyright-engine';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import type { Author } from '@/types/book.types';
+import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
+import type { Author, Book } from '@/types/book.types';
 
 export interface LegalRestrictionDetails {
   country: string;
@@ -29,6 +30,65 @@ export class LegalRestrictionError extends Error {
   }
 }
 
+function hasAuthorLifespan(authors?: (Author | string)[]): boolean {
+  if (!authors || authors.length === 0) return false;
+  return authors.some((a) => {
+    if (typeof a === 'string') {
+      const parsed = parseLifespansFromName(a);
+      return parsed.birthYear != null || parsed.deathYear != null;
+    }
+    if (a.birth_year != null || a.death_year != null) return true;
+    const parsed = parseLifespansFromName(a.name);
+    return parsed.birthYear != null || parsed.deathYear != null;
+  });
+}
+
+function resolveAuthoritativeLocalAuthors(
+  bookId: number,
+  recordAuthors?: (Author | string)[],
+  isBrowser?: boolean
+): (Author | string)[] | undefined {
+  if (hasAuthorLifespan(recordAuthors)) {
+    return recordAuthors;
+  }
+
+  if (isBrowser) {
+    const readerState = useReaderStore.getState();
+    const currentBook = readerState.currentBook;
+    if (currentBook?.id === bookId) {
+      const details = (currentBook as Book).authorDetails;
+      if (hasAuthorLifespan(details)) return details;
+      if (hasAuthorLifespan(currentBook.authors)) return currentBook.authors;
+    }
+
+    const shelfState = useBookshelfStore.getState();
+    const saved = shelfState.savedBooks.find((b) => b.id === bookId);
+    if (hasAuthorLifespan(saved?.authors)) return saved!.authors;
+
+    const fav = shelfState.favoriteBooks.find((b) => b.id === bookId);
+    if (hasAuthorLifespan(fav?.authors)) return fav!.authors;
+
+    const recent = shelfState.recentBooks.find((b) => b.id === bookId);
+    if (hasAuthorLifespan(recent?.authors)) return recent!.authors;
+
+    const posAuthors = readerState.readingPositions[bookId]?.bookAuthors;
+    if (hasAuthorLifespan(posAuthors)) return posAuthors;
+  }
+
+  const hero = FEATURED_HERO_BOOKS.find((h) => h.id === bookId);
+  if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
+    return [
+      {
+        name: hero.author,
+        birth_year: hero.authorBirthYear ?? null,
+        death_year: hero.authorDeathYear ?? null,
+      },
+    ];
+  }
+
+  return undefined;
+}
+
 export async function fetchBookContent(url?: string, bookId?: number): Promise<string> {
   const isBrowser = typeof window !== 'undefined';
   const clientCountry = isBrowser ? useJurisdictionStore.getState().getEffectiveCountry() : 'US';
@@ -45,20 +105,8 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
         }
 
         // For non-US jurisdictions, verify that the cached work is public domain in clientCountry
-        let authors: (Author | string)[] | undefined = record?.authors;
-        if (!authors || authors.length === 0) {
-          if (isBrowser) {
-            const currentBook = useReaderStore.getState().currentBook;
-            if (currentBook?.id === bookId && currentBook.authors) {
-              authors = currentBook.authors;
-            } else {
-              const shelfBook = useBookshelfStore.getState().savedBooks.find((b) => b.id === bookId);
-              if (shelfBook?.authors) {
-                authors = shelfBook.authors;
-              }
-            }
-          }
-        }
+        // using authoritative lifespan-complete metadata before failing closed.
+        const authors = resolveAuthoritativeLocalAuthors(bookId, record?.authors, isBrowser);
 
         if (authors && authors.length > 0) {
           const evaluation = isBookPublicDomainInJurisdiction({ authors }, clientCountry);
@@ -75,7 +123,7 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
           return offlineText;
         }
 
-        // Fallback for offline environments when metadata is absent
+        // Fallback for offline environments when lifespan metadata is absent locally
         if (isBrowser && typeof navigator !== 'undefined' && !navigator.onLine) {
           return offlineText;
         }
@@ -135,7 +183,7 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
         const offlineText = record ? record.text : await getOfflineBook(bookId);
         if (offlineText && offlineText.trim().length > 0) {
           if (clientCountry === 'US') return offlineText;
-          const authors: (Author | string)[] | undefined = record?.authors || (isBrowser ? useReaderStore.getState().currentBook?.authors : undefined);
+          const authors = resolveAuthoritativeLocalAuthors(bookId, record?.authors, isBrowser);
           if (authors && authors.length > 0) {
             const evaluation = isBookPublicDomainInJurisdiction({ authors }, clientCountry);
             if (evaluation.isAllowed) return offlineText;

@@ -262,9 +262,16 @@ function BookReaderContent() {
   }, [resolvedIdentity.title, resolvedIdentity.displayAuthor]);
 
   // Persist authentic resolved book identity into recentBooks and warm reader store
+  const autoRetriedBookIdRef = React.useRef<number | null>(null);
   useEffect(() => {
     if (numericId <= 0) return;
     const existingRecent = useBookshelfStore.getState().recentBooks.find((b) => b.id === numericId);
+    const existingRecentHasLifespans = Boolean(
+      existingRecent?.authors?.some((a) => a.birth_year != null || a.death_year != null)
+    );
+    const resolvedHasLifespans = Boolean(
+      resolvedIdentity.authors?.some((a) => a.birth_year != null || a.death_year != null)
+    );
 
     if (booksData?.results?.[0]) {
       const apiBook = booksData.results[0];
@@ -272,10 +279,19 @@ function BookReaderContent() {
       useReaderStore.getState().openReader(apiBook);
       useBookshelfStore.getState().enrichSavedBooks([apiBook]);
       useReaderStore.getState().enrichReadingPositions([apiBook]);
+      if (
+        isContentError &&
+        autoRetriedBookIdRef.current !== numericId &&
+        apiBook.authors?.some((a) => a.birth_year != null || a.death_year != null)
+      ) {
+        autoRetriedBookIdRef.current = numericId;
+        void refetch();
+      }
     } else if (
       resolvedIdentity.title &&
       !isPlaceholderTitle(resolvedIdentity.title) &&
-      (!existingRecent || isPlaceholderTitle(existingRecent.title))
+      (!existingRecent || isPlaceholderTitle(existingRecent.title)) &&
+      (resolvedHasLifespans || !existingRecentHasLifespans)
     ) {
       const bookObj: GutendexBook = {
         id: numericId,
@@ -300,12 +316,12 @@ function BookReaderContent() {
       };
       useBookshelfStore.getState().addRecentBook(bookObj);
       useReaderStore.getState().openReader(bookObj);
-      if (resolvedIdentity.authors.some((a) => a.birth_year != null || a.death_year != null)) {
+      if (resolvedHasLifespans) {
         useBookshelfStore.getState().enrichSavedBooks([bookObj]);
         useReaderStore.getState().enrichReadingPositions([bookObj]);
       }
     }
-  }, [numericId, booksData, resolvedIdentity]);
+  }, [numericId, booksData, resolvedIdentity, isContentError, refetch]);
 
   const bookTitle = resolvedIdentity.title;
   const bookAuthor = resolvedIdentity.author;

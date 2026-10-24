@@ -651,6 +651,170 @@ describe('useReaderStore', () => {
       await useReaderStore.getState().clearReadingPosition(1342);
       expect(useReaderStore.getState().getReadingPosition(1342)).toBeNull();
     });
+
+    it('preserves verified author lifespans across openReader, saveReadingPosition, enrichReadingPositions, and cloud sync', async () => {
+      const { useAuthStore } = await import('./useAuthStore');
+      useAuthStore.setState({ user: { id: 'user-heal-1' } as any });
+
+      // 1. openReader with string authors containing embedded lifespans attaches authorDetails
+      useReaderStore.getState().openReader({
+        id: 11,
+        title: "Alice's Adventures in Wonderland",
+        authors: ['Carroll, Lewis, 1832-1898'],
+        subjects: [],
+        languages: ['en'],
+        coverUrl: null,
+        epubUrl: null,
+        htmlUrl: null,
+        txtUrl: null,
+        downloadCount: 1000,
+      });
+      const currentAfterEmbedded = useReaderStore.getState().currentBook as any;
+      expect(currentAfterEmbedded.authorDetails).toEqual([
+        { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
+      ]);
+
+      // 2. openReader with a partial CanonicalBook lacking lifespans preserves existing verified lifespans for the same bookId
+      useReaderStore.getState().openReader({
+        id: 11,
+        title: "Alice's Adventures in Wonderland",
+        authors: ['Lewis Carroll'],
+        subjects: [],
+        languages: ['en'],
+        coverUrl: null,
+        epubUrl: null,
+        htmlUrl: null,
+        txtUrl: null,
+        downloadCount: 1000,
+      });
+      expect((useReaderStore.getState().currentBook as any).authorDetails).toEqual([
+        { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
+      ]);
+
+      // 3. openReader with a GutendexBook whose authors have null lifespans recovers lifespans from readingPositions
+      useReaderStore.setState({
+        currentBook: null,
+        readingPositions: {
+          11: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 5,
+            lastReadAt: '2026-09-10T10:00:00.000Z',
+            bookTitle: "Alice's Adventures in Wonderland",
+            bookAuthors: ['Carroll, Lewis, 1832-1898'],
+          },
+        },
+        readingProgress: { 11: 20 },
+      });
+      useReaderStore.getState().openReader({
+        id: 11,
+        title: "Alice's Adventures in Wonderland",
+        authors: [{ name: 'Lewis Carroll', birth_year: null, death_year: null }],
+        translators: [],
+        subjects: [],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 1000,
+      });
+      expect((useReaderStore.getState().currentBook as any).authors).toEqual([
+        { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
+      ]);
+
+      // 4. saveReadingPosition never downgrades existingPos.bookAuthors with lifespans to plain strings
+      useReaderStore.setState({ currentBook: null });
+      useReaderStore.getState().saveReadingPosition(11, {
+        chapterIndex: 2,
+        chapterPage: 1,
+        globalPage: 8,
+        lastReadAt: '2026-09-11T10:00:00.000Z',
+        bookTitle: "Alice's Adventures in Wonderland",
+        bookAuthors: ['Lewis Carroll'],
+      });
+      expect(useReaderStore.getState().getReadingPosition(11)?.bookAuthors).toEqual([
+        'Carroll, Lewis, 1832-1898',
+      ]);
+
+      // 5. syncWithCloud preserves local lifespan-enriched bookAuthors when remote row has plain author strings
+      const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({
+        delete: () => ({
+          eq: () => ({
+            eq: () => ({
+              eq: () => ({
+                lte: () => Promise.resolve({ error: null }),
+              }),
+            }),
+          }),
+        }),
+        select: () => ({
+          eq: () => ({
+            order: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    book_id: 11,
+                    book_title: "Alice's Adventures in Wonderland",
+                    book_authors: ['Lewis Carroll'],
+                    cover_url: null,
+                    current_chapter_index: 3,
+                    progress_percent: 45,
+                    scroll_offset: 2,
+                    last_read_at: '2026-09-12T10:00:00.000Z',
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        }),
+        upsert: mockUpsert,
+      });
+
+      await useReaderStore.getState().syncWithCloud('user-heal-1');
+      expect(useReaderStore.getState().getReadingPosition(11)?.bookAuthors).toEqual([
+        'Carroll, Lewis, 1832-1898',
+      ]);
+      expect(mockUpsert).toHaveBeenCalled();
+
+      // 6. enrichReadingPositions syncs healed book_authors back to cloud when user is logged in
+      useReaderStore.setState({
+        readingPositions: {
+          84: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 4,
+            lastReadAt: '2026-09-12T10:00:00.000Z',
+            bookTitle: 'Frankenstein',
+            bookAuthors: ['Mary Shelley'],
+          },
+        },
+        readingProgress: { 84: 30 },
+      });
+      mockUpsert.mockClear();
+      useReaderStore.getState().enrichReadingPositions([
+        {
+          id: 84,
+          title: 'Frankenstein',
+          authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 500,
+        },
+      ]);
+      expect(useReaderStore.getState().getReadingPosition(84)?.bookAuthors).toEqual([
+        'Shelley, Mary, 1797-1851',
+      ]);
+      expect(mockUpsert).toHaveBeenCalled();
+
+      useAuthStore.setState({ user: null });
+    });
   });
 });
 

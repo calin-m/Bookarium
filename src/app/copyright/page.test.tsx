@@ -139,6 +139,7 @@ describe('CopyrightPage', () => {
 
     expect(screen.getByText(/6\. Open Cultural Preservation Partners/i)).toBeInTheDocument();
     expect(screen.getByText('Gutendex')).toBeInTheDocument();
+    expect(screen.getByText('Wikidata (CC0 1.0)')).toBeInTheDocument();
     expect(screen.getByText('Standard Ebooks')).toBeInTheDocument();
     expect(screen.getByTestId('mock-footer')).toBeInTheDocument();
   });

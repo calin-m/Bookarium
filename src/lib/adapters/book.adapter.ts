@@ -77,9 +77,12 @@ export function toCanonicalBook(
     };
   }
 
-  // Idempotent fast-path (enriches authorDetails if embedded lifespans exist in string authors)
+  // Idempotent fast-path (enriches authorDetails if embedded lifespans exist in string authors or unparsed authorDetails)
   if (isCanonicalBook(input)) {
-    if (!input.authorDetails || input.authorDetails.length === 0) {
+    const hasVerifiedDetails = input.authorDetails?.some(
+      (a) => a.birth_year != null || a.death_year != null
+    );
+    if (!hasVerifiedDetails) {
       const parsedDetails: Author[] = [];
       const normalizedAuthors = input.authors.map((raw) => {
         const parsed = parseLifespansFromName(raw);
@@ -92,6 +95,18 @@ export function toCanonicalBook(
         }
         return normalizeAuthorName(raw);
       });
+      if (parsedDetails.length === 0 && input.authorDetails?.length) {
+        for (const detail of input.authorDetails) {
+          const parsed = parseLifespansFromName(detail.name);
+          if (parsed.birthYear != null || parsed.deathYear != null) {
+            parsedDetails.push({
+              ...detail,
+              birth_year: parsed.birthYear,
+              death_year: parsed.deathYear,
+            });
+          }
+        }
+      }
       if (parsedDetails.length > 0) {
         return {
           ...input,
@@ -120,7 +135,16 @@ export function toCanonicalBook(
         return normalizeAuthorName(author);
       }
       if (author && typeof author === 'object' && 'name' in author) {
-        authorDetails.push(author as Author);
+        const parsed =
+          author.birth_year == null && author.death_year == null && author.name
+            ? parseLifespansFromName(author.name)
+            : { birthYear: author.birth_year ?? null, deathYear: author.death_year ?? null };
+        authorDetails.push({
+          ...author,
+          name: author.name,
+          birth_year: parsed.birthYear,
+          death_year: parsed.deathYear,
+        });
         return normalizeAuthorName(author.name);
       }
       return 'Anonymous';

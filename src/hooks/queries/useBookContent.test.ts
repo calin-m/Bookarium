@@ -307,6 +307,80 @@ describe('useBookContent hook', () => {
     fetchFailSpy.mockRestore();
     useJurisdictionStore.setState({ country: 'US' });
   });
+
+  it('recovers verified lifespans from authorDetails, favoriteBooks, recentBooks, readingPositions, FEATURED_HERO_BOOKS, or network proxy when offline record has null dates', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    const { useReaderStore } = await import('@/stores/useReaderStore');
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    const { getOfflineBookRecord } = await import('@/lib/offline-storage');
+
+    useJurisdictionStore.setState({ country: 'RO' });
+
+    const incompleteOfflineRecord = {
+      bookId: 11,
+      title: "Alice's Adventures in Wonderland",
+      text: 'Down the rabbit-hole...',
+      downloadedAt: new Date().toISOString(),
+      byteSize: 512,
+      authors: [{ name: 'Lewis Carroll', birth_year: null, death_year: null }],
+    };
+
+    // 1. Recovers from currentBook.authorDetails (Canonical Book from Bookmarks)
+    useReaderStore.setState({
+      currentBook: {
+        id: 11,
+        title: "Alice's Adventures in Wonderland",
+        authors: ['Lewis Carroll'],
+        authorDetails: [{ name: 'Carroll, Lewis', birth_year: 1832, death_year: 1898 }],
+      } as any,
+    });
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce(incompleteOfflineRecord);
+    expect(await fetchBookContent(undefined, 11)).toBe('Down the rabbit-hole...');
+
+    // 2. Recovers from readingPositions[11].bookAuthors with embedded dates
+    useReaderStore.setState({
+      currentBook: null,
+      readingPositions: {
+        11: {
+          chapterIndex: 1,
+          chapterPage: 1,
+          globalPage: 2,
+          lastReadAt: new Date().toISOString(),
+          bookAuthors: ['Carroll, Lewis, 1832-1898'],
+        },
+      },
+    });
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce(incompleteOfflineRecord);
+    expect(await fetchBookContent(undefined, 11)).toBe('Down the rabbit-hole...');
+
+    // 3. Recovers from FEATURED_HERO_BOOKS (e.g., bookId 1727 Homer)
+    useReaderStore.setState({ readingPositions: {} });
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce({
+      ...incompleteOfflineRecord,
+      bookId: 1727,
+      title: 'The Odyssey',
+      authors: [{ name: 'Homer', birth_year: null, death_year: null }],
+    });
+    expect(await fetchBookContent(undefined, 1727)).toBe('Down the rabbit-hole...');
+
+    // 4. When online and no local store or featured fixture has lifespans (e.g., bookId 55179), defers to /api/books/content instead of throwing false client-side 451
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce({
+      ...incompleteOfflineRecord,
+      bookId: 55179,
+      title: 'The King in Yellow',
+      authors: [{ name: 'Robert W. Chambers', birth_year: null, death_year: null }],
+    });
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response('Server verified text', { status: 200 }));
+    expect(await fetchBookContent(undefined, 55179)).toBe('Server verified text');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    fetchSpy.mockRestore();
+
+    useJurisdictionStore.setState({ country: 'US' });
+    useReaderStore.setState({ currentBook: null, readingPositions: {} });
+    useBookshelfStore.setState({ savedBooks: [], favoriteBooks: [], recentBooks: [] });
+  });
 });
 
 

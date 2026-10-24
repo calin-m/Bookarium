@@ -201,7 +201,7 @@ export default function CopyrightPage() {
                 <strong className="text-foreground font-medium">Bandwidth Shielding &amp; Edge Caching:</strong> Masterwork text and EPUB packages are cached at the Vercel Edge CDN for 24 hours (<code className="font-mono">s-maxage=86400, stale-while-revalidate=604800</code>) and locally in browser IndexedDB for offline reading. Direct downloads are strictly human-initiated.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Transparent User-Agent:</strong> All server-side requests transmit identifying headers (<code className="font-mono text-primary font-semibold">Bookarium/2.5.1 (+https://github.com/calin-m/Bookarium)</code>).
+                <strong className="text-foreground font-medium">Transparent User-Agent:</strong> All server-side requests transmit identifying headers (<code className="font-mono text-primary font-semibold">Bookarium/2.8.1 (+https://github.com/calin-m/Bookarium)</code>).
               </li>
               <li>
                 <strong className="text-foreground font-medium">Trademark &amp; Non-Commercialization:</strong> Bookarium operates non-commercially with zero advertisements or subscription fees. Bookarium is an independent open-source reader and is not officially affiliated with or endorsed by the Project Gutenberg Literary Archive Foundation (PGLAF).
@@ -329,7 +329,7 @@ export default function CopyrightPage() {
                 <p className="text-xs font-mono text-muted-foreground">Upstream Archives &amp; Digital Commons</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
                 <span className="text-xs font-mono font-bold text-foreground block">Project Gutenberg</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
@@ -340,6 +340,12 @@ export default function CopyrightPage() {
                 <span className="text-xs font-mono font-bold text-foreground block">Gutendex</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
                   Open-source REST API providing decoupled, high-performance catalog search and metadata retrieval.
+                </p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
+                <span className="text-xs font-mono font-bold text-foreground block">Wikidata (CC0 1.0)</span>
+                <p className="text-[11px] text-muted-foreground font-sans">
+                  Wikimedia&apos;s public-domain SPARQL knowledge graph linking Gutenberg eBook IDs (P2034) across multilingual editions.
                 </p>
               </div>
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
@@ -359,7 +365,7 @@ export default function CopyrightPage() {
             <span>{SITE_CONFIG.NAME} • 100% CC0 &amp; Public Domain Governance</span>
           </div>
           <p className="text-[11px] text-muted-foreground/80">
-            Last Updated: March 2026 • Verified Public Domain Preservation
+            Last Updated: October 2026 • Verified Public Domain Preservation
           </p>
         </div>
       </main>

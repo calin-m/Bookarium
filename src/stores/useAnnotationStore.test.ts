@@ -846,6 +846,11 @@ describe('useAnnotationStore', () => {
     const { result } = renderHook(() => useHydratedAnnotations());
     expect(result.current.hasMounted).toBe(true);
     expect(result.current.annotations.length).toBeGreaterThanOrEqual(1);
+
+    // updateBookMetadata enriches both own annotations and fellowAnnotations for the bookId
+    useAnnotationStore.getState().updateBookMetadata(84, 'Frankenstein', 'Mary Wollstonecraft Shelley');
+    expect(useAnnotationStore.getState().fellowAnnotations[0].bookTitle).toBe('Frankenstein');
+    expect(useAnnotationStore.getState().fellowAnnotations[0].bookAuthor).toBe('Mary Wollstonecraft Shelley');
   });
 });
 

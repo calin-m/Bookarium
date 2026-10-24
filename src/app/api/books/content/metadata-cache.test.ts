@@ -216,4 +216,33 @@ describe('metadata-cache', () => {
     const result = await resolveBookMetadata(666);
     expect(result).toBeNull();
   });
+
+  it('enriches missing lifespans and falls back to FEATURED_HERO_BOOKS for curated classics', async () => {
+    // 1. Upstream returns book 1727 (Homer) with null birth/death years -> enriched from FEATURED_HERO_BOOKS
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          id: 1727,
+          title: 'The Odyssey',
+          authors: [{ name: 'Homer', birth_year: null, death_year: null }],
+        }),
+        { status: 200 }
+      )
+    );
+
+    const enriched = await resolveBookMetadata(1727);
+    expect(enriched?.authors).toEqual([
+      { name: 'Homer', birth_year: -800, death_year: -750 },
+    ]);
+
+    clearBookMetadataCache();
+
+    // 2. Upstream fails for featured classic 1342 -> falls back to FEATURED_HERO_BOOKS
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Gutendex down'));
+    const fallback = await resolveBookMetadata(1342);
+    expect(fallback?.id).toBe(1342);
+    expect(fallback?.authors).toEqual([
+      { name: 'Jane Austen', birth_year: 1775, death_year: 1817 },
+    ]);
+  });
 });

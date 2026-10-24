@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 24 Oct 2026 10:22:04 GMT  
+**Last Generated**: Sat, 24 Oct 2026 11:34:10 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 186 passed  
-**Total Verified Tests**: 1825 passed  
+**Total Verified Tests**: 1832 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **186/186 test suites passed** (1825 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **186/186 test suites passed** (1832 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 60 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96%** (8882/9252) — *Target: $ge$ 85%*
-- **Statements**: **94.64%** (9660/10207) — *Target: $ge$ 85%*
-- **Functions**: **92.99%** (2097/2255) — *Target: $ge$ 85%*
-- **Branches**: **85.13%** (8681/10197) — *Target: $ge$ 85%*
+- **Lines**: **95.95%** (9058/9440) — *Target: $ge$ 85%*
+- **Statements**: **94.59%** (9862/10426) — *Target: $ge$ 85%*
+- **Functions**: **92.92%** (2127/2289) — *Target: $ge$ 85%*
+- **Branches**: **85.04%** (8923/10492) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (186 Suites / 1825 Tests)
+## 🧪 Comprehensive Test Suite Catalog (186 Suites / 1832 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 235 Tests)
+### 🚀 App Routes & Pages (26 Suites · 236 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -70,7 +70,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `stores and retrieves cached metadata correctly`
 - ✔ `returns cached metadata if not expired without network fetch`
@@ -80,6 +80,7 @@
 - ✔ `falls back to upstream Gutendex when Supabase record is not found`
 - ✔ `returns null when upstream returns error status`
 - ✔ `returns null when network throws an error`
+- ✔ `enriches missing lifespans and falls back to FEATURED_HERO_BOOKS for curated classics`
 
 </details>
 
@@ -367,7 +368,7 @@
 - ✔ `renders volume completion modal with star rating and sets status to finished on the final page`
 - ✔ `persists authentic resolved book metadata to recentBooks and warms reader store on load`
 - ✔ `synchronizes document.title with the authentic resolved book title and author`
-- ✔ `renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction`
+- ✔ `renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction and triggers one-shot auto-retry when verified lifespans resolve`
 - ✔ `navigates directly to chapter and page specified in URL search params`
 - ✔ `navigates to targeted annotation and scrolls it into view when annotationId is provided in URL`
 - ✔ `displays Literary Symposium milestone dispatch banner and reveals companion progress micro-pill when dismissed`
@@ -427,7 +428,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (27 Suites · 355 Tests)
+### 🎨 Catalog & Presentation (27 Suites · 356 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -872,7 +873,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (42 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (43 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -916,6 +917,7 @@
 - ✔ `renders source filter pills when fellowAnnotations are present and filters between All, Mine, and Fellows`
 - ✔ `merges overlapping own and fellow annotations into a single unified card in All mode`
 - ✔ `allows saving fellow note to own notebook using onSaveFellowAsOwn`
+- ✔ `resolves metadata for shared fellowAnnotations lacking title/author and primes useReaderStore on Jump to Context`
 
 </details>
 
@@ -1251,7 +1253,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 164 Tests)
+### ⚡ Zustand State Stores (10 Suites · 165 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (9 tests)</summary>
@@ -1438,7 +1440,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1462,6 +1464,7 @@
 - ✔ `returns unique volume count across positions and progress`
 - ✔ `provides hydration-safe reader defaults and activeReadingCount`
 - ✔ `covers saveReadingPosition metadata preservation, LWW conflict resolution, ghost cloud restore, and active debounce timer cancellation`
+- ✔ `preserves verified author lifespans across openReader, saveReadingPosition, enrichReadingPositions, and cloud sync`
 
 </details>
 
@@ -1477,7 +1480,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (36 Suites · 421 Tests)
+### 📚 Gutenberg Parsers & Metadata (36 Suites · 422 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1548,7 +1551,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/book-metadata.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/lib/book-metadata.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `strips Gutenberg preamble prefixes cleanly`
 - ✔ `identifies placeholder and empty authors correctly`
@@ -1562,6 +1565,7 @@
 - ✔ `resolves languages correctly with strict ID-guarding from store, API, and header metadata`
 - ✔ `resolves structured authors with lifespans from featured static fixtures (Tier 1)`
 - ✔ `preserves structured authors and translators from API results (Tier 3)`
+- ✔ `resolves lifespans from canonical Book authorDetails and embedded date strings in storeBook`
 
 </details>
 
@@ -2116,10 +2120,10 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 232 Tests)
+### 🔄 Hooks & React Query (22 Suites · 235 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
@@ -2134,6 +2138,7 @@
 - ✔ `falls back to offline storage when upstream fetch fails with network error`
 - ✔ `throws an error when upstream response returns empty text`
 - ✔ `covers LegalRestrictionError default reason, 451 non-JSON body, non-US network-error fallback, and retry predicate`
+- ✔ `recovers verified lifespans from authorDetails, favoriteBooks, recentBooks, readingPositions, FEATURED_HERO_BOOKS, or network proxy when offline record has null dates`
 
 </details>
 
@@ -2361,7 +2366,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `stays dormant with 0 query params when all collections are healthy`
 - ✔ `detects missing favorite IDs and queries /api/books`
@@ -2373,6 +2378,7 @@
 - ✔ `returns empty collections and does not query when not mounted`
 - ✔ `suppresses redundant network queries for book IDs already attempted in sessionStorage`
 - ✔ `detects and heals incomplete favoriteBooks and readingPositions lacking author lifespans`
+- ✔ `detects and heals incomplete fellowAnnotations and active symposiums lacking author lifespans`
 
 </details>
 
@@ -2417,7 +2423,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `initializes and fetches offline book IDs on mount`
 - ✔ `downloads a single book and updates offline status`
@@ -2426,6 +2432,7 @@
 - ✔ `downloads all missing books in batch with progress updates`
 - ✔ `skips restricted books with HTTP 451 during batch download and saves remaining books`
 - ✔ `removes all books in batch`
+- ✔ `normalizes authorDetails and embedded lifespan strings when saving a book offline`
 
 </details>
 

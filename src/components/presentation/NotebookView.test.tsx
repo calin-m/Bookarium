@@ -1582,6 +1582,71 @@ describe('NotebookView component', () => {
       expect(ownAnnotations[0].selectedText).toBe('She is tolerable; but not handsome enough to tempt me.');
       expect(ownAnnotations[0].bookId).toBe(1342);
     });
+
+    it('resolves metadata for shared fellowAnnotations lacking title/author and primes useReaderStore on Jump to Context', async () => {
+      const { useReaderStore } = await import('@/stores/useReaderStore');
+      useJurisdictionStore.setState({ country: 'RO' });
+
+      testQueryClient.setQueryData(
+        ['books', { ids: '11', page: 1, copyright: false, includeRestrictedMetadata: true }],
+        {
+          count: 1,
+          results: [
+            {
+              id: 11,
+              title: "Alice's Adventures in Wonderland",
+              authors: [{ name: 'Carroll, Lewis', birth_year: 1832, death_year: 1898 }],
+              subjects: ['Fantasy'],
+              languages: ['en'],
+              copyright: false,
+              download_count: 50000,
+              formats: {},
+            },
+          ],
+        }
+      );
+
+      useAnnotationStore.setState({
+        annotations: [],
+        fellowAnnotations: [
+          {
+            id: 'fellow-alice-11',
+            bookId: 11,
+            chapterIndex: 2,
+            chapterPage: 3,
+            selectedText: 'Curiouser and curiouser!',
+            color: 'amber',
+            note: 'Famous Alice exclamation',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+            isFellow: true,
+            fellowUsername: 'clara_v',
+            fellowDisplayName: 'Clara Vance',
+          },
+        ],
+        marginaliaSourceFilter: 'fellows',
+      });
+
+      render(<NotebookView />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Alice's Adventures in Wonderland").length).toBeGreaterThanOrEqual(1);
+      });
+      expect(screen.getAllByText(/by Lewis Carroll/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(/Protected/i)).not.toBeInTheDocument();
+
+      // Click Read Passage on the fellow note card
+      const jumpBtn = screen.getByRole('button', { name: /Read Passage/i });
+      fireEvent.click(jumpBtn);
+
+      expect(mockPush).toHaveBeenCalledWith('/read/11?chapter=2&page=3&annotationId=fellow-alice-11');
+      expect(useReaderStore.getState().currentBook?.id).toBe(11);
+      expect((useReaderStore.getState().currentBook as any)?.authors?.[0]?.death_year).toBe(1898);
+
+      act(() => {
+        useJurisdictionStore.setState({ country: 'US' });
+      });
+    });
   });
 });
 

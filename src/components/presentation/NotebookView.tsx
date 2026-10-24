@@ -24,6 +24,7 @@ import {
   type HighlightColor,
 } from '@/stores/useAnnotationStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import {
@@ -121,19 +122,38 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
   const { country } = useJurisdiction();
 
-  // Identify book IDs that lack resolved titles/authors and are not in local stores or static fixtures
+  // Identify book IDs across own and fellow annotations that lack resolved titles/authors
+  // (or lack author lifespans in non-US jurisdictions) and are not in local stores or static fixtures
   const missingMetadataBookIds = useMemo(() => {
     const ids = new Set<number>();
-    for (const ann of annotations) {
+    const allAnnotations = [...annotations, ...fellowAnnotations];
+    for (const ann of allAnnotations) {
       if (!ann.bookId || ann.bookId <= 0) continue;
       const cleanTitle = cleanBookTitle(ann.bookTitle);
-      const hasValidTitle = cleanTitle && !isPlaceholderTitle(cleanTitle);
-      const hasValidAuthor = ann.bookAuthor && !isPlaceholderAuthor(ann.bookAuthor);
-      if (hasValidTitle && hasValidAuthor) continue;
+      const hasValidTitle = Boolean(cleanTitle && !isPlaceholderTitle(cleanTitle));
+      const hasValidAuthor = Boolean(ann.bookAuthor && !isPlaceholderAuthor(ann.bookAuthor));
+      const annParsed = ann.bookAuthor
+        ? parseLifespansFromName(ann.bookAuthor)
+        : { birthYear: null, deathYear: null };
+      const annHasLifespan = annParsed.birthYear != null || annParsed.deathYear != null;
 
-      const inSaved = savedBooks.some((b) => b.id === ann.bookId);
-      const inFavorite = favoriteBooks.some((b) => b.id === ann.bookId);
-      const inRecent = recentBooks.some((b) => b.id === ann.bookId);
+      if (hasValidTitle && hasValidAuthor && (country === 'US' || annHasLifespan)) continue;
+
+      const hasVerifiedStoreAuthors = (b?: GutendexBook) => {
+        if (!b) return false;
+        if (country === 'US') return true;
+        return Boolean(
+          b.authors?.some((a) => {
+            if (a.birth_year != null || a.death_year != null) return true;
+            const p = parseLifespansFromName(a.name);
+            return p.birthYear != null || p.deathYear != null;
+          })
+        );
+      };
+
+      const inSaved = savedBooks.some((b) => b.id === ann.bookId && hasVerifiedStoreAuthors(b));
+      const inFavorite = favoriteBooks.some((b) => b.id === ann.bookId && hasVerifiedStoreAuthors(b));
+      const inRecent = recentBooks.some((b) => b.id === ann.bookId && hasVerifiedStoreAuthors(b));
       const inFeatured = FEATURED_HERO_BOOKS.some((b) => b.id === ann.bookId);
 
       if (!inSaved && !inFavorite && !inRecent && !inFeatured) {
@@ -141,7 +161,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       }
     }
     return Array.from(ids).sort((a, b) => a - b);
-  }, [annotations, savedBooks, favoriteBooks, recentBooks]);
+  }, [annotations, fellowAnnotations, savedBooks, favoriteBooks, recentBooks, country]);
 
   // Query Gutendex remote API / cache for any unindexed annotated books
   const { data: remoteBooksData } = useBooks(
@@ -149,9 +169,11 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     { enabled: missingMetadataBookIds.length > 0 }
   );
 
-  // Auto-heal missing metadata in local annotations when remote books resolve
+  // Auto-heal missing metadata in local annotations, bookshelf, and reading positions when remote books resolve
   useEffect(() => {
     if (!remoteBooksData?.results || remoteBooksData.results.length === 0) return;
+    useBookshelfStore.getState().enrichSavedBooks(remoteBooksData.results);
+    useReaderStore.getState().enrichReadingPositions(remoteBooksData.results);
     for (const book of remoteBooksData.results) {
       const author = book.authors ? formatAuthorNames(book.authors) : undefined;
       updateBookMetadata(book.id, book.title, author);
@@ -516,6 +538,39 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   };
 
   const handleJumpToReader = (ann: Annotation) => {
+    const matchedBook =
+      remoteBooksData?.results?.find((b) => b.id === ann.bookId) ||
+      savedBooks.find((b) => b.id === ann.bookId) ||
+      favoriteBooks.find((b) => b.id === ann.bookId) ||
+      recentBooks.find((b) => b.id === ann.bookId);
+    if (matchedBook) {
+      useReaderStore.getState().openReader(matchedBook);
+    } else {
+      const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === ann.bookId);
+      if (fromFeatured) {
+        useReaderStore.getState().openReader({
+          id: fromFeatured.id,
+          title: fromFeatured.title,
+          authors: [
+            {
+              name: fromFeatured.author,
+              birth_year: fromFeatured.authorBirthYear ?? null,
+              death_year: fromFeatured.authorDeathYear ?? null,
+            },
+          ],
+          translators: [],
+          subjects: fromFeatured.primarySubject ? [fromFeatured.primarySubject] : [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {
+            'image/jpeg': `https://www.gutenberg.org/cache/epub/${fromFeatured.id}/pg${fromFeatured.id}.cover.medium.jpg`,
+          },
+          download_count: 0,
+        });
+      }
+    }
     router.push(`/read/${ann.bookId}?chapter=${ann.chapterIndex}&page=${ann.chapterPage}&annotationId=${ann.id}`);
   };
 

@@ -103,7 +103,7 @@ function extractNodeEcosystemCatalog(rootDirPath) {
     '@types/react': 'TypeScript definitions for React 19 core primitives.',
     '@types/react-dom': 'TypeScript definitions for React DOM.',
     '@vitejs/plugin-react': 'Fast React transform plugin for Vitest test execution.',
-    '@vitest/coverage-v8': 'Native V8 code coverage provider enforcing >=80% test threshold.',
+    '@vitest/coverage-v8': 'Native V8 code coverage provider enforcing >=85% test threshold.',
     '@vitest/ui': 'Interactive graphical browser interface for Vitest execution.',
     concurrently: 'Parallel task orchestration for dev servers, watchers, and browser launchers.',
     eslint: 'Pluggable static analysis linter enforcing code quality and type safety.',
@@ -115,7 +115,7 @@ function extractNodeEcosystemCatalog(rootDirPath) {
     postcss: 'CSS transformer tool for Tailwind CSS v4 processing.',
     tailwindcss: 'Utility-first CSS framework v4 with Oxide compiler engine.',
     typescript: 'Static type system verifying strict compile-time safety (zero any).',
-    vitest: 'Fast Vite-native test runner executing all 184 unit and integration suites.',
+    vitest: 'Fast Vite-native test runner executing all 186 unit and integration suites.',
 
     // Overrides
     'fast-glob': 'Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities.',
@@ -169,7 +169,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run verify`',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
-        'Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets, Pass 0.75 SAST/OWASP, Pass 1 types, Pass 2 MSW, Pass 3 Vitest >=80%, Pass 4 docs sync, Pass 5 ADR, Pass 6 ESLint/Knip, Pass 7 Next.js build).',
+        'Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets, Pass 0.75 SAST/OWASP, Pass 1 types, Pass 2 MSW, Pass 3 Vitest >=85%, Pass 4 docs sync, Pass 5 ADR, Pass 6 ESLint/Knip, Pass 7 Next.js build).',
     },
     {
       name: 'lib/ast-parser.js',
@@ -409,7 +409,7 @@ function generateMarkdown() {
     '    subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]',
     '        Gutendex["🌐 Gutendex Search API\\n(Upstream Search Fallback)"]',
     '        GutenbergCDN["🌐 Project Gutenberg Mirrors\\n(aleph.gutenberg.org, gutenberg.readingroo.ms, www.gutenberg.org)"]',
-    '        WikidataSPARQL["🌐 Wikidata SPARQL\\n(P648 Gutenberg Work-to-Edition Authority Clusters)"]',
+    '        WikidataSPARQL["🌐 Wikidata SPARQL (CC0 1.0)\\n(P2034 Gutenberg ID & P407/P424 Language Clusters)"]',
     '        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]',
     '        SyncEngine["🔄 Gutenberg Catalog Sync Engine\\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]',
     '        SyncTranslations["🔄 Relational Translations Sync\\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]',
@@ -434,6 +434,8 @@ function generateMarkdown() {
     '    FavView --> HookAutoHeal',
     '    ShelfView --> HookAutoHeal',
     '    MarksView --> HookAutoHeal',
+    '    NoteView --> HookAutoHeal',
+    '    SymposiumCard --> HookAutoHeal',
     '    HookCopyright --> EngineCore',
     '    ContentAdvisory --> ContentScanner',
     '    DownDrawer --> ContentAdvisory',
@@ -475,7 +477,7 @@ function generateMarkdown() {
     '    QueryContent --> ProxyContent',
     '    ProxyContent --> MetaCache',
     '    MetaCache -->|1. Supabase public.books check| SupabaseCloud',
-    '    MetaCache -.->|2. Fallback to Gutendex| Gutendex',
+    '    MetaCache -.->|2. Fallback to Gutendex & Featured Fixtures| Gutendex',
     '    MetaCache --> EngineCore',
     '    EngineCore --> JointAuthors',
     '    EngineCore --> Translators',
@@ -487,7 +489,7 @@ function generateMarkdown() {
     '    ProxyBookTranslations -->|100% Precision Relational Query| SupabaseCloud',
     '    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex',
     '    SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud',
-    '    SyncTranslations -.->|Wikidata P648 Query & Fallback Snapshot| WikidataSPARQL',
+    '    SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL',
     '    ',
     '    Views --> StateStores',
     '    HabitsCard --> StoreHabits',
@@ -547,7 +549,7 @@ function generateMarkdown() {
     usePreferencesStore:
       'Reader display choices, sticky header auto-hide preferences, and navigation behaviors.',
     useReaderStore:
-      'Active book payload, typography settings (size, family, line height), reading mode (paginated vs scroll), and coordinates.',
+      'Active book payload with verified lifespan preservation, typography settings (size, family, line height), reading mode (paginated vs scroll), coordinates, and bidirectional Supabase `reading_progress` lifespan self-healing.',
     useThemeStore:
       'Global application theme state (Day Paper, Sepia Parchment, Obsidian Dark) with immediate document class application.',
   };
@@ -595,7 +597,7 @@ function generateMarkdown() {
 
   const hookRoles = {
     useBooks: 'TanStack Query fetching catalog volumes with sub-pagination and client failover.',
-    useBookContent: 'TanStack Query fetching book plain text with IndexedDB offline-first check.',
+    useBookContent: 'TanStack Query fetching book plain text with IndexedDB offline-first check, multi-store lifespan verification (`resolveAuthoritativeLocalAuthors`), and online server-gatekeeper deferral.',
     useBookTranslations: 'TanStack Query aggregating international language translations and editions.',
     useReaderSpeech: 'Browser-native Web Speech synthesis with boundary word highlighting and auto-flip.',
     useReaderSession: 'Reading coordinates restoration, resume ribbons, and cloud session synchronization.',
@@ -606,12 +608,12 @@ function generateMarkdown() {
     useCatalogFilters: 'Catalog filter state URL binding, atomic filter staging, multi-era bounding calculation, and multi-filter query synchronization.',
     useScrollDirection: 'Stepped directional scroll detection with user auto-hide preference persistence.',
     usePerformanceTier: 'Hardware concurrency and memory heuristic detection for fluid 60fps animations.',
-    useOfflineBooks: 'IndexedDB cache enumeration and local offline book deletion management.',
+    useOfflineBooks: 'IndexedDB cache enumeration, author lifespan normalization (`normalizeOfflineAuthors`), and local offline book deletion management.',
     useCursorTooltip: 'Adaptive unconstrained cursor tooltips for interactive bookshelf elements.',
     useBookPassageShuffle: 'Autonomous literary quote selection and multi-chapter shuffle engine.',
     useHasMounted: 'SSR hydration barrier hook preventing client-server markup mismatches.',
     useReadingTimer: 'Reader session telemetry tracking visual reading with 2-minute idle guard and TTS narration audio bypass.',
-    useCollectionAutoHeal: 'Unified multi-collection auto-healing pipeline scanning and rehydrating missing author lifespans across Favorites and Bookshelves.',
+    useCollectionAutoHeal: 'Unified multi-collection auto-healing pipeline scanning and rehydrating missing author lifespans across Favorites, Bookshelves, Reading Positions, Annotations (Personal & Fellow), and Active Symposiums.',
     useMobileViewSwipe: 'Tactile touch gesture navigation hook enabling horizontal view swiping across primary views on mobile and tactile tablets.',
     useTouchDevice: 'SSR-safe tactile capability and viewport boundary detection enabling touch gestures on tablets and mobile.',
     useBookCopyright: 'Declarative jurisdictional copyright facade hook coordinating territory rules, author lifespan restrictions, and public domain badges.',
@@ -940,7 +942,7 @@ function generateMarkdown() {
     '| **Pass 0.75** | Pre-Commit SAST & OWASP Security Suite | `npm audit`, SSRF AST & XSS AST guards | Audits dependencies for high/critical CVEs, prevents dynamic fetch SSRF taint flows and dangerous client-side injection |',
     '| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |',
     '| **Pass 2** | Contract & Interface Validation | AST structural analysis | Validates export signatures and component prop invariants |',
-    '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 80% coverage on lines, functions, statements, branches |',
+    '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 85% coverage on lines, functions, statements, branches |',
     '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md |',
     '| **Pass 5** | ADR Schema & Ledger Validation | Markdown AST verification | Validates all ADRs conform to Status, Context, Decision, Consequences |',
     '| **Pass 6** | Code Quality & Dead Code Audit | ESLint 9 & Knip | Zero linter warnings/errors, zero unreferenced dead files/exports |',

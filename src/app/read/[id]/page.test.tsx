@@ -708,8 +708,9 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     });
   });
 
-  it('renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction', () => {
-    vi.mocked(useBookContent).mockReturnValueOnce({
+  it('renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction and triggers one-shot auto-retry when verified lifespans resolve', async () => {
+    const refetchSpy = vi.fn();
+    vi.mocked(useBookContent).mockReturnValue({
       data: undefined,
       isLoading: false,
       isError: true,
@@ -721,7 +722,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
           reason: 'This title is protected under UK copyright law.',
         },
       } as any,
-      refetch: vi.fn(),
+      refetch: refetchSpy,
     } as any);
 
     render(<BookReaderPage />);
@@ -730,6 +731,18 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getByText(/Protected by Copyright in Your Jurisdiction/i)).toBeInTheDocument();
     expect(screen.getByText(/This title is protected under UK copyright law\./i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Return to Library/i })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(refetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    vi.mocked(useBookContent).mockImplementation(() => ({
+      data: chapterSampleText,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    }) as any);
   });
 
   it('navigates directly to chapter and page specified in URL search params', async () => {

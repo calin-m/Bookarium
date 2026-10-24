@@ -1,6 +1,7 @@
 import type { GutendexBook, GutendexResponse, Book, Author } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
+import { parseLifespansFromName } from '@/lib/copyright-engine';
 
 export interface ResolvedBookIdentity {
   id: number;
@@ -152,21 +153,55 @@ export function resolveBookMetadata({
   let resolvedAuthors: Author[] = [];
   let resolvedTranslators: Author[] = [];
 
-  // Tier A: If apiBook has authors
-  if (apiBook?.authors && apiBook.authors.length > 0) {
-    resolvedAuthors = apiBook.authors;
+  const toAuthorWithParsedLifespans = (a: string | Author): Author => {
+    if (typeof a === 'string') {
+      const parsed = parseLifespansFromName(a);
+      return {
+        name: a,
+        birth_year: parsed.birthYear,
+        death_year: parsed.deathYear,
+      };
+    }
+    if (a.birth_year == null && a.death_year == null && a.name) {
+      const parsed = parseLifespansFromName(a.name);
+      return {
+        ...a,
+        birth_year: parsed.birthYear,
+        death_year: parsed.deathYear,
+      };
+    }
+    return a;
+  };
+
+  const storeAuthorDetails =
+    storeBook && 'authorDetails' in storeBook && Array.isArray(storeBook.authorDetails) && storeBook.authorDetails.length > 0
+      ? storeBook.authorDetails.map(toAuthorWithParsedLifespans)
+      : undefined;
+
+  const storeNormalizedAuthors =
+    storeAuthorDetails ||
+    (storeBook?.authors && storeBook.authors.length > 0
+      ? storeBook.authors.map(toAuthorWithParsedLifespans)
+      : undefined);
+
+  // Tier A: If apiBook has authors with lifespans (or no fixture/store has lifespans)
+  if (
+    apiBook?.authors &&
+    apiBook.authors.length > 0 &&
+    (apiBook.authors.some((a) => a.birth_year != null || a.death_year != null) ||
+      (!storeNormalizedAuthors?.some((a) => a.birth_year != null || a.death_year != null) && !featuredFixture))
+  ) {
+    resolvedAuthors = apiBook.authors.map(toAuthorWithParsedLifespans);
     resolvedTranslators = apiBook.translators || [];
   }
-  // Tier B: If storeBook has authors with lifespans
+  // Tier B: If storeBook (via authorDetails or authors) has lifespans
   else if (
-    storeBook?.authors &&
-    storeBook.authors.length > 0 &&
-    (storeBook.authors as Author[]).some((a) => a.birth_year != null || a.death_year != null)
+    storeNormalizedAuthors &&
+    storeNormalizedAuthors.length > 0 &&
+    storeNormalizedAuthors.some((a) => a.birth_year != null || a.death_year != null)
   ) {
-    resolvedAuthors = storeBook.authors.map((a) =>
-      typeof a === 'string' ? { name: a, birth_year: null, death_year: null } : a
-    );
-    resolvedTranslators = (storeBook as GutendexBook).translators || [];
+    resolvedAuthors = storeNormalizedAuthors;
+    resolvedTranslators = (storeBook as GutendexBook)?.translators || [];
   }
   // Tier C: Curated static fixture (with authorBirthYear / authorDeathYear)
   else if (featuredFixture) {
@@ -180,15 +215,13 @@ export function resolveBookMetadata({
     resolvedTranslators = [];
   }
   // Tier D: Fallback to storeBook if present
-  else if (storeBook?.authors && storeBook.authors.length > 0) {
-    resolvedAuthors = storeBook.authors.map((a) =>
-      typeof a === 'string' ? { name: a, birth_year: null, death_year: null } : a
-    );
-    resolvedTranslators = (storeBook as GutendexBook).translators || [];
+  else if (storeNormalizedAuthors && storeNormalizedAuthors.length > 0) {
+    resolvedAuthors = storeNormalizedAuthors;
+    resolvedTranslators = (storeBook as GutendexBook)?.translators || [];
   }
   // Tier E: Plain resolvedAuthor string
   else if (resolvedAuthor) {
-    resolvedAuthors = [{ name: resolvedAuthor, birth_year: null, death_year: null }];
+    resolvedAuthors = [toAuthorWithParsedLifespans(resolvedAuthor)];
     resolvedTranslators = [];
   }
 

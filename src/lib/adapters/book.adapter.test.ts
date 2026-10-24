@@ -374,6 +374,43 @@ describe('book.adapter', () => {
       expect(hybrid.authorDetails).toHaveLength(2);
       expect(hybrid.translators).toHaveLength(1);
       expect(hybrid.downloadCount).toBe(42);
+
+      // Author object with null birth/death years but embedded dates in name
+      const objectWithEmbeddedDates = toCanonicalBook({
+        id: 11,
+        title: "Alice's Adventures in Wonderland",
+        authors: [{ name: 'Carroll, Lewis, 1832-1898', birth_year: null, death_year: null }],
+        translators: [],
+        subjects: [],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 1000,
+      });
+      expect(objectWithEmbeddedDates.authors).toEqual(['Lewis Carroll']);
+      expect(objectWithEmbeddedDates.authorDetails).toEqual([
+        { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
+      ]);
+
+      // Canonical Book whose authorDetails has null birth/death years and embedded dates in detail.name
+      const canonicalUnparsedDetails = toCanonicalBook({
+        id: 11,
+        title: "Alice's Adventures in Wonderland",
+        authors: ['Lewis Carroll'],
+        authorDetails: [{ name: 'Carroll, Lewis, 1832-1898', birth_year: null, death_year: null }],
+        subjects: [],
+        languages: ['en'],
+        coverUrl: null,
+        epubUrl: null,
+        htmlUrl: null,
+        txtUrl: null,
+        downloadCount: 500,
+      });
+      expect(canonicalUnparsedDetails.authorDetails).toEqual([
+        { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
+      ]);
     });
   });
 });

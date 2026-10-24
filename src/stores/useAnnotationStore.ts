@@ -611,7 +611,7 @@ export const useAnnotationStore = create<AnnotationState>()(
 
         set((state) => {
           let modified = false;
-          const nextAnnotations = state.annotations.map((ann) => {
+          const enrichItem = <T extends Annotation>(ann: T): T => {
             if (ann.bookId !== bookId) return ann;
 
             const missingOrPlaceholderTitle = !ann.bookTitle || isPlaceholderTitle(cleanBookTitle(ann.bookTitle));
@@ -629,9 +629,14 @@ export const useAnnotationStore = create<AnnotationState>()(
               };
             }
             return ann;
-          });
+          };
 
-          return modified ? { annotations: nextAnnotations } : state;
+          const nextAnnotations = state.annotations.map(enrichItem);
+          const nextFellowAnnotations = state.fellowAnnotations.map(enrichItem);
+
+          return modified
+            ? { annotations: nextAnnotations, fellowAnnotations: nextFellowAnnotations }
+            : state;
         });
       },
 

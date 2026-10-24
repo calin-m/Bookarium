@@ -1268,10 +1268,17 @@
      - Expanded behavioral and error-recovery branch coverage across UI components, pages, Zustand stores, cloud sync, IndexedDB offline storage, and React Query hooks.
      - Guarded initial mount `useOfflineBooks` microtask state setters (`ids.length > 0`, `quota !== null`) to eliminate React 19 `act(...)` warnings.
      - Configured `vitest.config.mts` with `maxWorkers: 4`, excluded pure type definitions and re-export barrels from V8 instrumentation, and raised enforced coverage thresholds from `80%` to `85%` across `lines`, `functions`, `branches`, and `statements`.
+  7. **7-Layer Author Lifespan Preservation, Cloud Self-Healing & False HTTP 451 Elimination (`src/lib/adapters/book.adapter.ts`, `src/stores/useReaderStore.ts`, `src/lib/book-metadata.ts`, `src/hooks/useCollectionAutoHeal.ts`, `src/hooks/queries/useBookContent.ts`, `src/hooks/useOfflineBooks.ts`, `src/app/read/[id]/page.tsx`, `src/stores/useAnnotationStore.ts`, `src/components/presentation/NotebookView.tsx`, `src/app/api/books/content/metadata-cache.ts`)**:
+     - Upgraded `toCanonicalBook` and `resolveBookMetadata` to extract and preserve verified `authorDetails` lifespans from embedded name strings (`parseLifespansFromName`) and canonical `Book` objects.
+     - Hardened `useReaderStore` (`openReader`, `saveReadingPosition`, `enrichReadingPositions`, `syncWithCloud`, `restoreReadingPositionFromCloud`) so partial book metadata or un-enriched cloud `reading_progress` rows never overwrite verified author lifespans, while automatically healing remote Supabase `reading_progress` rows in the background.
+     - Expanded `useCollectionAutoHeal` and `NotebookView` to scan `annotations`, `fellowAnnotations`, and active `symposiums` for volumes missing verified lifespans, and updated `useAnnotationStore.updateBookMetadata` to enrich both personal and fellow marginalia.
+     - Updated `useBookContent` with `resolveAuthoritativeLocalAuthors` (scanning all local stores and `FEATURED_HERO_BOOKS`) and deferred to `/api/books/content` when online if cached IndexedDB records lack author birth/death years instead of throwing a premature client-side `LegalRestrictionError` (HTTP 451).
+     - Added `normalizeOfflineAuthors` in `useOfflineBooks`, a fallback pollution guard and one-shot auto-retry (`autoRetriedBookIdRef`) in `src/app/read/[id]/page.tsx`, and a Tier 3 `FEATURED_HERO_BOOKS` lifespan fallback in server-side `metadata-cache.ts`.
 - **Consequences**:
   - Overlapping highlights render with pleasant, color-harmonized borders across all reading themes.
   - The Notebook and Reader Notes drawer present a clean, collaborative view without duplicate cards for co-highlighted passages.
   - Readers can save companion discoveries into their own notebooks with 1 click.
   - Zero cumulative layout shift (CLS = 0) achieved across all theme cycling transitions.
   - Filter pill strips in both Notes & Highlights and Notebook support seamless, tactile click-and-drag mouse scrolling without accidental filter activations.
-  - All 186 test suites (1,825 tests) pass with zero `act(...)` warnings and `>= 85%` coverage across every metric (`96.00%` Lines, `94.66%` Statements, `93.08%` Functions, `85.13%` Branches).
+  - Complete elimination of false client-side/server-side `HTTP 451: Unavailable For Legal Reasons` errors across Bookmarks, Shared Fellow Notes, Literary Symposiums, Offline IndexedDB caches, and direct `/read/[id]` links in non-US Berne Convention jurisdictions.
+  - All 186 test suites pass with zero `act(...)` warnings and `>= 85%` coverage across every metric.

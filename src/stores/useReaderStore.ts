@@ -71,6 +71,58 @@ function hasEmbeddedLifespans(authors?: string[]): boolean {
   });
 }
 
+function extractVerifiedAuthors(
+  book: GutendexBook | Book | null | undefined,
+  pos?: BookReadingPosition
+): Author[] | undefined {
+  if (book) {
+    if ('authorDetails' in book && Array.isArray(book.authorDetails)) {
+      const withDates = book.authorDetails.filter(
+        (a) => a.birth_year != null || a.death_year != null
+      );
+      if (withDates.length > 0) return book.authorDetails;
+    }
+    if (Array.isArray(book.authors) && book.authors.length > 0) {
+      const parsedAuthors: Author[] = [];
+      let hasDates = false;
+      for (const a of book.authors) {
+        if (typeof a === 'string') {
+          const parsed = parseLifespansFromName(a);
+          if (parsed.birthYear != null || parsed.deathYear != null) hasDates = true;
+          parsedAuthors.push({
+            name: a,
+            birth_year: parsed.birthYear,
+            death_year: parsed.deathYear,
+          });
+        } else if (a && typeof a === 'object' && 'name' in a) {
+          const parsed =
+            a.birth_year == null && a.death_year == null && a.name
+              ? parseLifespansFromName(a.name)
+              : { birthYear: a.birth_year ?? null, deathYear: a.death_year ?? null };
+          if (parsed.birthYear != null || parsed.deathYear != null) hasDates = true;
+          parsedAuthors.push({
+            ...a,
+            birth_year: parsed.birthYear,
+            death_year: parsed.deathYear,
+          });
+        }
+      }
+      if (hasDates) return parsedAuthors;
+    }
+  }
+  if (pos?.bookAuthors && hasEmbeddedLifespans(pos.bookAuthors)) {
+    return pos.bookAuthors.map((raw) => {
+      const parsed = parseLifespansFromName(raw);
+      return {
+        name: raw,
+        birth_year: parsed.birthYear,
+        death_year: parsed.deathYear,
+      };
+    });
+  }
+  return undefined;
+}
+
 export const useReaderStore = create<ReaderState>()(
   persist(
     (set, get) => ({
@@ -85,7 +137,47 @@ export const useReaderStore = create<ReaderState>()(
       isMobileTrayOpen: false,
 
       openReader: (book) => {
-        set({ currentBook: book, isOpen: true });
+        set((state) => {
+          if (!book) return { currentBook: book, isOpen: true };
+          const incomingVerified = extractVerifiedAuthors(book);
+          if (incomingVerified) {
+            if (
+              Array.isArray(book.authors) &&
+              (book.authors.length === 0 || typeof book.authors[0] === 'string') &&
+              !('authorDetails' in book && book.authorDetails?.some((a) => a.birth_year != null || a.death_year != null))
+            ) {
+              return {
+                currentBook: { ...book, authorDetails: incomingVerified },
+                isOpen: true,
+              };
+            }
+            return { currentBook: book, isOpen: true };
+          }
+
+          const existingBook = state.currentBook?.id === book.id ? state.currentBook : null;
+          const preservedAuthors = extractVerifiedAuthors(
+            existingBook,
+            state.readingPositions[book.id]
+          );
+
+          if (preservedAuthors) {
+            const isCanonical =
+              Array.isArray(book.authors) &&
+              (book.authors.length === 0 || typeof book.authors[0] === 'string');
+            if (isCanonical) {
+              return {
+                currentBook: { ...(book as Book), authorDetails: preservedAuthors },
+                isOpen: true,
+              };
+            }
+            return {
+              currentBook: { ...(book as GutendexBook), authors: preservedAuthors },
+              isOpen: true,
+            };
+          }
+
+          return { currentBook: book, isOpen: true };
+        });
       },
 
       closeReader: () => {
@@ -182,6 +274,16 @@ export const useReaderStore = create<ReaderState>()(
           };
         }
 
+        if (
+          !hasEmbeddedLifespans(enrichedPosition.bookAuthors) &&
+          hasEmbeddedLifespans(existingPos?.bookAuthors)
+        ) {
+          enrichedPosition = {
+            ...enrichedPosition,
+            bookAuthors: existingPos!.bookAuthors,
+          };
+        }
+
         set((state) => ({
           readingPositions: {
             ...state.readingPositions,
@@ -210,6 +312,7 @@ export const useReaderStore = create<ReaderState>()(
         const { readingPositions } = get();
         let hasChanges = false;
         const nextPositions = { ...readingPositions };
+        const enrichedBookIds: number[] = [];
 
         for (const fresh of freshBooks) {
           if (!fresh || typeof fresh.id !== 'number') continue;
@@ -229,6 +332,7 @@ export const useReaderStore = create<ReaderState>()(
             (!pos.coverUrl && freshCover)
           ) {
             hasChanges = true;
+            enrichedBookIds.push(fresh.id);
             nextPositions[fresh.id] = {
               ...pos,
               bookTitle: pos.bookTitle || fresh.title,
@@ -240,6 +344,12 @@ export const useReaderStore = create<ReaderState>()(
 
         if (hasChanges) {
           set({ readingPositions: nextPositions });
+          const currentUserId = useAuthStore.getState().user?.id;
+          if (currentUserId) {
+            for (const bookId of enrichedBookIds) {
+              void get().syncReadingPositionToCloud(bookId, nextPositions[bookId], currentUserId);
+            }
+          }
         }
       },
 
@@ -294,14 +404,21 @@ export const useReaderStore = create<ReaderState>()(
 
             if (isGhost) return null;
 
+            const existingLocal = get().readingPositions[bookId];
+            const remoteAuthors: string[] | undefined = data.book_authors || undefined;
+            const preservedAuthors =
+              !hasEmbeddedLifespans(remoteAuthors) && hasEmbeddedLifespans(existingLocal?.bookAuthors)
+                ? existingLocal.bookAuthors
+                : remoteAuthors || existingLocal?.bookAuthors;
+
             const remotePosition: BookReadingPosition = {
               chapterIndex: data.current_chapter_index ?? 0,
               chapterPage: Number(data.scroll_offset) || 1,
               globalPage: Number(data.scroll_offset) || 1,
               lastReadAt: data.last_read_at || new Date().toISOString(),
-              bookTitle: data.book_title || undefined,
-              bookAuthors: data.book_authors || undefined,
-              coverUrl: data.cover_url || undefined,
+              bookTitle: data.book_title || existingLocal?.bookTitle || undefined,
+              bookAuthors: preservedAuthors,
+              coverUrl: data.cover_url || existingLocal?.coverUrl || undefined,
             };
             set((state) => ({
               readingPositions: {
@@ -343,6 +460,8 @@ export const useReaderStore = create<ReaderState>()(
 
           if (error || !data) return;
 
+          const healedInCloud: Array<{ bookId: number; position: BookReadingPosition }> = [];
+
           set((state) => {
             const nextPositions = { ...state.readingPositions };
             const nextProgress = { ...state.readingProgress };
@@ -375,21 +494,31 @@ export const useReaderStore = create<ReaderState>()(
               const remoteTime = new Date(row.last_read_at).getTime();
               const localTime = localPos?.lastReadAt ? new Date(localPos.lastReadAt).getTime() : 0;
 
-              // Reconcile via Last-Write-Wins (LWW)
+              // Reconcile via Last-Write-Wins (LWW) while preserving enriched local author lifespans
               if (!localPos || remoteTime >= localTime) {
-                nextPositions[bookId] = {
+                const remoteAuthors: string[] | undefined = row.book_authors || undefined;
+                const shouldKeepLocalAuthors =
+                  !hasEmbeddedLifespans(remoteAuthors) &&
+                  hasEmbeddedLifespans(localPos?.bookAuthors);
+                const mergedPosition: BookReadingPosition = {
                   chapterIndex: row.current_chapter_index ?? 0,
                   chapterPage: Number(row.scroll_offset) || 1,
                   globalPage: Number(row.scroll_offset) || 1,
                   lastReadAt: row.last_read_at || new Date().toISOString(),
-                  bookTitle: row.book_title || undefined,
-                  bookAuthors: row.book_authors || undefined,
-                  coverUrl: row.cover_url || undefined,
+                  bookTitle: row.book_title || localPos?.bookTitle || undefined,
+                  bookAuthors: shouldKeepLocalAuthors
+                    ? localPos.bookAuthors
+                    : remoteAuthors || localPos?.bookAuthors || undefined,
+                  coverUrl: row.cover_url || localPos?.coverUrl || undefined,
                 };
+                nextPositions[bookId] = mergedPosition;
                 nextProgress[bookId] = Math.min(
                   Math.max(Math.round(Number(row.progress_percent) || 0), 0),
                   100
                 );
+                if (shouldKeepLocalAuthors) {
+                  healedInCloud.push({ bookId, position: mergedPosition });
+                }
               }
             });
 
@@ -398,6 +527,10 @@ export const useReaderStore = create<ReaderState>()(
               readingProgress: nextProgress,
             };
           });
+
+          for (const item of healedInCloud) {
+            void get().syncReadingPositionToCloud(item.bookId, item.position, userId);
+          }
         } catch {
           // Silent non-blocking fallback for offline/network loss
         }

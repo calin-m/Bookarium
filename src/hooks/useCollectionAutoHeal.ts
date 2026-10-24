@@ -1,10 +1,13 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useAnnotationStore } from '@/stores/useAnnotationStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
+import { formatAuthorNames } from '@/lib/utils';
 import type { GutendexBook } from '@/types/book.types';
 
 export interface CollectionAutoHealResult {
@@ -45,6 +48,9 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
   const savedBooks = useBookshelfStore((s) => s.savedBooks || []);
   const recentBooks = useBookshelfStore((s) => s.recentBooks || []);
   const readingPositions = useReaderStore((s) => s.readingPositions || {});
+  const annotations = useAnnotationStore((s) => s.annotations || []);
+  const fellowAnnotations = useAnnotationStore((s) => s.fellowAnnotations || []);
+  const symposiums = useFellowshipStore((s) => s.symposiums || []);
 
   // Track book IDs queried this session to prevent infinite re-query loops on authors without known lifespans
   const [attemptedHealIds, setAttemptedHealIds] = useState<Set<number>>(() => {
@@ -92,6 +98,18 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
         candidateIds.add(id);
       }
     }
+    for (const ann of [...annotations, ...fellowAnnotations]) {
+      const id = ann?.bookId;
+      if (id && id > 0 && (!ann.bookTitle || !ann.bookAuthor || isPositionIncomplete([ann.bookAuthor]))) {
+        candidateIds.add(id);
+      }
+    }
+    for (const sym of symposiums) {
+      const id = sym?.book_id;
+      if (id && id > 0) {
+        candidateIds.add(id);
+      }
+    }
 
     if (candidateIds.size === 0) return;
 
@@ -123,8 +141,12 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     if (heroBooksToEnrich.length > 0) {
       useBookshelfStore.getState().enrichSavedBooks(heroBooksToEnrich);
       useReaderStore.getState().enrichReadingPositions(heroBooksToEnrich);
+      for (const book of heroBooksToEnrich) {
+        const author = book.authors ? formatAuthorNames(book.authors) : undefined;
+        useAnnotationStore.getState().updateBookMetadata(book.id, book.title, author);
+      }
     }
-  }, [hasMounted, savedBooks, favoriteBooks, readingPositions]);
+  }, [hasMounted, savedBooks, favoriteBooks, readingPositions, annotations, fellowAnnotations, symposiums]);
 
   // 1. Detect favorite IDs in localStorage/cloud that lack full book metadata or author lifespans
   const missingFavoriteIds = useMemo(() => {
@@ -144,7 +166,7 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     return Array.from(missing);
   }, [favoriteBookIds, favoriteBooks, attemptedHealIds, hasMounted]);
 
-  // 2. Detect saved books and active bookmarks that lack author lifespan metadata
+  // 2. Detect saved books, active bookmarks, annotations, and symposiums that lack author lifespan metadata
   const incompleteSavedIds = useMemo(() => {
     if (!hasMounted) return [];
     const ids = new Set<number>();
@@ -179,11 +201,45 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
           continue;
         }
         ids.add(id);
+      } else {
+        completeBookIds.add(id);
       }
     }
 
+    for (const ann of [...annotations, ...fellowAnnotations]) {
+      const id = ann?.bookId;
+      if (!id || id <= 0 || attemptedHealIds.has(id) || completeBookIds.has(id)) continue;
+      if (!ann.bookTitle || !ann.bookAuthor || isPositionIncomplete([ann.bookAuthor])) {
+        const hero = FEATURED_HERO_BOOKS.find((h) => h.id === id);
+        if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
+          continue;
+        }
+        ids.add(id);
+      }
+    }
+
+    for (const sym of symposiums) {
+      const id = sym?.book_id;
+      if (!id || id <= 0 || attemptedHealIds.has(id) || completeBookIds.has(id)) continue;
+      const hero = FEATURED_HERO_BOOKS.find((h) => h.id === id);
+      if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
+        continue;
+      }
+      ids.add(id);
+    }
+
     return Array.from(ids);
-  }, [savedBooks, favoriteBooks, recentBooks, readingPositions, attemptedHealIds, hasMounted]);
+  }, [
+    savedBooks,
+    favoriteBooks,
+    recentBooks,
+    readingPositions,
+    annotations,
+    fellowAnnotations,
+    symposiums,
+    attemptedHealIds,
+    hasMounted,
+  ]);
 
   // 3. Combine and deduplicate all IDs requiring fresh upstream metadata
   const combinedMissingIds = useMemo(() => {
@@ -233,6 +289,10 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     useBookshelfStore.getState().syncFavoriteBooks(freshResults);
     useBookshelfStore.getState().enrichSavedBooks(freshResults);
     useReaderStore.getState().enrichReadingPositions(freshResults);
+    for (const book of freshResults) {
+      const author = book.authors ? formatAuthorNames(book.authors) : undefined;
+      useAnnotationStore.getState().updateBookMetadata(book.id, book.title, author);
+    }
   }, [missingBooksData?.results]);
 
   return {
