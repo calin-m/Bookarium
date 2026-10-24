@@ -5,6 +5,8 @@ import AccountPage from './page';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { ROUTES } from '@/config/routes';
 
 const mockPush = vi.fn();
@@ -634,6 +636,162 @@ describe('AccountPage', () => {
       expect(streaksTab).toHaveClass('border-border');
       expect(streaksTab).not.toHaveClass('border-primary/30');
     });
+
+    it('covers guest modal trigger, Navbar navigation, and preview mode (?preview=true)', () => {
+      const openAuthModalSpy = vi.fn();
+      useAuthStore.setState({
+        user: null,
+        profile: null,
+        isLoading: false,
+        openAuthModal: openAuthModalSpy,
+      });
+
+      const { unmount } = render(<AccountPage />);
+      fireEvent.click(screen.getByRole('button', { name: /Sign In \/ Sign Up/i }));
+      expect(openAuthModalSpy).toHaveBeenCalledWith('sign_in');
+
+      fireEvent.click(screen.getByRole('button', { name: /^Bookshelf$/i }));
+      expect(mockPush).toHaveBeenCalledWith('/bookshelf');
+      unmount();
+
+      // Preview mode (?preview=true) when unauthenticated
+      mockSearchParams = new URLSearchParams('preview=true');
+      render(<AccountPage />);
+      expect(screen.getAllByText('Scholar Reader').length).toBeGreaterThan(0);
+    });
+
+    it('covers sign out, completedBooksCount, and error/catch recovery across profile, password, and deletion actions', async () => {
+      mockSearchParams = new URLSearchParams();
+
+      useBookshelfStore.setState({
+        bookStatuses: { 1342: 'finished', 84: 'currently_reading' },
+      } as unknown as Partial<ReturnType<typeof useBookshelfStore.getState>>);
+      useReaderStore.setState({
+        readingProgress: { 84: 100, 2701: 45 },
+      });
+      useFellowshipStore.setState({
+        circles: [
+          {
+            id: 'c-pend',
+            requester_id: 'u2',
+            requester_username: 'shelley',
+            requester_display_name: 'Mary Shelley',
+            recipient_id: 'u1',
+            recipient_username: 'austen',
+            recipient_display_name: 'Jane Austen',
+            status: 'pending',
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+      });
+
+      const updateProfileMock = vi
+        .fn()
+        .mockResolvedValueOnce({ error: { message: 'Profile save error' } })
+        .mockRejectedValueOnce(new Error('Profile crash'));
+      const resendVerificationMock = vi
+        .fn()
+        .mockResolvedValueOnce({ error: { message: 'Resend limit error' } })
+        .mockRejectedValueOnce(new Error('Resend crash'));
+      const updatePasswordMock = vi
+        .fn()
+        .mockResolvedValueOnce({ error: { message: 'Weak password error' } })
+        .mockRejectedValueOnce(new Error('Password crash'));
+      const requestDeletionMock = vi
+        .fn()
+        .mockResolvedValueOnce({ error: { message: 'Deletion service error' } })
+        .mockRejectedValueOnce(new Error('Deletion crash'));
+      const signOutMock = vi.fn().mockResolvedValue(undefined);
+
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'austen@bookarium.test', email_confirmed_at: null } as any,
+        profile: { id: 'u1', display_name: 'Jane Austen' } as any,
+        isLoading: false,
+        updateProfile: updateProfileMock,
+        resendVerificationEmail: resendVerificationMock,
+        updatePassword: updatePasswordMock,
+        requestAccountDeletion: requestDeletionMock,
+        signOut: signOutMock,
+      });
+
+      render(<AccountPage />);
+
+      // Switch between Accolades Compendium and Streaks & Challenge sub-tabs
+      fireEvent.click(screen.getByRole('tab', { name: /Accolades Compendium/i }));
+      fireEvent.click(screen.getByRole('tab', { name: /Streaks & Challenge/i }));
+
+      // Profile save error & catch (open quick profile editor first)
+      fireEvent.click(screen.getByRole('button', { name: /Toggle quick display name editor/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      expect(await screen.findByText('Profile save error')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      expect(
+        await screen.findByText('An unexpected error occurred while saving your profile.')
+      ).toBeInTheDocument();
+
+      // Resend verification error & catch
+      fireEvent.click(screen.getByRole('button', { name: 'Resend Verification Link' }));
+      expect(await screen.findByText('Resend limit error')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Resend Verification Link' }));
+      expect(
+        await screen.findByText('Failed to resend verification email. Please try again later.')
+      ).toBeInTheDocument();
+
+      // Switch to Security tab so Security controls are visible
+      fireEvent.click(screen.getByRole('tab', { name: /Security/i }));
+      const securityPanel = document.getElementById('account-tabpanel-security')!;
+
+      const newPwdInput = within(securityPanel).getByLabelText('New Password');
+      const confirmPwdInput = within(securityPanel).getByLabelText('Confirm New Password');
+      const updatePwdBtn = within(securityPanel).getByRole('button', { name: /Update Password/i });
+
+      // Short password (< 6 chars) validation
+      fireEvent.change(newPwdInput, { target: { value: '123' } });
+      fireEvent.change(confirmPwdInput, { target: { value: '123' } });
+      fireEvent.click(updatePwdBtn);
+      expect(
+        within(securityPanel).getByText('Password must be at least 6 characters long.')
+      ).toBeInTheDocument();
+
+      // Toggle show/hide password
+      fireEvent.click(within(securityPanel).getByRole('button', { name: /Show password/i }));
+      expect(within(securityPanel).getByRole('button', { name: /Hide password/i })).toBeInTheDocument();
+
+      // Update password error & catch
+      fireEvent.change(newPwdInput, { target: { value: 'validpass123' } });
+      fireEvent.change(confirmPwdInput, { target: { value: 'validpass123' } });
+      fireEvent.click(updatePwdBtn);
+      expect(await within(securityPanel).findByText('Weak password error')).toBeInTheDocument();
+
+      fireEvent.click(updatePwdBtn);
+      expect(
+        await within(securityPanel).findByText(
+          'An unexpected error occurred while updating your password.'
+        )
+      ).toBeInTheDocument();
+
+      // Request account deletion error & catch
+      fireEvent.click(within(securityPanel).getByRole('button', { name: /Delete Account/i }));
+      const modal = screen.getByRole('dialog');
+      fireEvent.click(within(modal).getByRole('button', { name: /Send Deletion Link/i }));
+      expect(await within(modal).findByText('Deletion service error')).toBeInTheDocument();
+
+      fireEvent.click(within(modal).getByRole('button', { name: /Send Deletion Link/i }));
+      expect(
+        await within(modal).findByText(
+          'An unexpected error occurred while requesting account deletion.'
+        )
+      ).toBeInTheDocument();
+      fireEvent.click(within(modal).getByRole('button', { name: /Cancel/i }));
+
+      // Sign Out button in security panel
+      fireEvent.click(within(securityPanel).getByRole('button', { name: /Sign Out/i }));
+      await waitFor(() => {
+        expect(signOutMock).toHaveBeenCalledTimes(1);
+        expect(mockPush).toHaveBeenCalledWith(ROUTES.HOME);
+      });
+    }, 15000);
   });
 });
 

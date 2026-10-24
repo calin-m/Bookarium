@@ -592,5 +592,71 @@ describe('library-backup domain engine', () => {
       expect(result.data?.library.bookRatings).toEqual({ 3: 4 });
       expect(result.data?.library.bookStatuses).toEqual({ 3: 'finished' });
     });
+
+    it('covers CSV status variants (want_to_read, currently_reading, Unassigned), Unknown Author, and replace/merge edge cases', async () => {
+      const offlineStorage = await import('@/lib/offline-storage');
+      const getOfflineSpy = vi.spyOn(offlineStorage, 'getOfflineBookIds').mockResolvedValue([84, 5555]);
+      const removeOfflineSpy = vi.spyOn(offlineStorage, 'removeOfflineBook').mockResolvedValue(undefined);
+
+      const backup = createLibraryBackup();
+      backup.library.savedBooks.push(
+        { ...mockBook2, id: 101, authors: [] },
+        { ...mockBook2, id: 102, authors: [] },
+        { ...mockBook2, id: 103, authors: [] }
+      );
+      backup.library.bookStatuses = {
+        1342: 'finished',
+        101: 'want_to_read',
+        102: 'currently_reading',
+      };
+
+      const csv = exportLibraryToCSV(backup, 'custom-export.csv');
+      expect(csv).toContain('"Want to Read"');
+      expect(csv).toContain('"Currently Reading"');
+      expect(csv).toContain('"Unassigned"');
+      expect(csv).toContain('"Unknown Author"');
+      expect(csv).toContain('"Unrated"');
+
+      // Test replace strategy orphan offline cleanup & legacy 'day' theme normalization
+      const replacePayload: LibraryBackupPayload = {
+        ...backup,
+        library: {
+          ...backup.library,
+          savedBooks: [mockBook2],
+          customShelves: [
+            {
+              id: '',
+              name: 'Classics',
+              isDefault: true,
+              bookIds: [84, 99999],
+            },
+          ],
+        },
+        preferences: {
+          theme: 'day' as unknown as 'light',
+          stickyScrollEnabled: true,
+          readerDisplay: {
+            fontSize: 20,
+            lineHeight: 1.5,
+            fontFamily: 'mono',
+            theme: 'day' as unknown as 'light',
+          },
+        },
+      };
+
+      await restoreLibraryBackup(replacePayload, 'replace');
+      expect(removeOfflineSpy).toHaveBeenCalledWith(5555);
+      expect(useThemeStore.getState().theme).toBe('light');
+      expect(useReaderStore.getState().theme).toBe('light');
+
+      // Test merge strategy when customShelf name already exists ('Classics') & syncWithCloud throws
+      useBookshelfStore.setState({
+        syncWithCloud: vi.fn().mockRejectedValueOnce(new Error('Offline sync error')),
+      });
+      await restoreLibraryBackup(replacePayload, 'merge', 'user-offline');
+
+      getOfflineSpy.mockRestore();
+      removeOfflineSpy.mockRestore();
+    });
   });
 });

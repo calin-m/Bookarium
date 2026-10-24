@@ -1,8 +1,45 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { ReaderSpeechBar, type ReaderSpeechBarProps } from './ReaderSpeechBar';
+
+interface DragInfo {
+  offset: { y: number };
+  velocity: { y: number };
+}
+
+function getMotionDragProps(element: HTMLElement): {
+  onDrag: (_e: unknown, info: DragInfo) => void;
+  onDragEnd: (_e: unknown, info: DragInfo) => void;
+} {
+  type FiberNode = {
+    memoizedProps?: Record<string, unknown>;
+    return?: FiberNode | null;
+    alternate?: FiberNode | null;
+    stateNode?: { current?: FiberNode } | null;
+  };
+  const fiberKey = Object.keys(element).find((k) => k.startsWith('__reactFiber$'));
+  let fiber = fiberKey
+    ? ((element as unknown as Record<string, unknown>)[fiberKey] as FiberNode)
+    : null;
+  while (fiber && !fiber.memoizedProps?.onDrag) {
+    fiber = fiber.return ?? null;
+  }
+  if (fiber?.alternate?.memoizedProps?.onDrag) {
+    let root: FiberNode | null = fiber;
+    while (root?.return) {
+      root = root.return;
+    }
+    if (root?.stateNode && 'current' in root.stateNode && root.stateNode.current !== root) {
+      fiber = fiber.alternate;
+    }
+  }
+  return {
+    onDrag: fiber?.memoizedProps?.onDrag as (_e: unknown, info: DragInfo) => void,
+    onDragEnd: fiber?.memoizedProps?.onDragEnd as (_e: unknown, info: DragInfo) => void,
+  };
+}
 
 const mockVoices: SpeechSynthesisVoice[] = [
   {
@@ -472,6 +509,87 @@ describe('ReaderSpeechBar', () => {
     // Close from minimized pill
     const closeBtn = screen.getByRole('button', { name: 'Close Read Aloud' });
     fireEvent.click(closeBtn);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('supports drag threshold cues, downward collapse to mini-pill, downward dismiss from mini-pill, upward drawer dismiss, and vertical magnetic snapping', () => {
+    const onClose = vi.fn();
+    const { rerender } = render(<ReaderSpeechBar {...defaultProps} onClose={onClose} />);
+
+    // 1. Expanded at bottom -> drag down > 80px shows minimize cue and collapses on release without closing
+    let dragProps = getMotionDragProps(screen.getByTestId('reader-speech-bar'));
+    act(() => {
+      dragProps.onDrag(null, { offset: { y: 90 }, velocity: { y: 0 } });
+    });
+    expect(screen.getByTestId('drag-threshold-cue-minimize')).toHaveTextContent(
+      'Release to minimize'
+    );
+
+    act(() => {
+      dragProps.onDragEnd(null, { offset: { y: 90 }, velocity: { y: 0 } });
+    });
+    expect(screen.getByTestId('speech-bar-minimized')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    // 2. Minimized at bottom -> drag down > 60px shows close cue and calls onClose on release
+    dragProps = getMotionDragProps(screen.getByTestId('reader-speech-bar'));
+    act(() => {
+      dragProps.onDrag(null, { offset: { y: 70 }, velocity: { y: 0 } });
+    });
+    expect(screen.getByTestId('drag-threshold-cue-close')).toHaveTextContent(
+      'Release to stop narration'
+    );
+
+    act(() => {
+      dragProps.onDragEnd(null, { offset: { y: 70 }, velocity: { y: 0 } });
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    // 3. Expand back to full card and test magnetic vertical snapping to center, top, and bottom
+    fireEvent.click(screen.getByRole('button', { name: 'Expand narration controls' }));
+    expect(screen.getByTestId('speech-bar-expanded')).toBeInTheDocument();
+
+    dragProps = getMotionDragProps(screen.getByTestId('reader-speech-bar'));
+    act(() => {
+      dragProps.onDragEnd(null, { offset: { y: -250 }, velocity: { y: 0 } });
+    });
+    // Now snapped to 'center'; dragging at center clears threshold
+    dragProps = getMotionDragProps(screen.getByTestId('reader-speech-bar'));
+    act(() => {
+      dragProps.onDrag(null, { offset: { y: 30 }, velocity: { y: 0 } });
+    });
+    expect(screen.queryByTestId('drag-threshold-cue-minimize')).not.toBeInTheDocument();
+
+    // Snap from center to top
+    act(() => {
+      dragProps.onDragEnd(null, { offset: { y: -260 }, velocity: { y: 0 } });
+    });
+    // Snap from top back to bottom
+    dragProps = getMotionDragProps(screen.getByTestId('reader-speech-bar'));
+    act(() => {
+      dragProps.onDragEnd(null, { offset: { y: 500 }, velocity: { y: 0 } });
+    });
+
+    // 4. Docked above drawer (isDrawerOpen=true) -> upward swipe past -40px dismisses
+    onClose.mockClear();
+    rerender(<ReaderSpeechBar {...defaultProps} isDrawerOpen={true} onClose={onClose} />);
+    dragProps = getMotionDragProps(screen.getByTestId('reader-speech-bar'));
+
+    act(() => {
+      dragProps.onDrag(null, { offset: { y: -50 }, velocity: { y: 0 } });
+    });
+    expect(screen.getByTestId('drag-threshold-cue-close')).toBeInTheDocument();
+
+    // Small upward drag below threshold does not close
+    act(() => {
+      dragProps.onDragEnd(null, { offset: { y: -10 }, velocity: { y: -20 } });
+    });
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Upward swipe past threshold closes
+    act(() => {
+      dragProps.onDragEnd(null, { offset: { y: -55 }, velocity: { y: -400 } });
+    });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

@@ -516,6 +516,7 @@ Dedicated off-thread compute modules in `src/workers/`:
 
 | Worker Module | Source File | Architectural Responsibility |
 | :--- | :--- | :--- |
+| **`gutenberg.worker.test`** | [`src/workers/gutenberg.worker.test.ts`](src/workers/gutenberg.worker.test.ts) | Dedicated off-thread Web Worker parsing raw Project Gutenberg plain-text AST, calculating chapter segmentation boundaries, and computing fluid paginated layouts without blocking the UI thread. |
 | **`gutenberg.worker`** | [`src/workers/gutenberg.worker.ts`](src/workers/gutenberg.worker.ts) | Dedicated off-thread Web Worker parsing raw Project Gutenberg plain-text AST, calculating chapter segmentation boundaries, and computing fluid paginated layouts without blocking the UI thread. |
 
 ---

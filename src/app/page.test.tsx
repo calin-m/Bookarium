@@ -69,7 +69,32 @@ vi.mock('@/components/presentation/Footer', () => ({
 }));
 
 vi.mock('@/components/presentation/HeroFeaturedBook3D', () => ({
-  HeroFeaturedBook3D: () => <div data-testid="mock-hero-3d-book">Featured 3D Book</div>,
+  HeroFeaturedBook3D: ({ onReadFeaturedBook, featuredBook }: { onReadFeaturedBook?: (b: any) => void; featuredBook?: any }) => (
+    <div data-testid="mock-hero-3d-book">
+      Featured 3D Book
+      <button
+        type="button"
+        data-testid="read-featured-btn"
+        onClick={() => onReadFeaturedBook?.(featuredBook || mockBooks[0])}
+      >
+        Read Featured
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock('@/hooks/useOfflineBooks', () => ({
+  useOfflineBooks: () => ({
+    offlineBookIds: [],
+    isLoading: false,
+    downloadingIds: [],
+    storageQuota: null,
+    downloadBook: vi.fn().mockResolvedValue(true),
+    removeBook: vi.fn().mockResolvedValue(true),
+    isBookOffline: vi.fn().mockReturnValue(false),
+    isBookDownloading: vi.fn().mockReturnValue(false),
+    refreshOfflineList: vi.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 const testQueryClient = new QueryClient({
@@ -447,8 +472,10 @@ describe('Home page integration', () => {
     expect(useReaderStore.getState().currentBook?.id).toBe(mockBooks[0].id);
 
     // Step 5: User saves book to personal shelf
-    useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
-    useBookshelfStore.getState().toggleFavoriteBook(mockBooks[0]);
+    act(() => {
+      useBookshelfStore.getState().toggleSaveBook(mockBooks[0]);
+      useBookshelfStore.getState().toggleFavoriteBook(mockBooks[0]);
+    });
 
     expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
     expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(1);
@@ -532,7 +559,9 @@ describe('Home page integration', () => {
     expect(screen.getByText(/Integration test notebook passage/i)).toBeInTheDocument();
     expect(screen.getByText('My favorite quote')).toBeInTheDocument();
 
-    useAnnotationStore.getState().clearAllAnnotations();
+    act(() => {
+      useAnnotationStore.getState().clearAllAnnotations();
+    });
   });
 
   it('switches to Bookmarks view and renders reading ledger when Bookmarks nav tab is clicked', () => {
@@ -927,6 +956,92 @@ describe('Home page integration', () => {
 
     const catalogSection = utils.container.querySelector('#catalog-section');
     expect(catalogSection).toHaveClass('pt-6', 'sm:pt-12');
+  });
+
+  it('handles HeroSearch onReadFeaturedBook, active filter chip removal, and custom shelf filtering', () => {
+    useBookshelfStore.setState({
+      savedBooks: [pageMockBooks[0], pageMockBooks[1]],
+      cloudBookshelves: [
+        { id: 'shelf-default', user_id: 'u1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 'shelf-custom', user_id: 'u1', name: 'Romanticism', is_default: false, created_at: '', updated_at: '' },
+      ],
+      cloudBookshelfItems: [
+        {
+          id: 'item-1',
+          bookshelf_id: 'shelf-custom',
+          user_id: 'u1',
+          book_id: pageMockBooks[0].id,
+          book_title: pageMockBooks[0].title,
+          book_authors: ['Jane Austen'],
+          cover_url: null,
+          added_at: '',
+        },
+      ],
+      activeBookshelfId: 'shelf-custom',
+    });
+
+    renderHome();
+
+    // Click Read Now on featured book in HeroSearch
+    const readFeaturedBtn = screen.getByTestId('read-featured-btn');
+    fireEvent.click(readFeaturedBtn);
+    expect(mockPush).toHaveBeenCalled();
+
+    // Apply topic chip to generate an active filter chip in StickyCatalogToolbar, then remove it
+    const topicChip = screen.getByTestId('topic-chip-philosophy');
+    fireEvent.click(topicChip);
+    const removeChipBtn = screen.getByRole('button', {
+      name: /Remove filter Classical Philosophy & Ethics/i,
+    });
+    fireEvent.click(removeChipBtn);
+
+    // Switch to Bookshelf view and verify custom shelf filtering
+    const banner = screen.getByRole('banner');
+    fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf$/i }));
+    expect(screen.getByText('1 volume')).toBeInTheDocument();
+  });
+
+  it('handles BookPreviewModal onReadBook and BookshelfMobileModal callbacks', () => {
+    renderHome();
+
+    const previewTrigger = screen.getByLabelText(`Click to preview quotes for ${mockBooks[0].title}`);
+    fireEvent.click(previewTrigger);
+
+    // Both BookPreviewModal (desktop) and BookshelfMobileModal (mobile) receive selectedPreviewBook
+    const mobileSheet = screen.getByTestId('mobile-book-action-sheet');
+    expect(mobileSheet).toBeInTheDocument();
+
+    // Click Download inside mobile sheet -> opens DownloadDrawer
+    const mobileDownloadBtn = within(mobileSheet).getByRole('button', {
+      name: `Download ${mockBooks[0].title}`,
+    });
+    fireEvent.click(mobileDownloadBtn);
+    expect(screen.getByText('Zero-Copyright Download Hub')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Close modal'));
+
+    // Re-open preview and click Read inside mobile sheet
+    fireEvent.click(previewTrigger);
+    const mobileReadBtn = within(screen.getByTestId('mobile-book-action-sheet')).getByRole('button', {
+      name: `Read ${mockBooks[0].title}`,
+    });
+    fireEvent.click(mobileReadBtn);
+    expect(mockPush).toHaveBeenCalledWith(ROUTES.READ(mockBooks[0].id));
+  });
+
+  it('returns to Catalog from empty NotebookView and BookmarksView via onBrowseCatalog', () => {
+    useReaderStore.setState({ readingPositions: {}, readingProgress: {} });
+    renderHome();
+
+    const banner = screen.getByRole('banner');
+    fireEvent.click(within(banner).getByRole('button', { name: /^Notebook/i }));
+    const browseFromNotebookBtn = screen.getByRole('button', { name: /Explore Catalog/i });
+    fireEvent.click(browseFromNotebookBtn);
+    expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
+
+    fireEvent.click(within(banner).getByRole('button', { name: /^Bookmarks/i }));
+    const browseFromBookmarksBtn = screen.getByRole('button', { name: /Browse Library Catalog/i });
+    fireEvent.click(browseFromBookmarksBtn);
+    expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
   });
 });
 

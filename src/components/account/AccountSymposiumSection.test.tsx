@@ -190,5 +190,161 @@ describe('AccountSymposiumSection', () => {
       expect(useFellowshipStore.getState().circles.find((c) => c.id === 'c-decline')).toBeUndefined();
     });
   });
+
+  it('renders completed companion symposium cards, opens New Symposium Pact modal, and handles leaving a symposium', async () => {
+    const leaveSpy = vi.fn().mockResolvedValue({ error: null });
+    useFellowshipStore.setState({
+      leaveSymposium: leaveSpy,
+      symposiums: [
+        {
+          id: 's-completed-fellow',
+          book_id: 84,
+          book_title: '',
+          host_id: 'u2',
+          host_username: 'shelley',
+          host_display_name: '',
+          fellow_id: 'u1',
+          fellow_username: 'jane_austen',
+          fellow_display_name: 'Jane Austen',
+          status: 'completed',
+          host_chapter: 9,
+          host_progress: 100,
+          fellow_chapter: 9,
+          fellow_progress: 100,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+    });
+
+    render(<AccountSymposiumSection userId="u1" />);
+
+    expect(screen.getByText('Completed Pact')).toBeInTheDocument();
+    expect(screen.getByText('Volume #84')).toBeInTheDocument();
+    expect(screen.getByText('@shelley (Sec. 10)')).toBeInTheDocument();
+
+    // Open New Symposium Pact modal and close it
+    fireEvent.click(screen.getByRole('button', { name: /New Symposium Pact/i }));
+    const closeModalBtn = await screen.findByRole('button', {
+      name: /^Close$/i,
+    });
+    fireEvent.click(closeModalBtn);
+
+    // Leave symposium
+    fireEvent.click(screen.getByRole('button', { name: /Leave Symposium/i }));
+    expect(leaveSpy).toHaveBeenCalledWith('s-completed-fellow');
+  });
+
+  it('supports Reader Circle fellow Symposium launch, fellow removal, and all pending invitation actions', async () => {
+    const removeFellowSpy = vi.fn().mockResolvedValue({ error: null });
+    const respondSymposiumSpy = vi.fn().mockResolvedValue({ error: null });
+    const leaveSymposiumSpy = vi.fn().mockResolvedValue({ error: null });
+
+    useFellowshipStore.setState({
+      removeFellow: removeFellowSpy,
+      respondToSymposiumInvite: respondSymposiumSpy,
+      leaveSymposium: leaveSymposiumSpy,
+      circles: [
+        {
+          id: 'c-accepted-fellow',
+          requester_id: 'u2',
+          requester_username: 'bronte',
+          requester_display_name: 'Charlotte Brontë',
+          recipient_id: 'u1',
+          recipient_username: 'jane_austen',
+          recipient_display_name: 'Jane Austen',
+          status: 'accepted',
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 'c-outgoing',
+          requester_id: 'u1',
+          requester_username: 'jane_austen',
+          requester_display_name: 'Jane Austen',
+          recipient_id: 'u5',
+          recipient_username: 'melville',
+          recipient_display_name: 'Herman Melville',
+          status: 'pending',
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      symposiums: [
+        {
+          id: 'sym-incoming',
+          book_id: 2701,
+          book_title: '',
+          host_id: 'u2',
+          host_username: 'bronte',
+          host_display_name: 'Charlotte Brontë',
+          fellow_id: 'u1',
+          fellow_username: 'jane_austen',
+          fellow_display_name: 'Jane Austen',
+          status: 'pending',
+          host_chapter: 0,
+          host_progress: 0,
+          fellow_chapter: 0,
+          fellow_progress: 0,
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 'sym-outgoing',
+          book_id: 1342,
+          book_title: 'Pride and Prejudice',
+          host_id: 'u1',
+          host_username: 'jane_austen',
+          host_display_name: 'Jane Austen',
+          fellow_id: 'u2',
+          fellow_username: 'bronte',
+          fellow_display_name: 'Charlotte Brontë',
+          status: 'pending',
+          host_chapter: 0,
+          host_progress: 0,
+          fellow_chapter: 0,
+          fellow_progress: 0,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+    });
+
+    render(<AccountSymposiumSection userId="u1" />);
+
+    // Switch to Reader Circle and trigger Symposium button + Remove button
+    fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Symposium$/i }));
+    expect(await screen.findByTestId('symposium-invite-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Remove @bronte from Reader Circle/i }));
+    expect(removeFellowSpy).toHaveBeenCalledWith('c-accepted-fellow');
+
+    // Switch to Invitations sub-tab
+    fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
+    expect(screen.getByText('Sent Circle Request')).toBeInTheDocument();
+    expect(screen.getByText('Incoming Symposium Pact')).toBeInTheDocument();
+    expect(screen.getByText('Volume #2701')).toBeInTheDocument();
+    expect(screen.getByText('Sent Symposium Pact')).toBeInTheDocument();
+
+    // Cancel outgoing circle request
+    fireEvent.click(screen.getByRole('button', { name: /Cancel Request/i }));
+    expect(removeFellowSpy).toHaveBeenCalledWith('c-outgoing');
+
+    // Accept and Decline incoming symposium pact
+    fireEvent.click(screen.getByRole('button', { name: /Accept Pact/i }));
+    expect(respondSymposiumSpy).toHaveBeenCalledWith('sym-incoming', 'accept');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Decline$/i }));
+    expect(respondSymposiumSpy).toHaveBeenCalledWith('sym-incoming', 'decline');
+
+    // Cancel outgoing symposium pact
+    fireEvent.click(screen.getByRole('button', { name: /Cancel Pact/i }));
+    expect(leaveSymposiumSpy).toHaveBeenCalledWith('sym-outgoing');
+
+    // Switch back to Active Symposiums tab
+    fireEvent.click(screen.getByRole('tab', { name: /Active Symposiums/i }));
+    expect(screen.getByText('No Active Literary Symposiums')).toBeInTheDocument();
+  });
 });
 

@@ -272,6 +272,41 @@ describe('useBookContent hook', () => {
     );
     fetchSpy.mockRestore();
   });
+
+  it('covers LegalRestrictionError default reason, 451 non-JSON body, non-US network-error fallback, and retry predicate', async () => {
+    const { LegalRestrictionError } = await import('./useBookContent');
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    const { getOfflineBookRecord } = await import('@/lib/offline-storage');
+
+    // Default reason in constructor
+    const defaultErr = new LegalRestrictionError({ country: 'DE', rule: 'LIFE_70' });
+    expect(defaultErr.message).toBe('This title is protected by copyright in your jurisdiction.');
+
+    // 451 with non-JSON body
+    const fetch451Spy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('Unavailable For Legal Reasons', { status: 451 })
+    );
+    await expect(fetchBookContent('https://example.com/451.txt', 863)).rejects.toThrow(LegalRestrictionError);
+    fetch451Spy.mockRestore();
+
+    // Non-US network error fallback to offline book when public domain in country
+    useJurisdictionStore.setState({ country: 'RO' });
+    vi.mocked(getOfflineBookRecord)
+      .mockResolvedValueOnce(null) // initial check returns null so it attempts fetch
+      .mockResolvedValueOnce({
+        bookId: 1342,
+        title: 'Pride and Prejudice',
+        text: 'Romanian offline fallback text',
+        downloadedAt: new Date().toISOString(),
+        byteSize: 512,
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+      });
+    const fetchFailSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network down'));
+    const fallbackText = await fetchBookContent('https://example.com/1342.txt', 1342);
+    expect(fallbackText).toBe('Romanian offline fallback text');
+    fetchFailSpy.mockRestore();
+    useJurisdictionStore.setState({ country: 'US' });
+  });
 });
 
 

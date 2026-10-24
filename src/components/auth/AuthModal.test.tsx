@@ -18,11 +18,15 @@ vi.mock('@/stores/useAuthStore', async (importOriginal) => {
   };
 });
 
+const mockSyncWithCloud = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/stores/useBookshelfStore', () => ({
-  useBookshelfStore: () => ({
-    syncWithCloud: vi.fn(),
-    migrateLocalBooksToCloud: vi.fn(),
-  }),
+  useBookshelfStore: (selector?: (s: { syncWithCloud: typeof mockSyncWithCloud }) => unknown) => {
+    const state = {
+      syncWithCloud: mockSyncWithCloud,
+      migrateLocalBooksToCloud: vi.fn(),
+    };
+    return typeof selector === 'function' ? selector(state) : state;
+  },
 }));
 
 describe('AuthModal Component', () => {
@@ -542,5 +546,111 @@ describe('AuthModal Component', () => {
 
     expect(document.activeElement).toBe(trigger);
     document.body.removeChild(trigger);
+  });
+
+  it('executes useShallow selector, syncs cloud on sign-in/sign-up, switches views across all 4 modes, and handles resend verification errors', async () => {
+    const setAuthModalView = vi.fn();
+    const setError = vi.fn();
+    const closeAuthModal = vi.fn();
+
+    mockSignInWithPassword.mockResolvedValueOnce({
+      error: null,
+      user: { id: 'user-sync-1' },
+    });
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (selector?: (s: Record<string, unknown>) => unknown) => {
+        const state = {
+          isAuthModalOpen: true,
+          authModalView: 'sign_in',
+          error: 'Email not confirmed',
+          statusMessage: null,
+          closeAuthModal,
+          setAuthModalView,
+          setError,
+          signInWithPassword: mockSignInWithPassword,
+          signUpWithPassword: mockSignUpWithPassword,
+          signInWithOtp: mockSignInWithOtp,
+          signInWithOAuth: vi.fn(),
+          resetPasswordForEmail: mockResetPasswordForEmail,
+          resendVerificationEmail: mockResendVerificationEmail,
+        };
+        return typeof selector === 'function' ? selector(state) : state;
+      }
+    );
+
+    const { rerender } = render(<AuthModal />);
+
+    // Sign in with user.id triggers syncWithCloud
+    fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), {
+      target: { value: 'scholar@bookarium.org' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('••••••••••••'), {
+      target: { value: 'SecretPass123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Sign In to Bookarium/i }));
+
+    await waitFor(() => {
+      expect(mockSyncWithCloud).toHaveBeenCalledWith('user-sync-1');
+    });
+
+    // Resend verification error branch and catch branch
+    mockResendVerificationEmail.mockResolvedValueOnce({
+      error: { message: 'Rate limit exceeded' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Resend Link' }));
+    await waitFor(() => {
+      expect(setError).toHaveBeenCalledWith('Rate limit exceeded');
+    });
+
+    mockResendVerificationEmail.mockRejectedValueOnce(new Error('Network offline'));
+    fireEvent.click(screen.getByRole('button', { name: 'Resend Link' }));
+    await waitFor(() => {
+      expect(setError).toHaveBeenCalledWith(
+        'Failed to resend verification email. Please try again.'
+      );
+    });
+
+    // Switchers in sign_up, forgot_password, and magic_link views
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'sign_up',
+      error: null,
+      closeAuthModal,
+      setAuthModalView,
+      setError,
+      signUpWithPassword: mockSignUpWithPassword,
+    });
+    rerender(<AuthModal />);
+    fireEvent.click(screen.getByRole('button', { name: /Sign In →/i }));
+    expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'forgot_password',
+      error: null,
+      closeAuthModal,
+      setAuthModalView,
+      setError,
+      resetPasswordForEmail: mockResetPasswordForEmail,
+    });
+    rerender(<AuthModal />);
+    fireEvent.click(screen.getByRole('button', { name: /← Back to Sign In/i }));
+    expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'magic_link',
+      error: null,
+      closeAuthModal,
+      setAuthModalView,
+      setError,
+      signInWithOtp: mockSignInWithOtp,
+    });
+    rerender(<AuthModal />);
+    fireEvent.click(
+      screen.getByRole('button', { name: /← Back to Email & Password Sign In/i })
+    );
+    expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
   });
 });

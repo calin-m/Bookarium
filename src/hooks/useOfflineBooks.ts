@@ -46,16 +46,16 @@ export function useOfflineBooks() {
     let isMounted = true;
     getOfflineBookIds()
       .then((ids) => {
-        if (isMounted) {
-          setOfflineBookIds((prev) => (prev.length === 0 && ids.length === 0 ? prev : ids));
+        if (isMounted && ids.length > 0) {
+          setOfflineBookIds(ids);
         }
       })
       .catch(() => {});
 
     getStorageQuota()
       .then((quota) => {
-        if (isMounted) {
-          setStorageQuota((prev) => (prev === quota ? prev : quota));
+        if (isMounted && quota !== null) {
+          setStorageQuota(quota);
         }
       })
       .catch(() => {});

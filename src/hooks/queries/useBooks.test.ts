@@ -320,5 +320,113 @@ describe('useBooks hook', () => {
     fetchSpy.mockRestore();
     useJurisdictionStore.getState().resetOverride();
   });
+
+  it('should schedule idle prefetch via requestIdleCallback when available and cancel on unmount', () => {
+    const { queryClient, TestWrapper } = createWrapper();
+    const prefetchSpy = vi.spyOn(queryClient, 'prefetchQuery').mockResolvedValue(undefined);
+    let capturedCb: (() => void) | null = null;
+    const cancelSpy = vi.fn();
+
+    (window as unknown as Record<string, unknown>).requestIdleCallback = vi.fn((cb: () => void) => {
+      capturedCb = cb;
+      return 77;
+    });
+    (window as unknown as Record<string, unknown>).cancelIdleCallback = cancelSpy;
+
+    const { unmount } = renderHook(
+      () => usePrefetchNextPage({ search: 'Dickens', page: 2 }, true),
+      { wrapper: TestWrapper }
+    );
+
+    expect(capturedCb).not.toBeNull();
+    act(() => {
+      capturedCb?.();
+    });
+    expect(prefetchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ['books', { search: 'Dickens', page: 3 }],
+      })
+    );
+
+    unmount();
+    expect(cancelSpy).toHaveBeenCalledWith(77);
+
+    delete (window as unknown as Record<string, unknown>).requestIdleCallback;
+    delete (window as unknown as Record<string, unknown>).cancelIdleCallback;
+    prefetchSpy.mockRestore();
+  });
+
+  it('should fallback to setTimeout in usePrefetchNextPage and skip when hasNextPage is false', () => {
+    vi.useFakeTimers();
+    const { queryClient, TestWrapper } = createWrapper();
+    const prefetchSpy = vi.spyOn(queryClient, 'prefetchQuery').mockResolvedValue(undefined);
+
+    const { result: disabledResult } = renderHook(
+      () => usePrefetchNextPage({ search: 'Austen', page: 1 }, false),
+      { wrapper: TestWrapper }
+    );
+    act(() => {
+      disabledResult.current();
+      vi.advanceTimersByTime(500);
+    });
+    expect(prefetchSpy).not.toHaveBeenCalled();
+
+    renderHook(
+      () => usePrefetchNextPage({ search: 'Austen' }, true),
+      { wrapper: TestWrapper }
+    );
+    act(() => {
+      vi.advanceTimersByTime(450);
+    });
+    expect(prefetchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ['books', { search: 'Austen', page: 2 }],
+      })
+    );
+
+    prefetchSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it('should handle server runtime non-ok status, invalid JSON, and copyright filtering', async () => {
+    const originalWindow = global.window;
+    delete (global as unknown as Record<string, unknown>).window;
+
+    const fetchSpy = vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response('Error', { status: 503, statusText: 'Service Unavailable' }))
+      .mockResolvedValueOnce(new Response('not-json', { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            results: [
+              { id: 1342, title: 'Pride', copyright: false, authors: [] },
+              { id: 9999, title: 'Copyrighted Work', copyright: true, authors: [] },
+            ],
+          }),
+          { status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            results: [{ id: 9999, title: 'Copyrighted Work', copyright: true, authors: [] }],
+          }),
+          { status: 200 }
+        )
+      );
+
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Service Unavailable');
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Invalid JSON response');
+
+    const filteredData = await fetchBooks({ search: 'Pride' });
+    expect(filteredData.results).toHaveLength(1);
+    expect(filteredData.count).toBe(1);
+
+    const unrestrictedData = await fetchBooks({ search: 'Pride', includeRestrictedMetadata: true });
+    expect(unrestrictedData.results).toHaveLength(1);
+
+    fetchSpy.mockRestore();
+    (global as unknown as Record<string, unknown>).window = originalWindow;
+  });
 });
 

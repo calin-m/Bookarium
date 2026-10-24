@@ -256,5 +256,40 @@ describe('useHabitsStore', () => {
       { onConflict: 'user_id' }
     );
   });
+
+  it('covers authenticated debounced sync on duration/goal/activity, error handling, getTodayImmersionSeconds, and useHydratedHabits', async () => {
+    vi.useFakeTimers();
+    const { renderHook } = await import('@testing-library/react');
+    const { useHydratedHabits } = await import('./useHabitsStore');
+
+    try {
+      // Early return on empty userId
+      await useHabitsStore.getState().syncWithCloud('');
+      expect(mockMaybeSingle).not.toHaveBeenCalled();
+
+      // Error with non-PGRST116 code returns early
+      mockMaybeSingle.mockResolvedValueOnce({
+        data: null,
+        error: { code: '500', message: 'Server error' },
+      });
+      await useHabitsStore.getState().syncWithCloud('user-err');
+      expect(useHabitsStore.getState().isSyncing).toBe(false);
+
+      // Authenticated recordDailyActivity, setAnnualGoal, addReadingDuration, addListeningDuration
+      useHabitsStore.getState().recordDailyActivity(undefined, 'user-auth');
+      useHabitsStore.getState().setAnnualGoal(30, undefined, 'user-auth');
+      useHabitsStore.getState().addReadingDuration(60, 'user-auth');
+      useHabitsStore.getState().addListeningDuration(120, 'user-auth');
+
+      vi.advanceTimersByTime(2500);
+      expect(useHabitsStore.getState().getTodayImmersionSeconds()).toBe(180);
+      expect(useHabitsStore.getState().getTodayImmersionSeconds('1999-01-01')).toBe(0);
+
+      const { result } = renderHook(() => useHydratedHabits());
+      expect(result.current.isHydrated).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 

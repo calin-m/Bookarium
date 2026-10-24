@@ -539,6 +539,118 @@ describe('useReaderStore', () => {
 
       expect(result.current.fontSize).toBe(24);
     });
+
+    it('covers saveReadingPosition metadata preservation, LWW conflict resolution, ghost cloud restore, and active debounce timer cancellation', async () => {
+      // 1. saveReadingPosition when currentBook has authorDetails & position already has bookTitle without lifespans
+      useReaderStore.setState({
+        currentBook: {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: ['Jane Austen'],
+          authorDetails: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          coverUrl: 'https://example.com/cover.jpg',
+        } as unknown as ReturnType<typeof useReaderStore.getState>['currentBook'],
+      });
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 1,
+        chapterPage: 2,
+        globalPage: 5,
+        lastReadAt: '2026-09-10T10:00:00.000Z',
+        bookTitle: 'Pride and Prejudice',
+        bookAuthors: ['Jane Austen'],
+      });
+      expect(useReaderStore.getState().getReadingPosition(1342)?.bookAuthors).toEqual([
+        'Austen, Jane, 1775-1817',
+      ]);
+
+      // 2. saveReadingPosition when currentBook is null, preserving existingPos metadata
+      useReaderStore.setState({ currentBook: null });
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 2,
+        chapterPage: 3,
+        globalPage: 10,
+        lastReadAt: '2026-09-11T10:00:00.000Z',
+      });
+      expect(useReaderStore.getState().getReadingPosition(1342)?.bookTitle).toBe('Pride and Prejudice');
+
+      // 3. enrichReadingPositions early return & missing pos skip
+      useReaderStore.getState().enrichReadingPositions([]);
+      useReaderStore.getState().enrichReadingPositions([
+        null as unknown as (typeof mockBooks)[0],
+        { ...mockBooks[0], id: 99999 },
+      ]);
+
+      // 4. restoreReadingPositionFromCloud early return & ghost record ignore
+      expect(await useReaderStore.getState().restoreReadingPositionFromCloud(0, '')).toBeNull();
+      mockFrom.mockReturnValueOnce({
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              maybeSingle: () =>
+                Promise.resolve({
+                  data: {
+                    current_chapter_index: 0,
+                    progress_percent: 0,
+                    scroll_offset: 1,
+                  },
+                  error: null,
+                }),
+            }),
+          }),
+        }),
+      });
+      expect(
+        await useReaderStore.getState().restoreReadingPositionFromCloud(1342, 'user-1')
+      ).toBeNull();
+
+      // 5. syncWithCloud early return & LWW preserving newer local position
+      await useReaderStore.getState().syncWithCloud('');
+      mockFrom.mockReturnValueOnce({
+        delete: () => ({
+          eq: () => ({
+            eq: () => ({
+              eq: () => ({
+                lte: () => Promise.resolve({ error: null }),
+              }),
+            }),
+          }),
+        }),
+        select: () => ({
+          eq: () => ({
+            order: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    book_id: 1342,
+                    book_title: 'Pride and Prejudice',
+                    current_chapter_index: 1,
+                    progress_percent: 10,
+                    scroll_offset: 2,
+                    last_read_at: '2026-09-01T00:00:00.000Z', // Older than local 2026-09-11
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        }),
+      });
+      await useReaderStore.getState().syncWithCloud('user-1');
+      expect(useReaderStore.getState().getReadingPosition(1342)?.chapterIndex).toBe(2);
+
+      // 6. clearReadingPosition while a debounce timer is pending
+      useReaderStore.getState().saveReadingPosition(
+        1342,
+        {
+          chapterIndex: 3,
+          chapterPage: 1,
+          globalPage: 12,
+          lastReadAt: '2026-09-12T00:00:00.000Z',
+        },
+        'user-1'
+      );
+      await useReaderStore.getState().clearReadingPosition(1342);
+      expect(useReaderStore.getState().getReadingPosition(1342)).toBeNull();
+    });
   });
 });
 

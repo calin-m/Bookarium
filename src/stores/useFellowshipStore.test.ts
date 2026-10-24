@@ -188,5 +188,161 @@ describe('useFellowshipStore', () => {
     expect(result.current.isHydrated).toBe(true);
     expect(result.current.circles).toEqual([]);
   });
+
+  it('covers unauthenticated guards, profile lookup fallback, duplicate symposiums, decline symposium, and error recovery', async () => {
+    // 1. Unauthenticated guards
+    useAuthStore.setState({ user: null, profile: null });
+    await useFellowshipStore.getState().fetchFellowshipData();
+    expect((await useFellowshipStore.getState().inviteFellowByUsername('@plato')).error?.message).toMatch(
+      /Sign in required/i
+    );
+    expect(
+      (
+        await useFellowshipStore.getState().inviteFellowByProfile({
+          id: 'u2',
+          username: 'plato',
+          displayName: 'Plato',
+        })
+      ).error?.message
+    ).toMatch(/Sign in required/i);
+    expect(
+      (
+        await useFellowshipStore.getState().createSymposiumInvite({
+          bookId: 1342,
+          bookTitle: 'Pride',
+          fellowId: 'u2',
+          fellowUsername: 'plato',
+          fellowDisplayName: 'Plato',
+        })
+      ).error?.message
+    ).toMatch(/Sign in required/i);
+    expect(useFellowshipStore.getState().getAcceptedFellows()).toEqual([]);
+    expect(useFellowshipStore.getState().getPendingInviteCount()).toBe(0);
+    expect(useFellowshipStore.getState().getActiveSymposiumForBook(1342)).toBeUndefined();
+    await useFellowshipStore.getState().syncSymposiumProgress(1342, 1, 20);
+
+    // Restore authenticated user
+    useAuthStore.setState({
+      user: { id: 'user-host', email: 'austen@bookarium.test' } as unknown as ReturnType<typeof useAuthStore.getState>['user'],
+      profile: { id: 'user-host', username: 'jane_austen', display_name: 'Jane Austen' } as unknown as ReturnType<typeof useAuthStore.getState>['profile'],
+    });
+
+    // 2. Self-invite by profile ID
+    expect(
+      (
+        await useFellowshipStore.getState().inviteFellowByProfile({
+          id: 'user-host',
+          username: 'other_handle',
+          displayName: 'Other',
+        })
+      ).error?.message
+    ).toMatch(/cannot invite yourself/i);
+
+    // 3. Fallback to profiles.ilike.maybeSingle when RPC throws, and insert returning server data
+    mockRpc.mockRejectedValueOnce(new Error('RPC missing'));
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnThis(),
+      ilike: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { id: 'user-emily', username: 'emily_bronte', display_name: 'Emily Brontë' },
+          error: null,
+        }),
+      }),
+    });
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id: 'srv-circle-1',
+              requester_id: 'user-emily',
+              requester_username: 'emily_bronte',
+              requester_display_name: 'Emily Brontë',
+              recipient_id: 'user-host',
+              recipient_username: 'jane_austen',
+              recipient_display_name: 'Jane Austen',
+              status: 'accepted',
+              created_at: '',
+              updated_at: '',
+            },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const fallbackInvite = await useFellowshipStore.getState().inviteFellowByUsername('@emily_bronte');
+    expect(fallbackInvite.error).toBeNull();
+    expect(fallbackInvite.circle?.id).toBe('srv-circle-1');
+
+    // Duplicate invite when already accepted
+    const dupAccepted = await useFellowshipStore.getState().inviteFellowByProfile({
+      id: 'user-emily',
+      username: 'emily_bronte',
+      displayName: 'Emily Brontë',
+    });
+    expect(dupAccepted.error?.message).toMatch(/already in your Reader Circle/i);
+
+    // getAcceptedFellows when currentUserId is the recipient (isRequester === false)
+    const fellowsAsRecipient = useFellowshipStore.getState().getAcceptedFellows('user-host');
+    expect(fellowsAsRecipient[0].fellowId).toBe('user-emily');
+    expect(fellowsAsRecipient[0].username).toBe('emily_bronte');
+
+    // 4. createSymposiumInvite with server data, duplicate check, and decline (leaveSymposium)
+    mockFrom.mockReturnValueOnce({
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id: 'srv-sym-1',
+              book_id: 768,
+              book_title: 'Wuthering Heights',
+              host_id: 'user-host',
+              host_username: 'jane_austen',
+              host_display_name: 'Jane Austen',
+              fellow_id: 'user-emily',
+              fellow_username: 'emily_bronte',
+              fellow_display_name: 'Emily Brontë',
+              status: 'pending',
+              host_chapter: 0,
+              host_progress: 0,
+              fellow_chapter: 0,
+              fellow_progress: 0,
+              created_at: '',
+              updated_at: '',
+            },
+            error: null,
+          }),
+        }),
+      }),
+    });
+    const symCreated = await useFellowshipStore.getState().createSymposiumInvite({
+      bookId: 768,
+      bookTitle: 'Wuthering Heights',
+      fellowId: 'user-emily',
+      fellowUsername: 'emily_bronte',
+      fellowDisplayName: 'Emily Brontë',
+    });
+    expect(symCreated.session?.id).toBe('srv-sym-1');
+
+    const dupSym = await useFellowshipStore.getState().createSymposiumInvite({
+      bookId: 768,
+      bookTitle: 'Wuthering Heights',
+      fellowId: 'user-emily',
+      fellowUsername: 'emily_bronte',
+      fellowDisplayName: 'Emily Brontë',
+    });
+    expect(dupSym.error?.message).toMatch(/already exists/i);
+
+    await useFellowshipStore.getState().respondToSymposiumInvite('srv-sym-1', 'decline');
+    expect(useFellowshipStore.getState().symposiums).toHaveLength(0);
+
+    // 5. fetchFellowshipData error catch
+    mockFrom.mockImplementationOnce(() => {
+      throw new Error('Database unreachable');
+    });
+    await useFellowshipStore.getState().fetchFellowshipData('user-host');
+    expect(useFellowshipStore.getState().error).toBe('Database unreachable');
+  });
 });
 

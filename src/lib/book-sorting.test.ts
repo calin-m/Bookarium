@@ -71,8 +71,19 @@ describe('book-sorting utility', () => {
   });
 
   it('handles empty arrays, undefined inputs, and single-item arrays safely', () => {
+    expect(sortBooks(undefined as unknown as GutendexBook[], 'title_asc')).toEqual([]);
     expect(sortBooks([], 'title_asc')).toEqual([]);
     expect(sortBooks([mockBookA], 'title_asc')).toEqual([mockBookA]);
+  });
+
+  it('handles undefined authors, undefined readingProgress, and missing download_count', () => {
+    const bookNoFieldsA = { ...mockBookA, id: 10, authors: undefined as any, download_count: undefined as any };
+    const bookNoFieldsB = { ...mockBookB, id: 20, authors: undefined as any, download_count: undefined as any };
+    expect(sortBooks([bookNoFieldsA, bookNoFieldsB], 'author_asc')).toHaveLength(2);
+    expect(sortBooks([bookNoFieldsA, bookNoFieldsB], 'author_desc')).toHaveLength(2);
+    expect(sortBooks([bookNoFieldsA, bookNoFieldsB], 'progress_desc')).toHaveLength(2);
+    expect(sortBooks([bookNoFieldsA, bookNoFieldsB], 'progress_asc')).toHaveLength(2);
+    expect(sortBooks([bookNoFieldsA, bookNoFieldsB], 'downloads_desc')).toHaveLength(2);
   });
 
   it('does not mutate the original array (immutability check)', () => {

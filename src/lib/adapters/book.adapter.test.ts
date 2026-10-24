@@ -339,6 +339,42 @@ describe('book.adapter', () => {
         { name: 'Austen, Jane, 1775-1817', birth_year: 1775, death_year: 1817 },
       ]);
     });
+
+    it('covers string author input, birth-only lifespan, Author objects in cloud row, and partial hybrid books', () => {
+      expect(formatAuthorWithLifespan('Homer')).toBe('Homer');
+      expect(formatAuthorWithLifespan({ name: 'Living Writer', birth_year: 1950, death_year: null })).toBe(
+        'Living Writer, b. 1950'
+      );
+      expect(formatAuthorWithLifespan(null as unknown as string)).toBe('Anonymous');
+
+      const cloudRowWithObjects = toGutendexBookFromCloudRow({
+        book_id: 1342,
+        book_title: 'Pride',
+        book_authors: [
+          { name: 'Austen, Jane, 1775-1817', birth_year: null, death_year: null },
+          { name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 },
+        ],
+        cover_url: null,
+      });
+      expect(cloudRowWithObjects.authors[0].birth_year).toBe(1775);
+      expect(cloudRowWithObjects.authors[1].death_year).toBe(1851);
+
+      const hybrid = toCanonicalBook({
+        id: 500,
+        title: 'Hybrid Book',
+        authors: ['Austen, Jane, 1775-1817', null as unknown as string],
+        authorDetails: [{ name: 'Extra Scholar', birth_year: 1800, death_year: 1870 }],
+        translators: [{ name: 'Translator One', birth_year: 1810, death_year: 1880 }],
+        coverUrl: 'https://example.com/c.jpg',
+        epubUrl: 'https://example.com/e.epub',
+        htmlUrl: 'https://example.com/h.html',
+        downloadCount: 42,
+      } as unknown as Parameters<typeof toCanonicalBook>[0]);
+      expect(hybrid.authors).toEqual(['Jane Austen', 'Anonymous']);
+      expect(hybrid.authorDetails).toHaveLength(2);
+      expect(hybrid.translators).toHaveLength(1);
+      expect(hybrid.downloadCount).toBe(42);
+    });
   });
 });
 

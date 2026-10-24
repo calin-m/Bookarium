@@ -339,7 +339,9 @@ describe('NotebookView component', () => {
     fireEvent.change(textareaAgain, { target: { value: 'Updated reflection note' } });
 
     const saveBtn = screen.getByRole('button', { name: /Save Note/i });
-    fireEvent.click(saveBtn);
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
 
     expect(screen.getByText('Updated reflection note')).toBeInTheDocument();
     expect(useAnnotationStore.getState().annotations[0].note).toBe('Updated reflection note');
@@ -615,7 +617,9 @@ describe('NotebookView component', () => {
     const textarea = screen.getByTestId(`edit-note-textarea-${ann.id}`);
     fireEvent.change(textarea, { target: { value: 'Newly added note' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /Save Note/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Save Note/i }));
+    });
     expect(screen.getByText('Newly added note')).toBeInTheDocument();
   });
 

@@ -131,9 +131,10 @@ describe('matchesSmartSearch', () => {
     expect(matchesSmartSearch(item, 'detective arthur adventures', getHaystack)).toBe(true);
   });
 
-  it('should return false if any token is missing from haystack', () => {
+  it('should return false if any token is missing from haystack or haystack is empty', () => {
     expect(matchesSmartSearch(item, 'sherlock poirot', getHaystack)).toBe(false);
     expect(matchesSmartSearch(item, 'doyle agatha', getHaystack)).toBe(false);
+    expect(matchesSmartSearch(item, 'sherlock', () => '')).toBe(false);
   });
 });
 
@@ -199,6 +200,30 @@ describe('getBookSearchHaystack', () => {
     expect(haystack).toContain('Courtship -- Fiction');
     expect(haystack).toContain('Harvard Classics');
     expect(haystack).toContain('en');
+  });
+
+  it('handles translators and missing/undefined book properties gracefully', () => {
+    const withTranslators = getBookSearchHaystack({
+      ...mockBooks[0],
+      translators: [{ name: 'Constance Garnett', birth_year: 1861, death_year: 1946 }, { name: '' as any, birth_year: null, death_year: null }],
+      authors: [{ name: '' as any, birth_year: null, death_year: null }],
+    });
+    expect(withTranslators).toContain('Constance Garnett');
+
+    const sparseBook = getBookSearchHaystack({
+      id: 1,
+      title: '',
+      authors: undefined as any,
+      translators: undefined as any,
+      subjects: undefined as any,
+      bookshelves: undefined as any,
+      languages: undefined as any,
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 0,
+    });
+    expect(sparseBook.trim()).toBe('');
   });
 });
 

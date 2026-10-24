@@ -448,6 +448,122 @@ describe('BookCard component', () => {
     expect(popoverTag).toHaveClass('border-border', 'hover:bg-muted/80', 'hover:text-primary');
     expect(popoverTag).not.toHaveClass('hover:border-primary');
   });
+
+  it('covers rating & reading status badges, direct primary tag clicks, restricted cover clicks, and all favorite/bookshelf tooltip states', () => {
+    const book = mockBooks[0];
+    const onPreviewClick = vi.fn();
+    const onDownloadClick = vi.fn();
+    const onTopicClick = vi.fn();
+
+    // Seed saved, favorite, 5-star rating, and reading status
+    useBookshelfStore.getState().toggleSaveBook(book);
+    useBookshelfStore.getState().toggleFavoriteBook(book);
+    useBookshelfStore.setState({
+      bookRatings: { [book.id]: 5 },
+      bookStatuses: { [book.id]: 'currently_reading' },
+    });
+
+    const { rerender } = render(
+      <BookCard
+        book={book}
+        activeView="favorites"
+        onPreviewClick={onPreviewClick}
+        onDownloadClick={onDownloadClick}
+        onTopicClick={onTopicClick}
+      />
+    );
+
+    expect(screen.getByText('📖 Reading')).toBeInTheDocument();
+
+    // Test 'finished' and 'want_to_read' status badges
+    act(() => {
+      useBookshelfStore.setState({ bookStatuses: { [book.id]: 'finished' } });
+    });
+    rerender(
+      <BookCard
+        book={book}
+        activeView="favorites"
+        onPreviewClick={onPreviewClick}
+        onDownloadClick={onDownloadClick}
+        onTopicClick={onTopicClick}
+      />
+    );
+    expect(screen.getByText('✓ Finished')).toBeInTheDocument();
+
+    act(() => {
+      useBookshelfStore.setState({ bookStatuses: { [book.id]: 'want_to_read' } });
+    });
+    rerender(
+      <BookCard
+        book={book}
+        activeView="favorites"
+        onPreviewClick={onPreviewClick}
+        onDownloadClick={onDownloadClick}
+        onTopicClick={onTopicClick}
+      />
+    );
+    expect(screen.getByText('🔖 Want to Read')).toBeInTheDocument();
+
+    // Click primary tag badge directly
+    const primaryTags = screen.getAllByText('Classics');
+    fireEvent.click(primaryTags[0]);
+    expect(onTopicClick).toHaveBeenCalledWith('Classics');
+    if (primaryTags[1]) {
+      fireEvent.click(primaryTags[1]);
+    }
+
+    // Hover favorite & bookshelf buttons when saved & favorited, and while confirming removal
+    const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
+    fireEvent.mouseMove(coverVisual, { clientX: 120, clientY: 160 });
+
+    const favBtn = screen.getByRole('button', { name: /Remove from favorites/i });
+    fireEvent.mouseEnter(favBtn);
+    expect(screen.getByText('Remove from Favorites')).toBeInTheDocument();
+
+    // Click once to arm removal confirmation -> tooltip shows 'Click again to remove'
+    fireEvent.click(favBtn);
+    expect(screen.getByText('Click again to remove')).toBeInTheDocument();
+
+    // Disarm via onBlur
+    fireEvent.blur(favBtn);
+    expect(screen.getByRole('button', { name: /Remove from favorites/i })).toBeInTheDocument();
+
+    // Arm again and disarm via cover mouseLeave
+    fireEvent.click(screen.getByRole('button', { name: /Remove from favorites/i }));
+    fireEvent.mouseLeave(coverVisual);
+    expect(screen.getByRole('button', { name: /Remove from favorites/i })).toBeInTheDocument();
+
+    // Hover bookshelf button when saved -> 'Remove from Bookshelf'
+    fireEvent.mouseMove(coverVisual, { clientX: 120, clientY: 160 });
+    const saveBtn = screen.getByRole('button', { name: /Remove from bookshelf/i });
+    fireEvent.mouseEnter(saveBtn);
+    expect(screen.getByText('Remove from Bookshelf')).toBeInTheDocument();
+    fireEvent.mouseLeave(saveBtn);
+
+    // Restricted book cover click with onPreviewClick vs fallback to onDownloadClick
+    act(() => {
+      useJurisdictionStore.getState().setCountry('GB');
+    });
+    const restrictedBook = {
+      ...book,
+      id: 865,
+      authors: [{ name: 'Modern, Author', birth_year: 1930, death_year: 1995 }],
+    };
+    rerender(
+      <BookCard
+        book={restrictedBook}
+        onPreviewClick={onPreviewClick}
+        onDownloadClick={onDownloadClick}
+      />
+    );
+    fireEvent.click(screen.getByLabelText(`Click to preview quotes for ${restrictedBook.title}`));
+    expect(onPreviewClick).toHaveBeenCalledWith(restrictedBook, expect.any(Object));
+
+    rerender(<BookCard book={restrictedBook} onDownloadClick={onDownloadClick} />);
+    const cardEl = screen.getByTestId('book-card-865');
+    fireEvent.click(cardEl.firstElementChild as HTMLElement);
+    expect(onDownloadClick).toHaveBeenCalledWith(restrictedBook);
+  });
 });
 
 

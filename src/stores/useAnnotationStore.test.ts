@@ -11,6 +11,7 @@ const mockSelect = vi.fn().mockReturnValue({
   }),
 });
 const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+const mockProfilesIn = vi.fn().mockResolvedValue({ data: [], error: null });
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
@@ -22,6 +23,13 @@ vi.mock('@/lib/supabase/client', () => ({
           delete: mockDelete,
           select: mockSelect,
           upsert: mockUpsert,
+        };
+      }
+      if (table === 'profiles') {
+        return {
+          select: () => ({
+            in: mockProfilesIn,
+          }),
         };
       }
       return {};
@@ -709,6 +717,135 @@ describe('useAnnotationStore', () => {
     const healed = useAnnotationStore.getState().getFellowAnnotationsForBook(1342);
     expect(healed[0].fellowUsername).toBe('hypatia_alexandria');
     expect(healed[0].fellowDisplayName).toBe('Hypatia of Alexandria');
+  });
+
+  it('covers fetchFellowAnnotationsForBook profile fallback, early return, error fallback, and enrichFellowAnnotations symposium fallback', async () => {
+    const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+    const { renderHook } = await import('@testing-library/react');
+    const { useHydratedAnnotations } = await import('./useAnnotationStore');
+
+    // Early return on missing userId or bookId
+    expect(await useAnnotationStore.getState().fetchFellowAnnotationsForBook(1342, '')).toEqual([]);
+    expect(await useAnnotationStore.getState().fetchFellowAnnotationsForBook(0, 'user-123')).toEqual([]);
+
+    // Profile lookup fallback for unknown fellow user_id
+    useFellowshipStore.getState().clearFellowshipState();
+    mockSelect.mockReturnValueOnce({
+      eq: vi.fn().mockReturnValue({
+        neq: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValueOnce({
+            data: [
+              {
+                id: 'fellow-unknown-1',
+                user_id: 'unknown-scholar-77',
+                book_id: 1342,
+                chapter_index: 0,
+                chapter_page: 1,
+                selected_text: 'Socratic wisdom',
+                color: '',
+                note: '',
+                created_at: '2026-10-15T12:00:00Z',
+                updated_at: '2026-10-15T12:00:00Z',
+              },
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    });
+    mockProfilesIn.mockResolvedValueOnce({
+      data: [{ id: 'unknown-scholar-77', username: 'socrates', display_name: 'Socrates of Athens' }],
+      error: null,
+    });
+
+    const resolvedFromProfiles = await useAnnotationStore
+      .getState()
+      .fetchFellowAnnotationsForBook(1342, 'user-123');
+    expect(resolvedFromProfiles[0].fellowUsername).toBe('socrates');
+    expect(resolvedFromProfiles[0].fellowDisplayName).toBe('Socrates of Athens');
+    expect(resolvedFromProfiles[0].color).toBe('amber');
+
+    // Error fallback returns cached fellowAnnotations for bookId
+    mockSelect.mockReturnValueOnce({
+      eq: vi.fn().mockReturnValue({
+        neq: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValueOnce({
+            data: null,
+            error: new Error('Query failed'),
+          }),
+        }),
+      }),
+    });
+    const fallbackResult = await useAnnotationStore
+      .getState()
+      .fetchFellowAnnotationsForBook(1342, 'user-123');
+    expect(fallbackResult).toHaveLength(1);
+
+    // enrichFellowAnnotations symposium fallback when userId is absent on cached fellowAnnotation
+    useFellowshipStore.setState({
+      circles: [],
+      symposiums: [
+        {
+          id: 'sym-fallback',
+          book_id: 84,
+          book_title: 'Frankenstein',
+          host_id: 'host-1',
+          host_username: 'mary_shelley',
+          host_display_name: 'Mary Shelley',
+          fellow_id: 'fellow-2',
+          fellow_username: 'percy_shelley',
+          fellow_display_name: 'Percy Shelley',
+          status: 'active',
+          host_chapter: 0,
+          host_progress: 10,
+          fellow_chapter: 0,
+          fellow_progress: 20,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+    });
+    useAnnotationStore.setState({
+      fellowAnnotations: [
+        {
+          id: 'fa-no-uid',
+          bookId: 84,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Beware; for I am fearless',
+          color: 'amber',
+          createdAt: '',
+          updatedAt: '',
+          isFellow: true,
+          fellowUsername: 'fellow_scholar',
+        },
+      ],
+    });
+    useAnnotationStore.getState().enrichFellowAnnotations();
+    expect(useAnnotationStore.getState().fellowAnnotations[0].fellowUsername).toBe('percy_shelley');
+    // Calling enrichFellowAnnotations again when already enriched returns state unchanged
+    useAnnotationStore.getState().enrichFellowAnnotations();
+
+    // Expanding selectedText on overlapping annotation & useHydratedAnnotations hook
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 84,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'fearless',
+      color: 'yellow',
+    });
+    const expanded = await useAnnotationStore.getState().addAnnotation({
+      bookId: 84,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Beware; for I am fearless, and therefore powerful.',
+      color: 'yellow',
+    });
+    expect(expanded.selectedText).toBe('Beware; for I am fearless, and therefore powerful.');
+
+    const { result } = renderHook(() => useHydratedAnnotations());
+    expect(result.current.hasMounted).toBe(true);
+    expect(result.current.annotations.length).toBeGreaterThanOrEqual(1);
   });
 });
 

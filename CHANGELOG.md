@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Updated
 - Next.js 16.4.3 Supply-Chain Upgrade (`package.json`, `package-lock.json`, `README.md`, `docs/DECISIONS.md`, `ADR-059`): Upgraded `next` and `eslint-config-next` to `16.4.3`, verifying Turbopack and Webpack production build stability and updating project documentation badges.
+- 4-Tier Vitest Suite Hardening & >= 85% Coverage Enforcement (`vitest.config.mts`, `src/config/featured-books.test.ts`, `src/config/literary-quotes.test.ts`, `src/config/catalog-filters.test.ts`, `src/workers/gutenberg.worker.test.ts`, `src/hooks/useOfflineBooks.ts`, `ADR-060`): Added 4 new co-located unit suites (186 suites / 1,825 tests total), expanded branch and error-recovery tests across pages, UI components, Zustand stores, cloud sync, and IndexedDB storage, eliminated React 19 `act(...)` warnings, excluded pure TypeScript type definitions and re-export barrels from V8 coverage noise, and raised enforced coverage thresholds from `80%` to `85%` across `lines` (`96.00%`), `statements` (`94.66%`), `functions` (`93.08%`), and `branches` (`85.13%`).
 
 
 ## [2.8.0] - 2026-10-23

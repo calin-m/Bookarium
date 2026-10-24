@@ -288,7 +288,7 @@ function pass2ServerMocks() {
 // PASS 3: Vitest Full Unit Suite & Code Coverage
 // -------------------------------------------------------------
 function pass3ClientUI() {
-  logHeader('Pass 3: Vitest Unit Suite & Coverage Assertion (>= 80%)');
+  logHeader('Pass 3: Vitest Unit Suite & Coverage Assertion (>= 85%)');
   const res = runCommand(
     `${npmCmd} run test:coverage -- --reporter=verbose --reporter=json --outputFile=coverage/test-results.json`,
     true
@@ -303,12 +303,12 @@ function pass3ClientUI() {
     const cov = JSON.parse(fs.readFileSync(covSummaryPath, 'utf-8'));
     const { lines, statements, functions, branches } = cov.total;
     console.log(`\n📊 Total Coverage: Lines: ${lines.pct}%, Stmts: ${statements.pct}%, Funcs: ${functions.pct}%, Branches: ${branches.pct}%`);
-    if (lines.pct < 80 || statements.pct < 80 || functions.pct < 80 || branches.pct < 80) {
-      logFail(`Coverage threshold unmet (Target: >= 80%).`);
+    if (lines.pct < 85 || statements.pct < 85 || functions.pct < 85 || branches.pct < 85) {
+      logFail(`Coverage threshold unmet (Target: >= 85%).`);
       return false;
     }
   }
-  logPass('All unit and integration tests passed with >= 80% coverage.');
+  logPass('All unit and integration tests passed with >= 85% coverage.');
   return true;
 }
 

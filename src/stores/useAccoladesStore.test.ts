@@ -160,5 +160,49 @@ describe('useAccoladesStore', () => {
     // Local accolade not in cloud should have been pushed via upsert
     expect(mockUpsert).toHaveBeenCalled();
   });
+
+  it('covers authenticated evaluateAndUnlock, authenticated togglePin, dismissCelebration empty guard, syncWithCloud errors, and useHydratedAccolades', async () => {
+    const { renderHook } = await import('@testing-library/react');
+    const { useHydratedAccolades } = await import('./useAccoladesStore');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // 1. dismissCelebration when activeCelebration is null
+    useAccoladesStore.getState().dismissCelebration();
+    expect(useAccoladesStore.getState().activeCelebration).toBeNull();
+
+    // 2. evaluateAndUnlock with userId and upsert error warning
+    mockUpsert.mockResolvedValueOnce({ data: null, error: { message: 'Upsert warning' } });
+    useAccoladesStore.getState().evaluateAndUnlock({ currentStreak: 7 }, 'user-123');
+    expect(mockUpsert).toHaveBeenCalled();
+
+    // Dismiss the single celebration -> activeCelebration becomes null
+    useAccoladesStore.getState().dismissCelebration();
+    expect(useAccoladesStore.getState().activeCelebration).toBeNull();
+
+    // 3. togglePin with userId (both pin and unpin)
+    mockEq.mockReturnValueOnce({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
+    expect(useAccoladesStore.getState().isPinned('seven-day-sage')).toBe(true);
+
+    mockEq.mockReturnValueOnce({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
+    expect(useAccoladesStore.getState().isPinned('seven-day-sage')).toBe(false);
+
+    // 4. syncWithCloud empty userId, fetch error, and thrown exception
+    await useAccoladesStore.getState().syncWithCloud('');
+    mockEq.mockResolvedValueOnce({ data: null, error: { message: 'Fetch failed' } });
+    await useAccoladesStore.getState().syncWithCloud('user-123');
+    expect(useAccoladesStore.getState().isSyncing).toBe(false);
+
+    mockEq.mockRejectedValueOnce(new Error('Network crash'));
+    await useAccoladesStore.getState().syncWithCloud('user-123');
+    expect(useAccoladesStore.getState().isSyncing).toBe(false);
+
+    // 5. useHydratedAccolades hook
+    const { result } = renderHook(() => useHydratedAccolades());
+    expect(result.current.isHydrated).toBe(true);
+
+    warnSpy.mockRestore();
+  });
 });
 

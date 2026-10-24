@@ -200,4 +200,92 @@ describe('BookshelfSpine Component', () => {
       useJurisdictionStore.setState({ country: 'US' });
     });
   });
+
+  it('renders embossed 5-star spine stamp, multi-shelf Move to Shelf selector, full tooltip matrix, and router fallback', async () => {
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    const { useReaderStore } = await import('@/stores/useReaderStore');
+    act(() => {
+      useBookshelfStore.setState({ bookRatings: { 1342: 5 } });
+    });
+
+    const onMoveBookToShelf = vi.fn().mockResolvedValue(true);
+    const onSpineClick = vi.fn();
+    const anonymousBook: GutendexBook = {
+      ...mockBook,
+      authors: [],
+    };
+
+    render(
+      <BookshelfSpine
+        book={anonymousBook}
+        bookIndex={0}
+        isSaved={true}
+        isFavorite={true}
+        isOffline={true}
+        onToggleSave={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onSpineClick={onSpineClick}
+        cloudBookshelves={[
+          { id: 'shelf-def', user_id: 'u1', name: 'General', is_default: true, is_public: false, created_at: '', updated_at: '' },
+          { id: 'shelf-regency', user_id: 'u1', name: 'Regency Classics', is_default: false, is_public: true, created_at: '', updated_at: '' },
+        ]}
+        cloudBookshelfItems={[
+          { id: 'item-1', bookshelf_id: 'shelf-def', user_id: 'u1', book_id: 1342, book_title: 'Pride and Prejudice', book_authors: ['Jane Austen'], cover_url: null, added_at: '' },
+        ]}
+        userId="u1"
+        onMoveBookToShelf={onMoveBookToShelf}
+      />
+    );
+
+    // Anonymous author fallback
+    expect(screen.getAllByText('Anonymous').length).toBeGreaterThan(0);
+
+    // Embossed gold 5-star stamp on spine
+    expect(screen.getByTitle('Rated 5/5 stars')).toBeInTheDocument();
+
+    // Spine click
+    fireEvent.click(screen.getByTestId('shelf-book-1342'));
+    expect(onSpineClick).toHaveBeenCalledWith(anonymousBook);
+
+    // Hover Read, Download, Favorite, Bookshelf, Offline buttons to cover all tooltipContent branches
+    const readBtn = screen.getByLabelText('Open reader for Pride and Prejudice');
+    const hoverCard = readBtn.closest('div.absolute') as HTMLElement;
+    fireEvent.mouseMove(hoverCard, { clientX: 150, clientY: 200 });
+    fireEvent.mouseEnter(readBtn);
+    expect(screen.getByText('Open Reader')).toBeInTheDocument();
+    fireEvent.mouseLeave(readBtn);
+
+    const offlineBtn = screen.getByLabelText(`Remove offline copy of ${mockBook.title}`);
+    fireEvent.mouseMove(hoverCard, { clientX: 150, clientY: 200 });
+    fireEvent.mouseEnter(offlineBtn);
+    expect(screen.getByText('Remove Offline Copy')).toBeInTheDocument();
+    fireEvent.mouseLeave(offlineBtn);
+
+    const downloadBtn = screen.getByLabelText('Download formats for Pride and Prejudice');
+    fireEvent.mouseMove(hoverCard, { clientX: 150, clientY: 200 });
+    fireEvent.mouseEnter(downloadBtn);
+    expect(screen.getByText('Download Formats (EPUB, TXT)')).toBeInTheDocument();
+    fireEvent.mouseLeave(downloadBtn);
+
+    const saveBtn = screen.getByLabelText('Remove from bookshelf');
+    fireEvent.mouseMove(hoverCard, { clientX: 150, clientY: 200 });
+    fireEvent.mouseEnter(saveBtn);
+    expect(screen.getByText('Remove from Bookshelf')).toBeInTheDocument();
+    fireEvent.mouseLeave(saveBtn);
+
+    const favBtn = screen.getByLabelText('Remove from favorites');
+    fireEvent.mouseMove(hoverCard, { clientX: 150, clientY: 200 });
+    fireEvent.mouseEnter(favBtn);
+    expect(screen.getByText('Remove from Favorites')).toBeInTheDocument();
+    fireEvent.mouseLeave(favBtn);
+
+    // Click Read when onBookClick is omitted -> opens reader store and pushes route
+    fireEvent.click(readBtn);
+    expect(useReaderStore.getState().currentBook?.id).toBe(1342);
+
+    // Change Move to Shelf select value
+    const shelfSelect = screen.getByLabelText('Move Pride and Prejudice to shelf');
+    fireEvent.change(shelfSelect, { target: { value: 'shelf-regency' } });
+    expect(onMoveBookToShelf).toHaveBeenCalledWith(1342, 'shelf-regency', 'u1');
+  });
 });

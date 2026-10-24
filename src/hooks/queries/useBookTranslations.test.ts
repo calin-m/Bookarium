@@ -403,6 +403,79 @@ describe('useBookTranslations and helpers', () => {
       expect(result.current.translations[1].languageCode).toBe('fr');
       expect(result.current.translations[2].languageCode).toBe('de');
     });
+
+    it('covers edge-case helper branches, DB missing current volume injection, and translator/duplicate language prioritization', async () => {
+      expect(extractRootTitle('; Only Subtitle')).toBe('; Only Subtitle');
+      expect(extractSignificantTitleKeywords('')).toBe('');
+      expect(extractSignificantTitleKeywords('The and of')).toBe('The and');
+      expect(extractAuthorSurname('   , Jane')).toBe('');
+      expect(resolveLanguageLabel('eo')).toContain('Esperanto');
+
+      // Tier 1 DB response that omits current bookId (injects current book via unshift)
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/books/translations')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              results: [
+                { bookId: 43647, title: 'Orgueil et Préjugé', languageCode: 'fr', isCurrent: false },
+                { bookId: 50000, title: 'Stolz und Vorurteil', languageCode: 'de', isCurrent: false },
+              ],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 500 });
+      });
+
+      const { result: dbResult } = renderHook(
+        () => useBookTranslations('', 'Jane Austen', 1342, []),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        expect(dbResult.current.translations).toHaveLength(3);
+      });
+      expect(dbResult.current.translations[0].bookId).toBe(1342);
+      expect(dbResult.current.translations[0].title).toBe('Current Edition');
+
+      // Tier 2 AST fallback with translator match and duplicate language upgrade when title matches
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/books/translations')) {
+          return Promise.resolve({ ok: false, status: 404 });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            results: [
+              { id: 10, title: 'No Langs', authors: [{ name: 'Austen, Jane' }], languages: [] },
+              {
+                id: 20,
+                title: 'Unrelated Title by Translator',
+                authors: [],
+                translators: [{ name: 'Austen, Jane' }],
+                languages: ['fr'],
+              },
+              {
+                id: 30,
+                title: 'Pride in French',
+                authors: [{ name: 'Austen, Jane' }],
+                languages: ['fr'],
+              },
+            ],
+          }),
+        });
+      });
+
+      const { result: astResult } = renderHook(
+        () => useBookTranslations('Pride and Prejudice', 'Jane Austen', 1342, ['en']),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        const fr = astResult.current.translations.find((t) => t.languageCode === 'fr');
+        expect(fr?.bookId).toBe(30);
+      });
+    });
   });
 });
 

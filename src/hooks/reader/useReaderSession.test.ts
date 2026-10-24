@@ -101,7 +101,7 @@ describe('useReaderSession', () => {
     expect(result.current.currentChapterPage).toBe(2);
   });
 
-  it('allows chapter selection and restart to chapter 0 page 1', () => {
+  it('allows chapter selection and restart to chapter 0 page 1', async () => {
     const { result } = renderHook(() =>
       useReaderSession({
         numericId: 100,
@@ -119,7 +119,7 @@ describe('useReaderSession', () => {
     expect(result.current.activeChapterIndex).toBe(1);
     expect(result.current.currentChapterPage).toBe(1);
 
-    act(() => {
+    await act(async () => {
       result.current.handleRestart();
     });
     expect(result.current.activeChapterIndex).toBe(0);
@@ -265,7 +265,9 @@ describe('useReaderSession', () => {
       })
     );
 
-    act(() => {
+    await act(async () => {});
+
+    await act(async () => {
       result.current.handleRestart();
     });
 

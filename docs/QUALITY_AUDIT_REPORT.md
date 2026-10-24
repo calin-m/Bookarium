@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 24 Oct 2026 08:30:35 GMT  
+**Last Generated**: Sat, 24 Oct 2026 10:22:04 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 182 passed  
-**Total Verified Tests**: 1775 passed  
+**Total Test Suites**: 186 passed  
+**Total Verified Tests**: 1825 passed  
 
 ---
 
@@ -14,8 +14,8 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **182/182 test suites passed** (1775 total tests) |
-| **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 80% coverage threshold met across all metrics |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **186/186 test suites passed** (1825 total tests) |
+| **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 60 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **92.41%** (8547/9248) — *Target: $ge$ 80%*
-- **Statements**: **90.88%** (9274/10204) — *Target: $ge$ 80%*
-- **Functions**: **88.87%** (2006/2257) — *Target: $ge$ 80%*
-- **Branches**: **80.98%** (8252/10190) — *Target: $ge$ 80%*
+- **Lines**: **96%** (8882/9252) — *Target: $ge$ 85%*
+- **Statements**: **94.64%** (9660/10207) — *Target: $ge$ 85%*
+- **Functions**: **92.99%** (2097/2255) — *Target: $ge$ 85%*
+- **Branches**: **85.13%** (8681/10197) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (182 Suites / 1775 Tests)
+## 🧪 Comprehensive Test Suite Catalog (186 Suites / 1825 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 229 Tests)
+### 🚀 App Routes & Pages (26 Suites · 235 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -45,7 +45,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top`
 - ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
@@ -64,6 +64,8 @@
 - ✔ `swipes left on Account to wrap forward to Catalog with ?dir=forward`
 - ✔ `swipes right on Account to return backward to Bookmarks with ?dir=backward`
 - ✔ `enforces overflow-x-clip on root and main layout containers and solid border-border on active Tier-2 Habits sub-tabs`
+- ✔ `covers guest modal trigger, Navbar navigation, and preview mode (?preview=true)`
+- ✔ `covers sign out, completedBooksCount, and error/catch recovery across profile, password, and deletion actions`
 
 </details>
 
@@ -250,7 +252,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (30 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (33 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -282,6 +284,9 @@
 - ✔ `renders sort dropdown, volume badge, and pagination on Favorites when exceeding 24 items`
 - ✔ `resets pagination page to 1 when collection search query changes`
 - ✔ `enforces overflow-x-clip on root and main containers and tightens catalog-section padding`
+- ✔ `handles HeroSearch onReadFeaturedBook, active filter chip removal, and custom shelf filtering`
+- ✔ `handles BookPreviewModal onReadBook and BookshelfMobileModal callbacks`
+- ✔ `returns to Catalog from empty NotebookView and BookmarksView via onBrowseCatalog`
 
 </details>
 
@@ -330,7 +335,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (35 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (36 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -367,6 +372,7 @@
 - ✔ `navigates to targeted annotation and scrolls it into view when annotationId is provided in URL`
 - ✔ `displays Literary Symposium milestone dispatch banner and reveals companion progress micro-pill when dismissed`
 - ✔ `allows user to save own highlight and note on passage previously annotated by a fellow scholar`
+- ✔ `handles authenticated cloud sync, slash keyboard search, delete cancel, and completion modal Bookshelf navigation`
 
 </details>
 
@@ -421,7 +427,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (27 Suites · 353 Tests)
+### 🎨 Catalog & Presentation (27 Suites · 355 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -451,7 +457,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (22 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (23 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -475,6 +481,7 @@
 - ✔ `opens unconstrained popover when clicking +N tag and invokes onTopicClick`
 - ✔ `enforces min-w-0 on card root and inner metadata flex column to prevent mobile grid blowout`
 - ✔ `preserves neutral editorial card border, shadow-booksaw elevation, and clean topic badges without orange hover borders`
+- ✔ `covers rating & reading status badges, direct primary tag clicks, restricted cover clicks, and all favorite/bookshelf tooltip states`
 
 </details>
 
@@ -585,13 +592,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `renders spine title, author, and handles keyboard interaction`
 - ✔ `triggers quick actions from desktop hover card`
 - ✔ `renders offline indicator and fires onToggleOffline when clicked`
 - ✔ `renders cursor-following portal tooltip on hover card button hover`
 - ✔ `renders muted spine, restriction badge, banner, and disabled buttons for copyright-protected books`
+- ✔ `renders embossed 5-star spine stamp, multi-shelf Move to Shelf selector, full tooltip matrix, and router fallback`
 
 </details>
 
@@ -938,7 +946,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 160 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 162 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1003,7 +1011,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders children when open`
 - ✔ `does not render when isOpen is false`
@@ -1015,6 +1023,7 @@
 - ✔ `renders mobile grab handle and bottom sheet responsive classes`
 - ✔ `traps focus with Tab and Shift+Tab within the drawer panel`
 - ✔ `restores focus to previous element when unmounted`
+- ✔ `supports ReactNode titles, sepia/dark themes, backdrop touchMove lock, auto-focus timer, and mobile viewport motion branches`
 
 </details>
 
@@ -1102,7 +1111,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSpeechBar.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders null when isOpen is false`
 - ✔ `renders with elevated z-[10001] stacking context to remain interactive above drawer backdrops`
@@ -1120,6 +1129,7 @@
 - ✔ `renders expanded card by default and allows manual toggling to minimized mini-pill and back with isolated DOM surfaces`
 - ✔ `automatically enters minimized mode and docks at the top when isDrawerOpen is true`
 - ✔ `handles playback toggling, pause, themes, and empty sentence counts inside minimized mode`
+- ✔ `supports drag threshold cues, downward collapse to mini-pill, downward dismiss from mini-pill, upward drawer dismiss, and vertical magnetic snapping`
 
 </details>
 
@@ -1202,10 +1212,10 @@
 
 </details>
 
-### 🔐 Authentication & Security (2 Suites · 24 Tests)
+### 🔐 Authentication & Security (2 Suites · 25 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (20 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
@@ -1227,6 +1237,7 @@
 - ✔ `binds dynamic unique useId to dialog header`
 - ✔ `traps Tab and Shift+Tab focus within the auth dialog card`
 - ✔ `restores focus to previous active element when unmounted`
+- ✔ `executes useShallow selector, syncs cloud on sign-in/sign-up, switches views across all 4 modes, and handles resend verification errors`
 
 </details>
 
@@ -1240,10 +1251,10 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 158 Tests)
+### ⚡ Zustand State Stores (10 Suites · 164 Tests)
 
 <details>
-<summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `initializes with clean default state`
 - ✔ `evaluates and unlocks accolades when context meets criteria`
@@ -1253,11 +1264,12 @@
 - ✔ `enforces maximum pinned limit of 3 accolades`
 - ✔ `retrieves pinned accolade definitions via selector`
 - ✔ `syncs with cloud by merging remote accolades and pushing local ones`
+- ✔ `covers authenticated evaluateAndUnlock, authenticated togglePin, dismissCelebration empty guard, syncWithCloud errors, and useHydratedAccolades`
 
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1281,6 +1293,7 @@
 - ✔ `retains failing actions in outbox when dispatcher throws error`
 - ✔ `toggles marginaliaSourceFilter and spoilerShieldEnabled and fetches fellow annotations for a book`
 - ✔ `auto-resolves fellow identity from useFellowshipStore when fellowScholarsMap is omitted and heals cached fellow_scholar entries via enrichFellowAnnotations`
+- ✔ `covers fetchFellowAnnotationsForBook profile fallback, early return, error fallback, and enrichFellowAnnotations symposium fallback`
 
 </details>
 
@@ -1318,7 +1331,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (43 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (44 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -1360,6 +1373,7 @@
 - ✔ `manages deletedFavoriteBookIds and suppresses ghost favorite resurrection during syncWithCloud`
 - ✔ `removes local favorite when deleted on another device and syncing with cloud`
 - ✔ `enriches savedBooks and recentBooks with author lifespans and translators`
+- ✔ `covers syncFavoriteBooks, authenticated curation deletion/error outbox fallbacks, and toggleSaveBook insert outbox`
 - ✔ `chains created_at DESC and book_id ASC when order function is available on query builder`
 - ✔ `gracefully handles single-order mocks where first order returns a Promise or non-chainable object`
 - ✔ `returns original query if query has no order function`
@@ -1367,18 +1381,19 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `invites a Fellow Scholar by @username via RPC lookup and accepts invitation`
 - ✔ `validates empty and self @username invitations and handles missing handles`
 - ✔ `creates a Literary Symposium invite, accepts it, and synchronizes reading progress to completion`
 - ✔ `calculates incoming pending invite count and cascades fellow removal to symposiums`
 - ✔ `fetches fellowship data and exposes hydrated fellowship hook`
+- ✔ `covers unauthenticated guards, profile lookup fallback, duplicate symposiums, decline symposium, and error recovery`
 
 </details>
 
 <details>
-<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `initializes with default values`
 - ✔ `records daily activity without duplicates`
@@ -1392,6 +1407,7 @@
 - ✔ `provides computed immersion selectors and breakdown strings`
 - ✔ `computes partial streak progress correctly when under 5 minutes`
 - ✔ `synchronizes and merges total_listening_seconds with Supabase cloud`
+- ✔ `covers authenticated debounced sync on duration/goal/activity, error handling, getTodayImmersionSeconds, and useHydratedHabits`
 
 </details>
 
@@ -1422,7 +1438,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (21 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1445,6 +1461,7 @@
 - ✔ `returns 0 for null, undefined, or empty state`
 - ✔ `returns unique volume count across positions and progress`
 - ✔ `provides hydration-safe reader defaults and activeReadingCount`
+- ✔ `covers saveReadingPosition metadata preservation, LWW conflict resolution, ghost cloud restore, and active debounce timer cancellation`
 
 </details>
 
@@ -1460,7 +1477,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (36 Suites · 413 Tests)
+### 📚 Gutenberg Parsers & Metadata (36 Suites · 421 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1481,7 +1498,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `normalizes "LastName, FirstName" to "FirstName LastName"`
 - ✔ `returns single word or standard formatted names unchanged`
@@ -1502,6 +1519,7 @@
 - ✔ `omits bookshelf_id when not provided`
 - ✔ `formats Author objects with birth/death years, single bounds, and avoids duplicating existing lifespans`
 - ✔ `extracts authorDetails lifespans when toCanonicalBook receives string authors with embedded dates`
+- ✔ `covers string author input, birth-only lifespan, Author objects in cloud row, and partial hybrid books`
 
 </details>
 
@@ -1548,10 +1566,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/book-sorting.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/lib/book-sorting.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `exposes defined sort option lists for Bookshelf and Favorites`
 - ✔ `handles empty arrays, undefined inputs, and single-item arrays safely`
+- ✔ `handles undefined authors, undefined readingProgress, and missing download_count`
 - ✔ `does not mutate the original array (immutability check)`
 - ✔ `sorts alphabetically by title ascending and descending (cleans preamble)`
 - ✔ `sorts alphabetically by author ascending and descending`
@@ -1576,11 +1595,14 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `applies deterministic item ordering when order method is single-level or chainable`
 - ✔ `flushes outbox actions and retains only actions that fail`
 - ✔ `executes custom shelf creation, rename, privacy toggle, move, migration, and deletion`
+- ✔ `dispatches all 6 outbox action types and handles empty outbox`
+- ✔ `synchronizes shelves, tombstones, favorites, and LWW curation in executeBookshelfCloudSync`
+- ✔ `covers shelf deletion reassignment to defaultShelf, moveBookToShelf existing item & error fallback, and validation guards`
 
 </details>
 
@@ -1804,7 +1826,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/library-backup.test.ts</code></b> (21 tests)</summary>
+<summary><b><code>src/lib/library-backup.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `generates a complete, structured backup payload from active stores`
 - ✔ `creates a download blob and triggers click in DOM`
@@ -1827,11 +1849,12 @@
 - ✔ `validates all items in large savedBooks arrays beyond index 50`
 - ✔ `rejects malformed customShelves missing bookIds array`
 - ✔ `filters out-of-bounds ratings and non-standard statuses`
+- ✔ `covers CSV status variants (want_to_read, currently_reading, Unassigned), Unknown Author, and replace/merge edge cases`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/offline-storage.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/lib/offline-storage.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `saves book text to offline storage`
 - ✔ `retrieves offline book text correctly`
@@ -1849,6 +1872,7 @@
 - ✔ `recovers from QuotaExceededError by evicting emergency space and retrying`
 - ✔ `throws error when QuotaExceededError cannot free sufficient space`
 - ✔ `returns empty array from getOfflineBookIds when store error occurs`
+- ✔ `covers database upgrade, transaction/request error handlers, and missing IndexedDB fallbacks`
 
 </details>
 
@@ -1960,7 +1984,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/smart-search.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/lib/smart-search.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `should return empty string for null, undefined, or empty inputs`
 - ✔ `should lowercase text`
@@ -1972,7 +1996,7 @@
 - ✔ `should match single exact and partial words`
 - ✔ `should match multi-word query in natural order`
 - ✔ `should match multi-word query in REVERSE / arbitrary word order`
-- ✔ `should return false if any token is missing from haystack`
+- ✔ `should return false if any token is missing from haystack or haystack is empty`
 - ✔ `should return all books when query is empty or blank`
 - ✔ `should filter by title`
 - ✔ `should filter by author name`
@@ -1982,6 +2006,7 @@
 - ✔ `should filter with diacritics / accent variations`
 - ✔ `should return empty array when query does not match any volume`
 - ✔ `should concatenate title, authors, subjects, bookshelves, and languages into searchable string`
+- ✔ `handles translators and missing/undefined book properties gracefully`
 
 </details>
 
@@ -2091,10 +2116,10 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 226 Tests)
+### 🔄 Hooks & React Query (22 Suites · 232 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
@@ -2108,11 +2133,12 @@
 - ✔ `allows offline fallback when device is offline without author metadata`
 - ✔ `falls back to offline storage when upstream fetch fails with network error`
 - ✔ `throws an error when upstream response returns empty text`
+- ✔ `covers LegalRestrictionError default reason, 451 non-JSON body, non-US network-error fallback, and retry predicate`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
@@ -2129,11 +2155,14 @@
 - ✔ `should filter protected books during Strategy 2 fallback for international users`
 - ✔ `should retain protected books during Strategy 2 fallback when includeRestrictedMetadata is true`
 - ✔ `should use calibrated baseline count during Strategy 2 fallback for unfiltered catalog queries in RO`
+- ✔ `should schedule idle prefetch via requestIdleCallback when available and cancel on unmount`
+- ✔ `should fallback to setTimeout in usePrefetchNextPage and skip when hasNextPage is false`
+- ✔ `should handle server runtime non-ok status, invalid JSON, and copyright filtering`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBookTranslations.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookTranslations.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `strips subtitles after semicolons and colons`
 - ✔ `strips volume and part suffixes`
@@ -2152,6 +2181,7 @@
 - ✔ `rejects candidate editions from stemmer collisions when author does not match (e.g. The Woman in the Alcove for Joan Alcover)`
 - ✔ `requires title keyword match when volume has an anonymous or placeholder author`
 - ✔ `prioritizes Tier 1 relational database editions when returned from /api/books/translations`
+- ✔ `covers edge-case helper branches, DB missing current volume injection, and translator/duplicate language prioritization`
 
 </details>
 
@@ -2167,7 +2197,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (21 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -2188,6 +2218,7 @@
 - ✔ `resolves authorDetails and lifespans for featured volumes without savedBooks or API data`
 - ✔ `excludes legacy 0% Page-1 books from volumes unless they advance or have curation status`
 - ✔ `supports multi-attribute sorting by title, author, and progress`
+- ✔ `enriches savedBooks lacking lifespans using posAuthorDetails or resolveBookMetadata`
 - ✔ `extracts authorDetails lifespans and normalizes display names from embedded dates in readingPosition.bookAuthors`
 - ✔ `preserves verified authorDetails lifespans from favoriteBooks/savedBooks when currentBook is a partial book`
 
@@ -2451,7 +2482,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (42 Suites · 212 Tests)
+### 🧩 UI Primitives & Motion (46 Suites · 231 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2560,7 +2591,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders public scholar profile section with profile data`
 - ✔ `toggles master public profile switch and updates badge`
@@ -2572,6 +2603,7 @@
 - ✔ `allows toggling Saved Works and Custom Shelves independently`
 - ✔ `switches between Identity & Bio and Sanctuary & Privacy sub-tabs`
 - ✔ `uses solid border-border on header icon box and Public Sanctuary badge without fractional borders`
+- ✔ `syncs reactive state when profile prop updates, toggles all privacy checkboxes, and recovers from thrown errors`
 
 </details>
 
@@ -2594,12 +2626,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountSymposiumSection.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/account/AccountSymposiumSection.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `switches between Active Symposiums, Reader Circle, and Invitations sub-tabs`
 - ✔ `renders empty states when there are zero symposiums, circle fellows, or invitations`
 - ✔ `handles fellow invitation form submission with error and success banners`
 - ✔ `allows declining an incoming circle invitation`
+- ✔ `renders completed companion symposium cards, opens New Symposium Pact modal, and handles leaving a symposium`
+- ✔ `supports Reader Circle fellow Symposium launch, fellow removal, and all pending invitation actions`
 
 </details>
 
@@ -2648,7 +2682,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders public scholar view with profile info, telemetry, and bookshelves`
 - ✔ `renders PrivateProfileNotice when is_public is false`
@@ -2658,7 +2692,8 @@
 - ✔ `falls back to Bookarium Scholar when both display_name and username are missing`
 - ✔ `copies public profile link when share button is clicked`
 - ✔ `renders Invite to Reader Circle button for authenticated visitor and dispatches invite`
-- ✔ `renders Start Symposium button when visitor is already an accepted Fellow Scholar`
+- ✔ `renders Start Symposium button when visitor is already an accepted Fellow Scholar and closes modal`
+- ✔ `renders empty bookshelves message, empty shelf items, and anonymous author fallback`
 - ✔ `uses solid border-border across header, telemetry tiles, and bookshelf items without fractional border-border/* or hover:border-primary/40`
 
 </details>
@@ -2808,6 +2843,14 @@
 </details>
 
 <details>
+<summary><b><code>src/config/catalog-filters.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `defines chronological LITERARY_ERAS with valid start < end boundaries`
+- ✔ `defines unique SORT_OPTIONS, GENRE_FACETS, HERO_POPULAR_TOPICS, CATALOG_LANGUAGES, and FORMAT_FILTERS`
+
+</details>
+
+<details>
 <summary><b><code>src/config/config.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `defines valid non-empty endpoint URLs`
@@ -2836,6 +2879,20 @@
 </details>
 
 <details>
+<summary><b><code>src/config/featured-books.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `exports a curated list of featured hero books with Pride and Prejudice as primary default`
+- ✔ `returns curated multi-chapter passages for each specially mapped featured book ID`
+- ✔ `returns 3-act featured passages for other featured books matched by ID or case-insensitive title`
+- ✔ `synthesizes 3-act fallback passages for non-featured catalog books with or without authors/subjects`
+- ✔ `allows all featured books in the US public domain`
+- ✔ `filters out Life+100 restricted authors or translators in Mexico (MX)`
+- ✔ `deterministically rotates the hourly hero book every 3,600,000 ms`
+- ✔ `advances getDailyEditorialBook to the next candidate when it collides with heroBookId`
+
+</details>
+
+<details>
 <summary><b><code>src/config/library-tokens.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `contains all expected library section keys`
@@ -2843,6 +2900,14 @@
 - ✔ `preserves intentional conceptual grouping between bookshelf and customShelves`
 - ✔ `maps correct route targets for favorites and notebook`
 - ✔ `retrieves tokens via getLibraryTheme helper correctly`
+
+</details>
+
+<details>
+<summary><b><code>src/config/literary-quotes.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `maintains a rich collection of unique, well-formed literary quotes`
+- ✔ `returns all quotes for US default jurisdiction and filters Life+70 / Life+100 restricted quotes`
 
 </details>
 
@@ -2914,6 +2979,15 @@
 - ✔ `falls back to existing cookie when no IP headers are present in production`
 - ✔ `infers country from system timezone in development when no override or edge header exists`
 - ✔ `defaults to US when no geo signals exist in production`
+
+</details>
+
+<details>
+<summary><b><code>src/workers/gutenberg.worker.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `ignores malformed messages missing id or contentText`
+- ✔ `parses chapters, calculates volume pagination, and posts GutenbergWorkerOutput back to the main thread`
+- ✔ `catches unexpected parser exceptions non-blockingly without crashing the worker thread`
 
 </details>
 

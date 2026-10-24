@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   PublicProfileView,
@@ -164,59 +164,127 @@ describe('PublicProfileView', () => {
     const { useAuthStore } = await import('@/stores/useAuthStore');
     const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
     const sendInviteMock = vi.fn().mockResolvedValue({ error: null, circle: null });
-    useAuthStore.setState({
-      user: { id: 'visitor-user-2', email: 'visitor@bookarium.test' } as any,
+    act(() => {
+      useAuthStore.setState({
+        user: { id: 'visitor-user-2', email: 'visitor@bookarium.test' } as unknown as ReturnType<typeof useAuthStore.getState>['user'],
+      });
+      useFellowshipStore.setState({
+        circles: [],
+        inviteFellowByUsername: sendInviteMock,
+      } as unknown as Partial<ReturnType<typeof useFellowshipStore.getState>>);
     });
-    useFellowshipStore.setState({
-      circles: [],
-      inviteFellowByUsername: sendInviteMock,
-    } as any);
 
     render(<PublicProfileView profile={mockProfile} />);
 
     const inviteBtn = screen.getByTestId('public-profile-invite-circle-btn');
     expect(inviteBtn).toBeInTheDocument();
-    fireEvent.click(inviteBtn);
+    await act(async () => {
+      fireEvent.click(inviteBtn);
+    });
 
-    expect(sendInviteMock).toHaveBeenCalledWith('jane_austen');
+    await waitFor(() => {
+      expect(sendInviteMock).toHaveBeenCalledWith('jane_austen');
+      expect(screen.getByTestId('public-profile-circle-pending-btn')).toBeInTheDocument();
+    });
 
-    useAuthStore.setState({ user: null });
-    useFellowshipStore.getState().clearFellowshipState();
+    act(() => {
+      useAuthStore.setState({ user: null });
+      useFellowshipStore.getState().clearFellowshipState();
+    });
   });
 
-  it('renders Start Symposium button when visitor is already an accepted Fellow Scholar', async () => {
+  it('renders Start Symposium button when visitor is already an accepted Fellow Scholar and closes modal', async () => {
     const { useAuthStore } = await import('@/stores/useAuthStore');
     const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
-    useAuthStore.setState({
-      user: { id: 'visitor-user-2', email: 'visitor@bookarium.test' } as any,
-    });
-    useFellowshipStore.setState({
-      circles: [
-        {
-          id: 'circle-1',
-          requester_id: 'visitor-user-2',
-          requester_username: 'visitor_scholar',
-          requester_display_name: 'Visitor Scholar',
-          recipient_id: 'user-scholar-1',
-          recipient_username: 'jane_austen',
-          recipient_display_name: 'Jane Austen',
-          status: 'accepted',
-          created_at: '2026-10-15T10:00:00Z',
-          updated_at: '2026-10-15T10:00:00Z',
-        },
-      ],
+    act(() => {
+      useAuthStore.setState({
+        user: { id: 'visitor-user-2', email: 'visitor@bookarium.test' } as unknown as ReturnType<typeof useAuthStore.getState>['user'],
+      });
+      useFellowshipStore.setState({
+        circles: [
+          {
+            id: 'circle-1',
+            requester_id: 'visitor-user-2',
+            requester_username: 'visitor_scholar',
+            requester_display_name: 'Visitor Scholar',
+            recipient_id: 'user-scholar-1',
+            recipient_username: 'jane_austen',
+            recipient_display_name: 'Jane Austen',
+            status: 'accepted',
+            created_at: '2026-10-15T10:00:00Z',
+            updated_at: '2026-10-15T10:00:00Z',
+          },
+        ],
+      });
     });
 
     render(<PublicProfileView profile={mockProfile} />);
 
     const symposiumBtn = screen.getByTestId('public-profile-start-symposium-btn');
     expect(symposiumBtn).toBeInTheDocument();
-    fireEvent.click(symposiumBtn);
+    await act(async () => {
+      fireEvent.click(symposiumBtn);
+    });
 
-    expect(screen.getByTestId('symposium-invite-modal')).toBeInTheDocument();
+    const modal = await screen.findByTestId('symposium-invite-modal');
+    expect(modal).toBeInTheDocument();
 
-    useAuthStore.setState({ user: null });
-    useFellowshipStore.getState().clearFellowshipState();
+    const closeBtn = screen.getByRole('button', { name: /Close modal/i });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByTestId('symposium-invite-modal')).not.toBeInTheDocument();
+
+    act(() => {
+      useAuthStore.setState({ user: null });
+      useFellowshipStore.getState().clearFellowshipState();
+    });
+  });
+
+  it('renders empty bookshelves message, empty shelf items, and anonymous author fallback', () => {
+    const { rerender } = render(
+      <PublicProfileView
+        profile={{ ...mockProfile, display_name: 'Plato' }}
+        bookshelves={[]}
+      />
+    );
+    expect(screen.getByText('PL')).toBeInTheDocument();
+    expect(
+      screen.getByText('No public bookshelves published by this scholar yet.')
+    ).toBeInTheDocument();
+
+    rerender(
+      <PublicProfileView
+        profile={mockProfile}
+        bookshelves={[
+          {
+            id: 'empty-shelf',
+            name: 'Empty Shelf',
+            items: [],
+          },
+          {
+            id: 'anon-shelf',
+            name: 'Anonymous Shelf',
+            items: [
+              {
+                book_id: 999,
+                book_title: 'Beowulf',
+                book_authors: [],
+              },
+              {
+                book_id: 1000,
+                book_title: 'Sir Gawain',
+                book_authors: ['Pearl Poet'],
+              },
+            ],
+          },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getByText('This shelf contains no public volumes yet.')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Anonymous')).toBeInTheDocument();
+    expect(screen.getByText('2 books')).toBeInTheDocument();
   });
 
   it('uses solid border-border across header, telemetry tiles, and bookshelf items without fractional border-border/* or hover:border-primary/40', () => {

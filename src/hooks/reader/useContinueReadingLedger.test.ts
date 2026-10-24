@@ -589,6 +589,61 @@ describe('useContinueReadingLedger', () => {
       result.current.setSortBy('progress_asc');
     });
     expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([1, 3, 2]);
+
+    // Sort: title_desc & author_desc
+    act(() => {
+      result.current.setSortBy('title_desc');
+    });
+    expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([1, 3, 2]);
+
+    act(() => {
+      result.current.setSortBy('author_desc');
+    });
+    expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([1, 2, 3]);
+  });
+
+  it('enriches savedBooks lacking lifespans using posAuthorDetails or resolveBookMetadata', () => {
+    act(() => {
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            ...mockBook,
+            id: 1342,
+            authors: [{ name: 'Jane Austen', birth_year: null, death_year: null }],
+          },
+          {
+            ...mockBook,
+            id: 1727,
+            title: 'The Odyssey',
+            authors: [{ name: 'Homer', birth_year: null, death_year: null }],
+          },
+        ],
+      });
+      useReaderStore.setState({
+        readingPositions: {
+          1342: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 5,
+            lastReadAt: '2026-09-05T12:00:00Z',
+            bookTitle: 'Pride and Prejudice',
+            bookAuthors: ['Austen, Jane, 1775-1817'],
+          },
+          1727: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 5,
+            lastReadAt: '2026-09-04T12:00:00Z',
+          },
+        },
+        readingProgress: { 1342: 20, 1727: 30 },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    expect(result.current.volumes).toHaveLength(2);
+    expect(result.current.volumes[0].book.authorDetails?.[0].death_year).toBe(1817);
+    expect(result.current.volumes[1].book.authorDetails?.[0].death_year).toBe(-750);
   });
 
   it('extracts authorDetails lifespans and normalizes display names from embedded dates in readingPosition.bookAuthors', () => {

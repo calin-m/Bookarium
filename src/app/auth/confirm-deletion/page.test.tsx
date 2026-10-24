@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ConfirmDeletionPage from './page';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -80,6 +80,22 @@ describe('ConfirmDeletionPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Network deletion error')).toBeInTheDocument();
     });
+
+    // Navbar onViewChange navigation and post-deletion redirect timer
+    fireEvent.click(screen.getByRole('button', { name: /^Bookshelf$/i }));
+    expect(mockPush).toHaveBeenCalledWith('/bookshelf');
+
+    vi.useFakeTimers();
+    try {
+      mockDeleteAccount.mockResolvedValueOnce({ error: null });
+      await act(async () => {
+        fireEvent.click(deleteBtn);
+        await vi.runAllTimersAsync();
+      });
+      expect(mockPush).toHaveBeenCalledWith('/?account_deleted=true');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

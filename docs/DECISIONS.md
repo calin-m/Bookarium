@@ -1248,6 +1248,8 @@
      - Rapidly cycling reading themes (Light $\to$ Sepia $\to$ Dark) exhibited micro layout shifts caused by asymmetric 1px borders on header translation badges and scrollbar class recomputation on the reader surface container.
   5. **Horizontal Filter Pill Carousel Click-and-Drag**:
      - In both the Reader Notes & Highlights drawer (`ReaderAnnotationsDrawer.tsx`) and the Notebook view (`NotebookView.tsx`), the horizontal filter pill carousels hide native scrollbars (`scrollbar-none`). Desktop mouse users could previously only use vertical mouse wheel scrolling (`deltaY` translation), but lacked tactile pointer click-and-drag (grab-to-scroll) interaction.
+  6. **4-Tier Vitest Suite Hardening & >= 85% Coverage Enforcement**:
+     - While overall line and statement coverage exceeded 92%, branch coverage stood at `80.98%`, 4 modules (`featured-books.ts`, `literary-quotes.ts`, `catalog-filters.ts`, `gutenberg.worker.ts`) lacked dedicated co-located unit suites, pure TypeScript interface files (`src/types/**`) and re-export barrels (`src/lib/gutenberg-parser.ts`, `src/lib/gutenberg/index.ts`) appeared as phantom `0%` rows in V8 reports, and React 19 logged `act(...)` warnings when `useOfflineBooks` resolved initial mount microtasks.
 - **Decision**:
   1. **Color-Nuanced Inset Ring Tokens (`src/config/annotation-tokens.ts`, `ReaderSurface.tsx`)**:
      - Added `overlapRingClass` to `ANNOTATION_COLOR_CONFIG` (`ring-amber-400/65`, `ring-orange-400/65`, `ring-emerald-400/65`, `ring-rose-400/65` with dark mode counterparts) replacing unthemed black/white borders.
@@ -1261,9 +1263,15 @@
      - Swapped CSS scrollbar styling in `globals.css` from per-class pseudo-elements to CSS custom properties (`--reader-sb-track`, `--reader-sb-thumb`, `--reader-sb-hover`), guaranteeing zero layout shift upon theme toggles.
   5. **Shared Click-and-Drag & Wheel Scroll Utility with Accidental Click Suppression (`src/lib/scroll-utils.ts`, `ReaderAnnotationsDrawer.tsx`, `NotebookView.tsx`)**:
      - Implemented `attachHorizontalDragAndWheelScroll` featuring a 5px drag deadzone threshold and capture-phase click guard (`onClickCapture`). Normal clicks ($\le 5\text{px}$) fire button filters immediately, while drags ($> 5\text{px}$) pan `scrollLeft` smoothly with `cursor-grab` / `cursor-grabbing` and suppress accidental filter switches on mouse release.
+  6. **4-Tier Vitest Suite Hardening (`vitest.config.mts`, `src/hooks/useOfflineBooks.ts`, 186 Test Suites / 1,825 Tests)**:
+     - Created co-located unit suites for `featured-books.test.ts`, `literary-quotes.test.ts`, `catalog-filters.test.ts`, and `gutenberg.worker.test.ts`.
+     - Expanded behavioral and error-recovery branch coverage across UI components, pages, Zustand stores, cloud sync, IndexedDB offline storage, and React Query hooks.
+     - Guarded initial mount `useOfflineBooks` microtask state setters (`ids.length > 0`, `quota !== null`) to eliminate React 19 `act(...)` warnings.
+     - Configured `vitest.config.mts` with `maxWorkers: 4`, excluded pure type definitions and re-export barrels from V8 instrumentation, and raised enforced coverage thresholds from `80%` to `85%` across `lines`, `functions`, `branches`, and `statements`.
 - **Consequences**:
   - Overlapping highlights render with pleasant, color-harmonized borders across all reading themes.
   - The Notebook and Reader Notes drawer present a clean, collaborative view without duplicate cards for co-highlighted passages.
   - Readers can save companion discoveries into their own notebooks with 1 click.
   - Zero cumulative layout shift (CLS = 0) achieved across all theme cycling transitions.
   - Filter pill strips in both Notes & Highlights and Notebook support seamless, tactile click-and-drag mouse scrolling without accidental filter activations.
+  - All 186 test suites (1,825 tests) pass with zero `act(...)` warnings and `>= 85%` coverage across every metric (`96.00%` Lines, `94.66%` Statements, `93.08%` Functions, `85.13%` Branches).

@@ -881,6 +881,82 @@ describe('Dedicated Reader Page (/read/[id])', () => {
       useAnnotationStore.setState({ fellowAnnotations: [], annotations: [] });
     });
   });
+
+  it('handles authenticated cloud sync, slash keyboard search, delete cancel, and completion modal Bookshelf navigation', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const syncSpy = vi.spyOn(useAnnotationStore.getState(), 'syncWithCloud').mockResolvedValue(undefined);
+    const fetchFellowshipSpy = vi.spyOn(useFellowshipStore.getState(), 'fetchFellowshipData').mockResolvedValue(undefined);
+    const fetchFellowAnnSpy = vi.spyOn(useAnnotationStore.getState(), 'fetchFellowAnnotationsForBook').mockResolvedValue([]);
+
+    act(() => {
+      useAuthStore.setState({
+        user: { id: 'scholar-1', email: 'scholar@bookarium.test' } as unknown as ReturnType<typeof useAuthStore.getState>['user'],
+      });
+    });
+
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+      note: 'Initial note',
+    });
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      expect(syncSpy).toHaveBeenCalledWith('scholar-1');
+      expect(fetchFellowshipSpy).toHaveBeenCalledWith('scholar-1');
+      expect(fetchFellowAnnSpy).toHaveBeenCalledWith(1342, 'scholar-1');
+    });
+
+    // Press '/' to open search drawer, then press '/' again to close
+    fireEvent.keyDown(window, { key: '/' });
+    expect(screen.getByRole('dialog', { name: /Search in Volume/i })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: '/' });
+    expect(screen.queryByRole('dialog', { name: /Search in Volume/i })).not.toBeInTheDocument();
+
+    // Open DeleteAnnotationModal and cancel it
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    await act(async () => {
+      fireEvent.click(highlightMark);
+    });
+    const deleteBtn = screen.getByTestId('highlight-delete-btn');
+    await act(async () => {
+      fireEvent.click(deleteBtn);
+    });
+    expect(screen.getByTestId('delete-single-note-dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+    expect(screen.queryByTestId('delete-single-note-dialog')).not.toBeInTheDocument();
+
+    // Navigate to last page and click "My Bookshelf" in Volume Completion Modal
+    act(() => {
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 3,
+        chapterPage: 1,
+        globalPage: 4,
+        lastReadAt: new Date().toISOString(),
+      });
+    });
+    // Advance using PageDown key to reach end
+    fireEvent.keyDown(window, { key: 'PageDown' });
+    fireEvent.keyDown(window, { key: 'PageDown' });
+    fireEvent.keyDown(window, { key: 'PageDown' });
+
+    const completionModal = await screen.findByTestId('volume-completion-modal');
+    expect(completionModal).toBeInTheDocument();
+    fireEvent.click(within(completionModal).getByRole('button', { name: /My Bookshelf/i }));
+    expect(mockPush).toHaveBeenCalledWith('/bookshelf');
+
+    syncSpy.mockRestore();
+    fetchFellowshipSpy.mockRestore();
+    fetchFellowAnnSpy.mockRestore();
+    act(() => {
+      useAuthStore.setState({ user: null });
+    });
+  });
 });
 
 

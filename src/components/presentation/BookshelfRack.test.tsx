@@ -741,7 +741,9 @@ describe('BookshelfRack Component', () => {
 
   it('skips restricted books when clicking Download Shelf Offline and displays All Available Saved status', async () => {
     const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
-    useJurisdictionStore.setState({ country: 'RO' });
+    act(() => {
+      useJurisdictionStore.setState({ country: 'RO' });
+    });
 
     const publicDomainBook = {
       ...mockBooks[0],
@@ -767,12 +769,16 @@ describe('BookshelfRack Component', () => {
     expect(within(notice).getByText('All Available Saved')).toBeInTheDocument();
     expect(within(notice).getByText('(1 restricted)')).toBeInTheDocument();
 
-    useJurisdictionStore.setState({ country: 'US' });
+    act(() => {
+      useJurisdictionStore.setState({ country: 'US' });
+    });
   });
 
   it('renders All Restricted status notice when all books on shelf are protected in visitor jurisdiction', async () => {
     const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
-    useJurisdictionStore.setState({ country: 'RO' });
+    act(() => {
+      useJurisdictionStore.setState({ country: 'RO' });
+    });
 
     const restrictedBook = {
       ...mockBooks[0],
@@ -787,7 +793,9 @@ describe('BookshelfRack Component', () => {
     expect(notice).toBeInTheDocument();
     expect(within(notice).getByText('All Restricted in RO')).toBeInTheDocument();
 
-    useJurisdictionStore.setState({ country: 'US' });
+    act(() => {
+      useJurisdictionStore.setState({ country: 'US' });
+    });
   });
 
   describe('Syncing Status Overlay (Zero CLS)', () => {

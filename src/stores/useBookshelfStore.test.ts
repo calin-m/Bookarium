@@ -594,8 +594,8 @@ describe('useBookshelfStore', () => {
       expect(newShelf?.name).toBe('Sci-Fi');
       expect(useBookshelfStore.getState().cloudBookshelves.some((s) => s.name === 'Sci-Fi')).toBe(true);
 
-      useBookshelfStore.setState({ savedBooks: [mockBooks[0]] });
       await act(async () => {
+        useBookshelfStore.setState({ savedBooks: [mockBooks[0]] });
         await useBookshelfStore.getState().migrateLocalBooksToCloud('user-1');
       });
     });
@@ -1508,6 +1508,84 @@ describe('useBookshelfStore', () => {
       expect(state.recentBooks[0].translators).toEqual([
         { name: 'Butler, Samuel', birth_year: 1835, death_year: 1902 },
       ]);
+    });
+
+    it('covers syncFavoriteBooks, authenticated curation deletion/error outbox fallbacks, and toggleSaveBook insert outbox', async () => {
+      // 1. syncFavoriteBooks branches
+      const incompleteFav: GutendexBook = {
+        ...mockBooks[0],
+        id: 1342,
+        authors: [{ name: 'Jane Austen', birth_year: null, death_year: null }],
+        translators: [],
+      };
+      useBookshelfStore.setState({
+        favoriteBookIds: [1342, 84],
+        favoriteBooks: [incompleteFav],
+      });
+
+      const freshFav1342: GutendexBook = {
+        ...mockBooks[0],
+        id: 1342,
+        authors: [{ name: 'Jane Austen', birth_year: 1775, death_year: 1817 }],
+        translators: [{ name: 'Editor', birth_year: 1900, death_year: 1980 }],
+      };
+      const freshFav84: GutendexBook = {
+        ...mockBooks[1],
+        id: 84,
+      };
+      const ignoredBook: GutendexBook = {
+        ...mockBooks[0],
+        id: 9999,
+      };
+
+      useBookshelfStore.getState().syncFavoriteBooks([freshFav1342, freshFav84, ignoredBook]);
+      expect(useBookshelfStore.getState().favoriteBooks).toHaveLength(2);
+      expect(useBookshelfStore.getState().favoriteBooks[0].authors[0].birth_year).toBe(1775);
+
+      // Calling syncFavoriteBooks again with no changes returns early
+      useBookshelfStore.getState().syncFavoriteBooks([freshFav1342]);
+
+      // 2. toggleSaveBook insert failure -> queues INSERT_BOOK
+      useBookshelfStore.setState({
+        savedBooks: [],
+        cloudBookshelves: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' }],
+        activeBookshelfId: 'shelf-1',
+        outbox: [],
+      });
+      mockFrom.mockReturnValue({
+        insert: vi.fn().mockResolvedValue({ error: new Error('Insert failed') }),
+        upsert: vi.fn().mockResolvedValue({ error: new Error('Upsert failed') }),
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: new Error('Delete failed') }),
+          }),
+        }),
+      });
+
+      await useBookshelfStore.getState().toggleSaveBook(mockBooks[0], 'user-1');
+      expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'INSERT_BOOK')).toBe(true);
+
+      // 3. toggleFavoriteBook upsert & delete failure -> queues UPSERT_FAVORITE and DELETE_FAVORITE
+      useBookshelfStore.setState({ favoriteBookIds: [], favoriteBooks: [], outbox: [] });
+      await useBookshelfStore.getState().toggleFavoriteBook(mockBooks[0], 'user-1');
+      expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'UPSERT_FAVORITE')).toBe(true);
+
+      await useBookshelfStore.getState().toggleFavoriteBook(mockBooks[0].id, 'user-1');
+      expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'DELETE_FAVORITE')).toBe(true);
+
+      // 4. setBookRating(bookId, null) when status is null & delete fails -> queues DELETE_CURATION
+      useBookshelfStore.setState({ bookRatings: { 1342: 5 }, bookStatuses: {}, outbox: [] });
+      await useBookshelfStore.getState().setBookRating(1342, null, 'user-1');
+      expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'DELETE_CURATION')).toBe(true);
+
+      // 5. setReadingStatus(bookId, 'reading') & setReadingStatus(bookId, null) when delete/upsert fails
+      useBookshelfStore.setState({ bookRatings: {}, bookStatuses: {}, outbox: [] });
+      await useBookshelfStore.getState().setReadingStatus(1342, 'currently_reading', 'user-1');
+      expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'UPSERT_CURATION')).toBe(true);
+
+      useBookshelfStore.setState({ bookRatings: {}, bookStatuses: { 1342: 'currently_reading' }, outbox: [] });
+      await useBookshelfStore.getState().setReadingStatus(1342, null, 'user-1');
+      expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'DELETE_CURATION')).toBe(true);
     });
   });
 

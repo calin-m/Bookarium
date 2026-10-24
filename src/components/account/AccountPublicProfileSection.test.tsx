@@ -262,5 +262,59 @@ describe('AccountPublicProfileSection', () => {
     expect(container.innerHTML).not.toContain('border-primary/20');
     expect(container.innerHTML).not.toContain('border-success/20');
   });
+
+  it('syncs reactive state when profile prop updates, toggles all privacy checkboxes, and recovers from thrown errors', async () => {
+    const onUpdateProfileMock = vi.fn().mockRejectedValueOnce(new Error('Fatal network crash'));
+
+    const { rerender } = render(
+      <AccountPublicProfileSection
+        user={mockUser}
+        profile={null}
+        onUpdateProfile={onUpdateProfileMock}
+      />
+    );
+
+    expect(screen.getByText(/Set a handle to generate link/i)).toBeInTheDocument();
+
+    // Update profile prop to trigger reactive prevProfile sync
+    rerender(
+      <AccountPublicProfileSection
+        user={mockUser}
+        profile={{
+          ...mockProfile,
+          username: 'emily_bronte',
+          bio: 'Wuthering Heights',
+          show_saved_books: undefined,
+          show_custom_shelves: undefined,
+        }}
+        onUpdateProfile={onUpdateProfileMock}
+      />
+    );
+
+    const usernameInput = screen.getByLabelText(/scholar handle/i);
+    expect(usernameInput).toHaveValue('emily_bronte');
+
+    // Type invalid username then clear it to exercise empty handleUsernameChange branch
+    fireEvent.change(usernameInput, { target: { value: 'a' } });
+    expect(screen.getByText(/at least 3 characters/i)).toBeInTheDocument();
+    fireEvent.change(usernameInput, { target: { value: '' } });
+    expect(screen.queryByText(/at least 3 characters/i)).not.toBeInTheDocument();
+    fireEvent.change(usernameInput, { target: { value: 'emily_bronte' } });
+
+    // Switch to Sanctuary & Privacy sub-tab and toggle Streak, Annual Goal, and Custom Shelves
+    fireEvent.click(screen.getByRole('tab', { name: /Sanctuary & Privacy/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /reading streak/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /annual goal/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /custom shelves/i }));
+
+    // Switch back to Identity & Bio tab
+    fireEvent.click(screen.getByRole('tab', { name: /Identity & Bio/i }));
+
+    // Submit -> triggers catch block on first call
+    fireEvent.click(screen.getByRole('button', { name: /save public settings/i }));
+    expect(
+      await screen.findByText('Failed to update public profile. Please try again.')
+    ).toBeInTheDocument();
+  });
 });
 

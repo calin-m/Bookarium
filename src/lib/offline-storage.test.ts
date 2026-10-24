@@ -426,6 +426,125 @@ describe('offline-storage (IndexedDB engine)', () => {
 
       (globalThis as any).indexedDB = originalIndexedDB;
     });
+
+    it('covers database upgrade, transaction/request error handlers, and missing IndexedDB fallbacks', async () => {
+      const {
+        getStorageQuota,
+        evictOldestBooksToFreeSpace,
+        getOfflineBookRecord,
+      } = await import('./offline-storage');
+
+      // 1. getStorageQuota when estimate returns empty object {}
+      const originalStorage = navigator.storage;
+      Object.defineProperty(navigator, 'storage', {
+        value: { estimate: vi.fn().mockResolvedValue({}) },
+        configurable: true,
+      });
+      const emptyEst = await getStorageQuota();
+      expect(emptyEst?.usageBytes).toBe(0);
+      expect(emptyEst?.quotaBytes).toBe(0);
+      Object.defineProperty(navigator, 'storage', { value: originalStorage, configurable: true });
+
+      // 2. onupgradeneeded when objectStoreNames.contains returns false
+      const originalIndexedDB = (globalThis as any).indexedDB;
+      const createObjectStoreSpy = vi.fn();
+      (globalThis as any).indexedDB = {
+        open: vi.fn(() => {
+          const req: any = {
+            result: {
+              objectStoreNames: { contains: vi.fn(() => false) },
+              createObjectStore: createObjectStoreSpy,
+              transaction: vi.fn(() => ({
+                objectStore: vi.fn(() => ({
+                  count: vi.fn(() => {
+                    const r: any = { result: 0, onsuccess: null, onerror: null };
+                    setTimeout(() => r.onerror?.(), 0);
+                    return r;
+                  }),
+                  get: vi.fn(() => {
+                    const r: any = { error: null, onsuccess: null, onerror: null };
+                    setTimeout(() => r.onerror?.(), 0);
+                    return r;
+                  }),
+                  delete: vi.fn(() => {
+                    const r: any = { error: null, onsuccess: null, onerror: null };
+                    setTimeout(() => r.onerror?.(), 0);
+                    return r;
+                  }),
+                  getAllKeys: vi.fn(() => {
+                    const r: any = { error: null, onsuccess: null, onerror: null };
+                    setTimeout(() => r.onerror?.(), 0);
+                    return r;
+                  }),
+                  getAll: vi.fn(() => {
+                    const r: any = { error: null, onsuccess: null, onerror: null };
+                    setTimeout(() => r.onerror?.(), 0);
+                    return r;
+                  }),
+                  clear: vi.fn(() => {
+                    const r: any = { error: null, onsuccess: null, onerror: null };
+                    setTimeout(() => r.onerror?.(), 0);
+                    return r;
+                  }),
+                })),
+              })),
+            },
+            onsuccess: null,
+            onerror: null,
+            onupgradeneeded: null,
+          };
+          setTimeout(() => {
+            req.onupgradeneeded?.({ target: req });
+            req.onsuccess?.();
+          }, 0);
+          return req;
+        }),
+      };
+
+      expect(await isBookOffline(1)).toBe(false);
+      expect(createObjectStoreSpy).toHaveBeenCalledWith('offline_books', { keyPath: 'bookId' });
+      await expect(getOfflineBookRecord(1)).rejects.toThrow(/Failed to read book 1/);
+      await expect(removeOfflineBook(1)).rejects.toThrow(/Failed to remove book 1/);
+      await expect(getOfflineBookIds()).rejects.toThrow(/Failed to fetch offline book keys/);
+      await expect(getAllOfflineBooks()).rejects.toThrow(/Failed to list offline books/);
+      await expect(clearAllOfflineBooks()).rejects.toThrow(/Failed to clear offline books/);
+
+      // 3. saveOfflineBook non-quota error and transaction error
+      (globalThis as any).indexedDB = {
+        open: vi.fn(() => {
+          const req: any = {
+            result: {
+              objectStoreNames: { contains: () => true },
+              transaction: vi.fn(() => {
+                const txn: any = {
+                  error: null,
+                  onerror: null,
+                  objectStore: vi.fn(() => ({
+                    put: vi.fn(() => {
+                      const r: any = { error: null, onsuccess: null, onerror: null };
+                      setTimeout(() => txn.onerror?.({ target: { error: new Error('Txn abort') } }), 0);
+                      return r;
+                    }),
+                  })),
+                };
+                return txn;
+              }),
+            },
+            onsuccess: null,
+          };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+      };
+      await expect(saveOfflineBook(55, 'Txn Fail', 'Content')).rejects.toThrow('Txn abort');
+
+      // 4. Missing indexedDB in window
+      delete (window as any).indexedDB;
+      expect(await isBookOffline(1)).toBe(false);
+      expect(await evictOldestBooksToFreeSpace(100)).toBe(0);
+
+      (globalThis as any).indexedDB = originalIndexedDB;
+    });
   });
 });
 

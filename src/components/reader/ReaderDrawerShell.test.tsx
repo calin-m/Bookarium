@@ -207,5 +207,59 @@ describe('ReaderDrawerShell Component', () => {
     expect(document.activeElement).toBe(trigger);
     document.body.removeChild(trigger);
   });
+
+  it('supports ReactNode titles, sepia/dark themes, backdrop touchMove lock, auto-focus timer, and mobile viewport motion branches', () => {
+    vi.useFakeTimers();
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 375 });
+
+    try {
+      const { rerender } = render(
+        <ReaderDrawerShell
+          isOpen={true}
+          onClose={vi.fn()}
+          title={<span>Custom Node Header</span>}
+          ariaLabel="Custom Drawer"
+          theme="sepia"
+          backdropTestId="custom-backdrop"
+          role="dialog"
+        >
+          <button type="button">Action</button>
+        </ReaderDrawerShell>
+      );
+
+      // Advance timer to trigger auto-focus on first tabbable element
+      vi.advanceTimersByTime(10);
+      expect(screen.getByRole('button', { name: 'Close Drawer' })).toHaveFocus();
+
+      // Backdrop touchMove prevents default scroll bleed
+      const backdrop = screen.getByTestId('custom-backdrop');
+      fireEvent.touchMove(backdrop);
+
+      // Switch to dark theme and focus outside panel then press Tab
+      rerender(
+        <ReaderDrawerShell
+          isOpen={true}
+          onClose={vi.fn()}
+          title="Dark Drawer"
+          ariaLabel="Dark Drawer"
+          theme="dark"
+        >
+          <div>Read-only content</div>
+        </ReaderDrawerShell>
+      );
+
+      document.body.focus();
+      fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
+      expect(screen.getByRole('button', { name: 'Close Dark Drawer' })).toHaveFocus();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: originalWidth,
+      });
+      vi.useRealTimers();
+    }
+  });
 });
 

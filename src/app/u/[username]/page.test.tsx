@@ -77,6 +77,18 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
         book_title: 'Pride and Prejudice',
         book_authors: ['Jane Austen'],
       },
+      {
+        bookshelf_id: 'shelf-1',
+        book_id: 84,
+        book_title: 'Frankenstein',
+        book_authors: [{ name: 'Mary Shelley' }, {}],
+      },
+      {
+        bookshelf_id: 'shelf-1',
+        book_id: 2701,
+        book_title: 'Moby Dick',
+        book_authors: null,
+      },
     ];
 
     mockFrom.mockImplementation((table: string) => {

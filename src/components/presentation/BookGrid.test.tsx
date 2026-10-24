@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { BookGrid } from './BookGrid';
 import { mockBooks } from '@/mocks/handlers';
@@ -90,8 +90,10 @@ describe('BookGrid component', () => {
     expect(activeCard).toHaveClass('max-lg:ring-2');
   });
 
-  it('omits personal shelf management buttons in shelf view when in catalog mode', () => {
-    render(<BookGrid books={mockBooks} viewMode="shelf" activeView="catalog" />);
+  it('omits personal shelf management buttons in shelf view when in catalog mode', async () => {
+    await act(async () => {
+      render(<BookGrid books={mockBooks} viewMode="shelf" activeView="catalog" />);
+    });
 
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
     expect(screen.getByTestId(`shelf-book-${mockBooks[0].id}`)).toBeInTheDocument();
@@ -103,8 +105,10 @@ describe('BookGrid component', () => {
     expect(screen.queryByRole('button', { name: /sign in to sync/i })).not.toBeInTheDocument();
   });
 
-  it('renders personal shelf management buttons in shelf view when activeView is bookshelf', () => {
-    render(<BookGrid books={mockBooks} viewMode="shelf" activeView="bookshelf" />);
+  it('renders personal shelf management buttons in shelf view when activeView is bookshelf', async () => {
+    await act(async () => {
+      render(<BookGrid books={mockBooks} viewMode="shelf" activeView="bookshelf" />);
+    });
 
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
     expect(screen.getByText('General')).toBeInTheDocument();
