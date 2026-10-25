@@ -3,6 +3,7 @@ import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useHabitsStore } from '@/stores/useHabitsStore';
 import { useAccoladesStore } from '@/stores/useAccoladesStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 
 /**
  * Common syncable store contract.
@@ -25,6 +26,7 @@ export async function syncAllStoresWithCloud(userId: string): Promise<void> {
     useReaderStore.getState().syncWithCloud(userId),
     useHabitsStore.getState().syncWithCloud(userId),
     useAccoladesStore.getState().syncWithCloud(userId),
+    useFellowshipStore.getState().fetchFellowshipData(userId),
   ]);
 }
 

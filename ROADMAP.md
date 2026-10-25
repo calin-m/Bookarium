@@ -25,7 +25,7 @@
 - [x] **Paged Virtual Layout & Flip Transitions** `✅ VERIFIED`
   Virtual continuous pagination in `ReaderSurface.tsx` (Paginated vs Continuous Scroll modes), touch swipe, keyboard controls, and hardware-accelerated 180ms page-turn transitions (`animate-page-turn`).
 - [x] **Exact Reading Progress & Auto-Resume Engine** `✅ VERIFIED`
-  Precise coordinates persistence (`chapterIndex`, `chapterPage`, `globalPage`, `lastReadAt`) in `useReaderStore`, with "Resumed at Chapter X" toast and 1-click Restart.
+  Precise coordinates persistence (`chapterIndex`, `chapterPage`, `globalPage`, `bookmarkRow`, `lastReadAt`) in `useReaderStore`, interactive in-page row-snapping bookmark tab (`ReaderSurface.tsx`), "Resumed at Chapter X" toast, and 1-click Restart.
 - [x] **Vercel Edge Response Caching & Rate Limiting** `✅ VERIFIED`
   Edge headers (`stale-while-revalidate`), datacenter proximity pinning (`iad1` in `vercel.json`), and sliding-window rate limiters protecting upstream Project Gutenberg APIs.
 - [x] **Polite Client-Side Prefetching** `✅ VERIFIED`

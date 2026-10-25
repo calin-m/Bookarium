@@ -1630,11 +1630,74 @@ describe('NotebookView component', () => {
       expect(screen.getByText('My reflection on society.')).toBeInTheDocument();
       expect(screen.getByText('Clara reflection on marriage.')).toBeInTheDocument();
 
-      // In Mine mode: displays the user's standalone card
+      // In Mine mode: displays the user's personal card with paired fellow context preserved
       fireEvent.click(screen.getByTestId('notebook-source-mine'));
       expect(screen.getAllByTestId(/^notebook-quote-card-/)).toHaveLength(1);
       expect(screen.getByText('My reflection on society.')).toBeInTheDocument();
-      expect(screen.queryByText('Clara reflection on marriage.')).not.toBeInTheDocument();
+      expect(screen.getByText('Clara reflection on marriage.')).toBeInTheDocument();
+      expect(screen.getByTestId('notebook-paired-fellow-note-fellow-ann-overlap')).toBeInTheDocument();
+    });
+
+    it('matches paired fellow annotation color and fellow details in notebook search and color filters', async () => {
+      useAnnotationStore.setState({
+        annotations: [
+          {
+            id: 'own-ann-yellow',
+            bookId: 1342,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'It is a truth universally acknowledged',
+            color: 'yellow',
+            note: 'My note on marriage',
+            createdAt: '2026-10-10T10:00:00Z',
+            updatedAt: '2026-10-10T10:00:00Z',
+          },
+        ],
+        fellowAnnotations: [
+          {
+            id: 'fellow-ann-rose',
+            bookId: 1342,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'It is a truth universally acknowledged',
+            color: 'rose',
+            note: 'Rose reflection by Clara',
+            createdAt: '2026-10-12T10:00:00Z',
+            updatedAt: '2026-10-12T10:00:00Z',
+            isFellow: true,
+            fellowUsername: 'claravance',
+            fellowDisplayName: 'Clara Vance',
+          },
+        ],
+      });
+
+      render(<NotebookView />);
+
+      // Filter by rose color: own is yellow, but paired fellow is rose -> should match!
+      const roseTab = screen.getByTestId('notebook-filter-rose');
+      fireEvent.click(roseTab);
+      expect(screen.getAllByTestId(/^notebook-quote-card-/)).toHaveLength(1);
+
+      // Reset to all colors
+      const allColorsTab = screen.getByTestId('notebook-filter-all');
+      fireEvent.click(allColorsTab);
+
+      // Search by fellow username
+      const searchInput = screen.getByTestId('notebook-search-input');
+      fireEvent.change(searchInput, { target: { value: 'claravance' } });
+      expect(screen.getAllByTestId(/^notebook-quote-card-/)).toHaveLength(1);
+
+      // Search by fellow reflection note
+      fireEvent.change(searchInput, { target: { value: 'Rose reflection' } });
+      expect(screen.getAllByTestId(/^notebook-quote-card-/)).toHaveLength(1);
+
+      // Search non-matching text
+      fireEvent.change(searchInput, { target: { value: 'nonexistent query 12345' } });
+      expect(screen.queryAllByTestId(/^notebook-quote-card-/)).toHaveLength(0);
     });
 
     it('allows saving fellow note to own notebook using onSaveFellowAsOwn', async () => {
@@ -1739,6 +1802,27 @@ describe('NotebookView component', () => {
       act(() => {
         useJurisdictionStore.setState({ country: 'US' });
       });
+    });
+
+    it('renders quote cards in a single-column grid on tablet and two-column grid on desktop (lg:grid-cols-2)', async () => {
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'It is a truth universally acknowledged...',
+        color: 'yellow',
+        note: 'Opening reflection',
+      });
+
+      const { container } = render(<NotebookView />);
+      const volumeGrid = container.querySelector('.grid.grid-cols-1.lg\\:grid-cols-2');
+      expect(volumeGrid).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Chronological' }));
+      const chronoGrid = container.querySelector('.grid.grid-cols-1.lg\\:grid-cols-2');
+      expect(chronoGrid).toBeInTheDocument();
     });
   });
 });

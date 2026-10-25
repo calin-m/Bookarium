@@ -44,7 +44,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
   const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
-  const { book, progressPercent, chapterIndex, globalPage, lastReadAt, status } = volume;
+  const { book, progressPercent, chapterIndex, globalPage, bookmarkRow, lastReadAt, status } = volume;
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
   const { country, evaluation, isRestricted } = useBookCopyright(book);
@@ -234,6 +234,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground pt-1">
             <span>
               {chapterIndex > 0 ? `Chapter ${chapterIndex}` : 'Start'} • Page {globalPage || 1}
+              {bookmarkRow && bookmarkRow > 0 ? ` • Line ${bookmarkRow + 1}` : ''}
             </span>
             <span>{formatRelativeTime(lastReadAt)}</span>
           </div>

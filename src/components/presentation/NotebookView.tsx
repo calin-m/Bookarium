@@ -51,6 +51,7 @@ import {
   pairOverlappingAnnotations,
   findMatchingOwnAnnotation,
   isFellowAnnotation,
+  areAnnotationsOverlapping,
 } from '@/lib/reader-annotator';
 
 export type NotebookDisplayItem = (Annotation | FellowAnnotation) & {
@@ -197,7 +198,8 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
     fellowshipStore
       .fetchFellowshipData(user.id)
-      .then(() => {
+      .then(async () => {
+        await annotationStore.syncWithCloud(user.id);
         annotationStore.enrichFellowAnnotations();
         return annotationStore.resolveStaleFellowProfiles();
       })
@@ -391,7 +393,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   }, [annotations, fellowAnnotations]);
 
   const sourceFilteredAnnotations: NotebookDisplayItem[] = useMemo(() => {
-    if (marginaliaSourceFilter === 'mine') return annotations;
+    if (marginaliaSourceFilter === 'mine') {
+      return annotations.map((ann) => ({
+        ...ann,
+        pairedFellowAnnotation: fellowAnnotations.find((fa) => areAnnotationsOverlapping(ann, fa)),
+      }));
+    }
     if (marginaliaSourceFilter === 'fellows') {
       return fellowAnnotations.map((fa) => ({
         ...fa,
@@ -417,9 +424,13 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   // Filtered list of annotations
   const filteredAnnotations = useMemo(() => {
     return sourceFilteredAnnotations.filter((ann) => {
-      // 1. Color filter
-      if (selectedColor !== 'all' && ann.color !== selectedColor) {
-        return false;
+      // 1. Color filter (checks primary annotation color and paired fellow color)
+      if (selectedColor !== 'all') {
+        const matchesPrimary = ann.color === selectedColor;
+        const matchesPaired = ann.pairedFellowAnnotation?.color === selectedColor;
+        if (!matchesPrimary && !matchesPaired) {
+          return false;
+        }
       }
       // 2. Search query filter
       if (searchQuery.trim()) {
@@ -429,7 +440,28 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         const matchesNote = ann.note ? ann.note.toLowerCase().includes(query) : false;
         const matchesTitle = title.toLowerCase().includes(query);
         const matchesAuthor = author.toLowerCase().includes(query);
-        return matchesQuote || matchesNote || matchesTitle || matchesAuthor;
+        const matchesPairedQuote = ann.pairedFellowAnnotation?.selectedText.toLowerCase().includes(query) || false;
+        const matchesPairedNote = ann.pairedFellowAnnotation?.note ? ann.pairedFellowAnnotation.note.toLowerCase().includes(query) : false;
+        const matchesPairedFellow = Boolean(
+          ann.pairedFellowAnnotation &&
+          ((ann.pairedFellowAnnotation.fellowDisplayName && ann.pairedFellowAnnotation.fellowDisplayName.toLowerCase().includes(query)) ||
+            ann.pairedFellowAnnotation.fellowUsername.toLowerCase().includes(query))
+        );
+        const matchesFellowSelf = Boolean(
+          isFellowAnnotation(ann) &&
+          ((ann.fellowDisplayName && ann.fellowDisplayName.toLowerCase().includes(query)) ||
+            ann.fellowUsername.toLowerCase().includes(query))
+        );
+        return (
+          matchesQuote ||
+          matchesNote ||
+          matchesTitle ||
+          matchesAuthor ||
+          matchesPairedQuote ||
+          matchesPairedNote ||
+          matchesPairedFellow ||
+          matchesFellowSelf
+        );
       }
       return true;
     });
@@ -462,12 +494,28 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     }));
   }, [filteredAnnotations, resolveBookDetails]);
 
+  const getItemCreatedAt = useCallback((item: NotebookDisplayItem): number => {
+    const tSelf = new Date(item.createdAt).getTime();
+    const tPaired = item.pairedFellowAnnotation
+      ? new Date(item.pairedFellowAnnotation.createdAt).getTime()
+      : 0;
+    return Math.max(tSelf, tPaired);
+  }, []);
+
+  const getItemRecentTimestamp = useCallback((item: NotebookDisplayItem): number => {
+    const tSelf = new Date(item.updatedAt || item.createdAt).getTime();
+    const tPaired = item.pairedFellowAnnotation
+      ? new Date(item.pairedFellowAnnotation.updatedAt || item.pairedFellowAnnotation.createdAt).getTime()
+      : 0;
+    return Math.max(tSelf, tPaired);
+  }, []);
+
   // Sorted list of annotations for Chronological mode
   const sortedAnnotations = useMemo(() => {
     const list = [...filteredAnnotations];
     switch (chronoSort) {
       case 'date_asc':
-        return list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        return list.sort((a, b) => getItemCreatedAt(a) - getItemCreatedAt(b));
       case 'title_asc':
         return list.sort((a, b) => {
           const titleA = resolveBookDetails(a).title;
@@ -483,12 +531,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       case 'downloaded':
         return list
           .filter((a) => isBookOffline(a.bookId))
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          .sort((a, b) => getItemCreatedAt(b) - getItemCreatedAt(a));
       case 'date_desc':
       default:
-        return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return list.sort((a, b) => getItemCreatedAt(b) - getItemCreatedAt(a));
     }
-  }, [filteredAnnotations, chronoSort, resolveBookDetails, isBookOffline]);
+  }, [filteredAnnotations, chronoSort, resolveBookDetails, isBookOffline, getItemCreatedAt]);
 
   // Sorted Grouped by Volume mapping
   const sortedGroupedByVolume = useMemo(() => {
@@ -504,8 +552,8 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         return list.sort((a, b) => b.items.length - a.items.length);
       case 'recent':
         return list.sort((a, b) => {
-          const timeA = Math.max(...a.items.map((i) => new Date(i.createdAt).getTime()), 0);
-          const timeB = Math.max(...b.items.map((i) => new Date(i.createdAt).getTime()), 0);
+          const timeA = Math.max(...a.items.map((i) => getItemRecentTimestamp(i)), 0);
+          const timeB = Math.max(...b.items.map((i) => getItemRecentTimestamp(i)), 0);
           return timeB - timeA;
         });
       case 'downloaded':
@@ -516,7 +564,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       default:
         return list.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
     }
-  }, [groupedByVolume, volumeSort, isBookOffline]);
+  }, [groupedByVolume, volumeSort, isBookOffline, getItemRecentTimestamp]);
 
   // Pagination slicing
   const chronoTotalPages = Math.ceil(sortedAnnotations.length / CHRONO_PAGE_SIZE);
@@ -548,10 +596,13 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     }
   };
 
-  // Unique volume count
+  // Unique volume count across own and fellow annotations
   const uniqueBookCount = useMemo(() => {
-    return new Set(annotations.map((a) => a.bookId)).size;
-  }, [annotations]);
+    const ids = new Set<number>();
+    annotations.forEach((a) => ids.add(a.bookId));
+    fellowAnnotations.forEach((fa) => ids.add(fa.bookId));
+    return ids.size;
+  }, [annotations, fellowAnnotations]);
 
   // Handlers
   const handleSaveNote = async (
@@ -886,7 +937,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                     </div>
 
                     {/* Cards Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {group.items.map((ann) => renderQuoteCard(ann))}
                     </div>
                   </div>
@@ -896,7 +947,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
             {/* Chronological Stream Display */}
             {groupMode === 'chronological' && sortedAnnotations.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {paginatedAnnotations.map((ann) => renderQuoteCard(ann))}
               </div>
             )}

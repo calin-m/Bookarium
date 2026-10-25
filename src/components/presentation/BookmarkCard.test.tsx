@@ -361,5 +361,10 @@ describe('BookmarkCard', () => {
 
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
   });
+
+  it('displays exact bookmarked line coordinate when bookmarkRow is greater than 0', () => {
+    render(<BookmarkCard volume={{ ...mockVolume, bookmarkRow: 8 }} />);
+    expect(screen.getByText(/Chapter 3 • Page 48 • Line 9/i)).toBeInTheDocument();
+  });
 });
 

@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-10-25`  
-> **Topology Health**: `193` Modules Analyzed • `722` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `193` Modules Analyzed • `723` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -38,8 +38,8 @@ flowchart TD
             Grid["Catalog View (/)\n(Smooth Scroll Navigation, 2-Col Mobile Grid, Multi-Col Desktop & 3D Hardwood Shelf)"]
             ShelfView["Bookshelf View (/bookshelf)\n(Curated Library, Custom Named Shelves, Downloaded (N) Smart Shelf, Active-Shelf Clear & 12-Book Row Cap)"]
             FavView["Favorites View (/favorites)\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]
-            MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger, Dedicated Resume CTA & 4-State Offline Controls)"]
-            NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections, Tags & Tablet Icon Mode Switcher)"]
+            MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger, Row-Level Line Badges, Dedicated Resume CTA & 4-State Offline Controls)"]
+            NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections, Tags, Single-Column Tablet Grid & Tablet Icon Mode Switcher)"]
             AccView["Account Hub (/account)\n(Library Stats, Cloud Sync & JSON Backup)"]
             PrivacyView["Privacy Architecture (/privacy)\n(Zero-Tracker Manifesto, COPPA/GDPR Art. 8 & Functional Geo-Cookies)"]
             CopyrightView["Copyright Governance (/copyright)\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]
@@ -240,7 +240,7 @@ flowchart LR
         ReadingMode["Reading Mode: Paginated | Scroll"]
         Theme["Theme: Light | Dark | Sepia"]
         Progress["Global Page & Book Progress %"]
-        Positions["Reading Positions Map\n(exact chapter & page restore)"]
+        Positions["Reading Positions Map\n(exact chapter, page & row-snapped bookmarkRow)"]
         FellowState["Active Symposium & Companion Coordinates\n(useFellowshipStore)"]
     end
 
@@ -262,7 +262,7 @@ flowchart LR
     subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]
         Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader)"]
         SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]
-        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap & Amber Sentence Highlight)"]
+        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap, Interactive Row-Snapping Page Bookmark & Amber Sentence Highlight)"]
         ProgressBar["Top Reading Progress Indicator"]
         ResumeToast["Exact-Page Auto-Resume Toast"]
         FooterBar["Sticky Bottom Pagination & Page Jump"]
@@ -332,7 +332,7 @@ flowchart TD
         Header["SectionHeader ('Continue Reading & Bookmarks')\n• Eyebrow, Flank lines, Clear Bookmarks modal"]
         Search["CollectionToolbar\n(Search, Sort & Downloaded Filter, Pagination)"]
         Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]
-        Cards["BookmarkCard.tsx\n• Top-anchored silk ribbon (origin-top scale-y-110)\n• Card tap focuses/activates card (all viewports)\n• Cleaned title & normalized author\n• Reading coordinates badge\n• 4-state square offline button & modal\n• Status dropdown selector\n• Desktop cursor-exit focus release (onDeactivate)"]
+        Cards["BookmarkCard.tsx\n• Top-anchored silk ribbon (origin-top scale-y-110)\n• Card tap focuses/activates card (all viewports)\n• Cleaned title & normalized author\n• Reading coordinates & Line X badge\n• 4-state square offline button & modal\n• Status dropdown selector\n• Desktop cursor-exit focus release (onDeactivate)"]
         ResumeAction["Dedicated 1-Click Resume / Read Again CTA\n• Seed useReaderStore.openReader(book) [Warm Cache]\n• router.push('/read/' + id)"]
     end
 
@@ -428,7 +428,7 @@ Auto-extracted dynamically from **80 Production UI Components** using Babel AST:
 | **`ReaderSearchDrawer`** | Reader | `ReaderSearchDrawerProps` | `isOpen`, `onClose`, `chapters`, `fontSize`, `onSelectMatch`, `bookTitle`, `theme` | [`src/components/reader/ReaderSearchDrawer.tsx`](src/components/reader/ReaderSearchDrawer.tsx) |
 | **`ReaderSpeechBar`** | Reader | `ReaderSpeechBarProps` | `speech`, `isOpen`, `onClose`, `isDrawerOpen`, `isPlaying`, `isPaused`, `currentSentenceIndex`, `totalSentences`, `rate`, `availableVoices`, `naturalVoices`, `standardVoices`, `selectedVoice`, `onPlay`, `onPause`, `onResume`, `onSkipNext`, `onSkipPrev`, `onRateChange`, `onVoiceChange`, `theme`, `bookTitle`, `currentPage`, `totalPages`, `isPrevDisabled`, `isNextDisabled` | [`src/components/reader/ReaderSpeechBar.tsx`](src/components/reader/ReaderSpeechBar.tsx) |
 | **`ReaderSubHeaderRibbon`** | Reader | `ReaderSubHeaderRibbonProps` | `bookId`, `progress`, `totalChapters`, `currentChapterIndex`, `theme`, `resumeNotice`, `onRestart`, `onDismissResume`, `onOpenInfoModal`, `symposiumCompanion`, `symposiumMilestoneNotice`, `onDismissSymposiumMilestone` | [`src/components/reader/ReaderSubHeaderRibbon.tsx`](src/components/reader/ReaderSubHeaderRibbon.tsx) |
-| **`ReaderSurface`** | Reader | `ReaderSurfaceProps` | `theme`, `fontFamily`, `fontSize`, `lineHeight`, `columnWidth`, `readingMode`, `chapter`, `currentPageText`, `chapterPage`, `activeChapterIndex`, `totalChapters`, `isLoading`, `isError`, `error`, `onRetry`, `bookTitle`, `bookAuthor`, `onPreviousPage`, `onNextPage`, `onFontSizeChange`, `highlightedSentence`, `annotations`, `targetAnnotationId`, `onSelectAnnotation`, `onTextSelected` | [`src/components/reader/ReaderSurface.tsx`](src/components/reader/ReaderSurface.tsx) |
+| **`ReaderSurface`** | Reader | `ReaderSurfaceProps` | `theme`, `fontFamily`, `fontSize`, `lineHeight`, `columnWidth`, `readingMode`, `chapter`, `currentPageText`, `chapterPage`, `bookmarkRow`, `onBookmarkRowChange`, `activeChapterIndex`, `totalChapters`, `isLoading`, `isError`, `error`, `onRetry`, `bookTitle`, `bookAuthor`, `onPreviousPage`, `onNextPage`, `onFontSizeChange`, `highlightedSentence`, `annotations`, `targetAnnotationId`, `onSelectAnnotation`, `onTextSelected` | [`src/components/reader/ReaderSurface.tsx`](src/components/reader/ReaderSurface.tsx) |
 | **`ReaderTocDrawer`** | Reader | `ReaderTocDrawerProps` | `isOpen`, `onClose`, `chapters`, `activeChapterIndex`, `onSelectChapter`, `bookTitle`, `theme` | [`src/components/reader/ReaderTocDrawer.tsx`](src/components/reader/ReaderTocDrawer.tsx) |
 | **`TextHighlightPopover`** | Reader | `TextHighlightPopoverProps` | `isOpen`, `selectedText`, `position`, `activeColor`, `existingNote`, `existingAnnotationId`, `fellowAnnotation`, `isFellowOnly`, `onSelectColor`, `onSaveNote`, `onDelete`, `onCopyQuote`, `onClose`, `theme` | [`src/components/reader/TextHighlightPopover.tsx`](src/components/reader/TextHighlightPopover.tsx) |
 | **`SymposiumInviteModal`** | Symposium | `SymposiumInviteModalProps` | `isOpen`, `onClose`, `bookId`, `bookTitle`, `preselectedFellow` | [`src/components/symposium/SymposiumInviteModal.tsx`](src/components/symposium/SymposiumInviteModal.tsx) |
@@ -457,7 +457,7 @@ Zustand client-side state stores programmatically verified across **10 Persisten
 
 ### 2. `useAnnotationStore` ([`src/stores/useAnnotationStore.ts`](src/stores/useAnnotationStore.ts))
 * **Storage Key**: `STORAGE_KEYS.ANNOTATIONS` (localStorage)
-* **Role & State**: Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), reflections, and commonplace book exports.
+* **Role & State**: Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), reflections, and commonplace book exports.
 
 ### 3. `useAuthStore` ([`src/stores/useAuthStore.ts`](src/stores/useAuthStore.ts))
 * **Storage Key**: `bookarium-auth-profile` (localStorage)
@@ -485,7 +485,7 @@ Zustand client-side state stores programmatically verified across **10 Persisten
 
 ### 9. `useReaderStore` ([`src/stores/useReaderStore.ts`](src/stores/useReaderStore.ts))
 * **Storage Key**: `STORAGE_KEYS.READER_SETTINGS` (localStorage)
-* **Role & State**: Active book payload with verified lifespan preservation, typography settings (size, family, line height), reading mode (paginated vs scroll), coordinates, and bidirectional Supabase `reading_progress` lifespan self-healing.
+* **Role & State**: Active book payload with verified lifespan preservation, typography settings (size, family, line height), reading mode (paginated vs scroll), chapter/page/row coordinates (`bookmarkRow`), and bidirectional Supabase `reading_progress` lifespan self-healing.
 
 ### 10. `useThemeStore` ([`src/stores/useThemeStore.ts`](src/stores/useThemeStore.ts))
 * **Storage Key**: `STORAGE_KEYS.THEME` (localStorage)
@@ -629,8 +629,8 @@ Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified 
 | **`public.bookshelves`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Default master "General" shelf and custom user-created named shelves. |
 | **`public.bookshelf_items`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Books filed in specific shelves with user-scoped uniqueness constraints. |
 | **`public.user_favorites`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Cross-device synchronized favorited titles. |
-| **`public.reading_progress`** | Enabled (`auth.uid()`) | `useReaderStore` | Chapter index, progress %, scroll offsets, and cached volume metadata. |
-| **`public.user_annotations`** | Enabled (`auth.uid()`) | `useAnnotationStore` | Passage text highlights (4 pastel palettes) and scholarly marginalia notes. |
+| **`public.reading_progress`** | Enabled (`auth.uid()`) | `useReaderStore` | Chapter index, progress %, in-page row bookmark offsets, and cached volume metadata. |
+| **`public.user_annotations`** | Enabled (`auth.uid()`) | `useAnnotationStore` | Passage text highlights (4 pastel palettes), scholarly notes, and cross-volume Symposium Fellow marginalia. |
 | **`public.user_book_curation`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Personal 1–5 star ratings and reading status classification. |
 | **`public.user_reading_habits`** | Enabled (`auth.uid()`) | `useHabitsStore` | Reading streaks (5-min threshold), daily activity dates, annual challenge goals, and dual immersion telemetry. |
 | **`public.user_accolades`** | Enabled (`auth.uid()`) | `useAccoladesStore` | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
@@ -893,14 +893,14 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`client.ts`](src/lib/supabase/client.ts) | `types/database.types` | `metadata-cache.ts`, `app/api/books/content/route.ts`, `reader-layout-utils.ts`, `app/u/[username]/page.tsx`, `bookshelf-cloud-sync.ts`, `supabase-provider.ts`, `middleware.ts`, `server.ts`, `useAccoladesStore.ts`, `useAnnotationStore.ts`, `useAuthStore.ts`, `useBookshelfStore.ts`, `useFellowshipStore.ts`, `useHabitsStore.ts`, `useReaderStore.ts` | Supabase SSR / Client Adapter |
 | [`middleware.ts`](src/lib/supabase/middleware.ts) | `types/database.types`, `./client` | `proxy.ts` | Supabase SSR / Client Adapter |
 | [`server.ts`](src/lib/supabase/server.ts) | `types/database.types`, `./client` | `app/auth/callback/route.ts` | Supabase SSR / Client Adapter |
-| [`sync-utils.ts`](src/lib/sync-utils.ts) | `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useHabitsStore`, `stores/useAccoladesStore` | `providers.tsx` | Domain Engine / Utility |
+| [`sync-utils.ts`](src/lib/sync-utils.ts) | `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useHabitsStore`, `stores/useAccoladesStore`, `stores/useFellowshipStore` | `providers.tsx` | Domain Engine / Utility |
 | [`utils.ts`](src/lib/utils.ts) | _Root Primitive_ | `BookCard.tsx`, `BookmarkCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `DownloadDrawer.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `GutenbergInfoModal.tsx`, `ReaderDrawerShell.tsx`, `ReaderSpeechBar.tsx`, `Badge.tsx`, `Button.tsx`, `Card.tsx`, `Input.tsx`, `Modal.tsx`, `SectionHeader.tsx`, `featured-books.ts`, `useCollectionAutoHeal.ts`, `book.adapter.ts`, `book-metadata.ts`, `book-sorting.ts`, `library-backup.ts`, `useAnnotationStore.ts` | Domain Engine / Utility |
 | [`proxy.ts`](src/proxy.ts) | `lib/supabase/middleware`, `lib/country-resolver` | `app/layout.tsx`, `useJurisdictionStore.ts` | Edge Reverse Proxy |
 | [`useAccoladesStore.ts`](src/stores/useAccoladesStore.ts) | `config/site-config`, `lib/supabase/client`, `hooks/useHasMounted`, `types/accolades.types`, `config/accolades-config`, `lib/accolades-engine`, `types/database.types` | `AccoladeCelebrationModal.tsx`, `AccountAccoladesCard.tsx`, `sync-utils.ts`, `useAuthStore.ts` | Zustand State Store |
 | [`useAnnotationStore.ts`](src/stores/useAnnotationStore.ts) | `config/site-config`, `lib/supabase/client`, `types/database.types`, `stores/useFellowshipStore`, `hooks/useHasMounted`, `lib/book-metadata`, `lib/utils` | `app/account/page.tsx`, `app/read/[id]/page.tsx`, `AccountAccoladesCard.tsx`, `Navbar.tsx`, `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSurface.tsx`, `TextHighlightPopover.tsx`, `annotation-tokens.ts`, `useCollectionAutoHeal.ts`, `accolades-engine.ts`, `backup-validator.ts`, `library-backup.ts`, `reader-annotator.ts`, `sync-utils.ts`, `useAuthStore.ts` | Zustand State Store |
 | [`useAuthStore.ts`](src/stores/useAuthStore.ts) | `lib/supabase/client`, `types/database.types`, `config/routes`, `lib/redirect-sanitizer`, `stores/useBookshelfStore`, `stores/useFellowshipStore`, `./useFellowshipStore`, `./useAnnotationStore`, `stores/useAnnotationStore`, `stores/useHabitsStore`, `stores/useAccoladesStore`, `stores/useReaderStore` | `app/account/page.tsx`, `app/auth/confirm-deletion/page.tsx`, `providers.tsx`, `app/read/[id]/page.tsx`, `app/u/[username]/page.tsx`, `AccountPublicProfileSection.tsx`, `AuthModal.tsx`, `BookshelfRack.tsx`, `Navbar.tsx`, `NotebookView.tsx`, `PublicProfileView.tsx`, `useReaderSession.ts`, `useBookshelfStore.ts`, `useFellowshipStore.ts`, `useReaderStore.ts` | Zustand State Store |
 | [`useBookshelfStore.ts`](src/stores/useBookshelfStore.ts) | `types/book.types`, `hooks/useHasMounted`, `lib/supabase/client`, `types/database.types`, `config/site-config`, `./useAuthStore`, `./useReaderStore`, `lib/adapters/book.adapter`, `lib/offline-storage`, `lib/bookshelf-cloud-sync` | `app/account/page.tsx`, `app/page.tsx`, `app/read/[id]/page.tsx`, `app/u/[username]/page.tsx`, `AccountAccoladesCard.tsx`, `AuthModal.tsx`, `BookCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `BookshelfRack.tsx`, `Navbar.tsx`, `NotebookView.tsx`, `SymposiumInviteModal.tsx`, `useBookContent.ts`, `useContinueReadingLedger.ts`, `useReaderSession.ts`, `useCollectionAutoHeal.ts`, `useOfflineBooks.ts`, `library-backup.ts`, `sync-utils.ts`, `useAuthStore.ts` | Zustand State Store |
-| [`useFellowshipStore.ts`](src/stores/useFellowshipStore.ts) | `lib/supabase/client`, `stores/useAuthStore`, `hooks/useHasMounted`, `types/database.types` | `app/account/page.tsx`, `app/read/[id]/page.tsx`, `AccountAccoladesCard.tsx`, `AccountSymposiumSection.tsx`, `Navbar.tsx`, `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `PublicProfileView.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSubHeaderRibbon.tsx`, `TextHighlightPopover.tsx`, `SymposiumInviteModal.tsx`, `useCollectionAutoHeal.ts`, `useAnnotationStore.ts`, `useAuthStore.ts` | Zustand State Store |
+| [`useFellowshipStore.ts`](src/stores/useFellowshipStore.ts) | `lib/supabase/client`, `stores/useAuthStore`, `hooks/useHasMounted`, `types/database.types` | `app/account/page.tsx`, `app/read/[id]/page.tsx`, `AccountAccoladesCard.tsx`, `AccountSymposiumSection.tsx`, `Navbar.tsx`, `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `PublicProfileView.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSubHeaderRibbon.tsx`, `TextHighlightPopover.tsx`, `SymposiumInviteModal.tsx`, `useCollectionAutoHeal.ts`, `sync-utils.ts`, `useAnnotationStore.ts`, `useAuthStore.ts` | Zustand State Store |
 | [`useHabitsStore.ts`](src/stores/useHabitsStore.ts) | `config/site-config`, `lib/supabase/client`, `hooks/useHasMounted`, `lib/reading-analytics` | `app/account/page.tsx`, `AccountAccoladesCard.tsx`, `AccountHabitsCard.tsx`, `useReadingTimer.ts`, `accolades-engine.ts`, `sync-utils.ts`, `useAuthStore.ts` | Zustand State Store |
 | [`useJurisdictionStore.ts`](src/stores/useJurisdictionStore.ts) | `lib/copyright-engine`, `lib/country-resolver`, `proxy` | `providers.tsx`, `BookshelfRack.tsx`, `EditorialQuoteSection.tsx`, `HeroSearch.tsx`, `LiteraryQuotes.tsx`, `NotebookView.tsx`, `useBookContent.ts`, `useBooks.ts`, `useBookCopyright.ts` | Zustand State Store |
 | [`usePreferencesStore.ts`](src/stores/usePreferencesStore.ts) | `config/site-config` | `app/account/page.tsx`, `app/page.tsx`, `app/read/[id]/page.tsx`, `library-backup.ts` | Zustand State Store |

@@ -1550,3 +1550,48 @@
   - Unused variables or imports can never slip into GitHub Actions annotations unnoticed.
   - Database schema additions, API routes, and Next.js configuration changes are automatically audited against OWASP Top 10 and PostgreSQL RLS invariants prior to every commit with zero false positives.
 
+---
+
+## ADR-068: Interactive In-Page Row-Snapping Bookmark, Non-Overlapping Margin Geometry, Tablet Single-Column Notebook Layout & Global Symposium Marginalia Sync
+
+- **Date**: 2026-10-25
+- **Status**: Accepted
+- **Context**:
+  1. **Row-Level Bookmark Precision Inside the Reader**: Previously, `BookReadingPosition` in `useReaderStore.ts` persisted `chapterIndex`, `chapterPage`, `globalPage`, and `lastReadAt`, allowing scholars to resume at the exact page of a chapter. However, long virtual pages (`5600` characters) contain dozens of lines of text, leaving readers without an in-page physical marker to track the exact line where they paused. Providing a permanently visible, tactile silk bookmark tab along the left margin of the reading page that rests at the top (Line 1 / `bookmarkRow = 0`) on any newly turned page and can be dragged or clicked with discrete line-height row snapping (`fontSize * lineHeight`) via mouse, touch, or keyboard gives readers an authentic physical bookmark experience.
+  2. **Non-Overlapping Bookmark Margin Geometry**: In initial prototypes, the bookmark tab was anchored via `-left-5 sm:-left-9`. Because the tab rendered an icon, text label (`L1`–`L999`), and padding (`42px`–`52px` wide), its right edge crossed into the text column (`x >= 0`), obscuring starting letters and punctuation on smaller screens or narrow column settings. A fail-safe geometric anchor is required so the ribbon tab and row guide line reside strictly within the left margin gutter across all screen viewports (`320px` mobile up to `4K` desktop).
+  3. **Zero-Migration Cloud Synchronization**: In `supabase/schema.sql`, `public.reading_progress.scroll_offset` is typed as `NUMERIC NOT NULL DEFAULT 0` and stores `chapterPage`. Encoding a non-zero `bookmarkRow` as a thousandths decimal fraction (`chapterPage + Math.min(bookmarkRow, 999) / 1000`) enables seamless multi-device cloud synchronization of both the page and exact row index without any SQL schema migration while keeping integer `scroll_offset` payloads whenever `bookmarkRow === 0`.
+  4. **Tablet Literary Notebook Card Breathing Room**: In `NotebookView.tsx`, both the `volume` (By Book) and `chronological` quote grids used `grid-cols-1 md:grid-cols-2 gap-4`, activating a 2-column layout at `768px`. Because `NotebookQuoteCard` houses blockquotes, reflection notes, tags, chapter jump pills, and action toolbars, 2 columns on tablet viewports (`768px–1023px`) looked cramped.
+  5. **Symposium Shared Marginalia Cloud Sync & Notebook Display Gaps**:
+     - *Sync Lifecycle*: In `useAnnotationStore.ts`, `syncWithCloud` queried `.eq('user_id', userId)`, while `fetchFellowAnnotationsForBook` was only called inside `/read/[id]/page.tsx`. Consequently, if a fellow scholar highlighted or commented on passages in a shared Symposium volume, their marginalia did not appear in the Literary Notebook unless the user first opened the reader for that specific book.
+     - *Card Display on Overlapping Quotes*: When both scholars saved an overlapping passage, `pairOverlappingAnnotations` merged them into a unified card, but if the fellow highlighted without typing a reflection note, the amber callout did not render at all. Furthermore, selecting the "My Marginalia" filter stripped fellow context completely, and color filtering, search, and chronological sorting ignored paired fellow properties.
+- **Decision**:
+  1. **In-Page Row-Snapping Bookmark (`src/components/reader/ReaderSurface.tsx`, `src/hooks/reader/useReaderSession.ts`, `src/stores/useReaderStore.ts`, `src/app/read/[id]/page.tsx`)**:
+     - Extended `BookReadingPosition` and `ActiveReadingVolume` with `bookmarkRow?: number` (0-indexed line offset from top of page).
+     - Added an interactive left-margin bookmark rail (`data-testid="reader-bookmark-rail"`) and draggable silk ribbon tab (`data-testid="reader-page-bookmark"`, `role="slider"`, `data-prevent-swipe`) with a subtle horizontal row guide line (`data-testid="reader-bookmark-guide-line"`) inside `ReaderSurface.tsx`.
+     - Implemented discrete row snapping (`lineStepPx = Math.max(16, fontSize * lineHeight)`) supporting pointer drag, rail click-to-snap, keyboard navigation (`ArrowDown`, `ArrowUp`, `Home`), and double-click reset to Line 1 (`row = 0`).
+     - Automatically resets `bookmarkRow` to `0` on page turns, chapter changes, and restarts so new pages always start with the bookmark parked at the top, and smoothly scrolls the bookmarked row into view on session resume.
+  2. **Non-Overlapping Margin Geometry & Gutter Padding (`src/components/reader/ReaderSurface.tsx`)**:
+     - Upgraded `<article>` padding from `px-6 sm:px-12` to `pl-12 pr-5 sm:px-14 md:px-16`, creating a dedicated `48px`–`64px` left margin gutter across all devices.
+     - Positioned the ribbon tab with `right-full mr-1.5 sm:mr-2.5 origin-right` and `rounded-l-md rounded-r-xs`. Because `right-full` locks the tab's right edge at `x = 0` minus `6px`–`10px`, and `origin-right` expands leftward on `:hover` or active drag, the tab cannot overlap text regardless of label width (`L1`–`L999`).
+     - Positioned the click rail at `right-full mr-0 top-0 bottom-0 w-10 sm:w-12` and layered `reader-content-body` with `relative z-10` over the `z-10` row guide line so the row highlight rests softly behind text glyphs.
+  3. **Fractional `scroll_offset` Cloud Encoding & Ledger Telemetry (`src/stores/useReaderStore.ts`, `src/hooks/reader/useContinueReadingLedger.ts`, `src/components/presentation/BookmarkCard.tsx`, `src/components/reader/ReaderSubHeaderRibbon.tsx`)**:
+     - Encodes `bookmarkRow > 0` into `scroll_offset` as `chapterPage + Math.min(bookmarkRow, 999) / 1000` during `syncReadingPositionToCloud` and decodes `Math.floor(rawOffset)` (page) and `Math.round((rawOffset - page) * 1000)` (row) during cloud restoration.
+     - Displays `• Line X` in `ReaderSubHeaderRibbon` resume notices and `BookmarkCard` coordinate badges whenever a non-zero row is bookmarked, and treats Page 1 with `bookmarkRow > 0` as an active reading position.
+  4. **Single-Column Tablet Notebook Grid (`src/components/presentation/NotebookView.tsx`)**:
+     - Upgraded the quote card grids in both `volume` and `chronological` views from `grid-cols-1 md:grid-cols-2 gap-4` to `grid-cols-1 lg:grid-cols-2 gap-4`, ensuring mobile and tablet viewports (`< 1024px`) render a spacious single column while desktop screens (`>= 1024px`) retain the 2-column grid.
+  5. **Global Symposium Marginalia Cloud Synchronization (`src/stores/useAnnotationStore.ts`, `src/lib/sync-utils.ts`, `src/components/presentation/NotebookView.tsx`, `src/app/read/[id]/page.tsx`)**:
+     - Implemented `fetchAllFellowAnnotations(currentUserId?, fellowScholarsMap?)` in `useAnnotationStore.ts` querying `public.user_annotations` with `.neq('user_id', currentUserId)` across all volumes, scoped automatically by Supabase RLS to active and completed Symposiums, with profile enrichment and metadata preservation.
+     - Automated `fetchAllFellowAnnotations` execution at the end of `syncWithCloud(userId)`, included `useFellowshipStore.fetchFellowshipData(userId)` in `syncAllStoresWithCloud`, wired automatic cloud sync into `NotebookView` mount, and re-triggered `fetchFellowAnnotationsForBook` when opening `ReaderAnnotationsDrawer`.
+     - Scoped `addAnnotation` deduplication to matching `chapterIndex` and persisted expanded quote ranges (`selected_text`) to Supabase.
+  6. **Rich Shared Marginalia Display, Filtering & Sorting (`src/components/presentation/NotebookQuoteCard.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/reader/ReaderAnnotationsDrawer.tsx`)**:
+     - Rendered the amber Fellow reflection callout on all paired cards, falling back to an italic attribution line (`Also saved and highlighted in this Literary Symposium.`) when the fellow saved the quote without a note.
+     - Preserved `pairedFellowAnnotation` when filtering by "My Marginalia" (`mine`), keeping mutual symposium engagement visible on personal cards.
+     - Enabled paired color matching (matches if user's or fellow's highlight has the selected pastel color), search across fellow username, display name, and reflection text, and sorted chronological entries by the latest activity timestamp (`Math.max(own, paired)`).
+- **Consequences**:
+  - Readers can leave an interactive, row-snapped bookmark on any line of a page via mouse, touch, or keyboard without text overlap or accidental horizontal swipe conflicts across all screen sizes.
+  - Row coordinates persist locally and sync across devices via Supabase `reading_progress.scroll_offset` with zero database schema changes.
+  - Literary Notebook quote cards have generous horizontal breathing room on tablets (`768px–1023px`).
+  - Fellow scholars' highlights and reflections synchronize globally across all devices without needing to open the reader for each book first.
+  - Paired quotes seamlessly surface shared reading activity in the Literary Notebook and Reader Drawer with unified color filtering, deep search, and chronological recency.
+
+

@@ -167,6 +167,13 @@ function BookReaderContent() {
     }
   }, [fellowAnnotations.length, symposiums, circles, enrichFellowAnnotations]);
 
+  // Re-fetch fellow annotations when opening annotations drawer to capture any live fellow notes
+  useEffect(() => {
+    if (isAnnotationsOpen && user?.id && numericId > 0) {
+      void fetchFellowAnnotationsForBook(numericId, user.id);
+    }
+  }, [isAnnotationsOpen, user?.id, numericId, fetchFellowAnnotationsForBook]);
+
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [selectionPopover, setSelectionPopover] = useState<{
     isOpen: boolean;
@@ -400,6 +407,8 @@ function BookReaderContent() {
   const {
     activeChapterIndex,
     currentChapterPage,
+    bookmarkRow,
+    setBookmarkRow,
     activeChapter,
     activeChapterPageCount,
     currentPageText,
@@ -811,6 +820,8 @@ function BookReaderContent() {
         chapter={activeChapter}
         currentPageText={currentPageText}
         chapterPage={currentChapterPage}
+        bookmarkRow={bookmarkRow}
+        onBookmarkRowChange={setBookmarkRow}
         activeChapterIndex={activeChapterIndex}
         totalChapters={chaptersWithPagination.length || 1}
         isLoading={isContentLoading}

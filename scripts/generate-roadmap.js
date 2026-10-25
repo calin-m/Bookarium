@@ -50,7 +50,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'Exact Reading Progress & Auto-Resume Engine',
-        description: 'Precise coordinates persistence (`chapterIndex`, `chapterPage`, `globalPage`, `lastReadAt`) in `useReaderStore`, with "Resumed at Chapter X" toast and 1-click Restart.',
+        description: 'Precise coordinates persistence (`chapterIndex`, `chapterPage`, `globalPage`, `bookmarkRow`, `lastReadAt`) in `useReaderStore`, interactive in-page row-snapping bookmark tab (`ReaderSurface.tsx`), "Resumed at Chapter X" toast, and 1-click Restart.',
         check: () => fileExists('src/stores/useReaderStore.ts') && fileContains('src/stores/useReaderStore.ts', 'readingPositions'),
       },
       {

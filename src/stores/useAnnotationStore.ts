@@ -54,6 +54,10 @@ export interface AnnotationState {
 
   setMarginaliaSourceFilter: (filter: MarginaliaSourceFilter) => void;
   setSpoilerShieldEnabled: (enabled: boolean) => void;
+  fetchAllFellowAnnotations: (
+    currentUserId?: string,
+    fellowScholarsMap?: Record<string, { username: string; display_name?: string | null }>
+  ) => Promise<FellowAnnotation[]>;
   fetchFellowAnnotationsForBook: (
     bookId: number,
     currentUserId?: string,
@@ -351,6 +355,120 @@ export const useAnnotationStore = create<AnnotationState>()(
         }
       },
 
+      fetchAllFellowAnnotations: async (currentUserId, fellowScholarsMap) => {
+        if (!currentUserId) return [];
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase
+            .from('user_annotations')
+            .select('*')
+            .neq('user_id', currentUserId)
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          const rows = (data || []) as Record<string, unknown>[];
+          const resolvedMap = buildFellowScholarsMap(fellowScholarsMap);
+          const fellowshipSymposiums = useFellowshipStore.getState().symposiums || [];
+
+          for (const s of fellowshipSymposiums) {
+            if (s.status === 'active' || s.status === 'completed') {
+              const companionId = s.host_id === currentUserId ? s.fellow_id : s.host_id;
+              const companionUsername = s.host_id === currentUserId ? s.fellow_username : s.host_username;
+              const companionDisplayName = s.host_id === currentUserId ? s.fellow_display_name : s.host_display_name;
+              if (companionId && companionUsername && !resolvedMap[companionId]) {
+                resolvedMap[companionId] = {
+                  username: companionUsername,
+                  display_name: companionDisplayName || undefined,
+                };
+              }
+            }
+          }
+
+          const missingIds = Array.from(
+            new Set(
+              rows
+                .map((r) => String(r.user_id || ''))
+                .filter(
+                  (uid) =>
+                    uid &&
+                    (!resolvedMap[uid]?.username ||
+                      isPlaceholderUsername(resolvedMap[uid]?.username))
+                )
+            )
+          );
+
+          if (missingIds.length > 0) {
+            try {
+              const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, username, display_name')
+                .in('id', missingIds);
+              if (Array.isArray(profilesData)) {
+                for (const prof of profilesData as Array<{
+                  id: string;
+                  username: string | null;
+                  display_name: string | null;
+                }>) {
+                  if (prof.id && (prof.username || prof.display_name)) {
+                    resolvedMap[prof.id] = {
+                      username: prof.username || prof.display_name || 'fellow_scholar',
+                      display_name: prof.display_name || undefined,
+                    };
+                  }
+                }
+              }
+            } catch {
+              // Non-blocking
+            }
+          }
+
+          const currentFellow = get().fellowAnnotations;
+          const currentOwn = get().annotations;
+          const bookMetaMap = new Map<number, { title?: string; author?: string }>();
+          for (const a of currentOwn) {
+            if (a.bookTitle || a.bookAuthor) {
+              bookMetaMap.set(a.bookId, { title: a.bookTitle, author: a.bookAuthor });
+            }
+          }
+          for (const fa of currentFellow) {
+            if ((fa.bookTitle || fa.bookAuthor) && !bookMetaMap.has(fa.bookId)) {
+              bookMetaMap.set(fa.bookId, { title: fa.bookTitle, author: fa.bookAuthor });
+            }
+          }
+
+          const mapped: FellowAnnotation[] = rows.map((row: Record<string, unknown>) => {
+            const fellowUserId = String(row.user_id);
+            const fellowInfo = resolvedMap[fellowUserId];
+            const bId = Number(row.book_id);
+            const cachedMeta = bookMetaMap.get(bId);
+
+            return {
+              id: String(row.id),
+              userId: fellowUserId,
+              bookId: bId,
+              bookTitle: cachedMeta?.title,
+              bookAuthor: cachedMeta?.author,
+              chapterIndex: Number(row.chapter_index),
+              chapterPage: Number(row.chapter_page),
+              selectedText: String(row.selected_text),
+              color: (row.color as HighlightColor) || 'amber',
+              note: (row.note as string) || undefined,
+              createdAt: String(row.created_at),
+              updatedAt: String(row.updated_at),
+              isFellow: true,
+              fellowUsername: fellowInfo?.username || 'fellow_scholar',
+              fellowDisplayName: fellowInfo?.display_name || undefined,
+            };
+          });
+
+          set({ fellowAnnotations: mapped });
+          return mapped;
+        } catch {
+          return get().fellowAnnotations;
+        }
+      },
+
       fetchFellowAnnotationsForBook: async (bookId, currentUserId, fellowScholarsMap) => {
         if (!currentUserId || !bookId) return [];
         try {
@@ -501,10 +619,11 @@ export const useAnnotationStore = create<AnnotationState>()(
       addAnnotation: async (data, userId) => {
         const trimmedText = data.selectedText.trim().slice(0, MAX_ANNOTATION_TEXT_LENGTH);
         const trimmedNote = data.note ? data.note.trim().slice(0, MAX_ANNOTATION_NOTE_LENGTH) : undefined;
-        // Check if an annotation for the same or overlapping passage already exists in this book
+        // Check if an annotation for the same or overlapping passage already exists in this book and chapter
         const existing = get().annotations.find(
           (a) =>
             a.bookId === data.bookId &&
+            a.chapterIndex === data.chapterIndex &&
             (a.selectedText.trim() === trimmedText ||
               a.selectedText.trim().includes(trimmedText) ||
               trimmedText.includes(a.selectedText.trim()))
@@ -517,11 +636,39 @@ export const useAnnotationStore = create<AnnotationState>()(
             await get().updateAnnotationNote(existing.id, trimmedNote, userId);
           }
           if (trimmedText.length > existing.selectedText.length) {
+            const now = new Date().toISOString();
             set((state) => ({
               annotations: state.annotations.map((a) =>
-                a.id === existing.id ? { ...a, selectedText: trimmedText } : a
+                a.id === existing.id ? { ...a, selectedText: trimmedText, updatedAt: now } : a
               ),
             }));
+            if (userId) {
+              const dbPayload = {
+                id: existing.id,
+                user_id: userId,
+                book_id: existing.bookId,
+                chapter_index: existing.chapterIndex,
+                chapter_page: existing.chapterPage,
+                selected_text: trimmedText,
+                color: existing.color,
+                note: existing.note || null,
+                updated_at: now,
+              };
+              try {
+                const supabase = createClient();
+                const { error } = await supabase
+                  .from('user_annotations')
+                  .update({ selected_text: trimmedText, updated_at: now })
+                  .eq('id', existing.id)
+                  .eq('user_id', userId);
+                if (error) throw error;
+              } catch {
+                get().queueOutboxAction({
+                  type: 'UPSERT_ANNOTATION',
+                  payload: dbPayload,
+                });
+              }
+            }
           }
           return get().annotations.find((a) => a.id === existing.id) || existing;
         }
@@ -772,23 +919,39 @@ export const useAnnotationStore = create<AnnotationState>()(
 
           if (error) throw error;
 
+          const localAnnotations = get().annotations.filter((la) => !currentTombstones.includes(la.id));
+          const localMetaMap = new Map<string, { bookTitle?: string; bookAuthor?: string; language?: string }>();
+          for (const la of localAnnotations) {
+            localMetaMap.set(la.id, {
+              bookTitle: la.bookTitle,
+              bookAuthor: la.bookAuthor,
+              language: la.language,
+            });
+          }
+
           const remoteAnnotations: Annotation[] = (data || [])
-            .map((row: Record<string, unknown>) => ({
-              id: String(row.id),
-              userId: String(row.user_id),
-              bookId: Number(row.book_id),
-              chapterIndex: Number(row.chapter_index),
-              chapterPage: Number(row.chapter_page),
-              selectedText: String(row.selected_text),
-              color: row.color as HighlightColor,
-              note: (row.note as string) || undefined,
-              createdAt: String(row.created_at),
-              updatedAt: String(row.updated_at),
-            }))
+            .map((row: Record<string, unknown>) => {
+              const id = String(row.id);
+              const meta = localMetaMap.get(id);
+              return {
+                id,
+                userId: String(row.user_id),
+                bookId: Number(row.book_id),
+                bookTitle: meta?.bookTitle,
+                bookAuthor: meta?.bookAuthor,
+                language: meta?.language,
+                chapterIndex: Number(row.chapter_index),
+                chapterPage: Number(row.chapter_page),
+                selectedText: String(row.selected_text),
+                color: row.color as HighlightColor,
+                note: (row.note as string) || undefined,
+                createdAt: String(row.created_at),
+                updatedAt: String(row.updated_at),
+              };
+            })
             .filter((r) => !currentTombstones.includes(r.id));
 
           // Merge: Preserve any local guest annotations that don't exist remotely and are not tombstoned
-          const localAnnotations = get().annotations.filter((la) => !currentTombstones.includes(la.id));
           const merged = [...remoteAnnotations];
           const unSyncedGuestAnnotations: Annotation[] = [];
 
@@ -818,6 +981,9 @@ export const useAnnotationStore = create<AnnotationState>()(
 
             await supabase.from('user_annotations').upsert(inserts, { onConflict: 'id' });
           }
+
+          // Automatically fetch all Fellow annotations across active symposiums
+          await get().fetchAllFellowAnnotations(userId);
         } catch {
           // Graceful non-blocking fallback for offline or unmigrated instances
         } finally {
@@ -855,6 +1021,7 @@ export function useHydratedAnnotations() {
   const isSyncing = useAnnotationStore((s) => s.isSyncing);
   const setMarginaliaSourceFilter = useAnnotationStore((s) => s.setMarginaliaSourceFilter);
   const setSpoilerShieldEnabled = useAnnotationStore((s) => s.setSpoilerShieldEnabled);
+  const fetchAllFellowAnnotations = useAnnotationStore((s) => s.fetchAllFellowAnnotations);
   const fetchFellowAnnotationsForBook = useAnnotationStore((s) => s.fetchFellowAnnotationsForBook);
   const enrichFellowAnnotations = useAnnotationStore((s) => s.enrichFellowAnnotations);
   const getFellowAnnotationsForBook = useAnnotationStore((s) => s.getFellowAnnotationsForBook);
@@ -877,6 +1044,7 @@ export function useHydratedAnnotations() {
     isSyncing: hasMounted ? isSyncing : false,
     setMarginaliaSourceFilter,
     setSpoilerShieldEnabled,
+    fetchAllFellowAnnotations,
     fetchFellowAnnotationsForBook,
     enrichFellowAnnotations,
     getFellowAnnotationsForBook,

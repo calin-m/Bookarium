@@ -5,24 +5,27 @@ import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useHabitsStore } from '@/stores/useHabitsStore';
 import { useAccoladesStore } from '@/stores/useAccoladesStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 
 describe('syncAllStoresWithCloud', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, Habits, and Accolades stores', async () => {
+  it('triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, Habits, and Accolades stores, plus Fellowship hydration', async () => {
     const bookshelfMock = vi.fn().mockResolvedValue(undefined);
     const annotationMock = vi.fn().mockResolvedValue(undefined);
     const readerMock = vi.fn().mockResolvedValue(undefined);
     const habitsMock = vi.fn().mockResolvedValue(undefined);
     const accoladesMock = vi.fn().mockResolvedValue(undefined);
+    const fellowshipMock = vi.fn().mockResolvedValue(undefined);
 
     useBookshelfStore.setState({ syncWithCloud: bookshelfMock });
     useAnnotationStore.setState({ syncWithCloud: annotationMock });
     useReaderStore.setState({ syncWithCloud: readerMock });
     useHabitsStore.setState({ syncWithCloud: habitsMock });
     useAccoladesStore.setState({ syncWithCloud: accoladesMock });
+    useFellowshipStore.setState({ fetchFellowshipData: fellowshipMock });
 
     await syncAllStoresWithCloud('user-456');
 
@@ -31,6 +34,7 @@ describe('syncAllStoresWithCloud', () => {
     expect(readerMock).toHaveBeenCalledWith('user-456');
     expect(habitsMock).toHaveBeenCalledWith('user-456');
     expect(accoladesMock).toHaveBeenCalledWith('user-456');
+    expect(fellowshipMock).toHaveBeenCalledWith('user-456');
   });
 
   it('safely exits without calling stores if userId is empty', async () => {

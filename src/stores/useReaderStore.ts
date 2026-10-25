@@ -17,6 +17,7 @@ export interface BookReadingPosition {
   chapterIndex: number;
   chapterPage: number;
   globalPage: number;
+  bookmarkRow?: number;
   lastReadAt: string;
   bookTitle?: string;
   bookAuthors?: string[];
@@ -360,9 +361,16 @@ export const useReaderStore = create<ReaderState>()(
           progress === 0 &&
           (position.chapterIndex ?? 0) === 0 &&
           (position.chapterPage ?? 1) <= 1 &&
-          (position.globalPage ?? 1) <= 1;
+          (position.globalPage ?? 1) <= 1 &&
+          (position.bookmarkRow ?? 0) <= 0;
 
         if (isGhost) return;
+
+        const encodedScrollOffset =
+          position.chapterPage +
+          (position.bookmarkRow && position.bookmarkRow > 0
+            ? Math.min(Math.round(position.bookmarkRow), 999) / 1000
+            : 0);
 
         try {
           const supabase = createClient();
@@ -375,7 +383,7 @@ export const useReaderStore = create<ReaderState>()(
               cover_url: position.coverUrl || null,
               current_chapter_index: position.chapterIndex,
               progress_percent: progress,
-              scroll_offset: position.chapterPage,
+              scroll_offset: encodedScrollOffset,
               last_read_at: position.lastReadAt,
             },
             { onConflict: 'user_id,book_id' }
@@ -411,10 +419,15 @@ export const useReaderStore = create<ReaderState>()(
                 ? existingLocal.bookAuthors
                 : remoteAuthors || existingLocal?.bookAuthors;
 
+            const rawOffset = Number(data.scroll_offset) || 1;
+            const decodedPage = Math.max(1, Math.floor(rawOffset));
+            const decodedRow = Math.round((rawOffset - decodedPage) * 1000);
+
             const remotePosition: BookReadingPosition = {
               chapterIndex: data.current_chapter_index ?? 0,
-              chapterPage: Number(data.scroll_offset) || 1,
-              globalPage: Number(data.scroll_offset) || 1,
+              chapterPage: decodedPage,
+              globalPage: decodedPage,
+              ...(decodedRow > 0 ? { bookmarkRow: decodedRow } : {}),
               lastReadAt: data.last_read_at || new Date().toISOString(),
               bookTitle: data.book_title || existingLocal?.bookTitle || undefined,
               bookAuthors: preservedAuthors,
@@ -474,6 +487,7 @@ export const useReaderStore = create<ReaderState>()(
                 (pos.globalPage ?? 1) <= 1 &&
                 (pos.chapterIndex ?? 0) === 0 &&
                 (pos.chapterPage ?? 1) <= 1 &&
+                (pos.bookmarkRow ?? 0) <= 0 &&
                 prog === 0
               ) {
                 delete nextPositions[id];
@@ -500,10 +514,14 @@ export const useReaderStore = create<ReaderState>()(
                 const shouldKeepLocalAuthors =
                   !hasEmbeddedLifespans(remoteAuthors) &&
                   hasEmbeddedLifespans(localPos?.bookAuthors);
+                const rawOffset = Number(row.scroll_offset) || 1;
+                const decodedPage = Math.max(1, Math.floor(rawOffset));
+                const decodedRow = Math.round((rawOffset - decodedPage) * 1000);
                 const mergedPosition: BookReadingPosition = {
                   chapterIndex: row.current_chapter_index ?? 0,
-                  chapterPage: Number(row.scroll_offset) || 1,
-                  globalPage: Number(row.scroll_offset) || 1,
+                  chapterPage: decodedPage,
+                  globalPage: decodedPage,
+                  ...(decodedRow > 0 ? { bookmarkRow: decodedRow } : {}),
                   lastReadAt: row.last_read_at || new Date().toISOString(),
                   bookTitle: row.book_title || localPos?.bookTitle || undefined,
                   bookAuthors: shouldKeepLocalAuthors

@@ -935,6 +935,222 @@ describe('useAnnotationStore', () => {
     expect(useAnnotationStore.getState().fellowAnnotations[0].fellowUsername).toBe('ada_lovelace');
     expect(useAnnotationStore.getState().fellowAnnotations[0].fellowDisplayName).toBe('Ada Lovelace');
   });
+
+  it('fetchAllFellowAnnotations queries all fellow annotations and enriches metadata and companion profiles', async () => {
+    mockSelect.mockReturnValueOnce({
+      neq: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'fa-all-1',
+              user_id: 'user-fellow-99',
+              book_id: 1342,
+              chapter_index: 0,
+              chapter_page: 2,
+              selected_text: 'A truth universally acknowledged',
+              color: 'amber',
+              note: 'Opening line comment',
+              created_at: '2026-10-25T12:00:00Z',
+              updated_at: '2026-10-25T12:00:00Z',
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+
+    useFellowshipStore.setState({
+      symposiums: [
+        {
+          id: 'sym-99',
+          book_id: 1342,
+          host_id: 'user-me',
+          fellow_id: 'user-fellow-99',
+          fellow_username: 'jane_austen_fan',
+          fellow_display_name: 'Janeite',
+          status: 'active',
+        } as any,
+      ],
+    });
+
+    const results = await useAnnotationStore.getState().fetchAllFellowAnnotations('user-me');
+    expect(results).toHaveLength(1);
+    expect(results[0].id).toBe('fa-all-1');
+    expect(results[0].fellowUsername).toBe('jane_austen_fan');
+    expect(results[0].fellowDisplayName).toBe('Janeite');
+    expect(useAnnotationStore.getState().fellowAnnotations).toHaveLength(1);
+  });
+
+  it('fetchAllFellowAnnotations returns empty array when currentUserId is not provided', async () => {
+    const results = await useAnnotationStore.getState().fetchAllFellowAnnotations();
+    expect(results).toEqual([]);
+  });
+
+  it('fetchAllFellowAnnotations handles supabase errors gracefully', async () => {
+    mockSelect.mockReturnValueOnce({
+      neq: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValue({
+          data: null,
+          error: new Error('Simulated fetch failure'),
+        }),
+      }),
+    });
+
+    const results = await useAnnotationStore.getState().fetchAllFellowAnnotations('user-me');
+    expect(results).toEqual([]);
+  });
+
+  it('fetchAllFellowAnnotations resolves companion identity when current user is fellow and preserves metadata', async () => {
+    mockSelect.mockReturnValueOnce({
+      neq: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'fa-host-1',
+              user_id: 'host-user-88',
+              book_id: 84,
+              chapter_index: 2,
+              chapter_page: 5,
+              selected_text: 'It was on a dreary night of November',
+              color: 'mint',
+              note: null,
+              created_at: '2026-10-25T14:00:00Z',
+              updated_at: '2026-10-25T14:00:00Z',
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+
+    useFellowshipStore.setState({
+      symposiums: [
+        {
+          id: 'symp-host-active',
+          book_id: 84,
+          host_id: 'host-user-88',
+          host_username: 'mary_s',
+          host_display_name: 'Mary Shelley Fan',
+          fellow_id: 'user-me',
+          fellow_username: 'me',
+          fellow_display_name: 'Me',
+          status: 'active',
+        } as any,
+      ],
+    });
+
+    useAnnotationStore.setState({
+      annotations: [
+        {
+          id: 'own-frank',
+          bookId: 84,
+          bookTitle: 'Frankenstein',
+          bookAuthor: 'Mary Wollstonecraft Shelley',
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Preamble',
+          color: 'yellow',
+          createdAt: '2026-10-25T10:00:00Z',
+          updatedAt: '2026-10-25T10:00:00Z',
+        },
+      ],
+    });
+
+    const results = await useAnnotationStore.getState().fetchAllFellowAnnotations('user-me');
+    expect(results).toHaveLength(1);
+    expect(results[0].fellowUsername).toBe('mary_s');
+    expect(results[0].fellowDisplayName).toBe('Mary Shelley Fan');
+    expect(results[0].bookTitle).toBe('Frankenstein');
+    expect(results[0].bookAuthor).toBe('Mary Wollstonecraft Shelley');
+  });
+
+  it('fetchAllFellowAnnotations falls back to profiles table for missing companion handles', async () => {
+    mockSelect.mockReturnValueOnce({
+      neq: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'fa-missing-prof',
+              user_id: 'user-remote-44',
+              book_id: 1342,
+              chapter_index: 1,
+              chapter_page: 3,
+              selected_text: 'Text without known companion',
+              color: 'rose',
+              note: null,
+              created_at: '2026-10-25T12:00:00Z',
+              updated_at: '2026-10-25T12:00:00Z',
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+
+    mockProfilesIn.mockResolvedValueOnce({
+      data: [{ id: 'user-remote-44', username: 'resolved_scholar', display_name: null }],
+      error: null,
+    });
+
+    useFellowshipStore.setState({ symposiums: [] });
+
+    const results = await useAnnotationStore.getState().fetchAllFellowAnnotations('user-me');
+    expect(results).toHaveLength(1);
+    expect(results[0].fellowUsername).toBe('resolved_scholar');
+  });
+
+  it('addAnnotation persists expanded selected_text to supabase when new highlight covers a wider range', async () => {
+    mockUpdate.mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    });
+
+    await useAnnotationStore.getState().addAnnotation(
+      {
+        bookId: 1342,
+        chapterIndex: 3,
+        chapterPage: 1,
+        selectedText: 'Brief text',
+        color: 'yellow',
+      },
+      'user-me'
+    );
+
+    const expanded = await useAnnotationStore.getState().addAnnotation(
+      {
+        bookId: 1342,
+        chapterIndex: 3,
+        chapterPage: 1,
+        selectedText: 'Brief text expanded to include the whole sentence.',
+        color: 'yellow',
+      },
+      'user-me'
+    );
+
+    expect(expanded.selectedText).toBe('Brief text expanded to include the whole sentence.');
+  });
+
+  it('addAnnotation enforces chapterIndex isolation for identical text phrases in different chapters', async () => {
+    const annChap0 = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Indeed.',
+      color: 'yellow',
+    });
+
+    const annChap1 = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      chapterIndex: 1,
+      chapterPage: 1,
+      selectedText: 'Indeed.',
+      color: 'yellow',
+    });
+
+    expect(annChap0.id).not.toBe(annChap1.id);
+    expect(useAnnotationStore.getState().annotations.filter((a) => a.selectedText === 'Indeed.')).toHaveLength(2);
+  });
 });
 
 

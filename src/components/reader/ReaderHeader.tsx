@@ -43,6 +43,7 @@ import {
 export interface ResumeNoticeData {
   chapterTitle: string;
   page: number;
+  row?: number;
 }
 
 export interface ReaderHeaderProps {

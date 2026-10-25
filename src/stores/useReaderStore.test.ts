@@ -815,6 +815,93 @@ describe('useReaderStore', () => {
 
       useAuthStore.setState({ user: null });
     });
+
+    it('encodes and decodes bookmarkRow via fractional scroll_offset in cloud sync and preserves Page-1 bookmarked rows', async () => {
+      const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+      const mockMaybeSingle = vi.fn().mockResolvedValue({
+        data: {
+          current_chapter_index: 0,
+          progress_percent: 0,
+          scroll_offset: 1.012,
+          last_read_at: '2026-10-25T12:00:00.000Z',
+          book_title: 'Pride and Prejudice',
+          book_authors: ['Austen, Jane, 1775-1817'],
+          cover_url: null,
+        },
+        error: null,
+      });
+
+      mockFrom.mockReturnValue({
+        upsert: mockUpsert,
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              maybeSingle: mockMaybeSingle,
+            }),
+          }),
+        }),
+      });
+
+      const posWithRow = {
+        chapterIndex: 0,
+        chapterPage: 1,
+        globalPage: 1,
+        bookmarkRow: 12,
+        lastReadAt: '2026-10-25T12:00:00.000Z',
+      };
+
+      await useReaderStore.getState().syncReadingPositionToCloud(1342, posWithRow, 'user-row-1');
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          book_id: 1342,
+          scroll_offset: 1.012,
+        }),
+        { onConflict: 'user_id,book_id' }
+      );
+
+      const restored = await useReaderStore
+        .getState()
+        .restoreReadingPositionFromCloud(1342, 'user-row-1');
+      expect(restored?.chapterPage).toBe(1);
+      expect(restored?.bookmarkRow).toBe(12);
+    });
+
+    it('syncWithCloud decodes bookmarkRow from remote row and populates readingPositions', async () => {
+      const mockLte = vi.fn().mockResolvedValue({ error: null });
+      const mockEq3 = vi.fn().mockReturnValue({ lte: mockLte });
+      const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 });
+
+      mockFrom.mockReturnValue({
+        delete: mockDelete,
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  book_id: 84,
+                  book_title: 'Frankenstein',
+                  book_authors: ['Mary Wollstonecraft Shelley, 1797-1851'],
+                  cover_url: null,
+                  current_chapter_index: 2,
+                  progress_percent: 25,
+                  scroll_offset: 4.015,
+                  last_read_at: '2026-10-25T15:00:00.000Z',
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      await useReaderStore.getState().syncWithCloud('user-sync-row');
+      const pos = useReaderStore.getState().getReadingPosition(84);
+      expect(pos?.chapterIndex).toBe(2);
+      expect(pos?.chapterPage).toBe(4);
+      expect(pos?.bookmarkRow).toBe(15);
+    });
   });
 });
 

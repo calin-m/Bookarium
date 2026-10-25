@@ -261,6 +261,35 @@ describe('NotebookQuoteCard', () => {
     expect(screen.getByText('Fellow Reflection (Clara Vance (@clara_v))')).toBeInTheDocument();
   });
 
+  it('renders fellow box with fallback attribution line when pairedFellowAnnotation has no written note', () => {
+    const pairedFellowNoNote = {
+      id: 'fellow-no-note',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'It is a truth universally acknowledged',
+      color: 'amber' as const,
+      createdAt: '2026-09-02T00:00:00.000Z',
+      updatedAt: '2026-09-02T00:00:00.000Z',
+      fellowUsername: 'clara_v',
+      fellowDisplayName: 'Clara Vance',
+      isFellow: true as const,
+    };
+
+    render(
+      <NotebookQuoteCard
+        {...defaultProps}
+        annotation={mockAnnotation}
+        pairedFellowAnnotation={pairedFellowNoNote}
+      />
+    );
+
+    const fellowBox = screen.getByTestId('notebook-paired-fellow-note-fellow-no-note');
+    expect(fellowBox).toBeInTheDocument();
+    expect(fellowBox).toHaveTextContent('Fellow Reflection (Clara Vance (@clara_v))');
+    expect(fellowBox).toHaveTextContent('Also saved and highlighted in this Literary Symposium.');
+  });
+
   it('renders Save to My Notes button on standalone fellow note and calls onSaveFellowAsOwn', async () => {
     const fellowAnnotation = {
       ...mockAnnotation,

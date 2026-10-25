@@ -82,7 +82,8 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       const isPastPageOne =
         (pos.globalPage ?? 1) > 1 ||
         (pos.chapterIndex ?? 0) > 0 ||
-        (pos.chapterPage ?? 1) > 1;
+        (pos.chapterPage ?? 1) > 1 ||
+        (pos.bookmarkRow ?? 0) > 0;
       if (prog > 0 || isPastPageOne || hasStatus) {
         idSet.add(id);
       }
@@ -311,6 +312,9 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
         chapterIndex: position?.chapterIndex ?? 0,
         chapterPage: position?.chapterPage ?? 1,
         globalPage: position?.globalPage ?? 1,
+        ...(position?.bookmarkRow && position.bookmarkRow > 0
+          ? { bookmarkRow: position.bookmarkRow }
+          : {}),
         status,
         bookmarksCount: position ? 1 : 0,
       });

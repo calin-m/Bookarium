@@ -9,6 +9,7 @@ import {
   pairOverlappingAnnotations,
   computeSharedQuoteSegments,
   findMatchingOwnAnnotation,
+  areAnnotationsOverlapping,
   type AnyAnnotation,
 } from '@/lib/reader-annotator';
 import type { ReaderTheme } from '@/stores/useReaderStore';
@@ -108,7 +109,14 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   }, [fellowAnnotations, effectiveSpoilerShield, activeChapterIndex]);
 
   const combinedSourceAnnotations: DrawerDisplayItem[] = useMemo(() => {
-    if (effectiveSourceFilter === 'mine') return annotations;
+    if (effectiveSourceFilter === 'mine') {
+      return annotations.map((ann) => ({
+        ...ann,
+        pairedFellowAnnotation: visibleFellowAnnotations.find((fa) =>
+          areAnnotationsOverlapping(ann, fa)
+        ),
+      }));
+    }
     if (effectiveSourceFilter === 'fellows') {
       return visibleFellowAnnotations.map((fa) => ({
         ...fa,
@@ -473,7 +481,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                   ) : null}
 
                   {/* Paired Fellow Note Box */}
-                  {item.pairedFellowAnnotation && item.pairedFellowAnnotation.note && (
+                  {item.pairedFellowAnnotation && (
                     <div
                       data-testid={`drawer-paired-fellow-note-${item.pairedFellowAnnotation.id}`}
                       className="text-xs text-stone-700 dark:text-stone-300 bg-amber-500/10 dark:bg-amber-950/20 p-2.5 rounded-lg font-sans border-l-2 border-amber-500 space-y-1"
@@ -484,7 +492,13 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                           {item.pairedFellowAnnotation.fellowDisplayName || `@${item.pairedFellowAnnotation.fellowUsername}`}
                         </span>
                       </div>
-                      <p className="leading-relaxed whitespace-pre-wrap">{item.pairedFellowAnnotation.note}</p>
+                      {item.pairedFellowAnnotation.note ? (
+                        <p className="leading-relaxed whitespace-pre-wrap">{item.pairedFellowAnnotation.note}</p>
+                      ) : (
+                        <p className="leading-relaxed italic text-stone-500 dark:text-stone-400 text-[11px]">
+                          Also saved and highlighted in this Literary Symposium.
+                        </p>
+                      )}
                     </div>
                   )}
 

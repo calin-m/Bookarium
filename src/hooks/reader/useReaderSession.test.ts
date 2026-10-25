@@ -377,4 +377,57 @@ describe('useReaderSession', () => {
     expect(savedPos?.globalPage).toBe(2);
     expect(useReaderStore.getState().getProgress(300)).toBeGreaterThan(0);
   });
+
+  it('restores saved bookmarkRow with line resumeNotice, persists setBookmarkRow on Page 1, and resets bookmarkRow on page turn', async () => {
+    useReaderStore.setState({
+      readingPositions: {
+        400: {
+          chapterIndex: 0,
+          chapterPage: 1,
+          globalPage: 1,
+          bookmarkRow: 7,
+          lastReadAt: '2026-10-25T10:00:00.000Z',
+        },
+      },
+      readingProgress: {},
+    });
+
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 400,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 5,
+        fontSize: 18,
+        readingMode: 'paginated',
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.bookmarkRow).toBe(7);
+    expect(result.current.resumeNotice).toEqual(
+      expect.objectContaining({
+        page: 1,
+        row: 8,
+      })
+    );
+
+    // Move bookmark to row 11
+    act(() => {
+      result.current.setBookmarkRow(11);
+    });
+    expect(result.current.bookmarkRow).toBe(11);
+    expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkRow).toBe(11);
+
+    // Turning to next page resets bookmarkRow to 0
+    act(() => {
+      result.current.handleNextPage();
+    });
+    expect(result.current.currentChapterPage).toBe(2);
+    expect(result.current.bookmarkRow).toBe(0);
+    expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkRow).toBeUndefined();
+  });
 });

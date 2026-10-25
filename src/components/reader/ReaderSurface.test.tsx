@@ -881,4 +881,75 @@ describe('ReaderSurface', () => {
 
     window.getSelection = originalGetSelection;
   });
+
+  it('renders interactive in-page row-snapping bookmark and supports rail click, drag, keyboard arrows, and double-click reset', () => {
+    const onBookmarkRowChange = vi.fn();
+    const { rerender } = render(
+      <ReaderSurface
+        {...defaultProps}
+        fontSize={20}
+        lineHeight={2}
+        bookmarkRow={0}
+        onBookmarkRowChange={onBookmarkRowChange}
+      />
+    );
+
+    const bookmarkSlider = screen.getByTestId('reader-page-bookmark');
+    expect(bookmarkSlider).toHaveAttribute('role', 'slider');
+    expect(bookmarkSlider).toHaveAttribute('aria-valuenow', '1');
+    expect(bookmarkSlider).toHaveStyle({ top: '0px', height: '40px' });
+
+    // Verify non-overlapping left gutter geometry on article and bookmark handle
+    const articleEl = bookmarkSlider.closest('article');
+    expect(articleEl).toHaveClass('pl-12');
+    const badgeEl = screen.getByTestId('reader-bookmark-line-badge').parentElement;
+    expect(badgeEl).toHaveClass('right-full', 'origin-right');
+
+    const guideLine = screen.getByTestId('reader-bookmark-guide-line');
+    expect(guideLine).toHaveClass('opacity-0');
+
+    // Keyboard navigation: ArrowDown increments row
+    fireEvent.keyDown(bookmarkSlider, { key: 'ArrowDown' });
+    expect(onBookmarkRowChange).toHaveBeenCalledWith(1);
+
+    // Rerender with bookmarkRow = 3
+    rerender(
+      <ReaderSurface
+        {...defaultProps}
+        fontSize={20}
+        lineHeight={2}
+        bookmarkRow={3}
+        onBookmarkRowChange={onBookmarkRowChange}
+      />
+    );
+    expect(bookmarkSlider).toHaveAttribute('aria-valuenow', '4');
+    expect(bookmarkSlider).toHaveStyle({ top: '120px', height: '40px' });
+    expect(guideLine).toHaveClass('opacity-100');
+    expect(screen.getByTestId('reader-bookmark-line-badge')).toHaveTextContent('L4');
+
+    // ArrowUp decrements row, Home resets to 0
+    fireEvent.keyDown(bookmarkSlider, { key: 'ArrowUp' });
+    expect(onBookmarkRowChange).toHaveBeenCalledWith(2);
+
+    fireEvent.keyDown(bookmarkSlider, { key: 'Home' });
+    expect(onBookmarkRowChange).toHaveBeenCalledWith(0);
+
+    // Double-click resets to 0
+    onBookmarkRowChange.mockClear();
+    fireEvent.doubleClick(bookmarkSlider);
+    expect(onBookmarkRowChange).toHaveBeenCalledWith(0);
+
+    // Click on left margin rail snaps to row based on clientY
+    onBookmarkRowChange.mockClear();
+    const rail = screen.getByTestId('reader-bookmark-rail');
+    fireEvent.click(rail, { clientY: 180 });
+    expect(onBookmarkRowChange).toHaveBeenCalledWith(4);
+
+    // Pointer/Mouse drag snaps row on move and releases on mouseUp
+    onBookmarkRowChange.mockClear();
+    fireEvent.mouseDown(bookmarkSlider);
+    fireEvent.mouseMove(window, { clientY: 100 });
+    expect(onBookmarkRowChange).toHaveBeenCalledWith(2);
+    fireEvent.mouseUp(window);
+  });
 });

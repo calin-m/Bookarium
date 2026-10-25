@@ -508,7 +508,7 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
         )}
 
         {/* Paired Fellow Reflection Box */}
-        {pairedFellowAnnotation && pairedFellowAnnotation.note && (
+        {pairedFellowAnnotation && (
           <div
             data-testid={`notebook-paired-fellow-note-${pairedFellowAnnotation.id}`}
             className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-sans text-foreground/90 space-y-1"
@@ -519,7 +519,13 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
                 Fellow Reflection ({formatFellowScholarLabel(pairedFellowAnnotation.fellowDisplayName, pairedFellowAnnotation.fellowUsername)})
               </span>
             </div>
-            <p className="leading-relaxed whitespace-pre-wrap">{pairedFellowAnnotation.note}</p>
+            {pairedFellowAnnotation.note ? (
+              <p className="leading-relaxed whitespace-pre-wrap">{pairedFellowAnnotation.note}</p>
+            ) : (
+              <p className="leading-relaxed italic text-muted-foreground text-[11px]">
+                Also saved and highlighted in this Literary Symposium.
+              </p>
+            )}
           </div>
         )}
       </div>

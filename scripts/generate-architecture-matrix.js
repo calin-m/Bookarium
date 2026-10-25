@@ -46,8 +46,8 @@ function extractDatabaseCatalog(rootDirPath) {
     bookshelves: 'Default master "General" shelf and custom user-created named shelves.',
     bookshelf_items: 'Books filed in specific shelves with user-scoped uniqueness constraints.',
     user_favorites: 'Cross-device synchronized favorited titles.',
-    reading_progress: 'Chapter index, progress %, scroll offsets, and cached volume metadata.',
-    user_annotations: 'Passage text highlights (4 pastel palettes) and scholarly marginalia notes.',
+    reading_progress: 'Chapter index, progress %, in-page row bookmark offsets, and cached volume metadata.',
+    user_annotations: 'Passage text highlights (4 pastel palettes), scholarly notes, and cross-volume Symposium Fellow marginalia.',
     user_book_curation: 'Personal 1–5 star ratings and reading status classification.',
     user_reading_habits: 'Reading streaks (5-min threshold), daily activity dates, annual challenge goals, and dual immersion telemetry.',
     user_accolades: 'Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata.',
@@ -338,8 +338,8 @@ function generateMarkdown() {
     '            Grid["Catalog View (/)\\n(Smooth Scroll Navigation, 2-Col Mobile Grid, Multi-Col Desktop & 3D Hardwood Shelf)"]',
     '            ShelfView["Bookshelf View (/bookshelf)\\n(Curated Library, Custom Named Shelves, Downloaded (N) Smart Shelf, Active-Shelf Clear & 12-Book Row Cap)"]',
     '            FavView["Favorites View (/favorites)\\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]',
-    '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger, Dedicated Resume CTA & 4-State Offline Controls)"]',
-    '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections, Tags & Tablet Icon Mode Switcher)"]',
+    '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger, Row-Level Line Badges, Dedicated Resume CTA & 4-State Offline Controls)"]',
+    '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections, Tags, Single-Column Tablet Grid & Tablet Icon Mode Switcher)"]',
     '            AccView["Account Hub (/account)\\n(Library Stats, Cloud Sync & JSON Backup)"]',
     '            PrivacyView["Privacy Architecture (/privacy)\\n(Zero-Tracker Manifesto, COPPA/GDPR Art. 8 & Functional Geo-Cookies)"]',
     '            CopyrightView["Copyright Governance (/copyright)\\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]',
@@ -540,7 +540,7 @@ function generateMarkdown() {
     '        ReadingMode["Reading Mode: Paginated | Scroll"]',
     '        Theme["Theme: Light | Dark | Sepia"]',
     '        Progress["Global Page & Book Progress %"]',
-    '        Positions["Reading Positions Map\\n(exact chapter & page restore)"]',
+    '        Positions["Reading Positions Map\\n(exact chapter, page & row-snapped bookmarkRow)"]',
     '        FellowState["Active Symposium & Companion Coordinates\\n(useFellowshipStore)"]',
     '    end',
     '',
@@ -562,7 +562,7 @@ function generateMarkdown() {
     '    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]',
     '        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader)"]',
     '        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]',
-    '        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap & Amber Sentence Highlight)"]',
+    '        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap, Interactive Row-Snapping Page Bookmark & Amber Sentence Highlight)"]',
     '        ProgressBar["Top Reading Progress Indicator"]',
     '        ResumeToast["Exact-Page Auto-Resume Toast"]',
     '        FooterBar["Sticky Bottom Pagination & Page Jump"]',
@@ -632,7 +632,7 @@ function generateMarkdown() {
     '        Header["SectionHeader (\'Continue Reading & Bookmarks\')\\n• Eyebrow, Flank lines, Clear Bookmarks modal"]',
     '        Search["CollectionToolbar\\n(Search, Sort & Downloaded Filter, Pagination)"]',
     '        Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]',
-    '        Cards["BookmarkCard.tsx\\n• Top-anchored silk ribbon (origin-top scale-y-110)\\n• Card tap focuses/activates card (all viewports)\\n• Cleaned title & normalized author\\n• Reading coordinates badge\\n• 4-state square offline button & modal\\n• Status dropdown selector\\n• Desktop cursor-exit focus release (onDeactivate)"]',
+    '        Cards["BookmarkCard.tsx\\n• Top-anchored silk ribbon (origin-top scale-y-110)\\n• Card tap focuses/activates card (all viewports)\\n• Cleaned title & normalized author\\n• Reading coordinates & Line X badge\\n• 4-state square offline button & modal\\n• Status dropdown selector\\n• Desktop cursor-exit focus release (onDeactivate)"]',
     '        ResumeAction["Dedicated 1-Click Resume / Read Again CTA\\n• Seed useReaderStore.openReader(book) [Warm Cache]\\n• router.push(\'/read/\' + id)"]',
     '    end',
     '',
@@ -693,7 +693,7 @@ function generateMarkdown() {
     useAccoladesStore:
       'Deterministic literary accolades evaluation, celebration queues, personal showcase pinning (max 3 bookplates), and bi-directional Supabase cloud synchronization.',
     useAnnotationStore:
-      'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), reflections, and commonplace book exports.',
+      'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), reflections, and commonplace book exports.',
     useAuthStore:
       'Supabase session authentication, guest status, password generation, and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
@@ -707,7 +707,7 @@ function generateMarkdown() {
     usePreferencesStore:
       'Reader display choices, sticky header auto-hide preferences, and navigation behaviors.',
     useReaderStore:
-      'Active book payload with verified lifespan preservation, typography settings (size, family, line height), reading mode (paginated vs scroll), coordinates, and bidirectional Supabase `reading_progress` lifespan self-healing.',
+      'Active book payload with verified lifespan preservation, typography settings (size, family, line height), reading mode (paginated vs scroll), chapter/page/row coordinates (`bookmarkRow`), and bidirectional Supabase `reading_progress` lifespan self-healing.',
     useThemeStore:
       'Global application theme state (Day Paper, Sepia Parchment, Obsidian Dark) with immediate document class application.',
   };

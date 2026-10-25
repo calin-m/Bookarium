@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect, useCallback } from 'react';
-import { BookOpen, ZoomIn } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { BookOpen, Bookmark, ZoomIn } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 import type { FellowAnnotation } from '@/stores/useAnnotationStore';
@@ -23,6 +23,8 @@ export interface ReaderSurfaceProps {
   chapter?: ChapterSection;
   currentPageText: string;
   chapterPage?: number;
+  bookmarkRow?: number;
+  onBookmarkRowChange?: (row: number) => void;
   activeChapterIndex: number;
   totalChapters: number;
   isLoading: boolean;
@@ -55,6 +57,8 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   chapter,
   currentPageText,
   chapterPage,
+  bookmarkRow = 0,
+  onBookmarkRowChange,
   activeChapterIndex,
   totalChapters,
   isLoading,
@@ -74,6 +78,69 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
 }) => {
   const activeTheme = getReaderTheme(theme);
   const mainRef = useRef<HTMLElement>(null);
+  const contentBodyRef = useRef<HTMLDivElement>(null);
+  const bookmarkElRef = useRef<HTMLDivElement>(null);
+  const [isDraggingBookmark, setIsDraggingBookmark] = useState(false);
+  const hasScrolledBookmarkRef = useRef(false);
+
+  const lineStepPx = Math.max(16, fontSize * lineHeight);
+  const contentToDisplay = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
+  const estimatedMaxBookmarkRows = Math.max(10, Math.ceil((contentToDisplay?.length || 800) / 65));
+
+  const getMaxBookmarkRows = useCallback(() => {
+    const el = contentBodyRef.current;
+    const measuredHeight = el ? el.scrollHeight || el.getBoundingClientRect().height || 0 : 0;
+    if (measuredHeight <= 0) {
+      return Math.max(10, Math.ceil((contentToDisplay?.length || 800) / 65));
+    }
+    return Math.max(0, Math.floor((measuredHeight - lineStepPx / 2) / lineStepPx));
+  }, [contentToDisplay, lineStepPx]);
+
+  const computeRowFromClientY = useCallback(
+    (clientY: number) => {
+      const el = contentBodyRef.current;
+      const rectTop = el ? el.getBoundingClientRect().top : 0;
+      const relY = clientY - rectTop;
+      const rawRow = Math.round((relY - lineStepPx / 2) / lineStepPx);
+      return Math.min(getMaxBookmarkRows(), Math.max(0, rawRow));
+    },
+    [lineStepPx, getMaxBookmarkRows]
+  );
+
+  useEffect(() => {
+    if (!isDraggingBookmark) return;
+
+    const handlePointerMove = (e: PointerEvent | MouseEvent) => {
+      onBookmarkRowChange?.(computeRowFromClientY(e.clientY));
+    };
+
+    const handleTouchMoveWindow = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        if (e.cancelable) e.preventDefault();
+        onBookmarkRowChange?.(computeRowFromClientY(e.touches[0].clientY));
+      }
+    };
+
+    const handleEnd = () => {
+      setIsDraggingBookmark(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('touchmove', handleTouchMoveWindow, { passive: false });
+    window.addEventListener('pointerup', handleEnd);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchend', handleEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('touchmove', handleTouchMoveWindow);
+      window.removeEventListener('pointerup', handleEnd);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [isDraggingBookmark, computeRowFromClientY, onBookmarkRowChange]);
 
   const { zoomFeedback, handleTouchStart, handleTouchMove, handleTouchEnd } = useReaderGestures({
     fontSize,
@@ -83,18 +150,32 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     onPreviousPage,
   });
 
-  // Smooth animated scroll-to-top on page or chapter transition (unless jumping to a specific annotation)
   useEffect(() => {
-    if (readingMode === 'paginated' && mainRef.current && !targetAnnotationId) {
+    hasScrolledBookmarkRef.current = false;
+  }, [currentPageText, activeChapterIndex, chapterPage]);
+
+  // Smooth animated scroll-to-top on page or chapter transition, or center on bookmarked row when resuming
+  useEffect(() => {
+    if (readingMode === 'paginated' && mainRef.current && !targetAnnotationId && !isDraggingBookmark) {
       const prefersReducedMotion =
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      mainRef.current.scrollTo({
-        top: 0,
-        behavior: prefersReducedMotion ? 'instant' : 'smooth',
-      });
+      if (bookmarkRow > 0) {
+        if (!hasScrolledBookmarkRef.current && bookmarkElRef.current) {
+          hasScrolledBookmarkRef.current = true;
+          bookmarkElRef.current.scrollIntoView?.({
+            behavior: prefersReducedMotion ? 'instant' : 'smooth',
+            block: 'center',
+          });
+        }
+      } else {
+        mainRef.current.scrollTo({
+          top: 0,
+          behavior: prefersReducedMotion ? 'instant' : 'smooth',
+        });
+      }
     }
-  }, [currentPageText, activeChapterIndex, readingMode, targetAnnotationId]);
+  }, [currentPageText, activeChapterIndex, readingMode, targetAnnotationId, bookmarkRow, isDraggingBookmark]);
 
   // Center and visually accent the targeted highlighted passage
   useEffect(() => {
@@ -215,8 +296,6 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     );
   }
 
-  const contentToDisplay = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
-
   return (
     <main
       ref={mainRef}
@@ -252,7 +331,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       <article
         key={readingMode === 'paginated' ? `p-${activeChapterIndex}-${chapterPage ?? (contentToDisplay?.slice(0, 30) || '0')}` : `s-${activeChapterIndex}`}
         onMouseUp={handleSelection}
-        className={`mx-auto px-6 sm:px-12 pt-10 sm:pt-16 ${
+        className={`mx-auto pl-12 pr-5 sm:px-14 md:px-16 pt-10 sm:pt-16 ${
           highlightedSentence ? 'pb-32 sm:pb-36' : 'pb-10 sm:pb-16'
         } select-text ${widthClass} ${fontClass} animate-page-turn`}
         style={{
@@ -287,29 +366,138 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
             </header>
           ) : null}
 
-          {/* Standard Reading Body */}
-          <div
-            data-testid="reader-content-body"
-            className="space-y-6 select-text whitespace-pre-wrap text-inherit font-normal antialiased [word-break:normal] [overflow-wrap:break-word] [hyphens:none]"
-            style={{
-              fontSize: `${fontSize}px`,
-              lineHeight: `${lineHeight}`,
-            }}
-          >
-            {contentToDisplay ? (
-              renderContentWithAnnotations(
-                contentToDisplay,
-                annotations,
-                highlightedSentence,
-                theme,
-                onSelectAnnotation
-              )
-            ) : (
-              <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
-                <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                Empty section or end of text volume.
-              </div>
+          {/* Standard Reading Body with Interactive Margin Row Bookmark */}
+          <div className="relative">
+            {contentToDisplay && (
+              <>
+                {/* Click-to-Snap Margin Rail */}
+                <div
+                  data-testid="reader-bookmark-rail"
+                  data-prevent-swipe
+                  aria-hidden="true"
+                  title="Click to snap reading bookmark to this line"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBookmarkRowChange?.(computeRowFromClientY(e.clientY));
+                  }}
+                  className="absolute right-full mr-0 top-0 bottom-0 w-10 sm:w-12 z-10 cursor-pointer group/rail select-none"
+                >
+                  <div className="mx-auto h-full w-px bg-transparent group-hover/rail:bg-primary/20 transition-colors" />
+                </div>
+
+                {/* Draggable Row-Snapping Bookmark Ribbon & Guide Line */}
+                <div
+                  ref={bookmarkElRef}
+                  role="slider"
+                  tabIndex={0}
+                  aria-label="Reading line bookmark"
+                  aria-valuemin={1}
+                  aria-valuemax={estimatedMaxBookmarkRows + 1}
+                  aria-valuenow={bookmarkRow + 1}
+                  aria-valuetext={`Line ${bookmarkRow + 1}`}
+                  data-testid="reader-page-bookmark"
+                  data-bookmark-row={bookmarkRow}
+                  data-prevent-swipe
+                  title={
+                    bookmarkRow > 0
+                      ? `Bookmarked at Line ${bookmarkRow + 1} (drag to move, double-click to reset)`
+                      : 'Drag down to bookmark your reading line on this page'
+                  }
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setIsDraggingBookmark(true);
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    setIsDraggingBookmark(true);
+                  }}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                    setIsDraggingBookmark(true);
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    onBookmarkRowChange?.(0);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      onBookmarkRowChange?.(Math.min(getMaxBookmarkRows(), bookmarkRow + 1));
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      onBookmarkRowChange?.(Math.max(0, bookmarkRow - 1));
+                    } else if (e.key === 'Home') {
+                      e.preventDefault();
+                      onBookmarkRowChange?.(0);
+                    }
+                  }}
+                  style={{
+                    top: `${bookmarkRow * lineStepPx}px`,
+                    height: `${lineStepPx}px`,
+                  }}
+                  className={`absolute left-0 right-0 z-10 pointer-events-none select-none focus:outline-none group/bookmark ${
+                    isDraggingBookmark ? 'transition-none' : 'transition-[top] duration-150 ease-out'
+                  }`}
+                >
+                  {/* Interactive Margin Ribbon Tab */}
+                  <div
+                    data-prevent-swipe
+                    className={`pointer-events-auto absolute right-full mr-1.5 sm:mr-2.5 origin-right top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded-l-md rounded-r-xs border transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
+                      bookmarkRow > 0 || isDraggingBookmark
+                        ? 'bg-primary text-primary-foreground border-primary scale-105 opacity-100'
+                        : 'bg-card/85 text-primary border-primary/30 opacity-65 hover:opacity-100 group-focus-visible/bookmark:opacity-100 group-focus-visible/bookmark:ring-2 group-focus-visible/bookmark:ring-primary'
+                    }`}
+                  >
+                    <Bookmark className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current shrink-0" />
+                    <span
+                      data-testid="reader-bookmark-line-badge"
+                      className={`text-[9px] font-mono font-bold leading-none ${
+                        bookmarkRow > 0 || isDraggingBookmark
+                          ? 'inline'
+                          : 'hidden sm:group-hover/bookmark:inline'
+                      }`}
+                    >
+                      L{bookmarkRow + 1}
+                    </span>
+                  </div>
+
+                  {/* Subtle Full-Width Row Guide Line & Highlight */}
+                  <div
+                    data-testid="reader-bookmark-guide-line"
+                    className={`w-full h-full rounded-xs border-b transition-opacity duration-150 ${
+                      bookmarkRow > 0 || isDraggingBookmark
+                        ? 'opacity-100 border-primary/45 bg-primary/[0.04] dark:bg-primary/[0.08]'
+                        : 'opacity-0 border-transparent bg-transparent'
+                    }`}
+                  />
+                </div>
+              </>
             )}
+
+            <div
+              ref={contentBodyRef}
+              data-testid="reader-content-body"
+              className="relative z-10 space-y-6 select-text whitespace-pre-wrap text-inherit font-normal antialiased [word-break:normal] [overflow-wrap:break-word] [hyphens:none]"
+              style={{
+                fontSize: `${fontSize}px`,
+                lineHeight: `${lineHeight}`,
+              }}
+            >
+              {contentToDisplay ? (
+                renderContentWithAnnotations(
+                  contentToDisplay,
+                  annotations,
+                  highlightedSentence,
+                  theme,
+                  onSelectAnnotation
+                )
+              ) : (
+                <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
+                  <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  Empty section or end of text volume.
+                </div>
+              )}
+            </div>
           </div>
       </article>
     </main>

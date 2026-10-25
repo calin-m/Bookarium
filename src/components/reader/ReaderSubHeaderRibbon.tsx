@@ -9,6 +9,7 @@ import { formatFellowScholarLabel, isPlaceholderUsername } from '@/stores/useFel
 export interface ResumeNoticeData {
   chapterTitle: string;
   page: number;
+  row?: number;
 }
 
 export interface SymposiumCompanionProgress {
@@ -74,7 +75,9 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
           <span className="truncate font-medium">
             {resumeNotice.chapterTitle.includes('Completed')
               ? `${resumeNotice.chapterTitle} • Page ${resumeNotice.page}`
-              : `Resumed at ${resumeNotice.chapterTitle}, Page ${resumeNotice.page}`}
+              : `Resumed at ${resumeNotice.chapterTitle}, Page ${resumeNotice.page}${
+                  resumeNotice.row && resumeNotice.row > 1 ? ` • Line ${resumeNotice.row}` : ''
+                }`}
           </span>
         </div>
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">

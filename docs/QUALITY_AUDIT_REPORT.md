@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 25 Oct 2026 17:03:23 GMT  
+**Last Generated**: Sun, 25 Oct 2026 18:53:52 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 187 passed  
-**Total Verified Tests**: 1912 passed  
+**Total Verified Tests**: 1927 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1912 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1927 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 67 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 68 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **95.57%** (9540/9982) — *Target: $ge$ 85%*
-- **Statements**: **94.24%** (10390/11025) — *Target: $ge$ 85%*
-- **Functions**: **92.78%** (2239/2413) — *Target: $ge$ 85%*
-- **Branches**: **85.31%** (9497/11132) — *Target: $ge$ 85%*
+- **Lines**: **95.46%** (9694/10154) — *Target: $ge$ 85%*
+- **Statements**: **94.18%** (10553/11204) — *Target: $ge$ 85%*
+- **Functions**: **92.58%** (2260/2441) — *Target: $ge$ 85%*
+- **Branches**: **85.09%** (9634/11321) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1912 Tests)
+## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1927 Tests)
 
 ### 🚀 App Routes & Pages (26 Suites · 248 Tests)
 
@@ -441,7 +441,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (27 Suites · 399 Tests)
+### 🎨 Catalog & Presentation (27 Suites · 403 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -519,7 +519,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (20 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -540,6 +540,7 @@
 - ✔ `renders interactive offline toggle button and handles save, remove, and downloading states`
 - ✔ `renders authentic notched bookmark ribbon marker matching reading status and hover interaction`
 - ✔ `triggers onActivate on click, and onDeactivate on mouseLeave on desktop and on blur`
+- ✔ `displays exact bookmarked line coordinate when bookmarkRow is greater than 0`
 
 </details>
 
@@ -904,7 +905,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `renders book metadata, quote excerpt, and note`
 - ✔ `renders Protected badge when isRestricted is true`
@@ -918,13 +919,14 @@
 - ✔ `displays Add a personal note prompt when annotation has no note`
 - ✔ `renders Fellow Marginalia attribution badge and hides edit/delete controls for fellow annotations`
 - ✔ `renders paired fellow badge, shared quote overlap span, and stacked reflections when pairedFellowAnnotation is present`
+- ✔ `renders fellow box with fallback attribution line when pairedFellowAnnotation has no written note`
 - ✔ `renders Save to My Notes button on standalone fellow note and calls onSaveFellowAsOwn`
 - ✔ `renders In My Notes badge and Edit My Note when matching personal annotation exists`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (45 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (47 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -969,8 +971,10 @@
 - ✔ `applies tactile animate-page-turn to notebook-content-anchor across grouping, color filter, and pagination transitions`
 - ✔ `renders source filter pills when fellowAnnotations are present and filters between All, Mine, and Fellows`
 - ✔ `merges overlapping own and fellow annotations into a single unified card in All mode`
+- ✔ `matches paired fellow annotation color and fellow details in notebook search and color filters`
 - ✔ `allows saving fellow note to own notebook using onSaveFellowAsOwn`
 - ✔ `resolves metadata for shared fellowAnnotations lacking title/author and primes useReaderStore on Jump to Context`
+- ✔ `renders quote cards in a single-column grid on tablet and two-column grid on desktop (lg:grid-cols-2)`
 
 </details>
 
@@ -1004,7 +1008,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 163 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 164 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1205,7 +1209,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (27 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (28 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -1234,6 +1238,7 @@
 - ✔ `renders Fellow Scholar highlights with dashed underline and @fellow badge, and supports overlapping highlights`
 - ✔ `correctly partitions partially overlapping highlights into sub-spans with single trailing fellow badge`
 - ✔ `does not clobber active drag text selection when clicking inside fellow annotation mark`
+- ✔ `renders interactive in-page row-snapping bookmark and supports rail click, drag, keyboard arrows, and double-click reset`
 
 </details>
 
@@ -1310,7 +1315,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 173 Tests)
+### ⚡ Zustand State Stores (10 Suites · 182 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (9 tests)</summary>
@@ -1328,7 +1333,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (25 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (32 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1355,6 +1360,13 @@
 - ✔ `covers fetchFellowAnnotationsForBook profile fallback, early return, error fallback, and enrichFellowAnnotations symposium fallback`
 - ✔ `heals fellowAnnotations stuck on scholar or fellow_scholar via resolveStaleFellowProfiles`
 - ✔ `buildFellowScholarsMap retains real handle when merging placeholder companion records`
+- ✔ `fetchAllFellowAnnotations queries all fellow annotations and enriches metadata and companion profiles`
+- ✔ `fetchAllFellowAnnotations returns empty array when currentUserId is not provided`
+- ✔ `fetchAllFellowAnnotations handles supabase errors gracefully`
+- ✔ `fetchAllFellowAnnotations resolves companion identity when current user is fellow and preserves metadata`
+- ✔ `fetchAllFellowAnnotations falls back to profiles table for missing companion handles`
+- ✔ `addAnnotation persists expanded selected_text to supabase when new highlight covers a wider range`
+- ✔ `addAnnotation enforces chapterIndex isolation for identical text phrases in different chapters`
 
 </details>
 
@@ -1505,7 +1517,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1530,6 +1542,8 @@
 - ✔ `provides hydration-safe reader defaults and activeReadingCount`
 - ✔ `covers saveReadingPosition metadata preservation, LWW conflict resolution, ghost cloud restore, and active debounce timer cancellation`
 - ✔ `preserves verified author lifespans across openReader, saveReadingPosition, enrichReadingPositions, and cloud sync`
+- ✔ `encodes and decodes bookmarkRow via fractional scroll_offset in cloud sync and preserves Page-1 bookmarked rows`
+- ✔ `syncWithCloud decodes bookmarkRow from remote row and populates readingPositions`
 
 </details>
 
@@ -2106,7 +2120,7 @@
 <details>
 <summary><b><code>src/lib/sync-utils.test.ts</code></b> (3 tests)</summary>
 
-- ✔ `triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, Habits, and Accolades stores`
+- ✔ `triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, Habits, and Accolades stores, plus Fellowship hydration`
 - ✔ `safely exits without calling stores if userId is empty`
 - ✔ `gracefully settles and does not throw if one store encounters a network rejection`
 
@@ -2188,7 +2202,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 242 Tests)
+### 🔄 Hooks & React Query (22 Suites · 243 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (16 tests)</summary>
@@ -2339,7 +2353,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -2353,6 +2367,7 @@
 - ✔ `works with default internalized hasMounted when not explicitly passed`
 - ✔ `does not save reading position or progress on initial load when remaining on Page 1`
 - ✔ `records reading position and progress immediately upon advancing to Page 2`
+- ✔ `restores saved bookmarkRow with line resumeNotice, persists setBookmarkRow on Page 1, and resets bookmarkRow on page turn`
 
 </details>
 
