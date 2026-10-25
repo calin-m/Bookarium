@@ -395,7 +395,15 @@ describe('Navbar component', () => {
       expect(indicator).toHaveClass('border-indigo-500');
     });
 
-    it('activates two-phase directional elastic bridge and corner-tip curl on high tier when moving right', () => {
+    it('activates two-phase directional elastic bridge and corner-tip curl on high tier when moving right', async () => {
+      const perfModule = await import('@/hooks/usePerformanceTier');
+      vi.spyOn(perfModule, 'usePerformanceTier').mockReturnValue({
+        tier: 'high',
+        allowHeavyMotion: true,
+        enablePrefetching: true,
+        cores: 8,
+      });
+
       vi.useFakeTimers();
       let currentLeft = 10;
       Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
@@ -439,7 +447,15 @@ describe('Navbar component', () => {
       vi.useRealTimers();
     });
 
-    it('activates two-phase directional elastic bridge and corner-tip curl on high tier when moving left', () => {
+    it('activates two-phase directional elastic bridge and corner-tip curl on high tier when moving left', async () => {
+      const perfModule = await import('@/hooks/usePerformanceTier');
+      vi.spyOn(perfModule, 'usePerformanceTier').mockReturnValue({
+        tier: 'high',
+        allowHeavyMotion: true,
+        enablePrefetching: true,
+        cores: 8,
+      });
+
       vi.useFakeTimers();
       let currentLeft = 120;
       Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
