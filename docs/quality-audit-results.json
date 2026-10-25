@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-10-25T09:11:47.458Z",
+  "timestamp": "2026-10-25T14:25:15.591Z",
   "status": "PASSED",
   "testSummary": {
     "totalSuites": 187,
-    "totalTests": 1869
+    "totalTests": 1909
   },
   "gateways": {
     "pass05_secrets": {
@@ -21,12 +21,12 @@
     "pass3_coverage": {
       "status": "PASSED",
       "totalSuites": 187,
-      "totalTests": 1869,
+      "totalTests": 1909,
       "metrics": {
-        "lines": 95.64,
-        "statements": 94.31,
-        "functions": 92.79,
-        "branches": 85.15
+        "lines": 95.63,
+        "statements": 94.3,
+        "functions": 92.8,
+        "branches": 85.26
       }
     },
     "pass4_docs_sync": {
@@ -34,7 +34,7 @@
     },
     "pass5_adr_validation": {
       "status": "PASSED",
-      "adrCount": 60
+      "adrCount": 64
     },
     "pass6_quality_suite": {
       "status": "PASSED",

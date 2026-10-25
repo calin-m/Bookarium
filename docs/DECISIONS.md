@@ -1308,7 +1308,7 @@
       - In `src/hooks/useOfflineBooks.ts`, added route pre-warming (`fetch('/read/' + book.id)`) and dynamic Reader chunk preloading (`import('@/app/read/[id]/page')`) during offline book downloads.
       - In `src/hooks/queries/useBookContent.ts`, integrated `isBookPublicDomainInJurisdiction` into the offline fallback network error handler, ensuring strict copyright enforcement (throwing `LegalRestrictionError` if restricted) while reliably loading cached text for permitted public domain titles.
    12. **BookCard Card-Level Hover `Remove` Transition, Tactile Catalog Tap Modal & Clean 3D Spread (`src/components/presentation/BookCard.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/BookPreviewModal.tsx`, `src/app/page.tsx`)**:
-      - Updated `BookCard` and `BookmarkCard` top-left `Downloaded` pill to transition from `✓ Downloaded` to `🗑️ Remove` when hovering anywhere over the card (`group-hover:`), with subtle destructive styling on card hover and full highlight on direct badge hover.
+      - Updated `BookCard` top-left `Downloaded` pill to transition from `✓ Downloaded` to `🗑️ Remove` when hovering anywhere over the card (`group-hover:`), with subtle destructive styling on card hover and full highlight on direct badge hover, while `BookmarkCard` centralizes offline controls into its dedicated 4-state bottom action button (ADR-062).
       - Unified `handleCoverClick` in `BookCard.tsx` so tapping a book cover on mobile (`< 1024px`) in Catalog (matching Favorites and Bookshelf) opens `BookshelfMobileModal` and activates the card outline ring (`ring-2 ring-primary/60`), navigating to the Reader only when explicitly tapping "Read Volume" (or the card footer's Read button).
       - Connected offline book removal inside `BookshelfMobileModal` to `RemoveOfflineBookModal` in `src/app/page.tsx`, guaranteeing safe deletion confirmation before clearing downloaded volumes.
       - Cleaned the inside pages of `BookPreviewModal.tsx` by removing the offline toggle button from the right-page footer and setting `isOffline={false}` on the 3D flipper front cover, completely eliminating 3D bleed-through onto open book pages.
@@ -1319,8 +1319,15 @@
          3. *Downloaded (Default)*: Keeps the exact same `<HardDriveDownload />` icon (without checkmark swap) rendered in emerald green (`border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400`).
          4. *Downloaded (Hover)*: Swaps icon to the remove basket `<Trash2 />` and transitions to destructive red (`hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive`).
        - Standardized this 4-state offline action button across `BookmarkCard`, `BookshelfMobileModal`, and `BookshelfSpine` (with matching tooltip content).
-       - Upgraded `BookmarkCard` with `isActive` and `onActivate` props: on desktop hover or tactile active state, the top `Downloaded` pill badge (`bookmark-card-offline-badge-${book.id}`) switches from `✓ Downloaded` (emerald) to `🗑️ Remove` (destructive red), the card displays an active border/ring (`border-primary/50 ring-2 ring-primary/50 shadow-booksaw-hover`), and the title highlights in `text-primary`.
+       - Upgraded `BookmarkCard` with `isActive` and `onActivate` props: on desktop hover or tactile active state, the card displays an active border/ring (`border-primary/50 ring-2 ring-primary/50 shadow-booksaw-hover`), and the title highlights in `text-primary`.
        - Added an automatic vertical scroll focus zone in `BookmarksView` for single-column mobile layouts (`< 768px`) that calculates card midpoints against the viewport's central focus band with top/bottom page boundary anchors, alongside direct card tap activation and outside-click dismissal for multi-column tactile screens.
+   14. **Account Page Editorial Sub-Tab Unification, Top-Level Placement & Mobile Active-Only Label Expansion (`src/app/account/page.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `src/components/account/AccountPreferencesSection.tsx`, `src/components/account/AccountAccoladesCard.tsx`)**:
+       - Replaced divergent, right-aligned, and multi-row sub-tabs across all Account sections (`Habits & Accolades`, `Public Scholar`, `Symposiums & Circle`, `Preferences`, and `Accolade Compendium` categories) with a unified, centered editorial underline sub-tab strip (`flex items-center justify-center border-b border-border`) matching the Bookmarks page design pattern, positioned outside and directly above the section cards for a consistent 3-tier visual hierarchy across all tabs.
+       - Implemented responsive active-only label expansion (`<span className={isActive ? 'inline' : 'hidden md:inline'}>{label}</span>`) with `whitespace-nowrap shrink-0` and theme-solid `border-primary` active indicator on `border-b-2`, ensuring that on viewports `< 768px` only the active tab renders text while inactive tabs show compact icons, completely eliminating horizontal-to-vertical layout snaps and text truncation on mobile phones.
+       - Upgraded `Accolade Compendium` categories with Lucide icons (`Award`, `Flame`, `Clock`, `Compass`, `BookOpen`, `Library`) and live count badges on a single horizontal row, eliminating multi-row wrapping on narrow viewports.
+   15. **Navbar Navigation Tabs Sleek Uniform `font-medium` Typography (`src/components/presentation/Navbar.tsx`, `src/components/presentation/Navbar.test.tsx`)**:
+        - Removed active `font-bold` from top navigation tabs (`Catalog`, `Bookshelf`, `Favorites`, `Notebook`, `Bookmarks`) in favor of uniform `font-medium` across both active and inactive states.
+        - Optimized transition to `transition-colors`, eliminating horizontal text-width micro-jumps and visual heaviness while relying on the colored active indicator (unified into the Tier-Adaptive Gliding Active Underline Cradle in ADR-061), theme text color, and icon fill to crisply communicate the active tab.
 - **Consequences**:
   - Overlapping highlights render with pleasant, color-harmonized borders across all reading themes.
   - The Notebook and Reader Notes drawer present a clean, collaborative view without duplicate cards for co-highlighted passages.
@@ -1340,4 +1347,128 @@
   - Card-level hover transition makes offline removal discoverable instantly on Desktop without pixel-hunting small badges.
   - Mobile and tactile screen users enjoy consistent, accidental-navigation-free browsing across Catalog, Favorites, and Bookshelf with instant access to offline downloads, shelves, and reading.
   - The desktop 3D book preview spread presents a pure, uncluttered literary layout without technical offline indicators.
+  - Sub-tab bars across all Account sections share a consistent centered editorial design and identical visual hierarchy relative to the Primary Account tabs.
+  - Complete elimination of text clipping and vertical layout snapping on mobile devices across all Account sub-tabs.
+  - Top navigation bar provides an elegant, editorial aesthetic with zero text-width jumps when switching views.
   - All test suites pass with zero `act(...)` warnings and `>= 85%` coverage across every metric.
+
+## ADR-061: Tier-Adaptive Gliding Active Underline Bar in Navbar
+- **Status**: Accepted
+- **Context**: Top navigation tabs (`Catalog`, `Bookshelf`, `Favorites`, `Notebook`, `Bookmarks`) historically applied isolated CSS `border-b-2` bottom borders on active buttons. While functional, tab switching produced abrupt visual pop-in/pop-out transitions without spatial continuity. Replacing this with a blunt flat `h-0.5` bar or artificial glow degraded the sophisticated upward-tapered corner arcs inherent in the original `h-8 rounded border-b-2` button geometry.
+- **Decision**: Architect a Tier-Adaptive Gliding Active Underline Cradle in `src/components/presentation/Navbar.tsx` leveraging `usePerformanceTier` and canonical theme border tokens:
+  1. **Exact Original Resting Shape (`h-8 rounded border-b-2`, Zero Glow)**: The shared indicator renders as an `inset-y-0 left-0 h-8 pointer-events-none border-b-2 rounded ${activeTheme.navActiveBorder}` box. At rest, the browser miters the 2px bottom border along the 4px corner arcs, producing an upward-tapered cradle that is 100% pixel-identical to the original button underline, with zero drop-shadow/glow noise.
+  2. **Two-Phase Directional Elastic Bridge + Corner-Tip Curl (`high` Tier)**: When moving between tabs on high-tier devices, the indicator initiates a two-phase directional stretch:
+     - *Phase 1 — Directional Reach & Corner Curl (`0ms – 110ms`)*: The leading edge reaches forward to the destination tab immediately while the trailing edge lags behind (proportional lag capped at `0.85 * width` to keep multi-tab jumps proportional). During bridging, bottom corners deepen from `rounded` (4px) to `rounded-b-lg` (8px), curling the tapered tips higher as it bridges the gap.
+     - *Phase 2 — Trailing-Edge Snap & Settle (`110ms – 300ms`)*: The trailing edge releases and snaps into the destination button with `cubic-bezier(0.22, 1, 0.36, 1)` easing while corner tips relax from `rounded-b-lg` back to `rounded`.
+  3. **Single-Step Glide on Medium Tier**: On `medium` performance tiers, the `rounded border-b-2` cradle glides directly to the target tab in a single smooth 200ms pass.
+  4. **Account & Edge View Fading**: When navigating to the Account page, the indicator smoothly scales down horizontally and fades out (`opacity-0 scale-x-50 pointer-events-none`).
+  5. **Anti-Flicker & Zero-CLS SSR Hydration**: On initial server render, low-tier devices, or when `prefers-reduced-motion` is active, active tabs display their native `border-b-2` border; once client dimensions are verified on capable devices, the active button border switches to `border-transparent` and the gliding cradle seamlessly takes over with zero cumulative layout shift (CLS = 0).
+  6. **BookmarkCard Authentic Notched Silk Bookmark Ribbon Marker (`src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/BookmarkCard.test.tsx`)**: Upgraded the top-right bookmark accent on Reading Ledger cards from a flat rounded rectangle (`w-3 h-6 rounded-b-sm`) to an authentic vector silk ribbon marker (`w-4 h-7`) featuring a classic V-notch / chevron cutout (`M0 0 H16 V28 L8 22 L0 28 Z`), top-fold depth shadow, reading status-reactive coloring (`text-primary` for in progress, `text-emerald-500` for completed, `text-amber-500` for on hold), and top-anchored hover stretch (`origin-top transition-transform duration-300 group-hover:scale-y-110`, superseding initial translate micro-drop per ADR-062).
+- **Consequences**:
+  - Elevated editorial polish with fluid, tactile spatial transitions that preserve the exact cradled corner aesthetic at rest.
+  - Zero cumulative layout shift (CLS = 0) and zero hydration mismatch warnings.
+  - Reading ledger cards display an authentic physical bookmark ribbon marker with a distinctive V-notch cutout matching the Bookmarks page iconography.
+  - Strict accessibility conformance with automatic degradation on `prefers-reduced-motion`.
+  - Full test co-location with 32 unit tests covering fallback, gliding, directional bridging, resizing, and tier transitions, plus verified ribbon marker tests on BookmarkCard.
+
+## ADR-062: Unified Personal Collection 'Downloaded' Filtering, Smart Bookshelf & BookmarkCard/Spine De-Duplication
+- **Status**: Accepted
+- **Context**:
+  1. *BookmarkCard Ribbon Top Detachment*: The notched silk bookmark ribbon marker on `BookmarkCard` historically applied `group-hover:translate-y-0.5`. On card hover, this translated the entire SVG downwards by 2px from `top: 0`, detaching the top border of the ribbon from the card border and leaving an awkward gap.
+  2. *Redundant Downloaded Badge on BookmarkCard & BookshelfSpine Hover Modal*: Both `BookmarkCard` and the desktop hover modal on `BookshelfSpine` featured an interactive `Downloaded / Remove` pill in their top meta rows in addition to the dedicated 4-state offline toggle button in their bottom action bars, creating visual clutter and duplicate interaction targets. In addition, the bottom offline button in `BookshelfSpine` used `group-hover/offline-btn:inline` without flex centering, causing the button to elongate vertically on hover, and the spine hover modal lacked bottom cursor leeway across its `mb-3` gap.
+  3. *Bookshelf Status Notice Redundancy, Smart Shelf Demand & Per-Shelf Row Capacity*: Users requested a dedicated `Downloaded` smart shelf directly adjacent to `General` that dynamically appears when downloaded books exist, replacing the redundant static `All Available Saved` / `All Available Downloaded` pill next to `Clear Offline Shelf`. Furthermore, because `BookshelfRack` calculated `shelfCapacity` up to 18 books while `page.tsx` paginated at 24 (`2 × 12`), `General` with 24 books split into 2 rows of 12 while `Downloaded` or custom shelves with 13–18 books crammed all 13–18 onto 1 row.
+  4. *Collection Search Bar Filter Parity*: Personal collection search toolbars across Bookshelf, Favorites, Notebook, and Bookmarks lacked an immediate way to filter displayed volumes exclusively to offline/downloaded items directly within the search bar dropdown.
+- **Decision**:
+  1. **BookmarkCard Silk Ribbon Top Pinning (`src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/BookmarkCard.test.tsx`)**:
+     - Replaced `group-hover:translate-y-0.5` with `origin-top transition-transform duration-300 group-hover:scale-y-110`. The ribbon's top edge remains permanently pinned to `y = 0` at the top card border, while the notched silk tail smoothly stretches downward by ~3px on hover.
+  2. **BookmarkCard & BookshelfSpine Offline Control De-Duplication, Button Geometry & Hover Leeway (`src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/BookmarkCard.test.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.test.tsx`)**:
+     - Removed the redundant top `Downloaded / Remove` pill badge from both `BookmarkCard` and `BookshelfSpine`'s hover modal, consolidating all offline reading actions into the dedicated 4-state square action button in the footer.
+     - Fixed vertical hover elongation on `BookshelfSpine`'s bottom offline action button by adding `flex items-center justify-center` to all icon action buttons and switching `<Trash2 />` from `group-hover/offline-btn:inline` to `group-hover/offline-btn:block`.
+     - Added a `24px` invisible bottom cursor leeway cushion (`after:content-[''] after:absolute after:inset-x-0 after:top-full after:h-6`) to the `BookshelfSpine` hover card to bridge the `12px` (`mb-3`) gap above the spine and prevent premature modal dismissal when interacting with the bottom action buttons.
+  3. **Bookshelf "Downloaded" Smart Shelf Pill, Status Notice Retirement & Uniform 12-Book Row Limit (`src/components/presentation/BookshelfRack.tsx`, `src/app/page.tsx`, `src/components/presentation/BookshelfRack.test.tsx`, `src/app/page.test.tsx`)**:
+     - Introduced `DOWNLOADED_SHELF_ID = '__downloaded__'` and rendered a dynamic `Downloaded (N)` smart shelf pill directly adjacent to `General` whenever `downloadedSavedBooks.length > 0` for both authenticated users and guests, with automatic fallback to `General` if emptied.
+     - Inherited the exact shape, typography, and size of `General` and custom shelves (`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium transition-all cursor-pointer select-none`), while preserving the emerald color identity (`bg-emerald-600 text-white shadow-sm` when active; `bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30` when inactive).
+     - Retired the redundant static `all-saved-offline-notice` pill (`Downloaded` / `All Available Downloaded`) to the left of `Clear Offline Shelf`.
+     - Enforced a uniform maximum of **12 books per shelf row** on desktop (`Math.min(shelfCapacity, 12)`, scaling down to `6` on mobile) filled sequentially across `General`, `Downloaded`, and all custom shelves when `showShelfControls` is `true`, while preserving predetermined Catalog batch capacity when `showShelfControls` is `false`.
+  4. **Personal Collection Search Dropdown Unified `'downloaded'` Filter (`src/lib/book-sorting.ts`, `src/app/page.tsx`, `src/hooks/reader/useContinueReadingLedger.ts`, `src/components/presentation/BookmarksView.tsx`, `src/components/presentation/NotebookView.tsx`)**:
+     - Extended sorting schemas with `'downloaded'` across all personal collection views (excluding Catalog):
+       - **Bookshelf**: `BOOKSHELF_SORT_OPTIONS` (`src/lib/book-sorting.ts` & `src/app/page.tsx`).
+       - **Favorites**: `FAVORITES_SORT_OPTIONS` (`src/lib/book-sorting.ts` & `src/app/page.tsx`).
+       - **Notebook**: `VOLUME_SORT_OPTIONS` & `CHRONO_SORT_OPTIONS` (`src/components/presentation/NotebookView.tsx`).
+       - **Bookmarks**: `BOOKMARK_SORT_OPTIONS` (`src/components/presentation/BookmarksView.tsx` & `src/hooks/reader/useContinueReadingLedger.ts`).
+     - When `'downloaded'` is selected, collections filter items exclusively to those cached in IndexedDB via `isBookOffline()`, preserving recent or natural alphabetical order within the filtered subset and providing informative empty states with one-click filter resets.
+- **Consequences**:
+  - The bookmark ribbon marker stretches realistically downward without detaching from the top card border.
+  - Reading Ledger cards and Bookshelf Spine hover cards have a cleaner, de-duplicated visual hierarchy with invariant square action buttons and a 24px bottom hover leeway cushion.
+  - Readers can access downloaded books with 1 click via the emerald smart shelf pill or from the search bar sort dropdown, without redundant status pills next to `Clear Offline Shelf`.
+  - Every shelf on the Bookshelf page (`General`, `Downloaded`, and custom shelves) shares a consistent 12-book per-row limit on desktop (6 on mobile).
+  - Feature parity for offline filtering achieved across Bookshelf, Favorites, Notebook, and Bookmarks.
+  - Zero performance overhead: offline state checks leverage in-memory arrays already hydrated by `useOfflineBooks()`.
+  - Comprehensive co-located test coverage across 8 test suites with 100% passing tests and strict type safety.
+
+## ADR-063: Zero-CLS Layout Stabilization, Bookmarks Card Hover/Focus Release, Mobile Rating Anti-Overlap & Default Catalog Sort Optimization
+- **Status**: Accepted
+- **Context**:
+  1. *Bookshelf Shelf-Switching CLS*: Switching to an empty custom shelf previously unmounted `SectionHeader` controls and `CollectionToolbar` (due to being gated on `collectionCount > 0`), causing a `~134px` layout snap. Shelf buttons also toggled borders and font-weights, causing 2px box-model jitter, and keying `shelf-content-container` on book count triggered unnecessary remounts.
+  2. *Codebase-Wide CLS Reflows*: Pagination numbered pills toggled `1px` border only when active, creating reflows. StickyCatalogToolbar filter capsule shifted height by 2px between active and inactive states. Filter drawer facet chips, underline tabs (`BookmarksView`, `AccountAccoladesCard`, `src/app/account/page.tsx`, `AccountPreferencesSection`, `AccountSymposiumSection`), annotation color pills, and hero topic chips toggled between `font-semibold` / `font-bold`, causing horizontal text reflow on state transitions.
+  3. *Bookmarks Card Hover/Focus Release*: Reading ledger cards retained their active ring and highlight indefinitely on desktop after clicking because `BookmarkCard` lacked `onMouseLeave` and `onBlur` deactivation handlers.
+  4. *Mobile BookCard Rating & Status Badge Overlap*: On mobile viewports (< 640px) with 2-column grids (~139px card width), rendering all 5 rating stars + `5/5` label (108px) alongside reading status or copyright protection badges (up to 92px) caused overlapping text or overflow.
+  5. *Default Catalog Sort Optimization*: Inquiries were raised regarding whether defaulting the Catalog sort to "Recently Added to Gutenberg" (`sort=descending`) instead of "Most Popular" (`sort=popular`) would strain the Gutenberg API or risk rate limiting / IP blocking.
+- **Decision**:
+  1. **Bookshelf Zero-CLS Architecture (`src/app/page.tsx`, `src/components/presentation/BookshelfRack.tsx`)**:
+     - Anchored `SectionHeader` controls and `CollectionToolbar` on `totalCollectionCount > 0` (`savedBooks.length > 0` for Bookshelf) rather than `currentShelfBooks.length > 0`, preserving toolbar mount state across empty custom shelves and eliminating the `~134px` layout jump.
+     - Enforced invariant `1px` `border` and `transition-colors` on all shelf switcher pills, fixed shelf switcher header container height to `min-h-[32px]`, matched custom shelf `Rename`/`Delete` icon buttons to 26px (`h-[26px] w-[26px] flex items-center justify-center`), and keyed `shelf-content-container` strictly on `currentActiveShelfId || 'general'`.
+  2. **Codebase-Wide Typography & Layout Shift Elimination**:
+     - Pagination numbered buttons now maintain an invariant `1px` border (`border-primary` active, `border-border` inactive) and `transition-colors`.
+     - StickyCatalogToolbar active filter capsule locked to `h-9` (`36px` outer border-box) with `h-full` inner buttons.
+     - Invariant `font-medium` or `font-bold` typography with `transition-colors` applied across `AdvancedFilterDrawer` facet chips, underline navigation tabs, annotation color filters, and hero search topic chips.
+  3. **Bookmarks Card Hover/Focus Release (`src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/BookmarksView.tsx`)**:
+     - Added `onDeactivate` prop to `BookmarkCard`. Attached `onMouseLeave` (when desktop viewport `>= 768px`) and `onBlur` (when focus leaves card boundaries) to clear `activeBookId` in `BookmarksView`.
+  4. **Mobile Compact Star Rating & Badge Anti-Overlap (`src/components/ui/StarRating.tsx`, `src/components/presentation/BookCard.tsx`)**:
+     - Added `compactOnMobile?: boolean` to `StarRating`. On mobile (< 640px) in `readOnly` mode, stars 2–5 are hidden via `hidden sm:block`, rendering a single filled gold star + compact `{value}/5` label (`~34px` instead of `108px`).
+     - Sized `BookCard` bottom row with `gap-1.5 min-w-0` and added `shrink-0 whitespace-nowrap` to right-hand status/license badges (`Protected`, `📖 Reading`, `✓ Finished`, `🔖 Want to Read`, `CC0 / Free`).
+  5. **Default Catalog Sort to `Recently Added to Gutenberg` (`src/config/catalog-filters.ts`, `src/hooks/useCatalogFilters.ts`, `src/components/presentation/AdvancedFilterDrawer.tsx`)**:
+     - Architectural assessment: In `SupabaseCatalogProvider`, `sort=descending` scans the primary key index (`ORDER BY id DESC`), executing the fastest possible query path with 0 extra API calls; in upstream Gutendex, it uses the existing 1-hour edge cache with 0 rate-limiting risk.
+     - Changed default catalog sort from `'popular'` to `'descending'` across URL parsing, filter state, drawer reset, and `SORT_OPTIONS` configuration.
+- **Consequences**:
+  - Perfect Zero Cumulative Layout Shift (CLS = 0) achieved across shelf switching, filter drawers, pagination, and navigation tabs.
+  - Desktop cursor exit releases Bookmark card active rings cleanly.
+  - 100% elimination of mobile text crowding or badge overlap on rated books across Catalog and Favorites.
+  - Catalog immediately highlights new public domain acquisitions with zero additional database or API load.
+  - Complete test coverage co-evolved across all affected modules with 222 passing tests.
+
+## ADR-064: Catalog Pagination Smooth-Scroll Stabilization, Header Brand Page-1 Reset & Unified API Telemetry Pill
+- **Status**: Accepted
+- **Context**:
+  1. *Catalog Pagination Scroll Snapping & Aborted Smooth Scroll*: When paginating across a 32-book API batch boundary (e.g. Page 2 to Page 3 at 16 books/page) where `isFetching` became true, `BookGrid` unmounted all 16 (or 32) book cards and the bottom pagination bar, replacing them with a fixed 8 skeleton cards. Shrinking the grid height by ~1,200px while the user was at the bottom of the page caused browser scroll-clamping and aborted ongoing smooth `scrollIntoView` animations.
+  2. *Header Brand Logo & Active Tab Stuck on Deep Pages*: When a user navigated to a deep page (e.g. Page 5) and clicked the Bookarium brand logo in `Navbar`, the catalog remained on Page 5 because `useCatalogFilters` maintained `page` in local React state (bypassed by native `window.history.replaceState`), which immediately re-stamped `/?page=5` into the URL. Furthermore, clicking the already-active navigation tab button in `Navbar` did not reset pagination back to Page 1.
+  3. *Redundant 2-Pill Toolbar Telemetry*: In `StickyCatalogToolbar`, the live status ("Live" with green pulsing dot or "Offline") and the response time ("85ms" with Zap icon) were displayed as two separate adjacent badges, occupying unnecessary horizontal space on tablet and desktop viewports.
+- **Decision**:
+  1. **Skeleton Footprint & Bottom Pagination Preservation (`src/components/presentation/BookGrid.tsx`)**:
+     - Added `pageSize?: number` prop to `BookGridProps` (defaulting to 16).
+     - Loading state now renders `Array.from({ length: pageSize })` skeletons with realistic `min-h-[360px] sm:min-h-[420px]` card dimensions, preventing document height collapse during async batch fetching.
+     - Preserved bottom pagination bar (`Previous` / `Page {page}` / `Next`) with disabled buttons during `isLoading` so the bottom scroll anchor remains fixed.
+  2. **Scroll Offset & Post-Fetch Alignment (`src/app/page.tsx`)**:
+     - Added `scroll-mt-16 sm:scroll-mt-20` to `#catalog-section` to cleanly leave space for the sticky navbar and catalog toolbar.
+     - Added post-fetch alignment via `pendingPageScrollRef`: when an async batch fetch completes (`isDisplayLoading: true -> false`), the viewport is smoothly re-aligned to `#catalog-section` if the browser clamped scroll during loading.
+  3. **Header Brand Reset & Same-Tab Page-1 Reset (`src/components/presentation/Navbar.tsx`, `src/app/page.tsx`)**:
+     - Added `onBrandReset?: () => void` to `NavbarProps`.
+     - Clicking the Bookarium brand logo invokes `onBrandReset` to call `handleResetAllFilters()` (which clears search, topic, era, language, and format filters, resets sort to `'descending'`, and sets `page` to 1), clears `collectionSearchQuery`, sets `shelfPage(1)` and `favoritesPage(1)`, and instantly scrolls to top.
+     - Clicking the already-active navigation tab in `Navbar` (Catalog, Bookshelf, or Favorites) resets pagination back to Page 1 and smoothly scrolls to top.
+  4. **Unified API Telemetry Badge & Precision Formatting (`src/components/presentation/StickyCatalogToolbar.tsx`)**:
+     - Merged the live status pill and response time pill into a single, compact status badge preserving the emerald/destructive styling and pulsing dot.
+     - Implemented `formatApiLatency(ms)`: latencies under $1000\text{ms}$ format in milliseconds (`85ms`), while latencies at or above $1000\text{ms}$ dynamically format in seconds with up to 3 decimals trimming trailing zeroes (`1000ms` $\to$ `1s`, `1212ms` $\to$ `1.212s`, `2500ms` $\to$ `2.5s`).
+     - Online state renders a green pulsing dot (`bg-success animate-pulse`) next to the formatted response time; offline state switches to a red pulsing dot (`bg-destructive animate-pulse`) next to `"Offline"`.
+  5. **Responsive Catalog & Cross-Device Spacing Stabilization (`LiteraryQuotes.tsx`, `page.tsx`, `BookGrid.tsx`, `EditorialQuoteSection.tsx`, `Footer.tsx`)**:
+     - *LiteraryQuotes Header Rhythm*: Scaled outer `<section>` from static `py-20` (`80px`) to responsive `py-10 sm:py-16` (`40px` mobile, `64px` desktop). Balanced the header cluster ("Words That Shaped Humanity", subtitle, and "Discover More" button) between the top `border-t` and bottom `border-b` divider lines by increasing inner container bottom padding from `pb-2` (`8px`) to `pb-6 sm:pb-8` (`24px` mobile, `32px` desktop) and tightening content stack from `space-y-12` to `space-y-8 sm:space-y-10`.
+     - *Catalog Section Bottom Gap Elimination*: Updated `#catalog-section` bottom padding from `pb-24 sm:pb-12` (`96px` mobile) to `pb-8 sm:pb-12` (`32px` mobile, `48px` desktop), and tightened `BookGrid` container and pagination top padding to `space-y-6 sm:space-y-8` and `pt-5 sm:pt-6 border-t border-border`, creating clean symmetrical breathing room around the `Previous / Page X / Next` bar.
+     - *Editorial Quote Section Mobile Refinement*: Scaled outer section from `py-16` to `py-10 sm:py-16` and inner card padding from `p-8 sm:p-12 gap-8` to `p-6 sm:p-12 gap-6 sm:gap-8`.
+     - *Footer Clearance for Mobile Floating Dock*: Relocated mobile floating dock scroll clearance (`fixed bottom-6`) from mid-page `#catalog-section` to the true document terminus in `Footer` (`pt-10 sm:pt-14 pb-24 md:pb-8` and `gap-8 md:gap-10`).
+- **Consequences**:
+  - Catalog pagination transitions smoothly across batch boundaries without abrupt scroll snapping or height collapse.
+  - Clicking the Bookarium brand logo reliably resets the catalog home view to Page 1 with a clean URL and default filters.
+  - Clicking an active navigation tab acts as a reliable "back to page 1 & top" shortcut for users.
+  - Toolbar layout is more compact and cleaner across tablet and desktop viewports with a single high-precision telemetry badge.
+  - Vertical rhythm across the entire Catalog page is visually balanced and proportional across mobile, tablet, and desktop breakpoints without empty voids.
+  - Strict type safety and 100% test coverage maintained across `BookGrid.test.tsx`, `Navbar.test.tsx`, `StickyCatalogToolbar.test.tsx`, `LiteraryQuotes.test.tsx`, `EditorialQuoteSection.test.tsx`, `Footer.test.tsx`, and `page.test.tsx`.
+

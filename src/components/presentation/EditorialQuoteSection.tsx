@@ -81,10 +81,10 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
   return (
     <section
       aria-label="Classic of the Day"
-      className={`bg-muted border-t border-border py-16 transition-colors duration-theme ${className}`}
+      className={`bg-muted border-t border-border py-10 sm:py-16 transition-colors duration-theme ${className}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center bg-card rounded-2xl p-8 sm:p-12 border border-border shadow-booksaw">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-center bg-card rounded-2xl p-6 sm:p-12 border border-border shadow-booksaw">
           {/* Left Cover Spine Card */}
           <div className="md:col-span-4 flex justify-center">
             <div

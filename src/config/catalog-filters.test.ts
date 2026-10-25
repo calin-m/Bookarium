@@ -23,7 +23,7 @@ describe('catalog-filters configuration', () => {
   });
 
   it('defines unique SORT_OPTIONS, GENRE_FACETS, HERO_POPULAR_TOPICS, CATALOG_LANGUAGES, and FORMAT_FILTERS', () => {
-    expect(SORT_OPTIONS.map((o) => o.value)).toEqual(['popular', 'descending', 'ascending']);
+    expect(SORT_OPTIONS.map((o) => o.value)).toEqual(['descending', 'popular', 'ascending']);
 
     const genreIds = new Set(GENRE_FACETS.map((g) => g.id));
     expect(genreIds.size).toBe(GENRE_FACETS.length);

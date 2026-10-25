@@ -308,9 +308,9 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                       type="button"
                       onClick={() => handleTopicClick(topic.id)}
                       data-testid={`topic-chip-${topic.id || 'all'}`}
-                      className={`px-3 py-1 text-xs font-mono rounded border transition-all ${
+                      className={`px-3 py-1 text-xs font-mono font-medium rounded border transition-colors ${
                         isSelected
-                          ? 'bg-foreground text-background border-foreground font-bold shadow-xs'
+                          ? 'bg-foreground text-background border-foreground shadow-xs'
                           : 'bg-card border-border text-foreground hover:border-primary'
                       }`}
                     >

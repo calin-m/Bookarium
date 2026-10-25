@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AccountSymposiumSection } from './AccountSymposiumSection';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
@@ -77,13 +77,18 @@ describe('AccountSymposiumSection', () => {
     expect(section.innerHTML).not.toContain('border-border/60');
     expect(section.innerHTML).not.toContain('border-primary/20');
 
-    // Assert mobile containment on sub-tab bar
+    // Assert editorial underline sub-tab bar
     const tablist = screen.getByRole('tablist', { name: /Symposium and Reader Circle sections/i });
-    expect(tablist).toHaveClass('min-w-0', 'overflow-hidden', 'max-w-full');
+    expect(tablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
     const tabs = screen.getAllByRole('tab');
     tabs.forEach((tab) => {
-      expect(tab).toHaveClass('min-w-0');
+      expect(tab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
     });
+
+    const activeSympTab = screen.getByRole('tab', { name: /Active Symposiums/i });
+    const circleTab = screen.getByRole('tab', { name: /Reader Circle/i });
+    expect(within(activeSympTab).getByText('Active Symposiums')).toHaveClass('inline');
+    expect(within(circleTab).getByText('Reader Circle')).toHaveClass('hidden', 'md:inline');
 
     // Switch to Reader Circle sub-tab
     fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));

@@ -41,8 +41,8 @@ export const LITERARY_ERAS: EraOption[] = [
 ];
 
 export const SORT_OPTIONS: SortOption[] = [
-  { value: 'popular', label: 'Most Popular (Download Count)' },
   { value: 'descending', label: 'Recently Added to Gutenberg' },
+  { value: 'popular', label: 'Most Popular (Download Count)' },
   { value: 'ascending', label: 'Oldest Catalog ID' },
 ];
 

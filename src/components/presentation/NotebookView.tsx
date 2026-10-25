@@ -28,6 +28,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import {
   isBookPublicDomainInJurisdiction,
   parseLifespansFromName,
@@ -76,20 +77,22 @@ const COLOR_FILTERS: Array<{ id: HighlightColor | 'all'; label: string; badgeCla
   })),
 ];
 
-export type NotebookChronoSortOption = 'date_desc' | 'date_asc' | 'title_asc' | 'author_asc';
+export type NotebookChronoSortOption = 'date_desc' | 'date_asc' | 'title_asc' | 'author_asc' | 'downloaded';
 export type NotebookVolumeSortOption =
   | 'title_asc'
   | 'title_desc'
   | 'author_asc'
   | 'author_desc'
   | 'count_desc'
-  | 'recent';
+  | 'recent'
+  | 'downloaded';
 
 const CHRONO_SORT_OPTIONS: SortOption[] = [
   { value: 'date_desc', label: 'Date Added (Newest)' },
   { value: 'date_asc', label: 'Date Added (Oldest)' },
   { value: 'title_asc', label: 'Book Title (A → Z)' },
   { value: 'author_asc', label: 'Author (A → Z)' },
+  { value: 'downloaded', label: 'Downloaded' },
 ];
 
 const VOLUME_SORT_OPTIONS: SortOption[] = [
@@ -99,6 +102,7 @@ const VOLUME_SORT_OPTIONS: SortOption[] = [
   { value: 'author_desc', label: 'Author (Z → A)' },
   { value: 'count_desc', label: 'Most Quotes First' },
   { value: 'recent', label: 'Recently Annotated' },
+  { value: 'downloaded', label: 'Downloaded' },
 ];
 
 const CHRONO_PAGE_SIZE = 12;
@@ -125,6 +129,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const recentBooks = useBookshelfStore((s) => s.recentBooks || []);
   const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
   const { country } = useJurisdiction();
+  const { isBookOffline } = useOfflineBooks();
 
   // Identify book IDs across own and fellow annotations that lack resolved titles/authors
   // (or lack author lifespans in non-US jurisdictions) and are not in local stores or static fixtures
@@ -475,11 +480,15 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           const authorB = resolveBookDetails(b).author;
           return authorA.localeCompare(authorB, undefined, { sensitivity: 'base' });
         });
+      case 'downloaded':
+        return list
+          .filter((a) => isBookOffline(a.bookId))
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       case 'date_desc':
       default:
         return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
-  }, [filteredAnnotations, chronoSort, resolveBookDetails]);
+  }, [filteredAnnotations, chronoSort, resolveBookDetails, isBookOffline]);
 
   // Sorted Grouped by Volume mapping
   const sortedGroupedByVolume = useMemo(() => {
@@ -499,11 +508,15 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           const timeB = Math.max(...b.items.map((i) => new Date(i.createdAt).getTime()), 0);
           return timeB - timeA;
         });
+      case 'downloaded':
+        return list
+          .filter((v) => isBookOffline(v.bookId))
+          .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
       case 'title_asc':
       default:
         return list.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
     }
-  }, [groupedByVolume, volumeSort]);
+  }, [groupedByVolume, volumeSort, isBookOffline]);
 
   // Pagination slicing
   const chronoTotalPages = Math.ceil(sortedAnnotations.length / CHRONO_PAGE_SIZE);
@@ -810,18 +823,25 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           </div>
 
           {/* Zero Results State */}
-          {filteredAnnotations.length === 0 && (
+          {(groupMode === 'volume' ? sortedGroupedByVolume.length === 0 : sortedAnnotations.length === 0) && (
             <div className="py-12 text-center bg-card/60 border border-dashed border-border rounded-xl space-y-3">
               <p className="text-sm font-serif italic text-muted-foreground">
-                No passages match your current search or color filter.
+                {(groupMode === 'volume' ? volumeSort : chronoSort) === 'downloaded'
+                  ? 'No passages from downloaded volumes match your current filter.'
+                  : 'No passages match your current search or color filter.'}
               </p>
-              {(searchQuery || selectedColor !== 'all') && (
+              {(searchQuery || selectedColor !== 'all' || (groupMode === 'volume' ? volumeSort : chronoSort) === 'downloaded') && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedColor('all');
+                    if (groupMode === 'volume') {
+                      setVolumeSort('title_asc');
+                    } else {
+                      setChronoSort('date_desc');
+                    }
                   }}
                   className="text-xs font-mono uppercase"
                 >

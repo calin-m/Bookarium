@@ -10,7 +10,8 @@ export type BookshelfSortOption =
   | 'author_asc'
   | 'author_desc'
   | 'progress_desc'
-  | 'progress_asc';
+  | 'progress_asc'
+  | 'downloaded';
 
 export type FavoritesSortOption =
   | 'recent'
@@ -18,7 +19,8 @@ export type FavoritesSortOption =
   | 'title_desc'
   | 'author_asc'
   | 'author_desc'
-  | 'downloads_desc';
+  | 'downloads_desc'
+  | 'downloaded';
 
 export const BOOKSHELF_SORT_OPTIONS: SortOption[] = [
   { value: 'recent', label: 'Recently Added' },
@@ -28,6 +30,7 @@ export const BOOKSHELF_SORT_OPTIONS: SortOption[] = [
   { value: 'author_desc', label: 'Author (Z → A)' },
   { value: 'progress_desc', label: 'Progress (High → Low)' },
   { value: 'progress_asc', label: 'Progress (Low → High)' },
+  { value: 'downloaded', label: 'Downloaded' },
 ];
 
 export const FAVORITES_SORT_OPTIONS: SortOption[] = [
@@ -37,6 +40,7 @@ export const FAVORITES_SORT_OPTIONS: SortOption[] = [
   { value: 'author_asc', label: 'Author (A → Z)' },
   { value: 'author_desc', label: 'Author (Z → A)' },
   { value: 'downloads_desc', label: 'Popularity (Downloads)' },
+  { value: 'downloaded', label: 'Downloaded' },
 ];
 
 /**
@@ -97,6 +101,7 @@ export function sortBooks(
     case 'downloads_desc':
       return list.sort((a, b) => (b.download_count ?? 0) - (a.download_count ?? 0));
 
+    case 'downloaded':
     case 'recent':
     default:
       return list;

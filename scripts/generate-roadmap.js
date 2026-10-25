@@ -118,7 +118,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'IndexedDB Offline Book Storage',
-        description: 'Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, interactive `Downloaded` status badges, removal confirmation modals (`RemoveOfflineBookModal.tsx`), and cross-device controls, enabling unabridged reading on airplanes or offline.',
+        description: 'Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, interactive `Downloaded` status badges, Bookshelf `Downloaded (N)` smart shelf pill (`DOWNLOADED_SHELF_ID`), unified `Downloaded` collection search filter, removal confirmation modals (`RemoveOfflineBookModal.tsx`), and cross-device controls, enabling unabridged reading on airplanes or offline.',
         check: () => fileContains('src/hooks/queries/useBookContent.ts', 'idb') || fileExists('src/lib/offline-storage.ts'),
       },
       {
@@ -137,12 +137,12 @@ const ROADMAP_MILESTONES = [
     features: [
       {
         title: 'Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)',
-        description: 'Dedicated reading ledger displaying all books in progress with tactile bookmark cards, last-read passage snippets, completion percentages, filtering (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.',
+        description: 'Dedicated reading ledger displaying all books in progress with tactile bookmark cards, top-anchored silk ribbon markers (`origin-top scale-y-110`), desktop cursor-exit focus release (`onDeactivate`), last-read passage snippets, completion percentages, multi-attribute sorting and filtering (Recent, Progress, Title, Author, Downloaded), status tabs (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.',
         check: () => fileExists('src/components/presentation/BookmarksView.tsx') || fileContains('src/stores/useReaderStore.ts', 'lastPassageSnippet'),
       },
       {
         title: '1–5 Star Personal Ratings & Reading Statuses',
-        description: 'Assign 1–5 star ratings and reading statuses ("Want to Read", "Currently Reading", "Finished") to volumes across book cards and shelf management modals.',
+        description: 'Assign 1–5 star ratings and reading statuses ("Want to Read", "Currently Reading", "Finished") to volumes across book cards and shelf management modals, with compact single-star mobile ratings (`compactOnMobile`) and anti-overlap status badges on 2-column mobile grids.',
         check: () => fileContains('src/stores/useBookshelfStore.ts', 'rating') || fileContains('src/types/database.types.ts', 'reading_status'),
       },
       {
@@ -272,7 +272,7 @@ const ROADMAP_MILESTONES = [
     id: 'm8',
     title: 'Milestone 8: Community Hub & Public Literary Agora',
     version: 'Target: v2.9.0',
-    badge: 'https://img.shields.io/badge/Milestone-v2.8.0-violet?style=flat-square',
+    badge: 'https://img.shields.io/badge/Milestone-v2.9.0-violet?style=flat-square',
     description: 'Open literary agora, public volume discussions, community-wide reading challenges, and curated commonplace quote showcases.',
     features: [
       {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
@@ -6,6 +6,14 @@ import { useContinueReadingLedger } from './useContinueReadingLedger';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import type { GutendexBook } from '@/types/book.types';
+
+let mockOfflineBookIds: number[] = [];
+vi.mock('@/hooks/useOfflineBooks', () => ({
+  useOfflineBooks: () => ({
+    offlineBookIds: mockOfflineBookIds,
+    isBookOffline: (id: number) => mockOfflineBookIds.includes(id),
+  }),
+}));
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -49,6 +57,7 @@ const mockBook: GutendexBook = {
 describe('useContinueReadingLedger', () => {
   beforeEach(() => {
     // Reset stores
+    mockOfflineBookIds = [];
     useReaderStore.setState({
       readingProgress: {},
       readingPositions: {},
@@ -707,6 +716,33 @@ describe('useContinueReadingLedger', () => {
     expect(result.current.volumes[0].book.authorDetails).toEqual([
       { name: 'Austen, Jane', birth_year: 1775, death_year: 1817 },
     ]);
+  });
+
+  it('filters volumes to only downloaded books when sortBy is "downloaded"', async () => {
+    const bookOffline = { ...mockBook, id: 1342 };
+    const bookNotOffline = { ...mockBook, id: 84, title: 'Frankenstein' };
+
+    mockOfflineBookIds = [1342];
+
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [bookOffline, bookNotOffline] });
+      useReaderStore.setState({
+        readingProgress: { 1342: 40, 84: 80 },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    expect(result.current.filteredVolumes).toHaveLength(2);
+
+    act(() => {
+      result.current.setSortBy('downloaded');
+    });
+
+    await waitFor(() => {
+      expect(result.current.filteredVolumes).toHaveLength(1);
+      expect(result.current.filteredVolumes[0].book.id).toBe(1342);
+    });
   });
 });
 

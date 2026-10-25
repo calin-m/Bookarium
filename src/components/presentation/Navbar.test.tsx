@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Navbar } from './Navbar';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -75,7 +75,8 @@ describe('Navbar component', () => {
   it('applies active styling when activeView is notebook', () => {
     render(<Navbar activeView="notebook" />);
     const notebookBtn = screen.getByLabelText('Notebook');
-    expect(notebookBtn).toHaveClass('font-bold');
+    expect(notebookBtn).toHaveClass('font-medium');
+    expect(notebookBtn).not.toHaveClass('font-bold');
     expect(notebookBtn).toHaveClass('border-amber-500');
   });
 
@@ -91,7 +92,8 @@ describe('Navbar component', () => {
   it('applies active styling when activeView is bookmarks', () => {
     render(<Navbar activeView="bookmarks" />);
     const bookmarksBtn = screen.getByLabelText('Bookmarks');
-    expect(bookmarksBtn).toHaveClass('font-bold');
+    expect(bookmarksBtn).toHaveClass('font-medium');
+    expect(bookmarksBtn).not.toHaveClass('font-bold');
     expect(bookmarksBtn).toHaveClass('border-indigo-500');
   });
 
@@ -129,7 +131,8 @@ describe('Navbar component', () => {
   it('applies active styling when activeView is favorites', () => {
     render(<Navbar activeView="favorites" />);
     const favoritesBtn = screen.getByLabelText('Favorites');
-    expect(favoritesBtn).toHaveClass('font-bold');
+    expect(favoritesBtn).toHaveClass('font-medium');
+    expect(favoritesBtn).not.toHaveClass('font-bold');
     expect(favoritesBtn).toHaveClass('border-destructive');
   });
 
@@ -174,14 +177,17 @@ describe('Navbar component', () => {
 
   it('handles keyboard Enter and Space on brand logo to navigate back to catalog', () => {
     const handleViewChange = vi.fn();
-    render(<Navbar activeView="bookshelf" onViewChange={handleViewChange} />);
+    const handleBrandReset = vi.fn();
+    render(<Navbar activeView="bookshelf" onViewChange={handleViewChange} onBrandReset={handleBrandReset} />);
 
     const brand = screen.getByLabelText('Bookarium logo, click to refresh catalog');
     fireEvent.keyDown(brand, { key: 'Enter' });
     expect(handleViewChange).toHaveBeenCalledWith('catalog');
+    expect(handleBrandReset).toHaveBeenCalledTimes(1);
 
     fireEvent.keyDown(brand, { key: ' ' });
     expect(handleViewChange).toHaveBeenCalledWith('catalog');
+    expect(handleBrandReset).toHaveBeenCalledTimes(2);
   });
 
   it('applies -translate-y-full when isVisible is false', () => {
@@ -309,6 +315,278 @@ describe('Navbar component', () => {
     expect(screen.getByTestId('navbar-fellowship-dot')).toBeInTheDocument();
 
     useFellowshipStore.getState().clearFellowshipState();
+  });
+
+  describe('Tier-Adaptive Gliding Active Underline Bar', () => {
+    let originalOffsetWidth: PropertyDescriptor | undefined;
+    let originalOffsetLeft: PropertyDescriptor | undefined;
+
+    beforeEach(() => {
+      originalOffsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
+      originalOffsetLeft = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetLeft');
+    });
+
+    afterEach(() => {
+      if (originalOffsetWidth) {
+        Object.defineProperty(HTMLElement.prototype, 'offsetWidth', originalOffsetWidth);
+      }
+      if (originalOffsetLeft) {
+        Object.defineProperty(HTMLElement.prototype, 'offsetLeft', originalOffsetLeft);
+      }
+      vi.restoreAllMocks();
+    });
+
+    it('falls back to button border when dimensions are 0 (e.g. unmeasured or SSR)', () => {
+      render(<Navbar activeView="favorites" />);
+      expect(screen.queryByTestId('navbar-active-indicator')).not.toBeInTheDocument();
+      const favoritesBtn = screen.getByLabelText('Favorites');
+      expect(favoritesBtn).toHaveClass('border-destructive');
+    });
+
+    it('renders gliding indicator with position, width, and theme bottom border when measurable', () => {
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+        configurable: true,
+        get() {
+          return 80;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, 'offsetLeft', {
+        configurable: true,
+        get() {
+          return 120;
+        },
+      });
+
+      render(<Navbar activeView="favorites" />);
+      const indicator = screen.getByTestId('navbar-active-indicator');
+      expect(indicator).toBeInTheDocument();
+      expect(indicator).toHaveClass('h-8', 'rounded', 'border-b-2', 'border-destructive');
+      expect(indicator).not.toHaveClass('bg-destructive');
+      expect(indicator.className).not.toMatch(/shadow-/);
+      expect(indicator.style.transform).toBe('translate3d(120px, 0, 0)');
+      expect(indicator.style.width).toBe('80px');
+
+      // Active button should now have transparent border to avoid duplicate lines
+      const favoritesBtn = screen.getByLabelText('Favorites');
+      expect(favoritesBtn).toHaveClass('border-transparent');
+      expect(favoritesBtn).not.toHaveClass('border-destructive');
+    });
+
+    it('updates indicator styling for different views', () => {
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+        configurable: true,
+        get() {
+          return 90;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, 'offsetLeft', {
+        configurable: true,
+        get() {
+          return 210;
+        },
+      });
+
+      const { rerender } = render(<Navbar activeView="notebook" />);
+      let indicator = screen.getByTestId('navbar-active-indicator');
+      expect(indicator).toHaveClass('border-amber-500');
+
+      rerender(<Navbar activeView="bookmarks" />);
+      indicator = screen.getByTestId('navbar-active-indicator');
+      expect(indicator).toHaveClass('border-indigo-500');
+    });
+
+    it('activates two-phase directional elastic bridge and corner-tip curl on high tier when moving right', () => {
+      vi.useFakeTimers();
+      let currentLeft = 10;
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+        configurable: true,
+        get() {
+          return 80;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, 'offsetLeft', {
+        configurable: true,
+        get() {
+          return currentLeft;
+        },
+      });
+
+      const { rerender } = render(<Navbar activeView="catalog" />);
+      const indicator = screen.getByTestId('navbar-active-indicator');
+      expect(indicator.style.transform).toBe('translate3d(10px, 0, 0)');
+      expect(indicator.style.width).toBe('80px');
+      expect(indicator).toHaveClass('rounded');
+
+      // Switch tab to favorites at left = 120
+      currentLeft = 120;
+      rerender(<Navbar activeView="favorites" />);
+
+      // Phase 1 (0ms): Leading edge reaches right to 200px, trailing edge lags at 52px
+      expect(indicator.style.transform).toBe('translate3d(52px, 0, 0)');
+      expect(indicator.style.width).toBe('148px');
+      expect(indicator).toHaveClass('rounded-b-lg');
+      expect(indicator).toHaveClass('border-destructive');
+
+      // Phase 2 (110ms timer advance): Trailing edge snaps into place, relaxing back to rounded
+      act(() => {
+        vi.advanceTimersByTime(115);
+      });
+
+      expect(indicator.style.transform).toBe('translate3d(120px, 0, 0)');
+      expect(indicator.style.width).toBe('80px');
+      expect(indicator).toHaveClass('rounded');
+
+      vi.useRealTimers();
+    });
+
+    it('activates two-phase directional elastic bridge and corner-tip curl on high tier when moving left', () => {
+      vi.useFakeTimers();
+      let currentLeft = 120;
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+        configurable: true,
+        get() {
+          return 80;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, 'offsetLeft', {
+        configurable: true,
+        get() {
+          return currentLeft;
+        },
+      });
+
+      const { rerender } = render(<Navbar activeView="favorites" />);
+      const indicator = screen.getByTestId('navbar-active-indicator');
+
+      // Switch tab to catalog at left = 10
+      currentLeft = 10;
+      rerender(<Navbar activeView="catalog" />);
+
+      // Phase 1 (0ms): Leading edge reaches left to 10px, trailing edge lags at 158px
+      expect(indicator.style.transform).toBe('translate3d(10px, 0, 0)');
+      expect(indicator.style.width).toBe('148px');
+      expect(indicator).toHaveClass('rounded-b-lg');
+
+      // Phase 2 (110ms timer advance): Snaps to target
+      act(() => {
+        vi.advanceTimersByTime(115);
+      });
+
+      expect(indicator.style.transform).toBe('translate3d(10px, 0, 0)');
+      expect(indicator.style.width).toBe('80px');
+      expect(indicator).toHaveClass('rounded');
+
+      vi.useRealTimers();
+    });
+
+    it('applies direct target rect without bridge phase on medium tier', async () => {
+      const perfModule = await import('@/hooks/usePerformanceTier');
+      vi.spyOn(perfModule, 'usePerformanceTier').mockReturnValue({
+        tier: 'medium',
+        allowHeavyMotion: true,
+        enablePrefetching: false,
+        cores: 4,
+      });
+
+      let currentLeft = 10;
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+        configurable: true,
+        get() {
+          return 80;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, 'offsetLeft', {
+        configurable: true,
+        get() {
+          return currentLeft;
+        },
+      });
+
+      const { rerender } = render(<Navbar activeView="catalog" />);
+      const indicator = screen.getByTestId('navbar-active-indicator');
+
+      currentLeft = 120;
+      rerender(<Navbar activeView="favorites" />);
+
+      // On medium tier, it immediately sets targetRect without bridging width
+      expect(indicator.style.transform).toBe('translate3d(120px, 0, 0)');
+      expect(indicator.style.width).toBe('80px');
+      expect(indicator).toHaveClass('rounded');
+    });
+
+    it('fades out with opacity-0 and scale-x-50 when activeView is account', () => {
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+        configurable: true,
+        get() {
+          return 80;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, 'offsetLeft', {
+        configurable: true,
+        get() {
+          return 50;
+        },
+      });
+
+      const { rerender } = render(<Navbar activeView="catalog" />);
+      expect(screen.getByTestId('navbar-active-indicator')).toHaveClass('opacity-100');
+
+      rerender(<Navbar activeView="account" />);
+      const indicator = screen.getByTestId('navbar-active-indicator');
+      expect(indicator).toHaveClass('opacity-0', 'scale-x-50');
+    });
+
+    it('re-measures on window resize event', () => {
+      let currentOffsetLeft = 50;
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+        configurable: true,
+        get() {
+          return 80;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, 'offsetLeft', {
+        configurable: true,
+        get() {
+          return currentOffsetLeft;
+        },
+      });
+
+      render(<Navbar activeView="catalog" />);
+      const indicator = screen.getByTestId('navbar-active-indicator');
+      expect(indicator.style.transform).toBe('translate3d(50px, 0, 0)');
+
+      currentOffsetLeft = 75;
+      act(() => {
+        window.dispatchEvent(new Event('resize'));
+      });
+
+      expect(indicator.style.transform).toBe('translate3d(75px, 0, 0)');
+    });
+
+    it('disables gliding indicator and stays on fallback border when prefers-reduced-motion is active', () => {
+      vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+        configurable: true,
+        get() {
+          return 80;
+        },
+      });
+
+      render(<Navbar activeView="favorites" />);
+      expect(screen.queryByTestId('navbar-active-indicator')).not.toBeInTheDocument();
+      const favoritesBtn = screen.getByLabelText('Favorites');
+      expect(favoritesBtn).toHaveClass('border-destructive');
+    });
   });
 });
 

@@ -35,6 +35,7 @@ export interface BookGridProps {
   showShelfControls?: boolean;
   totalBooksCount?: number;
   onTopicClick?: (topic: string) => void;
+  pageSize?: number;
 }
 
 export const BookGrid: React.FC<BookGridProps> = ({
@@ -62,6 +63,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   showShelfControls,
   totalBooksCount,
   onTopicClick,
+  pageSize = 16,
 }) => {
   const [internalViewMode, setInternalViewMode] = useState<BookViewMode>(initialViewMode);
   const activeViewMode = controlledViewMode ?? internalViewMode;
@@ -77,8 +79,9 @@ export const BookGrid: React.FC<BookGridProps> = ({
   };
 
   if (isLoading) {
+    const skeletonCount = Math.max(1, pageSize);
     return (
-      <div className="space-y-6 py-8">
+      <div className="space-y-6 py-8" data-testid="book-grid-loading">
         <div
           className="flex items-center justify-center gap-2.5 p-3.5 bg-muted/70 border border-border rounded-xl text-xs font-mono text-muted-foreground text-center shadow-xs"
           title="Live public domain database query in progress"
@@ -92,10 +95,10 @@ export const BookGrid: React.FC<BookGridProps> = ({
           </span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2.5 sm:gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: skeletonCount }).map((_, i) => (
             <div
               key={i}
-              className="rounded-xl border border-border bg-card p-4 flex flex-col gap-4 animate-pulse"
+              className="rounded-xl border border-border bg-card p-4 flex flex-col gap-4 animate-pulse min-h-[360px] sm:min-h-[420px]"
               data-testid="book-skeleton"
             >
               <div className="aspect-[3/4] w-full bg-muted rounded-lg" />
@@ -110,6 +113,35 @@ export const BookGrid: React.FC<BookGridProps> = ({
             </div>
           ))}
         </div>
+        {onPageChange && (
+          <div data-testid="catalog-pagination-bar" className="flex items-center justify-center gap-3 pt-5 sm:pt-6 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={true}
+              className="gap-1.5 text-xs font-medium opacity-50 cursor-not-allowed"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+
+            <span className="text-xs font-mono px-3 text-muted-foreground">
+              Page {page}
+            </span>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={true}
+              className="gap-1.5 text-xs font-medium opacity-50 cursor-not-allowed"
+              aria-label="Next page"
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -159,7 +191,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
   }
 
   return (
-    <div className="space-y-8" data-testid="book-grid-container">
+    <div className="space-y-6 sm:space-y-8" data-testid="book-grid-container">
       {/* Optional In-Section View Mode Switcher Header */}
       {showViewToggle && (
         <div className="flex items-center justify-between border-b border-border pb-4">
@@ -233,7 +265,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
 
       {/* Pagination Bar */}
       {onPageChange && (
-        <div className="flex items-center justify-center gap-3 pt-6 border-t border-border">
+        <div data-testid="catalog-pagination-bar" className="flex items-center justify-center gap-3 pt-5 sm:pt-6 border-t border-border">
           <Button
             variant="outline"
             size="sm"

@@ -24,9 +24,15 @@ describe('EditorialQuoteSection component', () => {
   });
 
   it('renders section landmark, Classic of the Day badge, and book details', () => {
-    render(<EditorialQuoteSection />);
+    const { container } = render(<EditorialQuoteSection />);
 
-    expect(screen.getByRole('region', { name: /Classic of the Day/i })).toBeInTheDocument();
+    const region = screen.getByRole('region', { name: /Classic of the Day/i });
+    expect(region).toBeInTheDocument();
+    expect(region).toHaveClass('py-10', 'sm:py-16');
+
+    const cardContainer = container.querySelector('.bg-card');
+    expect(cardContainer).toHaveClass('p-6', 'sm:p-12');
+
     expect(screen.getByText(/Classic of the Day/i)).toBeInTheDocument();
     expect(screen.getByTestId('editorial-classic-card')).toBeInTheDocument();
     expect(screen.getByText(/Preserved for Public Humanity/i)).toBeInTheDocument();

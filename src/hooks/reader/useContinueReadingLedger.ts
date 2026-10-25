@@ -8,6 +8,7 @@ import { useBooks } from '@/hooks/queries/useBooks';
 import { toCanonicalBook, normalizeAuthorName } from '@/lib/adapters/book.adapter';
 import { resolveBookMetadata, cleanBookTitle } from '@/lib/book-metadata';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import type {
   ActiveReadingVolume,
   Author,
@@ -23,7 +24,8 @@ export type BookmarksSortOption =
   | 'author_asc'
   | 'author_desc'
   | 'progress_desc'
-  | 'progress_asc';
+  | 'progress_asc'
+  | 'downloaded';
 
 export interface UseContinueReadingLedgerReturn {
   volumes: ActiveReadingVolume[];
@@ -55,6 +57,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   const [activeFilter, setActiveFilter] = useState<LedgerFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<BookmarksSortOption>('recent');
+  const { isBookOffline } = useOfflineBooks();
 
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const readingPositions = useReaderStore((s) => s.readingPositions);
@@ -371,6 +374,10 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       });
     }
 
+    if (sortBy === 'downloaded') {
+      result = result.filter((item) => isBookOffline(item.book.id));
+    }
+
     const sortedResult = [...result].sort((a, b) => {
       switch (sortBy) {
         case 'title_asc':
@@ -391,6 +398,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
           return b.progressPercent - a.progressPercent;
         case 'progress_asc':
           return a.progressPercent - b.progressPercent;
+        case 'downloaded':
         case 'recent':
         default: {
           const timeA = new Date(a.lastReadAt).getTime();
@@ -401,7 +409,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     });
 
     return sortedResult;
-  }, [volumes, activeFilter, searchQuery, sortBy]);
+  }, [volumes, activeFilter, searchQuery, sortBy, isBookOffline]);
 
   const updateVolumeStatus = useCallback(
     async (bookId: number, status: LedgerItemStatus) => {

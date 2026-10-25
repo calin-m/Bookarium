@@ -9,6 +9,7 @@ export interface StarRatingProps {
   size?: 'sm' | 'md' | 'lg';
   readOnly?: boolean;
   showLabel?: boolean;
+  compactOnMobile?: boolean;
   className?: string;
   'aria-label'?: string;
 }
@@ -25,6 +26,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
   size = 'md',
   readOnly = false,
   showLabel = false,
+  compactOnMobile = false,
   className = '',
   'aria-label': customAriaLabel,
 }) => {
@@ -65,6 +67,11 @@ export const StarRating: React.FC<StarRatingProps> = ({
   const groupLabel = customAriaLabel || (value ? `Rated ${value} of 5 stars` : 'Rate 1 to 5 stars');
 
   if (readOnly) {
+    const activeIconClass =
+      compactOnMobile && size === 'sm'
+        ? 'w-3 h-3 sm:w-3.5 sm:h-3.5'
+        : iconSize;
+
     return (
       <div
         className={`inline-flex items-center gap-1 ${className}`}
@@ -75,7 +82,9 @@ export const StarRating: React.FC<StarRatingProps> = ({
           {[1, 2, 3, 4, 5].map((star) => (
             <Star
               key={star}
-              className={`${iconSize} transition-colors ${
+              className={`${activeIconClass} transition-colors ${
+                star > 1 && compactOnMobile ? 'hidden sm:block' : ''
+              } ${
                 star <= (value || 0)
                   ? 'text-amber-500 fill-amber-400 dark:text-amber-400 dark:fill-amber-400'
                   : 'text-muted-foreground/30 fill-transparent'
@@ -84,7 +93,11 @@ export const StarRating: React.FC<StarRatingProps> = ({
           ))}
         </div>
         {showLabel && value && (
-          <span className={`font-mono font-bold text-muted-foreground ml-1 ${textSize}`}>
+          <span
+            className={`font-mono font-bold text-muted-foreground ${
+              compactOnMobile ? 'ml-0.5 sm:ml-1 text-[10px] sm:text-xs' : `ml-1 ${textSize}`
+            }`}
+          >
             {value}/5
           </span>
         )}

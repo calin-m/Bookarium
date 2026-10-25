@@ -61,7 +61,7 @@
 - [x] **Literary Commonplace Notebook & Reading Journal** `✅ VERIFIED`
   Dedicated commonplace journal (`/?view=notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, academic citation generation, and deletion protection.
 - [x] **IndexedDB Offline Book Storage** `✅ VERIFIED`
-  Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, interactive `Downloaded` status badges, removal confirmation modals (`RemoveOfflineBookModal.tsx`), and cross-device controls, enabling unabridged reading on airplanes or offline.
+  Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, interactive `Downloaded` status badges, Bookshelf `Downloaded (N)` smart shelf pill (`DOWNLOADED_SHELF_ID`), unified `Downloaded` collection search filter, removal confirmation modals (`RemoveOfflineBookModal.tsx`), and cross-device controls, enabling unabridged reading on airplanes or offline.
 - [x] **Library Portability: Export & Import** `✅ VERIFIED`
   Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.
 
@@ -73,9 +73,9 @@
 > Rich reader curation, Goodreads-style reading statuses, and daily habit tracking analytics.
 
 - [x] **Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)** `✅ VERIFIED`
-  Dedicated reading ledger displaying all books in progress with tactile bookmark cards, last-read passage snippets, completion percentages, filtering (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.
+  Dedicated reading ledger displaying all books in progress with tactile bookmark cards, top-anchored silk ribbon markers (`origin-top scale-y-110`), desktop cursor-exit focus release (`onDeactivate`), last-read passage snippets, completion percentages, multi-attribute sorting and filtering (Recent, Progress, Title, Author, Downloaded), status tabs (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.
 - [x] **1–5 Star Personal Ratings & Reading Statuses** `✅ VERIFIED`
-  Assign 1–5 star ratings and reading statuses ("Want to Read", "Currently Reading", "Finished") to volumes across book cards and shelf management modals.
+  Assign 1–5 star ratings and reading statuses ("Want to Read", "Currently Reading", "Finished") to volumes across book cards and shelf management modals, with compact single-star mobile ratings (`compactOnMobile`) and anti-overlap status badges on 2-column mobile grids.
 - [x] **Reading Streaks, Dual Immersion Telemetry & Annual Goal Tracking** `✅ VERIFIED`
   Track daily reading and listening timestamps with a 5-minute active streak threshold, idle detection, background TTS audio narration tracking, estimated hours read, and annual reading challenge goals in the Account dashboard.
 

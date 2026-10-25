@@ -93,43 +93,17 @@ describe('BookmarkCard', () => {
     expect(useReaderStore.getState().currentBook?.id).toBe(1342);
   });
 
-  it('renders offline badge when isOffline is true and switches to Remove when active or hovered', () => {
+  it('does not render redundant top offline badge and keeps top meta row focused on reading status', () => {
     const handleToggleOffline = vi.fn();
-    const { rerender } = render(
-      <BookmarkCard
-        volume={mockVolume}
-        isOffline={false}
-        onToggleOffline={handleToggleOffline}
-      />
-    );
-    expect(screen.queryByLabelText(/downloaded for offline reading/i)).not.toBeInTheDocument();
-
-    rerender(
+    render(
       <BookmarkCard
         volume={mockVolume}
         isOffline={true}
-        isActive={false}
         onToggleOffline={handleToggleOffline}
       />
     );
-    const badge = screen.getByLabelText(/downloaded for offline reading/i);
-    expect(badge).toBeInTheDocument();
-    expect(screen.getByText('Downloaded')).toBeInTheDocument();
-
-    fireEvent.click(badge);
-    expect(handleToggleOffline).toHaveBeenCalledWith(mockVolume.book);
-
-    // When isActive is true, badge switches from Downloaded to Remove
-    rerender(
-      <BookmarkCard
-        volume={mockVolume}
-        isOffline={true}
-        isActive={true}
-        onToggleOffline={handleToggleOffline}
-      />
-    );
-    expect(screen.getByText('Remove')).toBeInTheDocument();
-    expect(badge).toHaveClass('text-destructive', 'border-destructive/50');
+    expect(screen.queryByTestId(`bookmark-card-offline-badge-${mockVolume.book.id}`)).not.toBeInTheDocument();
+    expect(screen.getByText('In Progress')).toBeInTheDocument();
   });
 
   it('applies active styling, highlights title, and triggers onActivate on card click', () => {
@@ -339,6 +313,53 @@ describe('BookmarkCard', () => {
     );
     expect(offlineReadyBtn).toHaveClass('border-emerald-500/40', 'text-emerald-600');
     expect(offlineReadyBtn).toHaveClass('hover:border-destructive/60', 'hover:text-destructive');
+  });
+
+  it('renders authentic notched bookmark ribbon marker matching reading status and hover interaction', () => {
+    const { rerender } = render(<BookmarkCard volume={mockVolume} />);
+
+    const ribbon = screen.getByTestId('bookmark-card-ribbon');
+    expect(ribbon).toBeInTheDocument();
+    expect(ribbon).toHaveClass('w-4', 'h-7', 'text-primary', 'origin-top', 'group-hover:scale-y-110', 'pointer-events-none');
+    expect(ribbon.querySelector('path')).toHaveAttribute('d', 'M0 0 H16 V28 L8 22 L0 28 Z');
+
+    // Completed status -> emerald ribbon
+    rerender(<BookmarkCard volume={{ ...mockVolume, status: 'completed' }} />);
+    expect(screen.getByTestId('bookmark-card-ribbon')).toHaveClass('text-emerald-500');
+
+    // On hold status -> amber ribbon
+    rerender(<BookmarkCard volume={{ ...mockVolume, status: 'on_hold' }} />);
+    expect(screen.getByTestId('bookmark-card-ribbon')).toHaveClass('text-amber-500');
+  });
+
+  it('triggers onActivate on click, and onDeactivate on mouseLeave on desktop and on blur', () => {
+    const handleActivate = vi.fn();
+    const handleDeactivate = vi.fn();
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1024 });
+
+    render(
+      <BookmarkCard
+        volume={mockVolume}
+        isActive={true}
+        onActivate={handleActivate}
+        onDeactivate={handleDeactivate}
+      />
+    );
+
+    const card = screen.getByRole('article');
+    expect(card).toHaveAttribute('data-active', 'true');
+
+    fireEvent.click(card);
+    expect(handleActivate).toHaveBeenCalledWith(1342);
+
+    fireEvent.mouseLeave(card);
+    expect(handleDeactivate).toHaveBeenCalledWith(1342);
+
+    fireEvent.blur(card);
+    expect(handleDeactivate).toHaveBeenCalledTimes(2);
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
   });
 });
 

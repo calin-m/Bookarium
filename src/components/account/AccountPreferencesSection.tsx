@@ -65,33 +65,30 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
   const [activeSubTab, setActiveSubTab] = useState<PreferencesSubTabId>('appearance');
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border pb-4">
-        <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
-          Reading & Navigation Preferences
-        </h2>
-
-        {/* Tier-2 Focused Sub-Tabs */}
-        <div
+    <div className="space-y-4">
+      {/* Centered Editorial Underline Sub-Tab Bar (Outside & Above Card) */}
+      <div className="flex items-center justify-center border-b border-border">
+        <nav
           role="tablist"
+          data-no-swipe
           aria-label="Preferences sub-sections"
-          className="w-full max-w-full min-w-0 overflow-hidden sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border self-start lg:self-auto shrink-0"
+          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none]"
         >
           <button
             type="button"
             role="tab"
             aria-selected={activeSubTab === 'appearance'}
             aria-label="Appearance & Scroll"
+            title="Appearance & Scroll"
             onClick={() => setActiveSubTab('appearance')}
-            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
               activeSubTab === 'appearance'
-                ? 'bg-card text-primary shadow-xs border-border'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             }`}
           >
-            <Sliders className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden truncate">Appearance</span>
-            <span className="hidden sm:inline">Appearance & Scroll</span>
+            <Sliders className="w-3.5 h-3.5 shrink-0" />
+            <span className={activeSubTab === 'appearance' ? 'inline' : 'hidden md:inline'}>Appearance & Scroll</span>
           </button>
 
           <button
@@ -99,16 +96,16 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             role="tab"
             aria-selected={activeSubTab === 'narration'}
             aria-label="Read-Aloud Studio"
+            title="Read-Aloud Studio"
             onClick={() => setActiveSubTab('narration')}
-            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
               activeSubTab === 'narration'
-                ? 'bg-card text-primary shadow-xs border-border'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             }`}
           >
-            <Headphones className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden truncate">Read-Aloud</span>
-            <span className="hidden sm:inline">Read-Aloud Studio</span>
+            <Headphones className="w-3.5 h-3.5 shrink-0" />
+            <span className={activeSubTab === 'narration' ? 'inline' : 'hidden md:inline'}>Read-Aloud Studio</span>
           </button>
 
           <button
@@ -116,19 +113,28 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             role="tab"
             aria-selected={activeSubTab === 'portability'}
             aria-label="Backup & Restore"
+            title="Backup & Restore"
             onClick={() => setActiveSubTab('portability')}
-            className={`flex-1 min-w-0 sm:flex-none justify-center px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
               activeSubTab === 'portability'
-                ? 'bg-card text-primary shadow-xs border-border'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             }`}
           >
-            <Database className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 shrink-0" />
-            <span className="sm:hidden truncate">Backups</span>
-            <span className="hidden sm:inline">Backup & Restore</span>
+            <Database className="w-3.5 h-3.5 shrink-0" />
+            <span className={activeSubTab === 'portability' ? 'inline' : 'hidden md:inline'}>Backup & Restore</span>
           </button>
-        </div>
+        </nav>
       </div>
+
+      {/* Main Preferences Card */}
+      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+          <h2 className="text-sm font-mono uppercase tracking-wider text-muted-foreground font-bold">
+            Reading & Navigation Preferences
+          </h2>
+        </div>
 
       {/* Sub-Tab 1: Appearance & Scroll */}
       <div
@@ -254,6 +260,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
         isActive={activeSubTab === 'portability'}
         userId={userId}
       />
+      </div>
     </div>
   );
 };

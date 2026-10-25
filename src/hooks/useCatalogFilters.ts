@@ -102,7 +102,7 @@ export function parseFiltersFromUrl(
     topic: sp?.get('topic') || '',
     language: sp?.get('languages') || sp?.get('language') || '',
     era: sp?.get('era') || '',
-    sort: (sp?.get('sort') as CatalogSortOption) || 'popular',
+    sort: (sp?.get('sort') as CatalogSortOption) || 'descending',
     format: sp?.get('format') || sp?.get('mime_type') || '',
     page: validPage || 1,
     size: parsedSize || 16,
@@ -191,7 +191,7 @@ export function useCatalogFilters() {
       if (topic) searchParams.set('topic', topic);
       if (language) searchParams.set('language', language);
       if (era) searchParams.set('era', era);
-      if (sort && sort !== 'popular') searchParams.set('sort', sort);
+      if (sort && sort !== 'descending') searchParams.set('sort', sort);
       if (format) searchParams.set('format', format);
       if (page > 1) searchParams.set('page', String(page));
 
@@ -355,7 +355,7 @@ export function useCatalogFilters() {
     setLanguage('');
     setEra('');
     setFormat('');
-    setSort('popular');
+    setSort('descending');
     setPage(1);
   }, []);
 

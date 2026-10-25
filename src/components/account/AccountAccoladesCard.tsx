@@ -2,7 +2,17 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Award, Sparkles, Pin, AlertCircle } from 'lucide-react';
+import {
+  Award,
+  Sparkles,
+  Pin,
+  AlertCircle,
+  Flame,
+  Clock,
+  Compass,
+  BookOpen,
+  Library,
+} from 'lucide-react';
 import { ACCOLADES_CATALOG, ACCOLADE_CATEGORIES } from '@/config/accolades-config';
 import { AccoladeCategory, AccoladeId } from '@/types/accolades.types';
 import {
@@ -234,26 +244,70 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
           </h3>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-b border-border pb-3" role="tablist">
-          {ACCOLADE_CATEGORIES.map((category) => {
-            const isActive = activeCategory === category.id;
-            return (
-              <button
-                key={category.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActiveCategory(category.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-xs'
-                    : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {category.label}
-              </button>
-            );
-          })}
+        {/* Centered Editorial Underline Category Sub-Tabs */}
+        <div className="flex items-center justify-center border-b border-border">
+          <nav
+            role="tablist"
+            data-no-swipe
+            aria-label="Accolade categories"
+            className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none]"
+          >
+            {ACCOLADE_CATEGORIES.map((category) => {
+              const isActive = activeCategory === category.id;
+              const count =
+                category.id === 'all'
+                  ? ACCOLADES_CATALOG.length
+                  : ACCOLADES_CATALOG.filter((item) => item.category === category.id).length;
+
+              const getCategoryIcon = () => {
+                switch (category.id) {
+                  case 'all':
+                    return <Award className="w-3.5 h-3.5 shrink-0" />;
+                  case 'streaks':
+                    return <Flame className="w-3.5 h-3.5 shrink-0 text-amber-500" />;
+                  case 'immersion':
+                    return <Clock className="w-3.5 h-3.5 shrink-0 text-sky-500" />;
+                  case 'exploration':
+                    return <Compass className="w-3.5 h-3.5 shrink-0 text-emerald-500" />;
+                  case 'scholarship':
+                    return <BookOpen className="w-3.5 h-3.5 shrink-0 text-purple-500" />;
+                  case 'curation':
+                    return <Library className="w-3.5 h-3.5 shrink-0 text-amber-600" />;
+                  default:
+                    return <Award className="w-3.5 h-3.5 shrink-0" />;
+                }
+              };
+
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-label={category.label}
+                  title={category.label}
+                  onClick={() => setActiveCategory(category.id)}
+                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+                    isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  }`}
+                >
+                  {getCategoryIcon()}
+                  <span className={isActive ? 'inline' : 'hidden md:inline'}>{category.label}</span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold ${
+                      isActive
+                        ? 'bg-primary/15 text-primary'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
         {/* Bookplate Grid */}

@@ -7,6 +7,14 @@ import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
+let mockNotebookOfflineIds: number[] = [];
+vi.mock('@/hooks/useOfflineBooks', () => ({
+  useOfflineBooks: () => ({
+    offlineBookIds: mockNotebookOfflineIds,
+    isBookOffline: (id: number) => mockNotebookOfflineIds.includes(id),
+  }),
+}));
+
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -28,6 +36,7 @@ const render = (ui: React.ReactElement, client?: QueryClient) => {
 describe('NotebookView component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNotebookOfflineIds = [];
     testQueryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -1257,6 +1266,88 @@ describe('NotebookView component', () => {
       fireEvent.change(sortSelect, { target: { value: 'count_desc' } });
       headings = getBookHeadings();
       expect(headings[0]).toHaveTextContent('Frankenstein');
+
+      // Sort Downloaded: only volumes cached offline appear
+      mockNotebookOfflineIds = [1342];
+      fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+      headings = getBookHeadings();
+      expect(headings).toHaveLength(1);
+      expect(headings[0]).toHaveTextContent('Pride and Prejudice');
+    });
+
+    it('filters quotes to only downloaded books when sorting by Downloaded in chronological mode', async () => {
+      mockNotebookOfflineIds = [1342];
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Austen downloaded quote',
+        color: 'yellow',
+      });
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 84,
+        bookTitle: 'Frankenstein',
+        bookAuthor: 'Mary Shelley',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Shelley online quote',
+        color: 'mint',
+      });
+
+      render(<NotebookView />);
+      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+
+      const sortSelect = screen.getByLabelText('Sort quotes chronologically');
+      expect(screen.getAllByTestId(/notebook-quote-card-/)).toHaveLength(2);
+
+      fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+      const cards = screen.getAllByTestId(/notebook-quote-card-/);
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toHaveTextContent('Austen downloaded quote');
+    });
+
+    it('renders Downloaded empty state and resets filters in volume and chronological modes', async () => {
+      mockNotebookOfflineIds = [];
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Austen online quote',
+        color: 'yellow',
+      });
+
+      render(<NotebookView />);
+
+      // In default volume mode, select 'downloaded' sort
+      const volumeSortSelect = screen.getByLabelText('Sort book groups');
+      fireEvent.change(volumeSortSelect, { target: { value: 'downloaded' } });
+
+      expect(screen.getByText('No passages from downloaded volumes match your current filter.')).toBeInTheDocument();
+
+      // Click Reset Filters in volume mode
+      const resetBtn = screen.getByRole('button', { name: /Reset Filters/i });
+      fireEvent.click(resetBtn);
+
+      expect(screen.queryByText('No passages from downloaded volumes match your current filter.')).not.toBeInTheDocument();
+      expect(screen.getAllByText('Pride and Prejudice').length).toBeGreaterThanOrEqual(1);
+      expect(volumeSortSelect).toHaveValue('title_asc');
+
+      // Switch to Chronological mode and select 'downloaded' sort
+      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      const chronoSortSelect = screen.getByLabelText('Sort quotes chronologically');
+      fireEvent.change(chronoSortSelect, { target: { value: 'downloaded' } });
+
+      expect(screen.getByText('No passages from downloaded volumes match your current filter.')).toBeInTheDocument();
+
+      const chronoResetBtn = screen.getByRole('button', { name: /Reset Filters/i });
+      fireEvent.click(chronoResetBtn);
+
+      expect(screen.queryByText('No passages from downloaded volumes match your current filter.')).not.toBeInTheDocument();
+      expect(chronoSortSelect).toHaveValue('date_desc');
     });
 
     it('paginates chronological quotes with 12 items per page and scrolls to top on page change', () => {

@@ -1104,6 +1104,145 @@ describe('Home page integration', () => {
       writable: true,
     });
   });
+
+  it('filters bookshelf books to offline books when sorting by Downloaded', async () => {
+    mockIsBookOffline.mockImplementation((id: number) => id === pageMockBooks[0].id);
+    useBookshelfStore.setState({
+      savedBooks: [pageMockBooks[0], pageMockBooks[1]],
+      activeBookshelfId: null,
+    });
+
+    renderHome();
+
+    // Switch to Bookshelf
+    const banner = screen.getByRole('banner');
+    fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf$/i }));
+
+    expect(screen.getByText('2 volumes')).toBeInTheDocument();
+
+    const sortSelect = screen.getByRole('combobox', { name: 'Sort bookshelf' });
+    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+
+    expect(screen.getByText('1 volume')).toBeInTheDocument();
+    mockIsBookOffline.mockReturnValue(false);
+  });
+
+  it('filters bookshelf books to offline books when active shelf is DOWNLOADED_SHELF_ID', async () => {
+    mockIsBookOffline.mockImplementation((id: number) => id === pageMockBooks[0].id);
+    useBookshelfStore.setState({
+      savedBooks: [pageMockBooks[0], pageMockBooks[1]],
+      activeBookshelfId: '__downloaded__',
+    });
+
+    renderHome();
+
+    // Switch to Bookshelf
+    const banner = screen.getByRole('banner');
+    fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf$/i }));
+
+    expect(screen.getByText('1 volume')).toBeInTheDocument();
+    mockIsBookOffline.mockReturnValue(false);
+  });
+
+  it('filters favorites books to offline books when sorting by Downloaded and shows empty state when none are offline', async () => {
+    mockIsBookOffline.mockImplementation((id: number) => id === pageMockBooks[0].id);
+    useBookshelfStore.setState({
+      favoriteBooks: [pageMockBooks[0], pageMockBooks[1]],
+      favoriteBookIds: [pageMockBooks[0].id, pageMockBooks[1].id],
+    });
+
+    renderHome();
+
+    // Switch to Favorites
+    const favoritesBtn = screen.getByRole('button', { name: /^Favorites$/i });
+    fireEvent.click(favoritesBtn);
+
+    expect(screen.getByText('2 volumes')).toBeInTheDocument();
+
+    const sortSelect = screen.getByRole('combobox', { name: 'Sort favorites' });
+    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+
+    expect(screen.getByText('1 volume')).toBeInTheDocument();
+
+    // Now test empty state when 0 books are offline
+    mockIsBookOffline.mockReturnValue(false);
+    fireEvent.change(sortSelect, { target: { value: 'recent' } });
+    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+
+    expect(screen.getByText('No downloaded favorites')).toBeInTheDocument();
+    expect(screen.getByText('Favorite volumes saved for offline reading will appear here.')).toBeInTheDocument();
+  });
+
+  it('shows empty state in Bookshelf when sorting by Downloaded and none are offline', async () => {
+    mockIsBookOffline.mockReturnValue(false);
+    useBookshelfStore.setState({
+      savedBooks: [pageMockBooks[0]],
+      activeBookshelfId: null,
+    });
+
+    renderHome();
+
+    // Switch to Bookshelf
+    const bookshelfTab = screen.getByRole('button', { name: /^Bookshelf$/i });
+    fireEvent.click(bookshelfTab);
+
+    const sortSelect = screen.getByRole('combobox', { name: 'Sort bookshelf' });
+    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+
+    expect(screen.getByText(/no books found on "General"/i)).toBeInTheDocument();
+  });
+
+  it('resets catalog page and filters when clicking Bookarium brand logo in navbar', () => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/?page=5&search=austen');
+
+    renderHome();
+
+    // Verify search term is present in HeroSearch
+    const searchInput = screen.getByTestId('search-input') as HTMLInputElement;
+    expect(searchInput.value).toBe('austen');
+
+    // Click Bookarium brand logo
+    const brand = screen.getByLabelText('Bookarium logo, click to refresh catalog');
+    act(() => {
+      fireEvent.click(brand);
+    });
+
+    // Search input should be cleared and page reset to 1
+    expect(searchInput.value).toBe('');
+    expect(screen.getByText('Page 1')).toBeInTheDocument();
+    expect((screen.getByLabelText('Jump to page') as HTMLInputElement).value).toBe('1');
+
+    (window as any).location = new URL('http://localhost:3000/');
+  });
+
+  it('resets page to 1 and scrolls to top when clicking the already-active Catalog tab', () => {
+    delete (window as any).location;
+    (window as any).location = new URL('http://localhost:3000/?page=3');
+
+    const scrollToMock = vi.fn();
+    window.scrollTo = scrollToMock;
+
+    renderHome();
+
+    const catalogBtn = screen.getByRole('button', { name: /^Catalog$/i });
+    act(() => {
+      fireEvent.click(catalogBtn);
+    });
+
+    expect(scrollToMock).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+    expect(screen.getByText('Page 1')).toBeInTheDocument();
+    expect((screen.getByLabelText('Jump to page') as HTMLInputElement).value).toBe('1');
+
+    (window as any).location = new URL('http://localhost:3000/');
+  });
+
+  it('applies responsive padding classes to catalog-section to eliminate mobile pagination gap', () => {
+    const { container } = renderHome();
+    const catalogSection = container.querySelector('#catalog-section');
+    expect(catalogSection).toBeInTheDocument();
+    expect(catalogSection).toHaveClass('pt-6', 'sm:pt-12', 'pb-8', 'sm:pb-12');
+  });
 });
 
 

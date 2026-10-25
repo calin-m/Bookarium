@@ -638,27 +638,28 @@ function AccountDashboardContent() {
               }
             >
               {/* Tier 2 Sub-Tab Bar for Streaks & Accolades */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div
+              <div className="flex items-center justify-center border-b border-border">
+                <nav
                   role="tablist"
+                  data-no-swipe
                   aria-label="Habits and library sub-sections"
-                  className="w-full max-w-full min-w-0 overflow-hidden sm:w-auto flex sm:inline-flex items-center gap-1 p-1 rounded-xl bg-card border border-border shadow-xs"
+                  className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none]"
                 >
                   <button
                     type="button"
                     role="tab"
                     aria-selected={habitsSubTab === 'streaks'}
                     aria-label="Streaks & Challenge"
+                    title="Streaks & Challenge"
                     onClick={() => setHabitsSubTab('streaks')}
-                    className={`flex-1 min-w-0 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
                       habitsSubTab === 'streaks'
-                        ? 'bg-primary/10 text-primary border-border'
-                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                     }`}
                   >
-                    <Flame className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span className="sm:hidden truncate">Streaks</span>
-                    <span className="hidden sm:inline">Streaks & Challenge</span>
+                    <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span className={habitsSubTab === 'streaks' ? 'inline' : 'hidden md:inline'}>Streaks & Challenge</span>
                   </button>
 
                   <button
@@ -666,18 +667,18 @@ function AccountDashboardContent() {
                     role="tab"
                     aria-selected={habitsSubTab === 'accolades'}
                     aria-label="Accolades Compendium"
+                    title="Accolades Compendium"
                     onClick={() => setHabitsSubTab('accolades')}
-                    className={`flex-1 min-w-0 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer flex items-center gap-1 sm:gap-1.5 ${
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
                       habitsSubTab === 'accolades'
-                        ? 'bg-primary/10 text-primary border-border'
-                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                     }`}
                   >
-                    <Award className="hidden min-[420px]:inline-flex sm:inline-flex w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="sm:hidden truncate">Accolades</span>
-                    <span className="hidden sm:inline">Accolades Compendium</span>
+                    <Award className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className={habitsSubTab === 'accolades' ? 'inline' : 'hidden md:inline'}>Accolades Compendium</span>
                   </button>
-                </div>
+                </nav>
               </div>
 
               <div

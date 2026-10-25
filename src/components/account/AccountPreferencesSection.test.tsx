@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { AccountPreferencesSection, exportLibraryData } from './AccountPreferencesSection';
 
@@ -36,11 +36,16 @@ describe('AccountPreferencesSection', () => {
     expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
 
     const tablist = screen.getByRole('tablist', { name: /Preferences sub-sections/i });
-    expect(tablist).toHaveClass('min-w-0', 'overflow-hidden', 'max-w-full');
+    expect(tablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
     const tabs = screen.getAllByRole('tab');
     tabs.forEach((tab) => {
-      expect(tab).toHaveClass('min-w-0');
+      expect(tab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
     });
+
+    const appearanceTab = screen.getByRole('tab', { name: /Appearance & Scroll/i });
+    const narrationTab = screen.getByRole('tab', { name: /Read-Aloud Studio/i });
+    expect(within(appearanceTab).getByText('Appearance & Scroll')).toHaveClass('inline');
+    expect(within(narrationTab).getByText('Read-Aloud Studio')).toHaveClass('hidden', 'md:inline');
 
     const sepiaBtn = screen.getByRole('button', { name: /Sepia/i });
     fireEvent.click(sepiaBtn);

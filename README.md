@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-187%20Suites%20%7C%201869%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-95.64%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-187%20Suites%20%7C%201909%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-95.63%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -43,9 +43,9 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v2.8.1)
 
-- **Layered Dual-Band Overlapping Highlights (Option A) (`src/lib/reader-annotator.ts`, `src/components/reader/ReaderSurface.tsx`, `ADR-059`)**: Implemented elementary non-overlapping interval partitioning to split intersecting highlight boundaries with `isFellowEnd` tag, and rendered an outer taller amber Fellow highlight frame (`py-[3.5px] px-0.5 border-dashed border-amber-600/85`) enclosing an inner, tighter personal highlight (`py-[0.5px] px-0.5 ring-1 ring-inset`) with single trailing companion badge.
-- **Privacy-Preserving Fellow Scholar Display Name Attribution (`src/components/reader/ReaderSurface.tsx`, `src/components/reader/ReaderSubHeaderRibbon.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/components/presentation/NotebookQuoteCard.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `ADR-059`)**: Replaced `@username` with `displayName` (with `@username` fallback) across in-book highlight badges, milestone dispatch banners, companion progress micro-pills, popover empty-note fallbacks, notebook reflection cards, and account symposium progress bars, while strictly preserving `is_public = false` RLS boundary protections for uninvited public profile visitors.
-- **Unified Overlapping Marginalia Cards & Inline Shared Span Highlighting (`src/lib/reader-annotator.ts`, `src/components/presentation/NotebookQuoteCard.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/reader/ReaderAnnotationsDrawer.tsx`, `ADR-060`)**: Implemented `areAnnotationsOverlapping`, `computeSharedQuoteSegments`, and `pairOverlappingAnnotations` so that when `sourceFilter === 'all'` is active, overlapping personal and Fellow highlights coalesce into a single unified card displaying the union quote, a highlighted inner span (`data-testid="shared-quote-overlap-span"`), dual attribution badges (`You + @username`), and stacked reflection callouts.
+- **Catalog Pagination Smooth-Scroll Stabilization, Header Brand Page-1 Reset, Unified API Telemetry Pill & Responsive Spacing Stabilization (`src/components/presentation/BookGrid.tsx`, `src/components/presentation/Navbar.tsx`, `src/app/page.tsx`, `src/components/presentation/StickyCatalogToolbar.tsx`, `src/components/presentation/LiteraryQuotes.tsx`, `src/components/presentation/EditorialQuoteSection.tsx`, `src/components/presentation/Footer.tsx`, `ADR-064`)**: Preserved grid height and bottom pagination bar during async API batch fetches by passing pageSize to BookGrid and rendering pageSize skeletons (matching 8/16/32 card count) with disabled pagination controls; added scroll-mt-16 to #catalog-section and post-fetch alignment so smooth scrolling never snaps or aborts mid-flight; connected Navbar Bookarium brand logo and active navigation tab clicks to onBrandReset, immediately resetting the catalog to Page 1, clearing active filters, and scrolling to top; merged the separate live status and latency badges into a single compact telemetry pill in StickyCatalogToolbar with dynamic pulsing dot (green online / red offline) and high-precision latency formatting (ms under 1000ms, up to 3-decimal seconds for 1000ms+); and stabilized vertical rhythm across mobile and desktop by scaling LiteraryQuotes (py-10 sm:py-16) with balanced header divider spacing (pb-6 sm:pb-8), eliminating the 96px mobile catalog section bottom gap (pb-8 sm:pb-12), scaling EditorialQuoteSection (py-10 sm:py-16, p-6 sm:p-12), and relocating mobile floating dock clearance to Footer (pb-24 md:pb-8).
+- **Zero-CLS Bookshelf Stabilization & Codebase-Wide Typography Invariance (`src/app/page.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/components/ui/Pagination.tsx`, `src/components/presentation/StickyCatalogToolbar.tsx`, `src/components/presentation/AdvancedFilterDrawer.tsx`, `src/components/presentation/BookmarksView.tsx`, `src/components/account/AccountAccoladesCard.tsx`, `src/app/account/page.tsx`, `src/components/account/AccountPreferencesSection.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `src/components/reader/ReaderAnnotationsDrawer.tsx`, `src/components/presentation/HeroSearch.tsx`, `ADR-063`)**: Eliminated the ~134px layout jump when switching to empty custom shelves by gating SectionHeader actions and CollectionToolbar on total library count (`totalCollectionCount > 0`); enforced invariant 1px borders and transition-colors across shelf switcher pills, pagination buttons, and the StickyCatalogToolbar active filter capsule; standardized invariant font-weights across filter drawer facet chips, underline navigation tabs, annotation color filters, and hero search chips; and keyed BookshelfRack strictly by active shelf ID to prevent unneeded container remounts.
+- **BookmarkCard Desktop Cursor Exit Focus Release (`src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/BookmarksView.tsx`, `src/components/presentation/BookmarkCard.test.tsx`, `src/components/presentation/BookmarksView.test.tsx`, `ADR-063`)**: Added `onDeactivate` callback with `onMouseLeave` (viewports >= 768px) and `onBlur` listeners to BookmarkCard so that reading ledger cards release their active border ring and title highlight immediately when the mouse leaves the card or focus changes, while preserving mobile scroll-focus.
 - **Offline Mobile PWA Reader Redirection & App Shell Fallback (`src/hooks/useCatalogFilters.ts`, `src/app/page.tsx`, `src/app/read/[id]/page.tsx`, `ADR-060`)**: Prevented `useCatalogFilters` from overwriting `/read/[id]` routes with `/` when offline, fixed missing book ID hydration on App Shell fallback, and guarded reader store initialization to eliminate re-render loops.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -81,7 +81,7 @@ Bookarium is structured around five core engineering pillars:
   * **Physical 60–120 FPS Page Turn**: Shuffling passages flips a physical 3D leaf across the spine with synchronized ink reveals.
 * **Daily Rotating Editorial Classic of the Day & 36 Literary Quotes**: Dedicated editorial showcase positioned beneath the catalog grid presenting a unified public domain masterpiece with authentic title, author, publication year, verbatim literary quote, and 1-click reader handoff. Evaluated directly on initial SSR with territorial copyright filtering (e.g. Life+100 Mexico protection) and dynamic anti-collision intelligence that automatically skips candidate books matching the current Hero spotlight to guarantee two unique masterworks on every visit. Supported by an expanded collection of 36 iconic literary passages in "Words That Shaped Humanity" (`LiteraryQuotes.tsx`) with safe shuffling and author lifespan governance.
 * **Interactive 3D Book Preview Modal**: Clicking or tapping any book card cover launches a 3D hardcover preview modal with fluid FLIP geometry transitions, subpixel return landing, chapter shuffling, and 1-click reader handoff.
-* **Studio Bookshelf Bookcase & Catalog Spine Isolation**: Hardwood shelf alcove with 8 authentic spine binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), convex specular curvature, gilded lettering, and pull-forward hover scaling. Dynamically isolates personal library management controls (custom multi-shelf tabs, "New Shelf", guest sync prompts, and batch offline downloading) strictly to the Bookshelf view (`/bookshelf`), ensuring the Catalog spine view remains a distraction-free, pure 3D browsing bookcase with a **Zero-CLS Floating Cloud Sync Badge** that smoothly overlays real-time sync status. Features **Deterministic Zero-Shift Shelf Capacity & Cloud Ordering**: Viewport-clamped capacity calculation (`calculateShelfCapacity`) aligns initial render calculations to `max-w-7xl` (`1280px`) container constraints, eliminating horizontal spine sliding and 29 &rarr; 18 book wrapping jumps on page refresh, paired with deterministic secondary PostgreSQL order tie-breakers (`.order('book_id', { ascending: true })`) in cloud sync queries and session-persistent auto-healing tracking in `sessionStorage`.
+* **Studio Bookshelf Bookcase & Catalog Spine Isolation**: Hardwood shelf alcove with 8 authentic spine binding colorways (Oxblood, Navy, Emerald, Saddle, Plum, Charcoal, Teal, Espresso), convex specular curvature, gilded lettering, and pull-forward hover scaling. Dynamically isolates personal library management controls (custom multi-shelf tabs, "New Shelf", guest sync prompts, and batch offline downloading) strictly to the Bookshelf view (`/bookshelf`), ensuring the Catalog spine view remains a distraction-free, pure 3D browsing bookcase with a **Zero-CLS Floating Cloud Sync Badge** that smoothly overlays real-time sync status. Features **Deterministic Zero-Shift Shelf Capacity & Cloud Ordering**: Viewport-clamped capacity calculation (`calculateShelfCapacity`, with a uniform 12-book per-row cap on `/bookshelf` and a 24px bottom cursor leeway bridge on spine hover cards) aligns initial render calculations to `max-w-7xl` (`1280px`) container constraints, eliminating horizontal spine sliding and 29 &rarr; 18 book wrapping jumps on page refresh, paired with zero-CLS toolbar anchoring across empty custom shelves (`ADR-063`), deterministic secondary PostgreSQL order tie-breakers (`.order('book_id', { ascending: true })`) in cloud sync queries, and session-persistent auto-healing tracking in `sessionStorage`.
 * **Directional Stepped Scroll Navigation**: Dynamic scroll detection (`useScrollDirection`) smoothly hides the top header on scroll down, docks the catalog filter toolbar to `top-0`, and instantly reveals navigation on upward scroll gestures. Configurable in Account Settings between **Smart Auto-Hide** and **Always Fixed**.
 * **Responsive Filter Drawer & Push-Content Layout**: Persistent left-docked drawer on desktop & ultrawide viewports (≥ 1280px / `xl:`) shifting main content to the right (`xl:pl-96`) for non-blocking catalog browsing; smoothly adapts to a focused slide-out overlay with soft backdrop blur (`backdrop-blur-xs`) on laptops, vertical monitors, and mobile devices—guaranteeing 100% unclipped facet typography with zero text truncation.
 * **Tactile Mobile Single-Row Sticky Catalog Toolbar**: Compact ~44px mobile toolbar unifying search filter triggers, real-time API health status, view mode toggling (Grid vs. Spine Shelf), and deep-archive pagination in a single horizontal row, maximizing vertical screen real estate for book covers. Features an enhanced tactile numeric page input with auto-selection on tap/focus (`inputMode="numeric"`), decoupled blank editing state, `aria-pressed` size states, and smooth scrolling to `#catalog-section` on page size change.
@@ -109,17 +109,17 @@ Bookarium is structured around five core engineering pillars:
 
 ### 4. ⚡ Offline-First Persistence, Cloud Sync & Data Sovereignty
 * **Clean Path URL & Symmetric SSR Hydration Architecture**: Canonical routes (`/`, `/bookshelf`, `/favorites`, `/notebook`, `/bookmarks`) powered by Next.js server rewrites, client history synchronization, and symmetric `parseFiltersFromUrl` query parsing—guaranteeing identical server-rendered HTML and client hydration on deep paginated URLs (e.g. `?page=8`) with zero layout shift and 0 CLS.
-* **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: Dedicated reading ledger tracking active volumes with tactile bookmark cards, ribbon accents, live progress percentages, last-read coordinates, status filters (All, In Progress, Completed, On Hold), and 1-click chapter resume.
+* **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: Dedicated reading ledger tracking active volumes with tactile bookmark cards, top-anchored silk ribbon markers (`origin-top scale-y-110`), live progress percentages, last-read coordinates, multi-attribute sorting and filtering (Recent, Progress, Title, Author, Downloaded), status filters (All, In Progress, Completed, On Hold), and 1-click chapter resume.
   * **Authentic Reading Telemetry**: Strictly enrolls volumes with active coordinates or progress, eliminating unopened placeholder clutter.
   * **Two-Way Dynamic Hydration**: Resolves un-shelved book identities via TanStack React Query and automatically pre-seeds warm reader state for instant 0ms transitions.
   * **Completed Reading Progress Latch & "Read Again" Flow**: Resuming a finished volume safely locks 100% progress and the "Completed" badge without regressions. Completed bookmark cards feature a dedicated "Read Again" action allowing readers to restart reading from Page 1 without destroying historical ledger completion achievements.
-  * **Tactile Active Zone & 4-State Offline Controls**: Single-column mobile focus tracking (`< 768px`) dynamically activating bookmark cards in the viewport focus band, multi-column tap-to-activate with outside-click dismissal, card-level hover `Remove` badge transitions, and a 4-state square offline button preserving the neutral `<HardDriveDownload />` icon until downloaded (emerald) and transitioning to `<Trash2 />` (destructive red) on hover.
+  * **Tactile Active Zone & 4-State Offline Controls**: Single-column mobile focus tracking (`< 768px`) dynamically activating bookmark cards in the viewport focus band, multi-column tap-to-activate with outside-click dismissal and desktop cursor-exit / blur focus release (`onDeactivate`), top-anchored ribbon stretch on card hover, and a dedicated 4-state square offline button preserving the neutral `<HardDriveDownload />` icon until downloaded (emerald) and transitioning to `<Trash2 />` (destructive red) on hover with removal confirmation modal.
 * **In-Reader Highlighting & Literary Commonplace Notebook (`/notebook`)**:
   * **4 Editorial Pastel Highlighters** (Warm Canary, Antique Amber, Sage Mint, Dusty Rose) with palette-harmonized `overlapRingClass` borders across Light, Sepia, and Dark themes, coarse-pointer touch dismissal, and a chapter-scoped annotation drawer (`ReaderAnnotationsDrawer.tsx`).
   * **Unified Overlapping Marginalia Cards (`All` Mode)**: Automatic pairing of intersecting personal and Fellow Scholar highlights (`pairOverlappingAnnotations` & `computeSharedQuoteSegments`) into a single composite card displaying the union quote, an inline highlighted overlap span, dual attribution (`You + Fellow`), and stacked reflection callouts.
   * **1-Click Save Fellow Passage**: Instant `+ Save to My Notes` / `+ Add My Note` actions across the in-book highlight popover (`TextHighlightPopover.tsx`), the in-reader Annotations Drawer, and the Commonplace Notebook.
   * **Click-and-Drag & Wheel Filter Carousels**: Desktop pointer click-and-drag (with 5px deadzone and capture-phase click suppression) and vertical-wheel-to-horizontal scrolling (`attachHorizontalDragAndWheelScroll`) across note color filter pill bars, paired with full-text search, volume/chronological grouping, and 1-click academic citation copying.
-* **Native IndexedDB Offline Book Storage & Cross-Device Controls**: Zero-dependency browser storage (`BookariumOfflineDB`) bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading across desktop, tablet, and mobile. Features reactive cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading spinner telemetry (`OFFLINE_DOWNLOADING_EVENT`), partial-shelf offline clearing (`Clear Offline (N)` in `BookshelfRack`), Desktop 3D preview parity (`BookPreviewModal`), in-app browser cache management in `DownloadDrawer` ("Get" hub), interactive `Downloaded` status badges with card-level hover transitions and tactile removal confirmation modals across `BookCard`, `BookmarkCard`, `BookshelfSpine`, `BookshelfMobileModal`, `BookPreviewModal`, and `DownloadDrawer`, standardized 4-state offline action buttons, and automated orphaned cache cleanup upon shelf deletion.
+* **Native IndexedDB Offline Book Storage, Smart Shelves & Cross-Device Controls**: Zero-dependency browser storage (`BookariumOfflineDB`) bypassing the 5MB `localStorage` limit, enabling readers to download entire books for offline reading across desktop, tablet, and mobile. Features reactive cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading spinner telemetry (`OFFLINE_DOWNLOADING_EVENT`), the dynamic **Bookshelf `Downloaded (N)` Smart Shelf Pill** (`DOWNLOADED_SHELF_ID`) with auto-fallback to General, the unified **`Downloaded` filter option** across Bookshelf, Favorites, Bookmarks, and Commonplace Notebook collection toolbars, partial-shelf offline clearing (`Clear Offline (N)` in `BookshelfRack`), Desktop 3D preview parity (`BookPreviewModal`), in-app browser cache management in `DownloadDrawer` ("Get" hub), interactive `Downloaded` status badges on `BookCard` with card-level hover transitions and tactile removal confirmation modals (`RemoveOfflineBookModal`), standardized 4-state offline action buttons across `BookmarkCard`, `BookshelfSpine`, and `BookshelfMobileModal`, and automated orphaned cache cleanup upon shelf deletion.
 * **Authoritative Cloud State Reconciliation (`lastBookshelfSyncAt`)**: Optional Supabase PostgreSQL cloud sync with Row Level Security (RLS). Initial sync migrates local guest books to the cloud; subsequent syncs treat Supabase as the authoritative source of truth, gracefully pruning titles deleted on another device while pre-sync outbox flushing (`flushOutbox`) safeguards offline additions.
 * **High-Performance Database Query Planner Optimization**: Implemented `{ count: 'estimated' }` planner statistics in `src/lib/catalog/supabase-provider.ts` across 78,000+ catalog rows, completely eliminating PostgreSQL `57014` statement timeouts and slashing query latency from `>3,000ms` down to **`~275ms`**.
 * **Sanitized Sign-Out & Account Isolation**: Pre-logout outbox drain and clean state wipe (`clearBookshelf()`) prevent cross-account contamination while raw downloaded texts in IndexedDB are preserved on device.
@@ -165,25 +165,30 @@ Bookarium is structured around five core engineering pillars:
 
 ```mermaid
 flowchart TD
-    User["👤 Reader / Literature Enthusiast"]
+    User["👤 Reader / Public Domain Scholar"]
     
     subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]
-        Nav["Navbar.tsx\n(Brand Reset, View Switcher, Theme Cycler)"]
+        Nav["Navbar.tsx\n(Brand Reset, View Switcher, Tier-Adaptive Gliding Active Underline Cradle, Theme Cycler)"]
         Hero["HeroSearch.tsx\n(Dynamic 3D Rotating Spotlight & Search)"]
         Hero3D["HeroFeaturedBook3D.tsx\n(3D Open-Cover Hinge & Leaf-Flip Engine)"]
-        Toolbar["StickyCatalogToolbar.tsx\n(0px Flush Header, Filters Toggle, Tactile Numeric Jump)"]
-        FilterDrawer["AdvancedFilterDrawer.tsx\n(Left Push-Sidebar: Eras, Sort, Formats)"]
+        Toolbar["StickyCatalogToolbar.tsx\n(Desktop Sticky Sub-Header, Mobile Capsule Dock, Top-Margin Docking & Split Quick-Clear)"]
+        FilterDrawer["AdvancedFilterDrawer.tsx\n(Staged Filter Execution, Multi-Select Touch Chips: Eras, Topics, Languages, Formats)"]
         EditorialQuote["EditorialQuoteSection.tsx\n(Classic of the Day & Collision Guard)"]
         LiteraryQuotes["LiteraryQuotes.tsx\n(Words That Shaped Humanity & Safe Shuffling)"]
         CopyrightBanner["CopyrightNoticeBanner.tsx\n(Declarative Territorial Restriction & Public Domain Notice)"]
+        ContentAdvisory["ContentAdvisoryBanner.tsx\n(Non-blocking Mature/Historical Context Advisory)"]
+        CollectionToolbarNode["CollectionToolbar.tsx\n(Unified 2-Row Mobile Workbench: Integrated Search, Sort, Downloaded Filter & Top-Pagination)"]
+        PaginationNode["Pagination.tsx\n(Accessible Numeric Page Navigation)"]
         
         subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]
-            Grid["Catalog View (/)\n(Editorial Card Grid & 3D Hardwood Shelf)"]
-            ShelfView["Bookshelf View (/bookshelf)\n(Curated Library & Custom Named Shelves)"]
+            Grid["Catalog View (/)\n(Smooth Scroll Navigation, 2-Col Mobile Grid, Multi-Col Desktop & 3D Hardwood Shelf)"]
+            ShelfView["Bookshelf View (/bookshelf)\n(Curated Library, Custom Named Shelves, Downloaded (N) Smart Shelf & 12-Book Row Cap)"]
             FavView["Favorites View (/favorites)\n(Personal Masterworks Collection)"]
             MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger & Telemetry)"]
             NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections & Tags)"]
             AccView["Account Hub (/account)\n(Library Stats, Cloud Sync & JSON Backup)"]
+            PrivacyView["Privacy Architecture (/privacy)\n(Zero-Tracker Manifesto, COPPA/GDPR Art. 8 & Functional Geo-Cookies)"]
+            CopyrightView["Copyright Governance (/copyright)\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]
             HabitsCard["AccountHabitsCard.tsx\n(Reading Streaks, Daily Progress, Annual Challenge)"]
             AccoladesCard["AccountAccoladesCard.tsx\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]
             SymposiumCard["AccountSymposiumSection.tsx\n(Reader Circles & Literary Symposiums)"]
@@ -197,7 +202,8 @@ flowchart TD
             SearchDrawer["ReaderSearchDrawer\n(In-Volume Live Text Search)"]
             ControlsDrawer["ReaderControls\n(Typography, Speech & Themes)"]
             LangDrawer["ReaderLanguageDrawer\n(International Editions Handoff)"]
-            DownDrawer["DownloadDrawer\n(EPUB, MOBI, TXT Direct Streams)"]
+            AnnotDrawer["ReaderAnnotationsDrawer\n(In-Volume Highlights, Notes & Deep Links)"]
+            DownDrawer["DownloadDrawer\n(In-App Offline Storage & EPUB/MOBI/TXT Direct Streams)"]
         end
         
         subgraph StateStores ["Zustand Persistent State & Offline Engine"]
@@ -217,6 +223,7 @@ flowchart TD
         end
         
         subgraph ReaderEngine ["Reader Runtime & Web Speech Subsystem"]
+            SessionHook["📖 useReaderSession\n(Position Memory, Deep Links & Reflow Healing)"]
             SpeechHook["🔊 useReaderSpeech\n(SpeechSynthesis, Boundary Sync, Auto-Flip)"]
             TimerHook["⏱️ useReadingTimer\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]
             WorkerHook["⚙️ useGutenbergParserWorker\n(Persistent Worker Chapter AST)"]
@@ -226,9 +233,10 @@ flowchart TD
         
         HookCopyright["⚖️ useBookCopyright\n(Declarative Facade: Rules, Lifespans & Status)"]
         HookAutoHeal["🩺 useCollectionAutoHeal\n(Author Lifespan Scanning & Auto-Rehydration)"]
+        HookCatalogFilters["🎛️ useCatalogFilters\n(Default Recently Added Sort, Atomic Filter Staging, Multi-Era Bounding, Multi-Filter Slicing, URL Serialization)"]
         QueryBooks["🔄 useBooks & usePrefetchNextPage\n(Windowed Sub-Pages & Predictive Prefetch)"]
         QueryContent["🔄 useBookContent(url, bookId)\n(IndexedDB Check to CDN Stream)"]
-        QueryTranslate["🌐 useBookTranslations\n(International Editions Aggregation)"]
+        QueryTranslate["🌐 useBookTranslations\n(International Editions Relational Handoff)"]
         Telemetry["📊 Vercel Telemetry\n(Analytics & Speed Insights)"]
     end
 
@@ -246,6 +254,7 @@ flowchart TD
         JointAuthors["Joint Authorship Guard (Berne Art. 7bis)"]
         Translators["Translator Protection (Berne Art. 2(3))"]
         ContributorFilter["Contributor Role Filter\n(Illustrator/Artist Non-Blocking Exclusion)"]
+        ContentScanner["Content Advisory Engine (src/lib/content-advisory.ts)\n(LOC Subject & Bookshelf Lexical Scanner)"]
         CountryResolver["Country Resolver (src/lib/country-resolver.ts)\n(Edge Geo-IP, Cookie Sync, Timezone Inference)"]
         MetaCache["Metadata Lifespan Cache\n(metadata-cache.ts • 24h LRU)"]
     end
@@ -266,8 +275,11 @@ flowchart TD
     Hero --> Hero3D
     RootProxy --> Toolbar
     Toolbar --> FilterDrawer
+    FilterDrawer --> HookCatalogFilters
+    HookCatalogFilters --> QueryBooks
     Toolbar --> Grid
     Grid --> CopyrightBanner
+    Grid --> ContentAdvisory
     Grid --> HookCopyright
     Grid --> EditorialQuote
     Grid --> LiteraryQuotes
@@ -278,6 +290,8 @@ flowchart TD
     NoteView --> HookAutoHeal
     SymposiumCard --> HookAutoHeal
     HookCopyright --> EngineCore
+    ContentAdvisory --> ContentScanner
+    DownDrawer --> ContentAdvisory
     AccView --> HabitsCard
     AccView --> AccoladesCard
     AccView --> SymposiumCard
@@ -288,6 +302,17 @@ flowchart TD
     StoreShelf --> BookshelfSyncEngine
     BookshelfSyncEngine -->|Cloud Sync via RLS| SupabaseCloud
     StoreFellowship -->|Circles & Symposium Sync| SupabaseCloud
+    StoreOffline -->|Offline Volumes & Smart Shelf| ShelfView
+    StoreOffline -->|Offline Volumes Filter| LedgerHook
+    ShelfView --> CollectionToolbarNode
+    FavView --> CollectionToolbarNode
+    MarksView --> CollectionToolbarNode
+    NoteView --> CollectionToolbarNode
+    Grid --> PaginationNode
+    ShelfView --> PaginationNode
+    FavView --> PaginationNode
+    MarksView --> PaginationNode
+    NoteView --> PaginationNode
     
     Grid --> QueryBooks
     QueryBooks --> ProxyBooks
@@ -314,6 +339,7 @@ flowchart TD
     ProxyContent -->|Tier 1: Instant DB Text| SupabaseCloud
     ProxyContent -->|Tier 2: Multi-Mirror Fallback| GutenbergCDN
     ReaderPage --> QueryTranslate
+    LangDrawer --> QueryTranslate
     QueryTranslate --> ProxyBookTranslations
     ProxyBookTranslations --> SupabaseCloud
     SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud
@@ -432,14 +458,14 @@ flowchart TD
         EnrichDict["Enriched Book Dictionary\n(savedBooks + recentBooks + queryResults)"]
         Parser["Canonical Utilities (@/lib/utils)\n• formatAuthorNames (reverse 'Last, First' & strip dates)\n• cleanBookTitle (strip Gutenberg prefixes)\n• formatRelativeTime ('Recently', '2h ago')"]
         Assembly["Assemble ActiveReadingVolume[]\n• progress, chapter, coordinates, lastReadAt\n• status (in_progress / completed / on_hold)\n• isOffline badge"]
-        FilterSort["Client Search & Status Filter\n• 'all' | 'in_progress' | 'completed' | 'on_hold'\n• CollectionSearchBar token matching\n• Recency sorting (lastReadAt desc)"]
+        FilterSort["Client Search & Status Filter\n• 'all' | 'in_progress' | 'completed' | 'on_hold'\n• CollectionSearchBar token matching\n• Multi-mode sort ('recent' | 'progress' | 'title' | 'author' | 'downloaded')"]
     end
 
     subgraph UI ["Presentation Layer (BookmarksView.tsx)"]
         Header["SectionHeader ('Continue Reading & Bookmarks')\n• Eyebrow, Flank lines, Clear Bookmarks modal"]
-        Search["CollectionSearchBar (real-time filtering)"]
+        Search["CollectionToolbar\n(Search, Sort & Downloaded Filter, Pagination)"]
         Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]
-        Cards["BookmarkCard.tsx\n• Tactile ribbon accent\n• Interactive cover thumbnail\n• Cleaned title & normalized author\n• Reading coordinates badge\n• Offline pill badge & download/remove toggle\n• Status dropdown selector"]
+        Cards["BookmarkCard.tsx\n• Top-anchored silk ribbon (origin-top scale-y-110)\n• Interactive cover thumbnail\n• Cleaned title & normalized author\n• Reading coordinates badge\n• 4-state square offline button & modal\n• Status dropdown selector\n• Desktop cursor-exit focus release (onDeactivate)"]
         ResumeAction["1-Click Resume / Cover Tap\n• Seed useReaderStore.openReader(book) [Warm Cache]\n• router.push('/read/' + id)"]
     end
 
@@ -453,6 +479,7 @@ flowchart TD
     EnrichDict --> Parser
     Parser --> Assembly
     IDB --> Assembly
+    IDB -->|"isBookOffline Filter"| FilterSort
     Assembly --> FilterSort
     FilterSort --> Cards
     Header --> UI
@@ -661,14 +688,15 @@ The repository enforces a closed-loop quality verification engine before any rel
 +-----------------------------------------------------------------------------+
 |                     7-GATEWAY CLOSED-LOOP VERIFICATION                      |
 +-----------------------------------------------------------------------------+
-| Pass 0.5 | Secret Scanner       | Checks repository files for exposed keys  |
-| Pass 1   | TypeScript Engine    | Strict typecheck with 0 compile errors    |
-| Pass 2   | Vitest Server Mocks  | Validates MSW v2 handlers and query hooks |
-| Pass 3   | Vitest Client UI     | Unit & integration tests (>= 85% coverage)|
-| Pass 4   | Living Docs Sync     | Auto-updates ARCHITECTURE, AUDIT, & CHANGE|
-| Pass 5   | ADR Validation       | Validates DECISIONS.md sequential schema  |
-| Pass 6   | Quality & Dead Code  | ESLint check and Knip unused code audit   |
-| Pass 7   | Production Build     | Compiles Next.js production bundle        |
+| Pass 0.5  | Secret Scanner      | Checks repository files for exposed keys  |
+| Pass 0.75 | SAST & OWASP Suite  | Dependency audit, SSRF & AST XSS guards   |
+| Pass 1    | TypeScript Engine   | Strict typecheck with 0 compile errors    |
+| Pass 2    | Vitest Server Mocks | Validates MSW v2 handlers and query hooks |
+| Pass 3    | Vitest Client UI    | Unit & integration tests (>= 85% coverage)|
+| Pass 4    | Living Docs Sync    | Auto-updates ARCHITECTURE, AUDIT, & CHANGE|
+| Pass 5    | ADR Validation      | Validates DECISIONS.md sequential schema  |
+| Pass 6    | Quality & Dead Code | ESLint check and Knip unused code audit   |
+| Pass 7    | Production Build    | Compiles Next.js production bundle        |
 +-----------------------------------------------------------------------------+
 ```
 
@@ -680,13 +708,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1869 tests across 187 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1909 tests across 187 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 60 validated ADRs (ADR-001 through ADR-060) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), Tailwind CSS v4 Oxide & supply-chain hardening, WCAG 2.2 AA focus trapping, zero-any TypeScript strictness, overlay dynamic code-splitting, Phase 5 monolith decomposition, canonical auth redirect origin hardening, layered dual-band overlapping highlights, unified overlapping marginalia cards, >= 85% Vitest coverage enforcement, and 7-layer author lifespan self-healing. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 64 validated ADRs (ADR-001 through ADR-064) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), Tailwind CSS v4 Oxide & supply-chain hardening, WCAG 2.2 AA focus trapping, zero-any TypeScript strictness, overlay dynamic code-splitting, Phase 5 monolith decomposition, canonical auth redirect origin hardening, layered dual-band overlapping highlights, unified overlapping marginalia cards, >= 85% Vitest coverage enforcement, 7-layer author lifespan self-healing, tier-adaptive gliding active underline cradle, unified personal collection 'downloaded' filtering & smart bookshelf, zero-CLS layout stabilization, and catalog pagination smooth-scroll stabilization & header brand page-1 reset. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |

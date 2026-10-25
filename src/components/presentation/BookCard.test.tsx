@@ -520,6 +520,8 @@ describe('BookCard component', () => {
       />
     );
     expect(screen.getByText('🔖 Want to Read')).toBeInTheDocument();
+    expect(screen.getByText('🔖 Want to Read')).toHaveClass('shrink-0', 'whitespace-nowrap');
+    expect(screen.getByText('5/5')).toBeInTheDocument();
 
     // Click primary tag badge directly
     const primaryTags = screen.getAllByText('Classics');

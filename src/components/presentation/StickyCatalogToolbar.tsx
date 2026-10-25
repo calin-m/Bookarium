@@ -8,8 +8,6 @@ import {
   LayoutGrid,
   Library,
   X,
-  WifiOff,
-  Zap,
   Sparkles,
   ArrowUp,
 } from 'lucide-react';
@@ -44,6 +42,15 @@ export interface StickyCatalogToolbarProps {
   isMobileDockVisible?: boolean;
   mobileDockThreshold?: number;
   mobileDockIdleTimeoutMs?: number;
+}
+
+export function formatApiLatency(ms?: number): string {
+  const safeMs = ms !== undefined && !isNaN(ms) ? ms : 140;
+  if (safeMs < 1000) {
+    return `${safeMs}ms`;
+  }
+  const seconds = safeMs / 1000;
+  return `${Number(seconds.toFixed(3))}s`;
 }
 
 export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
@@ -139,7 +146,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
     commitPageJump(jumpPageInput);
   };
 
-  const displayLatency = latencyMs !== undefined ? latencyMs : 140;
+  const displayLatencyText = formatApiLatency(latencyMs);
   const pageSizes = [8, 16];
 
   return (
@@ -161,12 +168,12 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
           {/* Advanced Filters Button / Split Quick-Clear Capsule */}
           {activeFilterCount > 0 ? (
-            <div className="inline-flex items-center rounded-lg border border-primary-600 bg-primary-600 text-white shadow-xs overflow-hidden shrink-0">
+            <div className="inline-flex h-9 items-center rounded-lg border border-primary-600 bg-primary-600 text-white shadow-xs overflow-hidden shrink-0">
               <button
                 type="button"
                 onClick={onOpenFilters}
                 data-testid="open-filters-btn"
-                className="h-9 px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center hover:bg-primary-700 transition-colors"
+                className="h-full px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center hover:bg-primary-700 transition-colors"
                 aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
                 aria-expanded={isFiltersOpen}
               >
@@ -184,7 +191,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                   onClearAllFilters();
                 }}
                 data-testid="clear-all-filters-btn"
-                className="h-9 px-2 flex items-center justify-center hover:bg-primary-700 hover:text-white transition-colors cursor-pointer"
+                className="h-full px-2 flex items-center justify-center hover:bg-primary-700 hover:text-white transition-colors cursor-pointer"
                 aria-label={`Clear all ${activeFilterCount} active filters`}
                 title={`Clear all ${activeFilterCount} active filters`}
               >
@@ -197,7 +204,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               size="sm"
               onClick={onOpenFilters}
               data-testid="open-filters-btn"
-              className="h-9 px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border border-border text-foreground hover:border-primary hover:bg-muted hover:text-foreground transition-all shrink-0"
+              className="h-9 px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border border-border text-foreground hover:border-primary hover:bg-muted hover:text-foreground transition-colors shrink-0"
               aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
               aria-expanded={isFiltersOpen}
             >
@@ -265,43 +272,37 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
           )}
         </div>
 
-        {/* Right Side: 2-Part API Telemetry, View Mode & Sticky Pagination */}
+        {/* Right Side: Unified API Status/Latency, View Mode & Sticky Pagination */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           
-          {/* 2-Part API Status & Latency Indicator (Tablet & Desktop) */}
-          <div className="hidden sm:flex items-center gap-1 sm:gap-1.5">
-            {/* Part 1: Live API Status Badge */}
-            <div
-              className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border border-border ${
-                isError
-                  ? 'bg-destructive/10 text-destructive'
-                  : 'bg-success/10 text-success'
+          {/* Unified API Status & Latency Indicator (Tablet & Desktop) */}
+          <div
+            className={`hidden sm:flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border border-border ${
+              isError
+                ? 'bg-destructive/10 text-destructive'
+                : 'bg-success/10 text-success'
+            }`}
+            title={
+              isError
+                ? 'Project Gutenberg API: Offline'
+                : `Project Gutenberg API: Online (${displayLatencyText} response time)`
+            }
+            aria-label={
+              isError
+                ? 'Gutenberg API status: Offline'
+                : `Gutenberg API status: Online, response time ${displayLatencyText}`
+            }
+            data-testid="api-status-badge"
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${
+                isError ? 'bg-destructive' : 'bg-success'
               }`}
-              title="Gutenberg API Status"
-              data-testid="api-status-badge"
-            >
-              {isError ? (
-                <>
-                  <WifiOff className="w-3 h-3 text-destructive" />
-                  <span className="font-bold">Offline</span>
-                </>
-              ) : (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                  <span className="font-bold hidden md:inline">Live</span>
-                </>
-              )}
-            </div>
-
-            {/* Part 2: Live Latency / Roundtrip Badge */}
-            <div
-              className="hidden md:flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-mono bg-muted text-foreground border border-border"
-              title="Real-time API response roundtrip time"
-              data-testid="api-latency-badge"
-            >
-              <Zap className="w-3 h-3 text-amber-500" />
-              <span className="font-bold">{displayLatency}ms</span>
-            </div>
+              data-testid="api-status-dot"
+            />
+            <span className="font-bold" data-testid="api-latency-badge">
+              {isError ? 'Offline' : displayLatencyText}
+            </span>
           </div>
 
           <div className="h-4 w-[1px] bg-border hidden sm:block" />

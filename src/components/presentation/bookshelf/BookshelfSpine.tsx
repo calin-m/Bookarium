@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Library, Heart, Sparkles, CheckCircle2, HardDriveDownload, Star, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, HardDriveDownload, Star, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -209,7 +209,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
 
       {/* Hover Floating Card Preview / Quick Actions (Desktop Hover) */}
       <div
-        className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden sm:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10"
+        className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden sm:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10 after:content-[''] after:absolute after:inset-x-0 after:top-full after:h-6"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
@@ -228,23 +228,6 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             </span>
           )}
           <div className="flex items-center gap-1.5">
-            {isOffline && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleOffline?.(book);
-                }}
-                className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5 border border-emerald-500/30 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group/offline"
-                title="Downloaded for offline reading — Click to remove"
-                aria-label={`Downloaded for offline reading. Click to remove ${book.title} from offline storage.`}
-              >
-                <CheckCircle2 className="w-2.5 h-2.5 shrink-0 group-hover/offline:hidden" />
-                <Trash2 className="w-2.5 h-2.5 shrink-0 hidden group-hover/offline:inline" />
-                <span className="group-hover/offline:hidden">Downloaded</span>
-                <span className="hidden group-hover/offline:inline">Remove</span>
-              </button>
-            )}
             {progressPercent !== null && (
               <span className="text-[10px] font-medium text-muted-foreground">
                 {progressPercent}% read
@@ -323,7 +306,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             <button
               type="button"
               disabled
-              className="p-1 rounded-lg border border-border text-muted-foreground/50 opacity-50 cursor-not-allowed"
+              className="p-1 rounded-lg border border-border text-muted-foreground/50 opacity-50 cursor-not-allowed flex items-center justify-center"
               title={`Offline storage unavailable for protected titles in ${country}`}
               aria-label={`Offline storage unavailable for ${book.title}`}
             >
@@ -345,7 +328,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
                 setShowTooltip(false);
                 setHoveredAction(null);
               }}
-              className={`p-1 rounded-lg border transition-colors ${
+              className={`p-1 rounded-lg border transition-colors flex items-center justify-center ${
                 isDownloadingOffline
                   ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
                   : isOffline
@@ -365,7 +348,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               ) : isOffline ? (
                 <>
                   <HardDriveDownload className="w-3 h-3 group-hover/offline-btn:hidden" />
-                  <Trash2 className="w-3 h-3 hidden group-hover/offline-btn:inline" />
+                  <Trash2 className="w-3 h-3 hidden group-hover/offline-btn:block" />
                 </>
               ) : (
                 <HardDriveDownload className="w-3 h-3" />
@@ -387,7 +370,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               setShowTooltip(false);
               setHoveredAction(null);
             }}
-            className="p-1 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
             aria-label={`Download formats for ${book.title}`}
           >
             <Download className="w-3 h-3" />
@@ -407,7 +390,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               setShowTooltip(false);
               setHoveredAction(null);
             }}
-            className={`p-1 rounded-lg border transition-colors ${
+            className={`p-1 rounded-lg border transition-colors flex items-center justify-center ${
               isSaved
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -431,7 +414,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               setShowTooltip(false);
               setHoveredAction(null);
             }}
-            className={`p-1 rounded-lg border transition-colors ${
+            className={`p-1 rounded-lg border transition-colors flex items-center justify-center ${
               isFavorite
                 ? 'border-destructive bg-destructive/10 text-destructive'
                 : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground'

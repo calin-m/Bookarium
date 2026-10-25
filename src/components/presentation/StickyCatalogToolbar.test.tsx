@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
-import { StickyCatalogToolbar } from './StickyCatalogToolbar';
+import { StickyCatalogToolbar, formatApiLatency } from './StickyCatalogToolbar';
 
 describe('StickyCatalogToolbar component', () => {
-  it('should render filter trigger, active chips, and 2-part API status badge', () => {
+  it('should render filter trigger, active chips, and unified API status badge', () => {
     render(
       <StickyCatalogToolbar
         page={1}
@@ -25,8 +25,9 @@ describe('StickyCatalogToolbar component', () => {
     expect(screen.getAllByText('2')[0]).toBeInTheDocument();
     expect(screen.getByText('Victorian')).toBeInTheDocument();
     expect(screen.getByText('French')).toBeInTheDocument();
-    expect(screen.getByTestId('api-status-badge')).toHaveTextContent('Live');
+    expect(screen.getByTestId('api-status-badge')).toHaveTextContent('85ms');
     expect(screen.getByTestId('api-latency-badge')).toHaveTextContent('85ms');
+    expect(screen.getByTestId('api-status-dot')).toHaveClass('bg-success');
   });
 
   it('should handle page size selection and reflect aria-pressed state', () => {
@@ -165,6 +166,42 @@ describe('StickyCatalogToolbar component', () => {
     );
 
     expect(screen.getByTestId('api-status-badge')).toHaveTextContent('Offline');
+    expect(screen.getByTestId('api-status-dot')).toHaveClass('bg-destructive');
+  });
+
+  describe('formatApiLatency utility and precision second formatting', () => {
+    it('formats millisecond latencies under 1000ms', () => {
+      expect(formatApiLatency(85)).toBe('85ms');
+      expect(formatApiLatency(140)).toBe('140ms');
+      expect(formatApiLatency(999)).toBe('999ms');
+      expect(formatApiLatency(undefined)).toBe('140ms');
+    });
+
+    it('formats second latencies at or above 1000ms with up to 3 decimals without trailing zeros', () => {
+      expect(formatApiLatency(1000)).toBe('1s');
+      expect(formatApiLatency(1200)).toBe('1.2s');
+      expect(formatApiLatency(1212)).toBe('1.212s');
+      expect(formatApiLatency(2500)).toBe('2.5s');
+      expect(formatApiLatency(3000)).toBe('3s');
+    });
+
+    it('renders formatted second latency in StickyCatalogToolbar when latencyMs >= 1000', () => {
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          latencyMs={1212}
+        />
+      );
+
+      expect(screen.getByTestId('api-status-badge')).toHaveTextContent('1.212s');
+      expect(screen.getByTestId('api-status-dot')).toHaveClass('bg-success');
+    });
   });
 
   it('applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false', () => {

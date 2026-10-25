@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 25 Oct 2026 09:11:47 GMT  
+**Last Generated**: Sun, 25 Oct 2026 14:25:15 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 187 passed  
-**Total Verified Tests**: 1869 passed  
+**Total Verified Tests**: 1909 passed  
 
 ---
 
@@ -14,10 +14,10 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1869 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1909 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 60 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 64 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **95.64%** (9377/9804) — *Target: $ge$ 85%*
-- **Statements**: **94.31%** (10212/10828) — *Target: $ge$ 85%*
-- **Functions**: **92.79%** (2202/2373) — *Target: $ge$ 85%*
-- **Branches**: **85.15%** (9278/10895) — *Target: $ge$ 85%*
+- **Lines**: **95.63%** (9527/9962) — *Target: $ge$ 85%*
+- **Statements**: **94.3%** (10375/11001) — *Target: $ge$ 85%*
+- **Functions**: **92.8%** (2233/2406) — *Target: $ge$ 85%*
+- **Branches**: **85.26%** (9457/11091) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1869 Tests)
+## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1909 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 239 Tests)
+### 🚀 App Routes & Pages (26 Suites · 246 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -63,7 +63,7 @@
 - ✔ `applies animate-view-slide-right when ?dir=backward is present and settles on animationEnd`
 - ✔ `swipes left on Account to wrap forward to Catalog with ?dir=forward`
 - ✔ `swipes right on Account to return backward to Bookmarks with ?dir=backward`
-- ✔ `enforces overflow-x-clip on root and main layout containers and solid border-border on active Tier-2 Habits sub-tabs`
+- ✔ `enforces overflow-x-clip on root and main layout containers and solid border-primary on active Tier-2 Habits sub-tabs`
 - ✔ `covers guest modal trigger, Navbar navigation, and preview mode (?preview=true)`
 - ✔ `covers sign out, completedBooksCount, and error/catch recovery across profile, password, and deletion actions`
 
@@ -253,7 +253,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (35 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (42 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -290,6 +290,13 @@
 - ✔ `opens RemoveOfflineBookModal when removing downloaded book from BookshelfMobileModal`
 - ✔ `returns to Catalog from empty NotebookView and BookmarksView via onBrowseCatalog`
 - ✔ `renders Reader view when served as offline App Shell fallback for /read/[id] route`
+- ✔ `filters bookshelf books to offline books when sorting by Downloaded`
+- ✔ `filters bookshelf books to offline books when active shelf is DOWNLOADED_SHELF_ID`
+- ✔ `filters favorites books to offline books when sorting by Downloaded and shows empty state when none are offline`
+- ✔ `shows empty state in Bookshelf when sorting by Downloaded and none are offline`
+- ✔ `resets catalog page and filters when clicking Bookarium brand logo in navbar`
+- ✔ `resets page to 1 and scrolls to top when clicking the already-active Catalog tab`
+- ✔ `applies responsive padding classes to catalog-section to eliminate mobile pagination gap`
 
 </details>
 
@@ -431,7 +438,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (27 Suites · 368 Tests)
+### 🎨 Catalog & Presentation (27 Suites · 399 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -492,9 +499,9 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (11 tests)</summary>
 
-- ✔ `should render loading skeletons when isLoading is true`
+- ✔ `should render loading skeletons when isLoading is true and match pageSize`
 - ✔ `should render error state with retry button`
 - ✔ `should render empty state when no books exist`
 - ✔ `should render book cards and trigger pagination`
@@ -504,17 +511,18 @@
 - ✔ `omits personal shelf management buttons in shelf view when in catalog mode`
 - ✔ `renders personal shelf management buttons in shelf view when activeView is bookshelf`
 - ✔ `applies tightened 2-column mobile grid gap classes to prevent grid blowout`
+- ✔ `applies responsive container and pagination bar spacing classes`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
 - ✔ `triggers onResume and warms reader store when cover thumbnail is clicked or activated via keyboard`
 - ✔ `falls back to router.push when onResume is not provided`
-- ✔ `renders offline badge when isOffline is true and switches to Remove when active or hovered`
+- ✔ `does not render redundant top offline badge and keeps top meta row focused on reading status`
 - ✔ `applies active styling, highlights title, and triggers onActivate on card click`
 - ✔ `handles status changes from harmonized select dropdown`
 - ✔ `triggers onClear when delete action is clicked`
@@ -527,11 +535,13 @@
 - ✔ `renders Protected badge and disabled Restricted button when book is restricted under jurisdiction`
 - ✔ `opens SymposiumInviteModal pre-populated with the volume when Invite Fellow to Symposium button is clicked`
 - ✔ `renders interactive offline toggle button and handles save, remove, and downloading states`
+- ✔ `renders authentic notched bookmark ribbon marker matching reading status and hover interaction`
+- ✔ `triggers onActivate on click, and onDeactivate on mouseLeave on desktop and on blur`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (18 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
@@ -551,6 +561,9 @@
 - ✔ `applies tightened vertical padding on bookmarks-ledger-section`
 - ✔ `activates bookmark card on click and clears active state when clicking outside`
 - ✔ `handles mobile single-column scroll focus zone on scroll and resize`
+- ✔ `filters active volumes to only offline books when Downloaded sort option is selected`
+- ✔ `renders No downloaded volumes empty state and resets to recent when clicking View All Volumes`
+- ✔ `activates card on click and deactivates on mouseLeave on desktop viewports`
 
 </details>
 
@@ -617,7 +630,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (47 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (56 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
@@ -651,9 +664,9 @@
 - ✔ `handles moving a book to another shelf and default read routing from mobile action sheet`
 - ✔ `renders offline download button and triggers download all`
 - ✔ `renders individual offline download button on book spine and triggers toggle`
-- ✔ `renders All Saved for Offline notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll`
+- ✔ `renders Downloaded notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll`
 - ✔ `renders Edit and Delete buttons to the left of Download Shelf Offline button on custom shelves`
-- ✔ `skips restricted books when clicking Download Shelf Offline and displays All Available Saved status`
+- ✔ `skips restricted books when clicking Download Shelf Offline and renders Clear Offline Shelf when all available are cached`
 - ✔ `renders All Restricted status notice when all books on shelf are protected in visitor jurisdiction`
 - ✔ `does not render syncing indicator when isSyncing is false`
 - ✔ `renders floating syncing indicator with status role when isSyncing is true`
@@ -662,10 +675,19 @@
 - ✔ `displays catalog-appropriate empty state when showShelfControls is false and books array is empty`
 - ✔ `displays totalBooksCount in General shelf badge when provided`
 - ✔ `distributes books evenly across 2 shelves when books exceed shelf capacity`
+- ✔ `enforces uniform 12-book row limit on Bookshelf page, splitting 15 books into 12 on first shelf and 3 on second`
+- ✔ `preserves predetermined capacity and balanced distribution in Catalog mode (showShelfControls = false)`
 - ✔ `renders shelf content with tactile animate-page-turn container and updates on shelf change`
 - ✔ `calculates deterministic shelf capacity capped to max-w-7xl (1280px) on wide viewports`
 - ✔ `calculates proportional capacity on tablet and mobile viewports`
 - ✔ `displays Clear Offline button alongside Download Shelf Offline when shelf is partially cached offline`
+- ✔ `renders Downloaded shelf pill next to General when downloaded books exist and handles shelf switching`
+- ✔ `renders Downloaded shelf pill in guest mode when books are downloaded`
+- ✔ `does not render Downloaded shelf pill when no books are downloaded`
+- ✔ `automatically falls back from Downloaded shelf to default shelf when downloaded books become empty (signed-in)`
+- ✔ `automatically falls back from Downloaded shelf to null when downloaded books become empty (guest mode)`
+- ✔ `filters effective shelf books to offline books and shows Downloaded empty state in standalone Downloaded mode`
+- ✔ `resets active bookshelf to null when clicking General pill in guest mode while viewing Downloaded shelf`
 
 </details>
 
@@ -773,9 +795,10 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Footer.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/presentation/Footer.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `should render legal manifesto, links, and attribution`
+- ✔ `should apply responsive footer padding classes`
 
 </details>
 
@@ -817,7 +840,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `should render section heading, kicker, and 3 literary quote cards`
 - ✔ `should shuffle quotes when clicking Discover More button`
@@ -825,11 +848,12 @@
 - ✔ `should cleanly unmount without errors during active shuffle`
 - ✔ `filters out quotes from protected authors in Life+100 jurisdiction (Mexico)`
 - ✔ `maintains strictly unique quote IDs and Project Gutenberg bookIds across all anthology entries`
+- ✔ `applies responsive section and balanced header divider spacing classes`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (23 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (32 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -854,6 +878,15 @@
 - ✔ `renders dynamic active view masthead subtitle with section theme color and responsive classes`
 - ✔ `applies hidden and lg:inline responsive classes to navigation and action text labels`
 - ✔ `renders 0px-width fellowship notification dot on Account link when pending invitations exist`
+- ✔ `falls back to button border when dimensions are 0 (e.g. unmeasured or SSR)`
+- ✔ `renders gliding indicator with position, width, and theme bottom border when measurable`
+- ✔ `updates indicator styling for different views`
+- ✔ `activates two-phase directional elastic bridge and corner-tip curl on high tier when moving right`
+- ✔ `activates two-phase directional elastic bridge and corner-tip curl on high tier when moving left`
+- ✔ `applies direct target rect without bridge phase on medium tier`
+- ✔ `fades out with opacity-0 and scale-x-50 when activeView is account`
+- ✔ `re-measures on window resize event`
+- ✔ `disables gliding indicator and stays on fallback border when prefers-reduced-motion is active`
 
 </details>
 
@@ -888,7 +921,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (43 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (45 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -925,6 +958,8 @@
 - ✔ `sorts chronological quotes by Date Added Oldest and Newest`
 - ✔ `sorts chronological quotes alphabetically by title and author`
 - ✔ `sorts book groups in By-Book mode by Title, Author, and Most Quotes`
+- ✔ `filters quotes to only downloaded books when sorting by Downloaded in chronological mode`
+- ✔ `renders Downloaded empty state and resets filters in volume and chronological modes`
 - ✔ `paginates chronological quotes with 12 items per page and scrolls to top on page change`
 - ✔ `paginates volume groups with 6 books per page in By-Book mode`
 - ✔ `resets page to 1 when changing search query, color filter, or sort order`
@@ -937,14 +972,17 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (21 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (24 tests)</summary>
 
-- ✔ `should render filter trigger, active chips, and 2-part API status badge`
+- ✔ `should render filter trigger, active chips, and unified API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
 - ✔ `should trigger filter opening, remove individual chips, and clear all filters`
 - ✔ `should handle view mode switching between grid and shelf`
 - ✔ `should handle pagination next button and direct page jump form`
 - ✔ `should display error indicator in status badge when isError is true`
+- ✔ `formats millisecond latencies under 1000ms`
+- ✔ `formats second latencies at or above 1000ms with up to 3 decimals without trailing zeros`
+- ✔ `renders formatted second latency in StickyCatalogToolbar when latencyMs >= 1000`
 - ✔ `applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false`
 - ✔ `applies -translate-y-[calc(100%+4rem)] and pointer-events-none when isVisible is false`
 - ✔ `renders archive fetching badge when isFetching is true`
@@ -1603,7 +1641,7 @@
 - ✔ `sorts alphabetically by author ascending and descending`
 - ✔ `sorts by reading progress percentage descending and ascending`
 - ✔ `sorts by download count (popularity) descending`
-- ✔ `preserves order when sortBy is "recent" or unrecognized`
+- ✔ `preserves order when sortBy is "recent", "downloaded", or unrecognized`
 
 </details>
 
@@ -2146,7 +2184,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 241 Tests)
+### 🔄 Hooks & React Query (22 Suites · 242 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (16 tests)</summary>
@@ -2230,7 +2268,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -2254,6 +2292,7 @@
 - ✔ `enriches savedBooks lacking lifespans using posAuthorDetails or resolveBookMetadata`
 - ✔ `extracts authorDetails lifespans and normalizes display names from embedded dates in readingPosition.bookAuthors`
 - ✔ `preserves verified authorDetails lifespans from favoriteBooks/savedBooks when currentBook is a partial book`
+- ✔ `filters volumes to only downloaded books when sortBy is "downloaded"`
 
 </details>
 
@@ -2521,7 +2560,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (47 Suites · 236 Tests)
+### 🧩 UI Primitives & Motion (47 Suites · 237 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2870,7 +2909,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/StarRating.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/ui/StarRating.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders 5 interactive star buttons in interactive mode`
 - ✔ `marks the active star as aria-checked`
@@ -2879,6 +2918,7 @@
 - ✔ `updates display rating on hover and restores on mouse leave with fixed width to prevent layout shift`
 - ✔ `supports keyboard navigation with arrow keys and enter`
 - ✔ `renders correctly in readOnly mode without interactive buttons`
+- ✔ `supports compactOnMobile in readOnly mode hiding stars 2 to 5 on mobile viewports`
 
 </details>
 

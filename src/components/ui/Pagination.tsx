@@ -115,10 +115,10 @@ export const Pagination: React.FC<PaginationProps> = ({
                 onClick={() => onPageChange(pageItem)}
                 aria-label={`Go to page ${pageItem}`}
                 aria-current={isCurrent ? 'page' : undefined}
-                className={`min-w-[36px] h-9 px-2.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer select-none ${
+                className={`min-w-[36px] h-9 px-2.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer select-none ${
                   isCurrent
-                    ? 'bg-primary text-primary-foreground shadow-xs'
-                    : 'bg-card text-muted-foreground hover:text-foreground hover:bg-muted border border-border'
+                    ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                    : 'bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border'
                 }`}
               >
                 {pageItem}

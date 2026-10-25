@@ -5,9 +5,15 @@ import { BookGrid } from './BookGrid';
 import { mockBooks } from '@/mocks/handlers';
 
 describe('BookGrid component', () => {
-  it('should render loading skeletons when isLoading is true', () => {
-    render(<BookGrid isLoading />);
-    expect(screen.getAllByTestId('book-skeleton').length).toBeGreaterThan(0);
+  it('should render loading skeletons when isLoading is true and match pageSize', () => {
+    const { rerender } = render(<BookGrid isLoading pageSize={16} onPageChange={() => {}} page={2} />);
+    expect(screen.getAllByTestId('book-skeleton').length).toBe(16);
+    expect(screen.getByLabelText('Previous page')).toBeDisabled();
+    expect(screen.getByLabelText('Next page')).toBeDisabled();
+    expect(screen.getByText('Page 2')).toBeInTheDocument();
+
+    rerender(<BookGrid isLoading pageSize={8} />);
+    expect(screen.getAllByTestId('book-skeleton').length).toBe(8);
   });
 
   it('should render error state with retry button', () => {
@@ -120,6 +126,17 @@ describe('BookGrid component', () => {
 
     const gridContainer = container.querySelector('#book-grid-content > div');
     expect(gridContainer).toHaveClass('grid-cols-2', 'gap-2.5', 'sm:gap-6');
+  });
+
+  it('applies responsive container and pagination bar spacing classes', () => {
+    const handlePage = vi.fn();
+    render(<BookGrid books={mockBooks} page={1} onPageChange={handlePage} hasNextPage={true} />);
+
+    const mainContainer = screen.getByTestId('book-grid-container');
+    expect(mainContainer).toHaveClass('space-y-6', 'sm:space-y-8');
+
+    const paginationBar = screen.getByTestId('catalog-pagination-bar');
+    expect(paginationBar).toHaveClass('pt-5', 'sm:pt-6');
   });
 });
 

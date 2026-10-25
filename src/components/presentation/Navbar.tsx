@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Sun, Moon, Coffee, User as UserIcon } from 'lucide-react';
@@ -10,6 +10,7 @@ import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
+import { usePerformanceTier } from '@/hooks/usePerformanceTier';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
@@ -19,12 +20,14 @@ import { NAV_ITEMS, NAVBAR_VIEW_CONFIG, type NavViewId, type ViewId } from '@/co
 export interface NavbarProps {
   activeView?: ViewId;
   onViewChange?: (view: NavViewId) => void;
+  onBrandReset?: () => void;
   isVisible?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeView = 'catalog',
   onViewChange,
+  onBrandReset,
   isVisible = true,
 }) => {
   const router = useRouter();
@@ -44,7 +47,117 @@ export const Navbar: React.FC<NavbarProps> = ({
   const user = useAuthStore((s) => s.user);
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
 
+  const { tier, allowHeavyMotion } = usePerformanceTier();
+  const navRef = useRef<HTMLElement | null>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicatorRect, setIndicatorRect] = useState<{ left: number; width: number } | null>(null);
+  const [isBridging, setIsBridging] = useState(false);
+  const prevRectRef = useRef<{ left: number; width: number } | null>(null);
+  const prevViewRef = useRef<ViewId>(activeView);
+
+  const activeNavItem = NAV_ITEMS.find((item) => item.id === activeView);
+  const activeTheme = activeNavItem ? LIBRARY_THEMES[activeNavItem.themeKey] : LIBRARY_THEMES.catalog;
+
+  useEffect(() => {
+    if (!allowHeavyMotion) return;
+
+    if (activeView === 'account') {
+      prevViewRef.current = 'account';
+      return;
+    }
+
+    const activeEl = tabRefs.current[activeView];
+    if (!activeEl) return;
+    const targetLeft = activeEl.offsetLeft;
+    const targetWidth = activeEl.offsetWidth;
+    if (targetWidth === 0) return;
+
+    const targetRect = { left: targetLeft, width: targetWidth };
+    const prevRect = prevRectRef.current;
+    const prevView = prevViewRef.current;
+
+    // Check if this is an in-tab navigation transition on high tier
+    if (
+      tier === 'high' &&
+      prevRect &&
+      prevView !== 'account' &&
+      prevView !== activeView &&
+      (targetRect.left !== prevRect.left || targetRect.width !== prevRect.width)
+    ) {
+      let bridgeLeft: number;
+      let bridgeWidth: number;
+
+      if (targetRect.left > prevRect.left) {
+        // Moving right: leading (right) edge reaches forward; trailing (left) edge lags behind
+        const targetRight = targetRect.left + targetRect.width;
+        const lagDistance = Math.min(targetRect.left - prevRect.left, targetRect.width * 0.85);
+        bridgeLeft = targetRect.left - lagDistance;
+        bridgeWidth = targetRight - bridgeLeft;
+      } else {
+        // Moving left: leading (left) edge reaches forward; trailing (right) edge lags behind
+        const prevRight = prevRect.left + prevRect.width;
+        const targetRight = targetRect.left + targetRect.width;
+        const lagDistance = Math.min(prevRight - targetRight, targetRect.width * 0.85);
+        bridgeLeft = targetRect.left;
+        const bridgeRight = targetRight + lagDistance;
+        bridgeWidth = bridgeRight - bridgeLeft;
+      }
+
+      setIndicatorRect({ left: bridgeLeft, width: bridgeWidth });
+      setIsBridging(true);
+
+      const timer = setTimeout(() => {
+        setIndicatorRect(targetRect);
+        setIsBridging(false);
+      }, 110);
+
+      prevRectRef.current = targetRect;
+      prevViewRef.current = activeView;
+      return () => clearTimeout(timer);
+    }
+
+    // Medium tier or initial mount / same-tab resize: directly apply targetRect
+    setIndicatorRect(targetRect);
+    setIsBridging(false);
+    prevRectRef.current = targetRect;
+    prevViewRef.current = activeView;
+  }, [activeView, allowHeavyMotion, tier]);
+
+  // Window resize and container ResizeObserver
+  useEffect(() => {
+    if (!allowHeavyMotion) return;
+
+    const handleResize = () => {
+      if (activeView === 'account') return;
+      const activeEl = tabRefs.current[activeView];
+      if (activeEl && activeEl.offsetWidth > 0) {
+        const rect = { left: activeEl.offsetLeft, width: activeEl.offsetWidth };
+        setIndicatorRect(rect);
+        prevRectRef.current = rect;
+        setIsBridging(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && navRef.current) {
+      observer = new ResizeObserver(handleResize);
+      observer.observe(navRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (observer) {
+        observer.disconnect();
+      }
+    };
+  }, [activeView, allowHeavyMotion]);
+
+  const isGlidingActive = Boolean(allowHeavyMotion && indicatorRect && indicatorRect.width > 0);
+
   const handleBrandClick = () => {
+    onBrandReset?.();
     onViewChange?.('catalog');
     if (typeof window !== 'undefined') {
       try {
@@ -100,7 +213,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Right Navigation & Actions */}
         <div className="flex items-center gap-0.5 sm:gap-1.5 lg:gap-2 shrink-0">
           {/* Navigation Tabs */}
-          <nav className="flex items-center gap-0.5 sm:gap-1.5 lg:gap-2">
+          <nav ref={navRef} className="relative flex items-center gap-0.5 sm:gap-1.5 lg:gap-2">
             {NAV_ITEMS.map((item) => {
               const isActive = activeView === item.id;
               const theme = LIBRARY_THEMES[item.themeKey];
@@ -111,6 +224,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               return (
                 <button
                   key={item.id}
+                  ref={(el) => {
+                    tabRefs.current[item.id] = el;
+                  }}
                   type="button"
                   onClick={() => {
                     if (onViewChange) {
@@ -120,9 +236,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     }
                   }}
                   title={item.title}
-                  className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-all ${
+                  className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono font-medium tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-colors ${
                     isActive
-                      ? `${theme.navActiveText} font-bold ${theme.navActiveBorder}`
+                      ? `${theme.navActiveText} ${isGlidingActive ? 'border-transparent' : theme.navActiveBorder}`
                       : 'text-muted-foreground hover:text-foreground border-transparent'
                   }`}
                   aria-label={item.label}
@@ -136,6 +252,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               );
             })}
+
+            {/* Tier-Adaptive Gliding Active Underline Bar */}
+            {isGlidingActive && (
+              <span
+                data-testid="navbar-active-indicator"
+                aria-hidden="true"
+                className={`absolute inset-y-0 left-0 h-8 pointer-events-none border-b-2 transition-[transform,width,border-color,border-radius,opacity] ${
+                  isBridging
+                    ? 'duration-150 ease-out rounded-b-lg'
+                    : 'duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] rounded'
+                } ${
+                  activeView === 'account' ? 'opacity-0 scale-x-50' : 'opacity-100'
+                } ${activeTheme.navActiveBorder}`}
+                style={{
+                  transform: `translate3d(${indicatorRect?.left ?? 0}px, 0, 0)`,
+                  width: `${indicatorRect?.width ?? 0}px`,
+                }}
+              />
+            )}
           </nav>
 
           <div className="h-4 w-[1px] bg-border mx-0.5 sm:mx-1" />

@@ -69,6 +69,7 @@ function areIdArraysEqual(a: number[], b: number[]): boolean {
 
 export function useOfflineBooks() {
   const [offlineBookIds, setOfflineBookIds] = useState<number[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [storageQuota, setStorageQuota] = useState<StorageQuotaInfo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadingBookId, setDownloadingBookId] = useState<number | null>(null);
@@ -121,11 +122,18 @@ export function useOfflineBooks() {
     let isMounted = true;
     getOfflineBookIds()
       .then((ids) => {
-        if (isMounted && ids.length > 0) {
-          updateOfflineIdsState(ids);
+        if (isMounted) {
+          if (ids.length > 0) {
+            updateOfflineIdsState(ids);
+          }
+          setIsLoaded(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (isMounted) {
+          setIsLoaded(true);
+        }
+      });
 
     getStorageQuota()
       .then((quota) => {
@@ -305,6 +313,7 @@ export function useOfflineBooks() {
 
   return {
     offlineBookIds,
+    isLoaded,
     isBookOffline,
     downloadBook,
     removeBook,

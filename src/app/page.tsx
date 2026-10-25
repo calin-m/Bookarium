@@ -29,6 +29,7 @@ const BookReaderPage = dynamic(
 );
 import { NotebookView } from '@/components/presentation/NotebookView';
 import { BookmarksView } from '@/components/presentation/BookmarksView';
+import { DOWNLOADED_SHELF_ID } from '@/components/presentation/BookshelfRack';
 import { Modal } from '@/components/ui/Modal';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -219,9 +220,13 @@ function HomeContent() {
     [cloudBookshelves]
   );
   const currentActiveShelfId = activeBookshelfId || defaultShelf?.id;
-  const isViewingGeneral = defaultShelf ? currentActiveShelfId === defaultShelf.id : true;
+  const isViewingDownloaded = currentActiveShelfId === DOWNLOADED_SHELF_ID;
+  const isViewingGeneral = !isViewingDownloaded && (defaultShelf ? currentActiveShelfId === defaultShelf.id : true);
 
   const currentShelfBooks = useMemo(() => {
+    if (isViewingDownloaded) {
+      return savedBooks.filter((b) => isBookOffline(b.id));
+    }
     if (cloudBookshelves.length <= 1 || isViewingGeneral) {
       return savedBooks;
     }
@@ -232,7 +237,7 @@ function HomeContent() {
         .map((item) => item.book_id)
     );
     return savedBooks.filter((b) => currentShelfBookIds.has(b.id));
-  }, [cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, savedBooks]);
+  }, [isViewingDownloaded, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, savedBooks, isBookOffline]);
 
   // Reset collection search query when switching views
   const [prevActiveView, setPrevActiveView] = useState(activeView);
@@ -287,6 +292,8 @@ function HomeContent() {
     isApproachingBatchEnd && Boolean(booksData?.next)
   );
 
+  const pendingPageScrollRef = React.useRef<number | null>(null);
+
   const scrollToCatalogSection = () => {
     if (typeof window !== 'undefined') {
       const el = document.getElementById('catalog-section');
@@ -306,6 +313,7 @@ function HomeContent() {
   };
 
   const handlePageChange = (newPage: number) => {
+    pendingPageScrollRef.current = newPage;
     setPage(newPage);
     scrollToCatalogSection();
   };
@@ -344,9 +352,16 @@ function HomeContent() {
   const collectionPageSize = isMobile ? 12 : 24;
 
   // Smart filtered & sorted collection books (Bookshelf)
+  const baseShelfBooks = useMemo(() => {
+    if (shelfSortBy === 'downloaded') {
+      return currentShelfBooks.filter((b) => isBookOffline(b.id));
+    }
+    return currentShelfBooks;
+  }, [currentShelfBooks, shelfSortBy, isBookOffline]);
+
   const filteredSavedBooks = useMemo(
-    () => filterBooksSmart(currentShelfBooks, collectionSearchQuery),
-    [currentShelfBooks, collectionSearchQuery]
+    () => filterBooksSmart(baseShelfBooks, collectionSearchQuery),
+    [baseShelfBooks, collectionSearchQuery]
   );
 
   const sortedSavedBooks = useMemo(
@@ -376,9 +391,16 @@ function HomeContent() {
     return uniqueKnown.filter((b) => favoriteBookIds.includes(b.id));
   }, [favoriteBooks, booksData?.results, savedBooks, favoriteBookIds]);
 
+  const baseFavoriteBooks = useMemo(() => {
+    if (favoritesSortBy === 'downloaded') {
+      return uniqueKnownFavoriteBooks.filter((b) => isBookOffline(b.id));
+    }
+    return uniqueKnownFavoriteBooks;
+  }, [uniqueKnownFavoriteBooks, favoritesSortBy, isBookOffline]);
+
   const filteredFavoriteBooks = useMemo(
-    () => filterBooksSmart(uniqueKnownFavoriteBooks, collectionSearchQuery),
-    [uniqueKnownFavoriteBooks, collectionSearchQuery]
+    () => filterBooksSmart(baseFavoriteBooks, collectionSearchQuery),
+    [baseFavoriteBooks, collectionSearchQuery]
   );
 
   const sortedFavoriteBooks = useMemo(
@@ -412,6 +434,15 @@ function HomeContent() {
     isDisplayError = false;
   }
 
+  useEffect(() => {
+    if (!isDisplayLoading && pendingPageScrollRef.current !== null) {
+      if (pendingPageScrollRef.current === page) {
+        scrollToCatalogSection();
+      }
+      pendingPageScrollRef.current = null;
+    }
+  }, [isDisplayLoading, page]);
+
   const viewConfig =
     VIEW_CONTENT_CONFIG[activeView as 'catalog' | 'bookshelf' | 'favorites'] ||
     VIEW_CONTENT_CONFIG.catalog;
@@ -419,6 +450,7 @@ function HomeContent() {
   const isShelf = activeView === 'bookshelf';
   const isFavorites = activeView === 'favorites';
   const collectionCount = isShelf ? currentShelfBooks.length : isFavorites ? favoriteBookIds.length : 0;
+  const totalCollectionCount = isShelf ? savedBooks.length : isFavorites ? favoriteBookIds.length : 0;
   const filteredCollectionBooks = isShelf
     ? sortedSavedBooks
     : isFavorites
@@ -438,8 +470,28 @@ function HomeContent() {
     >
       <Navbar
         activeView={activeView}
+        onBrandReset={() => {
+          handleResetAllFilters();
+          setCollectionSearchQuery('');
+          setShelfPage(1);
+          setFavoritesPage(1);
+        }}
         onViewChange={(view) => {
           setSwipeDirection(null);
+          if (view === activeView) {
+            // User clicked the already-active view tab in navbar: reset page to 1 & scroll to top
+            if (view === 'catalog') {
+              setPage(1);
+            } else if (view === 'bookshelf') {
+              setShelfPage(1);
+            } else if (view === 'favorites') {
+              setFavoritesPage(1);
+            }
+            if (typeof window !== 'undefined') {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            return;
+          }
           setActiveView(view);
         }}
         isVisible={isHeaderVisible}
@@ -562,7 +614,7 @@ function HomeContent() {
               }}
             />
           ) : (
-            <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-12 pb-24 sm:pb-12">
+            <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-12 pb-8 sm:pb-12 scroll-mt-16 sm:scroll-mt-20">
               {/* Booksaw Centered Section Header */}
               <SectionHeader
                 eyebrow={viewConfig.eyebrow}
@@ -577,7 +629,7 @@ function HomeContent() {
                       })
                 }
               >
-                {viewConfig.clearType && collectionCount > 0 && (
+                {viewConfig.clearType && totalCollectionCount > 0 && (
                   <div className="pt-2">
                     <Button
                       variant="outline"
@@ -593,7 +645,7 @@ function HomeContent() {
               </SectionHeader>
 
               {/* Collection Toolbar for Bookshelf & Favorites */}
-              {viewConfig.collectionName && collectionCount > 0 && (
+              {viewConfig.collectionName && totalCollectionCount > 0 && (
                 <CollectionToolbar
                   searchQuery={collectionSearchQuery}
                   onSearchChange={setCollectionSearchQuery}
@@ -642,6 +694,7 @@ function HomeContent() {
                 isError={isDisplayError}
                 onRetry={refetch}
                 page={page}
+                pageSize={pageSize}
                 onPageChange={activeView === 'catalog' ? handlePageChange : undefined}
                 hasNextPage={Boolean(booksData?.next)}
                 onDownloadClick={(book) => setSelectedDownloadBook(book)}
@@ -668,11 +721,19 @@ function HomeContent() {
                 emptyTitle={
                   collectionSearchQuery.trim()
                     ? `No volumes found matching "${collectionSearchQuery}"`
+                    : isShelf && (shelfSortBy === 'downloaded' || isViewingDownloaded)
+                    ? 'No downloaded volumes'
+                    : isFavorites && favoritesSortBy === 'downloaded'
+                    ? 'No downloaded favorites'
                     : viewConfig.emptyTitle
                 }
                 emptyDescription={
                   collectionSearchQuery.trim()
                     ? 'Try adjusting your search terms, author name, or clear the search query.'
+                    : isShelf && (shelfSortBy === 'downloaded' || isViewingDownloaded)
+                    ? 'Volumes saved for offline reading will appear here.'
+                    : isFavorites && favoritesSortBy === 'downloaded'
+                    ? 'Favorite volumes saved for offline reading will appear here.'
                     : viewConfig.emptyDescription
                 }
               />

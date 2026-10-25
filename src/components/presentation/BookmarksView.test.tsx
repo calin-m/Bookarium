@@ -250,8 +250,10 @@ describe('BookmarksView', () => {
 
     renderWithClient(<BookmarksView />);
 
-    expect(screen.getByLabelText(/downloaded for offline reading/i)).toBeInTheDocument();
-    expect(screen.getByText('Downloaded')).toBeInTheDocument();
+    const offlineBtn = screen.getByTestId('bookmark-card-offline-toggle-btn');
+    expect(offlineBtn).toBeInTheDocument();
+    expect(offlineBtn).toHaveAttribute('aria-label', expect.stringMatching(/remove offline copy/i));
+    expect(screen.queryByLabelText(/downloaded for offline reading\. click to remove/i)).toBeNull();
   });
 
   it('allows user to change status of completed volume to reading directly via dropdown', async () => {
@@ -446,8 +448,14 @@ describe('BookmarksView', () => {
     expect(sortSelect).toBeInTheDocument();
     expect(sortSelect).toHaveValue('recent');
 
+    // Verify 'downloaded' option exists
+    expect(screen.getByRole('option', { name: 'Downloaded' })).toBeInTheDocument();
+
     fireEvent.change(sortSelect, { target: { value: 'title_asc' } });
     expect(sortSelect).toHaveValue('title_asc');
+
+    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+    expect(sortSelect).toHaveValue('downloaded');
   });
 
   it('renders pagination when volumes exceed 12 items and navigates between pages', () => {
@@ -573,6 +581,94 @@ describe('BookmarksView', () => {
     });
 
     expect(card).toHaveAttribute('data-active', 'true');
+  });
+
+  it('filters active volumes to only offline books when Downloaded sort option is selected', () => {
+    const secondBook: GutendexBook = {
+      ...mockBook,
+      id: 84,
+      title: 'Frankenstein',
+    };
+
+    mockOfflineBookIds = [1342];
+    useBookshelfStore.setState({
+      savedBooks: [mockBook, secondBook],
+    });
+    useReaderStore.setState({
+      readingPositions: {
+        1342: { chapterIndex: 1, chapterPage: 1, globalPage: 5, lastReadAt: new Date().toISOString() },
+        84: { chapterIndex: 2, chapterPage: 2, globalPage: 10, lastReadAt: new Date().toISOString() },
+      },
+      readingProgress: { 1342: 25, 84: 50 },
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.getByText('Frankenstein')).toBeInTheDocument();
+
+    const sortSelect = screen.getByRole('combobox', { name: 'Sort bookmarks' });
+    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.queryByText('Frankenstein')).not.toBeInTheDocument();
+  });
+
+  it('renders No downloaded volumes empty state and resets to recent when clicking View All Volumes', () => {
+    mockOfflineBookIds = [];
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+    });
+    useReaderStore.setState({
+      readingPositions: {
+        1342: { chapterIndex: 1, chapterPage: 1, globalPage: 5, lastReadAt: new Date().toISOString() },
+      },
+      readingProgress: { 1342: 25 },
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+
+    const sortSelect = screen.getByRole('combobox', { name: 'Sort bookmarks' });
+    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+
+    expect(screen.getByText('No downloaded volumes')).toBeInTheDocument();
+    expect(screen.getByText('Volumes saved for offline reading will appear here.')).toBeInTheDocument();
+
+    const viewAllBtn = screen.getByRole('button', { name: 'View All Volumes' });
+    fireEvent.click(viewAllBtn);
+
+    expect(screen.queryByText('No downloaded volumes')).not.toBeInTheDocument();
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+  });
+
+  it('activates card on click and deactivates on mouseLeave on desktop viewports', () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1024 });
+
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+    });
+    useReaderStore.setState({
+      readingPositions: {
+        1342: { chapterIndex: 1, chapterPage: 1, globalPage: 5, lastReadAt: new Date().toISOString() },
+      },
+      readingProgress: { 1342: 25 },
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    const card = screen.getByRole('article');
+    expect(card).toHaveAttribute('data-active', 'false');
+
+    fireEvent.click(card);
+    expect(card).toHaveAttribute('data-active', 'true');
+
+    fireEvent.mouseLeave(card);
+    expect(card).toHaveAttribute('data-active', 'false');
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
   });
 });
 

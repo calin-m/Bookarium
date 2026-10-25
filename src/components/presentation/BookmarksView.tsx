@@ -37,6 +37,7 @@ const BOOKMARK_SORT_OPTIONS: SortOption[] = [
   { value: 'author_desc', label: 'Author (Z → A)' },
   { value: 'progress_desc', label: 'Progress (High → Low)' },
   { value: 'progress_asc', label: 'Progress (Low → High)' },
+  { value: 'downloaded', label: 'Downloaded' },
 ];
 
 const BOOKMARKS_PAGE_SIZE = 12;
@@ -279,9 +280,9 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
                 aria-label={`${tab.label} (${tab.count} volumes)`}
                 title={`${tab.label} (${tab.count} volumes)`}
                 data-testid={`bookmarks-tab-${tab.id}`}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 md:px-4 py-2 sm:py-2.5 text-xs font-mono uppercase tracking-wider font-semibold border-b-2 transition-all duration-200 cursor-pointer select-none shrink-0 ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 md:px-4 py-2 sm:py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 cursor-pointer select-none shrink-0 ${
                   isActive
-                    ? 'border-primary text-primary font-bold'
+                    ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                 }`}
               >
@@ -311,6 +312,8 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
             <h3 className="font-serif font-bold text-xl text-foreground mb-2">
               {searchQuery.trim()
                 ? `No bookmarks matching "${searchQuery}"`
+                : sortBy === 'downloaded'
+                ? 'No downloaded volumes'
                 : activeFilter === 'all'
                 ? 'No active reading volumes yet'
                 : `No volumes marked as ${activeFilter.replace('_', ' ')}`}
@@ -319,6 +322,8 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
             <p className="text-sm text-muted-foreground font-serif leading-relaxed mb-6">
               {searchQuery.trim()
                 ? 'Try adjusting your search terms, author name, or clear the search query.'
+                : sortBy === 'downloaded'
+                ? 'Volumes saved for offline reading will appear here.'
                 : 'Volumes you begin reading or place bookmarks in will appear in this ledger with exact coordinates, completion percentages, and one-click chapter resume.'}
             </p>
 
@@ -330,6 +335,15 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
                 className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
               >
                 <span>Clear Search</span>
+              </Button>
+            ) : sortBy === 'downloaded' ? (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setSortBy('recent')}
+                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
+              >
+                <span>View All Volumes</span>
               </Button>
             ) : activeFilter !== 'all' ? (
               <Button
@@ -363,6 +377,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
                   isDownloadingOffline={downloadingBookId === vol.book.id}
                   isActive={activeBookId === vol.book.id}
                   onActivate={(bookId) => setActiveBookId(bookId)}
+                  onDeactivate={(bookId) => setActiveBookId((prev) => (prev === bookId ? null : prev))}
                   onToggleOffline={handleToggleOffline}
                   onResume={handleResume}
                   onStatusChange={handleStatusChange}

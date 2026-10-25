@@ -97,5 +97,20 @@ describe('StarRating', () => {
     expect(container).toBeInTheDocument();
     expect(screen.getByText('4/5')).toBeInTheDocument();
   });
+
+  it('supports compactOnMobile in readOnly mode hiding stars 2 to 5 on mobile viewports', () => {
+    const { container } = render(<StarRating value={4} readOnly showLabel compactOnMobile size="sm" />);
+
+    const stars = container.querySelectorAll('svg');
+    expect(stars).toHaveLength(5);
+    // First star should be visible on all viewports
+    expect(stars[0]).not.toHaveClass('hidden');
+    // Subsequent stars should be hidden on mobile (< 640px)
+    expect(stars[1]).toHaveClass('hidden sm:block');
+    expect(stars[4]).toHaveClass('hidden sm:block');
+
+    const label = screen.getByText('4/5');
+    expect(label).toHaveClass('text-[10px] sm:text-xs');
+  });
 });
 

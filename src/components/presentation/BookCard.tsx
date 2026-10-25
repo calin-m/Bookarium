@@ -496,29 +496,29 @@ export const BookCard: React.FC<BookCardProps> = ({
           <div className="space-y-1.5 sm:space-y-2 pt-1.5 sm:pt-2 border-t border-border">
           <div
             onClick={activeView === 'favorites' || activeView === 'bookshelf' ? handleCoverClick : undefined}
-            className={`flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground ${
+            className={`flex items-center justify-between gap-1.5 min-w-0 text-[10px] sm:text-xs text-muted-foreground ${
               activeView === 'favorites' || activeView === 'bookshelf' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
             }`}
             title={activeView === 'favorites' || activeView === 'bookshelf' ? 'Click to rate or change reading status' : undefined}
           >
             {rating ? (
-              <StarRating value={rating} readOnly size="sm" showLabel />
+              <StarRating value={rating} readOnly size="sm" showLabel compactOnMobile />
             ) : (
-              <span className="font-mono text-[10px] sm:text-[11px]">{formatDownloadCount(book.download_count)} reads</span>
+              <span className="font-mono text-[10px] sm:text-[11px] truncate">{formatDownloadCount(book.download_count)} reads</span>
             )}
             {isRestricted ? (
               <span
-                className="text-[9px] sm:text-[10px] font-mono font-medium tracking-wider text-amber-600 dark:text-amber-400 uppercase"
+                className="text-[9px] sm:text-[10px] font-mono font-medium tracking-wider text-amber-600 dark:text-amber-400 uppercase shrink-0 whitespace-nowrap"
                 title={evaluation.reason || `Protected in ${country} under local copyright law`}
               >
                 Protected ({country})
               </span>
             ) : status ? (
-              <span className="text-[9px] sm:text-[10px] font-mono font-bold uppercase text-primary">
+              <span className="text-[9px] sm:text-[10px] font-mono font-bold uppercase text-primary shrink-0 whitespace-nowrap">
                 {status === 'currently_reading' ? '📖 Reading' : status === 'finished' ? '✓ Finished' : '🔖 Want to Read'}
               </span>
             ) : (
-              <span className="text-[9px] sm:text-[10px] font-mono font-medium tracking-wider text-success uppercase">
+              <span className="text-[9px] sm:text-[10px] font-mono font-medium tracking-wider text-success uppercase shrink-0 whitespace-nowrap">
                 CC0 / Free
               </span>
             )}

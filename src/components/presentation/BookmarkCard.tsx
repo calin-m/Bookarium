@@ -23,6 +23,7 @@ export interface BookmarkCardProps {
   isDownloadingOffline?: boolean;
   isActive?: boolean;
   onActivate?: (bookId: number) => void;
+  onDeactivate?: (bookId: number) => void;
   onToggleOffline?: (book: GutendexBook | Book) => void;
   onResume?: (bookId: number) => void;
   onStatusChange?: (bookId: number, status: LedgerItemStatus) => void;
@@ -35,6 +36,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   isDownloadingOffline = false,
   isActive = false,
   onActivate,
+  onDeactivate,
   onToggleOffline,
   onResume,
   onStatusChange,
@@ -81,6 +83,16 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   return (
     <article
       onClick={() => onActivate?.(book.id)}
+      onMouseLeave={() => {
+        if (typeof window === 'undefined' || window.innerWidth >= 768) {
+          onDeactivate?.(book.id);
+        }
+      }}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          onDeactivate?.(book.id);
+        }
+      }}
       data-bookmark-card-id={book.id}
       data-active={isActive ? 'true' : 'false'}
       className={`group relative bg-card rounded-xl border transition-all duration-300 p-5 flex flex-col justify-between overflow-hidden ${
@@ -90,17 +102,23 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
       }`}
       aria-label={`Reading ledger entry for ${book.title}`}
     >
-      {/* Decorative Ribbon Accent */}
-      <div
-        className={`absolute top-0 right-6 w-3 h-6 rounded-b-sm shadow-2xs transition-colors ${
+      {/* Authentic Notched Bookmark Ribbon Marker */}
+      <svg
+        data-testid="bookmark-card-ribbon"
+        viewBox="0 0 16 28"
+        className={`absolute top-0 right-6 w-4 h-7 drop-shadow-2xs origin-top transition-transform duration-300 group-hover:scale-y-110 pointer-events-none ${
           status === 'completed'
-            ? 'bg-emerald-500'
+            ? 'text-emerald-500'
             : status === 'on_hold'
-            ? 'bg-amber-500'
-            : 'bg-primary'
+            ? 'text-amber-500'
+            : 'text-primary'
         }`}
+        fill="currentColor"
         aria-hidden="true"
-      />
+      >
+        <path d="M0 0 H16 V28 L8 22 L0 28 Z" />
+        <path d="M0 0 H16 V2 H0 Z" fill="black" fillOpacity="0.15" />
+      </svg>
 
       <div className="space-y-4">
         {/* Top Meta: Cover + Title + Authors */}
@@ -173,28 +191,6 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                   <Lock className="w-2.5 h-2.5 shrink-0" />
                   <span>Protected ({country})</span>
                 </span>
-              )}
-              {isOffline && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleOffline?.(book);
-                  }}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold border transition-colors cursor-pointer ${
-                    isActive
-                      ? 'bg-destructive/10 text-destructive border-destructive/50'
-                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 border-emerald-500/30 group-hover:border-destructive/50 group-hover:text-destructive group-hover:bg-destructive/5'
-                  } hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10`}
-                  title="Downloaded for offline reading — Click to remove"
-                  aria-label={`Downloaded for offline reading. Click to remove ${book.title} from offline storage.`}
-                  data-testid={`bookmark-card-offline-badge-${book.id}`}
-                >
-                  <CheckCircle2 className={`w-2.5 h-2.5 shrink-0 ${isActive ? 'hidden' : 'group-hover:hidden'}`} />
-                  <Trash2 className={`w-2.5 h-2.5 shrink-0 ${isActive ? 'inline' : 'hidden group-hover:inline'}`} />
-                  <span className={isActive ? 'hidden' : 'group-hover:hidden'}>Downloaded</span>
-                  <span className={isActive ? 'inline' : 'hidden group-hover:inline'}>Remove</span>
-                </button>
               )}
             </div>
 

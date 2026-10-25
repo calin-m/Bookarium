@@ -178,7 +178,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
     if (draftEra) {
       count += draftEra.split(',').filter(Boolean).length;
     }
-    if (draftSort && draftSort !== 'popular') count++;
+    if (draftSort && draftSort !== 'descending') count++;
     if (draftTopic) {
       count += draftTopic.split(',').filter(Boolean).length;
     }
@@ -212,7 +212,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
 
   const handleReset = () => {
     setDraftEra('');
-    setDraftSort('popular');
+    setDraftSort('descending');
     setDraftTopic('');
     setDraftLanguage('');
     setDraftFormat('');
@@ -329,9 +329,9 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                     role="checkbox"
                     aria-checked={isSelected}
                     onClick={() => handleToggleEra(era.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans flex items-center gap-1.5 border transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-foreground text-background border-foreground font-bold shadow-xs'
+                        ? 'bg-foreground text-background border-foreground shadow-xs'
                         : 'bg-card border-border text-foreground hover:border-primary'
                     }`}
                     data-testid={`era-option-${era.id || 'all'}`}
@@ -351,20 +351,20 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
             </h4>
             <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Sort Ordering">
               {SORT_OPTIONS.map((sort) => {
-                const isSelected = (draftSort || 'popular') === (sort.value || 'popular');
+                const isSelected = (draftSort || 'descending') === (sort.value || 'descending');
                 return (
                   <button
-                    key={sort.value || 'popular'}
+                    key={sort.value || 'descending'}
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
                     onClick={() => setDraftSort(sort.value as 'popular' | 'descending' | 'ascending' | '')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans flex items-center gap-1.5 border transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-foreground text-background border-foreground font-bold shadow-xs'
+                        ? 'bg-foreground text-background border-foreground shadow-xs'
                         : 'bg-card border-border text-foreground hover:border-primary'
                     }`}
-                    data-testid={`sort-option-${sort.value || 'popular'}`}
+                    data-testid={`sort-option-${sort.value || 'descending'}`}
                   >
                     <span>{sort.label}</span>
                     {isSelected && <Check className="w-3.5 h-3.5" />}
@@ -400,9 +400,9 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                     role="checkbox"
                     aria-checked={isSelected}
                     onClick={() => handleToggleTopic(facet.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans flex items-center gap-1.5 border transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-foreground text-background border-foreground font-bold shadow-xs'
+                        ? 'bg-foreground text-background border-foreground shadow-xs'
                         : 'bg-card border-border text-foreground hover:border-primary'
                     }`}
                     data-testid={`genre-facet-${facet.id || 'all'}`}
@@ -441,9 +441,9 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                     role="checkbox"
                     aria-checked={isSelected}
                     onClick={() => handleToggleLanguage(lang.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans flex items-center gap-1.5 border transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-foreground text-background border-foreground font-bold shadow-xs'
+                        ? 'bg-foreground text-background border-foreground shadow-xs'
                         : 'bg-card border-border text-foreground hover:border-primary'
                     }`}
                     data-testid={`language-option-${lang.value || 'all'}`}
@@ -482,9 +482,9 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                     role="checkbox"
                     aria-checked={isSelected}
                     onClick={() => handleToggleFormat(fmt.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans flex items-center gap-1.5 border transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-foreground text-background border-foreground font-bold shadow-xs'
+                        ? 'bg-foreground text-background border-foreground shadow-xs'
                         : 'bg-card border-border text-foreground hover:border-primary'
                     }`}
                     data-testid={`format-option-${fmt.value ? fmt.value.replace(/[^a-zA-Z0-9]/g, '-') : 'all'}`}

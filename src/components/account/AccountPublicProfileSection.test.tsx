@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AccountPublicProfileSection } from './AccountPublicProfileSection';
 import type { User } from '@supabase/supabase-js';
@@ -56,10 +56,10 @@ describe('AccountPublicProfileSection', () => {
     expect(screen.getByText('Public Sanctuary')).toBeInTheDocument();
 
     const tablist = screen.getByRole('tablist', { name: /scholar profile sub-sections/i });
-    expect(tablist).toHaveClass('min-w-0', 'overflow-hidden', 'max-w-full');
+    expect(tablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
     const tabs = screen.getAllByRole('tab');
     tabs.forEach((tab) => {
-      expect(tab).toHaveClass('min-w-0');
+      expect(tab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
     });
 
     const usernameInput = screen.getByLabelText(/scholar handle/i);
@@ -87,10 +87,10 @@ describe('AccountPublicProfileSection', () => {
     expect(screen.getByText('Public Sanctuary')).toBeInTheDocument();
 
     const tablist = screen.getByRole('tablist', { name: /scholar profile sub-sections/i });
-    expect(tablist).toHaveClass('min-w-0', 'overflow-hidden', 'max-w-full');
+    expect(tablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
     const tabs = screen.getAllByRole('tab');
     tabs.forEach((tab) => {
-      expect(tab).toHaveClass('min-w-0');
+      expect(tab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
     });
   });
 
@@ -245,11 +245,15 @@ describe('AccountPublicProfileSection', () => {
     const privacyTab = screen.getByRole('tab', { name: /Sanctuary & Privacy/i });
 
     expect(identityTab).toHaveAttribute('aria-selected', 'true');
+    expect(within(identityTab).getByText('Identity & Bio')).toHaveClass('inline');
+    expect(within(privacyTab).getByText('Sanctuary & Privacy')).toHaveClass('hidden', 'md:inline');
     expect(document.getElementById('profile-subpanel-identity')).not.toHaveClass('hidden');
     expect(document.getElementById('profile-subpanel-privacy')).toHaveClass('hidden');
 
     fireEvent.click(privacyTab);
     expect(privacyTab).toHaveAttribute('aria-selected', 'true');
+    expect(within(privacyTab).getByText('Sanctuary & Privacy')).toHaveClass('inline');
+    expect(within(identityTab).getByText('Identity & Bio')).toHaveClass('hidden', 'md:inline');
     expect(document.getElementById('profile-subpanel-privacy')).not.toHaveClass('hidden');
     expect(document.getElementById('profile-subpanel-identity')).toHaveClass('hidden');
   });

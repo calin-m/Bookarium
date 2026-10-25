@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Sparkles, Plus, Edit2, Trash2, CheckCircle2, HardDriveDownload, Lock, AlertTriangle } from 'lucide-react';
+import { BookOpen, Sparkles, Plus, Edit2, Trash2, HardDriveDownload, Lock, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -17,6 +17,8 @@ import { BookshelfMobileModal } from './bookshelf/BookshelfMobileModal';
 import { BookshelfManageModals } from './bookshelf/BookshelfManageModals';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { ROUTES } from '@/config/routes';
+
+export const DOWNLOADED_SHELF_ID = '__downloaded__';
 
 export interface BookshelfRackProps {
   books: GutendexBook[];
@@ -58,6 +60,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const {
     isSaved: checkIsSaved,
     isFavorite: checkIsFavorite,
+    savedBooks,
     toggleSaveBook: toggleSave,
     toggleFavoriteBook: toggleFavorite,
     cloudBookshelves,
@@ -76,6 +79,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const {
     isBookOffline,
+    isLoaded: isOfflineLoaded,
     downloadBook,
     removeBook,
     downloadAll,
@@ -193,13 +197,30 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     }
   };
 
+  const downloadedSavedBooks = useMemo(
+    () => savedBooks.filter((b) => isBookOffline(b.id)),
+    [savedBooks, isBookOffline]
+  );
+
   const defaultShelf = cloudBookshelves.find((s) => s.is_default) || cloudBookshelves[0];
   const currentActiveShelfId = activeBookshelfId || defaultShelf?.id;
-  const isViewingGeneral = defaultShelf ? currentActiveShelfId === defaultShelf.id : true;
+  const isViewingDownloaded = activeBookshelfId === DOWNLOADED_SHELF_ID;
+  const isViewingGeneral = !isViewingDownloaded && (defaultShelf ? currentActiveShelfId === defaultShelf.id : true);
+
+  // Auto-fallback to default shelf if user was viewing Downloaded shelf and it becomes empty
+  useEffect(() => {
+    if (isOfflineLoaded && activeBookshelfId === DOWNLOADED_SHELF_ID && downloadedSavedBooks.length === 0) {
+      setActiveBookshelfId(defaultShelf?.id || null);
+    }
+  }, [isOfflineLoaded, activeBookshelfId, downloadedSavedBooks.length, defaultShelf?.id, setActiveBookshelfId]);
 
   // On the 'General' master shelf, show all books across all collections.
+  // On 'Downloaded' virtual shelf, show only downloaded books.
   // On custom shelves, filter to only the books assigned to that shelf.
   const effectiveShelfBooks = useMemo(() => {
+    if (isViewingDownloaded) {
+      return books.filter((b) => isBookOffline(b.id));
+    }
     if (!showShelfControls || cloudBookshelves.length <= 1 || isViewingGeneral) {
       return books;
     }
@@ -210,7 +231,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
         .map((item) => item.book_id)
     );
     return books.filter((b) => currentShelfBookIds.has(b.id));
-  }, [showShelfControls, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, books]);
+  }, [isViewingDownloaded, isBookOffline, showShelfControls, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, books]);
 
   // Partition shelf books into public domain titles in current jurisdiction vs copyright-restricted titles
   const { downloadableBooks, restrictedBooks } = useMemo(() => {
@@ -227,9 +248,22 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     [downloadableBooks, isBookOffline]
   );
 
-  // Chunk books dynamically into shelves based on container width with balanced distribution
+  // Chunk books into shelves:
+  // - On Bookshelf page (showShelfControls = true): uniform max 12 books per shelf row on desktop
+  //   (scaling down to shelfCapacity on tablet/mobile, e.g. 6 on mobile) filled sequentially (2 shelves of up to 12 = 24/page).
+  // - On Catalog page (showShelfControls = false): predetermined batch sizes (8 or 16) up to shelfCapacity (18).
   const shelves = useMemo(() => {
     if (effectiveShelfBooks.length === 0) return [];
+
+    if (showShelfControls) {
+      const effectiveRowLimit = Math.min(shelfCapacity, 12);
+      const result: GutendexBook[][] = [];
+      for (let i = 0; i < effectiveShelfBooks.length; i += effectiveRowLimit) {
+        result.push(effectiveShelfBooks.slice(i, i + effectiveRowLimit));
+      }
+      return result;
+    }
+
     if (effectiveShelfBooks.length <= shelfCapacity) {
       return [effectiveShelfBooks];
     }
@@ -241,10 +275,12 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       result.push(effectiveShelfBooks.slice(i, i + balancedCapacity));
     }
     return result;
-  }, [effectiveShelfBooks, shelfCapacity]);
+  }, [effectiveShelfBooks, shelfCapacity, showShelfControls]);
 
   const activeShelf = cloudBookshelves.find((s) => s.id === currentActiveShelfId) || defaultShelf;
-  const activeShelfDisplayName = activeShelf?.is_default ? 'General' : (activeShelf?.name || 'General');
+  const activeShelfDisplayName = isViewingDownloaded
+    ? 'Downloaded'
+    : (activeShelf?.is_default ? 'General' : (activeShelf?.name || 'General'));
 
   const handleConfirmClearOfflineShelf = async () => {
     try {
@@ -283,38 +319,56 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       <div className="w-full space-y-8">
         {/* Cloud Bookshelf Header & Multi-Shelf Switcher */}
         {showShelfControls && (
-          <div className="flex flex-wrap items-center justify-between gap-3 px-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-2 min-h-[32px]">
             <div className="flex items-center gap-2 flex-wrap">
           {user && cloudBookshelves.length > 0 ? (
             <>
-              {cloudBookshelves.map((shelf) => {
-                const isActive = (activeBookshelfId === shelf.id) || (!activeBookshelfId && shelf.is_default);
+              {cloudBookshelves.map((shelf, index) => {
+                const isActive = !isViewingDownloaded && ((activeBookshelfId === shelf.id) || (!activeBookshelfId && shelf.is_default));
                 const shelfDisplayName = shelf.is_default ? 'General' : shelf.name;
+                const isGeneral = shelf.is_default || index === 0;
                 return (
-                  <button
-                    key={shelf.id}
-                    type="button"
-                    onClick={() => setActiveBookshelfId(shelf.id)}
-                    aria-label={shelfDisplayName}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium transition-all cursor-pointer select-none ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border'
-                    }`}
-                  >
-                    <span>{shelfDisplayName}</span>
-                    {!shelf.is_default && shelf.is_public === false && (
-                      <Lock className="w-2.5 h-2.5 text-amber-500 inline ml-1 shrink-0" data-testid="private-shelf-badge" />
+                  <React.Fragment key={shelf.id}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveBookshelfId(shelf.id)}
+                      aria-label={shelfDisplayName}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                          : 'bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border'
+                      }`}
+                    >
+                      <span>{shelfDisplayName}</span>
+                      {!shelf.is_default && shelf.is_public === false && (
+                        <Lock className="w-2.5 h-2.5 text-amber-500 inline ml-1 shrink-0" data-testid="private-shelf-badge" />
+                      )}
+                      {shelf.is_default && (
+                        <span className="ml-1.5 opacity-70 text-[10px]">({totalBooksCount ?? books.length})</span>
+                      )}
+                      {!shelf.is_default && (
+                        <span className="ml-1.5 opacity-70 text-[10px]">
+                          ({cloudBookshelfItems.filter((item) => item.bookshelf_id === shelf.id).length})
+                        </span>
+                      )}
+                    </button>
+                    {isGeneral && downloadedSavedBooks.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveBookshelfId(DOWNLOADED_SHELF_ID)}
+                        aria-label="Downloaded"
+                        data-testid="downloaded-shelf-pill"
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none ${
+                          isViewingDownloaded
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                        }`}
+                      >
+                        <span>Downloaded</span>
+                        <span className="ml-1.5 opacity-80 text-[10px]">({downloadedSavedBooks.length})</span>
+                      </button>
                     )}
-                    {shelf.is_default && (
-                      <span className="ml-1.5 opacity-70 text-[10px]">({totalBooksCount ?? books.length})</span>
-                    )}
-                    {!shelf.is_default && (
-                      <span className="ml-1.5 opacity-70 text-[10px]">
-                        ({cloudBookshelfItems.filter((item) => item.bookshelf_id === shelf.id).length})
-                      </span>
-                    )}
-                  </button>
+                  </React.Fragment>
                 );
               })}
 
@@ -331,10 +385,35 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="px-3.5 py-1.5 rounded-full text-xs font-mono font-medium bg-primary text-primary-foreground shadow-sm">
-                General
-              </span>
+              <button
+                type="button"
+                onClick={() => setActiveBookshelfId(null)}
+                aria-label="General"
+                className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none ${
+                  !isViewingDownloaded
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border'
+                }`}
+              >
+                <span>General</span>
+              </button>
               <span className="text-xs font-mono text-muted-foreground">({totalBooksCount ?? books.length} volumes)</span>
+              {downloadedSavedBooks.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveBookshelfId(DOWNLOADED_SHELF_ID)}
+                  aria-label="Downloaded"
+                  data-testid="downloaded-shelf-pill"
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none ${
+                    isViewingDownloaded
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                  }`}
+                >
+                  <span>Downloaded</span>
+                  <span className="ml-1.5 opacity-80 text-[10px]">({downloadedSavedBooks.length})</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -356,10 +435,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
         )}
 
         {/* Actions Cluster: Shelf Management (Edit/Delete) & Offline Downloads */}
-        {((user && activeShelf && !activeShelf.is_default) || effectiveShelfBooks.length > 0) && (
+        {((user && activeShelf && !activeShelf.is_default && !isViewingDownloaded) || effectiveShelfBooks.length > 0) && (
           <div className="flex items-center gap-2 flex-wrap" data-testid="shelf-action-controls">
             {/* Action Controls for Non-Default Custom Shelves */}
-            {user && activeShelf && !activeShelf.is_default && (
+            {user && activeShelf && !activeShelf.is_default && !isViewingDownloaded && (
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -368,7 +447,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     setEditingShelfName(activeShelf.name);
                     setEditingShelfIsPublic(activeShelf.is_public ?? true);
                   }}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors cursor-pointer"
+                  className="h-[26px] w-[26px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors cursor-pointer shrink-0"
                   title={`Rename ${activeShelf.name}`}
                   aria-label={`Rename ${activeShelf.name}`}
                 >
@@ -377,7 +456,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                 <button
                   type="button"
                   onClick={() => setDeletingShelfId(activeShelf.id)}
-                  className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 border border-destructive/20 transition-colors cursor-pointer"
+                  className="h-[26px] w-[26px] flex items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 border border-destructive/20 transition-colors cursor-pointer shrink-0"
                   title={`Delete ${activeShelf.name}`}
                   aria-label={`Delete ${activeShelf.name}`}
                 >
@@ -418,44 +497,18 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     <span className="sm:hidden font-medium">Restricted ({country})</span>
                   </div>
                 ) : downloadableBooks.length > 0 && remainingDownloadableBooks.length === 0 ? (
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      role="status"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 select-none cursor-default"
-                      title={
-                        restrictedBooks.length > 0
-                          ? `All ${downloadableBooks.length} available public domain books are saved offline (${restrictedBooks.length} restricted in ${country})`
-                          : 'All books on this shelf are saved for offline reading'
-                      }
-                      aria-label={restrictedBooks.length > 0 ? 'All Available Saved for Offline' : 'All Saved for Offline'}
-                      data-testid="all-saved-offline-notice"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                      <span className="hidden sm:inline font-medium">
-                        {restrictedBooks.length > 0 ? 'All Available Saved' : 'All Saved for Offline'}
-                      </span>
-                      <span className="sm:hidden font-medium">
-                        {restrictedBooks.length > 0 ? `Saved (${downloadableBooks.length})` : 'Saved'}
-                      </span>
-                      {restrictedBooks.length > 0 && (
-                        <span className="hidden md:inline text-[10px] text-amber-600 dark:text-amber-400 font-mono ml-0.5">
-                          ({restrictedBooks.length} restricted)
-                        </span>
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="chip"
-                      onClick={() => setIsClearingOfflineShelf(true)}
-                      className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
-                      title="Clear all downloaded offline books on this shelf"
-                      aria-label="Clear Offline Shelf"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span className="hidden sm:inline">Clear Offline Shelf</span>
-                      <span className="sm:hidden">Clear</span>
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="chip"
+                    onClick={() => setIsClearingOfflineShelf(true)}
+                    className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
+                    title="Clear all downloaded offline books on this shelf"
+                    aria-label="Clear Offline Shelf"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span className="hidden sm:inline">Clear Offline Shelf</span>
+                    <span className="sm:hidden">Clear</span>
+                  </Button>
                 ) : (
                   <div className="flex items-center gap-1.5">
                     <Button
@@ -509,7 +562,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
       {/* Empty State vs Hardwood Shelf Rails with tactile page turn */}
       <div
-        key={`shelf-content-${currentActiveShelfId || 'general'}-${effectiveShelfBooks.length}`}
+        key={`shelf-content-${currentActiveShelfId || 'general'}`}
         className="animate-page-turn w-full"
         data-testid="shelf-content-container"
       >

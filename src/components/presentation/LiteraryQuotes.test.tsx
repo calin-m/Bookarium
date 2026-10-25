@@ -76,5 +76,14 @@ describe('LiteraryQuotes component', () => {
     expect(new Set(quoteIds).size).toBe(LITERARY_QUOTES.length);
     expect(new Set(bookIds).size).toBe(LITERARY_QUOTES.length);
   });
+
+  it('applies responsive section and balanced header divider spacing classes', () => {
+    const { container } = render(<LiteraryQuotes />);
+    const section = container.querySelector('section');
+    expect(section).toHaveClass('py-10', 'sm:py-16');
+
+    const headerDivider = container.querySelector('.border-b');
+    expect(headerDivider).toHaveClass('pb-6', 'sm:pb-8');
+  });
 });
 

@@ -67,7 +67,9 @@ describe('book-sorting utility', () => {
     expect(BOOKSHELF_SORT_OPTIONS.length).toBeGreaterThan(0);
     expect(FAVORITES_SORT_OPTIONS.length).toBeGreaterThan(0);
     expect(BOOKSHELF_SORT_OPTIONS.some((o) => o.value === 'recent')).toBe(true);
+    expect(BOOKSHELF_SORT_OPTIONS.some((o) => o.value === 'downloaded')).toBe(true);
     expect(FAVORITES_SORT_OPTIONS.some((o) => o.value === 'downloads_desc')).toBe(true);
+    expect(FAVORITES_SORT_OPTIONS.some((o) => o.value === 'downloaded')).toBe(true);
   });
 
   it('handles empty arrays, undefined inputs, and single-item arrays safely', () => {
@@ -150,10 +152,13 @@ describe('book-sorting utility', () => {
     expect(sorted.map((b) => b.id)).toEqual([2, 3, 1]); // 20000, 12000, 5000
   });
 
-  it('preserves order when sortBy is "recent" or unrecognized', () => {
+  it('preserves order when sortBy is "recent", "downloaded", or unrecognized', () => {
     const books = [mockBookB, mockBookA, mockBookC];
     const recent = sortBooks(books, 'recent');
     expect(recent.map((b) => b.id)).toEqual([2, 1, 3]);
+
+    const downloaded = sortBooks(books, 'downloaded');
+    expect(downloaded.map((b) => b.id)).toEqual([2, 1, 3]);
 
     const fallback = sortBooks(books, 'unknown_key');
     expect(fallback.map((b) => b.id)).toEqual([2, 1, 3]);

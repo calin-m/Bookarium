@@ -35,4 +35,10 @@ describe('Footer component', () => {
     const copyrightLink = screen.getByRole('link', { name: /Copyright & Licensing/i });
     expect(copyrightLink).toHaveAttribute('href', '/copyright');
   });
+
+  it('should apply responsive footer padding classes', () => {
+    const { container } = render(<Footer />);
+    const footer = container.querySelector('footer');
+    expect(footer).toHaveClass('pt-10', 'sm:pt-14', 'pb-24', 'md:pb-8');
+  });
 });

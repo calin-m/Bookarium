@@ -11,7 +11,7 @@ describe('AdvancedFilterDrawer component', () => {
         onClose={vi.fn()}
         selectedEra="victorian"
         onEraChange={vi.fn()}
-        selectedSort="popular"
+        selectedSort="descending"
         onSortChange={vi.fn()}
         selectedTopic="philosophy"
         onTopicChange={vi.fn()}
@@ -40,7 +40,7 @@ describe('AdvancedFilterDrawer component', () => {
         selectedEra=""
         onEraChange={handleEraChange}
         onApplyFilters={handleApply}
-        selectedSort="popular"
+        selectedSort="descending"
         selectedTopic=""
         selectedLanguage=""
         selectedFormat=""
@@ -67,7 +67,7 @@ describe('AdvancedFilterDrawer component', () => {
         isOpen={true}
         onClose={vi.fn()}
         selectedEra="victorian"
-        selectedSort="popular"
+        selectedSort="descending"
         selectedTopic=""
         selectedLanguage=""
         selectedFormat=""
@@ -101,7 +101,7 @@ describe('AdvancedFilterDrawer component', () => {
         isOpen={true}
         onClose={vi.fn()}
         selectedEra="victorian"
-        selectedSort="popular"
+        selectedSort="descending"
         onSortChange={handleSortChange}
         onApplyFilters={handleApply}
         selectedTopic=""
@@ -112,7 +112,7 @@ describe('AdvancedFilterDrawer component', () => {
       />
     );
 
-    const sortChip = screen.getByTestId('sort-option-descending');
+    const sortChip = screen.getByTestId('sort-option-popular');
     expect(sortChip).toBeInTheDocument();
     expect(sortChip).toHaveAttribute('role', 'radio');
     expect(sortChip).toHaveAttribute('aria-checked', 'false');
@@ -121,7 +121,7 @@ describe('AdvancedFilterDrawer component', () => {
     expect(handleApply).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
-    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ sort: 'descending' }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ sort: 'popular' }));
   });
 
   it('should stage genre facet selection and commit on Show Results click', () => {
@@ -308,7 +308,7 @@ describe('AdvancedFilterDrawer component', () => {
         isOpen={true}
         onClose={handleClose}
         selectedEra="victorian"
-        selectedSort="popular"
+        selectedSort="descending"
         selectedTopic=""
         selectedLanguage=""
         selectedFormat=""
@@ -344,6 +344,7 @@ describe('AdvancedFilterDrawer component', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Reset all filters/i }));
     expect(handleReset).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('sort-option-descending')).toHaveAttribute('aria-checked', 'true');
   });
 
   it('should apply filters and close drawer on apply button click', () => {

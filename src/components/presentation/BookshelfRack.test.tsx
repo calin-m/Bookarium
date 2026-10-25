@@ -662,18 +662,14 @@ describe('BookshelfRack Component', () => {
     fetchSpy.mockRestore();
   });
 
-  it('renders All Saved for Offline notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll', async () => {
+  it('renders Downloaded notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll', async () => {
     const { getOfflineBookIds, removeOfflineBook } = await import('@/lib/offline-storage');
     vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
 
     render(<BookshelfRack books={mockBooks.slice(0, 1)} />);
 
-    // Verify "All Saved for Offline" is rendered as a status notice, NOT as a button
-    const notice = await screen.findByTestId('all-saved-offline-notice');
-    expect(notice).toBeInTheDocument();
-    expect(notice).toHaveAttribute('role', 'status');
-    expect(within(notice).getByText('All Saved for Offline')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /All Saved/i })).toBeNull();
+    // Verify redundant status pill is removed
+    expect(screen.queryByTestId('all-saved-offline-notice')).toBeNull();
 
     const clearShelfBtn = await screen.findByRole('button', { name: /Clear Offline Shelf/i });
     expect(clearShelfBtn).toBeInTheDocument();
@@ -739,7 +735,7 @@ describe('BookshelfRack Component', () => {
     expect(buttons[2]).toBe(downloadShelfBtn);
   });
 
-  it('skips restricted books when clicking Download Shelf Offline and displays All Available Saved status', async () => {
+  it('skips restricted books when clicking Download Shelf Offline and renders Clear Offline Shelf when all available are cached', async () => {
     const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
     act(() => {
       useJurisdictionStore.setState({ country: 'RO' });
@@ -764,10 +760,11 @@ describe('BookshelfRack Component', () => {
 
     render(<BookshelfRack books={[publicDomainBook, restrictedBook]} />);
 
-    const notice = await screen.findByTestId('all-saved-offline-notice');
-    expect(notice).toBeInTheDocument();
-    expect(within(notice).getByText('All Available Saved')).toBeInTheDocument();
-    expect(within(notice).getByText('(1 restricted)')).toBeInTheDocument();
+    // Redundant status pill is removed
+    expect(screen.queryByTestId('all-saved-offline-notice')).toBeNull();
+    // Clear Offline Shelf is available directly
+    const clearBtn = await screen.findByRole('button', { name: 'Clear Offline Shelf' });
+    expect(clearBtn).toBeInTheDocument();
 
     act(() => {
       useJurisdictionStore.setState({ country: 'US' });
@@ -878,6 +875,54 @@ describe('BookshelfRack Component', () => {
       }
     });
 
+    it('enforces uniform 12-book row limit on Bookshelf page, splitting 15 books into 12 on first shelf and 3 on second', () => {
+      const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 1280 });
+
+      try {
+        const fifteenBooks = Array.from({ length: 15 }, (_, i) => ({
+          ...mockBooks[i % mockBooks.length],
+          id: 4000 + i,
+          title: `Book ${i}`,
+        }));
+        const { container } = render(<BookshelfRack books={fifteenBooks} showShelfControls={true} />);
+        const shelfRows = container.querySelectorAll('.shelf-ambient-niche');
+        expect(shelfRows.length).toBe(2);
+        // First shelf row has 12 books, second shelf row has 3 books
+        const firstShelfBooks = shelfRows[0].querySelectorAll('[data-testid^="shelf-book-"]');
+        const secondShelfBooks = shelfRows[1].querySelectorAll('[data-testid^="shelf-book-"]');
+        expect(firstShelfBooks.length).toBe(12);
+        expect(secondShelfBooks.length).toBe(3);
+      } finally {
+        if (originalClientWidth) {
+          Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidth);
+        }
+      }
+    });
+
+    it('preserves predetermined capacity and balanced distribution in Catalog mode (showShelfControls = false)', () => {
+      const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 1280 });
+
+      try {
+        const sixteenBooks = Array.from({ length: 16 }, (_, i) => ({
+          ...mockBooks[i % mockBooks.length],
+          id: 5000 + i,
+          title: `Catalog Book ${i}`,
+        }));
+        const { container } = render(<BookshelfRack books={sixteenBooks} showShelfControls={false} />);
+        const shelfRows = container.querySelectorAll('.shelf-ambient-niche');
+        // In Catalog mode on 1280px (shelfCapacity = 18), 16 books fit on 1 shelf row
+        expect(shelfRows.length).toBe(1);
+        const booksOnRow = shelfRows[0].querySelectorAll('[data-testid^="shelf-book-"]');
+        expect(booksOnRow.length).toBe(16);
+      } finally {
+        if (originalClientWidth) {
+          Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidth);
+        }
+      }
+    });
+
     it('renders shelf content with tactile animate-page-turn container and updates on shelf change', () => {
       useAuthStore.setState({
         user: { id: 'user-1', email: 'test@example.com' } as any,
@@ -969,6 +1014,143 @@ describe('BookshelfRack Component', () => {
     });
 
     expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
+  });
+
+  it('renders Downloaded shelf pill next to General when downloaded books exist and handles shelf switching', async () => {
+    useAuthStore.setState({ user: { id: 'user-1', email: 'scholar@example.com' } as any });
+    useBookshelfStore.setState({
+      savedBooks: [mockBooks[0], mockBooks[1]],
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+      ],
+      activeBookshelfId: 'shelf-1',
+    });
+
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
+
+    render(<BookshelfRack books={[mockBooks[0], mockBooks[1]]} />);
+
+    const downloadedPill = await screen.findByTestId('downloaded-shelf-pill');
+    expect(downloadedPill).toBeInTheDocument();
+    expect(downloadedPill).toHaveTextContent('Downloaded(1)');
+
+    fireEvent.click(downloadedPill);
+    expect(useBookshelfStore.getState().activeBookshelfId).toBe('__downloaded__');
+  });
+
+  it('renders Downloaded shelf pill in guest mode when books are downloaded', async () => {
+    useAuthStore.setState({ user: null });
+    useBookshelfStore.setState({
+      savedBooks: [mockBooks[0]],
+      cloudBookshelves: [],
+      activeBookshelfId: null,
+    });
+
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
+
+    render(<BookshelfRack books={[mockBooks[0]]} />);
+
+    const downloadedPill = await screen.findByTestId('downloaded-shelf-pill');
+    expect(downloadedPill).toBeInTheDocument();
+    expect(downloadedPill).toHaveTextContent('Downloaded(1)');
+  });
+
+  it('does not render Downloaded shelf pill when no books are downloaded', async () => {
+    useAuthStore.setState({ user: null });
+    useBookshelfStore.setState({
+      savedBooks: [mockBooks[0]],
+      cloudBookshelves: [],
+      activeBookshelfId: null,
+    });
+
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    render(<BookshelfRack books={[mockBooks[0]]} />);
+
+    expect(screen.queryByTestId('downloaded-shelf-pill')).toBeNull();
+  });
+
+  it('automatically falls back from Downloaded shelf to default shelf when downloaded books become empty (signed-in)', async () => {
+    useAuthStore.setState({ user: { id: 'user-1' } as any });
+    useBookshelfStore.setState({
+      savedBooks: [],
+      cloudBookshelves: [
+        { id: 'default-shelf', name: 'General', is_default: true, user_id: 'user-1', created_at: '', updated_at: '' },
+      ],
+      activeBookshelfId: '__downloaded__',
+    });
+
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    render(<BookshelfRack books={[]} />);
+
+    await waitFor(() => {
+      expect(useBookshelfStore.getState().activeBookshelfId).toBe('default-shelf');
+    });
+  });
+
+  it('automatically falls back from Downloaded shelf to null when downloaded books become empty (guest mode)', async () => {
+    useAuthStore.setState({ user: null });
+    useBookshelfStore.setState({
+      savedBooks: [],
+      cloudBookshelves: [],
+      activeBookshelfId: '__downloaded__',
+    });
+
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    render(<BookshelfRack books={[]} />);
+
+    await waitFor(() => {
+      expect(useBookshelfStore.getState().activeBookshelfId).toBeNull();
+    });
+  });
+
+  it('filters effective shelf books to offline books and shows Downloaded empty state in standalone Downloaded mode', async () => {
+    useAuthStore.setState({ user: null });
+    useBookshelfStore.setState({
+      savedBooks: [mockBooks[0], mockBooks[1]],
+      cloudBookshelves: [],
+      activeBookshelfId: '__downloaded__',
+    });
+
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
+
+    const { rerender } = render(<BookshelfRack books={[mockBooks[0], mockBooks[1]]} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`shelf-book-${mockBooks[0].id}`)).toBeInTheDocument();
+      expect(screen.queryByTestId(`shelf-book-${mockBooks[1].id}`)).toBeNull();
+    });
+
+    // When no offline books exist in provided books array
+    rerender(<BookshelfRack books={[]} />);
+    expect(screen.getByText(/no books found on "Downloaded"/i)).toBeInTheDocument();
+  });
+
+  it('resets active bookshelf to null when clicking General pill in guest mode while viewing Downloaded shelf', async () => {
+    useAuthStore.setState({ user: null });
+    useBookshelfStore.setState({
+      savedBooks: [mockBooks[0]],
+      cloudBookshelves: [],
+      activeBookshelfId: '__downloaded__',
+    });
+
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
+
+    render(<BookshelfRack books={[mockBooks[0]]} />);
+
+    const generalBtn = await screen.findByRole('button', { name: 'General' });
+    fireEvent.click(generalBtn);
+
+    expect(useBookshelfStore.getState().activeBookshelfId).toBeNull();
   });
 });
 

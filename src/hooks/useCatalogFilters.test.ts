@@ -19,7 +19,7 @@ describe('useCatalogFilters', () => {
     expect(result.current.topic).toBe('');
     expect(result.current.language).toBe('');
     expect(result.current.era).toBe('');
-    expect(result.current.sort).toBe('popular');
+    expect(result.current.sort).toBe('descending');
     expect(result.current.page).toBe(1);
     expect(result.current.pageSize).toBe(16);
     expect(result.current.activeView).toBe('catalog');
@@ -100,7 +100,7 @@ describe('useCatalogFilters', () => {
     expect(result.current.search).toBe('');
     expect(result.current.topic).toBe('');
     expect(result.current.era).toBe('');
-    expect(result.current.sort).toBe('popular');
+    expect(result.current.sort).toBe('descending');
     expect(result.current.page).toBe(1);
     expect(result.current.activeFilterChips).toEqual([]);
   });
@@ -211,7 +211,7 @@ describe('parseFiltersFromUrl', () => {
     expect(parsed.page).toBe(1);
     expect(parsed.search).toBe('');
     expect(parsed.topic).toBe('');
-    expect(parsed.sort).toBe('popular');
+    expect(parsed.sort).toBe('descending');
     expect(parsed.format).toBe('');
     expect(parsed.view).toBe('catalog');
   });

@@ -186,26 +186,26 @@ describe('AccountPage', () => {
 
     // Verify Tier-2 Sub-Tabs inside Habits & Accolades (2 tabs: Streaks & Challenge, Accolades Compendium)
     const habitsSubTablist = screen.getByRole('tablist', { name: /Habits and library sub-sections/i });
-    expect(habitsSubTablist).toHaveClass('w-full', 'sm:w-auto', 'flex', 'sm:inline-flex', 'min-w-0', 'overflow-hidden');
+    expect(habitsSubTablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
 
     const streaksSubTab = within(habitsSubTablist).getByRole('tab', { name: /Streaks & Challenge/i });
     const accoladesSubTab = within(habitsSubTablist).getByRole('tab', { name: /Accolades Compendium/i });
     expect(within(habitsSubTablist).queryByRole('tab', { name: /Library Breakdown/i })).not.toBeInTheDocument();
 
-    expect(streaksSubTab).toHaveClass('flex-1', 'min-w-0', 'sm:flex-none', 'whitespace-nowrap', 'border');
-    expect(accoladesSubTab).toHaveClass('flex-1', 'min-w-0', 'sm:flex-none', 'whitespace-nowrap', 'border');
+    expect(streaksSubTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
+    expect(accoladesSubTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
 
-    // Verify concise mobile labels and full desktop labels
-    expect(within(streaksSubTab).getByText('Streaks')).toHaveClass('sm:hidden', 'truncate');
-    expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('hidden', 'sm:inline');
-    expect(within(accoladesSubTab).getByText('Accolades')).toHaveClass('sm:hidden', 'truncate');
-    expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('hidden', 'sm:inline');
+    // Verify responsive active label expansion contract (active shows label on mobile, inactive collapses on < md)
+    expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('inline');
+    expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('hidden', 'md:inline');
 
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveAttribute('hidden');
     expect(document.getElementById('habits-subpanel-accolades')).toHaveClass('hidden');
     expect(document.getElementById('habits-subpanel-accolades')).toHaveAttribute('hidden');
     fireEvent.click(accoladesSubTab);
+    expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('inline');
+    expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('hidden', 'md:inline');
     expect(document.getElementById('habits-subpanel-accolades')).not.toHaveClass('hidden');
     expect(document.getElementById('habits-subpanel-accolades')).not.toHaveAttribute('hidden');
 
@@ -623,7 +623,7 @@ describe('AccountPage', () => {
       }
     });
 
-    it('enforces overflow-x-clip on root and main layout containers and solid border-border on active Tier-2 Habits sub-tabs', () => {
+    it('enforces overflow-x-clip on root and main layout containers and solid border-primary on active Tier-2 Habits sub-tabs', () => {
       render(<AccountPage />);
 
       const main = screen.getByRole('main');
@@ -633,7 +633,7 @@ describe('AccountPage', () => {
       expect(root).toHaveClass('overflow-x-clip');
 
       const streaksTab = screen.getByRole('tab', { name: 'Streaks & Challenge' });
-      expect(streaksTab).toHaveClass('border-border');
+      expect(streaksTab).toHaveClass('border-primary');
       expect(streaksTab).not.toHaveClass('border-primary/30');
     });
 

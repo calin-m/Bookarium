@@ -105,8 +105,11 @@ describe('BookshelfSpine Component', () => {
       />
     );
 
-    expect(screen.getByText('Downloaded')).toBeInTheDocument();
+    // Redundant top Downloaded pill is removed; offline action is consolidated into bottom 4-state button
+    expect(screen.queryByTitle(/Downloaded for offline reading — Click to remove/i)).toBeNull();
     const offlineBtn = screen.getByLabelText(`Remove offline copy of ${mockBook.title}`);
+    expect(offlineBtn).toBeInTheDocument();
+    expect(offlineBtn).toHaveClass('flex', 'items-center', 'justify-center');
     fireEvent.click(offlineBtn);
     expect(handleToggleOffline).toHaveBeenCalledWith(mockBook);
   });
