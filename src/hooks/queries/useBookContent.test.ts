@@ -381,6 +381,50 @@ describe('useBookContent hook', () => {
     useReaderStore.setState({ currentBook: null, readingPositions: {} });
     useBookshelfStore.setState({ savedBooks: [], favoriteBooks: [], recentBooks: [] });
   });
+
+  it('enforces LegalRestrictionError in network catch block when offline book is restricted in jurisdiction', async () => {
+    const { LegalRestrictionError } = await import('./useBookContent');
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    const { getOfflineBookRecord } = await import('@/lib/offline-storage');
+
+    useJurisdictionStore.setState({ country: 'RO' });
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce(null).mockResolvedValueOnce({
+      bookId: 84,
+      title: 'Frankenstein',
+      text: 'Frankenstein offline text',
+      downloadedAt: new Date().toISOString(),
+      byteSize: 512,
+      authors: [{ name: 'Restricted Modern Author', birth_year: 1940, death_year: 2010 }],
+    });
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network offline'));
+    await expect(fetchBookContent('https://example.com/stream.txt', 84)).rejects.toThrow(
+      LegalRestrictionError
+    );
+    fetchSpy.mockRestore();
+    useJurisdictionStore.setState({ country: 'US' });
+  });
+
+  it('returns offline text when network fails and offline record has no local author metadata', async () => {
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+    const { getOfflineBookRecord } = await import('@/lib/offline-storage');
+
+    useJurisdictionStore.setState({ country: 'RO' });
+    vi.mocked(getOfflineBookRecord).mockResolvedValueOnce(null).mockResolvedValueOnce({
+      bookId: 7777,
+      title: 'Legacy Offline Book',
+      text: 'Legacy offline text without dates',
+      downloadedAt: new Date().toISOString(),
+      byteSize: 512,
+      authors: undefined,
+    });
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network offline'));
+    const content = await fetchBookContent('https://example.com/stream.txt', 7777);
+    expect(content).toBe('Legacy offline text without dates');
+    fetchSpy.mockRestore();
+    useJurisdictionStore.setState({ country: 'US' });
+  });
 });
 
 

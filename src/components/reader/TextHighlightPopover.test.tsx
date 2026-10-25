@@ -331,6 +331,15 @@ describe('TextHighlightPopover', () => {
     fireEvent.click(screen.getByTestId('overlap-tab-fellow'));
     expect(screen.getByTestId('popover-fellow-attribution')).toBeInTheDocument();
     expect(screen.getByText(/Fellow scholar note on Hamlet/i)).toBeInTheDocument();
+
+    // When existingAnnotationId is present, In My Notes badge and Edit My Note button are shown
+    expect(screen.getByTestId('fellow-popover-saved-badge')).toHaveTextContent('In My Notes');
+    const editBtn = screen.getByTestId('fellow-popover-add-own-note-btn');
+    expect(editBtn).toHaveTextContent('Edit My Note');
+
+    // Clicking Edit My Note switches to My Note tab and expands textarea
+    fireEvent.click(editBtn);
+    expect(screen.getByTestId('highlight-note-textarea')).toBeInTheDocument();
   });
 
   it('renders privacy-aware fallback text when fellow annotation has no note', () => {

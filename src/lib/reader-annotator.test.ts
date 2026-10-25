@@ -4,6 +4,7 @@ import {
   areAnnotationsOverlapping,
   computeSharedQuoteSegments,
   pairOverlappingAnnotations,
+  findMatchingOwnAnnotation,
 } from './reader-annotator';
 import type { Annotation, FellowAnnotation } from '@/stores/useAnnotationStore';
 
@@ -284,4 +285,71 @@ describe('pairOverlappingAnnotations', () => {
     expect(result[1].pairedFellowAnnotation).toBeUndefined();
   });
 });
+
+describe('findMatchingOwnAnnotation', () => {
+  const ownAnn: Annotation = {
+    id: 'own-1',
+    bookId: 84,
+    chapterIndex: 2,
+    chapterPage: 4,
+    selectedText: 'It is a truth universally acknowledged',
+    color: 'yellow',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  };
+
+  it('finds exact matching own annotation', () => {
+    const fellow: FellowAnnotation = {
+      id: 'fellow-1',
+      bookId: 84,
+      chapterIndex: 2,
+      chapterPage: 4,
+      selectedText: 'It is a truth universally acknowledged',
+      color: 'amber',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      isFellow: true,
+      fellowUsername: 'plato',
+    };
+
+    const match = findMatchingOwnAnnotation([ownAnn], fellow);
+    expect(match?.id).toBe('own-1');
+  });
+
+  it('finds substring overlapping own annotation', () => {
+    const fellow: FellowAnnotation = {
+      id: 'fellow-1',
+      bookId: 84,
+      chapterIndex: 2,
+      chapterPage: 4,
+      selectedText: 'truth universally',
+      color: 'amber',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      isFellow: true,
+      fellowUsername: 'plato',
+    };
+
+    const match = findMatchingOwnAnnotation([ownAnn], fellow);
+    expect(match?.id).toBe('own-1');
+  });
+
+  it('returns undefined when bookId or chapter differs', () => {
+    const differentBook: FellowAnnotation = {
+      id: 'fellow-diff',
+      bookId: 99,
+      chapterIndex: 2,
+      chapterPage: 4,
+      selectedText: 'It is a truth universally acknowledged',
+      color: 'amber',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      isFellow: true,
+      fellowUsername: 'plato',
+    };
+
+    expect(findMatchingOwnAnnotation([ownAnn], differentBook)).toBeUndefined();
+  });
+});
+
 

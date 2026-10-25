@@ -288,6 +288,63 @@ describe('NotebookQuoteCard', () => {
 
     expect(onSaveFellowAsOwnMock).toHaveBeenCalledWith(fellowAnnotation);
   });
+
+  it('renders In My Notes badge and Edit My Note when matching personal annotation exists', async () => {
+    const fellowAnnotation = {
+      ...mockAnnotation,
+      id: 'fellow-ann-with-match',
+      isFellow: true as const,
+      fellowUsername: 'marcus_a',
+      fellowDisplayName: 'Marcus Aurelius',
+      note: 'Fellow philosophy reflection',
+    };
+    const matchingOwn = {
+      ...mockAnnotation,
+      id: 'own-match-1',
+      note: 'My stoic meditation',
+      color: 'mint' as const,
+    };
+    const onSaveFellowAsOwnMock = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <NotebookQuoteCard
+        {...defaultProps}
+        annotation={fellowAnnotation}
+        matchingOwnAnnotation={matchingOwn}
+        onSaveFellowAsOwn={onSaveFellowAsOwnMock}
+      />
+    );
+
+    // Save to My Notes should NOT be present; In My Notes badge should be rendered
+    expect(screen.queryByTestId('notebook-save-fellow-btn-fellow-ann-with-match')).not.toBeInTheDocument();
+    expect(screen.getByTestId('notebook-fellow-saved-badge-fellow-ann-with-match')).toHaveTextContent('In My Notes');
+
+    // Matching personal reflection should be displayed
+    expect(screen.getByTestId('notebook-matching-own-note-fellow-ann-with-match')).toHaveTextContent('My stoic meditation');
+
+    // Action button says Edit My Note
+    const editBtn = screen.getByTestId('notebook-add-fellow-note-btn-fellow-ann-with-match');
+    expect(editBtn).toHaveTextContent('Edit My Note');
+
+    // Click Edit My Note to open textarea pre-filled with existing note
+    fireEvent.click(editBtn);
+    const textarea = screen.getByTestId('notebook-fellow-note-textarea-fellow-ann-with-match') as HTMLTextAreaElement;
+    expect(textarea.value).toBe('My stoic meditation');
+
+    // Edit and save
+    fireEvent.change(textarea, { target: { value: 'Updated stoic reflection' } });
+    const saveNoteBtn = screen.getByTestId('notebook-save-fellow-with-note-btn-fellow-ann-with-match');
+
+    await act(async () => {
+      fireEvent.click(saveNoteBtn);
+    });
+
+    expect(onSaveFellowAsOwnMock).toHaveBeenCalledWith(
+      fellowAnnotation,
+      'Updated stoic reflection',
+      'mint'
+    );
+  });
 });
 
 

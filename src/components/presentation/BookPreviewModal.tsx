@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, RotateCw, Quote, BookOpen, AlertTriangle, HardDriveDownload, CheckCircle2, Loader2 } from 'lucide-react';
+import { Sparkles, RotateCw, Quote, BookOpen, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
@@ -14,7 +14,6 @@ import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisory
 import { evaluateContentAdvisory } from '@/lib/content-advisory';
 import { BookCard } from './BookCard';
 import { NotablePassagesSpread } from './NotablePassagesSpread';
-import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 
 export interface ElementRect {
   top: number;
@@ -51,7 +50,6 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const [isGlidedIn, setIsGlidedIn] = useState(false);
   const [isCoverOpen, setIsCoverOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [isRemoveOfflineModalOpen, setIsRemoveOfflineModalOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
   const { bookRatings, bookStatuses, setBookRating, setReadingStatus } = useHydratedBookshelf();
@@ -291,51 +289,6 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono text-muted-foreground opacity-60">p. 2</span>
-                    {!isRestricted && onToggleOffline && (
-                      <button
-                        type="button"
-                        disabled={isDownloadingOffline}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isOffline) {
-                            setIsRemoveOfflineModalOpen(true);
-                          } else {
-                            onToggleOffline(book);
-                          }
-                        }}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-mono transition-colors ${
-                          isDownloadingOffline
-                            ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
-                            : isOffline
-                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 cursor-pointer'
-                            : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer'
-                        }`}
-                        aria-label={
-                          isDownloadingOffline
-                            ? `Downloading ${book.title} for offline reading`
-                            : isOffline
-                            ? `Remove offline copy of ${book.title}`
-                            : `Save ${book.title} for offline reading`
-                        }
-                        title={
-                          isDownloadingOffline
-                            ? 'Saving for offline reading...'
-                            : isOffline
-                            ? 'Downloaded for offline reading — Click to remove'
-                            : 'Save for offline reading'
-                        }
-                        data-testid={`preview-offline-toggle-${book.id}`}
-                      >
-                        {isDownloadingOffline ? (
-                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                        ) : isOffline ? (
-                          <CheckCircle2 className="w-3 h-3 shrink-0" />
-                        ) : (
-                          <HardDriveDownload className="w-3 h-3 shrink-0" />
-                        )}
-                        <span>{isDownloadingOffline ? 'Saving...' : isOffline ? 'Downloaded' : 'Save Offline'}</span>
-                      </button>
-                    )}
                     {onReadBook && (
                       isRestricted ? (
                         <Button
@@ -505,7 +458,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                 title="Click to flip open or close volume"
               >
                 <div className="w-full h-full pointer-events-none">
-                  <BookCard book={book} isOffline={isOffline} />
+                  <BookCard book={book} isOffline={false} />
                 </div>
 
                 {/* 3D Spine & Page Edge Accents: Dissolve smoothly into flat card as it docks into grid */}
@@ -656,18 +609,6 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
           </div>
         )}
       </div>
-
-      {book && onToggleOffline && (
-        <RemoveOfflineBookModal
-          isOpen={isRemoveOfflineModalOpen}
-          bookTitle={book.title}
-          onClose={() => setIsRemoveOfflineModalOpen(false)}
-          onConfirm={() => {
-            onToggleOffline(book);
-            setIsRemoveOfflineModalOpen(false);
-          }}
-        />
-      )}
     </div>
   );
 };

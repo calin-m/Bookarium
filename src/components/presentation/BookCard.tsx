@@ -136,18 +136,6 @@ export const BookCard: React.FC<BookCardProps> = ({
       }
       return;
     }
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      if (activeView === 'favorites' || activeView === 'bookshelf') {
-        if (onPreviewClick) {
-          const cardEl = cardRef.current || ((e.currentTarget as HTMLElement).closest('[data-testid^="book-card-"]') as HTMLElement);
-          onPreviewClick(book, cardEl ? cardEl.getBoundingClientRect() : undefined);
-          return;
-        }
-      }
-      useReaderStore.getState().openReader(book);
-      router.push(ROUTES.READ(book.id));
-      return;
-    }
     if (onPreviewClick) {
       const cardEl = cardRef.current || ((e.currentTarget as HTMLElement).closest('[data-testid^="book-card-"]') as HTMLElement);
       if (cardEl) {
@@ -158,7 +146,15 @@ export const BookCard: React.FC<BookCardProps> = ({
           width: rect.width,
           height: rect.height,
         });
+      } else {
+        onPreviewClick(book);
       }
+      return;
+    }
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      useReaderStore.getState().openReader(book);
+      router.push(ROUTES.READ(book.id));
+      return;
     }
   };
 
@@ -262,15 +258,15 @@ export const BookCard: React.FC<BookCardProps> = ({
                 setIsRemoveOfflineModalOpen(true);
               }
             }}
-            className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono uppercase tracking-wider font-semibold bg-card/95 backdrop-blur-xs text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-xs hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group/offline"
+            className="absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono uppercase tracking-wider font-semibold bg-card/95 backdrop-blur-xs text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 shadow-xs group-hover:border-destructive/50 group-hover:text-destructive group-hover:bg-destructive/5 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
             data-testid={`book-card-offline-badge-${book.id}`}
             title="Downloaded for offline reading — Click to remove"
             aria-label={`Downloaded for offline reading. Click to remove ${book.title} from offline storage.`}
           >
-            <CheckCircle2 className="w-2.5 h-2.5 shrink-0 group-hover/offline:hidden" />
-            <Trash2 className="w-2.5 h-2.5 shrink-0 hidden group-hover/offline:inline" />
-            <span className="group-hover/offline:hidden">Downloaded</span>
-            <span className="hidden group-hover/offline:inline">Remove</span>
+            <CheckCircle2 className="w-2.5 h-2.5 shrink-0 group-hover:hidden" />
+            <Trash2 className="w-2.5 h-2.5 shrink-0 hidden group-hover:inline" />
+            <span className="group-hover:hidden">Downloaded</span>
+            <span className="hidden group-hover:inline">Remove</span>
           </button>
         )}
 

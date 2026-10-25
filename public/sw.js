@@ -4,7 +4,7 @@
  * and seamless fallback for saved IndexedDB book reading in offline mode.
  */
 
-const CACHE_NAME = 'bookarium-app-shell-v1';
+const CACHE_NAME = 'bookarium-app-shell-v2';
 
 const STATIC_PRECACHE = [
   '/',
@@ -78,7 +78,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Navigation requests: Network-first, fallback to cached App Shell ('/')
+  // 2. Navigation requests: Network-first, fallback to cached document or App Shell ('/')
   if (request.mode === 'navigate') {
     const isPrivateAuthRoute =
       url.pathname === '/account' ||
@@ -98,6 +98,8 @@ self.addEventListener('fetch', (event) => {
           if (!isPrivateAuthRoute) {
             const cached = await caches.match(request);
             if (cached) return cached;
+            const cachedWithoutSearch = await caches.match(url.pathname, { ignoreSearch: true });
+            if (cachedWithoutSearch) return cachedWithoutSearch;
           }
           return caches.match('/');
         })
@@ -129,9 +131,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Default: Stale-While-Revalidate
+  // 4. Default: Stale-While-Revalidate with RSC cache fallback for reader routes
   event.respondWith(
-    caches.match(request).then((cached) => {
+    caches.match(request).then(async (cached) => {
+      if (cached) return cached;
+
+      // If offline and requesting an RSC payload for /read/[id], try matching with ignoreSearch
+      if (
+        url.pathname.startsWith('/read/') &&
+        (url.searchParams.has('_rsc') || request.headers.get('RSC') === '1')
+      ) {
+        const cachedRsc = await caches.match(url.pathname, { ignoreSearch: true });
+        if (cachedRsc) return cachedRsc;
+      }
+
       const fetchPromise = fetch(request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {

@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-10-24T14:11:38.618Z",
+  "timestamp": "2026-10-25T09:11:47.458Z",
   "status": "PASSED",
   "testSummary": {
     "totalSuites": 187,
-    "totalTests": 1852
+    "totalTests": 1869
   },
   "gateways": {
     "pass05_secrets": {
@@ -21,12 +21,12 @@
     "pass3_coverage": {
       "status": "PASSED",
       "totalSuites": 187,
-      "totalTests": 1852,
+      "totalTests": 1869,
       "metrics": {
-        "lines": 95.78,
-        "statements": 94.42,
-        "functions": 92.39,
-        "branches": 85.04
+        "lines": 95.64,
+        "statements": 94.31,
+        "functions": 92.79,
+        "branches": 85.15
       }
     },
     "pass4_docs_sync": {
@@ -39,7 +39,7 @@
     "pass6_quality_suite": {
       "status": "PASSED",
       "eslintErrors": 0,
-      "eslintWarnings": 0,
+      "eslintWarnings": 5,
       "knipErrors": 0,
       "knipIssues": []
     },

@@ -518,6 +518,62 @@ describe('BookmarksView', () => {
     const section = container.querySelector('#bookmarks-ledger-section');
     expect(section).toHaveClass('py-6', 'sm:py-12');
   });
+
+  it('activates bookmark card on click and clears active state when clicking outside', () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 60);
+
+    const { container } = renderWithClient(<BookmarksView />);
+
+    const card = container.querySelector('[data-bookmark-card-id="1342"]');
+    expect(card).toBeInTheDocument();
+    expect(card).toHaveAttribute('data-active', 'false');
+
+    // Click the card body to activate it
+    fireEvent.click(card!);
+    expect(card).toHaveAttribute('data-active', 'true');
+
+    // Tap outside the card on the document
+    fireEvent.pointerDown(document.body);
+    expect(card).toHaveAttribute('data-active', 'false');
+  });
+
+  it('handles mobile single-column scroll focus zone on scroll and resize', () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 375 });
+    Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: 800 });
+    Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 0 });
+
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 60);
+
+    const { container } = renderWithClient(<BookmarksView />);
+    const card = container.querySelector('[data-bookmark-card-id="1342"]') as HTMLElement;
+    expect(card).toBeInTheDocument();
+
+    vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
+      top: 100,
+      bottom: 400,
+      left: 10,
+      right: 365,
+      width: 355,
+      height: 300,
+      x: 10,
+      y: 100,
+      toJSON: () => {},
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    expect(card).toHaveAttribute('data-active', 'true');
+  });
 });
 
 

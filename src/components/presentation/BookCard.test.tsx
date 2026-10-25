@@ -109,7 +109,7 @@ describe('BookCard component', () => {
     }
   });
 
-  it('should navigate to /read/[id] on mobile when clicking book cover visual in catalog view', () => {
+  it('should call onPreviewClick on mobile when clicking book cover visual in catalog view', () => {
     const handlePreview = vi.fn();
     const book = mockBooks[0];
     const originalWidth = window.innerWidth;
@@ -121,7 +121,24 @@ describe('BookCard component', () => {
       const coverVisual = screen.getByLabelText(`Click to preview quotes for ${book.title}`);
       fireEvent.click(coverVisual);
 
-      expect(handlePreview).not.toHaveBeenCalled();
+      expect(handlePreview).toHaveBeenCalledWith(book, expect.any(Object));
+      expect(mockPush).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
+    }
+  });
+
+  it('should navigate to /read/[id] on mobile when onPreviewClick is omitted', () => {
+    const book = mockBooks[0];
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 768 });
+
+    try {
+      render(<BookCard book={book} activeView="catalog" />);
+
+      const coverImg = screen.getByAltText(`Cover of ${book.title}`);
+      fireEvent.click(coverImg);
+
       expect(mockPush).toHaveBeenCalledWith(`/read/${book.id}`);
       expect(useReaderStore.getState().currentBook?.id).toBe(book.id);
     } finally {
@@ -577,6 +594,9 @@ describe('BookCard component', () => {
     const badge = screen.getByTestId(`book-card-offline-badge-${book.id}`);
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveTextContent('Downloaded');
+    expect(badge).toHaveTextContent('Remove');
+    expect(badge.querySelector('span.group-hover\\:hidden')).toHaveTextContent('Downloaded');
+    expect(badge.querySelector('span.group-hover\\:inline')).toHaveTextContent('Remove');
 
     fireEvent.click(badge);
     expect(handleRemoveOffline).toHaveBeenCalledWith(book);

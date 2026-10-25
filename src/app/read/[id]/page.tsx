@@ -54,7 +54,12 @@ function BookReaderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawId = params?.id;
-  const bookId = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '';
+  const paramBookId = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '';
+  const pathnameBookId =
+    typeof window !== 'undefined'
+      ? window.location.pathname.split('?')[0].match(/^\/read\/(\d+)(?:\/|$)/)?.[1] || ''
+      : '';
+  const bookId = paramBookId || pathnameBookId;
   const numericId = parseInt(bookId, 10) || 0;
 
   const urlChapter = searchParams.get('chapter');
@@ -263,6 +268,7 @@ function BookReaderContent() {
 
   // Persist authentic resolved book identity into recentBooks and warm reader store
   const autoRetriedBookIdRef = React.useRef<number | null>(null);
+  const initializedBookIdRef = React.useRef<number | null>(null);
   useEffect(() => {
     if (numericId <= 0) return;
     const existingRecent = useBookshelfStore.getState().recentBooks.find((b) => b.id === numericId);
@@ -275,10 +281,17 @@ function BookReaderContent() {
 
     if (booksData?.results?.[0]) {
       const apiBook = booksData.results[0];
-      useBookshelfStore.getState().addRecentBook(apiBook);
-      useReaderStore.getState().openReader(apiBook);
-      useBookshelfStore.getState().enrichSavedBooks([apiBook]);
-      useReaderStore.getState().enrichReadingPositions([apiBook]);
+      const needsEnrichment =
+        initializedBookIdRef.current !== numericId ||
+        (!existingRecentHasLifespans && apiBook.authors?.some((a) => a.birth_year != null || a.death_year != null));
+
+      if (needsEnrichment) {
+        initializedBookIdRef.current = numericId;
+        useBookshelfStore.getState().addRecentBook(apiBook);
+        useReaderStore.getState().openReader(apiBook);
+        useBookshelfStore.getState().enrichSavedBooks([apiBook]);
+        useReaderStore.getState().enrichReadingPositions([apiBook]);
+      }
       if (
         isContentError &&
         autoRetriedBookIdRef.current !== numericId &&
@@ -293,32 +306,38 @@ function BookReaderContent() {
       (!existingRecent || isPlaceholderTitle(existingRecent.title)) &&
       (resolvedHasLifespans || !existingRecentHasLifespans)
     ) {
-      const bookObj: GutendexBook = {
-        id: numericId,
-        title: resolvedIdentity.title,
-        authors:
-          resolvedIdentity.authors && resolvedIdentity.authors.length > 0
-            ? resolvedIdentity.authors
-            : resolvedIdentity.author
-            ? [{ name: resolvedIdentity.author, birth_year: null, death_year: null }]
-            : [],
-        translators: resolvedIdentity.translators || [],
-        subjects: resolvedIdentity.primarySubject ? [resolvedIdentity.primarySubject] : [],
-        bookshelves: [],
-        languages: resolvedIdentity.languages || ['en'],
-        copyright: false,
-        media_type: 'Text',
-        formats: {
-          'image/jpeg': `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.cover.medium.jpg`,
-          'application/epub+zip': `https://www.gutenberg.org/ebooks/${numericId}.epub3.images`,
-        },
-        download_count: 0,
-      };
-      useBookshelfStore.getState().addRecentBook(bookObj);
-      useReaderStore.getState().openReader(bookObj);
-      if (resolvedHasLifespans) {
-        useBookshelfStore.getState().enrichSavedBooks([bookObj]);
-        useReaderStore.getState().enrichReadingPositions([bookObj]);
+      if (
+        initializedBookIdRef.current !== numericId ||
+        (resolvedHasLifespans && !existingRecentHasLifespans)
+      ) {
+        initializedBookIdRef.current = numericId;
+        const bookObj: GutendexBook = {
+          id: numericId,
+          title: resolvedIdentity.title,
+          authors:
+            resolvedIdentity.authors && resolvedIdentity.authors.length > 0
+              ? resolvedIdentity.authors
+              : resolvedIdentity.author
+              ? [{ name: resolvedIdentity.author, birth_year: null, death_year: null }]
+              : [],
+          translators: resolvedIdentity.translators || [],
+          subjects: resolvedIdentity.primarySubject ? [resolvedIdentity.primarySubject] : [],
+          bookshelves: [],
+          languages: resolvedIdentity.languages || ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {
+            'image/jpeg': `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.cover.medium.jpg`,
+            'application/epub+zip': `https://www.gutenberg.org/ebooks/${numericId}.epub3.images`,
+          },
+          download_count: 0,
+        };
+        useBookshelfStore.getState().addRecentBook(bookObj);
+        useReaderStore.getState().openReader(bookObj);
+        if (resolvedHasLifespans) {
+          useBookshelfStore.getState().enrichSavedBooks([bookObj]);
+          useReaderStore.getState().enrichReadingPositions([bookObj]);
+        }
       }
     }
   }, [numericId, booksData, resolvedIdentity, isContentError, refetch]);
@@ -734,6 +753,9 @@ function BookReaderContent() {
           } else {
             router.push(ROUTES.HOME);
           }
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }
         }}
         isTocOpen={isTocOpen}
         onToggleToc={() => handleToggleDrawer('toc')}
@@ -1028,7 +1050,12 @@ function BookReaderContent() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push(ROUTES.BOOKSHELF)}
+              onClick={() => {
+                router.push(ROUTES.BOOKSHELF);
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }
+              }}
               className="text-xs font-mono uppercase"
             >
               My Bookshelf

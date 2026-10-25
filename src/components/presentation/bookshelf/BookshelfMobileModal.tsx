@@ -268,8 +268,8 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                       isDownloadingOffline
                         ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
                         : isOffline
-                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500 cursor-pointer'
-                        : 'border-border hover:bg-muted text-foreground cursor-pointer'
+                        ? 'group/offline-btn border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive cursor-pointer'
+                        : 'border-border text-foreground hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer'
                     }`}
                     aria-label={
                       isDownloadingOffline
@@ -289,7 +289,10 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                     {isDownloadingOffline ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : isOffline ? (
-                      <CheckCircle2 className="w-4 h-4" />
+                      <>
+                        <HardDriveDownload className="w-4 h-4 group-hover/offline-btn:hidden" />
+                        <Trash2 className="w-4 h-4 hidden group-hover/offline-btn:inline" />
+                      </>
                     ) : (
                       <HardDriveDownload className="w-4 h-4" />
                     )}

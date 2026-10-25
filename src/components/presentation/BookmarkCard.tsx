@@ -21,6 +21,8 @@ export interface BookmarkCardProps {
   volume: ActiveReadingVolume;
   isOffline?: boolean;
   isDownloadingOffline?: boolean;
+  isActive?: boolean;
+  onActivate?: (bookId: number) => void;
   onToggleOffline?: (book: GutendexBook | Book) => void;
   onResume?: (bookId: number) => void;
   onStatusChange?: (bookId: number, status: LedgerItemStatus) => void;
@@ -31,6 +33,8 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   volume,
   isOffline,
   isDownloadingOffline = false,
+  isActive = false,
+  onActivate,
   onToggleOffline,
   onResume,
   onStatusChange,
@@ -76,7 +80,14 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
   return (
     <article
-      className="group relative bg-card rounded-xl border border-border shadow-booksaw hover:shadow-booksaw-hover transition-all duration-300 p-5 flex flex-col justify-between overflow-hidden"
+      onClick={() => onActivate?.(book.id)}
+      data-bookmark-card-id={book.id}
+      data-active={isActive ? 'true' : 'false'}
+      className={`group relative bg-card rounded-xl border transition-all duration-300 p-5 flex flex-col justify-between overflow-hidden ${
+        isActive
+          ? 'border-primary/50 ring-2 ring-primary/50 shadow-booksaw-hover'
+          : 'border-border shadow-booksaw hover:shadow-booksaw-hover'
+      }`}
       aria-label={`Reading ledger entry for ${book.title}`}
     >
       {/* Decorative Ribbon Accent */}
@@ -170,15 +181,19 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                     e.stopPropagation();
                     onToggleOffline?.(book);
                   }}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 border border-emerald-500/30 hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group/offline"
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold border transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-destructive/10 text-destructive border-destructive/50'
+                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 border-emerald-500/30 group-hover:border-destructive/50 group-hover:text-destructive group-hover:bg-destructive/5'
+                  } hover:border-destructive/60 hover:text-destructive hover:bg-destructive/10`}
                   title="Downloaded for offline reading — Click to remove"
                   aria-label={`Downloaded for offline reading. Click to remove ${book.title} from offline storage.`}
                   data-testid={`bookmark-card-offline-badge-${book.id}`}
                 >
-                  <CheckCircle2 className="w-2.5 h-2.5 shrink-0 group-hover/offline:hidden" />
-                  <Trash2 className="w-2.5 h-2.5 shrink-0 hidden group-hover/offline:inline" />
-                  <span className="group-hover/offline:hidden">Downloaded</span>
-                  <span className="hidden group-hover/offline:inline">Remove</span>
+                  <CheckCircle2 className={`w-2.5 h-2.5 shrink-0 ${isActive ? 'hidden' : 'group-hover:hidden'}`} />
+                  <Trash2 className={`w-2.5 h-2.5 shrink-0 ${isActive ? 'inline' : 'hidden group-hover:inline'}`} />
+                  <span className={isActive ? 'hidden' : 'group-hover:hidden'}>Downloaded</span>
+                  <span className={isActive ? 'inline' : 'hidden group-hover:inline'}>Remove</span>
                 </button>
               )}
             </div>
@@ -195,7 +210,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 <Link
                   href={ROUTES.READ(book.id)}
                   onClick={() => useReaderStore.getState().openReader(book)}
-                  className="group-hover:text-primary"
+                  className={isActive ? 'text-primary' : 'group-hover:text-primary'}
                 >
                   {book.title}
                 </Link>
@@ -322,14 +337,17 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               isDownloadingOffline
                 ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
                 : isOffline
-                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer'
-                : 'border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 cursor-pointer'
+                ? 'group/offline-btn border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive cursor-pointer'
+                : 'border-border bg-background text-muted-foreground hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer'
             }`}
           >
             {isDownloadingOffline ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : isOffline ? (
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <>
+                <HardDriveDownload className="w-3.5 h-3.5 group-hover/offline-btn:hidden" />
+                <Trash2 className="w-3.5 h-3.5 hidden group-hover/offline-btn:inline" />
+              </>
             ) : (
               <HardDriveDownload className="w-3.5 h-3.5" />
             )}

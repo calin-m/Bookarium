@@ -14,10 +14,11 @@ const mockReplace = vi.fn();
 const mockBack = vi.fn();
 
 let mockSearchParams = new URLSearchParams();
+let mockParams: Record<string, string> = { id: '1342' };
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
-  useParams: () => ({ id: '1342' }),
+  useParams: () => mockParams,
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,
@@ -95,6 +96,7 @@ vi.mock('@/hooks/queries/useBookTranslations', () => ({
 describe('Dedicated Reader Page (/read/[id])', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockParams = { id: '1342' };
     mockSearchParams = new URLSearchParams();
     useBookshelfStore.getState().clearBookshelf();
     useAnnotationStore.getState().clearAllAnnotations();
@@ -968,6 +970,31 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     fetchFellowAnnSpy.mockRestore();
     act(() => {
       useAuthStore.setState({ user: null });
+    });
+  });
+
+  it('resolves bookId from window.location.pathname when useParams() is empty (App Shell fallback)', () => {
+    mockParams = {};
+    const originalPathname = window.location.pathname;
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...window.location,
+        pathname: '/read/1342',
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    render(<BookReaderPage />);
+    expect(screen.getAllByText('Pride and Prejudice').length).toBeGreaterThan(0);
+
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...window.location,
+        pathname: originalPathname,
+      },
+      configurable: true,
+      writable: true,
     });
   });
 });

@@ -186,10 +186,25 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
           const authors = resolveAuthoritativeLocalAuthors(bookId, record?.authors, isBrowser);
           if (authors && authors.length > 0) {
             const evaluation = isBookPublicDomainInJurisdiction({ authors }, clientCountry);
-            if (evaluation.isAllowed) return offlineText;
+            if (!evaluation.isAllowed) {
+              throw new LegalRestrictionError({
+                country: clientCountry,
+                rule: evaluation.rule,
+                restrictingAuthor: evaluation.restrictingAuthor,
+                restrictingDeathYear: evaluation.restrictingDeathYear,
+                publicDomainYear: evaluation.publicDomainYear,
+                reason: evaluation.reason,
+              });
+            }
+            return offlineText;
           }
+          // Fallback for offline environments when lifespan metadata is absent locally
+          return offlineText;
         }
-      } catch {
+      } catch (fallbackErr: unknown) {
+        if (fallbackErr instanceof LegalRestrictionError) {
+          throw fallbackErr;
+        }
         // Ignore fallback errors and continue to original throw
       }
     }

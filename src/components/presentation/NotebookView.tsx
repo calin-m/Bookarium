@@ -48,10 +48,13 @@ import { formatAuthorNames } from '@/lib/utils';
 import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
 import {
   pairOverlappingAnnotations,
+  findMatchingOwnAnnotation,
+  isFellowAnnotation,
 } from '@/lib/reader-annotator';
 
 export type NotebookDisplayItem = (Annotation | FellowAnnotation) & {
   pairedFellowAnnotation?: FellowAnnotation;
+  matchingOwnAnnotation?: Annotation;
 };
 import type { GutendexBook } from '@/types/book.types';
 
@@ -378,20 +381,33 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     [savedBooks, favoriteBooks, recentBooks, remoteBooksData, country]
   );
 
+  const pairedAllAnnotations = useMemo(() => {
+    return pairOverlappingAnnotations(annotations, fellowAnnotations);
+  }, [annotations, fellowAnnotations]);
+
   const sourceFilteredAnnotations: NotebookDisplayItem[] = useMemo(() => {
     if (marginaliaSourceFilter === 'mine') return annotations;
-    if (marginaliaSourceFilter === 'fellows') return fellowAnnotations;
-    const paired = pairOverlappingAnnotations(annotations, fellowAnnotations);
-    return paired.map((item) => {
+    if (marginaliaSourceFilter === 'fellows') {
+      return fellowAnnotations.map((fa) => ({
+        ...fa,
+        matchingOwnAnnotation: findMatchingOwnAnnotation(annotations, fa),
+      }));
+    }
+    return pairedAllAnnotations.map((item) => {
       if (item.pairedFellowAnnotation) {
         return {
           ...item.annotation,
           pairedFellowAnnotation: item.pairedFellowAnnotation,
         };
       }
-      return item.annotation;
+      return {
+        ...item.annotation,
+        matchingOwnAnnotation: isFellowAnnotation(item.annotation)
+          ? findMatchingOwnAnnotation(annotations, item.annotation)
+          : undefined,
+      };
     });
-  }, [annotations, fellowAnnotations, marginaliaSourceFilter]);
+  }, [annotations, fellowAnnotations, marginaliaSourceFilter, pairedAllAnnotations]);
 
   // Filtered list of annotations
   const filteredAnnotations = useMemo(() => {
@@ -724,7 +740,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                 >
                   <span>All Marginalia</span>
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-muted text-foreground">
-                    {annotations.length + fellowAnnotations.length}
+                    {pairedAllAnnotations.length}
                   </span>
                 </button>
                 <button
@@ -1005,6 +1021,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         key={ann.id}
         annotation={ann}
         pairedFellowAnnotation={ann.pairedFellowAnnotation}
+        matchingOwnAnnotation={ann.matchingOwnAnnotation}
         bookTitle={title}
         bookAuthor={author}
         isRestricted={isRestricted}
@@ -1017,7 +1034,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         onRequestDeleteReflection={(target) => setReflectionToDelete(target)}
         onRequestDeleteAnnotation={(target) => setAnnotationToDelete(target)}
         onJumpToReader={handleJumpToReader}
-        onSaveFellowAsOwn={async (fellow) => {
+        onSaveFellowAsOwn={async (fellow, noteText, color) => {
           await addAnnotation(
             {
               bookId: fellow.bookId,
@@ -1026,7 +1043,8 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
               chapterIndex: fellow.chapterIndex,
               chapterPage: fellow.chapterPage,
               selectedText: fellow.selectedText,
-              color: 'yellow',
+              color: color || ann.matchingOwnAnnotation?.color || 'yellow',
+              note: noteText,
             },
             user?.id
           );

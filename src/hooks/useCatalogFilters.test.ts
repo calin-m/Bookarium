@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useCatalogFilters, parseFiltersFromUrl } from './useCatalogFilters';
+import { useCatalogFilters, parseFiltersFromUrl, extractReaderBookIdFromPath } from './useCatalogFilters';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -664,6 +664,45 @@ describe('view-scoped URL pagination and query parameter synchronization', () =>
     const formatChip = result.current.activeFilterChips.find((c) => c.id === 'format');
     expect(formatChip).toBeDefined();
     expect(formatChip?.label).toBe('2 Formats');
+  });
+
+  it('extractReaderBookIdFromPath identifies reader routes and extracts numeric ID', () => {
+    expect(extractReaderBookIdFromPath('/read/1342')).toBe('1342');
+    expect(extractReaderBookIdFromPath('/read/84/')).toBe('84');
+    expect(extractReaderBookIdFromPath('/read/1342?chapter=2')).toBe('1342');
+    expect(extractReaderBookIdFromPath('/catalog')).toBeNull();
+    expect(extractReaderBookIdFromPath('/bookshelf')).toBeNull();
+    expect(extractReaderBookIdFromPath('/')).toBeNull();
+    expect(extractReaderBookIdFromPath(null)).toBeNull();
+  });
+
+  it('preserves /read/[id] in window.history and does not overwrite it to /', () => {
+    const originalPathname = window.location.pathname;
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...window.location,
+        pathname: '/read/1342',
+        search: '',
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    renderHook(() => useCatalogFilters());
+
+    expect(replaceStateSpy).not.toHaveBeenCalledWith(null, '', '/');
+
+    replaceStateSpy.mockRestore();
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...window.location,
+        pathname: originalPathname,
+      },
+      configurable: true,
+      writable: true,
+    });
   });
 });
 

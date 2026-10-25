@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/presentation/Navbar';
@@ -23,14 +23,19 @@ const BookPreviewModal = dynamic(
   () => import('@/components/presentation/BookPreviewModal').then((mod) => mod.BookPreviewModal),
   { ssr: false }
 );
+const BookReaderPage = dynamic(
+  () => import('@/app/read/[id]/page').then((mod) => mod.default),
+  { ssr: false }
+);
 import { NotebookView } from '@/components/presentation/NotebookView';
 import { BookmarksView } from '@/components/presentation/BookmarksView';
 import { Modal } from '@/components/ui/Modal';
+import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Footer } from '@/components/presentation/Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useBooks, usePrefetchNextPage } from '@/hooks/queries/useBooks';
-import { useCatalogFilters, type CatalogView } from '@/hooks/useCatalogFilters';
+import { useCatalogFilters, type CatalogView, extractReaderBookIdFromPath } from '@/hooks/useCatalogFilters';
 import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
@@ -72,14 +77,40 @@ function HomeContent() {
   const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'favorites' | null>(null);
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
 
-  const { isBookOffline, downloadBook, removeBook, downloadingBookId } = useOfflineBooks();
+  const { isBookOffline, downloadBook, removeBook, downloadingBookId, offlineBookIds } = useOfflineBooks();
+  const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | null>(null);
   const handleToggleOffline = async (book: GutendexBook) => {
     if (isBookOffline(book.id)) {
-      await removeBook(book.id);
+      setBookToRemoveOffline(book);
     } else {
       await downloadBook(book);
     }
   };
+
+  // Proactively warm Reader JS chunks into the Service Worker cache if offline books exist
+  useEffect(() => {
+    if (hasMounted && offlineBookIds.length > 0) {
+      void import('@/app/read/[id]/page').catch(() => {});
+    }
+  }, [hasMounted, offlineBookIds.length]);
+
+  // Detect if the App Shell was served as offline fallback for a /read/[id] route
+  const [offlineReaderBookId, setOfflineReaderBookId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return extractReaderBookIdFromPath(window.location.pathname);
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkPath = () => {
+      setOfflineReaderBookId(extractReaderBookIdFromPath(window.location.pathname));
+    };
+    checkPath();
+    window.addEventListener('popstate', checkPath);
+    return () => window.removeEventListener('popstate', checkPath);
+  }, []);
 
   // Bookshelf store items (hydrated safely on mount)
   const rawSavedBooks = useBookshelfStore((s) => s.savedBooks);
@@ -393,6 +424,10 @@ function HomeContent() {
     : isFavorites
     ? sortedFavoriteBooks
     : [];
+
+  if (offlineReaderBookId) {
+    return <BookReaderPage />;
+  }
 
   return (
     <div
@@ -818,6 +853,18 @@ function HomeContent() {
           </div>
         </div>
       </Modal>
+
+      <RemoveOfflineBookModal
+        isOpen={Boolean(bookToRemoveOffline)}
+        bookTitle={bookToRemoveOffline?.title}
+        onClose={() => setBookToRemoveOffline(null)}
+        onConfirm={async () => {
+          if (bookToRemoveOffline) {
+            await removeBook(bookToRemoveOffline.id);
+            setBookToRemoveOffline(null);
+          }
+        }}
+      />
 
       <Footer />
       <BackToTop className={activeView === 'catalog' ? 'hidden sm:block' : ''} />

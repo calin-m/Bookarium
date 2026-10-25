@@ -49,6 +49,16 @@ export function normalizeCatalogView(raw?: string | null): CatalogView {
   return 'catalog';
 }
 
+/**
+ * Extracts numeric book ID if the pathname targets the in-browser reader route (/read/[id]).
+ */
+export function extractReaderBookIdFromPath(pathname?: string | null): string | null {
+  if (!pathname) return null;
+  const pathOnly = pathname.split('?')[0].split('#')[0].trim().replace(/\/+$/, '');
+  const match = pathOnly.match(/^\/read\/(\d+)(?:\/|$)/);
+  return match ? match[1] : null;
+}
+
 export function parseFiltersFromUrl(
   pathname?: string | null,
   searchParams?: { get: (name: string) => string | null } | null
@@ -159,6 +169,11 @@ export function useCatalogFilters() {
   useEffect(() => {
     if (typeof window === 'undefined' || !hasMounted) return;
     try {
+      // Never overwrite the URL if currently on an in-browser reader route (/read/[id])
+      if (extractReaderBookIdFromPath(window.location.pathname)) {
+        return;
+      }
+
       if (activeView !== 'catalog') {
         // View-scoped: non-catalog views (bookshelf, favorites, notebook, bookmarks)
         // are personal collections and do not carry catalog pagination or search queries.
@@ -201,6 +216,10 @@ export function useCatalogFilters() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handlePopState = () => {
+      // Ignore popstate events if navigating to/from reader paths
+      if (extractReaderBookIdFromPath(window.location.pathname)) {
+        return;
+      }
       const sp = new URLSearchParams(window.location.search);
       const parsed = parseFiltersFromUrl(window.location.pathname, sp);
       setSearch(parsed.search);

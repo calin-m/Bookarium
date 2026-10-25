@@ -8,6 +8,7 @@ import {
   isFellowAnnotation,
   pairOverlappingAnnotations,
   computeSharedQuoteSegments,
+  findMatchingOwnAnnotation,
   type AnyAnnotation,
 } from '@/lib/reader-annotator';
 import type { ReaderTheme } from '@/stores/useReaderStore';
@@ -40,6 +41,7 @@ export interface ReaderAnnotationsDrawerProps {
 
 export type DrawerDisplayItem = AnyAnnotation & {
   pairedFellowAnnotation?: FellowAnnotation;
+  matchingOwnAnnotation?: Annotation;
 };
 
 export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = ({
@@ -107,7 +109,12 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
 
   const combinedSourceAnnotations: DrawerDisplayItem[] = useMemo(() => {
     if (effectiveSourceFilter === 'mine') return annotations;
-    if (effectiveSourceFilter === 'fellows') return visibleFellowAnnotations;
+    if (effectiveSourceFilter === 'fellows') {
+      return visibleFellowAnnotations.map((fa) => ({
+        ...fa,
+        matchingOwnAnnotation: findMatchingOwnAnnotation(annotations, fa),
+      }));
+    }
     const paired = pairOverlappingAnnotations(annotations, visibleFellowAnnotations);
     return paired.map((item) => {
       if (item.pairedFellowAnnotation) {
@@ -116,7 +123,12 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
           pairedFellowAnnotation: item.pairedFellowAnnotation,
         };
       }
-      return item.annotation;
+      return {
+        ...item.annotation,
+        matchingOwnAnnotation: isFellowAnnotation(item.annotation)
+          ? findMatchingOwnAnnotation(annotations, item.annotation)
+          : undefined,
+      };
     });
   }, [annotations, visibleFellowAnnotations, effectiveSourceFilter]);
 
@@ -501,7 +513,11 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                             type="button"
                             data-testid={`drawer-save-fellow-with-note-btn-${item.id}`}
                             onClick={async () => {
-                              await onSaveFellowAnnotation(item as FellowAnnotation, savingFellowText);
+                              await onSaveFellowAnnotation(
+                                item as FellowAnnotation,
+                                savingFellowText,
+                                item.matchingOwnAnnotation?.color
+                              );
                               setSavingFellowId(null);
                             }}
                             className="px-2.5 py-1 text-[11px] font-semibold rounded bg-primary-600 text-white hover:bg-primary-700"
@@ -512,29 +528,39 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 pt-0.5">
-                        <button
-                          type="button"
-                          data-testid={`drawer-save-fellow-note-btn-${item.id}`}
-                          onClick={async () => {
-                            await onSaveFellowAnnotation(item as FellowAnnotation);
-                          }}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
-                        >
-                          <Check className="w-3 h-3" />
-                          <span>Save to My Notes</span>
-                        </button>
+                        {item.matchingOwnAnnotation ? (
+                          <span
+                            data-testid={`drawer-fellow-saved-badge-${item.id}`}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 select-none"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>In My Notes</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            data-testid={`drawer-save-fellow-note-btn-${item.id}`}
+                            onClick={async () => {
+                              await onSaveFellowAnnotation(item as FellowAnnotation);
+                            }}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>Save to My Notes</span>
+                          </button>
+                        )}
                         <span className="text-stone-300 dark:text-stone-700 select-none">•</span>
                         <button
                           type="button"
                           data-testid={`drawer-reply-fellow-note-btn-${item.id}`}
                           onClick={() => {
                             setSavingFellowId(item.id);
-                            setSavingFellowText('');
+                            setSavingFellowText(item.matchingOwnAnnotation?.note || '');
                           }}
                           className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors cursor-pointer"
                         >
                           <Edit3 className="w-3 h-3" />
-                          <span>+ Add My Note</span>
+                          <span>{item.matchingOwnAnnotation?.note ? 'Edit My Note' : '+ Add My Note'}</span>
                         </button>
                       </div>
                     )

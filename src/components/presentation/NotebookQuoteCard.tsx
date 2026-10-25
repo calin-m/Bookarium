@@ -57,6 +57,7 @@ export const HIGHLIGHT_CARD_COLORS: Record<HighlightColor, { border: string; bg:
 export interface NotebookQuoteCardProps {
   annotation: Annotation | FellowAnnotation;
   pairedFellowAnnotation?: FellowAnnotation;
+  matchingOwnAnnotation?: Annotation;
   bookTitle: string;
   bookAuthor: string;
   isRestricted?: boolean;
@@ -88,6 +89,7 @@ export interface NotebookQuoteCardProps {
 export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   annotation: ann,
   pairedFellowAnnotation,
+  matchingOwnAnnotation,
   bookTitle,
   bookAuthor,
   isRestricted = false,
@@ -106,6 +108,8 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   const [editNoteText, setEditNoteText] = useState(ann.note || '');
   const [editColor, setEditColor] = useState<HighlightColor>(ann.color);
   const [isCopied, setIsCopied] = useState(false);
+  const [isAddingOwnNote, setIsAddingOwnNote] = useState(false);
+  const [ownNoteDraft, setOwnNoteDraft] = useState('');
 
   const [prevIsEditing, setPrevIsEditing] = useState(isEditing);
   if (isEditing !== prevIsEditing) {
@@ -309,17 +313,89 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
 
         {/* Personal Note Box */}
         {isFellow ? (
-          ann.note ? (
-            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-sans text-foreground/90 space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-mono text-amber-800 dark:text-amber-300">
-                <span className="flex items-center gap-1 font-bold">
-                  <Feather className="w-3 h-3" />
-                  Fellow Reflection ({formatFellowScholarLabel(ann.fellowDisplayName, ann.fellowUsername)})
-                </span>
+          <>
+            {ann.note ? (
+              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-sans text-foreground/90 space-y-1">
+                <div className="flex items-center justify-between text-[10px] font-mono text-amber-800 dark:text-amber-300">
+                  <span className="flex items-center gap-1 font-bold">
+                    <Feather className="w-3 h-3" />
+                    Fellow Reflection ({formatFellowScholarLabel(ann.fellowDisplayName, ann.fellowUsername)})
+                  </span>
+                </div>
+                <p className="leading-relaxed whitespace-pre-wrap">{ann.note}</p>
               </div>
-              <p className="leading-relaxed whitespace-pre-wrap">{ann.note}</p>
-            </div>
-          ) : null
+            ) : null}
+
+            {/* Paired or Matching Personal Reflection Box */}
+            {matchingOwnAnnotation?.note && !isAddingOwnNote && (
+              <div
+                data-testid={`notebook-matching-own-note-${ann.id}`}
+                className="p-2.5 rounded-lg bg-muted/60 border border-border text-xs font-sans text-foreground/90 space-y-1"
+              >
+                <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3 text-primary" />
+                    Personal Reflection
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOwnNoteDraft(matchingOwnAnnotation.note || '');
+                      setIsAddingOwnNote(true);
+                    }}
+                    className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <p className="leading-relaxed whitespace-pre-wrap">{matchingOwnAnnotation.note}</p>
+              </div>
+            )}
+
+            {/* Inline Personal Reflection Editor for Fellow Cards */}
+            {isAddingOwnNote && (
+              <div className="space-y-2.5 pt-1">
+                <textarea
+                  data-testid={`notebook-fellow-note-textarea-${ann.id}`}
+                  value={ownNoteDraft}
+                  onChange={(e) => setOwnNoteDraft(e.target.value)}
+                  placeholder="Write your reflection or personal note..."
+                  rows={3}
+                  className="w-full text-xs p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary font-sans leading-relaxed resize-none"
+                  autoFocus
+                />
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingOwnNote(false);
+                      setOwnNoteDraft('');
+                    }}
+                    className="px-2.5 py-1 text-xs font-mono rounded text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <Button
+                    size="sm"
+                    data-testid={`notebook-save-fellow-with-note-btn-${ann.id}`}
+                    onClick={async () => {
+                      if (onSaveFellowAsOwn) {
+                        await onSaveFellowAsOwn(
+                          ann as FellowAnnotation,
+                          ownNoteDraft,
+                          matchingOwnAnnotation?.color
+                        );
+                      }
+                      setIsAddingOwnNote(false);
+                    }}
+                    className="text-xs font-mono uppercase h-7 px-3"
+                  >
+                    Save Note
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         ) : isEditing ? (
           <div className="space-y-2.5 pt-1">
             {/* Highlight Shade Picker in Edit Mode */}
@@ -473,16 +549,62 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
           </button>
 
           {isFellow && onSaveFellowAsOwn && (
-            <button
-              type="button"
-              onClick={() => onSaveFellowAsOwn(ann as FellowAnnotation)}
-              data-testid={`notebook-save-fellow-btn-${ann.id}`}
-              className="p-1.5 rounded hover:bg-primary/10 text-primary transition-colors flex items-center gap-1 text-[11px] font-medium cursor-pointer"
-              title="Save passage to your own notes"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Save to My Notes</span>
-            </button>
+            matchingOwnAnnotation ? (
+              <div className="flex items-center gap-1">
+                <span
+                  data-testid={`notebook-fellow-saved-badge-${ann.id}`}
+                  className="p-1.5 text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px] font-medium select-none"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>In My Notes</span>
+                </span>
+                <span className="text-border select-none" aria-hidden="true">
+                  ·
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOwnNoteDraft(matchingOwnAnnotation.note || '');
+                    setIsAddingOwnNote(true);
+                  }}
+                  data-testid={`notebook-add-fellow-note-btn-${ann.id}`}
+                  className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1 text-[11px] cursor-pointer"
+                  title={matchingOwnAnnotation.note ? 'Edit your personal note' : 'Add your personal note'}
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>{matchingOwnAnnotation.note ? 'Edit My Note' : '+ Add My Note'}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => onSaveFellowAsOwn(ann as FellowAnnotation)}
+                  data-testid={`notebook-save-fellow-btn-${ann.id}`}
+                  className="p-1.5 rounded hover:bg-primary/10 text-primary transition-colors flex items-center gap-1 text-[11px] font-medium cursor-pointer"
+                  title="Save passage to your own notes"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Save to My Notes</span>
+                </button>
+                <span className="text-border select-none" aria-hidden="true">
+                  ·
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOwnNoteDraft('');
+                    setIsAddingOwnNote(true);
+                  }}
+                  data-testid={`notebook-add-fellow-note-btn-${ann.id}`}
+                  className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1 text-[11px] cursor-pointer"
+                  title="Add personal note to this passage"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>+ Add My Note</span>
+                </button>
+              </div>
+            )
           )}
 
           {!isFellow && (

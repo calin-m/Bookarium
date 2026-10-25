@@ -55,6 +55,16 @@ export function areAnnotationsOverlapping(
 }
 
 /**
+ * Finds the first personal annotation that overlaps or matches a given fellow annotation.
+ */
+export function findMatchingOwnAnnotation(
+  ownAnnotations: Annotation[],
+  fellow: FellowAnnotation
+): Annotation | undefined {
+  return ownAnnotations.find((own) => areAnnotationsOverlapping(own, fellow));
+}
+
+/**
  * Computes presentation segments for a shared quote passage so that partial overlaps
  * render the encompassing quote with the overlapping sub-phrase highlighted inside it.
  */

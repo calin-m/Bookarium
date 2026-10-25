@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 24 Oct 2026 14:11:38 GMT  
+**Last Generated**: Sun, 25 Oct 2026 09:11:47 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 187 passed  
-**Total Verified Tests**: 1852 passed  
+**Total Verified Tests**: 1869 passed  
 
 ---
 
@@ -14,7 +14,7 @@
 | **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1852 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1869 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 60 Architectural Decision Records validated |
@@ -25,16 +25,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **95.78%** (9279/9687) — *Target: $ge$ 85%*
-- **Statements**: **94.42%** (10104/10701) — *Target: $ge$ 85%*
-- **Functions**: **92.39%** (2164/2342) — *Target: $ge$ 85%*
-- **Branches**: **85.04%** (9181/10796) — *Target: $ge$ 85%*
+- **Lines**: **95.64%** (9377/9804) — *Target: $ge$ 85%*
+- **Statements**: **94.31%** (10212/10828) — *Target: $ge$ 85%*
+- **Functions**: **92.79%** (2202/2373) — *Target: $ge$ 85%*
+- **Branches**: **85.15%** (9278/10895) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1852 Tests)
+## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1869 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 236 Tests)
+### 🚀 App Routes & Pages (26 Suites · 239 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -253,7 +253,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (33 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (35 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -287,7 +287,9 @@
 - ✔ `enforces overflow-x-clip on root and main containers and tightens catalog-section padding`
 - ✔ `handles HeroSearch onReadFeaturedBook, active filter chip removal, and custom shelf filtering`
 - ✔ `handles BookPreviewModal onReadBook and BookshelfMobileModal callbacks`
+- ✔ `opens RemoveOfflineBookModal when removing downloaded book from BookshelfMobileModal`
 - ✔ `returns to Catalog from empty NotebookView and BookmarksView via onBrowseCatalog`
+- ✔ `renders Reader view when served as offline App Shell fallback for /read/[id] route`
 
 </details>
 
@@ -336,7 +338,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (36 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (37 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -374,6 +376,7 @@
 - ✔ `displays Literary Symposium milestone dispatch banner and reveals companion progress micro-pill when dismissed`
 - ✔ `allows user to save own highlight and note on passage previously annotated by a fellow scholar`
 - ✔ `handles authenticated cloud sync, slash keyboard search, delete cancel, and completion modal Bookshelf navigation`
+- ✔ `resolves bookId from window.location.pathname when useParams() is empty (App Shell fallback)`
 
 </details>
 
@@ -428,7 +431,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (27 Suites · 363 Tests)
+### 🎨 Catalog & Presentation (27 Suites · 368 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -458,7 +461,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (25 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -467,7 +470,8 @@
 - ✔ `should toggle favorite and bookmark state on button clicks`
 - ✔ `should call onDownloadClick when clicking Formats button`
 - ✔ `should call onPreviewClick when clicking book cover visual on desktop`
-- ✔ `should navigate to /read/[id] on mobile when clicking book cover visual in catalog view`
+- ✔ `should call onPreviewClick on mobile when clicking book cover visual in catalog view`
+- ✔ `should navigate to /read/[id] on mobile when onPreviewClick is omitted`
 - ✔ `should call onPreviewClick on mobile when activeView is favorites`
 - ✔ `applies responsive active styling (desktop hide, mobile highlight) when isPreviewActive is true`
 - ✔ `should render cursor tooltip on hover when onPreviewClick is provided`
@@ -504,13 +508,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
 - ✔ `triggers onResume and warms reader store when cover thumbnail is clicked or activated via keyboard`
 - ✔ `falls back to router.push when onResume is not provided`
-- ✔ `renders offline badge when isOffline is true`
+- ✔ `renders offline badge when isOffline is true and switches to Remove when active or hovered`
+- ✔ `applies active styling, highlights title, and triggers onActivate on card click`
 - ✔ `handles status changes from harmonized select dropdown`
 - ✔ `triggers onClear when delete action is clicked`
 - ✔ `renders fallback state when cover image triggers onError`
@@ -526,7 +531,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
@@ -544,6 +549,8 @@
 - ✔ `renders sort dropdown and allows changing sort order`
 - ✔ `renders pagination when volumes exceed 12 items and navigates between pages`
 - ✔ `applies tightened vertical padding on bookmarks-ledger-section`
+- ✔ `activates bookmark card on click and clears active state when clicking outside`
+- ✔ `handles mobile single-column scroll focus zone on scroll and resize`
 
 </details>
 
@@ -567,7 +574,7 @@
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is restricted`
 - ✔ `renders content advisory banner when previewed book contains mature subjects`
 - ✔ `renders clean literary spread without cluttering tag clouds on the inside pages`
-- ✔ `renders desktop offline toggle button in right-page footer and handles save/remove/downloading states`
+- ✔ `does not render offline toggle button or downloaded tag inside the open book spread`
 
 </details>
 
@@ -861,7 +868,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `renders book metadata, quote excerpt, and note`
 - ✔ `renders Protected badge when isRestricted is true`
@@ -876,6 +883,7 @@
 - ✔ `renders Fellow Marginalia attribution badge and hides edit/delete controls for fellow annotations`
 - ✔ `renders paired fellow badge, shared quote overlap span, and stacked reflections when pairedFellowAnnotation is present`
 - ✔ `renders Save to My Notes button on standalone fellow note and calls onSaveFellowAsOwn`
+- ✔ `renders In My Notes badge and Edit My Note when matching personal annotation exists`
 
 </details>
 
@@ -955,7 +963,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 162 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 163 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -987,7 +995,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `renders annotations list with quotes and section pills`
 - ✔ `renders empty state when there are no annotations`
@@ -1003,6 +1011,7 @@
 - ✔ `renders progressive-disclosure Symposium source filter and Spoiler Shield when fellowAnnotations exist`
 - ✔ `merges overlapping own and fellow annotations into a unified item with both badges and reflections in All mode`
 - ✔ `renders Save to My Notes and + Add My Note buttons on standalone fellow annotation and invokes onSaveFellowAnnotation`
+- ✔ `renders In My Notes badge and Edit My Note when fellow annotation matches existing personal annotation in Fellows tab`
 
 </details>
 
@@ -1494,7 +1503,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (36 Suites · 422 Tests)
+### 📚 Gutenberg Parsers & Metadata (36 Suites · 425 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1923,7 +1932,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -1942,6 +1951,9 @@
 - ✔ `identifies sub-span when fellow text contains personal text`
 - ✔ `merges overlapping own and fellow annotations into a single unified item`
 - ✔ `preserves standalone fellow annotations that do not overlap with own notes`
+- ✔ `finds exact matching own annotation`
+- ✔ `finds substring overlapping own annotation`
+- ✔ `returns undefined when bookId or chapter differs`
 
 </details>
 
@@ -2134,10 +2146,10 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 236 Tests)
+### 🔄 Hooks & React Query (22 Suites · 241 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
@@ -2153,6 +2165,8 @@
 - ✔ `throws an error when upstream response returns empty text`
 - ✔ `covers LegalRestrictionError default reason, 451 non-JSON body, non-US network-error fallback, and retry predicate`
 - ✔ `recovers verified lifespans from authorDetails, favoriteBooks, recentBooks, readingPositions, FEATURED_HERO_BOOKS, or network proxy when offline record has null dates`
+- ✔ `enforces LegalRestrictionError in network catch block when offline book is restricted in jurisdiction`
+- ✔ `returns offline text when network fails and offline record has no local author metadata`
 
 </details>
 
@@ -2345,7 +2359,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (29 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (31 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -2376,6 +2390,8 @@
 - ✔ `prevents search, topic, and sort filters from leaking into personal collection views`
 - ✔ `batches multiple filter changes atomically via handleApplyFilters`
 - ✔ `calculates bounding year range for multi-era selection and formats chips accurately`
+- ✔ `extractReaderBookIdFromPath identifies reader routes and extracts numeric ID`
+- ✔ `preserves /read/[id] in window.history and does not overwrite it to /`
 
 </details>
 
@@ -2437,7 +2453,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `initializes and fetches offline book IDs on mount`
 - ✔ `downloads a single book and updates offline status`
@@ -2448,6 +2464,7 @@
 - ✔ `removes all books in batch`
 - ✔ `normalizes authorDetails and embedded lifespan strings when saving a book offline`
 - ✔ `synchronizes offlineBookIds across multiple mounted hook instances via window event broadcast`
+- ✔ `warms reader route on successful book download`
 
 </details>
 
@@ -3028,7 +3045,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **5 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

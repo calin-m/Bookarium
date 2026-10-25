@@ -104,9 +104,9 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           icon: isDownloadingOffline ? (
             <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
           ) : isOffline ? (
-            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+            <Trash2 className="w-3 h-3 text-destructive shrink-0" />
           ) : (
-            <HardDriveDownload className="w-3 h-3 text-primary shrink-0" />
+            <HardDriveDownload className="w-3 h-3 text-emerald-500 shrink-0" />
           ),
           text: isRestricted
             ? `Protected in ${country}`
@@ -349,8 +349,8 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
                 isDownloadingOffline
                   ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
                   : isOffline
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
-                  : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground'
+                  ? 'group/offline-btn border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive cursor-pointer'
+                  : 'border-border text-muted-foreground hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer'
               }`}
               aria-label={
                 isDownloadingOffline
@@ -363,7 +363,10 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               {isDownloadingOffline ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : isOffline ? (
-                <CheckCircle2 className="w-3 h-3" />
+                <>
+                  <HardDriveDownload className="w-3 h-3 group-hover/offline-btn:hidden" />
+                  <Trash2 className="w-3 h-3 hidden group-hover/offline-btn:inline" />
+                </>
               ) : (
                 <HardDriveDownload className="w-3 h-3" />
               )}

@@ -1526,15 +1526,17 @@ describe('NotebookView component', () => {
       // In All mode: should be merged into 1 card, showing both badges and both reflections
       const cards = screen.getAllByTestId(/^notebook-quote-card-/);
       expect(cards).toHaveLength(1);
+      expect(screen.getByTestId('notebook-source-all')).toHaveTextContent('All Marginalia1');
       expect(screen.getByTestId('notebook-fellow-badge-fellow-ann-overlap')).toBeInTheDocument();
       expect(screen.getByText('My reflection on society.')).toBeInTheDocument();
       expect(screen.getByText('Clara reflection on marriage.')).toBeInTheDocument();
       expect(screen.getByTestId('notebook-paired-fellow-note-fellow-ann-overlap')).toBeInTheDocument();
 
-      // In Fellows mode: displays the fellow's standalone card
+      // In Fellows mode: displays the fellow's standalone card with In My Notes badge and matching reflection
       fireEvent.click(screen.getByTestId('notebook-source-fellows'));
       expect(screen.getAllByTestId(/^notebook-quote-card-/)).toHaveLength(1);
-      expect(screen.queryByText('My reflection on society.')).not.toBeInTheDocument();
+      expect(screen.getByTestId('notebook-fellow-saved-badge-fellow-ann-overlap')).toHaveTextContent('In My Notes');
+      expect(screen.getByText('My reflection on society.')).toBeInTheDocument();
       expect(screen.getByText('Clara reflection on marriage.')).toBeInTheDocument();
 
       // In Mine mode: displays the user's standalone card

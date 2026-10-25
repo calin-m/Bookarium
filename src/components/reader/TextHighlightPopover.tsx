@@ -282,7 +282,29 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                 in Symposium
               </p>
             )}
-            {!existingAnnotationId && (
+            {existingAnnotationId ? (
+              <div className="flex items-center justify-between gap-1.5 mt-0.5 pt-1 border-t border-stone-200/60 dark:border-stone-700/60">
+                <span
+                  data-testid="fellow-popover-saved-badge"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 select-none px-1"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>In My Notes</span>
+                </span>
+                <button
+                  type="button"
+                  data-testid="fellow-popover-add-own-note-btn"
+                  onClick={() => {
+                    setActiveSourceTab('mine');
+                    setIsNoteExpanded(true);
+                  }}
+                  className="inline-flex items-center gap-1 py-1 px-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-200 font-mono text-[11px] font-bold border border-stone-200/80 dark:border-stone-700/80 transition-colors cursor-pointer"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                  <span>{existingNote ? 'Edit My Note' : '+ Add My Note'}</span>
+                </button>
+              </div>
+            ) : (
               <div className="flex items-center gap-1.5 mt-0.5">
                 <button
                   type="button"

@@ -206,4 +206,26 @@ describe('useOfflineBooks hook', () => {
       expect(instanceB.result.current.isBookOffline(11)).toBe(false);
     });
   });
+
+  it('warms reader route on successful book download', async () => {
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input) => {
+      return Promise.resolve(new Response('Full text content', { status: 200 }));
+    });
+
+    const { result } = renderHook(() => useOfflineBooks());
+
+    await act(async () => {
+      await result.current.downloadBook(mockBooks[0]);
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining(`/read/${mockBooks[0].id}`),
+      expect.objectContaining({ credentials: 'same-origin' })
+    );
+
+    fetchSpy.mockRestore();
+  });
 });

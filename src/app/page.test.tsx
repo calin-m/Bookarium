@@ -12,6 +12,7 @@ export const mockPush = vi.fn();
 let mockSearchParams = new URLSearchParams();
 
 vi.mock('next/navigation', () => ({
+  useParams: () => ({}),
   useRouter: () => ({
     push: (...args: any[]) => mockPush(...args),
     replace: vi.fn(),
@@ -83,15 +84,19 @@ vi.mock('@/components/presentation/HeroFeaturedBook3D', () => ({
   ),
 }));
 
+const mockIsBookOffline = vi.fn().mockReturnValue(false);
+const mockRemoveBook = vi.fn().mockResolvedValue(true);
+const mockDownloadBook = vi.fn().mockResolvedValue(true);
+
 vi.mock('@/hooks/useOfflineBooks', () => ({
   useOfflineBooks: () => ({
     offlineBookIds: [],
     isLoading: false,
     downloadingIds: [],
     storageQuota: null,
-    downloadBook: vi.fn().mockResolvedValue(true),
-    removeBook: vi.fn().mockResolvedValue(true),
-    isBookOffline: vi.fn().mockReturnValue(false),
+    downloadBook: mockDownloadBook,
+    removeBook: mockRemoveBook,
+    isBookOffline: mockIsBookOffline,
     isBookDownloading: vi.fn().mockReturnValue(false),
     refreshOfflineList: vi.fn().mockResolvedValue(undefined),
   }),
@@ -1028,6 +1033,35 @@ describe('Home page integration', () => {
     expect(mockPush).toHaveBeenCalledWith(ROUTES.READ(mockBooks[0].id));
   });
 
+  it('opens RemoveOfflineBookModal when removing downloaded book from BookshelfMobileModal', async () => {
+    mockIsBookOffline.mockReturnValue(true);
+    renderHome();
+
+    const previewTrigger = screen.getByLabelText(`Click to preview quotes for ${mockBooks[0].title}`);
+    await act(async () => {
+      fireEvent.click(previewTrigger);
+    });
+
+    const mobileSheet = screen.getByTestId('mobile-book-action-sheet');
+    expect(mobileSheet).toBeInTheDocument();
+
+    const offlineBtn = within(mobileSheet).getByRole('button', { name: /remove offline copy/i });
+    await act(async () => {
+      fireEvent.click(offlineBtn);
+    });
+
+    const removeModal = screen.getByTestId('remove-offline-book-dialog');
+    expect(removeModal).toBeInTheDocument();
+
+    const confirmBtn = within(removeModal).getByRole('button', { name: /remove download/i });
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    expect(mockRemoveBook).toHaveBeenCalledWith(mockBooks[0].id);
+    mockIsBookOffline.mockReturnValue(false);
+  });
+
   it('returns to Catalog from empty NotebookView and BookmarksView via onBrowseCatalog', () => {
     useReaderStore.setState({ readingPositions: {}, readingProgress: {} });
     renderHome();
@@ -1042,6 +1076,33 @@ describe('Home page integration', () => {
     const browseFromBookmarksBtn = screen.getByRole('button', { name: /Browse Library Catalog/i });
     fireEvent.click(browseFromBookmarksBtn);
     expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
+  });
+
+  it('renders Reader view when served as offline App Shell fallback for /read/[id] route', () => {
+    const originalPathname = window.location.pathname;
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...window.location,
+        pathname: '/read/1342',
+        search: '',
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    renderHome();
+
+    // Should mount the dynamic reader rather than the sticky catalog toolbar
+    expect(screen.queryByTestId('sticky-catalog-toolbar')).not.toBeInTheDocument();
+
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...window.location,
+        pathname: originalPathname,
+      },
+      configurable: true,
+      writable: true,
+    });
   });
 });
 

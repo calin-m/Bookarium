@@ -362,5 +362,62 @@ describe('ReaderAnnotationsDrawer', () => {
     fireEvent.click(replyBtn);
     expect(screen.getByTestId('drawer-reply-textarea-fellow-standalone-1')).toBeInTheDocument();
   });
+
+  it('renders In My Notes badge and Edit My Note when fellow annotation matches existing personal annotation in Fellows tab', () => {
+    const ownWithNote = [
+      {
+        id: 'own-1',
+        bookId: 1342,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'It is a truth universally acknowledged',
+        color: 'yellow' as const,
+        note: 'My existing reflection',
+        createdAt: '2026-10-15T09:00:00Z',
+        updatedAt: '2026-10-15T09:00:00Z',
+      },
+    ];
+
+    const fellowMatching = [
+      {
+        id: 'fellow-1',
+        bookId: 1342,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'It is a truth universally acknowledged',
+        color: 'amber' as const,
+        note: 'Fellow thought',
+        createdAt: '2026-10-15T10:00:00Z',
+        updatedAt: '2026-10-15T10:00:00Z',
+        isFellow: true as const,
+        fellowUsername: 'plato',
+        fellowDisplayName: 'Plato',
+      },
+    ];
+
+    render(
+      <ReaderAnnotationsDrawer
+        {...defaultProps}
+        annotations={ownWithNote}
+        fellowAnnotations={fellowMatching}
+        onSaveFellowAnnotation={vi.fn()}
+        marginaliaSourceFilter="fellows"
+        activeChapterIndex={0}
+      />
+    );
+
+    // Save to My Notes should NOT be rendered; In My Notes badge should be shown instead
+    expect(screen.queryByTestId('drawer-save-fellow-note-btn-fellow-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('drawer-fellow-saved-badge-fellow-1')).toHaveTextContent('In My Notes');
+
+    // Because own note already exists, button says Edit My Note
+    const editBtn = screen.getByTestId('drawer-reply-fellow-note-btn-fellow-1');
+    expect(editBtn).toHaveTextContent('Edit My Note');
+
+    // Clicking Edit My Note pre-fills textarea with existing personal reflection
+    fireEvent.click(editBtn);
+    const textarea = screen.getByTestId('drawer-reply-textarea-fellow-1') as HTMLTextAreaElement;
+    expect(textarea.value).toBe('My existing reflection');
+  });
 });
 

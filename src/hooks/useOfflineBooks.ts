@@ -220,6 +220,12 @@ export function useOfflineBooks() {
           // Non-blocking fallback
         }
 
+        // Pre-warm the Reader route and JS bundle into the Service Worker cache
+        if (typeof window !== 'undefined') {
+          void import('@/app/read/[id]/page').catch(() => {});
+          void fetch(`/read/${book.id}`, { credentials: 'same-origin' }).catch(() => {});
+        }
+
         return true;
       } catch {
         return false;
@@ -248,6 +254,10 @@ export function useOfflineBooks() {
       if (missing.length === 0) {
         setIsDownloading(false);
         return;
+      }
+
+      if (typeof window !== 'undefined') {
+        void import('@/app/read/[id]/page').catch(() => {});
       }
 
       setDownloadAllProgress({ current: 0, total: missing.length });

@@ -93,7 +93,7 @@ describe('BookmarkCard', () => {
     expect(useReaderStore.getState().currentBook?.id).toBe(1342);
   });
 
-  it('renders offline badge when isOffline is true', () => {
+  it('renders offline badge when isOffline is true and switches to Remove when active or hovered', () => {
     const handleToggleOffline = vi.fn();
     const { rerender } = render(
       <BookmarkCard
@@ -108,6 +108,7 @@ describe('BookmarkCard', () => {
       <BookmarkCard
         volume={mockVolume}
         isOffline={true}
+        isActive={false}
         onToggleOffline={handleToggleOffline}
       />
     );
@@ -117,6 +118,49 @@ describe('BookmarkCard', () => {
 
     fireEvent.click(badge);
     expect(handleToggleOffline).toHaveBeenCalledWith(mockVolume.book);
+
+    // When isActive is true, badge switches from Downloaded to Remove
+    rerender(
+      <BookmarkCard
+        volume={mockVolume}
+        isOffline={true}
+        isActive={true}
+        onToggleOffline={handleToggleOffline}
+      />
+    );
+    expect(screen.getByText('Remove')).toBeInTheDocument();
+    expect(badge).toHaveClass('text-destructive', 'border-destructive/50');
+  });
+
+  it('applies active styling, highlights title, and triggers onActivate on card click', () => {
+    const handleActivate = vi.fn();
+    const { rerender } = render(
+      <BookmarkCard
+        volume={mockVolume}
+        isActive={false}
+        onActivate={handleActivate}
+      />
+    );
+
+    const article = screen.getByRole('article', { name: /Reading ledger entry for Pride and Prejudice/i });
+    expect(article).toHaveAttribute('data-active', 'false');
+    expect(article).toHaveClass('border-border');
+
+    fireEvent.click(article);
+    expect(handleActivate).toHaveBeenCalledWith(1342);
+
+    rerender(
+      <BookmarkCard
+        volume={mockVolume}
+        isActive={true}
+        onActivate={handleActivate}
+      />
+    );
+    expect(article).toHaveAttribute('data-active', 'true');
+    expect(article).toHaveClass('border-primary/50', 'ring-2', 'ring-primary/50');
+
+    const titleLink = screen.getByRole('link', { name: 'Pride and Prejudice' });
+    expect(titleLink).toHaveClass('text-primary');
   });
 
   it('handles status changes from harmonized select dropdown', () => {
@@ -262,6 +306,7 @@ describe('BookmarkCard', () => {
 
     const toggleBtn = screen.getByTestId('bookmark-card-offline-toggle-btn');
     expect(toggleBtn).toHaveAttribute('aria-label', `Save ${mockVolume.book.title} for offline reading`);
+    expect(toggleBtn).toHaveClass('hover:border-emerald-500/40', 'hover:text-emerald-600');
     fireEvent.click(toggleBtn);
     expect(handleToggleOffline).toHaveBeenCalledWith(mockVolume.book);
 
@@ -287,10 +332,13 @@ describe('BookmarkCard', () => {
         onToggleOffline={handleToggleOffline}
       />
     );
-    expect(screen.getByTestId('bookmark-card-offline-toggle-btn')).toHaveAttribute(
+    const offlineReadyBtn = screen.getByTestId('bookmark-card-offline-toggle-btn');
+    expect(offlineReadyBtn).toHaveAttribute(
       'aria-label',
       `Remove offline copy of ${mockVolume.book.title}`
     );
+    expect(offlineReadyBtn).toHaveClass('border-emerald-500/40', 'text-emerald-600');
+    expect(offlineReadyBtn).toHaveClass('hover:border-destructive/60', 'hover:text-destructive');
   });
 });
 

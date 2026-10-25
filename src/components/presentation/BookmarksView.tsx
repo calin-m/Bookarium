@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bookmark,
@@ -44,6 +44,7 @@ const BOOKMARKS_PAGE_SIZE = 12;
 export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeBookId, setActiveBookId] = useState<number | null>(null);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [volumeToDelete, setVolumeToDelete] = useState<ActiveReadingVolume | null>(null);
   const [volumeToFinish, setVolumeToFinish] = useState<ActiveReadingVolume | null>(null);
@@ -85,6 +86,89 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
     const start = (currentPage - 1) * BOOKMARKS_PAGE_SIZE;
     return filteredVolumes.slice(start, start + BOOKMARKS_PAGE_SIZE);
   }, [filteredVolumes, currentPage]);
+
+  // Single-column mobile scroll focus zone (< 768px) and tactile dismissal
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleScrollOrResize = () => {
+      if (window.innerWidth >= 768) return;
+      const grid = document.getElementById('bookmarks-grid-content');
+      if (!grid) return;
+      const cardEls = Array.from(grid.querySelectorAll<HTMLElement>('[data-bookmark-card-id]'));
+      if (cardEls.length === 0) return;
+
+      // Top boundary: near page top
+      if (window.scrollY <= 32) {
+        const firstId = Number(cardEls[0].getAttribute('data-bookmark-card-id'));
+        if (firstId && !isNaN(firstId)) {
+          setActiveBookId(firstId);
+          return;
+        }
+      }
+
+      // Bottom boundary: near page bottom
+      const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 32;
+      if (isAtBottom) {
+        const lastId = Number(cardEls[cardEls.length - 1].getAttribute('data-bookmark-card-id'));
+        if (lastId && !isNaN(lastId)) {
+          setActiveBookId(lastId);
+          return;
+        }
+      }
+
+      // Viewport central focus band: ~45% from top
+      const targetY = window.innerHeight * 0.45;
+      let closestId: number | null = null;
+      let minDistance = Infinity;
+
+      for (const el of cardEls) {
+        const rect = el.getBoundingClientRect();
+        if (rect.bottom >= 0 && rect.top <= window.innerHeight) {
+          const cardCenterY = rect.top + rect.height / 2;
+          const dist = Math.abs(cardCenterY - targetY);
+          if (dist < minDistance) {
+            minDistance = dist;
+            const id = Number(el.getAttribute('data-bookmark-card-id'));
+            if (id && !isNaN(id)) {
+              closestId = id;
+            }
+          }
+        }
+      }
+
+      if (closestId !== null) {
+        setActiveBookId(closestId);
+      }
+    };
+
+    let rafId: number | null = null;
+    const onScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(handleScrollOrResize);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    handleScrollOrResize();
+
+    // Tap outside cards clears active state
+    const handleDocumentPointerDown = (e: PointerEvent | MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && !target.closest('[data-bookmark-card-id]')) {
+        setActiveBookId(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleDocumentPointerDown, { passive: true });
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      document.removeEventListener('pointerdown', handleDocumentPointerDown);
+    };
+  }, [paginatedVolumes]);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
@@ -277,6 +361,8 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
                   volume={vol}
                   isOffline={isBookOffline(vol.book.id)}
                   isDownloadingOffline={downloadingBookId === vol.book.id}
+                  isActive={activeBookId === vol.book.id}
+                  onActivate={(bookId) => setActiveBookId(bookId)}
                   onToggleOffline={handleToggleOffline}
                   onResume={handleResume}
                   onStatusChange={handleStatusChange}
