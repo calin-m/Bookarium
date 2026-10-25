@@ -122,7 +122,7 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
       </div>
 
       {/* Utility Controls Row (Row 2 on Mobile, Right-side on Desktop) */}
-      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 min-w-0">
+      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 min-w-0 md:shrink-0">
         {/* Sort Dropdown */}
         {hasSort && (
           <div className="flex items-center gap-1.5 flex-1 min-w-0 sm:flex-none">

@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2 } from 'lucide-react';
 import type { ActiveReadingVolume, LedgerItemStatus, GutendexBook, Book } from '@/types/book.types';
@@ -124,22 +123,9 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         {/* Top Meta: Cover + Title + Authors */}
         <div className="flex items-start gap-4">
           <div
-            role="button"
-            tabIndex={isRestricted ? -1 : 0}
-            onClick={handleResume}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleResume();
-              }
-            }}
-            aria-label={
-              isRestricted
-                ? `${book.title} is restricted in ${country}`
-                : `Resume reading ${book.title} (cover)`
-            }
-            className={`group/cover relative w-16 h-24 shrink-0 rounded overflow-hidden bg-muted border border-border shadow-2xs focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 ${
-              isRestricted ? 'cursor-not-allowed' : 'cursor-pointer'
+            data-testid="bookmark-card-cover"
+            className={`group/cover relative w-16 h-24 shrink-0 rounded overflow-hidden bg-muted border border-border shadow-2xs select-none ${
+              isRestricted ? 'cursor-not-allowed' : ''
             }`}
           >
             {book.coverUrl && !imageError ? (
@@ -203,13 +189,11 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                   {book.title}
                 </span>
               ) : (
-                <Link
-                  href={ROUTES.READ(book.id)}
-                  onClick={() => useReaderStore.getState().openReader(book)}
+                <span
                   className={isActive ? 'text-primary' : 'group-hover:text-primary'}
                 >
                   {book.title}
-                </Link>
+                </span>
               )}
             </h3>
 

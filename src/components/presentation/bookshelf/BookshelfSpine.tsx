@@ -209,7 +209,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
 
       {/* Hover Floating Card Preview / Quick Actions (Desktop Hover) */}
       <div
-        className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden sm:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10 after:content-[''] after:absolute after:inset-x-0 after:top-full after:h-6"
+        className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden lg:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10 after:content-[''] after:absolute after:inset-x-0 after:top-full after:h-6"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >

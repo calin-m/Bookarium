@@ -89,6 +89,7 @@ export interface BookshelfState {
   updateBookshelfPrivacy: (shelfId: string, isPublic: boolean, userId: string) => Promise<boolean>;
   deleteCloudBookshelf: (shelfId: string, userId: string) => Promise<boolean>;
   moveBookToShelf: (bookId: number, targetShelfId: string, userId: string) => Promise<boolean>;
+  clearCustomShelfBooks: (shelfId: string, userId?: string) => Promise<void>;
   setActiveBookshelfId: (id: string | null) => void;
 }
 
@@ -220,6 +221,46 @@ export const useBookshelfStore = create<BookshelfState>()(
           Promise.all(removedIds.map((id) => Promise.resolve(removeOfflineBook?.(id))))
             .then(() => notifyOfflineUpdated())
             .catch(() => {});
+        }
+      },
+
+      clearCustomShelfBooks: async (shelfId: string, userId?: string) => {
+        const currentUserId = userId || useAuthStore.getState().user?.id;
+        const { savedBooks, cloudBookshelfItems, deletedBookIds = {} } = get();
+        const shelfBookIds = new Set(
+          cloudBookshelfItems
+            .filter((item) => item.bookshelf_id === shelfId)
+            .map((item) => item.book_id)
+        );
+        if (shelfBookIds.size === 0) return;
+
+        const nextSaved = savedBooks.filter((b) => !shelfBookIds.has(b.id));
+        const nextItems = cloudBookshelfItems.filter((item) => item.bookshelf_id !== shelfId);
+        const nextDeleted = { ...deletedBookIds };
+        const now = new Date().toISOString();
+        shelfBookIds.forEach((id) => {
+          nextDeleted[id] = now;
+        });
+
+        set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems, deletedBookIds: nextDeleted });
+
+        shelfBookIds.forEach((id) => {
+          Promise.resolve(removeOfflineBook?.(id))
+            .then(() => notifyOfflineUpdated())
+            .catch(() => {});
+        });
+
+        if (currentUserId) {
+          try {
+            const supabase = createClient();
+            await supabase
+              .from('bookshelf_items')
+              .delete()
+              .eq('bookshelf_id', shelfId)
+              .eq('user_id', currentUserId);
+          } catch {
+            // Non-blocking fallback
+          }
         }
       },
 

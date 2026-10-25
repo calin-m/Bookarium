@@ -211,7 +211,7 @@ describe('useOfflineBooks hook', () => {
     const { getOfflineBookIds } = await import('@/lib/offline-storage');
     vi.mocked(getOfflineBookIds).mockResolvedValue([]);
 
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input) => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() => {
       return Promise.resolve(new Response('Full text content', { status: 200 }));
     });
 

@@ -78,19 +78,20 @@ describe('BookshelfRack Component', () => {
     expect(pushMock).toHaveBeenCalledWith(`/read/${mockBooks[0].id}`);
   });
 
-  it('opens mobile modal when book spine is clicked on mobile screen (<640px)', () => {
+  it('opens mobile/tablet modal when book spine is clicked on mobile or tablet screen (<1024px)', () => {
     const originalInnerWidth = window.innerWidth;
-    window.innerWidth = 480;
 
     try {
-      render(<BookshelfRack books={mockBooks} />);
+      // Test 1: Mobile phone (480px)
+      window.innerWidth = 480;
+      const { unmount } = render(<BookshelfRack books={mockBooks} />);
 
       const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
       act(() => {
         fireEvent.click(bookElem);
       });
 
-      const actionSheet = screen.getByTestId('mobile-book-action-sheet');
+      let actionSheet = screen.getByTestId('mobile-book-action-sheet');
       expect(actionSheet).toBeInTheDocument();
       expect(within(actionSheet).getByText(mockBooks[0].title)).toBeInTheDocument();
 
@@ -101,6 +102,20 @@ describe('BookshelfRack Component', () => {
       });
 
       expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+      unmount();
+
+      // Test 2: Tablet (768px iPad)
+      window.innerWidth = 768;
+      render(<BookshelfRack books={mockBooks} />);
+      const tabletBookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
+      act(() => {
+        fireEvent.click(tabletBookElem);
+      });
+
+      actionSheet = screen.getByTestId('mobile-book-action-sheet');
+      expect(actionSheet).toBeInTheDocument();
+      expect(within(actionSheet).getByText(mockBooks[0].title)).toBeInTheDocument();
+      expect(pushMock).not.toHaveBeenCalled();
     } finally {
       window.innerWidth = originalInnerWidth;
     }
@@ -662,34 +677,15 @@ describe('BookshelfRack Component', () => {
     fetchSpy.mockRestore();
   });
 
-  it('renders Downloaded notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll', async () => {
-    const { getOfflineBookIds, removeOfflineBook } = await import('@/lib/offline-storage');
+  it('does not render duplicate lower Clear Offline button when all books are offline, preserving single top header clear pattern', async () => {
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
     vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
 
     render(<BookshelfRack books={mockBooks.slice(0, 1)} />);
 
-    // Verify redundant status pill is removed
+    // Verify redundant status pill and duplicate lower clear button are not rendered
     expect(screen.queryByTestId('all-saved-offline-notice')).toBeNull();
-
-    const clearShelfBtn = await screen.findByRole('button', { name: /Clear Offline Shelf/i });
-    expect(clearShelfBtn).toBeInTheDocument();
-    expect(screen.getByText('Clear Offline Shelf')).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(clearShelfBtn);
-    });
-
-    const modal = screen.getByTestId('clear-offline-shelf-modal');
-    expect(modal).toBeInTheDocument();
-
-    const confirmBtn = within(modal).getByRole('button', { name: 'Clear Offline Downloads' });
-    await act(async () => {
-      fireEvent.click(confirmBtn);
-    });
-
-    await waitFor(() => {
-      expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
-    });
+    expect(screen.queryByRole('button', { name: /Clear Offline Shelf/i })).toBeNull();
   });
 
   it('renders Edit and Delete buttons to the left of Download Shelf Offline button on custom shelves', () => {
@@ -762,9 +758,8 @@ describe('BookshelfRack Component', () => {
 
     // Redundant status pill is removed
     expect(screen.queryByTestId('all-saved-offline-notice')).toBeNull();
-    // Clear Offline Shelf is available directly
-    const clearBtn = await screen.findByRole('button', { name: 'Clear Offline Shelf' });
-    expect(clearBtn).toBeInTheDocument();
+    // Lower duplicate Clear Offline Shelf button is removed in favor of top header clear button
+    expect(screen.queryByRole('button', { name: 'Clear Offline Shelf' })).toBeNull();
 
     act(() => {
       useJurisdictionStore.setState({ country: 'US' });
@@ -988,32 +983,17 @@ describe('BookshelfRack Component', () => {
     });
   });
 
-  it('displays Clear Offline button alongside Download Shelf Offline when shelf is partially cached offline', async () => {
-    const { getOfflineBookIds, removeOfflineBook } = await import('@/lib/offline-storage');
+  it('displays Download Shelf Offline for remaining books without duplicate lower Clear Offline button when shelf is partially cached offline', async () => {
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
     vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
 
     render(<BookshelfRack books={[mockBooks[0], mockBooks[1]]} />);
 
-    const clearBtn = await screen.findByRole('button', { name: 'Clear Offline Shelf' });
-    expect(clearBtn).toBeInTheDocument();
-    expect(clearBtn).toHaveTextContent(/Clear Offline \(1\)/i);
+    // Verify duplicate lower Clear Offline button is not present
+    expect(screen.queryByRole('button', { name: 'Clear Offline Shelf' })).toBeNull();
 
-    const downloadBtn = screen.getByRole('button', {
-      name: 'Download all books on this shelf for offline reading',
-    });
+    const downloadBtn = await screen.findByText(/Download Shelf Offline \(1\)/i);
     expect(downloadBtn).toBeInTheDocument();
-    expect(downloadBtn).toHaveTextContent(/Download Shelf Offline \(1\)/i);
-
-    fireEvent.click(clearBtn);
-    const confirmModal = await screen.findByTestId('clear-offline-shelf-modal');
-    expect(confirmModal).toBeInTheDocument();
-
-    const confirmClearBtn = within(confirmModal).getByRole('button', { name: /Clear Offline Downloads/i });
-    await act(async () => {
-      fireEvent.click(confirmClearBtn);
-    });
-
-    expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
   });
 
   it('renders Downloaded shelf pill next to General when downloaded books exist and handles shelf switching', async () => {

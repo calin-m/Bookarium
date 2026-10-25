@@ -78,7 +78,7 @@ function HomeContent() {
   const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'favorites' | null>(null);
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
 
-  const { isBookOffline, downloadBook, removeBook, downloadingBookId, offlineBookIds } = useOfflineBooks();
+  const { isBookOffline, downloadBook, removeBook, removeAll, downloadingBookId, offlineBookIds } = useOfflineBooks();
   const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | null>(null);
   const handleToggleOffline = async (book: GutendexBook) => {
     if (isBookOffline(book.id)) {
@@ -222,6 +222,10 @@ function HomeContent() {
   const currentActiveShelfId = activeBookshelfId || defaultShelf?.id;
   const isViewingDownloaded = currentActiveShelfId === DOWNLOADED_SHELF_ID;
   const isViewingGeneral = !isViewingDownloaded && (defaultShelf ? currentActiveShelfId === defaultShelf.id : true);
+  const activeShelf = useMemo(
+    () => cloudBookshelves.find((s) => s.id === currentActiveShelfId) || defaultShelf,
+    [cloudBookshelves, currentActiveShelfId, defaultShelf]
+  );
 
   const currentShelfBooks = useMemo(() => {
     if (isViewingDownloaded) {
@@ -634,11 +638,18 @@ function HomeContent() {
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={isShelf ? collectionCount === 0 : false}
                       onClick={() => setConfirmClearType(viewConfig.clearType!)}
-                      className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase"
+                      className="text-destructive border-border hover:border-destructive hover:bg-destructive/10 gap-1.5 text-xs font-mono uppercase disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      {viewConfig.clearButtonText}
+                      {isShelf
+                        ? isViewingDownloaded
+                          ? 'Clear Downloaded Shelf'
+                          : !isViewingGeneral && activeShelf && !activeShelf.is_default
+                          ? `Clear "${activeShelf.name}" Shelf`
+                          : viewConfig.clearButtonText
+                        : viewConfig.clearButtonText}
                     </Button>
                   </div>
                 )}
@@ -704,7 +715,7 @@ function HomeContent() {
                   setPreviewOriginRect(rect || null);
                 }}
                 activePreviewBookId={activePreviewBookId}
-                viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}
+                viewMode={activeView === 'bookshelf' ? 'shelf' : activeView === 'favorites' ? 'grid' : viewMode}
                 onViewModeChange={handleViewModeChange}
                 showViewToggle={false} // Managed by StickyToolbar
                 onBrowseCatalog={() => setActiveView('catalog')}
@@ -863,7 +874,15 @@ function HomeContent() {
       <Modal
         isOpen={confirmClearType !== null}
         onClose={() => setConfirmClearType(null)}
-        title={confirmClearType === 'shelf' ? 'Clear Personal Bookshelf' : 'Clear Favorite Books'}
+        title={
+          confirmClearType === 'favorites'
+            ? 'Clear Favorite Books'
+            : isViewingDownloaded
+            ? 'Clear Downloaded Books'
+            : !isViewingGeneral && activeShelf && !activeShelf.is_default
+            ? `Clear "${activeShelf.name}" Bookshelf`
+            : 'Clear Personal Bookshelf'
+        }
         maxWidth="md"
         backdropClassName="bg-transparent backdrop-blur-none"
       >
@@ -874,14 +893,22 @@ function HomeContent() {
             </div>
             <div className="space-y-1">
               <p className="font-semibold text-foreground text-sm sm:text-base">
-                {confirmClearType === 'shelf'
-                  ? 'Are you sure you want to clear your bookshelf?'
-                  : 'Are you sure you want to clear your favorites?'}
+                {confirmClearType === 'favorites'
+                  ? 'Are you sure you want to clear your favorites?'
+                  : isViewingDownloaded
+                  ? 'Are you sure you want to clear your downloaded shelf?'
+                  : !isViewingGeneral && activeShelf && !activeShelf.is_default
+                  ? `Are you sure you want to clear your "${activeShelf.name}" shelf?`
+                  : 'Are you sure you want to clear your bookshelf?'}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                {confirmClearType === 'shelf'
-                  ? `This will remove all ${savedBooks.length} titles currently preserved on your personal reading shelf. This action cannot be undone.`
-                  : `This will remove all ${favoriteBookIds.length} titles from your curated favorites list. This action cannot be undone.`}
+                {confirmClearType === 'favorites'
+                  ? `This will remove all ${favoriteBookIds.length} titles from your curated favorites list. This action cannot be undone.`
+                  : isViewingDownloaded
+                  ? `This will remove the offline copies for all ${currentShelfBooks.length} downloaded titles to free up device storage. Your books will remain preserved on your personal bookshelf.`
+                  : !isViewingGeneral && activeShelf && !activeShelf.is_default
+                  ? `This will remove all ${currentShelfBooks.length} titles currently on "${activeShelf.name}" from your bookshelf. Titles on your other shelves will not be affected. This action cannot be undone.`
+                  : `This will remove all ${savedBooks.length} titles currently preserved across your personal reading shelves. This action cannot be undone.`}
               </p>
             </div>
           </div>
@@ -899,9 +926,15 @@ function HomeContent() {
               variant="primary"
               size="sm"
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
-              onClick={() => {
+              onClick={async () => {
                 if (confirmClearType === 'shelf') {
-                  clearSavedBooks();
+                  if (isViewingDownloaded) {
+                    await removeAll(currentShelfBooks);
+                  } else if (!isViewingGeneral && activeShelf && !activeShelf.is_default) {
+                    await useBookshelfStore.getState().clearCustomShelfBooks(activeShelf.id);
+                  } else {
+                    clearSavedBooks();
+                  }
                 } else if (confirmClearType === 'favorites') {
                   useBookshelfStore.getState().clearFavoriteBooks();
                 }
@@ -909,7 +942,13 @@ function HomeContent() {
               }}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              {confirmClearType === 'shelf' ? 'Yes, Clear Shelf' : 'Yes, Clear Favorites'}
+              {confirmClearType === 'favorites'
+                ? 'Yes, Clear Favorites'
+                : isViewingDownloaded
+                ? 'Yes, Clear Downloads'
+                : !isViewingGeneral && activeShelf && !activeShelf.is_default
+                ? `Yes, Clear "${activeShelf.name}"`
+                : 'Yes, Clear Shelf'}
             </Button>
           </div>
         </div>

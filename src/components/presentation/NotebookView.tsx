@@ -704,14 +704,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                   title="Group by Volume"
                   aria-label="By Book"
                   aria-pressed={groupMode === 'volume'}
-                  className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 lg:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
                     groupMode === 'volume'
                       ? 'bg-background text-foreground shadow-xs font-bold'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden sm:inline">By Book</span>
+                  <span className="hidden lg:inline">By Book</span>
                 </button>
                 <button
                   type="button"
@@ -719,14 +719,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                   title="All Passages in Chronological Order"
                   aria-label="Chronological"
                   aria-pressed={groupMode === 'chronological'}
-                  className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 lg:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
                     groupMode === 'chronological'
                       ? 'bg-background text-foreground shadow-xs font-bold'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Clock className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden sm:inline">Chronological</span>
+                  <span className="hidden lg:inline">Chronological</span>
                 </button>
               </div>
             }

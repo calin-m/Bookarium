@@ -14,7 +14,7 @@
     "dev:all": "concurrently -n next,test,browser -c blue,magenta,green \"next dev --webpack\" \"vitest\" \"node scripts/open-browser.js http://localhost:3000 3000\"",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "knip": "knip",
     "test": "vitest run --coverage",

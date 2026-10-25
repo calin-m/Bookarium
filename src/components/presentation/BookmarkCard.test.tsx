@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { BookmarkCard } from './BookmarkCard';
 import type { ActiveReadingVolume } from '@/types/book.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -66,21 +66,19 @@ describe('BookmarkCard', () => {
     expect(useReaderStore.getState().currentBook?.id).toBe(1342);
   });
 
-  it('triggers onResume and warms reader store when cover thumbnail is clicked or activated via keyboard', () => {
+  it('does not trigger onResume on cover thumbnail or title click, preserving clicks for card activation', () => {
     const handleResume = vi.fn();
-    render(<BookmarkCard volume={mockVolume} onResume={handleResume} />);
+    const handleActivate = vi.fn();
+    render(<BookmarkCard volume={mockVolume} onResume={handleResume} onActivate={handleActivate} />);
 
-    const coverBtn = screen.getByRole('button', { name: /Resume reading Pride and Prejudice \(cover\)/i });
-    fireEvent.click(coverBtn);
-    expect(handleResume).toHaveBeenCalledTimes(1);
-    expect(useReaderStore.getState().currentBook?.id).toBe(1342);
+    const cover = screen.getByTestId('bookmark-card-cover');
+    fireEvent.click(cover);
+    expect(handleResume).not.toHaveBeenCalled();
+    expect(handleActivate).toHaveBeenCalledWith(1342);
 
-    // Keyboard navigation (Enter and Space)
-    fireEvent.keyDown(coverBtn, { key: 'Enter' });
-    expect(handleResume).toHaveBeenCalledTimes(2);
-
-    fireEvent.keyDown(coverBtn, { key: ' ' });
-    expect(handleResume).toHaveBeenCalledTimes(3);
+    const title = screen.getByText('Pride and Prejudice');
+    fireEvent.click(title);
+    expect(handleResume).not.toHaveBeenCalled();
   });
 
   it('falls back to router.push when onResume is not provided', () => {
@@ -133,8 +131,9 @@ describe('BookmarkCard', () => {
     expect(article).toHaveAttribute('data-active', 'true');
     expect(article).toHaveClass('border-primary/50', 'ring-2', 'ring-primary/50');
 
-    const titleLink = screen.getByRole('link', { name: 'Pride and Prejudice' });
-    expect(titleLink).toHaveClass('text-primary');
+    const titleHeading = screen.getByRole('heading', { level: 3, name: 'Pride and Prejudice' });
+    const titleSpan = titleHeading.querySelector('span');
+    expect(titleSpan).toHaveClass('text-primary');
   });
 
   it('handles status changes from harmonized select dropdown', () => {
@@ -165,7 +164,8 @@ describe('BookmarkCard', () => {
     const img = screen.getByAltText('Cover of Pride and Prejudice');
     fireEvent.error(img);
 
-    expect(screen.getByText('Pride and Prejudice', { selector: 'span' })).toBeInTheDocument();
+    const cover = screen.getByTestId('bookmark-card-cover');
+    expect(within(cover).getByText('Pride and Prejudice')).toBeInTheDocument();
   });
 
   it('applies solid border and canonical booksaw shadow styling', () => {
@@ -247,7 +247,7 @@ describe('BookmarkCard', () => {
     fireEvent.click(restrictedBtn);
     expect(handleResume).not.toHaveBeenCalled();
 
-    const cover = screen.getByLabelText(/The Mysterious Affair at Styles is restricted in RO/i);
+    const cover = screen.getByTestId('bookmark-card-cover');
     fireEvent.click(cover);
     expect(handleResume).not.toHaveBeenCalled();
 

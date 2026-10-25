@@ -185,9 +185,9 @@ function analyzeDependencyGraph(srcDir, rootDir) {
     graph.set(relativePath, {
       file: relativePath,
       absolutePath: file,
-      imports: internalImports,
-      staticImports,
-      rawImports,
+      imports: Array.from(new Set(internalImports)),
+      staticImports: Array.from(new Set(staticImports)),
+      rawImports: Array.from(new Set(rawImports)),
       exportedProps,
       exportedInterfaces,
       resolvedImports: [],
@@ -306,7 +306,7 @@ function extractComponentCatalog(graph) {
     if (!file.startsWith('src/components/')) continue;
 
     const parts = file.split('/');
-    const category = parts[2] || 'general';
+    const category = parts.slice(2, -1).join('/') || 'general';
     const filename = parts[parts.length - 1];
     const componentName = filename.replace(/\.(tsx|ts)$/, '');
 
@@ -386,19 +386,20 @@ function extractStoreCatalog(srcDir) {
 }
 
 /**
- * Extracts API routes and custom hooks across the application.
+ * Extracts API/server routes, App Router entrypoints, and custom hooks across the application.
  */
 function extractApiAndHookCatalog(srcDir) {
-  const apiDir = path.join(srcDir, 'app', 'api');
+  const appDir = path.join(srcDir, 'app');
   const routes = [];
+  const appPages = [];
 
-  function scanApi(dir, routePath = '/api') {
+  function scanApp(dir, routePath = '') {
     if (!fs.existsSync(dir)) return;
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        scanApi(full, `${routePath}/${entry.name}`);
+        scanApp(full, `${routePath}/${entry.name}`);
       } else if (entry.name === 'route.ts' || entry.name === 'route.js') {
         const content = fs.readFileSync(full, 'utf-8');
         const methods = [];
@@ -408,15 +409,53 @@ function extractApiAndHookCatalog(srcDir) {
         if (/export\s+async\s+function\s+DELETE\b/.test(content)) methods.push('DELETE');
 
         routes.push({
-          path: routePath,
+          path: routePath || '/',
           file: path.relative(path.resolve(srcDir, '..'), full).replace(/\\/g, '/'),
           methods: methods.length > 0 ? methods.join(', ') : 'GET',
+        });
+      } else if (
+        entry.name === 'page.tsx' ||
+        entry.name === 'layout.tsx' ||
+        entry.name === 'error.tsx' ||
+        entry.name === 'global-error.tsx' ||
+        entry.name === 'not-found.tsx' ||
+        entry.name === 'manifest.ts' ||
+        entry.name === 'robots.ts' ||
+        entry.name === 'sitemap.ts'
+      ) {
+        const fileRel = path.relative(path.resolve(srcDir, '..'), full).replace(/\\/g, '/');
+        const content = fs.readFileSync(full, 'utf-8');
+        const isClient = content.includes("'use client'") || content.includes('"use client"');
+        let routeUri = routePath || '/';
+        let kind = 'App Page';
+        if (entry.name === 'layout.tsx') {
+          kind = routeUri === '/' ? 'Root Layout' : 'Route Layout & SSR Metadata';
+        } else if (entry.name === 'error.tsx' || entry.name === 'global-error.tsx') {
+          kind = 'App Error Boundary';
+        } else if (entry.name === 'not-found.tsx') {
+          kind = 'App 404 Boundary';
+        } else if (entry.name === 'manifest.ts') {
+          routeUri = '/manifest.webmanifest';
+          kind = 'PWA Metadata Route';
+        } else if (entry.name === 'robots.ts') {
+          routeUri = '/robots.txt';
+          kind = 'SEO Metadata Route';
+        } else if (entry.name === 'sitemap.ts') {
+          routeUri = '/sitemap.xml';
+          kind = 'SEO Metadata Route';
+        }
+
+        appPages.push({
+          route: routeUri,
+          kind,
+          rendering: isClient ? 'Client Interactive (`"use client"`)' : 'React Server Component (SSR / Static)',
+          file: fileRel,
         });
       }
     }
   }
 
-  scanApi(apiDir);
+  scanApp(appDir);
 
   const hooksDir = path.join(srcDir, 'hooks');
   const hooks = [];
@@ -447,16 +486,73 @@ function extractApiAndHookCatalog(srcDir) {
 
   return {
     routes: routes.sort((a, b) => a.path.localeCompare(b.path)),
+    appPages: appPages.sort((a, b) => a.file.localeCompare(b.file)),
     hooks: hooks.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name)),
   };
 }
 
 /**
- * Extracts domain utilities and computational engines from src/lib/.
+ * Extracts domain utilities and computational engines from src/lib/ and route-co-located server utilities in src/app/.
  */
 function extractDomainUtilitiesCatalog(srcDir) {
   const libDir = path.join(srcDir, 'lib');
+  const appDir = path.join(srcDir, 'app');
   const utilities = [];
+
+  function parseFileExports(full) {
+    const content = fs.readFileSync(full, 'utf-8');
+    const exportedItems = [];
+
+    try {
+      const ast = parser.parse(content, {
+        sourceType: 'module',
+        plugins: ['typescript', 'jsx'],
+      });
+
+      traverse(ast, {
+        ExportNamedDeclaration({ node }) {
+          if (node.declaration) {
+            if (node.declaration.declarations) {
+              for (const dec of node.declaration.declarations) {
+                if (dec.id && dec.id.name) exportedItems.push(dec.id.name);
+              }
+            } else if (node.declaration.id && node.declaration.id.name) {
+              exportedItems.push(node.declaration.id.name);
+            }
+          }
+          if (node.specifiers) {
+            for (const spec of node.specifiers) {
+              if (spec.exported && spec.exported.name) exportedItems.push(spec.exported.name);
+            }
+          }
+        },
+        ExportDefaultDeclaration({ node }) {
+          if (node.declaration && node.declaration.id && node.declaration.id.name) {
+            exportedItems.push(node.declaration.id.name);
+          } else {
+            exportedItems.push('default');
+          }
+        },
+        ExportAllDeclaration({ node }) {
+          if (node.source && node.source.value) {
+            exportedItems.push(`* (${node.source.value})`);
+          }
+        },
+      });
+    } catch (_err) {
+      const exportRegex = /export\s+(?:async\s+)?(?:function|const|class|type|interface)\s+([A-Za-z0-9_]+)/g;
+      let match;
+      while ((match = exportRegex.exec(content)) !== null) {
+        exportedItems.push(match[1]);
+      }
+      const starRegex = /export\s+\*\s+from\s+['"]([^'"]+)['"]/g;
+      while ((match = starRegex.exec(content)) !== null) {
+        exportedItems.push(`* (${match[1]})`);
+      }
+    }
+
+    return Array.from(new Set(exportedItems));
+  }
 
   function scanLib(dir, relPath = 'src/lib') {
     if (!fs.existsSync(dir)) return;
@@ -474,57 +570,6 @@ function extractDomainUtilitiesCatalog(srcDir) {
         !entry.name.endsWith('.d.ts')
       ) {
         const fileRel = `${relPath}/${entry.name}`;
-        const content = fs.readFileSync(full, 'utf-8');
-        const exportedItems = [];
-
-        try {
-          const ast = parser.parse(content, {
-            sourceType: 'module',
-            plugins: ['typescript', 'jsx'],
-          });
-
-          traverse(ast, {
-            ExportNamedDeclaration({ node }) {
-              if (node.declaration) {
-                if (node.declaration.declarations) {
-                  for (const dec of node.declaration.declarations) {
-                    if (dec.id && dec.id.name) exportedItems.push(dec.id.name);
-                  }
-                } else if (node.declaration.id && node.declaration.id.name) {
-                  exportedItems.push(node.declaration.id.name);
-                }
-              }
-              if (node.specifiers) {
-                for (const spec of node.specifiers) {
-                  if (spec.exported && spec.exported.name) exportedItems.push(spec.exported.name);
-                }
-              }
-            },
-            ExportDefaultDeclaration({ node }) {
-              if (node.declaration && node.declaration.id && node.declaration.id.name) {
-                exportedItems.push(node.declaration.id.name);
-              } else {
-                exportedItems.push('default');
-              }
-            },
-            ExportAllDeclaration({ node }) {
-              if (node.source && node.source.value) {
-                exportedItems.push(`* (${node.source.value})`);
-              }
-            },
-          });
-        } catch (_err) {
-          const exportRegex = /export\s+(?:async\s+)?(?:function|const|class|type|interface)\s+([A-Za-z0-9_]+)/g;
-          let match;
-          while ((match = exportRegex.exec(content)) !== null) {
-            exportedItems.push(match[1]);
-          }
-          const starRegex = /export\s+\*\s+from\s+['"]([^'"]+)['"]/g;
-          while ((match = starRegex.exec(content)) !== null) {
-            exportedItems.push(`* (${match[1]})`);
-          }
-        }
-
         const utilityName = entry.name.replace(/\.(ts|tsx)$/, '');
         const subfolder = path.basename(dir) === 'lib' ? 'Core Domain' : path.basename(dir);
 
@@ -533,13 +578,43 @@ function extractDomainUtilitiesCatalog(srcDir) {
           filename: entry.name,
           file: fileRel,
           subsystem: subfolder.charAt(0).toUpperCase() + subfolder.slice(1),
-          exports: Array.from(new Set(exportedItems)),
+          exports: parseFileExports(full),
+        });
+      }
+    }
+  }
+
+  function scanAppUtilities(dir, relPath = 'src/app') {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const reservedAppFiles = new Set(['route.ts', 'route.js', 'page.tsx', 'layout.tsx', 'manifest.ts', 'robots.ts', 'sitemap.ts']);
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scanAppUtilities(full, `${relPath}/${entry.name}`);
+      } else if (
+        entry.name.endsWith('.ts') &&
+        !entry.name.endsWith('.test.ts') &&
+        !entry.name.endsWith('.d.ts') &&
+        !reservedAppFiles.has(entry.name)
+      ) {
+        const fileRel = `${relPath}/${entry.name}`;
+        const utilityName = entry.name.replace(/\.ts$/, '');
+        const subsystem = fileRel.includes('src/app/api/') ? 'Edge Route Engine' : 'SSR Route Engine';
+
+        utilities.push({
+          name: utilityName,
+          filename: entry.name,
+          file: fileRel,
+          subsystem,
+          exports: parseFileExports(full),
         });
       }
     }
   }
 
   scanLib(libDir);
+  scanAppUtilities(appDir);
   return utilities.sort((a, b) => a.file.localeCompare(b.file));
 }
 
@@ -676,24 +751,35 @@ function extractTypeCatalog(srcDir) {
 }
 
 /**
- * Extracts Web Worker architecture modules from src/workers/.
+ * Extracts Web Worker and PWA Service Worker architecture modules from src/workers/ and public/.
  */
 function extractWorkerCatalog(srcDir) {
   const workersDir = path.join(srcDir, 'workers');
-  if (!fs.existsSync(workersDir)) return [];
-
-  const files = fs
-    .readdirSync(workersDir)
-    .filter((f) => f.endsWith('.ts') || f.endsWith('.js'));
-
   const workers = [];
-  for (const file of files) {
+
+  if (fs.existsSync(workersDir)) {
+    const files = fs
+      .readdirSync(workersDir)
+      .filter((f) => (f.endsWith('.ts') || f.endsWith('.js')) && !f.endsWith('.test.ts') && !f.endsWith('.test.js'));
+
+    for (const file of files) {
+      workers.push({
+        name: file.replace(/\.(ts|js)$/, ''),
+        file: `src/workers/${file}`,
+        role: 'Dedicated off-thread Web Worker parsing raw Project Gutenberg plain-text AST, calculating chapter segmentation boundaries, and computing fluid paginated layouts without blocking the UI thread.',
+      });
+    }
+  }
+
+  const swPath = path.join(srcDir, '..', 'public', 'sw.js');
+  if (fs.existsSync(swPath)) {
     workers.push({
-      name: file.replace(/\.(ts|js)$/, ''),
-      file: `src/workers/${file}`,
-      role: 'Dedicated off-thread Web Worker parsing raw Project Gutenberg plain-text AST, calculating chapter segmentation boundaries, and computing fluid paginated layouts without blocking the UI thread.',
+      name: 'sw',
+      file: 'public/sw.js',
+      role: 'Progressive Web App (PWA) Service Worker (`bookarium-app-shell-v2`) providing offline App Shell caching, static asset resilience, and `/read/*` RSC navigation fallback for 100% offline reading.',
     });
   }
+
   return workers;
 }
 

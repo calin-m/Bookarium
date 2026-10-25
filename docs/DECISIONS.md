@@ -1472,3 +1472,81 @@
   - Vertical rhythm across the entire Catalog page is visually balanced and proportional across mobile, tablet, and desktop breakpoints without empty voids.
   - Strict type safety and 100% test coverage maintained across `BookGrid.test.tsx`, `Navbar.test.tsx`, `StickyCatalogToolbar.test.tsx`, `LiteraryQuotes.test.tsx`, `EditorialQuoteSection.test.tsx`, `Footer.test.tsx`, and `page.test.tsx`.
 
+## ADR-065: Tablet Bookshelf Spine Modal, Dedicated Bookmark Resume CTA & Hermetic CI Navigation Physics
+- **Status**: Accepted
+- **Context**:
+  1. *Tablet Bookshelf Spine Tap Navigation*: On tablet viewports ($640\text{px} \le \text{width} < 1024\text{px}$, such as iPads), tapping a 3D book spine on the Bookshelf rack previously bypassed curation controls and directly launched the Reader (`/read/[id]`) because the modal breakpoint was locked to mobile (`< 640px`), and CSS `:hover` states do not persist on touch screens. Tablet readers had no way to rate, move shelves, download offline, or remove books from the spine rack.
+  2. *BookmarkCard Accidental Reader Launches*: In the Reading Ledger (`BookmarkCard.tsx`), clicking either the book cover thumbnail or the book title text directly launched the Reader via `handleResume()`. This conflicted with user expectations for card activation/focus and precluded future expansion of cover/title interactions (e.g., expanding detailed volume metadata or opening inspection modals).
+  3. *CI Host Runner Hardware Concurrency Mismatch*: In GitHub Actions CI (Ubuntu 2-vCPU runner), `Navbar.test.tsx` failed because `usePerformanceTier` fell back to `medium` or `low` tier (`navigator.hardwareConcurrency <= 4`), preventing the high-tier two-phase directional elastic bridge and corner-tip curl from executing, whereas on local multi-core workstations (`cores > 4`), the tests passed under `high` tier.
+- **Decision**:
+  1. **Tablet Bookshelf Touch Parity (`src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`)**:
+     - Updated `handleSpineClick` in `BookshelfRack.tsx` to open `BookshelfMobileModal` when `window.innerWidth < 1024` (aligning with `BookCard` and `page.tsx` touch-first tablet conventions).
+     - Adjusted hover card popover visibility in `BookshelfSpine.tsx` from `hidden sm:group-hover:flex` to `hidden lg:group-hover:flex` to prevent touch-device hover phantom cards on tablets.
+  2. **Dedicated Resume CTA on Reading Ledger (`src/components/presentation/BookmarkCard.tsx`)**:
+     - Removed `Link` import and wrapper around the book title, converting it to an accessible `<span>` inside the `<h3>` heading.
+     - Removed `onClick={handleResume}` from the book cover thumbnail (`data-testid="bookmark-card-cover"`), so taps and clicks now cleanly bubble to card activation (`onActivate`) without prematurely launching the Reader.
+     - Preserved Reader launching exclusively on the dedicated, accessible **"Resume"** / **"Read Again"** primary button.
+  3. **Hermetic CI Performance Tier Mocking (`src/components/presentation/Navbar.test.tsx`)**:
+     - Explicitly mocked `usePerformanceTier` to return `{ tier: 'high', isLowTier: false, isMediumTier: false, isHighTier: true }` within high-tier directional bridge and corner-tip curl test cases.
+     - Guaranteed 100% deterministic test execution across any CI runner architecture, regardless of CPU core count.
+- **Consequences**:
+  - Tablet users enjoy complete parity with mobile for spine curation (star ratings, shelf reorganization, offline downloads, deletion) without accidental navigation.
+  - Reading Ledger cards can be selected, activated, and inspected without unwanted page jumps, paving the way for future volume detail drawer interactions.
+  - Zero false-positive or false-negative test failures across all local and remote CI runner environments.
+  - 100% test coverage maintained across `BookshelfRack.test.tsx`, `BookshelfSpine.test.tsx`, `BookmarkCard.test.tsx`, and `Navbar.test.tsx`.
+
+## ADR-066: Dedicated Favorites Cover Grid, Tablet Notebook Toolbar Collision Elimination & Unified Active-Shelf Clear Action
+- **Status**: Accepted
+- **Context**:
+  1. *Catalog ViewMode Leaking into Favorites*: When switching Catalog from Cover Grid to 3D Bookshelf Spine view (`viewMode = 'shelf'`), `BookGrid` in `page.tsx` evaluated `viewMode={activeView === 'bookshelf' ? 'shelf' : viewMode}`, unintentionally forcing `Favorites` into the 3D wooden spine rack without a toggle in `Favorites` to switch back. This also bypassed the custom Favorites empty state (`activeViewMode !== 'shelf' && books.length === 0`), showing a generic catalog empty rack.
+  2. *Tablet Notebook Search/Controls Row Flex Collision*: In `CollectionToolbar.tsx`, the layout switched from stacked (`flex-col`) to a single row at `md:flex-row` ($768\text{px}$). In `NotebookView.tsx`, the `By Book` and `Chronological` mode buttons revealed text labels at `sm:inline` ($640\text{px}$), requiring $\sim 215\text{px}$. On tablet viewports ($768\text{px}$), the combined width of Search Input ($\text{min-w } 220\text{px}$) and controls cluster ($\text{Sort} \sim 230\text{px} + \text{Toggle} \sim 215\text{px} + \text{Pagination} \sim 95\text{px} = 560\text{px}$) exceeded container width ($696\text{px}$). Because the controls container was `sm:justify-end min-w-0` while all children were `flex-shrink: 0`, the controls cluster overflowed leftward directly on top of the Search input box.
+  3. *Bookshelf Clear Action Redundancy & Shelf Isolation*: On the Bookshelf page, a redundant red `Clear Offline Shelf` / `Clear Offline (N)` button (shortened to `Clear (N)` on mobile) was located beside `Download Shelf Offline` on the shelf switcher bar. Meanwhile, the top `SectionHeader` button (`Clear Bookshelf`) blindly wiped `savedBooks` across the entire library, ignoring whether the user was viewing `General`, a specific custom shelf, or the `Downloaded` smart shelf.
+- **Decision**:
+  1. **Dedicated Favorites Cover Grid (`src/app/page.tsx`)**:
+     - Updated `BookGrid` `viewMode` in `page.tsx` to `activeView === 'bookshelf' ? 'shelf' : activeView === 'favorites' ? 'grid' : viewMode`.
+     - Preserved Catalog's switchable Grid/Shelf modes while guaranteeing Favorites always renders its visual Cover Grid with star ratings, favorite heart badges, and 3D Open-Book Previews.
+  2. **Tablet Notebook Toolbar Layout & Icon-Only Toggle (`src/components/presentation/NotebookView.tsx`, `src/components/presentation/CollectionToolbar.tsx`)**:
+     - Updated the `By Book` and `Chronological` label spans in `NotebookView.tsx` from `hidden sm:inline` to `hidden lg:inline`, displaying icon-only `<Layers />` and `<Clock />` pills on viewports $< 1024\text{px}$ (saving $\sim 150\text{px}$ of horizontal width).
+     - Added `md:shrink-0` to the controls container in `CollectionToolbar.tsx` to prevent leftward flex overflow over the search input at all tablet viewports.
+  3. **Unified Active-Shelf-Aware Top Clear Button & Lower Button Deprecation (`src/stores/useBookshelfStore.ts`, `src/app/page.tsx`, `src/components/presentation/BookshelfRack.tsx`)**:
+     - Removed the redundant lower `Clear Offline Shelf` / `Clear Offline (N)` button from the `BookshelfRack` shelf pill bar.
+     - Implemented `clearCustomShelfBooks(shelfId)` in `useBookshelfStore.ts` to delete only books assigned to a specific custom shelf without altering books on `General` or other shelves.
+     - Made the top `SectionHeader` clear button dynamic:
+       - **On `General`**: `Clear Bookshelf` $\to$ clears all saved books (`clearSavedBooks()`).
+       - **On a Custom Shelf**: `Clear "{activeShelf.name}" Shelf` (disabled when shelf has 0 books to maintain zero CLS) $\to$ clears only books on that custom shelf (`clearCustomShelfBooks(shelfId)`).
+       - **On `Downloaded` Smart Shelf**: `Clear Downloaded Shelf` $\to$ removes offline cached text copies (`removeAll(currentShelfBooks)`), freeing device storage while preserving saved books on the shelf.
+- **Consequences**:
+  - Catalog, Bookshelf, and Favorites each have clear, predictable view modes with zero cross-tab display leaks.
+  - Search input and sort/mode controls on tablet Notebook view never collide or overlap.
+  - Redundant lower trash buttons are eliminated; a single, elegant top-level clear button acts with complete active-shelf context and clear confirmation prompts.
+  - 100% test coverage maintained across `page.test.tsx`, `useBookshelfStore.test.ts`, `BookshelfRack.test.tsx`, `NotebookView.test.tsx`, and `CollectionToolbar.test.tsx`.
+
+---
+
+## ADR-067: 7-Pillar SAST & OWASP Security Suite Extension & Zero-Warning ESLint Gate Enforcement
+
+- **Date**: 2026-10-25
+- **Status**: Accepted
+- **Context**:
+  1. **ESLint Zero-Warning Gate**: Previously, `"lint": "eslint ."` in `package.json` executed without `--max-warnings 0`, allowing `@typescript-eslint/no-unused-vars` warnings in `BookPreviewModal.tsx`, `BookPreviewModal.test.tsx`, `useOfflineBooks.test.ts`, and `page.test.tsx` to exit with code `0` locally while surfacing warning annotations in GitHub Actions CI.
+  2. **SAST & OWASP Security Suite Accuracy**: `Pass 0.5` and `Pass 0.75` in `scripts/verify-build.js` checked 5 token patterns and 5 basic pillars (`npm audit`, literal `fetch` regex, `dangerouslySetInnerHTML`/`eval`, literal `redirect('http...')`, and `MIT` + `b.copyright !== true`), and `Pass 0.75` was omitted from `scripts/generate-quality-report.js` telemetry. Extending the suite to statically verify Bookarium's full OWASP security surface (client-bundle privilege isolation, API route rate limiting, redirect-hop SSRF validation, DOM XSS sinks, dynamic auth redirect sanitization, PostgreSQL Row-Level Security & `SECURITY DEFINER` `search_path` isolation in `supabase/schema.sql`, and OWASP HTTP headers in `next.config.ts`) increases security assurance in a 100% deterministic, non-breaking way.
+- **Decision**:
+  1. **Zero-Warning ESLint Gate (`package.json`, `scripts/generate-quality-report.js`)**:
+     - Resolved all 6 unused-variable warnings across `BookPreviewModal.tsx`, `BookPreviewModal.test.tsx`, `useOfflineBooks.test.ts`, and `page.test.tsx`.
+     - Upgraded `"lint"` in `package.json` to `"eslint . --max-warnings 0"` and updated `scripts/generate-quality-report.js` to require `eslintWarnings === 0` for `PASSED` status.
+  2. **Pass 0.5 Secret & Privilege Boundary Scanner (`scripts/verify-build.js`)**:
+     - Added detection for fine-grained GitHub PATs (`github_pat_...`), Supabase Personal Access Tokens (`sbp_...`), EC/OpenSSH private keys, Slack/Discord webhooks, and `service_role_key` literals.
+     - Added a Client-Bundle Privilege Guard ensuring `SUPABASE_SERVICE_ROLE_KEY` is never referenced inside `src/components/`, `src/hooks/`, `src/stores/`, or any `'use client'` module.
+  3. **Pass 0.75 7-Pillar SAST & OWASP Security Suite (`scripts/verify-build.js`, `scripts/generate-quality-report.js`)**:
+     - **Pillar 1**: Production runtime CVE audit (`npm audit --omit=dev --audit-level=high`).
+     - **Pillar 2**: API route SSRF taint analysis (including template-literal interpolation), mandatory `RateLimiter.check()` enforcement across all `src/app/api/**/route.ts` handlers, and `redirect: 'manual'` + `isSafeUpstreamUrl()` verification on `api/books/content/route.ts`.
+     - **Pillar 3**: Extended DOM XSS sink detection covering `dangerouslySetInnerHTML`, `eval()`, `new Function()`, `javascript:` URIs, `.innerHTML`/`.outerHTML` assignments, `document.write()`, and string-evaluated `setTimeout`/`setInterval`.
+     - **Pillar 4**: Open redirect guard verifying no hardcoded external HTTP redirects and enforcing `sanitizeRedirectPath` + `resolveCanonicalAuthOrigin` on dynamic `NextResponse.redirect` routes using `searchParams`.
+     - **Pillar 5**: MIT license and `b.copyright !== true` public domain enforcement.
+     - **Pillar 6**: Static PostgreSQL schema audit verifying every `CREATE TABLE [IF NOT EXISTS] public.<table_name>` in `supabase/schema.sql` has a matching `ALTER TABLE public.<table_name> ENABLE ROW LEVEL SECURITY;` and every `SECURITY DEFINER` function explicitly sets `SET search_path = ''`.
+     - **Pillar 7**: Static `next.config.ts` audit verifying all 7 mandatory OWASP HTTP security headers (`Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`), `frame-ancestors 'none'`, and `isDev`-gated `'unsafe-eval'`.
+     - Synchronized `pass075_sast_owasp` into `docs/quality-audit-results.json` and `docs/QUALITY_AUDIT_REPORT.md`.
+- **Consequences**:
+  - Unused variables or imports can never slip into GitHub Actions annotations unnoticed.
+  - Database schema additions, API routes, and Next.js configuration changes are automatically audited against OWASP Top 10 and PostgreSQL RLS invariants prior to every commit with zero false positives.
+

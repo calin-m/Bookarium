@@ -72,6 +72,9 @@ describe('BookshelfSpine Component', () => {
 
     expect(screen.getByText('75% read')).toBeInTheDocument();
 
+    const hoverCard = screen.getByText('75% read').closest('div.absolute');
+    expect(hoverCard).toHaveClass('hidden', 'lg:group-hover:flex');
+
     const readBtn = screen.getByLabelText('Open reader for Pride and Prejudice');
     fireEvent.click(readBtn);
     expect(handleBookClick).toHaveBeenCalledWith(mockBook);

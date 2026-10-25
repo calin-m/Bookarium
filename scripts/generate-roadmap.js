@@ -65,7 +65,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'Multi-Category Custom Bookshelves',
-        description: 'Custom bookshelf creation, master General shelf, floating "Move to Shelf" selector dropdowns on book spines, and safe deletion auto-reassigning volumes.',
+        description: 'Custom bookshelf creation, master General shelf, floating "Move to Shelf" selector dropdowns on desktop book spines, `<1024px` mobile & tablet curation action sheets (`BookshelfMobileModal.tsx`), active-shelf-aware clearing (`clearSavedBooks`, `clearCustomShelfBooks`), and safe shelf deletion auto-reassigning volumes.',
         check: () => fileExists('src/stores/useBookshelfStore.ts') && fileContains('src/stores/useBookshelfStore.ts', 'cloudBookshelves'),
       },
       {
@@ -113,12 +113,12 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'Literary Commonplace Notebook & Reading Journal',
-        description: 'Dedicated commonplace journal (`/?view=notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, academic citation generation, and deletion protection.',
+        description: 'Dedicated commonplace journal (`/?view=notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, tablet-optimized icon mode toggles, academic citation generation, and deletion protection.',
         check: () => fileExists('src/components/presentation/NotebookView.tsx'),
       },
       {
         title: 'IndexedDB Offline Book Storage',
-        description: 'Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, interactive `Downloaded` status badges, Bookshelf `Downloaded (N)` smart shelf pill (`DOWNLOADED_SHELF_ID`), unified `Downloaded` collection search filter, removal confirmation modals (`RemoveOfflineBookModal.tsx`), and cross-device controls, enabling unabridged reading on airplanes or offline.',
+        description: 'Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, interactive `Downloaded` status badges, Bookshelf `Downloaded (N)` smart shelf pill (`DOWNLOADED_SHELF_ID`) with active-shelf-aware clearing (`Clear Downloaded Shelf`), unified `Downloaded` collection search filter, removal confirmation modals (`RemoveOfflineBookModal.tsx`), and cross-device controls, enabling unabridged reading on airplanes or offline.',
         check: () => fileContains('src/hooks/queries/useBookContent.ts', 'idb') || fileExists('src/lib/offline-storage.ts'),
       },
       {
@@ -137,7 +137,7 @@ const ROADMAP_MILESTONES = [
     features: [
       {
         title: 'Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)',
-        description: 'Dedicated reading ledger displaying all books in progress with tactile bookmark cards, top-anchored silk ribbon markers (`origin-top scale-y-110`), desktop cursor-exit focus release (`onDeactivate`), last-read passage snippets, completion percentages, multi-attribute sorting and filtering (Recent, Progress, Title, Author, Downloaded), status tabs (In Progress, Completed, On Hold), and 1-click chapter/page resume actions.',
+        description: 'Dedicated reading ledger displaying all books in progress with tactile bookmark cards, top-anchored silk ribbon markers (`origin-top scale-y-110`), card-tap focus/activation across all viewports with desktop cursor-exit focus release (`onDeactivate`), last-read passage snippets, completion percentages, multi-attribute sorting and filtering (Recent, Progress, Title, Author, Downloaded), status tabs (In Progress, Completed, On Hold), and dedicated 1-click `Resume` / `Read Again` CTA navigation.',
         check: () => fileExists('src/components/presentation/BookmarksView.tsx') || fileContains('src/stores/useReaderStore.ts', 'lastPassageSnippet'),
       },
       {

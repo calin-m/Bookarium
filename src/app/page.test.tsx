@@ -86,6 +86,7 @@ vi.mock('@/components/presentation/HeroFeaturedBook3D', () => ({
 
 const mockIsBookOffline = vi.fn().mockReturnValue(false);
 const mockRemoveBook = vi.fn().mockResolvedValue(true);
+const mockRemoveAll = vi.fn().mockResolvedValue(undefined);
 const mockDownloadBook = vi.fn().mockResolvedValue(true);
 
 vi.mock('@/hooks/useOfflineBooks', () => ({
@@ -96,6 +97,7 @@ vi.mock('@/hooks/useOfflineBooks', () => ({
     storageQuota: null,
     downloadBook: mockDownloadBook,
     removeBook: mockRemoveBook,
+    removeAll: mockRemoveAll,
     isBookOffline: mockIsBookOffline,
     isBookDownloading: vi.fn().mockReturnValue(false),
     refreshOfflineList: vi.fn().mockResolvedValue(undefined),
@@ -235,6 +237,99 @@ describe('Home page integration', () => {
     const confirmBtn = screen.getByRole('button', { name: /Yes, Clear Favorites/i });
     fireEvent.click(confirmBtn);
     expect(useBookshelfStore.getState().favoriteBookIds).toHaveLength(0);
+  });
+
+  it('disconnects catalog viewMode from favorites, keeping favorites in dedicated grid mode even when catalog is in shelf mode', async () => {
+    useBookshelfStore.getState().toggleFavoriteBook(mockBooks[0]);
+    renderHome();
+
+    // Switch Catalog to shelf view mode
+    const shelfModeBtn = screen.getByRole('button', { name: /Shelf view/i });
+    fireEvent.click(shelfModeBtn);
+
+    // Switch to Favorites tab
+    const favoritesNavBtn = screen.getByLabelText('Favorites');
+    fireEvent.click(favoritesNavBtn);
+
+    // Favorites should render BookCard grid, NOT BookshelfRack
+    expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId('bookshelf-rack')).not.toBeInTheDocument();
+  });
+
+  it('adapts top clear button and confirmation modal to the active custom shelf or downloaded shelf', async () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBooks[0], mockBooks[1]],
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 'shelf-2', user_id: 'user-1', name: 'Philosophy', is_default: false, is_public: true, created_at: '', updated_at: '' },
+      ],
+      cloudBookshelfItems: [
+        {
+          id: 'item-1',
+          bookshelf_id: 'shelf-1',
+          user_id: 'user-1',
+          book_id: mockBooks[0].id,
+          book_title: mockBooks[0].title,
+          book_authors: [],
+          cover_url: null,
+          added_at: '',
+        },
+        {
+          id: 'item-2',
+          bookshelf_id: 'shelf-2',
+          user_id: 'user-1',
+          book_id: mockBooks[1].id,
+          book_title: mockBooks[1].title,
+          book_authors: [],
+          cover_url: null,
+          added_at: '',
+        },
+      ],
+      activeBookshelfId: 'shelf-2',
+    });
+
+    renderHome();
+
+    // Navigate to Bookshelf tab
+    const bookshelfNavBtn = screen.getByLabelText('Bookshelf');
+    fireEvent.click(bookshelfNavBtn);
+
+    // Top clear button should reflect the active custom shelf: 'Clear "Philosophy" Shelf'
+    const clearCustomBtn = screen.getByRole('button', { name: /Clear "Philosophy" Shelf/i });
+    expect(clearCustomBtn).toBeInTheDocument();
+
+    fireEvent.click(clearCustomBtn);
+    expect(screen.getByText('Clear "Philosophy" Bookshelf')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to clear your "Philosophy" shelf\?/i)).toBeInTheDocument();
+
+    const confirmCustomBtn = screen.getByRole('button', { name: /Yes, Clear "Philosophy"/i });
+    await act(async () => {
+      fireEvent.click(confirmCustomBtn);
+    });
+
+    // Philosophy shelf books cleared, General preserved
+    expect(useBookshelfStore.getState().savedBooks.map((b) => b.id)).toEqual([mockBooks[0].id]);
+
+    // Now test Downloaded smart shelf
+    mockIsBookOffline.mockImplementation((id: number) => id === mockBooks[0].id);
+    act(() => {
+      useBookshelfStore.setState({ activeBookshelfId: '__downloaded__' });
+    });
+
+    // Top clear button should reflect Downloaded shelf
+    const clearDownloadedBtn = screen.getByRole('button', { name: /Clear Downloaded Shelf/i });
+    expect(clearDownloadedBtn).toBeInTheDocument();
+
+    fireEvent.click(clearDownloadedBtn);
+    expect(screen.getByText('Clear Downloaded Books')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to clear your downloaded shelf\?/i)).toBeInTheDocument();
+
+    const confirmDownloadsBtn = screen.getByRole('button', { name: /Yes, Clear Downloads/i });
+    await act(async () => {
+      fireEvent.click(confirmDownloadsBtn);
+    });
+
+    expect(mockRemoveAll).toHaveBeenCalled();
   });
 
   it('should open download hub and close it', () => {

@@ -284,7 +284,7 @@ function generateMarkdown() {
   const orphans = detectOrphanedModules(graph);
   const components = extractComponentCatalog(graph);
   const stores = extractStoreCatalog(srcDir);
-  const { routes, hooks } = extractApiAndHookCatalog(srcDir);
+  const { routes, appPages, hooks } = extractApiAndHookCatalog(srcDir);
   const utilities = extractDomainUtilitiesCatalog(srcDir);
   const configs = extractConfigurationCatalog(srcDir);
   const typeDefs = extractTypeCatalog(srcDir);
@@ -310,6 +310,8 @@ function generateMarkdown() {
     '',
     'Bookarium is built on a **100% Pure Live API Architecture** with real-time telemetry, zero local mock archives, and deterministic state isolation.',
     '',
+    '### 1. End-to-End System Context & Data Flow',
+    '',
     '```mermaid',
     'flowchart TD',
     '    User["👤 Reader / Public Domain Scholar"]',
@@ -324,15 +326,20 @@ function generateMarkdown() {
     '        LiteraryQuotes["LiteraryQuotes.tsx\\n(Words That Shaped Humanity & Safe Shuffling)"]',
     '        CopyrightBanner["CopyrightNoticeBanner.tsx\\n(Declarative Territorial Restriction & Public Domain Notice)"]',
     '        ContentAdvisory["ContentAdvisoryBanner.tsx\\n(Non-blocking Mature/Historical Context Advisory)"]',
-    '        CollectionToolbarNode["CollectionToolbar.tsx\\n(Unified 2-Row Mobile Workbench: Integrated Search, Sort, Downloaded Filter & Top-Pagination)"]',
+    '        CollectionToolbarNode["CollectionToolbar.tsx\\n(Responsive Workbench: Integrated Search, Sort, Downloaded Filter, Tablet Icon Mode Toggles & Top-Pagination)"]',
     '        PaginationNode["Pagination.tsx\\n(Accessible Numeric Page Navigation)"]',
+    '        BookPreviewModalNode["BookPreviewModal.tsx\\n(Desktop 3D Open-Book Preview Spread)"]',
+    '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(3D Hardwood Shelf, Custom Shelves & <1024px Touch Modal Trigger)"]',
+    '        BookshelfMobileModalNode["BookshelfMobileModal.tsx\\n(Mobile & Tablet <1024px Action & Curation Sheet)"]',
+    '        RemoveOfflineModalNode["RemoveOfflineBookModal.tsx\\n(Offline Cache Eviction Confirmation)"]',
+    '        SymposiumInviteModalNode["SymposiumInviteModal.tsx\\n(1-on-1 Literary Symposium Companion Picker)"]',
     '        ',
     '        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]',
     '            Grid["Catalog View (/)\\n(Smooth Scroll Navigation, 2-Col Mobile Grid, Multi-Col Desktop & 3D Hardwood Shelf)"]',
-    '            ShelfView["Bookshelf View (/bookshelf)\\n(Curated Library, Custom Named Shelves, Downloaded (N) Smart Shelf & 12-Book Row Cap)"]',
-    '            FavView["Favorites View (/favorites)\\n(Personal Masterworks Collection)"]',
-    '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger & Telemetry)"]',
-    '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections & Tags)"]',
+    '            ShelfView["Bookshelf View (/bookshelf)\\n(Curated Library, Custom Named Shelves, Downloaded (N) Smart Shelf, Active-Shelf Clear & 12-Book Row Cap)"]',
+    '            FavView["Favorites View (/favorites)\\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]',
+    '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger, Dedicated Resume CTA & 4-State Offline Controls)"]',
+    '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections, Tags & Tablet Icon Mode Switcher)"]',
     '            AccView["Account Hub (/account)\\n(Library Stats, Cloud Sync & JSON Backup)"]',
     '            PrivacyView["Privacy Architecture (/privacy)\\n(Zero-Tracker Manifesto, COPPA/GDPR Art. 8 & Functional Geo-Cookies)"]',
     '            CopyrightView["Copyright Governance (/copyright)\\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]',
@@ -354,7 +361,7 @@ function generateMarkdown() {
     '        end',
     '        ',
     '        subgraph StateStores ["Zustand Persistent State & Offline Engine"]',
-    '            StoreShelf[("⚡ useBookshelfStore\\n(saved, likes, queue, history, shelves)")]',
+    '            StoreShelf[("⚡ useBookshelfStore\\n(saved, likes, queue, history, shelves, clearCustomShelfBooks)")]',
     '            StoreReader[("📖 useReaderStore\\n(typography, progress map, coordinates)")]',
     '            StoreTheme[("🎨 useThemeStore\\n(day, sepia, obsidian)")]',
     '            StoreAuth[("🔐 useAuthStore\\n(session, cloud migration, profile)")]',
@@ -389,10 +396,11 @@ function generateMarkdown() {
     '',
     '    subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]',
     '        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Cookie Stamping)"]',
-    '        ProxyBooks["GET /api/books\\n(SWR 120s Cache, Latency Tracking, Rate Limit, Seam Controller)"]',
+    '        ProxyBooks["GET /api/books\\n(SWR 3600s Cache, Latency Tracking, Rate Limit, Seam Controller)"]',
     '        CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\\n(supabase-provider.ts • gutendex-provider.ts)"]',
     '        ProxyContent["GET /api/books/content\\n(Tier 1 Supabase DB • Tier 2 Gutenberg Multi-Mirror, Anti-SSRF)"]',
     '        ProxyBookTranslations["GET /api/books/translations\\n(Edge SWR Cache, Zero False Positives, FRBR Work Mapping)"]',
+    '        AuthCallback["GET /auth/callback\\n(PKCE & Token-Hash OTP Verification, Origin Sanitizer)"]',
     '        LayoutServer["Server Layout (/read/[id])\\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]',
     '    end',
     '',
@@ -421,6 +429,8 @@ function generateMarkdown() {
     '    RootProxy --> Hero',
     '    Hero --> Hero3D',
     '    RootProxy --> Toolbar',
+    '    RootProxy --> AuthCallback',
+    '    AuthCallback -->|Verified Session Exchange| SupabaseCloud',
     '    Toolbar --> FilterDrawer',
     '    FilterDrawer --> HookCatalogFilters',
     '    HookCatalogFilters --> QueryBooks',
@@ -430,6 +440,15 @@ function generateMarkdown() {
     '    Grid --> HookCopyright',
     '    Grid --> EditorialQuote',
     '    Grid --> LiteraryQuotes',
+    '    Grid --> BookPreviewModalNode',
+    '    Grid --> BookshelfRackNode',
+    '    ShelfView --> BookshelfRackNode',
+    '    BookshelfRackNode --> BookshelfMobileModalNode',
+    '    BookshelfRackNode --> BookPreviewModalNode',
+    '    ShelfView --> RemoveOfflineModalNode',
+    '    FavView --> RemoveOfflineModalNode',
+    '    MarksView --> RemoveOfflineModalNode',
+    '    BookPreviewModalNode --> SymposiumInviteModalNode',
     '    Nav --> Views',
     '    FavView --> HookAutoHeal',
     '    ShelfView --> HookAutoHeal',
@@ -508,6 +527,137 @@ function generateMarkdown() {
     '',
     '---',
     '',
+    '### 2. Focus Reader State & Typography Engine',
+    '',
+    '```mermaid',
+    'flowchart LR',
+    '    subgraph ReaderState ["Zustand Reader & Fellowship Stores (useReaderStore • useFellowshipStore)"]',
+    '        ActiveBook["Active Book Metadata"]',
+    '        FontSize["Font Size: 12px - 36px"]',
+    '        FontFamily["Font Family: Serif | Sans | Mono"]',
+    '        LineHeight["Line Height: 1.2 - 2.6"]',
+    '        ColumnWidth["Column Width: Narrow (576px) | Normal (768px) | Wide (1024px)"]',
+    '        ReadingMode["Reading Mode: Paginated | Scroll"]',
+    '        Theme["Theme: Light | Dark | Sepia"]',
+    '        Progress["Global Page & Book Progress %"]',
+    '        Positions["Reading Positions Map\\n(exact chapter & page restore)"]',
+    '        FellowState["Active Symposium & Companion Coordinates\\n(useFellowshipStore)"]',
+    '    end',
+    '',
+    '    subgraph ParsingEngine ["Gutenberg Typography & Segmentation AST"]',
+    '        RawText["Raw Plain Text Stream"]',
+    '        WorkerPool["Persistent Web Worker Thread\\n(useGutenbergParserWorker)\\n• Kept alive across font/spacing tweaks\\n• Chunked async main-thread fallback"]',
+    '        Reflow["reflowGutenbergParagraphs\\n(Normalizes 70-col hard wraps)"]',
+    '        TOCFilter["Front-Matter TOC Suppressor"]',
+    '        Segmentation["Chapter Section Segmentation"]',
+    '        VirtualPages["Virtual Continuous Page Spread (5600 chars/pg)"]',
+    '        ',
+    '        RawText --> WorkerPool',
+    '        WorkerPool --> Reflow',
+    '        Reflow --> TOCFilter',
+    '        TOCFilter --> Segmentation',
+    '        Segmentation --> VirtualPages',
+    '    end',
+    '',
+    '    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]',
+    '        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader)"]',
+    '        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]',
+    '        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap & Amber Sentence Highlight)"]',
+    '        ProgressBar["Top Reading Progress Indicator"]',
+    '        ResumeToast["Exact-Page Auto-Resume Toast"]',
+    '        FooterBar["Sticky Bottom Pagination & Page Jump"]',
+    '        TOC["Table of Contents Drawer (ReaderTocDrawer)"]',
+    '        SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]',
+    '        LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]',
+    '        Controls["Appearance & Typography Popover (ReaderControls)"]',
+    '        AudioBar["Speech Narration Bar (ReaderSpeechBar)\\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]',
+    '        HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]',
+    '        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\\n(4 Pastel Highlighters • Symposium Marginalia • Spoiler Shield)"]',
+    '        InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]',
+    '    end',
+    '',
+    '    subgraph Persistence ["Browser LocalStorage, IndexedDB & Supabase Cloud"]',
+    '        LSPrefs[("bookarium-reader-preferences\\n(theme, font, spacing, readingProgress, readingPositions)")]',
+    '        LSAnnot[("bookarium-annotations-storage\\n(useAnnotationStore highlights & reflections)")]',
+    '        IDBStorage[("IndexedDB (useOfflineBooks)\\n(unabridged offline volumes)")]',
+    '        CloudProgress[("⚡ Supabase Cloud\\npublic.reading_progress\\n(2s Debounced Sync & Restore)")]',
+    '        CloudSymposium[("⚡ Supabase Cloud\\npublic.symposium_sessions & user_annotations\\n(Companion Progress & Fellow Marginalia)")]',
+    '    end',
+    '',
+    '    Toolbar -->|"Adjust Size / Family / Width / Mode / Theme"| ReaderState',
+    '    VirtualPages --> ReaderView',
+    '    ReaderState --> ContentArea',
+    '    FellowState -->|"Companion Progress & Milestone Dispatches"| SubHeader',
+    '    ReaderState --> ProgressBar',
+    '    ReaderState --> ResumeToast',
+    '    FooterBar -->|"Page Flip / Jump"| ReaderState',
+    '    TOC -->|"Select Chapter (p. X)"| ReaderState',
+    '    SearchDrawer -->|"Jump to Match (p. X)"| ReaderState',
+    '    LangDrawer -->|"Switch Translation"| ReaderState',
+    '    Controls -->|"Tweak Settings"| ReaderState',
+    '    AudioBar -->|"Sentence Highlight Sync"| ContentArea',
+    '    HighlightPop <-->|"Select / Save Passage"| ContentArea',
+    '    AnnotDrawer -->|"Render Highlights"| ContentArea',
+    '    AnnotDrawer <--> LSAnnot',
+    '    AnnotDrawer <-->|"Symposium RLS"| CloudSymposium',
+    '    FellowState <-->|"Authenticated RLS"| CloudSymposium',
+    '    ReaderView <--> IDBStorage',
+    '    ReaderState <--> LSPrefs',
+    '    ReaderState <-->|"Authenticated"| CloudProgress',
+    '```',
+    '',
+    '---',
+    '',
+    '### 3. Bookmarks & Continue Reading Ledger Architecture',
+    '',
+    '```mermaid',
+    'flowchart TD',
+    '    subgraph Storage ["Persistent State Stores"]',
+    '        RS["📖 useReaderStore\\n• readingPositions (exact coordinates & timestamp)\\n• readingProgress (0-100%)\\n• openReader(book) [warm cache]"]',
+    '        BS["⚡ useBookshelfStore\\n• savedBooks []\\n• recentBooks [] (cached identity)\\n• bookStatuses {} (\'currently_reading\', etc.)"]',
+    '        IDB["📦 IndexedDB (useOfflineBooks)\\n• cached offline book bundles"]',
+    '    end',
+    '',
+    '    subgraph LedgerHook ["useContinueReadingLedger Hook"]',
+    '        FilterActive["Active Telemetry Filter\\n(readingPositions exists OR readingProgress > 0)\\n⚠️ Excludes un-opened shelved books"]',
+    '        MissingCheck{"Missing Cached\\nIdentity?"}',
+    '        QueryMissing["🔄 useBooks(ids: missingIds)\\n(TanStack Query - Catalog Seam)"]',
+    '        EnrichDict["Enriched Book Dictionary\\n(savedBooks + recentBooks + queryResults)"]',
+    '        Parser["Canonical Utilities (@/lib/utils)\\n• formatAuthorNames (reverse \'Last, First\' & strip dates)\\n• cleanBookTitle (strip Gutenberg prefixes)\\n• formatRelativeTime (\'Recently\', \'2h ago\')"]',
+    '        Assembly["Assemble ActiveReadingVolume[]\\n• progress, chapter, coordinates, lastReadAt\\n• status (in_progress / completed / on_hold)\\n• isOffline badge"]',
+    '        FilterSort["Client Search & Status Filter\\n• \'all\' | \'in_progress\' | \'completed\' | \'on_hold\'\\n• CollectionSearchBar token matching\\n• Multi-mode sort (\'recent\' | \'progress\' | \'title\' | \'author\' | \'downloaded\')"]',
+    '    end',
+    '',
+    '    subgraph UI ["Presentation Layer (BookmarksView.tsx)"]',
+    '        Header["SectionHeader (\'Continue Reading & Bookmarks\')\\n• Eyebrow, Flank lines, Clear Bookmarks modal"]',
+    '        Search["CollectionToolbar\\n(Search, Sort & Downloaded Filter, Pagination)"]',
+    '        Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]',
+    '        Cards["BookmarkCard.tsx\\n• Top-anchored silk ribbon (origin-top scale-y-110)\\n• Card tap focuses/activates card (all viewports)\\n• Cleaned title & normalized author\\n• Reading coordinates badge\\n• 4-state square offline button & modal\\n• Status dropdown selector\\n• Desktop cursor-exit focus release (onDeactivate)"]',
+    '        ResumeAction["Dedicated 1-Click Resume / Read Again CTA\\n• Seed useReaderStore.openReader(book) [Warm Cache]\\n• router.push(\'/read/\' + id)"]',
+    '    end',
+    '',
+    '    RS --> FilterActive',
+    '    FilterActive --> MissingCheck',
+    '    BS --> MissingCheck',
+    '    MissingCheck -->|"Yes (e.g. un-shelved #55179)"| QueryMissing',
+    '    QueryMissing --> EnrichDict',
+    '    MissingCheck -->|"No"| EnrichDict',
+    '    BS --> EnrichDict',
+    '    EnrichDict --> Parser',
+    '    Parser --> Assembly',
+    '    IDB --> Assembly',
+    '    IDB -->|"isBookOffline Filter"| FilterSort',
+    '    Assembly --> FilterSort',
+    '    FilterSort --> Cards',
+    '    Header --> UI',
+    '    Search --> FilterSort',
+    '    Tabs --> FilterSort',
+    '    Cards --> ResumeAction',
+    '    ResumeAction -->|"Warm Reader Transition (0 CLS)"| RS',
+    '```',
+    '',
+    '---',
+    '',
     '## 🧩 Component Catalog & Props Interface Matrix',
     '',
     `Auto-extracted dynamically from **${components.length} Production UI Components** using Babel AST:`,
@@ -516,8 +666,14 @@ function generateMarkdown() {
     '| :--- | :--- | :--- | :--- | :--- |',
   ];
 
+  const formatComponentCategory = (cat) => {
+    if (cat === 'ui') return 'UI';
+    if (cat === 'presentation/bookshelf') return 'Presentation (Bookshelf)';
+    return cat.charAt(0).toUpperCase() + cat.slice(1);
+  };
+
   for (const c of components) {
-    const categoryTitle = c.category.charAt(0).toUpperCase() + c.category.slice(1);
+    const categoryTitle = formatComponentCategory(c.category);
     lines.push(
       `| **\`${c.name}\`** | ${categoryTitle} | ${c.propsInterface} | ${c.propSignals} | [\`${c.file}\`](${c.file}) |`
     );
@@ -541,7 +697,7 @@ function generateMarkdown() {
     useAuthStore:
       'Supabase session authentication, guest status, password generation, and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
-      'Personal library collections, reading queue, reading history, custom named shelves, deletion tombstones, ratings, and cloud outbox reconciliation via `bookshelf-cloud-sync.ts`.',
+      'Personal library collections, reading queue, reading history, custom named shelves, active-shelf-aware book clearing (`clearSavedBooks`, `clearCustomShelfBooks`), deletion tombstones, ratings, and cloud outbox reconciliation via `bookshelf-cloud-sync.ts`.',
     useFellowshipStore:
       'Opt-in 1-on-1 Reader Circle fellowships, per-volume Literary Symposium sessions, companion progress coordinates, scholar handle formatting (`formatFellowScholarLabel`, `isPlaceholderUsername`), pending invitation badges, and bi-directional Supabase cloud synchronization.',
     useHabitsStore:
@@ -568,9 +724,9 @@ function generateMarkdown() {
   lines.push(
     '---',
     '',
-    '## 🌐 API Routes, Query Hooks & Reader Engine',
+    '## 🌐 API Routes, App Router Entrypoints, Query Hooks & Reader Engine',
     '',
-    '### 1. API Route Handlers (Edge Proxy & Telemetry)',
+    '### 1. API & Server Route Handlers (Edge Proxy, Auth & Telemetry)',
     '',
     '| Endpoint / Route | Method(s) | Source File | Cache & Security Strategy | Upstream Target |',
     '| :--- | :--- | :--- | :--- | :--- |'
@@ -580,18 +736,57 @@ function generateMarkdown() {
     let cacheDesc = 'Edge Proxy';
     let upstream = 'Project Gutenberg Infrastructure';
     if (r.path === '/api/books') {
-      cacheDesc = '`s-maxage=120, stale-while-revalidate=600` • Sliding-Window Rate Limit';
-      upstream = '`https://gutendex.com/books/`';
+      cacheDesc = '`s-maxage=3600, stale-while-revalidate=86400` • Sliding-Window Rate Limit (30 req/min)';
+      upstream = 'Supabase `public.books` -> `https://gutendex.com/books/`';
     } else if (r.path === '/api/books/content') {
-      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • Anti-SSRF Allowlist';
-      upstream = '`https://www.gutenberg.org/cache/epub/{id}/pg{id}.txt`';
+      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • Anti-SSRF Allowlist & Jurisdictional Gate';
+      upstream = 'Supabase `plain_text` -> Gutenberg Multi-Mirror CDN';
+    } else if (r.path === '/api/books/translations') {
+      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • Sliding-Window Rate Limit & Jurisdictional Filter';
+      upstream = 'Supabase `public.book_translations` & `public.books`';
+    } else if (r.path === '/auth/callback') {
+      cacheDesc = '`No-Store Auth Exchange` • PKCE & OTP Verification + Canonical Origin Redirect Sanitizer';
+      upstream = 'Supabase Auth (`exchangeCodeForSession`, `verifyOtp`)';
     }
     lines.push(`| **\`${r.path}\`** | \`${r.methods}\` | [\`${r.file}\`](${r.file}) | ${cacheDesc} | ${upstream} |`);
   }
 
+  const pageDescriptions = {
+    'src/app/layout.tsx': 'Root HTML shell, font initialization, theme class hydration, and global React Query / Service Worker provider wrapper.',
+    'src/app/page.tsx': 'Primary SPA workbench hosting Catalog, Bookshelf, Favorites, Bookmarks, and Commonplace Notebook views with edge URL rewrites.',
+    'src/app/error.tsx': 'Route-level React Error Boundary providing graceful recovery UI and diagnostic fallback.',
+    'src/app/global-error.tsx': 'Root document-level React Error Boundary catching fatal top-level layout exceptions.',
+    'src/app/not-found.tsx': 'Editorial 404 Not Found boundary with direct navigation back to the public domain catalog.',
+    'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic OpenGraph, Twitter Card, and Schema.org Book JSON-LD metadata (`React.cache`).',
+    'src/app/read/[id]/page.tsx': 'Dedicated distraction-free Focus Reader with continuous pagination, Web Worker AST segmentation, TTS narration, and Symposium marginalia.',
+    'src/app/account/layout.tsx': 'Server layout defining canonical metadata and robots noindex directives for the Scholar Account Hub.',
+    'src/app/account/page.tsx': 'Scholar Account Hub for Reading Habits, Literary Accolades, Reader Circles & Symposiums, Cloud Sync, and JSON/CSV library backups.',
+    'src/app/u/[username]/page.tsx': 'Public Scholar Sanctuary displaying pinned Ex-Libris bookplates, public profile stats, and 1-on-1 Literary Fellowship invitation actions.',
+    'src/app/privacy/layout.tsx': 'Server layout defining canonical SEO and OpenGraph metadata for the Privacy Architecture manifesto.',
+    'src/app/privacy/page.tsx': 'Zero-Tracker Privacy Architecture manifesto, functional geo-cookie disclosure, and COPPA / GDPR Art. 8 governance.',
+    'src/app/copyright/page.tsx': 'Multi-Jurisdictional Public Domain Copyright Governance manifesto, territory rules table, and takedown notice channel.',
+    'src/app/auth/confirm-deletion/page.tsx': 'Two-step email-verified account deletion confirmation page executing `delete_current_user()` RPC.',
+    'src/app/manifest.ts': 'Progressive Web App (PWA) Web App Manifest configuring standalone display, theme colors, and multi-resolution icons.',
+    'src/app/robots.ts': 'Search engine crawler directives permitting public catalog and reader indexing while protecting `/api/` and `/auth/` routes.',
+    'src/app/sitemap.ts': 'Dynamic XML sitemap generator indexing primary views, governance pages, and curated public domain masterworks.',
+  };
+
   lines.push(
     '',
-    '### 2. Custom Hooks (Data Queries & Reader Subsystems)',
+    '### 2. App Router Pages, Layouts & Metadata Entrypoints',
+    '',
+    '| Route / URI | Entrypoint Type | Rendering Strategy | Source File | Architectural Responsibility |',
+    '| :--- | :--- | :--- | :--- | :--- |'
+  );
+
+  for (const p of appPages) {
+    const desc = pageDescriptions[p.file] || 'Next.js App Router entrypoint.';
+    lines.push(`| **\`${p.route}\`** | ${p.kind} | ${p.rendering} | [\`${p.file}\`](${p.file}) | ${desc} |`);
+  }
+
+  lines.push(
+    '',
+    '### 3. Custom Hooks (Data Queries & Reader Subsystems)',
     '',
     '| Hook Name | Subsystem / Layer | Source File | Architectural Responsibility |',
     '| :--- | :--- | :--- | :--- |'
@@ -716,6 +911,12 @@ function generateMarkdown() {
       'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, header avoidance, and horizontal pointer click-and-drag + wheel scrolling (`attachHorizontalDragAndWheelScroll`).',
     utils:
       'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, format badges, and blob downloads.',
+    'metadata-cache':
+      '3-tier in-memory LRU author lifespan cache (24h TTL, 1,000 entries) resolving contributor birth/death years via Supabase `public.books`, upstream Gutendex API, and `FEATURED_HERO_BOOKS` fallback.',
+    'url-validator':
+      'Zero-trust anti-SSRF upstream URL validator enforcing HTTPS and strict Project Gutenberg hostname allowlisting (`gutenberg.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`).',
+    'reader-layout-utils':
+      'Server-side metadata resolution and Next.js RSC request header detector for `/read/[id]` OpenGraph, Twitter Card, and Schema.org Book JSON-LD generation.',
   };
 
   for (const u of utilities) {
@@ -736,7 +937,7 @@ function generateMarkdown() {
     '',
     '## 🔄 Background Data Pipelines & Automation Engines',
     '',
-    'Automated ingestion pipelines, periodic synchronization jobs, and GitHub Actions cron workflows (outside `src/`):',
+    'Automated ingestion pipelines, periodic synchronization jobs, and GitHub Actions CI/CD workflows (outside `src/`):',
     '',
     '| Pipeline / Tool | Execution Mode | Source File | Schedule / Trigger | Architectural Responsibility |',
     '| :--- | :--- | :--- | :--- | :--- |',
@@ -744,7 +945,8 @@ function generateMarkdown() {
     '| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` / Weekly Cron | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting and atomic SQL generation. |',
     '| **`ingest-catalog`** | Node.js Batch CLI | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` / On-Demand | Curated masterworks starter seeding and plain-text caching (`--with-content`) generating `supabase/seed_books.sql`. |',
     '| **`catalog-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays) | Automated CI cron workflow streaming newly added titles into Supabase and chaining translation sync. |',
-    '| **`translations-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/translations-sync.yml`](.github/workflows/translations-sync.yml) | `cron: 0 3 * * 0` (Sundays) / On-Demand | Automated weekly CI cron workflow clustering upstream Wikidata editions and syncing to `public.book_translations`. |'
+    '| **`translations-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/translations-sync.yml`](.github/workflows/translations-sync.yml) | `cron: 0 3 * * 0` (Sundays) / On-Demand | Automated weekly CI cron workflow clustering upstream Wikidata editions and syncing to `public.book_translations`. |',
+    '| **`ci.yml`** | GitHub Actions Workflow | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `push` / `pull_request` (`master`) | Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, and production build verification. |'
   );
 
   const dbTables = extractDatabaseCatalog(rootDir);
@@ -826,9 +1028,9 @@ function generateMarkdown() {
     '',
     '---',
     '',
-    '## ⚙️ Background Web Worker Architecture',
+    '## ⚙️ Background Web Worker & Offline PWA Architecture',
     '',
-    'Dedicated off-thread compute modules in `src/workers/`:',
+    'Dedicated off-thread compute and Progressive Web App service worker modules in `src/workers/` and `public/`:',
     '',
     '| Worker Module | Source File | Architectural Responsibility |',
     '| :--- | :--- | :--- |'
@@ -862,23 +1064,72 @@ function generateMarkdown() {
   );
 
   const sortedFiles = Array.from(graph.keys()).sort();
+  const ambiguousBasenames = new Set(['page.tsx', 'layout.tsx', 'route.ts', 'index.ts']);
+
+  const formatModuleLabel = (fileRel) => {
+    const base = path.basename(fileRel);
+    if (ambiguousBasenames.has(base)) {
+      return fileRel.replace(/^src\//, '');
+    }
+    return base;
+  };
+
+  const classifyModuleRole = (fileRel) => {
+    if (fileRel.endsWith('/route.ts') || fileRel.endsWith('/route.js')) return 'Server Route Handler';
+    if (fileRel.endsWith('/page.tsx')) return 'App Router Page';
+    if (fileRel.endsWith('/layout.tsx')) return 'App Router Layout';
+    if (/src\/app\/(error|global-error|not-found)\.tsx$/.test(fileRel)) return 'App Error / 404 Boundary';
+    if (/src\/app\/(manifest|robots|sitemap)\.ts$/.test(fileRel)) return 'App Metadata Route';
+    if (fileRel === 'src/app/providers.tsx') return 'Root Client Provider';
+    if (fileRel.startsWith('src/app/')) return 'Server Route Utility';
+    if (fileRel.startsWith('src/components/presentation/bookshelf/') || fileRel.startsWith('src/components/bookshelf/')) return 'Bookshelf Presentation Component';
+    if (fileRel.startsWith('src/components/presentation/')) return 'Presentation Component';
+    if (fileRel.startsWith('src/components/reader/')) return 'Focus Reader Component';
+    if (fileRel.startsWith('src/components/account/')) return 'Account Hub Component';
+    if (fileRel.startsWith('src/components/accolades/')) return 'Accolades & Bookplate Component';
+    if (fileRel.startsWith('src/components/auth/')) return 'Authentication Component';
+    if (fileRel.startsWith('src/components/profile/')) return 'Scholar Sanctuary Component';
+    if (fileRel.startsWith('src/components/pwa/')) return 'PWA Lifecycle Component';
+    if (fileRel.startsWith('src/components/symposium/')) return 'Literary Symposium Component';
+    if (fileRel.startsWith('src/components/layout/')) return 'Layout Component';
+    if (fileRel.startsWith('src/components/motion/')) return 'Motion & Transition Primitive';
+    if (fileRel.startsWith('src/components/ui/')) return 'UI Primitive';
+    if (fileRel.startsWith('src/hooks/queries/')) return 'TanStack Query Hook';
+    if (fileRel.startsWith('src/hooks/reader/')) return 'Reader Subsystem Hook';
+    if (fileRel.startsWith('src/hooks/')) return 'Custom React Hook';
+    if (fileRel.startsWith('src/stores/')) return 'Zustand State Store';
+    if (fileRel.startsWith('src/lib/adapters/')) return 'Domain Schema Adapter';
+    if (fileRel.startsWith('src/lib/gutenberg/')) return 'Gutenberg AST Engine';
+    if (fileRel.startsWith('src/lib/catalog/')) return 'Catalog Provider Seam';
+    if (fileRel.startsWith('src/lib/supabase/')) return 'Supabase SSR / Client Adapter';
+    if (fileRel.startsWith('src/lib/')) return 'Domain Engine / Utility';
+    if (fileRel.startsWith('src/config/')) return 'Configuration & Fixtures';
+    if (fileRel.startsWith('src/types/')) return 'Domain Type Contract';
+    if (fileRel.startsWith('src/workers/')) return 'Background Web Worker';
+    if (fileRel === 'src/proxy.ts') return 'Edge Reverse Proxy';
+    return 'Production Module';
+  };
 
   for (const file of sortedFiles) {
     const data = graph.get(file);
-    const basename = path.basename(file);
+    const label = formatModuleLabel(file);
+    const uniqueImports = Array.from(new Set(data.imports.map((i) => i.replace('@/', ''))));
     const importsStr =
-      data.imports.length > 0
-        ? data.imports.map((i) => `\`${i.replace('@/', '')}\``).join(', ')
+      uniqueImports.length > 0
+        ? uniqueImports.map((i) => `\`${i}\``).join(', ')
         : '_Root Primitive_';
 
+    const uniqueConsumers = Array.from(new Set(data.consumedBy.map((c) => formatModuleLabel(c))));
     const consumersStr =
-      data.consumedBy.length > 0
-        ? data.consumedBy.map((c) => `\`${path.basename(c)}\``).join(', ')
+      uniqueConsumers.length > 0
+        ? uniqueConsumers.map((c) => `\`${c}\``).join(', ')
         : file.includes('page.tsx') || file.includes('route.ts') || file.includes('layout.tsx')
           ? '_App Route Entry_'
           : '_Direct Root Consumer_';
 
-    lines.push(`| [\`${basename}\`](${file}) | ${importsStr} | ${consumersStr} | Production Module |`);
+    const roleTitle = classifyModuleRole(file);
+
+    lines.push(`| [\`${label}\`](${file}) | ${importsStr} | ${consumersStr} | ${roleTitle} |`);
   }
 
   lines.push(
@@ -890,7 +1141,7 @@ function generateMarkdown() {
     '1. **Dual-Provider Catalog Architecture**: Primary search queries execute against self-hosted Supabase PostgreSQL (`public.books`) using full-text GIN search (~1–2s catalog responses, <50ms single-book lookups), falling back seamlessly to upstream Gutendex REST API if Supabase is unconfigured, unseeded, or unreachable, unconditionally enforcing `copyright=false`.',
     '2. **Unified Visible Telemetry**: `StickyCatalogToolbar.tsx` renders a unified API connectivity and roundtrip latency pill with pulsing dot (green online / red offline) and precision time formatting (ms under 1000ms, s/1.212s for 1000ms+).',
     '3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.',
-    '4. **Edge SWR Caching & Geographic Vary Partitioning**: Common queries are cached with `s-maxage=120, stale-while-revalidate=600` and partitioned across jurisdictions via `Vary: x-vercel-ip-country, Accept-Encoding` to prevent cross-border cache pollution.',
+    '4. **Edge SWR Caching & Geographic Vary Partitioning**: Catalog queries are cached with `s-maxage=3600, stale-while-revalidate=86400` (`/api/books`) and content/translation streams with `s-maxage=86400, stale-while-revalidate=604800`, partitioned across jurisdictions via `Vary: x-vercel-ip-country, Accept-Encoding` to prevent cross-border cache pollution.',
     '5. **Jurisdictional Copyright Gatekeeping & Bibliographic Preservation**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles. Concurrently, the catalog pipeline supports `includeRestrictedMetadata=true` for explicit IDs, ensuring personal collections (Notebook, Bookmarks) and reader error screens display authentic bibliographic citations (titles, authors, subjects) without opening prohibited full-text streams.',
     '6. **Multi-Tier Text Streaming & Multi-Mirror Failover**: Plain text is served on-demand from Tier 1 (self-hosted Supabase plain-text cache if present) or Tier 2 (multi-mirror fallback across `aleph.gutenberg.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.',
     '7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.',
@@ -941,14 +1192,14 @@ function generateMarkdown() {
     '',
     '| Gateway Pass | Stage Name | Target & Tooling | Enforcement & Governance |',
     '| :--- | :--- | :--- | :--- |',
-    '| **Pass 0.5** | Secrets & Credentials Scanner | Regex scan across all files | Zero live API keys, private keys, or tokens committed |',
-    '| **Pass 0.75** | Pre-Commit SAST & OWASP Security Suite | `npm audit`, SSRF AST & XSS AST guards | Audits dependencies for high/critical CVEs, prevents dynamic fetch SSRF taint flows and dangerous client-side injection |',
+    '| **Pass 0.5** | Secrets, Credentials & Client Privilege Scanner | Regex & client-bundle AST boundary scan | Zero live API keys, private keys, tokens, or `SUPABASE_SERVICE_ROLE_KEY` leaks in client modules |',
+    '| **Pass 0.75** | 7-Pillar SAST & OWASP Security Suite | `npm audit`, AST taint guards, SQL RLS & HTTP Header auditors | Enforces 0 High/Critical CVEs, SSRF allowlist & rate limiting, DOM XSS guards, open-redirect sanitization, license compliance, PostgreSQL RLS + `SECURITY DEFINER` `search_path`, and OWASP HTTP headers/CSP |',
     '| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |',
-    '| **Pass 2** | Contract & Interface Validation | AST structural analysis | Validates export signatures and component prop invariants |',
-    '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 85% coverage on lines, functions, statements, branches |',
-    '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md |',
-    '| **Pass 5** | ADR Schema & Ledger Validation | Markdown AST verification | Validates all ADRs conform to Status, Context, Decision, Consequences |',
-    '| **Pass 6** | Code Quality & Dead Code Audit | ESLint 9 & Knip | Zero linter warnings/errors, zero unreferenced dead files/exports |',
+    '| **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |',
+    '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 80% coverage floor (target >= 85%) across all co-located suites |',
+    '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md`, `GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |',
+    '| **Pass 5** | ADR Schema & Ledger Validation | Markdown AST verification | Validates all ADRs in `docs/DECISIONS.md` conform to Status, Context, Decision, Consequences |',
+    '| **Pass 6** | Code Quality & Dead Code Audit | `eslint . --max-warnings 0` & Knip | Zero ESLint errors or warnings (`--max-warnings 0`), zero unreferenced dead files/exports |',
     '| **Pass 7** | Production Application Build | `next build --webpack` | Optimized production bundle compilation within byte budget |',
     '',
     '---',

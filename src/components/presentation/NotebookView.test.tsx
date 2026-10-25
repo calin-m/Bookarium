@@ -305,13 +305,13 @@ describe('NotebookView component', () => {
     render(<NotebookView />);
 
     const chronoBtn = screen.getByRole('button', { name: /Chronological/i });
-    expect(chronoBtn.querySelector('span')).toHaveClass('hidden', 'sm:inline');
+    expect(chronoBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
     fireEvent.click(chronoBtn);
 
     expect(screen.getByText(/Book quote 1/i)).toBeInTheDocument();
 
     const byBookBtn = screen.getByRole('button', { name: /By Book/i });
-    expect(byBookBtn.querySelector('span')).toHaveClass('hidden', 'sm:inline');
+    expect(byBookBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
     fireEvent.click(byBookBtn);
     expect(screen.getByText(/Book quote 1/i)).toBeInTheDocument();
   });

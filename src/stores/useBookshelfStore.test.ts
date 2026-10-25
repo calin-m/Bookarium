@@ -215,6 +215,47 @@ describe('useBookshelfStore', () => {
       expect(result.current.favoriteCount).toBe(0);
     });
 
+    it('clears only books on the specified custom shelf without affecting General or other shelves', async () => {
+      useBookshelfStore.setState({
+        savedBooks: [mockBooks[0], mockBooks[1]],
+        cloudBookshelves: [
+          { id: 'shelf-general', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+          { id: 'shelf-philosophy', user_id: 'user-1', name: 'Philosophy', is_default: false, is_public: true, created_at: '', updated_at: '' },
+        ],
+        cloudBookshelfItems: [
+          {
+            id: 'item-1',
+            bookshelf_id: 'shelf-general',
+            user_id: 'user-1',
+            book_id: mockBooks[0].id,
+            book_title: mockBooks[0].title,
+            book_authors: [],
+            cover_url: null,
+            added_at: '',
+          },
+          {
+            id: 'item-2',
+            bookshelf_id: 'shelf-philosophy',
+            user_id: 'user-1',
+            book_id: mockBooks[1].id,
+            book_title: mockBooks[1].title,
+            book_authors: [],
+            cover_url: null,
+            added_at: '',
+          },
+        ],
+      });
+
+      await act(async () => {
+        await useBookshelfStore.getState().clearCustomShelfBooks('shelf-philosophy');
+      });
+
+      const state = useBookshelfStore.getState();
+      expect(state.savedBooks.map((b) => b.id)).toEqual([mockBooks[0].id]);
+      expect(state.cloudBookshelfItems.map((i) => i.book_id)).toEqual([mockBooks[0].id]);
+      expect(state.cloudBookshelves).toHaveLength(2);
+    });
+
     it('handles activeBookshelfId selection and cloud bookshelf list', () => {
       const { result } = renderHook(() => useHydratedBookshelf());
       expect(result.current.cloudBookshelves).toEqual([]);

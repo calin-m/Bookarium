@@ -58,14 +58,27 @@ function runCommand(command, inheritStdio = false, timeoutMs = 0) {
 // PASS 0.5: Pre-Commit Secret Scanner
 // -------------------------------------------------------------
 function pass05SecretScanner() {
-  logHeader('Pass 0.5: Pre-Commit Secret Scanner');
+  logHeader('Pass 0.5: Pre-Commit Secret & Privilege Boundary Scanner');
 
   const secretPatterns = [
     { name: 'AWS Access Key', regex: new RegExp('AKIA' + '[0-9A-Z]{16}') },
     { name: 'RSA Private Key', regex: new RegExp('-----' + 'BEGIN RSA PRIVATE KEY' + '-----') },
     { name: 'Generic Private Key', regex: new RegExp('-----' + 'BEGIN PRIVATE KEY' + '-----') },
+    { name: 'EC / OpenSSH Private Key', regex: new RegExp('-----' + 'BEGIN (?:EC|OPENSSH) PRIVATE KEY' + '-----') },
     { name: 'GitHub Personal Token', regex: new RegExp('ghp_' + '[0-9a-zA-Z]{36}') },
-    { name: 'Generic Secret Token', regex: new RegExp('(api_key|apikey|secret_key|client_secret)\\s*[:=]\\s*[\'"][0-9a-zA-Z-_]{20,}[\'"]', 'i') },
+    { name: 'GitHub Fine-Grained PAT', regex: new RegExp('github_pat_' + '[0-9a-zA-Z_]{82}') },
+    { name: 'Supabase Personal Access Token', regex: new RegExp('sbp_' + '[0-9a-f]{40}') },
+    {
+      name: 'Slack / Discord Webhook URL',
+      regex: new RegExp(
+        'https://' +
+          '(?:hooks\\.slack\\.com/services/T[0-9A-Z]+/B[0-9A-Z]+/[0-9a-zA-Z]+|discord(?:app)?\\.com/api/webhooks/\\d+/[0-9a-zA-Z_-]+)'
+      ),
+    },
+    {
+      name: 'Generic Secret Token',
+      regex: new RegExp('(api_key|apikey|secret_key|client_secret|service_role_key)\\s*[:=]\\s*[\'"][0-9a-zA-Z-_]{20,}[\'"]', 'i'),
+    },
   ];
 
   const scannedFiles = [];
@@ -90,20 +103,41 @@ function pass05SecretScanner() {
   const violations = [];
   for (const filePath of scannedFiles) {
     const content = fs.readFileSync(filePath, 'utf-8');
+    const relPath = path.relative(rootDir, filePath).replace(/\\/g, '/');
     for (const pattern of secretPatterns) {
       if (pattern.regex.test(content)) {
-        violations.push({ file: path.relative(rootDir, filePath), issue: pattern.name });
+        violations.push({ file: relPath, issue: pattern.name });
       }
+    }
+
+    // Client-Bundle Privilege Guard: Ensure SUPABASE_SERVICE_ROLE_KEY is never referenced in client-side code
+    const isClientTree =
+      relPath.startsWith('src/components/') ||
+      relPath.startsWith('src/hooks/') ||
+      relPath.startsWith('src/stores/') ||
+      (relPath.startsWith('src/') && /^['"]use client['"]/m.test(content));
+
+    if (
+      isClientTree &&
+      /\.(ts|tsx|js|jsx)$/.test(relPath) &&
+      !relPath.includes('.test.') &&
+      !relPath.includes('.spec.') &&
+      content.includes('SUPABASE_SERVICE_ROLE_KEY')
+    ) {
+      violations.push({
+        file: relPath,
+        issue: 'Forbidden SUPABASE_SERVICE_ROLE_KEY reference in client-side module (RLS bypass risk).',
+      });
     }
   }
 
   if (violations.length > 0) {
-    logFail(`Secret leakage detected in ${violations.length} location(s):`);
+    logFail(`Secret or privilege boundary leakage detected in ${violations.length} location(s):`);
     violations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
     return false;
   }
 
-  logPass(`Scanned ${scannedFiles.length} files. Zero exposed credentials or secrets detected.`);
+  logPass(`Scanned ${scannedFiles.length} files. Zero exposed credentials, tokens, or client service-role leaks detected.`);
   return true;
 }
 
@@ -111,7 +145,7 @@ function pass05SecretScanner() {
 // PASS 0.75: Pre-Commit SAST & OWASP Security Suite
 // -------------------------------------------------------------
 function pass075SecurityAndSastAudit() {
-  logHeader('Pass 0.75: Pre-Commit SAST & OWASP Security Suite');
+  logHeader('Pass 0.75: Pre-Commit SAST & OWASP Security Suite (7-Pillar Audit)');
 
   // Pillar 1: Dependency Vulnerability Audit
   console.log(`${colors.dim}Pillar 1: Auditing production runtime dependencies for high/critical CVEs...${colors.reset}`);
@@ -136,8 +170,8 @@ function pass075SecurityAndSastAudit() {
     logPass('Pillar 1: Zero high or critical production runtime CVEs detected.');
   }
 
-  // Pillar 2: Static SAST SSRF Audit for API Route Handlers
-  console.log(`${colors.dim}Pillar 2: Auditing API routes for dynamic fetch SSRF vulnerabilities...${colors.reset}`);
+  // Pillar 2: Static SAST SSRF & Rate-Limiting Audit for API Route Handlers
+  console.log(`${colors.dim}Pillar 2: Auditing API routes for dynamic fetch SSRF taint and rate-limiter enforcement...${colors.reset}`);
   const apiDir = path.join(rootDir, 'src', 'app', 'api');
   if (fs.existsSync(apiDir)) {
     const apiFiles = [];
@@ -154,25 +188,41 @@ function pass075SecurityAndSastAudit() {
     const ssrfViolations = [];
     for (const routeFile of apiFiles) {
       const code = fs.readFileSync(routeFile, 'utf-8');
-      const taintedFetchPattern = /fetch\s*\(\s*(urlParam|req\.|request\.|searchParams\.get|rawUrl)/i;
+      const relRoute = path.relative(rootDir, routeFile).replace(/\\/g, '/');
+      const taintedFetchPattern =
+        /fetch\s*\(\s*(?:urlParam|req\.|request\.|searchParams\.get|rawUrl|`\$\{[^}]*(?:searchParams|req\.|request\.))/i;
       if (taintedFetchPattern.test(code)) {
         ssrfViolations.push({
-          file: path.relative(rootDir, routeFile),
+          file: relRoute,
           issue: 'Tainted user parameter passed to fetch() without strict constant anchoring.',
         });
+      }
+      if (!/RateLimiter/.test(code) || !/\.check\s*\(/.test(code)) {
+        ssrfViolations.push({
+          file: relRoute,
+          issue: 'Public API route handler is missing mandatory RateLimiter.check() protection.',
+        });
+      }
+      if (relRoute.endsWith('api/books/content/route.ts')) {
+        if (!code.includes("redirect: 'manual'") || !code.includes('isSafeUpstreamUrl(')) {
+          ssrfViolations.push({
+            file: relRoute,
+            issue: 'Content proxy route must enforce redirect: "manual" and isSafeUpstreamUrl() on upstream hops.',
+          });
+        }
       }
     }
 
     if (ssrfViolations.length > 0) {
-      logFail(`SAST SSRF violation detected in ${ssrfViolations.length} API route(s):`);
+      logFail(`SAST API security violation detected in ${ssrfViolations.length} location(s):`);
       ssrfViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
       return false;
     }
-    logPass(`Pillar 2: Audited ${apiFiles.length} API route handler(s). Zero dynamic SSRF taint flows detected.`);
+    logPass(`Pillar 2: Audited ${apiFiles.length} API route handler(s). Rate limiting and anti-SSRF guards verified.`);
   }
 
   // Pillar 3: Client-Side XSS & Dangerous Evaluation Primitives Guard
-  console.log(`${colors.dim}Pillar 3: Auditing source code for XSS and dangerous evaluation primitives...${colors.reset}`);
+  console.log(`${colors.dim}Pillar 3: Auditing source code for DOM XSS sinks and dangerous evaluation primitives...${colors.reset}`);
   const srcDir = path.join(rootDir, 'src');
   const xssViolations = [];
   function scanSourceForXss(dir) {
@@ -183,17 +233,27 @@ function pass075SecurityAndSastAudit() {
         scanSourceForXss(full);
       } else if (/\.(tsx|ts|jsx|js)$/.test(entry.name) && !entry.name.includes('.test.') && !entry.name.includes('.spec.')) {
         const code = fs.readFileSync(full, 'utf-8');
+        const relFile = path.relative(rootDir, full);
         if (code.includes('dangerouslySetInnerHTML')) {
-          xssViolations.push({ file: path.relative(rootDir, full), issue: 'Forbidden dangerouslySetInnerHTML detected.' });
+          xssViolations.push({ file: relFile, issue: 'Forbidden dangerouslySetInnerHTML detected.' });
         }
         if (/\beval\s*\(/.test(code)) {
-          xssViolations.push({ file: path.relative(rootDir, full), issue: 'Forbidden eval() primitive detected.' });
+          xssViolations.push({ file: relFile, issue: 'Forbidden eval() primitive detected.' });
         }
         if (/new\s+Function\s*\(/.test(code)) {
-          xssViolations.push({ file: path.relative(rootDir, full), issue: 'Forbidden dynamic Function constructor detected.' });
+          xssViolations.push({ file: relFile, issue: 'Forbidden dynamic Function constructor detected.' });
         }
         if (/href\s*=\s*['"]\s*javascript:/i.test(code)) {
-          xssViolations.push({ file: path.relative(rootDir, full), issue: 'Forbidden javascript: pseudoprotocol link detected.' });
+          xssViolations.push({ file: relFile, issue: 'Forbidden javascript: pseudoprotocol link detected.' });
+        }
+        if (/\.(?:innerHTML|outerHTML)\s*=/.test(code)) {
+          xssViolations.push({ file: relFile, issue: 'Forbidden direct DOM innerHTML/outerHTML assignment detected.' });
+        }
+        if (/\bdocument\.write\s*\(/.test(code)) {
+          xssViolations.push({ file: relFile, issue: 'Forbidden document.write() DOM sink detected.' });
+        }
+        if (/\bset(?:Timeout|Interval)\s*\(\s*['"`]/.test(code)) {
+          xssViolations.push({ file: relFile, issue: 'Forbidden string-evaluated setTimeout/setInterval detected.' });
         }
       }
     }
@@ -205,10 +265,10 @@ function pass075SecurityAndSastAudit() {
     xssViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
     return false;
   }
-  logPass('Pillar 3: Zero XSS primitives, eval(), or javascript: URI schemes detected.');
+  logPass('Pillar 3: Zero DOM XSS sinks, eval(), dynamic Function, or javascript: URI schemes detected.');
 
   // Pillar 4: Open Redirect & Phishing Navigation Guard
-  console.log(`${colors.dim}Pillar 4: Auditing redirect destinations for open redirect vulnerabilities...${colors.reset}`);
+  console.log(`${colors.dim}Pillar 4: Auditing redirect destinations and dynamic auth callback sanitization...${colors.reset}`);
   const redirectViolations = [];
   const appDir = path.join(rootDir, 'src', 'app');
   function scanRedirects(dir) {
@@ -219,8 +279,17 @@ function pass075SecurityAndSastAudit() {
         scanRedirects(full);
       } else if (/\.(ts|tsx)$/.test(entry.name) && !entry.name.includes('.test.')) {
         const code = fs.readFileSync(full, 'utf-8');
+        const relFile = path.relative(rootDir, full);
         if (/redirect\s*\(\s*['"]http/i.test(code)) {
-          redirectViolations.push({ file: path.relative(rootDir, full), issue: 'Hardcoded external HTTP redirect detected.' });
+          redirectViolations.push({ file: relFile, issue: 'Hardcoded external HTTP redirect detected.' });
+        }
+        if (/NextResponse\.redirect\s*\(/.test(code) && /searchParams/.test(code)) {
+          if (!code.includes('sanitizeRedirectPath') || !code.includes('resolveCanonicalAuthOrigin')) {
+            redirectViolations.push({
+              file: relFile,
+              issue: 'Dynamic NextResponse.redirect() using searchParams must enforce sanitizeRedirectPath and resolveCanonicalAuthOrigin.',
+            });
+          }
         }
       }
     }
@@ -232,7 +301,7 @@ function pass075SecurityAndSastAudit() {
     redirectViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
     return false;
   }
-  logPass('Pillar 4: All internal redirects sanitized and validated.');
+  logPass('Pillar 4: All internal and dynamic callback redirects sanitized and origin-locked.');
 
   // Pillar 5: Public Domain & License Integrity Guard
   console.log(`${colors.dim}Pillar 5: Auditing public domain copyright enforcement and open source licenses...${colors.reset}`);
@@ -251,6 +320,74 @@ function pass075SecurityAndSastAudit() {
     }
   }
   logPass('Pillar 5: MIT license compliance and public domain integrity (copyright=false) verified.');
+
+  // Pillar 6: PostgreSQL Row-Level Security (RLS) & SECURITY DEFINER Hardening Audit
+  console.log(`${colors.dim}Pillar 6: Auditing supabase/schema.sql for mandatory table RLS and SECURITY DEFINER search_path isolation...${colors.reset}`);
+  const schemaPath = path.join(rootDir, 'supabase', 'schema.sql');
+  if (fs.existsSync(schemaPath)) {
+    const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
+    const rlsViolations = [];
+    const tableMatches = [...schemaSql.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?public\.([a-z0-9_]+)/gi)];
+    const publicTables = [...new Set(tableMatches.map((m) => m[1]))];
+
+    for (const tableName of publicTables) {
+      const rlsRegex = new RegExp(`ALTER\\s+TABLE\\s+public\\.${tableName}\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`, 'i');
+      if (!rlsRegex.test(schemaSql)) {
+        rlsViolations.push(`Table "public.${tableName}" is missing ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`);
+      }
+    }
+
+    const fnBlocks = [...schemaSql.matchAll(/CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.([a-z0-9_]+)\s*\([\s\S]*?AS\s+\$\$/gi)];
+    for (const match of fnBlocks) {
+      const fnName = match[1];
+      const headerBlock = match[0];
+      if (/SECURITY\s+DEFINER/i.test(headerBlock) && !/SET\s+search_path\s*=\s*''/i.test(headerBlock)) {
+        rlsViolations.push(`SECURITY DEFINER function "public.${fnName}" must explicitly set "SET search_path = ''".`);
+      }
+    }
+
+    if (rlsViolations.length > 0) {
+      logFail(`Database schema security violation(s) in supabase/schema.sql:`);
+      rlsViolations.forEach((v) => console.error(`  - ${v}`));
+      return false;
+    }
+    logPass(`Pillar 6: Verified Row-Level Security across ${publicTables.length} public tables and search_path isolation on all SECURITY DEFINER functions.`);
+  }
+
+  // Pillar 7: HTTP Security Headers & Production CSP Guard
+  console.log(`${colors.dim}Pillar 7: Auditing next.config.ts for mandatory OWASP HTTP security headers and CSP hardening...${colors.reset}`);
+  const nextConfigPath = path.join(rootDir, 'next.config.ts');
+  if (fs.existsSync(nextConfigPath)) {
+    const nextConfigCode = fs.readFileSync(nextConfigPath, 'utf-8');
+    const requiredHeaders = [
+      'Content-Security-Policy',
+      'Strict-Transport-Security',
+      'X-Content-Type-Options',
+      'X-Frame-Options',
+      'Referrer-Policy',
+      'Permissions-Policy',
+      'Cross-Origin-Opener-Policy',
+    ];
+    const headerViolations = [];
+    for (const hdr of requiredHeaders) {
+      if (!nextConfigCode.includes(hdr)) {
+        headerViolations.push(`Missing mandatory OWASP HTTP security header: ${hdr}`);
+      }
+    }
+    if (!nextConfigCode.includes("default-src 'self'") || !nextConfigCode.includes("frame-ancestors 'none'")) {
+      headerViolations.push("CSP header must enforce \"default-src 'self'\" and \"frame-ancestors 'none'\".");
+    }
+    if (nextConfigCode.includes("'unsafe-eval'") && !/isDev\s*\?\s*["']'unsafe-eval'\s*["']/.test(nextConfigCode)) {
+      headerViolations.push("CSP 'unsafe-eval' must be strictly gated behind isDev (never active in production).");
+    }
+
+    if (headerViolations.length > 0) {
+      logFail('Next.js HTTP security header configuration violation(s):');
+      headerViolations.forEach((v) => console.error(`  - ${v}`));
+      return false;
+    }
+    logPass(`Pillar 7: All ${requiredHeaders.length} OWASP HTTP security headers and production CSP directives verified.`);
+  }
 
   return true;
 }

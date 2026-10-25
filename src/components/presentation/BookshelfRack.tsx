@@ -144,7 +144,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
   const handleSpineClick = (book: GutendexBook) => {
     const isRestricted = !isBookPublicDomainInJurisdiction(book, country).isAllowed;
-    if ((typeof window !== 'undefined' && window.innerWidth < 640) || isRestricted) {
+    if ((typeof window !== 'undefined' && window.innerWidth < 1024) || isRestricted) {
       setSelectedMobileBook(book);
     } else {
       if (onBookClick) onBookClick(book);
@@ -496,63 +496,34 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                     <span className="hidden sm:inline font-medium">All Restricted in {country}</span>
                     <span className="sm:hidden font-medium">Restricted ({country})</span>
                   </div>
-                ) : downloadableBooks.length > 0 && remainingDownloadableBooks.length === 0 ? (
+                ) : remainingDownloadableBooks.length > 0 ? (
                   <Button
                     variant="outline"
                     size="chip"
-                    onClick={() => setIsClearingOfflineShelf(true)}
-                    className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
-                    title="Clear all downloaded offline books on this shelf"
-                    aria-label="Clear Offline Shelf"
+                    onClick={() => downloadAll(downloadableBooks)}
+                    className="text-xs font-mono gap-1.5"
+                    title={
+                      restrictedBooks.length > 0
+                        ? `Download ${remainingDownloadableBooks.length} available public domain books for offline reading (${restrictedBooks.length} restricted in ${country} will be skipped)`
+                        : offlineShelfBooks.length > 0
+                        ? `Download remaining ${remainingDownloadableBooks.length} books on this shelf for offline reading`
+                        : 'Download all books on this shelf for offline reading'
+                    }
+                    aria-label="Download all books on this shelf for offline reading"
                   >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                    <span className="hidden sm:inline">Clear Offline Shelf</span>
-                    <span className="sm:hidden">Clear</span>
+                    <HardDriveDownload className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="hidden sm:inline">
+                      {offlineShelfBooks.length > 0
+                        ? `Download Shelf Offline (${remainingDownloadableBooks.length})`
+                        : 'Download Shelf Offline'}
+                    </span>
+                    <span className="sm:hidden">
+                      {offlineShelfBooks.length > 0
+                        ? `Download (${remainingDownloadableBooks.length})`
+                        : 'Download All'}
+                    </span>
                   </Button>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="chip"
-                      onClick={() => downloadAll(downloadableBooks)}
-                      className="text-xs font-mono gap-1.5"
-                      title={
-                        restrictedBooks.length > 0
-                          ? `Download ${remainingDownloadableBooks.length} available public domain books for offline reading (${restrictedBooks.length} restricted in ${country} will be skipped)`
-                          : offlineShelfBooks.length > 0
-                          ? `Download remaining ${remainingDownloadableBooks.length} books on this shelf for offline reading`
-                          : 'Download all books on this shelf for offline reading'
-                      }
-                      aria-label="Download all books on this shelf for offline reading"
-                    >
-                      <HardDriveDownload className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <span className="hidden sm:inline">
-                        {offlineShelfBooks.length > 0
-                          ? `Download Shelf Offline (${remainingDownloadableBooks.length})`
-                          : 'Download Shelf Offline'}
-                      </span>
-                      <span className="sm:hidden">
-                        {offlineShelfBooks.length > 0
-                          ? `Download (${remainingDownloadableBooks.length})`
-                          : 'Download All'}
-                      </span>
-                    </Button>
-                    {offlineShelfBooks.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="chip"
-                        onClick={() => setIsClearingOfflineShelf(true)}
-                        className="text-xs font-mono gap-1.5 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors"
-                        title={`Clear ${offlineShelfBooks.length} downloaded offline ${offlineShelfBooks.length === 1 ? 'book' : 'books'} on this shelf`}
-                        aria-label="Clear Offline Shelf"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                        <span className="hidden sm:inline">Clear Offline ({offlineShelfBooks.length})</span>
-                        <span className="sm:hidden">Clear ({offlineShelfBooks.length})</span>
-                      </Button>
-                    )}
-                  </div>
-                )}
+                ) : null}
               </div>
             )}
           </div>

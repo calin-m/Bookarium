@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 25 Oct 2026 14:37:14 GMT  
+**Last Generated**: Sun, 25 Oct 2026 17:03:23 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 187 passed  
-**Total Verified Tests**: 1909 passed  
+**Total Verified Tests**: 1912 passed  
 
 ---
 
@@ -11,30 +11,31 @@
 
 | Gateway | Check | Status | Details |
 |---|---|---|---|
-| **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, or private certificates |
+| **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, private certificates, or client service-role leaks |
+| **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1909 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1912 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 64 Architectural Decision Records validated |
-| **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 unused exports / dead files |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 67 Architectural Decision Records validated |
+| **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
 ---
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **95.61%** (9525/9962) — *Target: $ge$ 85%*
-- **Statements**: **94.3%** (10374/11001) — *Target: $ge$ 85%*
-- **Functions**: **92.8%** (2233/2406) — *Target: $ge$ 85%*
-- **Branches**: **85.33%** (9464/11091) — *Target: $ge$ 85%*
+- **Lines**: **95.57%** (9540/9982) — *Target: $ge$ 85%*
+- **Statements**: **94.24%** (10390/11025) — *Target: $ge$ 85%*
+- **Functions**: **92.78%** (2239/2413) — *Target: $ge$ 85%*
+- **Branches**: **85.31%** (9497/11132) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1909 Tests)
+## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1912 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 246 Tests)
+### 🚀 App Routes & Pages (26 Suites · 248 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -253,13 +254,15 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (42 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (44 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
 - ✔ `should open advanced filter drawer and apply era and sort filters`
 - ✔ `should switch to bookshelf view and require confirmation to clear shelf`
 - ✔ `should switch to favorites view and require confirmation to clear favorites`
+- ✔ `disconnects catalog viewMode from favorites, keeping favorites in dedicated grid mode even when catalog is in shelf mode`
+- ✔ `adapts top clear button and confirmation modal to the active custom shelf or downloaded shelf`
 - ✔ `should open download hub and close it`
 - ✔ `should open 3D book preview modal when book cover is clicked and close it on desktop`
 - ✔ `renders Bookshelf and Favorites when views are switched via Navbar`
@@ -520,7 +523,7 @@
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
-- ✔ `triggers onResume and warms reader store when cover thumbnail is clicked or activated via keyboard`
+- ✔ `does not trigger onResume on cover thumbnail or title click, preserving clicks for card activation`
 - ✔ `falls back to router.push when onResume is not provided`
 - ✔ `does not render redundant top offline badge and keeps top meta row focused on reading status`
 - ✔ `applies active styling, highlights title, and triggers onActivate on card click`
@@ -637,7 +640,7 @@
 - ✔ `triggers onBookClick or openReader when book spine is clicked`
 - ✔ `supports keyboard navigation via Enter and Space keys`
 - ✔ `opens reader route using default handler if onBookClick is omitted`
-- ✔ `opens mobile modal when book spine is clicked on mobile screen (<640px)`
+- ✔ `opens mobile/tablet modal when book spine is clicked on mobile or tablet screen (<1024px)`
 - ✔ `opens modal on desktop when a copyright-restricted book spine is clicked without navigating to reader`
 - ✔ `handles quick action download and bookmark clicks`
 - ✔ `renders guest mode sync prompt and triggers auth modal`
@@ -664,7 +667,7 @@
 - ✔ `handles moving a book to another shelf and default read routing from mobile action sheet`
 - ✔ `renders offline download button and triggers download all`
 - ✔ `renders individual offline download button on book spine and triggers toggle`
-- ✔ `renders Downloaded notice and Clear Offline Shelf button when all books are offline, opens modal, and confirms removeAll`
+- ✔ `does not render duplicate lower Clear Offline button when all books are offline, preserving single top header clear pattern`
 - ✔ `renders Edit and Delete buttons to the left of Download Shelf Offline button on custom shelves`
 - ✔ `skips restricted books when clicking Download Shelf Offline and renders Clear Offline Shelf when all available are cached`
 - ✔ `renders All Restricted status notice when all books on shelf are protected in visitor jurisdiction`
@@ -680,7 +683,7 @@
 - ✔ `renders shelf content with tactile animate-page-turn container and updates on shelf change`
 - ✔ `calculates deterministic shelf capacity capped to max-w-7xl (1280px) on wide viewports`
 - ✔ `calculates proportional capacity on tablet and mobile viewports`
-- ✔ `displays Clear Offline button alongside Download Shelf Offline when shelf is partially cached offline`
+- ✔ `displays Download Shelf Offline for remaining books without duplicate lower Clear Offline button when shelf is partially cached offline`
 - ✔ `renders Downloaded shelf pill next to General when downloaded books exist and handles shelf switching`
 - ✔ `renders Downloaded shelf pill in guest mode when books are downloaded`
 - ✔ `does not render Downloaded shelf pill when no books are downloaded`
@@ -1307,7 +1310,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 172 Tests)
+### ⚡ Zustand State Stores (10 Suites · 173 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (9 tests)</summary>
@@ -1389,7 +1392,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (45 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (46 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -1400,6 +1403,7 @@
 - ✔ `should enrich saved books with fresh author lifespans`
 - ✔ `should call Supabase upsert and delete on toggleFavoriteBook with userId`
 - ✔ `returns live hydrated state and reactive actions`
+- ✔ `clears only books on the specified custom shelf without affecting General or other shelves`
 - ✔ `handles activeBookshelfId selection and cloud bookshelf list`
 - ✔ `handles syncWithCloud fetching bookshelves and items`
 - ✔ `orders bookshelf_items by created_at descending during syncWithCloud for stable placement`
@@ -3085,7 +3089,7 @@
 
 ## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **5 warnings**
+- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 
