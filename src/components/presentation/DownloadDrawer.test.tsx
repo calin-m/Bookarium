@@ -35,12 +35,15 @@ describe('DownloadDrawer component', () => {
       />
     );
 
-    expect(screen.getByText('Zero-Copyright Download Hub')).toBeInTheDocument();
+    expect(screen.getByText('Download Hub')).toBeInTheDocument();
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('EPUB E-Reader')).toBeInTheDocument();
     expect(screen.getByText('Clean Plain Text')).toBeInTheDocument();
     expect(screen.getAllByText('Download').length).toBeGreaterThan(0);
     expect(screen.getByText('Public Domain')).toBeInTheDocument();
+
+    const formatsGrid = screen.getByTestId('download-formats-grid');
+    expect(formatsGrid).toHaveClass('grid', 'grid-cols-1', 'sm:grid-cols-2');
   });
 
   it('should return null when book is null', () => {

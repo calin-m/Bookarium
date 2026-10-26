@@ -156,15 +156,15 @@ export const Modal: React.FC<ModalProps> = ({
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'relative w-full bg-card text-foreground rounded-2xl shadow-2xl border border-border z-10 flex flex-col overflow-hidden',
+              'relative w-full max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh] bg-card text-foreground rounded-2xl shadow-2xl border border-border z-10 flex flex-col overflow-hidden',
               maxWidths[maxWidth],
               className
             )}
           >
             {(title || showCloseButton) && (
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div className="shrink-0 flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-border">
                 {title && (
-                  <h2 id={titleId} className="text-lg font-semibold text-foreground">
+                  <h2 id={titleId} className="text-base sm:text-lg font-semibold text-foreground">
                     {title}
                   </h2>
                 )}

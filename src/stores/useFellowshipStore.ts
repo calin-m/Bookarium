@@ -105,6 +105,48 @@ function generateId(): string {
   return `fellow-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function healProfileIdentity(
+  profileMap: Map<string, { username: string | null; display_name: string | null }>,
+  userId: string,
+  currentUsername: string,
+  currentDisplayName: string
+): [string, string] {
+  const p = profileMap.get(userId);
+  if (!p) return [currentUsername, currentDisplayName];
+  return [
+    p.username && isPlaceholderUsername(currentUsername) ? p.username : currentUsername,
+    p.display_name || currentDisplayName,
+  ];
+}
+
+async function resolveSelfScholarIdentity(
+  currentUser: NonNullable<ReturnType<typeof useAuthStore.getState>['user']>,
+  currentProfile: ReturnType<typeof useAuthStore.getState>['profile'],
+  supabase: ReturnType<typeof createClient>
+): Promise<{ myUsername: string; myDisplayName: string }> {
+  let myUsername = currentProfile?.username || '';
+  let myDisplayName =
+    currentProfile?.display_name || currentUser.user_metadata?.display_name || '';
+
+  if (isPlaceholderUsername(myUsername) && supabase) {
+    try {
+      const { data: selfProf } = await supabase
+        .from('profiles')
+        .select('username, display_name')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+      if (selfProf?.username) myUsername = selfProf.username;
+      if (selfProf?.display_name) myDisplayName = selfProf.display_name;
+    } catch {
+      // Non-blocking fallback
+    }
+  }
+  return {
+    myUsername: myUsername || 'scholar',
+    myDisplayName: myDisplayName || 'Scholar',
+  };
+}
+
 export const useFellowshipStore = create<FellowshipState>()(
   persist(
     (set, get) => ({
@@ -129,7 +171,7 @@ export const useFellowshipStore = create<FellowshipState>()(
         if (!supabase) return;
 
         // Flush any queued offline symposium progress updates before pulling remote rows
-        const pendingEntries = Object.entries(get().pendingSymposiumProgress || {});
+        const pendingEntries = Object.entries(get().pendingSymposiumProgress);
         if (pendingEntries.length > 0) {
           const remainingPending = { ...get().pendingSymposiumProgress };
           for (const [sessionId, pending] of pendingEntries) {
@@ -212,21 +254,18 @@ export const useFellowshipStore = create<FellowshipState>()(
                 }
 
                 healedCircles = rawCircles.map((c) => {
-                  let reqU = c.requester_username;
-                  let reqD = c.requester_display_name;
-                  let recU = c.recipient_username;
-                  let recD = c.recipient_display_name;
-
-                  if (profileMap.has(c.requester_id)) {
-                    const p = profileMap.get(c.requester_id)!;
-                    if (p.username && isPlaceholderUsername(reqU)) reqU = p.username;
-                    if (p.display_name) reqD = p.display_name;
-                  }
-                  if (profileMap.has(c.recipient_id)) {
-                    const p = profileMap.get(c.recipient_id)!;
-                    if (p.username && isPlaceholderUsername(recU)) recU = p.username;
-                    if (p.display_name) recD = p.display_name;
-                  }
+                  const [reqU, reqD] = healProfileIdentity(
+                    profileMap,
+                    c.requester_id,
+                    c.requester_username,
+                    c.requester_display_name
+                  );
+                  const [recU, recD] = healProfileIdentity(
+                    profileMap,
+                    c.recipient_id,
+                    c.recipient_username,
+                    c.recipient_display_name
+                  );
 
                   return {
                     ...c,
@@ -238,21 +277,18 @@ export const useFellowshipStore = create<FellowshipState>()(
                 });
 
                 healedSymposiums = rawSymposiums.map((s) => {
-                  let hostU = s.host_username;
-                  let hostD = s.host_display_name;
-                  let fellowU = s.fellow_username;
-                  let fellowD = s.fellow_display_name;
-
-                  if (profileMap.has(s.host_id)) {
-                    const p = profileMap.get(s.host_id)!;
-                    if (p.username && isPlaceholderUsername(hostU)) hostU = p.username;
-                    if (p.display_name) hostD = p.display_name;
-                  }
-                  if (profileMap.has(s.fellow_id)) {
-                    const p = profileMap.get(s.fellow_id)!;
-                    if (p.username && isPlaceholderUsername(fellowU)) fellowU = p.username;
-                    if (p.display_name) fellowD = p.display_name;
-                  }
+                  const [hostU, hostD] = healProfileIdentity(
+                    profileMap,
+                    s.host_id,
+                    s.host_username,
+                    s.host_display_name
+                  );
+                  const [fellowU, fellowD] = healProfileIdentity(
+                    profileMap,
+                    s.fellow_id,
+                    s.fellow_username,
+                    s.fellow_display_name
+                  );
 
                   return {
                     ...s,
@@ -375,25 +411,11 @@ export const useFellowshipStore = create<FellowshipState>()(
         }
 
         const supabase = createClient();
-        let myUsername = currentProfile?.username || '';
-        let myDisplayName =
-          currentProfile?.display_name || currentUser.user_metadata?.display_name || '';
-
-        if (isPlaceholderUsername(myUsername) && supabase) {
-          try {
-            const { data: selfProf } = await supabase
-              .from('profiles')
-              .select('username, display_name')
-              .eq('id', currentUser.id)
-              .maybeSingle();
-            if (selfProf?.username) myUsername = selfProf.username;
-            if (selfProf?.display_name) myDisplayName = selfProf.display_name;
-          } catch {
-            // Non-blocking fallback
-          }
-        }
-        if (!myUsername) myUsername = 'scholar';
-        if (!myDisplayName) myDisplayName = 'Scholar';
+        const { myUsername, myDisplayName } = await resolveSelfScholarIdentity(
+          currentUser,
+          currentProfile,
+          supabase
+        );
 
         const now = new Date().toISOString();
         const optimisticCircle: ReaderCircleRow = {
@@ -523,25 +545,11 @@ export const useFellowshipStore = create<FellowshipState>()(
         }
 
         const supabase = createClient();
-        let myUsername = currentProfile?.username || '';
-        let myDisplayName =
-          currentProfile?.display_name || currentUser.user_metadata?.display_name || '';
-
-        if (isPlaceholderUsername(myUsername) && supabase) {
-          try {
-            const { data: selfProf } = await supabase
-              .from('profiles')
-              .select('username, display_name')
-              .eq('id', currentUser.id)
-              .maybeSingle();
-            if (selfProf?.username) myUsername = selfProf.username;
-            if (selfProf?.display_name) myDisplayName = selfProf.display_name;
-          } catch {
-            // Non-blocking fallback
-          }
-        }
-        if (!myUsername) myUsername = 'scholar';
-        if (!myDisplayName) myDisplayName = 'Scholar';
+        const { myUsername, myDisplayName } = await resolveSelfScholarIdentity(
+          currentUser,
+          currentProfile,
+          supabase
+        );
 
         const now = new Date().toISOString();
         const optimisticSession: SymposiumSessionRow = {
@@ -702,7 +710,7 @@ export const useFellowshipStore = create<FellowshipState>()(
           if (isOfflineNow || !supabase) {
             set((s) => ({
               pendingSymposiumProgress: {
-                ...(s.pendingSymposiumProgress || {}),
+                ...s.pendingSymposiumProgress,
                 [sym.id]: {
                   chapterIndex,
                   progressPct: clampedProgress,
@@ -735,9 +743,9 @@ export const useFellowshipStore = create<FellowshipState>()(
               )
               .eq('id', sym.id);
             if (updateErr) throw updateErr;
-            if (get().pendingSymposiumProgress?.[sym.id]) {
+            if (get().pendingSymposiumProgress[sym.id]) {
               set((s) => {
-                const nextPending = { ...(s.pendingSymposiumProgress || {}) };
+                const nextPending = { ...s.pendingSymposiumProgress };
                 delete nextPending[sym.id];
                 return { pendingSymposiumProgress: nextPending };
               });
@@ -745,7 +753,7 @@ export const useFellowshipStore = create<FellowshipState>()(
           } catch {
             set((s) => ({
               pendingSymposiumProgress: {
-                ...(s.pendingSymposiumProgress || {}),
+                ...s.pendingSymposiumProgress,
                 [sym.id]: {
                   chapterIndex,
                   progressPct: clampedProgress,
@@ -820,11 +828,13 @@ export const useFellowshipStore = create<FellowshipState>()(
 export function useHydratedFellowship() {
   const store = useFellowshipStore();
   const isHydrated = useHasMounted();
+  const hydratedData = isHydrated
+    ? { circles: store.circles, symposiums: store.symposiums }
+    : { circles: [] as ReaderCircleRow[], symposiums: [] as SymposiumSessionRow[] };
 
   return {
     ...store,
-    circles: isHydrated ? store.circles : [],
-    symposiums: isHydrated ? store.symposiums : [],
+    ...hydratedData,
     isHydrated,
   };
 }

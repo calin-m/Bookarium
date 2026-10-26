@@ -13,38 +13,6 @@ export interface CachedMetadata {
 const bookMetadataCache = new Map<number, CachedMetadata>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-function enrichWithFeaturedLifespans(bookId: number, book: GenericBookInput): GenericBookInput {
-  const hasLifespans = Boolean(
-    book.authors?.some((a) => {
-      if (typeof a === 'string') {
-        const parsed = parseLifespansFromName(a);
-        return parsed.birthYear != null || parsed.deathYear != null;
-      }
-      if (a.birth_year != null || a.death_year != null) return true;
-      const parsed = parseLifespansFromName(a.name);
-      return parsed.birthYear != null || parsed.deathYear != null;
-    })
-  );
-
-  if (hasLifespans) return book;
-
-  const hero = FEATURED_HERO_BOOKS.find((h) => h.id === bookId);
-  if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
-    return {
-      ...book,
-      authors: [
-        {
-          name: hero.author,
-          birth_year: hero.authorBirthYear ?? null,
-          death_year: hero.authorDeathYear ?? null,
-        },
-      ],
-    };
-  }
-
-  return book;
-}
-
 function getFeaturedHeroFallback(bookId: number): GenericBookInput | null {
   const hero = FEATURED_HERO_BOOKS.find((h) => h.id === bookId);
   if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
@@ -63,6 +31,21 @@ function getFeaturedHeroFallback(bookId: number): GenericBookInput | null {
     };
   }
   return null;
+}
+
+function enrichWithFeaturedLifespans(bookId: number, book: GenericBookInput): GenericBookInput {
+  const hasLifespans = Boolean(
+    book.authors?.some((a) => {
+      if (typeof a !== 'string' && (a.birth_year != null || a.death_year != null)) return true;
+      const parsed = parseLifespansFromName(typeof a === 'string' ? a : a.name);
+      return parsed.birthYear != null || parsed.deathYear != null;
+    })
+  );
+
+  if (hasLifespans) return book;
+
+  const fallback = getFeaturedHeroFallback(bookId);
+  return fallback ? { ...book, authors: fallback.authors } : book;
 }
 
 export function clearBookMetadataCache(): void {

@@ -220,21 +220,27 @@ function AccountDashboardContent() {
 
   // Segmented Sub-Tabs Navigation State
   const tabParam = searchParams.get('tab');
+  const defaultTab: AccountTabId = isOffline ? 'preferences' : 'habits';
   const validTab: AccountTabId =
+    tabParam === 'habits' ||
     tabParam === 'profile' ||
     tabParam === 'symposiums' ||
     tabParam === 'preferences' ||
     tabParam === 'security'
       ? tabParam
-      : 'habits';
+      : defaultTab;
 
   const [activeTab, setActiveTab] = useState<AccountTabId>(validTab);
   const [habitsSubTab, setHabitsSubTab] = useState<HabitsSubTabId>('streaks');
   const [prevTabParam, setPrevTabParam] = useState<string | null>(tabParam);
+  const [prevIsOffline, setPrevIsOffline] = useState<boolean>(isOffline);
 
-  if (tabParam !== prevTabParam) {
+  if (tabParam !== prevTabParam || isOffline !== prevIsOffline) {
     setPrevTabParam(tabParam);
-    setActiveTab(validTab);
+    setPrevIsOffline(isOffline);
+    if (tabParam !== prevTabParam || !tabParam) {
+      setActiveTab(validTab);
+    }
   }
 
   const handleTabChange = (tabId: AccountTabId) => {
@@ -523,7 +529,32 @@ function AccountDashboardContent() {
         {/* Guest View Prompt */}
         {!isLoading && !user && (
           <div className="space-y-6">
-            <div className="max-w-xl mx-auto bg-card border border-border rounded-2xl p-8 sm:p-12 text-center space-y-4 shadow-booksaw">
+            {isOffline && (
+              <div data-testid="guest-offline-workspace" className="space-y-6">
+                <AccountPreferencesSection
+                  theme={theme}
+                  onThemeChange={handleThemeChange}
+                  stickyScrollEnabled={stickyScrollEnabled}
+                  onStickyScrollChange={setStickyScrollEnabled}
+                  speechRate={speechRate}
+                  onSpeechRateChange={setSpeechRate}
+                  speechVoiceURI={speechVoiceURI}
+                  onSpeechVoiceChange={setSpeechVoiceURI}
+                  speechAutoPageAdvance={speechAutoPageAdvance}
+                  onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
+                  speechHighlightEnabled={speechHighlightEnabled}
+                  onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
+                  onResetSpeechPreferences={resetSpeechPreferences}
+                />
+                <AccountHabitsCard completedBooksCount={completedBooksCount} />
+                <AccountAccoladesCard />
+              </div>
+            )}
+
+            <div
+              data-testid="guest-signin-card"
+              className="max-w-xl mx-auto bg-card border border-border rounded-2xl p-8 sm:p-12 text-center space-y-4 shadow-booksaw"
+            >
               <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-border text-primary flex items-center justify-center mx-auto shadow-inner">
                 <UserIcon className="w-7 h-7" />
               </div>
@@ -550,28 +581,6 @@ function AccountDashboardContent() {
                 </Link>
               </div>
             </div>
-
-            {isOffline && (
-              <div data-testid="guest-offline-workspace" className="space-y-6">
-                <AccountPreferencesSection
-                  theme={theme}
-                  onThemeChange={handleThemeChange}
-                  stickyScrollEnabled={stickyScrollEnabled}
-                  onStickyScrollChange={setStickyScrollEnabled}
-                  speechRate={speechRate}
-                  onSpeechRateChange={setSpeechRate}
-                  speechVoiceURI={speechVoiceURI}
-                  onSpeechVoiceChange={setSpeechVoiceURI}
-                  speechAutoPageAdvance={speechAutoPageAdvance}
-                  onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
-                  speechHighlightEnabled={speechHighlightEnabled}
-                  onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
-                  onResetSpeechPreferences={resetSpeechPreferences}
-                />
-                <AccountHabitsCard completedBooksCount={completedBooksCount} />
-                <AccountAccoladesCard />
-              </div>
-            )}
           </div>
         )}
 
@@ -689,39 +698,33 @@ function AccountDashboardContent() {
                   aria-label="Habits and library sub-sections"
                   className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none]"
                 >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={habitsSubTab === 'streaks'}
-                    aria-label="Streaks & Challenge"
-                    title="Streaks & Challenge"
-                    onClick={() => setHabitsSubTab('streaks')}
-                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
-                      habitsSubTab === 'streaks'
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                    }`}
-                  >
-                    <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span className={habitsSubTab === 'streaks' ? 'inline' : 'hidden md:inline'}>Streaks & Challenge</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={habitsSubTab === 'accolades'}
-                    aria-label="Accolades Compendium"
-                    title="Accolades Compendium"
-                    onClick={() => setHabitsSubTab('accolades')}
-                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
-                      habitsSubTab === 'accolades'
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                    }`}
-                  >
-                    <Award className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className={habitsSubTab === 'accolades' ? 'inline' : 'hidden md:inline'}>Accolades Compendium</span>
-                  </button>
+                  {(
+                    [
+                      { id: 'streaks', label: 'Streaks & Challenge', Icon: Flame, iconClass: 'text-amber-500' },
+                      { id: 'accolades', label: 'Accolades Compendium', Icon: Award, iconClass: 'text-primary' },
+                    ] as const
+                  ).map((sub) => {
+                    const isSubActive = habitsSubTab === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={isSubActive}
+                        aria-label={sub.label}
+                        title={sub.label}
+                        onClick={() => setHabitsSubTab(sub.id)}
+                        className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+                          isSubActive
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                        }`}
+                      >
+                        <sub.Icon className={`w-3.5 h-3.5 ${sub.iconClass} shrink-0`} />
+                        <span className={isSubActive ? 'inline' : 'hidden md:inline'}>{sub.label}</span>
+                      </button>
+                    );
+                  })}
                 </nav>
               </div>
 
@@ -731,7 +734,7 @@ function AccountDashboardContent() {
                 className={habitsSubTab === 'streaks' ? 'block' : 'hidden'}
               >
                 <AccountHabitsCard
-                  userId={user?.id}
+                  userId={user.id}
                   completedBooksCount={completedBooksCount}
                 />
               </div>
@@ -741,7 +744,7 @@ function AccountDashboardContent() {
                 hidden={habitsSubTab !== 'accolades'}
                 className={habitsSubTab === 'accolades' ? 'block' : 'hidden'}
               >
-                <AccountAccoladesCard userId={user?.id} />
+                <AccountAccoladesCard userId={user.id} />
               </div>
             </section>
 
@@ -808,7 +811,7 @@ function AccountDashboardContent() {
                 speechHighlightEnabled={speechHighlightEnabled}
                 onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
                 onResetSpeechPreferences={resetSpeechPreferences}
-                userId={user?.id}
+                userId={user.id}
               />
             </section>
 

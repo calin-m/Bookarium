@@ -41,33 +41,25 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
 
   const isBookOpen = pinState === 'open' || (pinState === 'auto' && isHovered);
 
+  const togglePinState = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return;
+    }
+    setPinState(isBookOpen ? 'closed' : 'open');
+  };
+
   const handleBookClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('a')) {
       return;
     }
     e.stopPropagation();
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      return;
-    }
-    if (isBookOpen) {
-      setPinState('closed');
-    } else {
-      setPinState('open');
-    }
+    togglePinState();
   };
 
-  const handleMouseEnter = () => {
+  const handleHoverChange = (hovered: boolean) => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
-    setIsHovered(true);
-    if (pinState === 'closed') {
-      setPinState('auto');
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
-    setIsHovered(false);
+    setIsHovered(hovered);
     if (pinState === 'closed') {
       setPinState('auto');
     }
@@ -136,27 +128,51 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     );
   }
 
+  const renderLeftPageContent = (passage: typeof currentPassage, maxWidthClass: string) => (
+    <>
+      <div>
+        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border">
+          <span className="flex items-center gap-1">
+            <Sparkles className="w-3 h-3" /> Public Domain
+          </span>
+          <span>{passage.chapterLabel || featuredBook.volumeNumber}</span>
+        </div>
+
+        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
+          {featuredBook.title}
+        </h3>
+        <p className="text-xs font-mono italic text-muted-foreground mb-2">
+          by {featuredBook.author} ({featuredBook.year})
+        </p>
+
+        <div className="relative pl-3 border-l-2 border-primary/40 my-2">
+          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8 text-pretty">
+            &ldquo;{passage.openingLine}&rdquo;
+          </p>
+        </div>
+      </div>
+
+      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
+        <span className={`truncate ${maxWidthClass}`}>{featuredBook.primarySubject}</span>
+        <span className="opacity-60">p. 1</span>
+      </div>
+    </>
+  );
+
   return (
     <div
       className={`relative group cursor-pointer book-3d-stage hero-3d-stage ${
         pinState === 'open' ? 'book-open' : pinState === 'closed' ? 'book-closed' : ''
       }`}
       onClick={handleBookClick}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => handleHoverChange(true)}
+      onMouseLeave={() => handleHoverChange(false)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-            return;
-          }
-          if (isBookOpen) {
-            setPinState('closed');
-          } else {
-            setPinState('open');
-          }
+          togglePinState();
         }
       }}
       aria-label={isBookOpen ? 'Click to close volume' : 'Click to pin open volume'}
@@ -244,32 +260,7 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
 
             {/* Back Face of Turning Leaf: Incoming Left Page title & quote landing onto left side */}
             <div className="turning-leaf-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
-              <div>
-                <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border">
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> Public Domain
-                  </span>
-                  <span>{currentPassage.chapterLabel || featuredBook.volumeNumber}</span>
-                </div>
-
-                <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
-                  {featuredBook.title}
-                </h3>
-                <p className="text-xs font-mono italic text-muted-foreground mb-2">
-                  by {featuredBook.author} ({featuredBook.year})
-                </p>
-
-                <div className="relative pl-3 border-l-2 border-primary/40 my-2">
-                  <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8 text-pretty">
-                    &ldquo;{currentPassage.openingLine}&rdquo;
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
-                <span className="truncate max-w-[160px]">{featuredBook.primarySubject}</span>
-                <span className="opacity-60">p. 1</span>
-              </div>
+              {renderLeftPageContent(currentPassage, 'max-w-[160px]')}
             </div>
           </div>
         )}
@@ -342,34 +333,7 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
               key={`left-page-content-${featuredBook.id}-${isTurningLeaf ? prevPassageIndex : activePassageIndex}`}
               className="flex flex-col justify-between h-full relative"
             >
-              <div>
-                <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border">
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> Public Domain
-                  </span>
-                  <span>
-                    {(isTurningLeaf ? prevPassage : currentPassage).chapterLabel || featuredBook.volumeNumber}
-                  </span>
-                </div>
-
-                <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
-                  {featuredBook.title}
-                </h3>
-                <p className="text-xs font-mono italic text-muted-foreground mb-2">
-                  by {featuredBook.author} ({featuredBook.year})
-                </p>
-
-                <div className="relative pl-3 border-l-2 border-primary/40 my-2">
-                  <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8 text-pretty">
-                    &ldquo;{(isTurningLeaf ? prevPassage : currentPassage).openingLine}&rdquo;
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
-                <span className="truncate max-w-[140px]">{featuredBook.primarySubject}</span>
-                <span className="opacity-60">p. 1</span>
-              </div>
+              {renderLeftPageContent(isTurningLeaf ? prevPassage : currentPassage, 'max-w-[140px]')}
             </div>
           </div>
         </div>

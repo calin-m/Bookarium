@@ -74,6 +74,48 @@ function hasEmbeddedLifespans(authors?: string[]): boolean {
   });
 }
 
+function isGhostReadingPosition(pos: BookReadingPosition, progress: number): boolean {
+  return (
+    progress === 0 &&
+    pos.chapterIndex === 0 &&
+    pos.chapterPage <= 1 &&
+    pos.globalPage <= 1 &&
+    (pos.bookmarkRow ?? 0) <= 0
+  );
+}
+
+function isGhostCloudRow(row: Record<string, unknown>): boolean {
+  return (
+    Number(row.progress_percent) === 0 &&
+    Number(row.current_chapter_index) === 0 &&
+    Number(row.scroll_offset) <= 1
+  );
+}
+
+function decodeRemoteReadingPosition(
+  row: Record<string, unknown>,
+  localPos?: BookReadingPosition
+): { position: BookReadingPosition; progress: number; shouldKeepLocalAuthors: boolean } {
+  const remoteAuthors = row.book_authors as string[] | null | undefined;
+  const shouldKeepLocalAuthors =
+    !hasEmbeddedLifespans(remoteAuthors ?? undefined) && hasEmbeddedLifespans(localPos?.bookAuthors);
+  const rawOffset = Math.max(1, Number(row.scroll_offset));
+  const decodedPage = Math.max(1, Math.floor(rawOffset));
+  const decodedRow = Math.round((rawOffset - decodedPage) * 1000);
+  const position: BookReadingPosition = {
+    chapterIndex: Number(row.current_chapter_index),
+    chapterPage: decodedPage,
+    globalPage: decodedPage,
+    ...(decodedRow > 0 ? { bookmarkRow: decodedRow } : {}),
+    lastReadAt: String(row.last_read_at),
+    bookTitle: (row.book_title as string | null) || localPos?.bookTitle,
+    bookAuthors: (shouldKeepLocalAuthors ? localPos?.bookAuthors : remoteAuthors) || localPos?.bookAuthors,
+    coverUrl: (row.cover_url as string | null) || localPos?.coverUrl,
+  };
+  const progress = Math.min(Math.max(Math.round(Number(row.progress_percent)), 0), 100);
+  return { position, progress, shouldKeepLocalAuthors };
+}
+
 function extractVerifiedAuthors(
   book: GutendexBook | Book | null | undefined,
   pos?: BookReadingPosition
@@ -253,22 +295,21 @@ export const useReaderStore = create<ReaderState>()(
             !position.bookAuthors ||
             position.bookAuthors.length === 0 ||
             position.bookAuthors.every(isPlaceholderAuthor);
+          const resolvedAuthors = authors.length > 0 ? authors : existingPos?.bookAuthors || [];
+          const resolvedCoverUrl = position.coverUrl ?? coverUrl ?? existingPos?.coverUrl ?? null;
 
           if (!position.bookTitle) {
             enrichedPosition = {
               ...position,
               bookTitle: currentBook.title || existingPos?.bookTitle,
-              bookAuthors:
-                authors.length > 0
-                  ? authors
-                  : existingPos?.bookAuthors || [],
-              coverUrl: coverUrl ?? existingPos?.coverUrl ?? null,
+              bookAuthors: resolvedAuthors,
+              coverUrl: resolvedCoverUrl,
             };
-          } else if (posAuthorsMissingOrPlaceholder && (authors.length > 0 || existingPos?.bookAuthors?.length)) {
+          } else if (posAuthorsMissingOrPlaceholder && resolvedAuthors.length > 0) {
             enrichedPosition = {
               ...position,
-              bookAuthors: authors.length > 0 ? authors : existingPos?.bookAuthors || [],
-              coverUrl: position.coverUrl ?? coverUrl ?? existingPos?.coverUrl ?? null,
+              bookAuthors: resolvedAuthors,
+              coverUrl: resolvedCoverUrl,
             };
           } else if (
             !hasEmbeddedLifespans(position.bookAuthors) &&
@@ -284,8 +325,8 @@ export const useReaderStore = create<ReaderState>()(
           enrichedPosition = {
             ...position,
             bookTitle: existingPos.bookTitle,
-            ...(existingPos.bookAuthors ? { bookAuthors: existingPos.bookAuthors } : {}),
-            ...(existingPos.coverUrl !== undefined ? { coverUrl: existingPos.coverUrl } : {}),
+            bookAuthors: existingPos.bookAuthors ?? position.bookAuthors,
+            coverUrl: existingPos.coverUrl ?? position.coverUrl,
           };
         }
 
@@ -316,7 +357,7 @@ export const useReaderStore = create<ReaderState>()(
             ...state.readingPositions,
             [bookId]: enrichedPosition,
           },
-          deletedPositionBookIds: (state.deletedPositionBookIds || []).filter((id) => id !== bookId),
+          deletedPositionBookIds: state.deletedPositionBookIds.filter((id) => id !== bookId),
         }));
 
         const currentUserId = userId || useAuthStore.getState().user?.id;
@@ -371,7 +412,7 @@ export const useReaderStore = create<ReaderState>()(
             nextPositions[fresh.id] = {
               ...pos,
               bookTitle: pos.bookTitle || fresh.title,
-              bookAuthors: freshHasLifespans || needsAuthorEnrichment ? freshAuthors : pos.bookAuthors || freshAuthors,
+              bookAuthors: freshHasLifespans || needsAuthorEnrichment ? freshAuthors : pos.bookAuthors,
               coverUrl: pos.coverUrl || freshCover,
             };
           }
@@ -391,14 +432,7 @@ export const useReaderStore = create<ReaderState>()(
       syncReadingPositionToCloud: async (bookId, position, userId) => {
         if (!userId || !bookId) return;
         const progress = get().readingProgress[bookId] ?? 0;
-        const isGhost =
-          progress === 0 &&
-          (position.chapterIndex ?? 0) === 0 &&
-          (position.chapterPage ?? 1) <= 1 &&
-          (position.globalPage ?? 1) <= 1 &&
-          (position.bookmarkRow ?? 0) <= 0;
-
-        if (isGhost) return;
+        if (isGhostReadingPosition(position, progress)) return;
 
         const encodedScrollOffset =
           position.chapterPage +
@@ -439,34 +473,13 @@ export const useReaderStore = create<ReaderState>()(
             .maybeSingle();
 
           if (data && !error) {
-            const isGhost =
-              Number(data.progress_percent || 0) === 0 &&
-              (data.current_chapter_index ?? 0) === 0 &&
-              Number(data.scroll_offset || 0) <= 1;
-
-            if (isGhost) return null;
+            if (isGhostCloudRow(data)) return null;
 
             const existingLocal = get().readingPositions[bookId];
-            const remoteAuthors: string[] | undefined = data.book_authors || undefined;
-            const preservedAuthors =
-              !hasEmbeddedLifespans(remoteAuthors) && hasEmbeddedLifespans(existingLocal?.bookAuthors)
-                ? existingLocal.bookAuthors
-                : remoteAuthors || existingLocal?.bookAuthors;
-
-            const rawOffset = Number(data.scroll_offset) || 1;
-            const decodedPage = Math.max(1, Math.floor(rawOffset));
-            const decodedRow = Math.round((rawOffset - decodedPage) * 1000);
-
-            const remotePosition: BookReadingPosition = {
-              chapterIndex: data.current_chapter_index ?? 0,
-              chapterPage: decodedPage,
-              globalPage: decodedPage,
-              ...(decodedRow > 0 ? { bookmarkRow: decodedRow } : {}),
-              lastReadAt: data.last_read_at || new Date().toISOString(),
-              bookTitle: data.book_title || existingLocal?.bookTitle || undefined,
-              bookAuthors: preservedAuthors,
-              coverUrl: data.cover_url || existingLocal?.coverUrl || undefined,
-            };
+            const { position: remotePosition, progress } = decodeRemoteReadingPosition(
+              data,
+              existingLocal
+            );
             set((state) => ({
               readingPositions: {
                 ...state.readingPositions,
@@ -474,7 +487,7 @@ export const useReaderStore = create<ReaderState>()(
               },
               readingProgress: {
                 ...state.readingProgress,
-                [bookId]: Math.min(Math.max(Math.round(Number(data.progress_percent) || 0), 0), 100),
+                [bookId]: progress,
               },
             }));
             return remotePosition;
@@ -491,7 +504,7 @@ export const useReaderStore = create<ReaderState>()(
         try {
           const supabase = createClient();
 
-          const pendingDeletes = [...(get().deletedPositionBookIds || [])];
+          const pendingDeletes = [...get().deletedPositionBookIds];
           if (pendingDeletes.length > 0) {
             for (const delBookId of pendingDeletes) {
               await supabase
@@ -531,25 +544,14 @@ export const useReaderStore = create<ReaderState>()(
             Object.entries(nextPositions).forEach(([idStr, pos]) => {
               const id = Number(idStr);
               const prog = nextProgress[id] ?? 0;
-              if (
-                (pos.globalPage ?? 1) <= 1 &&
-                (pos.chapterIndex ?? 0) === 0 &&
-                (pos.chapterPage ?? 1) <= 1 &&
-                (pos.bookmarkRow ?? 0) <= 0 &&
-                prog === 0
-              ) {
+              if (isGhostReadingPosition(pos, prog)) {
                 delete nextPositions[id];
                 delete nextProgress[id];
               }
             });
 
             data.forEach((row) => {
-              const isGhost =
-                Number(row.progress_percent || 0) === 0 &&
-                (row.current_chapter_index ?? 0) === 0 &&
-                Number(row.scroll_offset || 0) <= 1;
-
-              if (isGhost) return;
+              if (isGhostCloudRow(row)) return;
 
               const bookId = row.book_id;
               remoteBookIds.add(bookId);
@@ -559,30 +561,10 @@ export const useReaderStore = create<ReaderState>()(
 
               // Reconcile via Last-Write-Wins (LWW) while preserving enriched local author lifespans
               if (!localPos || remoteTime >= localTime) {
-                const remoteAuthors: string[] | undefined = row.book_authors || undefined;
-                const shouldKeepLocalAuthors =
-                  !hasEmbeddedLifespans(remoteAuthors) &&
-                  hasEmbeddedLifespans(localPos?.bookAuthors);
-                const rawOffset = Number(row.scroll_offset) || 1;
-                const decodedPage = Math.max(1, Math.floor(rawOffset));
-                const decodedRow = Math.round((rawOffset - decodedPage) * 1000);
-                const mergedPosition: BookReadingPosition = {
-                  chapterIndex: row.current_chapter_index ?? 0,
-                  chapterPage: decodedPage,
-                  globalPage: decodedPage,
-                  ...(decodedRow > 0 ? { bookmarkRow: decodedRow } : {}),
-                  lastReadAt: row.last_read_at || new Date().toISOString(),
-                  bookTitle: row.book_title || localPos?.bookTitle || undefined,
-                  bookAuthors: shouldKeepLocalAuthors
-                    ? localPos.bookAuthors
-                    : remoteAuthors || localPos?.bookAuthors || undefined,
-                  coverUrl: row.cover_url || localPos?.coverUrl || undefined,
-                };
+                const { position: mergedPosition, progress, shouldKeepLocalAuthors } =
+                  decodeRemoteReadingPosition(row, localPos);
                 nextPositions[bookId] = mergedPosition;
-                nextProgress[bookId] = Math.min(
-                  Math.max(Math.round(Number(row.progress_percent) || 0), 0),
-                  100
-                );
+                nextProgress[bookId] = progress;
                 if (shouldKeepLocalAuthors) {
                   healedInCloud.push({ bookId, position: mergedPosition });
                 }
@@ -632,12 +614,15 @@ export const useReaderStore = create<ReaderState>()(
 
         const currentUserId = userId || useAuthStore.getState().user?.id;
         if (currentUserId) {
-          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          const recordTombstone = () => {
             set((state) => ({
               deletedPositionBookIds: Array.from(
-                new Set([...(state.deletedPositionBookIds || []), bookId])
+                new Set([...state.deletedPositionBookIds, bookId])
               ),
             }));
+          };
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            recordTombstone();
             return;
           }
           try {
@@ -648,18 +633,10 @@ export const useReaderStore = create<ReaderState>()(
               .eq('user_id', currentUserId)
               .eq('book_id', bookId);
             if (error) {
-              set((state) => ({
-                deletedPositionBookIds: Array.from(
-                  new Set([...(state.deletedPositionBookIds || []), bookId])
-                ),
-              }));
+              recordTombstone();
             }
           } catch {
-            set((state) => ({
-              deletedPositionBookIds: Array.from(
-                new Set([...(state.deletedPositionBookIds || []), bookId])
-              ),
-            }));
+            recordTombstone();
           }
         }
       },
@@ -746,22 +723,35 @@ export function useHydratedReader() {
   const clearAllVolumes = useReaderStore((s) => s.clearAllVolumes);
   const syncWithCloud = useReaderStore((s) => s.syncWithCloud);
 
-  const activeReadingCount = hasMounted
-    ? getActiveReadingCount({ readingPositions, readingProgress })
-    : 0;
+  const hydratedState = hasMounted
+    ? {
+        currentBook,
+        isOpen,
+        fontSize,
+        lineHeight,
+        fontFamily,
+        theme,
+        readingProgress,
+        readingPositions,
+        isMobileTrayOpen,
+        activeReadingCount: getActiveReadingCount({ readingPositions, readingProgress }),
+      }
+    : {
+        currentBook: null as GutendexBook | Book | null,
+        isOpen: false,
+        fontSize: 18,
+        lineHeight: 1.75,
+        fontFamily: 'serif' as ReaderFontFamily,
+        theme: 'light' as ReaderTheme,
+        readingProgress: {} as Record<number, number>,
+        readingPositions: {} as Record<number, BookReadingPosition>,
+        isMobileTrayOpen: false,
+        activeReadingCount: 0,
+      };
 
   return {
     hasMounted,
-    currentBook: hasMounted ? currentBook : null,
-    isOpen: hasMounted ? isOpen : false,
-    fontSize: hasMounted ? fontSize : 18,
-    lineHeight: hasMounted ? lineHeight : 1.75,
-    fontFamily: hasMounted ? fontFamily : 'serif',
-    theme: hasMounted ? theme : 'light',
-    readingProgress: hasMounted ? readingProgress : {},
-    readingPositions: hasMounted ? readingPositions : {},
-    isMobileTrayOpen: hasMounted ? isMobileTrayOpen : false,
-    activeReadingCount,
+    ...hydratedState,
 
     openReader,
     closeReader,

@@ -89,50 +89,59 @@ function resolveAuthoritativeLocalAuthors(
   return undefined;
 }
 
+async function resolveLocalOfflineBookContent(
+  bookId: number,
+  clientCountry: string,
+  isBrowser: boolean,
+  allowWithoutLifespans: boolean
+): Promise<string | null> {
+  try {
+    const record = typeof getOfflineBookRecord === 'function' ? await getOfflineBookRecord(bookId) : null;
+    const offlineText = record ? record.text : await getOfflineBook(bookId);
+
+    if (offlineText && offlineText.trim().length > 0) {
+      if (clientCountry === 'US') {
+        return offlineText;
+      }
+
+      const authors = resolveAuthoritativeLocalAuthors(bookId, record?.authors, isBrowser);
+      if (authors && authors.length > 0) {
+        const evaluation = isBookPublicDomainInJurisdiction({ authors }, clientCountry);
+        if (!evaluation.isAllowed) {
+          throw new LegalRestrictionError({
+            country: clientCountry,
+            rule: evaluation.rule,
+            restrictingAuthor: evaluation.restrictingAuthor,
+            restrictingDeathYear: evaluation.restrictingDeathYear,
+            publicDomainYear: evaluation.publicDomainYear,
+            reason: evaluation.reason,
+          });
+        }
+        return offlineText;
+      }
+
+      if (allowWithoutLifespans) {
+        return offlineText;
+      }
+    }
+  } catch (err: unknown) {
+    if (err instanceof LegalRestrictionError) {
+      throw err;
+    }
+  }
+  return null;
+}
+
 export async function fetchBookContent(url?: string, bookId?: number): Promise<string> {
   const isBrowser = typeof window !== 'undefined';
   const clientCountry = isBrowser ? useJurisdictionStore.getState().getEffectiveCountry() : 'US';
 
   // 1. Check local offline storage (IndexedDB)
   if (bookId) {
-    try {
-      const record = typeof getOfflineBookRecord === 'function' ? await getOfflineBookRecord(bookId) : null;
-      const offlineText = record ? record.text : await getOfflineBook(bookId);
-
-      if (offlineText && offlineText.trim().length > 0) {
-        if (clientCountry === 'US') {
-          return offlineText;
-        }
-
-        // For non-US jurisdictions, verify that the cached work is public domain in clientCountry
-        // using authoritative lifespan-complete metadata before failing closed.
-        const authors = resolveAuthoritativeLocalAuthors(bookId, record?.authors, isBrowser);
-
-        if (authors && authors.length > 0) {
-          const evaluation = isBookPublicDomainInJurisdiction({ authors }, clientCountry);
-          if (!evaluation.isAllowed) {
-            throw new LegalRestrictionError({
-              country: clientCountry,
-              rule: evaluation.rule,
-              restrictingAuthor: evaluation.restrictingAuthor,
-              restrictingDeathYear: evaluation.restrictingDeathYear,
-              publicDomainYear: evaluation.publicDomainYear,
-              reason: evaluation.reason,
-            });
-          }
-          return offlineText;
-        }
-
-        // Fallback for offline environments when lifespan metadata is absent locally
-        if (isBrowser && typeof navigator !== 'undefined' && !navigator.onLine) {
-          return offlineText;
-        }
-      }
-    } catch (err: unknown) {
-      if (err instanceof LegalRestrictionError) {
-        throw err;
-      }
-      // Non-blocking fallback to network proxy
+    const isOfflineBrowser = isBrowser && typeof navigator !== 'undefined' && !navigator.onLine;
+    const localText = await resolveLocalOfflineBookContent(bookId, clientCountry, isBrowser, isOfflineBrowser);
+    if (localText) {
+      return localText;
     }
   }
 
@@ -178,34 +187,9 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
     }
     // Fallback on network disconnect/timeout for offline reading
     if (bookId) {
-      try {
-        const record = typeof getOfflineBookRecord === 'function' ? await getOfflineBookRecord(bookId) : null;
-        const offlineText = record ? record.text : await getOfflineBook(bookId);
-        if (offlineText && offlineText.trim().length > 0) {
-          if (clientCountry === 'US') return offlineText;
-          const authors = resolveAuthoritativeLocalAuthors(bookId, record?.authors, isBrowser);
-          if (authors && authors.length > 0) {
-            const evaluation = isBookPublicDomainInJurisdiction({ authors }, clientCountry);
-            if (!evaluation.isAllowed) {
-              throw new LegalRestrictionError({
-                country: clientCountry,
-                rule: evaluation.rule,
-                restrictingAuthor: evaluation.restrictingAuthor,
-                restrictingDeathYear: evaluation.restrictingDeathYear,
-                publicDomainYear: evaluation.publicDomainYear,
-                reason: evaluation.reason,
-              });
-            }
-            return offlineText;
-          }
-          // Fallback for offline environments when lifespan metadata is absent locally
-          return offlineText;
-        }
-      } catch (fallbackErr: unknown) {
-        if (fallbackErr instanceof LegalRestrictionError) {
-          throw fallbackErr;
-        }
-        // Ignore fallback errors and continue to original throw
+      const fallbackText = await resolveLocalOfflineBookContent(bookId, clientCountry, isBrowser, true);
+      if (fallbackText) {
+        return fallbackText;
       }
     }
     if (err instanceof Error && err.name === 'AbortError') {

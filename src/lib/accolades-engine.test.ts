@@ -88,6 +88,39 @@ describe('accolades-engine', () => {
       };
       expect(determineBookEra(unknownBook)).toBeNull();
     });
+
+    it('covers middle-ages, enlightenment, and early-20th eras by year and subject fallback', () => {
+      expect(
+        determineBookEra({
+          ...sampleAncientBook,
+          authors: [{ name: 'Dante', birth_year: 1265, death_year: 1321 }],
+        })
+      ).toBe('middle-ages');
+      expect(
+        determineBookEra({
+          ...sampleAncientBook,
+          authors: [{ name: 'Voltaire', birth_year: 1694, death_year: 1778 }],
+        })
+      ).toBe('enlightenment');
+      expect(
+        determineBookEra({
+          ...sampleAncientBook,
+          authors: [{ name: 'Woolf', birth_year: 1882, death_year: 1941 }],
+        })
+      ).toBe('early-20th');
+
+      const baseDateless: GutendexBook = {
+        ...sampleAncientBook,
+        authors: [],
+        languages: ['en'],
+        bookshelves: [],
+      };
+      expect(determineBookEra({ ...baseDateless, subjects: ['Medieval Literature'] })).toBe('middle-ages');
+      expect(determineBookEra({ ...baseDateless, subjects: ['Early Modern Drama'] })).toBe('renaissance');
+      expect(determineBookEra({ ...baseDateless, subjects: ['18th Century Philosophy'] })).toBe('enlightenment');
+      expect(determineBookEra({ ...baseDateless, subjects: ['Victorian Novel'] })).toBe('victorian');
+      expect(determineBookEra({ ...baseDateless, subjects: ['20th Century Poetry'] })).toBe('early-20th');
+    });
   });
 
   describe('isAncientBook', () => {
@@ -98,6 +131,16 @@ describe('accolades-engine', () => {
   });
 
   describe('buildAccoladeContext', () => {
+    it('defaults all fields safely when called with empty params', () => {
+      const emptyCtx = buildAccoladeContext({});
+      expect(emptyCtx.currentStreak).toBe(0);
+      expect(emptyCtx.longestStreak).toBe(0);
+      expect(emptyCtx.totalReadingSeconds).toBe(0);
+      expect(emptyCtx.totalListeningSeconds).toBe(0);
+      expect(emptyCtx.activeDates).toEqual([]);
+      expect(emptyCtx.annualGoalPercent).toBe(0);
+      expect(emptyCtx.completedBooksCount).toBe(0);
+    });
     it('builds a comprehensive context from store state slices', () => {
       const annotations: Annotation[] = [
         {

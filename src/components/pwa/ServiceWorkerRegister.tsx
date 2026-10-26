@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 
 function collectLoadedStaticAssetUrls(): string[] {
   if (typeof document === 'undefined') return [];
-  const urls = new Set<string>(['/', '/account']);
+  const urls = new Set<string>(['/', '/account', '/read/1342']);
 
   const scripts = document.querySelectorAll<HTMLScriptElement>('script[src]');
   scripts.forEach((script) => {
@@ -48,9 +48,10 @@ export function ServiceWorkerRegister() {
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
         .then((registration) => {
-          // Warm dynamic chunks so Reader and Modals are available offline
+          // Warm dynamic chunks so Reader, Account, and Modals are available offline
           void Promise.allSettled([
             import('@/app/read/[id]/page'),
+            import('@/app/account/page'),
             import('@/components/presentation/BookPreviewModal'),
             import('@/components/presentation/DownloadDrawer'),
           ]).then(() => {

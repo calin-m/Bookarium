@@ -40,16 +40,16 @@ export function createLibraryBackup(): LibraryBackupPayload {
   const preferencesState = usePreferencesStore.getState();
   const themeState = useThemeStore.getState();
 
-  const savedBooks = bookshelfState.savedBooks || [];
-  const readingQueue = bookshelfState.readingQueue || [];
-  const favoriteBookIds = bookshelfState.favoriteBookIds || [];
-  const cloudShelves = bookshelfState.cloudBookshelves || [];
-  const shelfItems = bookshelfState.cloudBookshelfItems || [];
-  const bookRatings = bookshelfState.bookRatings || {};
-  const bookStatuses = bookshelfState.bookStatuses || {};
-  const positions = readerState.readingPositions || {};
-  const progress = readerState.readingProgress || {};
-  const annotations = annotationState.annotations || [];
+  const savedBooks = bookshelfState.savedBooks;
+  const readingQueue = bookshelfState.readingQueue;
+  const favoriteBookIds = bookshelfState.favoriteBookIds;
+  const cloudShelves = bookshelfState.cloudBookshelves;
+  const shelfItems = bookshelfState.cloudBookshelfItems;
+  const bookRatings = bookshelfState.bookRatings;
+  const bookStatuses = bookshelfState.bookStatuses;
+  const positions = readerState.readingPositions;
+  const progress = readerState.readingProgress;
+  const annotations = annotationState.annotations;
 
   // Group items by shelf
   const customShelves: LibraryBackupShelf[] = cloudShelves.map((shelf) => ({
@@ -298,7 +298,7 @@ export async function restoreLibraryBackup(
     }
   } else {
     // MERGE STRATEGY
-    const currentBooks = bookshelfStore.savedBooks || [];
+    const currentBooks = bookshelfStore.savedBooks;
     const bookMap = new Map<number, GutendexBook>();
     for (const b of currentBooks) bookMap.set(b.id, b);
     for (const b of backup.library.savedBooks) {
@@ -308,7 +308,7 @@ export async function restoreLibraryBackup(
     }
     finalBooks = Array.from(bookMap.values());
 
-    const currentQueue = bookshelfStore.readingQueue || [];
+    const currentQueue = bookshelfStore.readingQueue;
     const queueMap = new Map<number, GutendexBook>();
     for (const b of currentQueue) queueMap.set(b.id, b);
     for (const b of backup.library.readingQueue || []) {
@@ -319,12 +319,12 @@ export async function restoreLibraryBackup(
     finalReadingQueue = Array.from(queueMap.values());
 
     const favoriteSet = new Set<number>([
-      ...(bookshelfStore.favoriteBookIds || []),
+      ...bookshelfStore.favoriteBookIds,
       ...(backup.library.favoriteBookIds || backup.library.likedBookIds || []),
     ]);
     finalFavoriteIds = Array.from(favoriteSet);
 
-    finalPositions = { ...(readerStore.readingPositions || {}) };
+    finalPositions = { ...readerStore.readingPositions };
     for (const [idStr, newPos] of Object.entries(backup.reading.positions || {})) {
       const id = Number(idStr);
       const existing = finalPositions[id];
@@ -333,13 +333,13 @@ export async function restoreLibraryBackup(
       }
     }
 
-    finalProgress = { ...(readerStore.readingProgress || {}) };
+    finalProgress = { ...readerStore.readingProgress };
     for (const [idStr, prog] of Object.entries(backup.reading.progress || {})) {
       const id = Number(idStr);
       finalProgress[id] = Math.max(finalProgress[id] || 0, prog || 0);
     }
 
-    const currentAnnotations = annotationStore.annotations || [];
+    const currentAnnotations = annotationStore.annotations;
     const annMap = new Map<string, Annotation>();
     for (const a of currentAnnotations) annMap.set(a.id, a);
     for (const a of backup.annotations || []) {
@@ -349,13 +349,13 @@ export async function restoreLibraryBackup(
     }
     finalAnnotations = Array.from(annMap.values());
 
-    finalShelves = [...(bookshelfStore.cloudBookshelves || [])];
-    finalShelfItems = [...(bookshelfStore.cloudBookshelfItems || [])];
-    finalRatings = { ...(bookshelfStore.bookRatings || {}) };
+    finalShelves = [...bookshelfStore.cloudBookshelves];
+    finalShelfItems = [...bookshelfStore.cloudBookshelfItems];
+    finalRatings = { ...bookshelfStore.bookRatings };
     for (const [idStr, rating] of Object.entries(backup.library.bookRatings || {})) {
       finalRatings[Number(idStr)] = rating;
     }
-    finalStatuses = { ...(bookshelfStore.bookStatuses || {}) };
+    finalStatuses = { ...bookshelfStore.bookStatuses };
     for (const [idStr, status] of Object.entries(backup.library.bookStatuses || {})) {
       finalStatuses[Number(idStr)] = status;
     }

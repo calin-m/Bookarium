@@ -25,6 +25,12 @@ describe('Modal component', () => {
     expect(screen.getByText('Reader Settings')).toBeInTheDocument();
     expect(screen.getByText('Modal Content')).toBeInTheDocument();
 
+    const heading = screen.getByRole('heading', { name: 'Reader Settings' });
+    const headerBar = heading.parentElement;
+    expect(headerBar).toHaveClass('shrink-0', 'px-4', 'py-3', 'sm:px-6', 'sm:py-4');
+    const modalSurface = headerBar?.parentElement;
+    expect(modalSurface).toHaveClass('max-h-[calc(100dvh-2rem)]', 'sm:max-h-[90dvh]');
+
     const closeBtn = screen.getByLabelText('Close modal');
     fireEvent.click(closeBtn);
     expect(handleClose).toHaveBeenCalledTimes(1);

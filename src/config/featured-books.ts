@@ -11,8 +11,8 @@ export interface FeaturedHeroBook {
   volumeNumber: string;
   title: string;
   author: string;
-  authorBirthYear?: number;
-  authorDeathYear?: number;
+  authorBirthYear?: number | null;
+  authorDeathYear?: number | null;
   translators?: Author[];
   year: string;
   quoteExcerpt: string;
@@ -737,8 +737,8 @@ export function getJurisdictionSafeFeaturedBooks(countryCode: string = 'US'): Fe
         authors: [
           {
             name: book.author,
-            birth_year: book.authorBirthYear ?? null,
-            death_year: book.authorDeathYear ?? null,
+            birth_year: book.authorBirthYear,
+            death_year: book.authorDeathYear,
           },
         ],
         translators: book.translators,

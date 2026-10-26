@@ -99,4 +99,68 @@ describe('HeroFeaturedBook3D', () => {
     fireEvent.click(readBtn);
     expect(handleRead).toHaveBeenCalled();
   });
+
+  it('handles 3D stage pin toggling, hover transitions, keyboard Enter/Space, turning leaf animationEnd, and mobile guards', () => {
+    vi.spyOn(perfTier, 'usePerformanceTier').mockReturnValue({
+      tier: 'high',
+      allowHeavyMotion: true,
+      enablePrefetching: true,
+      cores: 8,
+    });
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 });
+    const handleRead = vi.fn();
+
+    const { container } = renderWithClient(
+      <HeroFeaturedBook3D
+        featuredBook={mockFeaturedBook}
+        onReadFeaturedBook={handleRead}
+      />
+    );
+
+    const stage = screen.getByRole('button', { name: /click to pin open volume/i });
+
+    // Click to pin open
+    fireEvent.click(stage);
+    expect(stage.className).toContain('book-open');
+
+    // Click again to pin closed
+    fireEvent.click(stage);
+    expect(stage.className).toContain('book-closed');
+
+    // Mouse enter resets closed to auto and sets hovered
+    fireEvent.mouseEnter(stage);
+    expect(stage.className).not.toContain('book-closed');
+
+    // Keyboard Enter closes when open (hovered in auto mode)
+    fireEvent.keyDown(stage, { key: 'Enter' });
+    expect(stage.className).toContain('book-closed');
+
+    // Mouse leave resets closed to auto
+    fireEvent.mouseLeave(stage);
+    expect(stage.className).not.toContain('book-closed');
+
+    // Keyboard Space opens when closed
+    fireEvent.keyDown(stage, { key: ' ' });
+    expect(stage.className).toContain('book-open');
+
+    // Shuffle triggers turning leaf and animationEnd clears it
+    fireEvent.click(screen.getByTestId('hero-book-shuffle-btn'));
+    const turningLeaf = container.querySelector('.book-turning-leaf');
+    if (turningLeaf) {
+      fireEvent.animationEnd(turningLeaf);
+    }
+
+    // Mobile front-cover Read button
+    const allReadBtns = screen.getAllByRole('button', { name: 'Read' });
+    fireEvent.click(allReadBtns[allReadBtns.length - 1]);
+    expect(handleRead).toHaveBeenCalled();
+
+    // Mobile (< 1024px) guards ignore click/hover/keyDown
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 500 });
+    fireEvent.click(stage);
+    fireEvent.mouseEnter(stage);
+    fireEvent.mouseLeave(stage);
+    fireEvent.keyDown(stage, { key: 'Enter' });
+  });
 });

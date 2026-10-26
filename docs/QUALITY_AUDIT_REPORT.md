@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 26 Oct 2026 10:37:10 GMT  
+**Last Generated**: Mon, 26 Oct 2026 13:44:11 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 189 passed  
-**Total Verified Tests**: 1988 passed  
+**Total Verified Tests**: 2006 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (1988 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (2006 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 70 Architectural Decision Records validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **95.28%** (10024/10520) — *Target: $ge$ 85%*
-- **Statements**: **93.82%** (10915/11633) — *Target: $ge$ 85%*
-- **Functions**: **92.21%** (2335/2532) — *Target: $ge$ 85%*
-- **Branches**: **85.04%** (10276/12083) — *Target: $ge$ 85%*
+- **Lines**: **96.67%** (9960/10303) — *Target: $ge$ 85%*
+- **Statements**: **95.4%** (10831/11353) — *Target: $ge$ 85%*
+- **Functions**: **93.91%** (2361/2514) — *Target: $ge$ 85%*
+- **Branches**: **88.77%** (9910/11163) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (189 Suites / 1988 Tests)
+## 🧪 Comprehensive Test Suite Catalog (189 Suites / 2006 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 260 Tests)
+### 🚀 App Routes & Pages (26 Suites · 263 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -263,7 +263,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (46 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (47 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -311,6 +311,7 @@
 - ✔ `applies responsive padding classes to catalog-section to eliminate mobile pagination gap`
 - ✔ `renders CatalogOfflineView when offline and 0 books are downloaded, allowing navigation to Bookshelf`
 - ✔ `serves downloaded books locally in Catalog with an Offline Mode banner when offline and downloaded books exist`
+- ✔ `filters offline catalog by topic, language, era, and sort order, and supports clearing Downloaded and Custom shelves`
 
 </details>
 
@@ -359,7 +360,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (37 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (39 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -398,6 +399,8 @@
 - ✔ `allows user to save own highlight and note on passage previously annotated by a fellow scholar`
 - ✔ `handles authenticated cloud sync, slash keyboard search, delete cancel, and completion modal Bookshelf navigation`
 - ✔ `resolves bookId from window.location.pathname when useParams() is empty (App Shell fallback)`
+- ✔ `hydrates recentBooks and reader store from extracted Gutenberg header metadata when upstream booksData is unavailable (offline fallback)`
+- ✔ `handles symposium companion derivation as non-host fellow, syncs theme from global store, and re-fetches fellow annotations when opening drawer`
 
 </details>
 
@@ -453,7 +456,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 420 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 424 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -559,7 +562,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
@@ -585,6 +588,8 @@
 - ✔ `renders authentic author name for offline-saved volume on page refresh without reverting to Anonymous`
 - ✔ `handles offline download toggle, removal confirmation modal, and resume navigation`
 - ✔ `paginates volumes when count exceeds page size of 12 and handles mobile scroll focus`
+- ✔ `activates closest card in mobile viewport central focus band and bottom boundary on RAF scroll`
+- ✔ `renders empty search feedback and empty filter state with Clear Search / View All actions`
 
 </details>
 
@@ -837,13 +842,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `renders book title, author, and public domain badges`
 - ✔ `triggers shuffle when shuffle button is clicked`
 - ✔ `triggers read callback when Read button is clicked`
 - ✔ `renders static 2D presentation when hardware tier is low or heavy motion is disallowed`
 - ✔ `triggers read callback from 2D presentation mode`
+- ✔ `handles 3D stage pin toggling, hover transitions, keyboard Enter/Space, turning leaf animationEnd, and mobile guards`
 
 </details>
 
@@ -955,12 +961,12 @@
 - ✔ `renders fellow box with fallback attribution line when pairedFellowAnnotation has no written note`
 - ✔ `renders Save to My Notes button on standalone fellow note and calls onSaveFellowAsOwn`
 - ✔ `renders In My Notes badge and Edit My Note when matching personal annotation exists`
-- ✔ `renders Not Downloaded badge and disables Read Passage button when isUnavailableOffline is true`
+- ✔ `disables Read Passage button without repeating topline Not Downloaded pill when isUnavailableOffline is true`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (48 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (49 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -1010,6 +1016,7 @@
 - ✔ `resolves metadata for shared fellowAnnotations lacking title/author and primes useReaderStore on Jump to Context`
 - ✔ `renders quote cards in a single-column grid on tablet and two-column grid on desktop (lg:grid-cols-2)`
 - ✔ `renders Not Downloaded badge on volume header and disables Read Passage when offline and book is not downloaded`
+- ✔ `covers paired fellow search/color matching and chronological & volume sort options including downloaded filter reset`
 
 </details>
 
@@ -1351,7 +1358,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 191 Tests)
+### ⚡ Zustand State Stores (10 Suites · 193 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1370,7 +1377,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (32 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (33 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1404,6 +1411,7 @@
 - ✔ `fetchAllFellowAnnotations falls back to profiles table for missing companion handles`
 - ✔ `addAnnotation persists expanded selected_text to supabase when new highlight covers a wider range`
 - ✔ `addAnnotation enforces chapterIndex isolation for identical text phrases in different chapters`
+- ✔ `covers setOrUpdateFellowMapEntry placeholder upgrade, enrichFellowAnnotations host matching, cached fellow bookMeta, and addAnnotation expand outbox fallback`
 
 </details>
 
@@ -1443,7 +1451,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (49 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (50 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -1494,6 +1502,7 @@
 - ✔ `gracefully handles single-order mocks where first order returns a Promise or non-chainable object`
 - ✔ `returns original query if query has no order function`
 - ✔ `enriches savedBooks and favoriteBooks with authentic authors when incoming fresh books have authentic authors without lifespans`
+- ✔ `covers enrichSavedBooks with recentBooks, cloudBookshelfItems, authenticated userId, and clearCustomShelfBooks cloud delete`
 
 </details>
 
@@ -1604,17 +1613,19 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (36 Suites · 427 Tests)
+### 📚 Gutenberg Parsers & Metadata (36 Suites · 432 Tests)
 
 <details>
-<summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `determines antiquity from author years`
 - ✔ `determines victorian/19th century from author years`
 - ✔ `determines renaissance from author years`
 - ✔ `falls back to subjects and languages when author years are null`
 - ✔ `returns null if no era markers can be inferred`
+- ✔ `covers middle-ages, enlightenment, and early-20th eras by year and subject fallback`
 - ✔ `identifies antiquity and middle-ages works as ancient`
+- ✔ `defaults all fields safely when called with empty params`
 - ✔ `builds a comprehensive context from store state slices`
 - ✔ `finds definitions by ID`
 - ✔ `formats progress with correct units`
@@ -1723,7 +1734,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `applies deterministic item ordering when order method is single-level or chainable`
 - ✔ `flushes outbox actions and retains only actions that fail`
@@ -1731,6 +1742,8 @@
 - ✔ `dispatches all 6 outbox action types and handles empty outbox`
 - ✔ `synchronizes shelves, tombstones, favorites, and LWW curation in executeBookshelfCloudSync`
 - ✔ `covers shelf deletion reassignment to defaultShelf, moveBookToShelf existing item & error fallback, and validation guards`
+- ✔ `dispatches MOVE_BOOK and UPDATE_SHELF outbox actions and handles offline / error outbox queuing`
+- ✔ `handles subsequent cloud sync (authoritative mode), __downloaded__ active shelf preservation, and query error branches`
 
 </details>
 
@@ -1955,7 +1968,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/library-backup.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/lib/library-backup.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `generates a complete, structured backup payload from active stores`
 - ✔ `creates a download blob and triggers click in DOM`
@@ -1979,6 +1992,7 @@
 - ✔ `rejects malformed customShelves missing bookIds array`
 - ✔ `filters out-of-bounds ratings and non-standard statuses`
 - ✔ `covers CSV status variants (want_to_read, currently_reading, Unassigned), Unknown Author, and replace/merge edge cases`
+- ✔ `handles partial backup payloads, custom filenames, older merge positions, duplicate queue/annotations, and empty replace shelves`
 
 </details>
 
@@ -2249,7 +2263,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (23 Suites · 258 Tests)
+### 🔄 Hooks & React Query (23 Suites · 261 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (17 tests)</summary>
@@ -2334,7 +2348,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (29 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (30 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -2365,6 +2379,7 @@
 - ✔ `handles setOrMergeBook lifespan preservation, translator merging, and currentBook in missingIds`
 - ✔ `heals authorDetails from readingPositions with embedded lifespans when book has empty authors`
 - ✔ `preserves existing authors and translators when candidate from offline has anonymous author and empty translators`
+- ✔ `covers bookmarkRow inclusion at 0% progress, position authorDetails healing on anonymous book, and Public Domain Author fallbacks`
 
 </details>
 
@@ -2407,7 +2422,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -2422,6 +2437,7 @@
 - ✔ `does not save reading position or progress on initial load when remaining on Page 1`
 - ✔ `records reading position and progress immediately upon advancing to Page 2`
 - ✔ `restores saved bookmarkRow with line resumeNotice, persists setBookmarkRow on Page 1, and resets bookmarkRow on page turn`
+- ✔ `supports initialPosition override, scroll mode content, dynamic pagination fallback, within-chapter prevPage, and dismissResumeNotice`
 
 </details>
 
@@ -2508,7 +2524,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `stays dormant with 0 query params when all collections are healthy`
 - ✔ `detects missing favorite IDs and queries /api/books`
@@ -2522,6 +2538,7 @@
 - ✔ `detects and heals incomplete favoriteBooks and readingPositions lacking author lifespans`
 - ✔ `detects and heals incomplete fellowAnnotations and active symposiums lacking author lifespans`
 - ✔ `disables upstream network query when device is offline`
+- ✔ `recognizes embedded lifespans in book.authors, recentBooks, and readingPositions and skips hero books in favoriteBooks`
 
 </details>
 
@@ -2647,7 +2664,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (47 Suites · 242 Tests)
+### 🧩 UI Primitives & Motion (47 Suites · 243 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2868,10 +2885,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/pwa/ServiceWorkerRegister.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/pwa/ServiceWorkerRegister.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders null without throwing`
 - ✔ `attempts registration immediately in production when document.readyState is complete and posts CACHE_URLS`
+- ✔ `falls back to navigator.serviceWorker.controller when active/waiting/installing are null and handles registration rejection`
 - ✔ `registers on window load event when document.readyState is loading`
 - ✔ `does not attempt registration in development mode`
 

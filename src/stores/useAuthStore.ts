@@ -338,7 +338,7 @@ export const useAuthStore = create<AuthState>()(
 
     try {
       const pending = get().pendingProfileUpdates;
-      if (pending && Object.keys(pending).length > 0) {
+      if (pending && Object.keys(pending).length > 0 && targetUserId !== get().user?.id) {
         const supabase = createClient();
         const { error } = await supabase
           .from('profiles')
@@ -378,11 +378,12 @@ export const useAuthStore = create<AuthState>()(
       updated_at: new Date().toISOString(),
     };
 
+    const mergeProfile = (current: Profile | null): Profile =>
+      ({ ...(current || { id: user.id }), ...payload }) as Profile;
+
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       set((state) => ({
-        profile: state.profile
-          ? ({ ...state.profile, ...payload } as Profile)
-          : ({ id: user.id, ...payload } as Profile),
+        profile: mergeProfile(state.profile),
         pendingProfileUpdates: {
           ...(state.pendingProfileUpdates || {}),
           ...payload,
@@ -405,9 +406,7 @@ export const useAuthStore = create<AuthState>()(
       }
 
       set((state) => ({
-        profile: state.profile
-          ? ({ ...state.profile, ...payload } as Profile)
-          : ({ id: user.id, ...payload } as Profile),
+        profile: mergeProfile(state.profile),
       }));
 
       if (updates.username !== undefined || updates.display_name !== undefined) {

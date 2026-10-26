@@ -97,12 +97,32 @@ export default function PublicScholarProfilePage() {
         setProfile(resolvedProfile);
 
         // Update document title dynamically
-        const titleName = resolvedProfile.display_name || `@${resolvedProfile.username}` || 'Scholar';
+        const titleName = resolvedProfile.display_name || `@${resolvedProfile.username}`;
         if (typeof document !== 'undefined') {
           document.title = `${titleName} (@${resolvedProfile.username}) • Bookarium Scholar`;
         }
 
         const authUser = useAuthStore.getState().user;
+        const toPinnedBookplateItem = (
+          accId: string,
+          unlockedAt?: string,
+          isUnlocked = true
+        ): PinnedBookplateItem | null => {
+          const def = ACCOLADES_CATALOG.find((d) => d.id === accId);
+          if (!def) return null;
+          return {
+            definition: def,
+            progress: {
+              id: def.id,
+              isUnlocked,
+              unlockedAt,
+              isPinned: true,
+              current: def.target,
+              target: def.target,
+              percent: 100,
+            },
+          };
+        };
 
         // 2. Fetch pinned accolades if profile is found
         const { data: accoladesData } = await supabase
@@ -112,48 +132,19 @@ export default function PublicScholarProfilePage() {
           .eq('is_pinned', true);
 
         if (!isCancelled && accoladesData && accoladesData.length > 0) {
-          const pinned: PinnedBookplateItem[] = [];
-          for (const row of accoladesData) {
-            const def = ACCOLADES_CATALOG.find((d) => d.id === row.accolade_id);
-            if (def) {
-              pinned.push({
-                definition: def,
-                progress: {
-                  id: def.id,
-                  isUnlocked: true,
-                  unlockedAt: row.unlocked_at,
-                  isPinned: true,
-                  current: def.target,
-                  target: def.target,
-                  percent: 100,
-                },
-              });
-            }
-          }
-
+          const pinned = accoladesData
+            .map((row) => toPinnedBookplateItem(row.accolade_id, row.unlocked_at))
+            .filter((item): item is PinnedBookplateItem => item !== null);
           setPinnedAccolades(pinned.slice(0, 3));
         } else if (!isCancelled && authUser?.id === resolvedProfile.id) {
           // Local offline fallback for authenticated user's own pinned accolades
           const localAccolades = useAccoladesStore.getState();
-          const pinned: PinnedBookplateItem[] = [];
-          for (const accId of localAccolades.pinnedAccoladeIds || []) {
-            const def = ACCOLADES_CATALOG.find((d) => d.id === accId);
-            if (def) {
-              const unlocked = localAccolades.unlockedAccolades?.[accId];
-              pinned.push({
-                definition: def,
-                progress: {
-                  id: def.id,
-                  isUnlocked: !!unlocked,
-                  unlockedAt: unlocked?.unlockedAt,
-                  isPinned: true,
-                  current: def.target,
-                  target: def.target,
-                  percent: 100,
-                },
-              });
-            }
-          }
+          const pinned = localAccolades.pinnedAccoladeIds
+            .map((accId) => {
+              const unlocked = localAccolades.unlockedAccolades[accId];
+              return toPinnedBookplateItem(accId, unlocked?.unlockedAt, Boolean(unlocked));
+            })
+            .filter((item): item is PinnedBookplateItem => item !== null);
           setPinnedAccolades(pinned.slice(0, 3));
         }
 
@@ -184,12 +175,12 @@ export default function PublicScholarProfilePage() {
             // Local offline fallback for authenticated user's own reading habits
             const localHabits = useHabitsStore.getState();
             const streakStats = localHabits.getStreakStats();
-            const completedCount = useBookshelfStore.getState().cloudBookshelfItems?.filter((i) => i.bookshelf_id === 'completed').length || 0;
+            const completedCount = useBookshelfStore.getState().cloudBookshelfItems.filter((i) => i.bookshelf_id === 'completed').length;
             setHabits({
               current_streak: streakStats.currentStreak,
               longest_streak: streakStats.longestStreak,
-              active_days: localHabits.activeDates?.length || 0,
-              annual_goal: localHabits.annualGoal || 0,
+              active_days: localHabits.activeDates.length,
+              annual_goal: localHabits.annualGoal,
               completed_books_count: completedCount,
             });
           }
@@ -198,9 +189,18 @@ export default function PublicScholarProfilePage() {
         // 4. Fetch public bookshelves if enabled
         const showSavedBooks = resolvedProfile.show_saved_books ?? resolvedProfile.show_bookshelves ?? true;
         const showCustomShelves = resolvedProfile.show_custom_shelves ?? resolvedProfile.show_bookshelves ?? true;
+        const isShelfEligible = (s: { is_default: boolean; is_public?: boolean | null }) =>
+          (s.is_default ? showSavedBooks : showCustomShelves) && s.is_public !== false;
+        const normalizeItemAuthors = (raw: unknown): string[] =>
+          Array.isArray(raw)
+            ? raw
+                .map((a: unknown) =>
+                  typeof a === 'string' ? a : (a as { name?: string })?.name || ''
+                )
+                .filter(Boolean)
+            : [];
 
         if (showSavedBooks || showCustomShelves) {
-          const authUser = useAuthStore.getState().user;
           if (authUser?.id === resolvedProfile.id) {
             useBookshelfStore.getState().syncWithCloud(authUser.id).catch(() => {});
           }
@@ -214,12 +214,7 @@ export default function PublicScholarProfilePage() {
           let parsedShelves: PublicBookshelfWithItems[] = [];
 
           if (shelvesData && shelvesData.length > 0) {
-            const eligibleShelves = shelvesData.filter((s) => {
-              if (s.is_default) {
-                return showSavedBooks && s.is_public !== false;
-              }
-              return showCustomShelves && s.is_public !== false;
-            });
+            const eligibleShelves = shelvesData.filter(isShelfEligible);
 
             if (eligibleShelves.length > 0) {
               const shelfIds = eligibleShelves.map((s) => s.id);
@@ -231,15 +226,10 @@ export default function PublicScholarProfilePage() {
               const itemsMap: Record<string, PublicBookshelfItem[]> = {};
               (itemsData || []).forEach((item) => {
                 if (!itemsMap[item.bookshelf_id]) itemsMap[item.bookshelf_id] = [];
-                const rawAuthors = item.book_authors;
-                const authors = Array.isArray(rawAuthors)
-                  ? rawAuthors.map((a: unknown) => (typeof a === 'string' ? a : (a as { name?: string })?.name || '')).filter(Boolean)
-                  : [];
-
                 itemsMap[item.bookshelf_id].push({
                   book_id: item.book_id,
                   book_title: item.book_title,
-                  book_authors: authors,
+                  book_authors: normalizeItemAuthors(item.book_authors),
                 });
               });
 
@@ -254,23 +244,18 @@ export default function PublicScholarProfilePage() {
           // Fallback if viewing own profile and remote shelves are empty or still syncing
           if (parsedShelves.length === 0 && authUser?.id === resolvedProfile.id) {
             const localStore = useBookshelfStore.getState();
-            const filteredLocalShelves = (localStore.cloudBookshelves || []).filter((s) => {
-              if (s.is_default) return showSavedBooks && s.is_public !== false;
-              return showCustomShelves && s.is_public !== false;
-            });
+            const filteredLocalShelves = localStore.cloudBookshelves.filter(isShelfEligible);
 
             if (filteredLocalShelves.length > 0) {
               parsedShelves = filteredLocalShelves.map((s) => ({
                 id: s.id,
                 name: s.name,
-                items: (localStore.cloudBookshelfItems || [])
+                items: localStore.cloudBookshelfItems
                   .filter((item) => item.bookshelf_id === s.id)
                   .map((item) => ({
                     book_id: item.book_id,
                     book_title: item.book_title,
-                    book_authors: Array.isArray(item.book_authors)
-                      ? item.book_authors.map((a: unknown) => (typeof a === 'string' ? a : (a as { name?: string })?.name || '')).filter(Boolean)
-                      : [],
+                    book_authors: normalizeItemAuthors(item.book_authors),
                   })),
               }));
             } else if (showSavedBooks && localStore.savedBooks.length > 0) {
@@ -281,7 +266,7 @@ export default function PublicScholarProfilePage() {
                   items: localStore.savedBooks.map((b) => ({
                     book_id: b.id,
                     book_title: b.title,
-                    book_authors: b.authors?.map((a) => a.name).filter(Boolean) || [],
+                    book_authors: b.authors.map((a) => a.name).filter(Boolean),
                   })),
                 },
               ];

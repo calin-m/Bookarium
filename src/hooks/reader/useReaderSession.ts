@@ -95,28 +95,32 @@ export function useReaderSession({
     }
     hasRestoredPositionRef.current = true;
 
-    // Direct initial position override (e.g. navigation from Notebook or URL params)
-    if (initialPosition) {
+    const restoreToPosition = (pos: {
+      chapterIndex: number;
+      chapterPage: number;
+      globalPage?: number;
+      bookmarkRow?: number;
+    }) => {
       const clampedChap = Math.min(
-        Math.max(0, initialPosition.chapterIndex),
+        Math.max(0, pos.chapterIndex),
         chaptersWithPagination.length - 1
       );
       const targetChap = chaptersWithPagination[clampedChap];
-      const maxPage = targetChap?.pageCount || 1;
-      const clampedPage = Math.min(Math.max(1, initialPosition.chapterPage), maxPage);
-      const savedGlobalPage =
-        (targetChap?.startPageNumber || 1) + (clampedPage - 1);
+      const clampedPage = Math.min(Math.max(1, pos.chapterPage), targetChap.pageCount);
+      const savedRow = Math.max(0, pos.bookmarkRow ?? 0);
+      const savedGlobalPage = pos.globalPage || targetChap.startPageNumber + (clampedPage - 1);
 
       queueMicrotask(() => {
         setActiveChapterIndex(clampedChap);
         setCurrentChapterPage(clampedPage);
-        setBookmarkRowState(0);
+        setBookmarkRowState(savedRow);
         setResumeNotice({
           chapterTitle:
-            targetChap?.displayTitle ||
-            targetChap?.title ||
+            targetChap.displayTitle ||
+            targetChap.title ||
             (clampedChap > 0 ? `Chapter ${clampedChap}` : 'Start'),
           page: savedGlobalPage,
+          ...(savedRow > 0 ? { row: savedRow + 1 } : {}),
         });
       });
 
@@ -124,6 +128,11 @@ export function useReaderSession({
         setResumeNotice(null);
       }, 4000);
       return () => clearTimeout(timer);
+    };
+
+    // Direct initial position override (e.g. navigation from Notebook or URL params)
+    if (initialPosition) {
+      return restoreToPosition(initialPosition);
     }
 
     // When volume is completed/finished, start fresh from Chapter 0, Page 1 with archival completion notice
@@ -151,36 +160,7 @@ export function useReaderSession({
           savedPos.chapterPage > 1 ||
           (savedPos.bookmarkRow ?? 0) > 0)
       ) {
-        const clampedChap = Math.min(
-          Math.max(0, savedPos.chapterIndex),
-          chaptersWithPagination.length - 1
-        );
-        const targetChap = chaptersWithPagination[clampedChap];
-        const maxPage = targetChap?.pageCount || 1;
-        const clampedPage = Math.min(Math.max(1, savedPos.chapterPage), maxPage);
-        const savedRow = Math.max(0, savedPos.bookmarkRow ?? 0);
-
-        const savedGlobalPage =
-          savedPos.globalPage || (targetChap?.startPageNumber || 1) + (clampedPage - 1);
-        queueMicrotask(() => {
-          setActiveChapterIndex(clampedChap);
-          setCurrentChapterPage(clampedPage);
-          setBookmarkRowState(savedRow);
-          setResumeNotice({
-            chapterTitle:
-              targetChap?.displayTitle ||
-              targetChap?.title ||
-              (clampedChap > 0 ? `Chapter ${clampedChap}` : 'Start'),
-            page: savedGlobalPage,
-            ...(savedRow > 0 ? { row: savedRow + 1 } : {}),
-          });
-        });
-
-        // Auto-hide resume notice after 4 seconds
-        const timer = setTimeout(() => {
-          setResumeNotice(null);
-        }, 4000);
-        return () => clearTimeout(timer);
+        return restoreToPosition(savedPos);
       }
     };
 

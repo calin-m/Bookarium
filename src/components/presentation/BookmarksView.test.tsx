@@ -809,6 +809,123 @@ describe('BookmarksView', () => {
 
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
   });
+
+  it('activates closest card in mobile viewport central focus band and bottom boundary on RAF scroll', () => {
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    const originalScrollY = window.scrollY;
+    const originalScrollHeight = Object.getOwnPropertyDescriptor(document.documentElement, 'scrollHeight');
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 375 });
+    Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: 800 });
+    Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 200 });
+    Object.defineProperty(document.documentElement, 'scrollHeight', { writable: true, configurable: true, value: 2500 });
+
+    const rafCallbacks: FrameRequestCallback[] = [];
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      rafCallbacks.push(cb);
+      return rafCallbacks.length;
+    });
+    const cafSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    const secondBook: GutendexBook = { ...mockBook, id: 84, title: 'Frankenstein' };
+    useBookshelfStore.setState({ savedBooks: [mockBook, secondBook] });
+    useReaderStore.setState({
+      readingPositions: {
+        1342: { chapterIndex: 1, chapterPage: 1, globalPage: 5, lastReadAt: '2026-10-26T10:00:00Z' },
+        84: { chapterIndex: 1, chapterPage: 2, globalPage: 10, lastReadAt: '2026-10-26T09:00:00Z' },
+      },
+      readingProgress: { 1342: 30, 84: 50 },
+    });
+
+    const { container, unmount } = renderWithClient(<BookmarksView />);
+    const card1 = container.querySelector('[data-bookmark-card-id="1342"]') as HTMLElement;
+    const card2 = container.querySelector('[data-bookmark-card-id="84"]') as HTMLElement;
+
+    vi.spyOn(card1, 'getBoundingClientRect').mockReturnValue({
+      top: 50,
+      bottom: 200,
+      left: 0,
+      right: 350,
+      width: 350,
+      height: 150,
+      x: 0,
+      y: 50,
+      toJSON: () => {},
+    });
+    vi.spyOn(card2, 'getBoundingClientRect').mockReturnValue({
+      top: 280,
+      bottom: 440,
+      left: 0,
+      right: 350,
+      width: 350,
+      height: 160,
+      x: 0,
+      y: 280,
+      toJSON: () => {},
+    });
+
+    // Fire two consecutive scroll events to trigger cancelAnimationFrame on pending rafId, then flush RAF
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+      window.dispatchEvent(new Event('scroll'));
+      const latest = rafCallbacks[rafCallbacks.length - 1];
+      if (latest) latest(16);
+    });
+
+    expect(cafSpy).toHaveBeenCalled();
+    // Target Y is 800 * 0.45 = 360 -> card2 center is 360, so card2 is activated
+    expect(card2).toHaveAttribute('data-active', 'true');
+
+    // Now scroll to bottom boundary (innerHeight 800 + scrollY 1700 >= scrollHeight 2500 - 32)
+    Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 1700 });
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+      const latest = rafCallbacks[rafCallbacks.length - 1];
+      if (latest) latest(32);
+    });
+    expect(card2).toHaveAttribute('data-active', 'true');
+
+    unmount();
+    rafSpy.mockRestore();
+    cafSpy.mockRestore();
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
+    Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: originalHeight });
+    Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: originalScrollY });
+    if (originalScrollHeight) {
+      Object.defineProperty(document.documentElement, 'scrollHeight', originalScrollHeight);
+    }
+  });
+
+  it('renders empty search feedback and empty filter state with Clear Search / View All actions', () => {
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+      bookStatuses: { 1342: 'currently_reading' },
+    });
+    useReaderStore.setState({
+      readingPositions: {
+        1342: { chapterIndex: 1, chapterPage: 1, globalPage: 5, lastReadAt: new Date().toISOString() },
+      },
+      readingProgress: { 1342: 25 },
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    // Switch to 'on_hold' tab (0 items)
+    fireEvent.click(screen.getByTestId('bookmarks-tab-on_hold'));
+    expect(screen.getByText(/No volumes marked as on hold/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'View All Volumes' }));
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+
+    // Search for a non-matching query
+    const searchInput = screen.getByRole('textbox', { name: 'Search bookmarks' });
+    fireEvent.change(searchInput, { target: { value: 'UnmatchedQueryXYZ' } });
+    expect(screen.getByText('No bookmarks matching "UnmatchedQueryXYZ"')).toBeInTheDocument();
+
+    // Clear search via empty state button
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Search' }));
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+  });
 });
 
 

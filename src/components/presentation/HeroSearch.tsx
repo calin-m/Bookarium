@@ -102,50 +102,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
   // Stable active Featured Book: anchored deterministically by hour to prevent flash-on-refresh
   const activeFeatured: FeaturedHeroBook & { rawBook?: GutendexBook } = useMemo(() => {
-    const targetCustom = featuredBook || (books && books.length > 0 ? books[0] : null);
-    if (targetCustom) {
-      if ('rawBook' in targetCustom && targetCustom.rawBook) {
-        return targetCustom as FeaturedHeroBook & { rawBook?: GutendexBook };
-      }
-      if ('authors' in targetCustom) {
-        const b = targetCustom as GutendexBook;
-        const authorName = formatAuthorNames(b.authors) || 'Anonymous';
-        const subject = formatPrimarySubject(b.subjects);
-
-        return {
-          id: b.id,
-          title: b.title,
-          author: authorName,
-          year: 'Public Domain',
-          primarySubject: subject,
-          license: 'CC0 / Free',
-          volumeNumber: `Vol. #${b.id}`,
-          quoteExcerpt: 'Preserved in the public domain for all readers.',
-          openingLine: 'Preserved in the public domain for all readers.',
-          rawBook: b,
-        };
-      }
-      const fh = targetCustom as FeaturedHeroBook;
-      return {
-        ...fh,
-        rawBook: {
-          id: fh.id,
-          title: fh.title,
-          authors: [{ name: fh.author }],
-          translators: fh.translators || [],
-          subjects: [fh.primarySubject],
-          languages: ['en'],
-          formats: {},
-          download_count: 50000,
-        } as GutendexBook,
-      };
-    }
-
-    const safeHeroBooks = getJurisdictionSafeFeaturedBooks(country);
-    const heroList = safeHeroBooks.length > 0 ? safeHeroBooks : FEATURED_HERO_BOOKS;
-    const idx = hourlyIndex % heroList.length;
-    const b = heroList[idx] || heroList[0];
-    return {
+    const toHeroWithRawBook = (b: FeaturedHeroBook): FeaturedHeroBook & { rawBook: GutendexBook } => ({
       ...b,
       rawBook: {
         id: b.id,
@@ -163,10 +120,41 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
         formats: {},
         download_count: 50000,
       } as GutendexBook,
-    };
+    });
+
+    const targetCustom = featuredBook || (books && books.length > 0 ? books[0] : null);
+    if (targetCustom) {
+      if ('rawBook' in targetCustom && targetCustom.rawBook) {
+        return targetCustom as FeaturedHeroBook & { rawBook?: GutendexBook };
+      }
+      if ('authors' in targetCustom) {
+        const b = targetCustom as GutendexBook;
+        return {
+          id: b.id,
+          title: b.title,
+          author: formatAuthorNames(b.authors) || 'Anonymous',
+          year: 'Public Domain',
+          primarySubject: formatPrimarySubject(b.subjects),
+          license: 'CC0 / Free',
+          volumeNumber: `Vol. #${b.id}`,
+          quoteExcerpt: 'Preserved in the public domain for all readers.',
+          openingLine: 'Preserved in the public domain for all readers.',
+          rawBook: b,
+        };
+      }
+      return toHeroWithRawBook(targetCustom as FeaturedHeroBook);
+    }
+
+    const safeHeroBooks = getJurisdictionSafeFeaturedBooks(country);
+    const heroList = safeHeroBooks.length > 0 ? safeHeroBooks : FEATURED_HERO_BOOKS;
+    return toHeroWithRawBook(heroList[hourlyIndex % heroList.length]);
   }, [featuredBook, books, hourlyIndex, country]);
 
-
+  const emitSearch = (val: string) => {
+    setSearchError(null);
+    onSearch?.(val);
+    onSearchChange?.(val);
+  };
 
   const handleInputChange = (val: string) => {
     setQuery(val);
@@ -179,34 +167,23 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
     e.preventDefault();
     const normalized = query.trim().replace(/\s+/g, ' ');
 
-    if (normalized.length === 0) {
-      setSearchError(null);
-      if (onSearch) onSearch('');
-      if (onSearchChange) onSearchChange('');
-      return;
-    }
-
     if (normalized.length === 1) {
       setSearchError('Please enter at least 2 characters to search.');
       return;
     }
 
-    setSearchError(null);
-    if (onSearch) onSearch(normalized);
-    if (onSearchChange) onSearchChange(normalized);
+    emitSearch(normalized);
   };
 
   const handleClear = () => {
     setQuery('');
-    setSearchError(null);
-    if (onSearch) onSearch('');
-    if (onSearchChange) onSearchChange('');
+    emitSearch('');
   };
 
   const handleTopicClick = (topicId: string) => {
     const nextTopic = selectedTopic.toLowerCase() === topicId ? '' : topicId;
-    if (onTopicChange) onTopicChange(nextTopic);
-    if (onTopicSelect) onTopicSelect(nextTopic);
+    onTopicChange?.(nextTopic);
+    onTopicSelect?.(nextTopic);
   };
 
   return (

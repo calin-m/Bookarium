@@ -430,4 +430,80 @@ describe('useReaderSession', () => {
     expect(result.current.bookmarkRow).toBe(0);
     expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkRow).toBeUndefined();
   });
+
+  it('supports initialPosition override, scroll mode content, dynamic pagination fallback, within-chapter prevPage, and dismissResumeNotice', async () => {
+    vi.useFakeTimers();
+    try {
+      const chaptersWithoutPrecomputedPages: ChapterSection[] = [
+        {
+          id: 1,
+          title: '',
+          displayTitle: '',
+          content: 'Word '.repeat(600),
+          pageCount: 2,
+          startPageNumber: 1,
+        },
+        {
+          id: 2,
+          title: '',
+          displayTitle: '',
+          content: 'Second chapter content',
+          pageCount: 1,
+          startPageNumber: 3,
+        },
+      ];
+
+      const { result, rerender } = renderHook(
+        ({ mode }: { mode: 'paginated' | 'scroll' }) =>
+          useReaderSession({
+            numericId: 500,
+            hasMounted: true,
+            chaptersWithPagination: chaptersWithoutPrecomputedPages,
+            totalVolumePages: 3,
+            fontSize: 18,
+            readingMode: mode,
+            initialPosition: { chapterIndex: 1, chapterPage: 1 },
+          }),
+        { initialProps: { mode: 'paginated' } }
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.activeChapterIndex).toBe(1);
+      expect(result.current.currentChapterPage).toBe(1);
+      expect(result.current.resumeNotice).toEqual({
+        chapterTitle: 'Chapter 1',
+        page: 3,
+      });
+
+      // Dismiss resume notice manually
+      act(() => {
+        result.current.dismissResumeNotice();
+      });
+      expect(result.current.resumeNotice).toBeNull();
+
+      // Switch to Chapter 0 Page 2 and test handlePrevPage within the same chapter (currentChapterPage > 1)
+      act(() => {
+        result.current.jumpTo(0, 2);
+      });
+      expect(result.current.currentChapterPage).toBe(2);
+      act(() => {
+        result.current.handlePrevPage();
+      });
+      expect(result.current.activeChapterIndex).toBe(0);
+      expect(result.current.currentChapterPage).toBe(1);
+
+      // Switch to scroll mode and verify full chapter content is returned
+      rerender({ mode: 'scroll' });
+      expect(result.current.currentPageText).toBe('Word '.repeat(600));
+
+      act(() => {
+        vi.advanceTimersByTime(4500);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

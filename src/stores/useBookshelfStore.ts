@@ -128,7 +128,7 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       toggleSaveBook: async (book, userId) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
-        const { savedBooks, cloudBookshelves, activeBookshelfId, cloudBookshelfItems, deletedBookIds = {} } = get();
+        const { savedBooks, cloudBookshelves, activeBookshelfId, cloudBookshelfItems, deletedBookIds } = get();
         const exists = savedBooks.some((b) => b.id === book.id);
         const nextSaved = exists ? savedBooks.filter((b) => b.id !== book.id) : [book, ...savedBooks];
         const effectiveActiveId = activeBookshelfId === '__downloaded__' ? null : activeBookshelfId;
@@ -211,7 +211,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       clearSavedBooks: () => {
-        const { savedBooks, deletedBookIds = {} } = get();
+        const { savedBooks, deletedBookIds } = get();
         const removedIds = savedBooks.map((b) => b.id);
         const now = new Date().toISOString();
         const nextDeleted = { ...deletedBookIds };
@@ -228,7 +228,7 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       clearCustomShelfBooks: async (shelfId: string, userId?: string) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
-        const { savedBooks, cloudBookshelfItems, deletedBookIds = {} } = get();
+        const { savedBooks, cloudBookshelfItems, deletedBookIds } = get();
         const shelfBookIds = new Set(
           cloudBookshelfItems
             .filter((item) => item.bookshelf_id === shelfId)
@@ -267,7 +267,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       enrichSavedBooks: async (freshBooks) => {
-        const { savedBooks, recentBooks, favoriteBooks = [], cloudBookshelfItems } = get();
+        const { savedBooks, recentBooks, favoriteBooks, cloudBookshelfItems } = get();
         if (
           !freshBooks ||
           freshBooks.length === 0 ||
@@ -393,7 +393,7 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       toggleFavoriteBook: async (bookOrId, userId) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
-        const { favoriteBookIds, favoriteBooks = [], deletedFavoriteBookIds = {} } = get();
+        const { favoriteBookIds, favoriteBooks, deletedFavoriteBookIds } = get();
         const isNumeric = typeof bookOrId === 'number';
         const id = isNumeric ? bookOrId : bookOrId.id;
         const exists = favoriteBookIds.includes(id) || favoriteBooks.some((b) => b.id === id);
@@ -456,7 +456,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       syncFavoriteBooks: (books) => {
-        const { favoriteBooks = [], favoriteBookIds } = get();
+        const { favoriteBooks, favoriteBookIds } = get();
         const existingMap = new Map(favoriteBooks.map((b) => [b.id, b]));
         let hasChanges = false;
         const nextFavorites = [...favoriteBooks];
@@ -536,7 +536,7 @@ export const useBookshelfStore = create<BookshelfState>()(
         const currentUserId = userId || useAuthStore.getState().user?.id;
         const clamped = rating === null ? null : Math.min(Math.max(Math.round(rating), 1), 5);
         const now = new Date().toISOString();
-        const { bookRatings, curationHistory = {} } = get();
+        const { bookRatings, curationHistory } = get();
 
         const nextRatings = { ...bookRatings };
         if (clamped === null) {
@@ -592,7 +592,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       setReadingStatus: async (bookId: number, status: ReadingStatus | null, userId?: string) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
         const now = new Date().toISOString();
-        const { bookStatuses, curationHistory = {} } = get();
+        const { bookStatuses, curationHistory } = get();
 
         const nextStatuses = { ...bookStatuses };
         if (status === null) {
@@ -734,25 +734,49 @@ export function useHydratedBookshelf() {
     }
   }, [hasMounted, user?.id, syncWithCloud]);
 
+  const hydratedState = hasMounted
+    ? {
+        isSaved: isBookSaved,
+        isFavorite: isBookFavorite,
+        savedBooks,
+        readingQueue,
+        favoriteBooks,
+        favoriteBookIds,
+        recentBooks,
+        bookRatings,
+        bookStatuses,
+        curationHistory,
+        cloudBookshelves,
+        cloudBookshelfItems,
+        activeBookshelfId,
+        isSyncing,
+        savedCount: savedBooks.length,
+        favoriteCount: favoriteBookIds.length,
+        queueCount: readingQueue.length,
+      }
+    : {
+        isSaved: () => false,
+        isFavorite: () => false,
+        savedBooks: [] as GutendexBook[],
+        readingQueue: [] as GutendexBook[],
+        favoriteBooks: [] as GutendexBook[],
+        favoriteBookIds: [] as number[],
+        recentBooks: [] as GutendexBook[],
+        bookRatings: {} as Record<number, number>,
+        bookStatuses: {} as Record<number, ReadingStatus>,
+        curationHistory: {} as Record<number, string>,
+        cloudBookshelves: [] as Bookshelf[],
+        cloudBookshelfItems: [] as BookshelfItem[],
+        activeBookshelfId: null as string | null,
+        isSyncing: false,
+        savedCount: 0,
+        favoriteCount: 0,
+        queueCount: 0,
+      };
+
   return {
     hasMounted,
-    isSaved: (id: number) => (hasMounted ? isBookSaved(id) : false),
-    isFavorite: (id: number) => (hasMounted ? isBookFavorite(id) : false),
-    savedBooks: hasMounted ? savedBooks : [],
-    readingQueue: hasMounted ? readingQueue : [],
-    favoriteBooks: hasMounted ? favoriteBooks : [],
-    favoriteBookIds: hasMounted ? favoriteBookIds : [],
-    recentBooks: hasMounted ? recentBooks : [],
-    bookRatings: hasMounted ? bookRatings : {},
-    bookStatuses: hasMounted ? bookStatuses : {},
-    curationHistory: hasMounted ? (curationHistory || {}) : {},
-    cloudBookshelves: hasMounted ? cloudBookshelves : [],
-    cloudBookshelfItems: hasMounted ? cloudBookshelfItems : [],
-    activeBookshelfId: hasMounted ? activeBookshelfId : null,
-    isSyncing: hasMounted ? isSyncing : false,
-    savedCount: hasMounted ? savedBooks.length : 0,
-    favoriteCount: hasMounted ? favoriteBookIds.length : 0,
-    queueCount: hasMounted ? readingQueue.length : 0,
+    ...hydratedState,
     toggleSaveBook,
     toggleFavoriteBook,
     addToQueue,

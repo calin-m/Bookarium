@@ -165,6 +165,7 @@ export function useOfflineBooks() {
     try {
       const ids = await getOfflineBookIds();
       updateOfflineIdsState(ids);
+      setIsLoaded(true);
       await refreshOfflineMetas();
       await refreshStorageQuota();
     } catch {
@@ -174,64 +175,46 @@ export function useOfflineBooks() {
 
   useEffect(() => {
     let isMounted = true;
-    getOfflineBookIds()
-      .then((ids) => {
-        if (isMounted) {
-          if (ids.length > 0) {
-            updateOfflineIdsState(ids);
-          }
-          setIsLoaded(true);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setIsLoaded(true);
-        }
-      });
 
-    if (typeof getAllOfflineBookMetas === 'function') {
-      getAllOfflineBookMetas()
-        .then((metas) => {
-          if (isMounted && Array.isArray(metas) && metas.length > 0) {
-            updateOfflineBooksState(metas);
-          }
-        })
-        .catch(() => {});
-    }
-
-    getStorageQuota()
-      .then((quota) => {
-        if (isMounted && quota !== null) {
-          updateStorageQuotaState(quota);
-        }
-      })
-      .catch(() => {});
-
-    const handleOfflineUpdated = () => {
-      if (!isMounted) return;
+    const syncFromStorage = (markLoaded: boolean) => {
       getOfflineBookIds()
         .then((ids) => {
-          if (isMounted) {
+          if (!isMounted) return;
+          if (!markLoaded || ids.length > 0) {
             updateOfflineIdsState(ids);
+          }
+          if (
+            markLoaded &&
+            (ids.length > 0 || useBookshelfStore.getState().activeBookshelfId === '__downloaded__')
+          ) {
+            setIsLoaded(true);
           }
         })
         .catch(() => {});
+
       if (typeof getAllOfflineBookMetas === 'function') {
         getAllOfflineBookMetas()
           .then((metas) => {
-            if (isMounted && Array.isArray(metas)) {
+            if (isMounted && Array.isArray(metas) && (!markLoaded || metas.length > 0)) {
               updateOfflineBooksState(metas);
             }
           })
           .catch(() => {});
       }
+
       getStorageQuota()
         .then((quota) => {
-          if (isMounted) {
+          if (isMounted && (!markLoaded || quota !== null)) {
             updateStorageQuotaState(quota);
           }
         })
         .catch(() => {});
+    };
+
+    syncFromStorage(true);
+
+    const handleOfflineUpdated = () => {
+      if (isMounted) syncFromStorage(false);
     };
 
     const handleDownloadingEvent = (event: Event) => {

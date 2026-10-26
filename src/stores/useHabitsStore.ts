@@ -84,23 +84,19 @@ export const useHabitsStore = create<HabitsState>()(
 
       addReadingDuration: (seconds, userId) => {
         if (seconds <= 0) return;
-
         const rounded = Math.round(seconds);
         const todayStr = formatLocalDate(new Date());
-        const currentDaily = get().dailyActivitySeconds || {};
+        const currentDaily = get().dailyActivitySeconds;
         const newDailyToday = (currentDaily[todayStr] || 0) + rounded;
-        const nextDaily = { ...currentDaily, [todayStr]: newDailyToday };
-
         const currentDates = get().activeDates;
-        const qualifiesForStreak = newDailyToday >= MIN_STREAK_DURATION_SECONDS;
         const nextDates =
-          qualifiesForStreak && !currentDates.includes(todayStr)
+          newDailyToday >= MIN_STREAK_DURATION_SECONDS && !currentDates.includes(todayStr)
             ? [...currentDates, todayStr].sort()
             : currentDates;
 
         set((state) => ({
           totalReadingSeconds: state.totalReadingSeconds + rounded,
-          dailyActivitySeconds: nextDaily,
+          dailyActivitySeconds: { ...currentDaily, [todayStr]: newDailyToday },
           activeDates: nextDates,
         }));
 
@@ -114,23 +110,19 @@ export const useHabitsStore = create<HabitsState>()(
 
       addListeningDuration: (seconds, userId) => {
         if (seconds <= 0) return;
-
         const rounded = Math.round(seconds);
         const todayStr = formatLocalDate(new Date());
-        const currentDaily = get().dailyActivitySeconds || {};
+        const currentDaily = get().dailyActivitySeconds;
         const newDailyToday = (currentDaily[todayStr] || 0) + rounded;
-        const nextDaily = { ...currentDaily, [todayStr]: newDailyToday };
-
         const currentDates = get().activeDates;
-        const qualifiesForStreak = newDailyToday >= MIN_STREAK_DURATION_SECONDS;
         const nextDates =
-          qualifiesForStreak && !currentDates.includes(todayStr)
+          newDailyToday >= MIN_STREAK_DURATION_SECONDS && !currentDates.includes(todayStr)
             ? [...currentDates, todayStr].sort()
             : currentDates;
 
         set((state) => ({
           totalListeningSeconds: state.totalListeningSeconds + rounded,
-          dailyActivitySeconds: nextDaily,
+          dailyActivitySeconds: { ...currentDaily, [todayStr]: newDailyToday },
           activeDates: nextDates,
         }));
 
@@ -260,17 +252,17 @@ export const useHabitsStore = create<HabitsState>()(
       },
 
       getTotalImmersionSeconds: () => {
-        return (get().totalReadingSeconds || 0) + (get().totalListeningSeconds || 0);
+        return get().totalReadingSeconds + get().totalListeningSeconds;
       },
 
       getTodayImmersionSeconds: (dateStr) => {
         const targetDate = dateStr || formatLocalDate(new Date());
-        return (get().dailyActivitySeconds || {})[targetDate] || 0;
+        return get().dailyActivitySeconds[targetDate] || 0;
       },
 
       getStreakProgress: (dateStr) => {
         const targetDate = dateStr || formatLocalDate(new Date());
-        const todaySeconds = (get().dailyActivitySeconds || {})[targetDate] || 0;
+        const todaySeconds = get().dailyActivitySeconds[targetDate] || 0;
         const targetSeconds = MIN_STREAK_DURATION_SECONDS;
         const remainingSeconds = Math.max(0, targetSeconds - todaySeconds);
         const remainingMinutes = Math.ceil(remainingSeconds / 60);
@@ -289,13 +281,13 @@ export const useHabitsStore = create<HabitsState>()(
       },
 
       getFormattedDuration: () => {
-        const total = (get().totalReadingSeconds || 0) + (get().totalListeningSeconds || 0);
+        const total = get().totalReadingSeconds + get().totalListeningSeconds;
         return formatReadingDuration(total);
       },
 
       getFormattedDurationBreakdown: () => {
-        const reading = get().totalReadingSeconds || 0;
-        const listening = get().totalListeningSeconds || 0;
+        const reading = get().totalReadingSeconds;
+        const listening = get().totalListeningSeconds;
         const total = reading + listening;
         return {
           total: formatReadingDuration(total),

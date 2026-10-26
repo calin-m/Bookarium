@@ -464,5 +464,67 @@ describe('useCollectionAutoHeal', () => {
       Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
     }
   });
+
+  it('recognizes embedded lifespans in book.authors, recentBooks, and readingPositions and skips hero books in favoriteBooks', () => {
+    sessionStorage.setItem('bookarium_auto_heal_attempted', JSON.stringify([88888]));
+
+    useBookshelfStore.setState({
+      favoriteBookIds: [1727, 88888, 1342],
+      favoriteBooks: [
+        // Incomplete hero book in favoriteBooks -> fast-path enriched, skipped in missingFavoriteIds
+        {
+          ...mockIncompleteBook,
+          id: 1727,
+          title: 'The Odyssey',
+          authors: [{ name: 'Homer', birth_year: null, death_year: null }],
+        },
+        // Already attempted book in favoriteBooks -> skipped
+        {
+          ...mockIncompleteBook,
+          id: 88888,
+          title: 'Attempted Book',
+        },
+        // Book with embedded lifespan in author name -> considered complete
+        {
+          ...mockIncompleteBook,
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane, 1775-1817', birth_year: null, death_year: null }],
+        },
+      ],
+      recentBooks: [mockCompleteBook],
+      savedBooks: [],
+    });
+
+    useReaderStore.setState({
+      readingPositions: {
+        // Position with embedded lifespan -> considered complete
+        84: {
+          chapterIndex: 1,
+          chapterPage: 1,
+          globalPage: 2,
+          lastReadAt: '2026-10-01T00:00:00Z',
+          bookTitle: 'Frankenstein',
+          bookAuthors: ['Shelley, Mary, 1797-1851'],
+        },
+        // Position for hero book -> skipped for network query
+        11: {
+          chapterIndex: 1,
+          chapterPage: 1,
+          globalPage: 2,
+          lastReadAt: '2026-10-01T00:00:00Z',
+          bookTitle: 'Alice',
+          bookAuthors: [],
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.missingFavoriteIds).toEqual([]);
+    expect(result.current.incompleteSavedIds).toEqual([]);
+  });
 });
 

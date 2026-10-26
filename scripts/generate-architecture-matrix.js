@@ -11,6 +11,8 @@ const {
   extractConfigurationCatalog,
   extractTypeCatalog,
   extractWorkerCatalog,
+  extractTestHarnessCatalog,
+  extractPublicAssetsCatalog,
 } = require('./lib/ast-parser');
 
 const rootDir = path.resolve(__dirname, '..');
@@ -18,10 +20,21 @@ const srcDir = path.join(rootDir, 'src');
 
 function extractDatabaseCatalog(rootDirPath) {
   const schemaPath = path.join(rootDirPath, 'supabase', 'schema.sql');
-  if (!fs.existsSync(schemaPath)) return [];
+  if (!fs.existsSync(schemaPath)) {
+    return { tables: [], functions: [], indexes: [], seedArtifacts: [] };
+  }
   const content = fs.readFileSync(schemaPath, 'utf-8');
 
   const tables = [];
+  if (content.includes('CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations')) {
+    tables.push({
+      name: 'supabase_migrations.schema_migrations',
+      rls: 'Enabled (`No Client Access`)',
+      store: '_Supabase CLI / Studio Tracker_',
+      description: 'Internal Supabase migration ledger preventing `42P01` dashboard warnings and tracking applied DDL versions with RLS enabled.',
+    });
+  }
+
   const tableRegex = /CREATE TABLE IF NOT EXISTS public\.(\w+)\s*\(([\s\S]*?)\);/g;
   let match;
 
@@ -66,7 +79,91 @@ function extractDatabaseCatalog(rootDirPath) {
       description: descMap[tableName] || 'Database entity with RLS user isolation.',
     });
   }
-  return tables;
+
+  // Extract explicit CREATE [UNIQUE] INDEX definitions from supabase/schema.sql
+  const indexDescMap = {
+    unique_profile_username_lower: 'Case-insensitive partial unique index (`lower(trim(username)) WHERE username IS NOT NULL`) enforcing globally unique scholar `@username` handles.',
+    unique_user_default_bookshelf: 'Partial unique index (`(user_id) WHERE is_default = true`) guaranteeing each scholar has at most one master `General` shelf.',
+    unique_user_shelf_name: 'Case-insensitive composite unique index (`(user_id, lower(trim(name)))`) preventing duplicate custom shelf names per user.',
+    idx_bookshelf_items_user_id: 'B-Tree foreign-key index on `(user_id)` accelerating user-scoped shelf item queries and cascading account deletion.',
+    idx_user_annotations_user_book: 'Composite B-Tree index on `(user_id, book_id)` for fast per-volume highlight and marginalia lookups.',
+    idx_user_book_curation_user_book: 'Composite B-Tree index on `(user_id, book_id)` for personal 1–5 star ratings and reading status lookups.',
+    idx_user_reading_habits_user: 'B-Tree index on `(user_id)` accelerating streak and dual immersion telemetry queries.',
+    unique_user_accolade: 'Composite unique index on `(user_id, accolade_id)` ensuring idempotent accolade unlocks per scholar.',
+    idx_user_accolades_user: 'B-Tree index on `(user_id)` for fast Ex-Libris bookplate and pinned showcase queries.',
+    idx_books_search_vector: 'Inverted GIN index on `search_vector` TSVECTOR for sub-second multi-word full-text catalog search.',
+    idx_books_languages: 'Inverted GIN index on `languages` TEXT[] for array-containment language filtering (`languages && ARRAY[...]`).',
+    idx_books_subjects: 'Inverted GIN index on `subjects` TEXT[] for topic/subject facet containment queries.',
+    idx_books_download_count: 'Descending B-Tree index on `(download_count DESC)` for popularity sorting across 78,000+ volumes.',
+    idx_books_author_death_year: 'B-Tree index on `(max_author_death_year)` for sub-50ms server-side jurisdictional copyright filtering.',
+    idx_book_translations_book_id: 'B-Tree index on `(book_id)` for instant single-book translation lookups in `ReaderLanguageDrawer`.',
+    idx_book_translations_work_id: 'B-Tree index on `(work_id)` for canonical FRBR literary work cluster traversal.',
+    idx_book_translations_work_lang: 'Composite B-Tree index on `(work_id, language)` for fast language-filtered edition resolution.',
+    idx_reader_circles_requester: 'B-Tree index on `(requester_id)` for outbound Reader Circle fellowship and companion RLS lookups.',
+    idx_reader_circles_recipient: 'B-Tree index on `(recipient_id)` for inbound Reader Circle invitation and companion RLS lookups.',
+    idx_symposium_sessions_host: 'B-Tree index on `(host_id)` for host-side Literary Symposium and fellow marginalia RLS evaluation.',
+    idx_symposium_sessions_fellow: 'B-Tree index on `(fellow_id)` for fellow-side Literary Symposium and companion progress queries.',
+    idx_symposium_sessions_book: 'B-Tree index on `(book_id)` for volume-scoped Symposium session and shared annotation lookups.',
+  };
+
+  const indexes = [];
+  const idxRegex = /CREATE\s+(UNIQUE\s+)?INDEX\s+IF\s+NOT\s+EXISTS\s+(\w+)\s+ON\s+(public\.\w+)\s*(?:USING\s+(GIN)\s*)?\(([^;]+?)\)(?:\s+WHERE\s+([^;]+?))?;/gi;
+  let idxMatch;
+  while ((idxMatch = idxRegex.exec(content)) !== null) {
+    const isUnique = Boolean(idxMatch[1]);
+    const idxName = idxMatch[2];
+    const targetTable = idxMatch[3];
+    const isGin = Boolean(idxMatch[4]);
+    const expr = idxMatch[5].replace(/\s+/g, ' ').trim();
+    const whereClause = idxMatch[6] ? ` WHERE ${idxMatch[6].replace(/\s+/g, ' ').trim()}` : '';
+    let idxType = 'B-Tree Index';
+    if (isGin) idxType = 'GIN Index';
+    else if (isUnique && whereClause) idxType = 'Partial Unique Index';
+    else if (isUnique) idxType = 'Unique B-Tree Index';
+
+    indexes.push({
+      name: idxName,
+      type: idxType,
+      table: targetTable,
+      definition: `\`(${expr})${whereClause}\``,
+      description: indexDescMap[idxName] || `Index on \`${targetTable}\`.`,
+    });
+  }
+
+  const seedCandidates = [
+    {
+      file: 'supabase/schema.sql',
+      kind: 'Canonical Idempotent DDL & RLS Schema',
+      role: 'Single source of truth defining all 14 database tables, 38 granular RLS policies, 6 stored functions/triggers, and 22 explicit search/uniqueness indexes.',
+    },
+    {
+      file: 'supabase/seed_books.sql',
+      kind: 'Curated Public Domain Catalog Seed',
+      role: 'Idempotent starter SQL seed (`ON CONFLICT (id) DO UPDATE`) provisioning curated Project Gutenberg masterworks for zero-network local development.',
+    },
+    {
+      file: 'supabase/seed_translations.sql',
+      kind: 'Relational FRBR Translations Seed',
+      role: 'Idempotent SQL seed (`ON CONFLICT (work_id, book_id) DO UPDATE`) linking multilingual Project Gutenberg editions into canonical literary works.',
+    },
+    {
+      file: 'scripts/data/wikidata-translations-cache.json',
+      kind: 'Offline Wikidata Authority Snapshot',
+      role: 'Verified CC0 Wikidata SPARQL authority cache (`P2034` Gutenberg IDs + `P407` language tags) enabling deterministic offline translation clustering when Wikidata is unreachable.',
+    },
+  ];
+
+  const seedArtifacts = seedCandidates
+    .filter((s) => fs.existsSync(path.join(rootDirPath, s.file)))
+    .map((s) => {
+      const stat = fs.statSync(path.join(rootDirPath, s.file));
+      return {
+        ...s,
+        size: `${(stat.size / 1024).toFixed(1)} KB`,
+      };
+    });
+
+  return { tables, indexes, seedArtifacts };
 }
 
 function extractNodeEcosystemCatalog(rootDirPath) {
@@ -278,6 +375,152 @@ function extractNodeScriptsCatalog() {
   ];
 }
 
+function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
+  const candidates = [
+    {
+      name: 'next.config.ts',
+      file: 'next.config.ts',
+      layer: 'Next.js 16 Build, Rewrites & OWASP Headers',
+      responsibility:
+        'Configures Next.js 16 App Router image remote patterns (`gutenberg.org`), clean path Edge rewrites (`/bookshelf`, `/favorites`, `/notebook`, `/bookmarks` -> `/?view=*`), and all 7 mandatory OWASP HTTP security headers (`Content-Security-Policy` with production `unsafe-eval` stripping, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`).',
+    },
+    {
+      name: 'vercel.json',
+      file: 'vercel.json',
+      layer: 'Edge Deployment & Datacenter Pinning',
+      responsibility:
+        'Pins serverless function execution to `iad1` (Washington D.C. / US-East) adjacent to Project Gutenberg & Gutendex nodes with 1024 MB memory and 30s max duration for `/api/books/**` routes.',
+    },
+    {
+      name: 'tsconfig.json',
+      file: 'tsconfig.json',
+      layer: 'TypeScript 5.9 Strict Compiler Config',
+      responsibility:
+        'Enforces `strict: true`, `noEmit: true`, `moduleResolution: "bundler"`, `jsx: "react-jsx"`, and `@/* -> ./src/*` path aliases across all source and test files.',
+    },
+    {
+      name: 'tailwind.config.ts',
+      file: 'tailwind.config.ts',
+      layer: 'Editorial Design System & Theme Tokens',
+      responsibility:
+        'Defines Booksaw editorial color variables (`background`, `foreground`, `primary`, `surface-elevated`), serif/sans/mono font stacks, `shadow-booksaw` depth shadows, and 3D page-turn keyframes.',
+    },
+    {
+      name: 'postcss.config.mjs',
+      file: 'postcss.config.mjs',
+      layer: 'Tailwind CSS v4 Oxide PostCSS Pipeline',
+      responsibility:
+        'Registers `@tailwindcss/postcss` v4 Oxide compiler plugin for zero-runtime CSS generation.',
+    },
+    {
+      name: 'src/app/globals.css',
+      file: 'src/app/globals.css',
+      layer: 'Global Theme Palettes & 3D Book Physics CSS',
+      responsibility:
+        'Configures `@import "tailwindcss"`, `@config "../../tailwind.config.ts"`, Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) CSS custom properties, 3D perspective book spreads (`.book-center-crease`, `.preserve-3d`), and custom reader scrollbars (`--reader-sb-*`).',
+    },
+    {
+      name: 'eslint.config.mjs',
+      file: 'eslint.config.mjs',
+      layer: 'ESLint 9 Flat Config & Zero-Any Gate',
+      responsibility:
+        'Enforces `eslint-config-next/core-web-vitals`, `eslint-config-next/typescript`, and strict `@typescript-eslint/no-explicit-any: "error"` with `--max-warnings 0`.',
+    },
+    {
+      name: 'knip.json',
+      file: 'knip.json',
+      layer: 'Dead Code & Orphan Dependency Auditor',
+      responsibility:
+        'Configures Knip entrypoints (`src/proxy.ts`, `src/workers/*.ts`, `src/components/motion/*.tsx`) to guarantee zero unused files, zero dead exports, and zero orphan dependencies in Pass 6.',
+    },
+    {
+      name: 'vitest.config.mts',
+      file: 'vitest.config.mts',
+      layer: 'Vitest Runner & >= 85% V8 Coverage Gate',
+      responsibility:
+        'Configures JSDOM test environment, `src/test/setup.ts` bootstrap, `maxWorkers: 4`, and hard `85%` coverage thresholds across lines, functions, branches, and statements.',
+    },
+    {
+      name: '.husky/pre-commit',
+      file: '.husky/pre-commit',
+      layer: 'Git Pre-Commit Quality & Approval Gate',
+      responsibility:
+        'Executes `npm run gate:approve` (`scripts/approval-gate.js`) and `npm run verify` (`scripts/verify-build.js`) prior to any commit creation.',
+    },
+    {
+      name: 'AGENTS.md & .agents/AGENTS.md',
+      file: '.agents/AGENTS.md',
+      layer: 'Enterprise Multi-Agent Governance Protocol',
+      responsibility:
+        'Canonical specification of Rules 0–9 (Approval-First Execution, Living AST Docs Co-Evolution, Zero-Bloat AST Truth, >=85% Co-Located Testing, Public Domain Integrity, Conventional Commits, 7-Gateway Engine, ADRs, Secret Prevention, and Idempotent RLS Schema Co-Evolution).',
+    },
+    {
+      name: '.agents/hooks.json',
+      file: '.agents/hooks.json',
+      layer: 'Deterministic Mutation Approval Ledger',
+      responsibility:
+        'Machine-verified governance configuration gating file mutations and pre-commit verification.',
+    },
+  ];
+
+  return candidates.filter((c) => fs.existsSync(path.join(rootDirPath, c.file)));
+}
+
+function extractRepositoryTopologyAndDocsCatalog(rootDirPath) {
+  const directories = [
+    { path: 'src/app/', role: 'Next.js 16 App Router pages, SSR layouts, metadata routes (`manifest.ts`, `robots.ts`, `sitemap.ts`), global providers (`providers.tsx`), and serverless API route handlers (`/api/books/**`, `/auth/callback`).' },
+    { path: 'src/components/', role: '76 production React 19 UI components organized across `account/`, `accolades/`, `auth/`, `layout/`, `motion/`, `presentation/` (including `bookshelf/`), `profile/`, `pwa/`, `reader/`, `symposium/`, and `ui/`, each paired with co-located `*.test.tsx` suites.' },
+    { path: 'src/stores/', role: '10 Zustand client-side state stores (`useBookshelfStore`, `useReaderStore`, `useAuthStore`, `useFellowshipStore`, `useAnnotationStore`, `useAccoladesStore`, `useHabitsStore`, `useJurisdictionStore`, `usePreferencesStore`, `useThemeStore`) with `localStorage` persistence and bi-directional Supabase cloud outbox synchronization.' },
+    { path: 'src/hooks/', role: '22 custom React hooks organized into `queries/` (TanStack Query v5 data fetching), `reader/` (Web Speech TTS, session coordinates, gestures, worker AST, reading ledger), and root UI/network/copyright hooks (`useNetworkStatus`, `useOfflineBooks`, `useBookCopyright`, `useCatalogFilters`, `useCollectionAutoHeal`).' },
+    { path: 'src/lib/', role: '40 pure domain computational engines and adapters covering Gutenberg AST segmentation/pagination/reflow (`gutenberg/`), dual-provider catalog resolution (`catalog/`), Supabase SSR/browser clients (`supabase/`), multi-jurisdictional copyright (`copyright-engine.ts`), IndexedDB storage (`offline-storage.ts`), interval annotation partitioning (`reader-annotator.ts`), cloud bookshelf sync (`bookshelf-cloud-sync.ts`), and portable backups (`library-backup.ts`, `backup-validator.ts`).' },
+    { path: 'src/config/', role: '13 centralized design token, routing, theme, language, era, literary quote, and 27-masterwork curated anthology configuration modules.' },
+    { path: 'src/types/', role: '4 canonical TypeScript type contract modules (`book.types.ts`, `database.types.ts`, `catalog.types.ts`, `accolades.types.ts`) defining zero-any domain and PostgreSQL row schemas.' },
+    { path: 'src/workers/', role: 'Dedicated off-thread Web Worker (`gutenberg.worker.ts`) executing Gutenberg plain-text segmentation and virtual page layout calculations.' },
+    { path: 'src/mocks/ & src/test/', role: 'Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`) and JSDOM test environment bootstrap (`setup.ts`).' },
+    { path: 'public/', role: 'Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`).' },
+    { path: 'supabase/', role: 'Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 22 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`).' },
+    { path: 'scripts/', role: '14 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites.' },
+    { path: 'docs/', role: 'Living architectural reference (`ARCHITECTURE.md`), 70 Architecture Decision Records (`DECISIONS.md`), AST-compiled parser specification (`GUTENBERG_PARSER.md`), CI/CD runbook (`PIPELINE_GUIDE.md`), and live 7-Gateway quality telemetry (`QUALITY_AUDIT_REPORT.md`, `quality-audit-results.json`).' },
+    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD (`ci.yml`) and weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), plus Husky pre-commit quality gates.' },
+  ];
+
+  let auditTotals = { suites: 189, tests: '2,006' };
+  const auditJsonPath = path.join(rootDirPath, 'docs', 'quality-audit-results.json');
+  if (fs.existsSync(auditJsonPath)) {
+    try {
+      const parsedAudit = JSON.parse(fs.readFileSync(auditJsonPath, 'utf8'));
+      if (parsedAudit?.testCatalog?.totalSuites && parsedAudit?.testCatalog?.totalTests) {
+        auditTotals = {
+          suites: parsedAudit.testCatalog.totalSuites,
+          tests: Number(parsedAudit.testCatalog.totalTests).toLocaleString('en-US'),
+        };
+      }
+    } catch {
+      // Fallback to default counts
+    }
+  }
+
+  const livingDocs = [
+    { file: 'README.md', mode: 'Hybrid (Curated + Script-Synced)', generator: '`scripts/generate-changelog.js` & `scripts/generate-quality-report.js`', role: 'Primary project overview, system architecture diagrams, Supabase setup guide, and live test/coverage/release blocks.' },
+    { file: 'docs/ARCHITECTURE.md', mode: '100% AST-Generated', generator: '`scripts/generate-architecture-matrix.js`', role: 'Complete full-repository C4 architecture map, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology.' },
+    { file: 'docs/DECISIONS.md', mode: 'Append-Only Governance Ledger', generator: '`scripts/new-adr.js` (Validated in Pass 5)', role: 'Sequential Architectural Decision Records (ADR-001 through ADR-070) documenting context, trade-offs, and consequences.' },
+    { file: 'docs/GUTENBERG_PARSER.md', mode: '100% AST-Generated', generator: '`scripts/generate-parser-docs.js`', role: 'Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine.' },
+    { file: 'docs/QUALITY_AUDIT_REPORT.md', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: `Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all ${auditTotals.suites} test suites and ${auditTotals.tests} tests.` },
+    { file: 'docs/quality-audit-results.json', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: 'Machine-readable JSON telemetry of all 7 gateway passes, coverage percentages, ESLint/Knip counts, and suite totals.' },
+    { file: 'ROADMAP.md', mode: '100% AST-Generated', generator: '`scripts/generate-roadmap.js`', role: 'Zero-drift product roadmap verifying feature completion directly against source files and AST patterns across Milestones 0–7.' },
+    { file: 'CHANGELOG.md', mode: '100% Script-Generated', generator: '`scripts/generate-changelog.js`', role: 'Chronological Keep a Changelog 1.0.0 & SemVer release ledger across all application versions.' },
+    { file: 'docs/PIPELINE_GUIDE.md', mode: 'Curated Engineering Runbook', generator: '_Source-of-Truth Runbook_', role: 'Operational guide for the 7-Gateway Quality Engine, GitHub Actions workflows, and catalog/translation ingestion pipelines.' },
+    { file: 'DEVELOPMENT.md & CONTRIBUTING.md', mode: 'Curated Contributor Guides', generator: '_Source-of-Truth Guides_', role: 'Local development environment setup, testing standards, and conventional commit protocols.' },
+    { file: 'SECURITY.md & CODE_OF_CONDUCT.md', mode: 'Curated Governance Policies', generator: '_Source-of-Truth Policies_', role: 'Vulnerability disclosure policy, OWASP defense-in-depth overview, and Contributor Covenant v2.1 standards.' },
+    { file: 'AGENTS.md & .agents/AGENTS.md', mode: 'Immutable Agent Governance', generator: '_Canonical Agent Rules_', role: 'Master operational rules (Rules 0–9) governing human and AI multi-agent engineering in Bookarium.' },
+  ].filter((d) => {
+    const primaryFile = d.file.split(' ')[0];
+    return fs.existsSync(path.join(rootDirPath, primaryFile));
+  });
+
+  return { directories, livingDocs };
+}
+
 function generateMarkdown() {
   const graph = analyzeDependencyGraph(srcDir, rootDir);
   const circularHealth = detectCircularDependencies(graph);
@@ -289,6 +532,10 @@ function generateMarkdown() {
   const configs = extractConfigurationCatalog(srcDir);
   const typeDefs = extractTypeCatalog(srcDir);
   const workers = extractWorkerCatalog(srcDir);
+  const testHarness = extractTestHarnessCatalog(srcDir, rootDir);
+  const publicAssets = extractPublicAssetsCatalog(rootDir);
+  const workspaceConfigs = extractWorkspaceConfigAndGovernanceCatalog(rootDir);
+  const repoTopology = extractRepositoryTopologyAndDocsCatalog(rootDir);
 
   const timestamp = new Date().toISOString().split('T')[0];
 
@@ -317,6 +564,9 @@ function generateMarkdown() {
     '    User["👤 Reader / Public Domain Scholar"]',
     '    ',
     '    subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]',
+    '        Providers["providers.tsx\\n(QueryClient, Auth Init, Cloud Sync & Dynamic AuthModal)"]',
+    '        SWReg["ServiceWorkerRegister.tsx & public/sw.js\\n(App Shell v4, Static Asset Warmup & Offline Fallback)"]',
+    '        AuthModalNode["AuthModal.tsx & EmailSentView.tsx\\n(Sign-In, Sign-Up, OAuth, Magic Link & Reset)"]',
     '        Nav["Navbar.tsx\\n(Brand Reset, View Switcher, Tier-Adaptive Gliding Active Underline Cradle, Theme Cycler)"]',
     '        Hero["HeroSearch.tsx\\n(Dynamic 3D Rotating Spotlight & Search)"]',
     '        Hero3D["HeroFeaturedBook3D.tsx\\n(3D Open-Cover Hinge & Leaf-Flip Engine)"]',
@@ -334,6 +584,8 @@ function generateMarkdown() {
     '        RemoveOfflineModalNode["RemoveOfflineBookModal.tsx\\n(Offline Cache Eviction Confirmation)"]',
     '        CatalogOfflineNode["CatalogOfflineView.tsx\\n(Offline Catalog Notice & Collection Quick-Links)"]',
     '        SymposiumInviteModalNode["SymposiumInviteModal.tsx\\n(1-on-1 Literary Symposium Companion Picker)"]',
+    '        AccoladesEngine["accolades-engine.ts • ExLibrisBookplate.tsx • AccoladeCelebrationModal.tsx"]',
+    '        PublicSanctuaryNodes["PublicProfileView.tsx • PinnedAccoladesShelf.tsx • PrivateProfileNotice.tsx"]',
     '        ',
     '        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]',
     '            Grid["Catalog View (/)\\n(Smooth Scroll Navigation, Adaptive Offline Downloaded Dataset, 2-Col Mobile Grid & 3D Hardwood Shelf)"]',
@@ -358,7 +610,7 @@ function generateMarkdown() {
     '            ControlsDrawer["ReaderControls\\n(Typography, Speech & Themes)"]',
     '            LangDrawer["ReaderLanguageDrawer\\n(International Editions Handoff)"]',
     '            AnnotDrawer["ReaderAnnotationsDrawer\\n(In-Volume Highlights, Notes & Deep Links)"]',
-    '            DownDrawer["DownloadDrawer\\n(In-App Offline Storage & EPUB/MOBI/TXT Direct Streams)"]',
+    '            DownDrawer["DownloadDrawer\\n(Download Hub: Offline Cache & Compact 2x2 Format Grid)"]',
     '        end',
     '        ',
     '        subgraph StateStores ["Zustand Persistent State & Offline Engine"]',
@@ -371,8 +623,9 @@ function generateMarkdown() {
     '            StoreHabits[("🔥 useHabitsStore\\n(streak, 5m threshold, dual immersion, cloud)")]',
     '            StoreAccolades[("🎖️ useAccoladesStore\\n(accolades, showcase pinning, celebrations, cloud)")]',
     '            StoreFellowship[("🤝 useFellowshipStore\\n(reader circles, symposiums, companion progress, cloud)")]',
+    '            SyncCoordinator["🔄 sync-utils.ts\\n(Unified 6-Store Cloud Sync Coordinator)"]',
     '            BookshelfSyncEngine["🔄 bookshelf-cloud-sync.ts\\n(Outbox Replay, Tombstone Filtering & Cloud Sync)"]',
-    '            BackupValidator["🛡️ backup-validator.ts\\n(Schema v1.0–v2.2 Validation & Sanitization)"]',
+    '            BackupEngine["📦 library-backup.ts & backup-validator.ts\\n(Schema v1.0–v2.2 JSON Backup & RFC 4180 CSV)"]',
     '            StoreJurisdiction[("🌐 useJurisdictionStore\\n(country, rule, dev override, cookie sync)")]',
     '            StoreOffline[("📦 IndexedDB Engine\\n(unabridged offline volume cache)")]',
     '        end',
@@ -427,6 +680,10 @@ function generateMarkdown() {
     '    end',
     '',
     '    User --> RootProxy',
+    '    RootProxy --> Providers',
+    '    Providers --> SWReg',
+    '    Providers --> AuthModalNode',
+    '    Providers --> SyncCoordinator',
     '    RootProxy --> Nav',
     '    RootProxy --> Hero',
     '    Hero --> Hero3D',
@@ -465,14 +722,23 @@ function generateMarkdown() {
     '    DownDrawer --> ContentAdvisory',
     '    AccView --> HabitsCard',
     '    AccView --> AccoladesCard',
+    '    AccoladesCard --> AccoladesEngine',
     '    AccView --> SymposiumCard',
     '    AccView --> PrefsCard',
-    '    PrefsCard --> BackupValidator',
+    '    PrefsCard --> BackupEngine',
     '    SymposiumCard --> StoreFellowship',
-    '    ProfilePage --> StoreFellowship',
+    '    ProfilePage --> PublicSanctuaryNodes',
+    '    PublicSanctuaryNodes --> StoreFellowship',
+    '    SyncCoordinator --> StoreShelf',
+    '    SyncCoordinator --> StoreReader',
+    '    SyncCoordinator --> StoreAnnot',
+    '    SyncCoordinator --> StoreHabits',
+    '    SyncCoordinator --> StoreAccolades',
+    '    SyncCoordinator --> StoreFellowship',
     '    StoreShelf --> BookshelfSyncEngine',
     '    BookshelfSyncEngine -->|Cloud Sync via RLS| SupabaseCloud',
     '    StoreFellowship -->|Circles & Symposium Sync| SupabaseCloud',
+    '    StoreAnnot -->|Marginalia & Symposium Sync| SupabaseCloud',
     '    StoreOffline -->|Adaptive Offline Catalog| Grid',
     '    StoreOffline -->|Offline Volumes & Smart Shelf| ShelfView',
     '    StoreOffline -->|Offline Volumes Filter| LedgerHook',
@@ -761,6 +1027,8 @@ function generateMarkdown() {
 
   const pageDescriptions = {
     'src/app/layout.tsx': 'Root HTML shell, font initialization, theme class hydration, and global React Query / Service Worker provider wrapper.',
+    'src/app/providers.tsx': 'Root client provider initializing TanStack `QueryClient`, Supabase authentication listener, `syncAllUserStores` cloud reconciliation, `online` event outbox flushing, and dynamic `AuthModal` rendering.',
+    'src/app/globals.css': 'Tailwind CSS v4 Oxide stylesheet defining Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) theme tokens, 3D hardcover book hinge physics (`.book-center-crease`, `.preserve-3d`), and custom reader scrollbars.',
     'src/app/page.tsx': 'Primary SPA workbench hosting Catalog, Bookshelf, Favorites, Bookmarks, and Commonplace Notebook views with edge URL rewrites.',
     'src/app/error.tsx': 'Route-level React Error Boundary providing graceful recovery UI and diagnostic fallback.',
     'src/app/global-error.tsx': 'Root document-level React Error Boundary catching fatal top-level layout exceptions.',
@@ -781,7 +1049,7 @@ function generateMarkdown() {
 
   lines.push(
     '',
-    '### 2. App Router Pages, Layouts & Metadata Entrypoints',
+    '### 2. App Router Pages, Layouts, Providers & Styling Entrypoints',
     '',
     '| Route / URI | Entrypoint Type | Rendering Strategy | Source File | Architectural Responsibility |',
     '| :--- | :--- | :--- | :--- | :--- |'
@@ -958,7 +1226,7 @@ function generateMarkdown() {
     '| **`ci.yml`** | GitHub Actions Workflow | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `push` / `pull_request` (`master`) | Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, and production build verification. |'
   );
 
-  const dbTables = extractDatabaseCatalog(rootDir);
+  const dbCatalog = extractDatabaseCatalog(rootDir);
 
   lines.push(
     '',
@@ -966,35 +1234,54 @@ function generateMarkdown() {
     '',
     '## 🗄️ Database Architecture & Row Level Security (RLS) Policies',
     '',
-    `Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **${dbTables.length} Database Tables** with strict Row Level Security (Rule 9):`,
+    `Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **${dbCatalog.tables.length} Database Tables** with strict Row Level Security (Rule 9):`,
     '',
     '| Table Name | RLS Governance | Client State Store | Domain Role & Security Description |',
     '| :--- | :--- | :--- | :--- |'
   );
 
-  for (const t of dbTables) {
+  for (const t of dbCatalog.tables) {
     lines.push(`| **\`${t.name}\`** | ${t.rls} | ${t.store} | ${t.description} |`);
   }
 
   lines.push(
     '',
-    '### Stored Logic, Triggers & Search Indexes',
+    '### 1. Stored Logic, Triggers & RPC Functions',
     '',
-    '| Database Object | Type | Target Table | Functionality & Security Scope |',
+    '| Database Function / Trigger | Type | Target Table(s) | Functionality & Security Scope |',
     '| :--- | :--- | :--- | :--- |',
-    '| **`public.books_search_vector_trigger`** | Trigger / Function | `public.books` | Automatically generates and updates `search_vector tsvector` from title and subjects on insert/update (execution revoked from public/anon/authenticated; immutable search path). |',
-    '| **`idx_books_search_vector`** | GIN Index | `public.books` | Full-text search index over `search_vector` TSVECTOR for rapid multi-word search matching. |',
-    '| **`idx_books_languages`** | GIN Index | `public.books` | Inverted index for array containment queries on ISO 639 language codes (`languages && ARRAY[...]`). |',
-    '| **`idx_books_subjects`** | GIN Index | `public.books` | Inverted index for subject facet queries (`subjects && ARRAY[...]`). |',
-    '| **`idx_books_author_death_year`** | B-Tree Index | `public.books` | Index on `max_author_death_year` for instant server-side jurisdictional copyright enforcement. |',
-    '| **`idx_book_translations_book_id`** | B-Tree Index | `public.book_translations` | Single-book translation query index for instant reader drawer lookups. |',
-    '| **`idx_book_translations_work_id`** | B-Tree Index | `public.book_translations` | Canonical literary work grouping index for cluster traversal. |',
-    '| **`idx_book_translations_work_lang`** | Composite Index | `public.book_translations` | Composite index on `(work_id, language)` for fast language filtering within a literary work cluster. |',
-    '| **`public.handle_new_user()`** | Trigger / Function | `auth.users` -> `public.profiles` | Auto-provisions profile and default General shelf on signup (execution revoked from public/anon/authenticated; immutable search path). |',
-    '| **`public.handle_profile_identity_sync()`** | Trigger / Function | `public.profiles` -> `reader_circles`, `symposium_sessions` | Propagates scholar `@username` and `display_name` updates across active/pending fellowship circles and symposium sessions on profile update (immutable search path). |',
-    '| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable search path). |',
-    '| **`public.lookup_scholar_by_username()`** | RPC Function | `public.profiles` | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`is_public = false`). |'
+    '| **`public.handle_new_user()`** | Trigger / Function (`on_auth_user_created`) | `auth.users` -> `public.profiles`, `public.bookshelves` | Auto-provisions scholar profile and default `General` shelf on signup (`SECURITY DEFINER`, `SET search_path = \'\'`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |',
+    '| **`public.books_search_vector_trigger()`** | Trigger / Function (`trigger_books_search_vector`) | `public.books` | Automatically generates and updates `search_vector tsvector` from title and subjects on insert/update (`SET search_path = \'\'`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |',
+    '| **`public.handle_profile_identity_sync()`** | Trigger / Function (`trg_profile_identity_sync`) | `public.profiles` -> `reader_circles`, `symposium_sessions` | Propagates scholar `@username` and `display_name` updates across active/pending fellowship circles and symposium sessions on profile update (`SECURITY DEFINER`, `SET search_path = \'\'`). |',
+    '| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (`SECURITY DEFINER`, `SET search_path = \'\'`, authenticated-only execution, null session guard). |',
+    '| **`public.lookup_scholar_by_username()`** | RPC Function | `public.profiles` | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`SECURITY DEFINER`, `SET search_path = \'\'`, authenticated-only). |',
+    '| **`public.rls_auto_enable()` (Guard)** | Conditional Hardening Block | `pg_proc` (`public.rls_auto_enable`) | Idempotent `DO $$` guard revoking RPC execution from `PUBLIC, anon, authenticated` and locking `search_path = \'\'` if provisioned on the remote Supabase instance. |',
+    '',
+    `### 2. Search, Uniqueness & Foreign-Key Indexes (${dbCatalog.indexes.length} Explicit Indexes)`,
+    '',
+    'Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements in [`supabase/schema.sql`](supabase/schema.sql):',
+    '',
+    '| Index Name | Index Type | Target Table | Indexed Expression & Filter | Query & Integrity Responsibility |',
+    '| :--- | :--- | :--- | :--- | :--- |'
   );
+
+  for (const idx of dbCatalog.indexes) {
+    lines.push(
+      `| **\`${idx.name}\`** | ${idx.type} | \`${idx.table}\` | ${idx.definition} | ${idx.description} |`
+    );
+  }
+
+  lines.push(
+    '',
+    '### 3. Schema DDL, Offline SQL Seeds & Authority Cache Artifacts',
+    '',
+    '| Artifact File | Classification | File Size | Architectural Responsibility |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  for (const s of dbCatalog.seedArtifacts) {
+    lines.push(`| [\`${s.file}\`](${s.file}) | ${s.kind} | \`${s.size}\` | ${s.role} |`);
+  }
 
   lines.push(
     '',
@@ -1037,9 +1324,9 @@ function generateMarkdown() {
     '',
     '---',
     '',
-    '## ⚙️ Background Web Worker & Offline PWA Architecture',
+    '## ⚙️ Background Web Worker, Offline PWA & Static Asset Pipeline (`src/workers/` & `public/`)',
     '',
-    'Dedicated off-thread compute and Progressive Web App service worker modules in `src/workers/` and `public/`:',
+    '### 1. Off-Thread Compute & Service Worker Runtime',
     '',
     '| Worker Module | Source File | Architectural Responsibility |',
     '| :--- | :--- | :--- |'
@@ -1051,14 +1338,100 @@ function generateMarkdown() {
 
   lines.push(
     '',
+    `### 2. Static & PWA Multi-Resolution Asset Inventory (\`public/\` — ${publicAssets.length} Assets)`,
+    '',
+    '| Asset File | Format | Size | Architectural Role & Platform Target |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  for (const asset of publicAssets) {
+    lines.push(`| [\`${asset.file}\`](${asset.file}) | \`${asset.format}\` | \`${asset.size}\` | ${asset.role} |`);
+  }
+
+  lines.push(
+    '',
     '---',
     '',
     '## 🌐 Root Edge Reverse Proxy & Geographic Layer',
     '',
     '| Module | Source File | Responsibilities & Security Directives |',
     '| :--- | :--- | :--- |',
-    '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) | Next.js 16 Edge proxy extracting client IP country (`x-vercel-ip-country`), setting `bookarium-geo-country` cookie, handling development query override (`?country=XX`), and enforcing strict security headers. |'
+    '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) | Next.js 16 Edge proxy extracting client IP country (`x-vercel-ip-country`), setting `bookarium-geo-country` cookie, handling development query override (`?country=XX`), and enforcing strict security headers. |',
+    '',
+    '---',
+    '',
+    '## 🔧 Workspace Configuration, Styling, Deployment & Governance Matrix',
+    '',
+    `Root build, compiler, styling, deployment, static analysis, and multi-agent governance manifests verified across **${workspaceConfigs.length} Workspace Configuration Files**:`,
+    '',
+    '| Configuration / Manifest | Source File | Subsystem / Layer | Architectural & Governance Responsibility |',
+    '| :--- | :--- | :--- | :--- |'
   );
+
+  for (const wc of workspaceConfigs) {
+    lines.push(`| **\`${wc.name}\`** | [\`${wc.file}\`](${wc.file}) | ${wc.layer} | ${wc.responsibility} |`);
+  }
+
+  lines.push(
+    '',
+    '---',
+    '',
+    '## 🧪 Hermetic Testing, MSW v2 Network Isolation & Coverage Architecture',
+    '',
+    `Bookarium enforces a 4-tier hermetic testing architecture across **${testHarness.totalSuites} Test Suites** (\`${testHarness.srcSuiteCount}\` co-located \`src/**/*.test.{ts,tsx}\` suites + \`${testHarness.scriptSuites.length}\` CLI pipeline suites in \`scripts/\`) with zero external network calls:`,
+    '',
+    '| Test Harness Module | Source File | Testing Layer | Architectural Responsibility |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  for (const tm of testHarness.harnessModules) {
+    lines.push(`| **\`${tm.name}\`** | [\`${tm.file}\`](${tm.file}) | ${tm.layer} | ${tm.role} |`);
+  }
+
+  for (const scriptSuite of testHarness.scriptSuites) {
+    const baseName = path.basename(scriptSuite);
+    const scriptSuiteRole =
+      baseName === 'ingest-translations.test.ts'
+        ? 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.'
+        : 'Hermetic unit & integration tests verifying Project Gutenberg `pg_catalog.csv.gz` streaming decompression, CSV RFC 4180 parsing, author lifespan extraction, and adaptive Supabase batch upserts.';
+    lines.push(
+      `| **\`${baseName}\`** | [\`${scriptSuite}\`](${scriptSuite}) | CLI Data Pipeline Test Suite | ${scriptSuiteRole} |`
+    );
+  }
+
+  lines.push(
+    '',
+    '---',
+    '',
+    '## 🗂️ Repository Directory & Living Documentation Topology Map',
+    '',
+    '### 1. Structural Directory Map',
+    '',
+    '| Workspace Path | Architectural Layer & Contents |',
+    '| :--- | :--- |'
+  );
+
+  for (const dir of repoTopology.directories) {
+    lines.push(`| **\`${dir.path}\`** | ${dir.role} |`);
+  }
+
+  lines.push(
+    '',
+    '### 2. Living Documentation & Governance Artifacts Catalog',
+    '',
+    '| Document / Artifact | Maintenance Mode | Generator / Verification Script | Scope & Architectural Purpose |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  for (const doc of repoTopology.livingDocs) {
+    const primaryLink = doc.file.includes(' ')
+      ? doc.file
+          .split(' & ')
+          .map((f) => `[\`${f.trim()}\`](${f.trim()})`)
+          .join(' & ')
+      : `[\`${doc.file}\`](${doc.file})`;
+    lines.push(`| **${primaryLink}** | ${doc.mode} | ${doc.generator} | ${doc.role} |`);
+  }
 
   lines.push(
     '',

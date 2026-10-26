@@ -23,10 +23,8 @@ const BookPreviewModal = dynamic(
   () => import('@/components/presentation/BookPreviewModal').then((mod) => mod.BookPreviewModal),
   { ssr: false }
 );
-const BookReaderPage = dynamic(
-  () => import('@/app/read/[id]/page').then((mod) => mod.default),
-  { ssr: false }
-);
+const loadBookReaderPage = () => import('@/app/read/[id]/page');
+const BookReaderPage = React.lazy(loadBookReaderPage);
 import { NotebookView } from '@/components/presentation/NotebookView';
 import { BookmarksView } from '@/components/presentation/BookmarksView';
 import { CatalogOfflineView } from '@/components/presentation/CatalogOfflineView';
@@ -94,7 +92,7 @@ function HomeContent() {
   // Proactively warm Reader JS chunks into the Service Worker cache if offline books exist
   useEffect(() => {
     if (hasMounted && offlineBookIds.length > 0) {
-      void import('@/app/read/[id]/page').catch(() => {});
+      void loadBookReaderPage().catch(() => {});
     }
   }, [hasMounted, offlineBookIds.length]);
 
@@ -118,20 +116,41 @@ function HomeContent() {
 
   // Bookshelf store items (hydrated safely on mount)
   const rawSavedBooks = useBookshelfStore((s) => s.savedBooks);
-  const savedBooks = useMemo(() => (hasMounted ? rawSavedBooks : []), [hasMounted, rawSavedBooks]);
-  const rawFavoriteBooks = useBookshelfStore((s) => s.favoriteBooks || []);
-  const favoriteBooks = useMemo(() => (hasMounted ? rawFavoriteBooks : []), [hasMounted, rawFavoriteBooks]);
+  const rawFavoriteBooks = useBookshelfStore((s) => s.favoriteBooks);
   const rawFavoriteBookIds = useBookshelfStore((s) => s.favoriteBookIds);
-  const favoriteBookIds = useMemo(() => (hasMounted ? rawFavoriteBookIds : []), [hasMounted, rawFavoriteBookIds]);
   const clearSavedBooks = useBookshelfStore((s) => s.clearSavedBooks);
   const rawActiveBookshelfId = useBookshelfStore((s) => s.activeBookshelfId);
-  const activeBookshelfId = hasMounted ? rawActiveBookshelfId : null;
-  const rawCloudBookshelves = useBookshelfStore((s) => s.cloudBookshelves || []);
-  const cloudBookshelves = useMemo(() => (hasMounted ? rawCloudBookshelves : []), [hasMounted, rawCloudBookshelves]);
-  const rawCloudBookshelfItems = useBookshelfStore((s) => s.cloudBookshelfItems || []);
-  const cloudBookshelfItems = useMemo(() => (hasMounted ? rawCloudBookshelfItems : []), [hasMounted, rawCloudBookshelfItems]);
-  const rawReadingProgress = useReaderStore((s) => s.readingProgress || {});
-  const readingProgress = useMemo(() => (hasMounted ? rawReadingProgress : {}), [hasMounted, rawReadingProgress]);
+  const rawCloudBookshelves = useBookshelfStore((s) => s.cloudBookshelves);
+  const rawCloudBookshelfItems = useBookshelfStore((s) => s.cloudBookshelfItems);
+  const rawReadingProgress = useReaderStore((s) => s.readingProgress);
+
+  const {
+    savedBooks,
+    favoriteBooks,
+    favoriteBookIds,
+    activeBookshelfId,
+    cloudBookshelves,
+    cloudBookshelfItems,
+    readingProgress,
+  } = hasMounted
+    ? {
+        savedBooks: rawSavedBooks,
+        favoriteBooks: rawFavoriteBooks,
+        favoriteBookIds: rawFavoriteBookIds,
+        activeBookshelfId: rawActiveBookshelfId,
+        cloudBookshelves: rawCloudBookshelves,
+        cloudBookshelfItems: rawCloudBookshelfItems,
+        readingProgress: rawReadingProgress,
+      }
+    : {
+        savedBooks: [] as GutendexBook[],
+        favoriteBooks: [] as GutendexBook[],
+        favoriteBookIds: [] as number[],
+        activeBookshelfId: null as string | null,
+        cloudBookshelves: [] as typeof rawCloudBookshelves,
+        cloudBookshelfItems: [] as typeof rawCloudBookshelfItems,
+        readingProgress: {} as Record<number, number>,
+      };
 
   // Sorting & Pagination State for Bookshelf & Favorites
   const [shelfSortBy, setShelfSortBy] = useState<BookshelfSortOption>('recent');
@@ -233,7 +252,7 @@ function HomeContent() {
   const resolvedOfflineBooks = useMemo(() => {
     const savedOffline = savedBooks.filter((b) => isBookOffline(b.id));
     const savedOfflineIds = new Set(savedOffline.map((b) => b.id));
-    const extraOffline = (offlineBooks || []).filter(
+    const extraOffline = offlineBooks.filter(
       (b) => isBookOffline(b.id) && !savedOfflineIds.has(b.id)
     );
     return [...savedOffline, ...extraOffline];
@@ -299,12 +318,12 @@ function HomeContent() {
     if (topic.trim()) {
       const t = topic.trim().toLowerCase();
       list = list.filter((b) =>
-        [...(b.subjects || []), ...(b.bookshelves || [])].some((s) => s.toLowerCase().includes(t))
+        [...b.subjects, ...b.bookshelves].some((s) => s.toLowerCase().includes(t))
       );
     }
     if (language.trim()) {
       const lang = language.trim().toLowerCase();
-      list = list.filter((b) => (b.languages || []).some((l) => l.toLowerCase() === lang));
+      list = list.filter((b) => b.languages.some((l) => l.toLowerCase() === lang));
     }
     if (queryParams.authorYearStart !== undefined || queryParams.authorYearEnd !== undefined) {
       list = list.filter((b) => {
@@ -438,8 +457,8 @@ function HomeContent() {
   // Smart filtered & sorted collection books (Favorites)
   const uniqueKnownFavoriteBooks = useMemo(() => {
     const allKnown = [
-      ...(favoriteBooks || []),
-      ...(offlineBooks || []),
+      ...favoriteBooks,
+      ...offlineBooks,
       ...(booksData?.results || []),
       ...savedBooks,
     ];
@@ -478,9 +497,7 @@ function HomeContent() {
   // Derive displayed books with windowed sub-page slicing based on active view
   let displayedBooks = isOffline
     ? filteredOfflineCatalogBooks.slice(offlineSliceStart, offlineSliceEnd)
-    : booksData?.results
-    ? booksData.results.slice(sliceStart, sliceEnd)
-    : [];
+    : (booksData?.results || []).slice(sliceStart, sliceEnd);
   let isDisplayLoading = isOffline ? false : isLoading || isFetching;
   let isDisplayError = isOffline ? false : isError;
 
@@ -517,8 +534,61 @@ function HomeContent() {
     ? sortedFavoriteBooks
     : [];
 
+  const emptyStateCopy = collectionSearchQuery.trim()
+    ? {
+        title: `No volumes found matching "${collectionSearchQuery}"`,
+        description: 'Try adjusting your search terms, author name, or clear the search query.',
+      }
+    : isShelf && (shelfSortBy === 'downloaded' || isViewingDownloaded)
+    ? {
+        title: 'No downloaded volumes',
+        description: 'Volumes saved for offline reading will appear here.',
+      }
+    : isFavorites && favoritesSortBy === 'downloaded'
+    ? {
+        title: 'No downloaded favorites',
+        description: 'Favorite volumes saved for offline reading will appear here.',
+      }
+    : {
+        title: viewConfig.emptyTitle,
+        description: viewConfig.emptyDescription,
+      };
+
+  const clearModalCopy =
+    confirmClearType === 'favorites'
+      ? {
+          title: 'Clear Favorite Books',
+          heading: 'Are you sure you want to clear your favorites?',
+          description: `This will remove all ${favoriteBookIds.length} titles from your curated favorites list. This action cannot be undone.`,
+          confirmLabel: 'Yes, Clear Favorites',
+        }
+      : isViewingDownloaded
+      ? {
+          title: 'Clear Downloaded Books',
+          heading: 'Are you sure you want to clear your downloaded shelf?',
+          description: `This will remove the offline copies for all ${currentShelfBooks.length} downloaded titles to free up device storage. Your books will remain preserved on your personal bookshelf.`,
+          confirmLabel: 'Yes, Clear Downloads',
+        }
+      : !isViewingGeneral && activeShelf && !activeShelf.is_default
+      ? {
+          title: `Clear "${activeShelf.name}" Bookshelf`,
+          heading: `Are you sure you want to clear your "${activeShelf.name}" shelf?`,
+          description: `This will remove all ${currentShelfBooks.length} titles currently on "${activeShelf.name}" from your bookshelf. Titles on your other shelves will not be affected. This action cannot be undone.`,
+          confirmLabel: `Yes, Clear "${activeShelf.name}"`,
+        }
+      : {
+          title: 'Clear Personal Bookshelf',
+          heading: 'Are you sure you want to clear your bookshelf?',
+          description: `This will remove all ${savedBooks.length} titles currently preserved across your personal reading shelves. This action cannot be undone.`,
+          confirmLabel: 'Yes, Clear Shelf',
+        };
+
   if (offlineReaderBookId) {
-    return <BookReaderPage />;
+    return (
+      <React.Suspense fallback={<div className="min-h-screen bg-background" />}>
+        <BookReaderPage />
+      </React.Suspense>
+    );
   }
 
   return (
@@ -571,28 +641,25 @@ function HomeContent() {
             featuredBook={isOffline && resolvedOfflineBooks.length > 0 ? resolvedOfflineBooks[0] : undefined}
             onReadFeaturedBook={(featured) => {
               if (featured) {
-                const authorName =
-                  (featured as { rawBook?: GutendexBook }).rawBook?.authors?.[0]?.name ||
-                  (featured as { author?: string }).author ||
-                  'Classic Masterwork';
-                const bookPayload: GutendexBook = (featured as { rawBook?: GutendexBook }).rawBook || {
+                const featuredMeta = featured as {
+                  rawBook?: GutendexBook;
+                  author?: string;
+                  authorBirthYear?: number;
+                  authorDeathYear?: number;
+                  primarySubject?: string;
+                };
+                const bookPayload: GutendexBook = featuredMeta.rawBook || {
                   id: featured.id,
                   title: featured.title,
                   authors: [
                     {
-                      name: authorName,
-                      birth_year:
-                        (featured as { rawBook?: GutendexBook }).rawBook?.authors?.[0]?.birth_year ??
-                        (featured as { authorBirthYear?: number }).authorBirthYear ??
-                        null,
-                      death_year:
-                        (featured as { rawBook?: GutendexBook }).rawBook?.authors?.[0]?.death_year ??
-                        (featured as { authorDeathYear?: number }).authorDeathYear ??
-                        null,
+                      name: featuredMeta.author || 'Classic Masterwork',
+                      birth_year: featuredMeta.authorBirthYear ?? null,
+                      death_year: featuredMeta.authorDeathYear ?? null,
                     },
                   ],
                   translators: [],
-                  subjects: [(featured as { primarySubject?: string }).primarySubject || 'Classic Literature'],
+                  subjects: [featuredMeta.primarySubject || 'Classic Literature'],
                   bookshelves: [],
                   languages: ['en'],
                   copyright: false,
@@ -608,8 +675,7 @@ function HomeContent() {
               if (targetBook) {
                 useReaderStore.getState().openReader(targetBook);
               }
-              const targetId = targetBook?.id || 1342;
-              router.push(ROUTES.READ(targetId));
+              router.push(ROUTES.READ(targetBook?.id || 1342));
             }}
           />
         )}
@@ -814,50 +880,24 @@ function HomeContent() {
                     setActiveView('catalog');
                   }
                 }}
-                emptyTitle={
-                  collectionSearchQuery.trim()
-                    ? `No volumes found matching "${collectionSearchQuery}"`
-                    : isShelf && (shelfSortBy === 'downloaded' || isViewingDownloaded)
-                    ? 'No downloaded volumes'
-                    : isFavorites && favoritesSortBy === 'downloaded'
-                    ? 'No downloaded favorites'
-                    : viewConfig.emptyTitle
-                }
-                emptyDescription={
-                  collectionSearchQuery.trim()
-                    ? 'Try adjusting your search terms, author name, or clear the search query.'
-                    : isShelf && (shelfSortBy === 'downloaded' || isViewingDownloaded)
-                    ? 'Volumes saved for offline reading will appear here.'
-                    : isFavorites && favoritesSortBy === 'downloaded'
-                    ? 'Favorite volumes saved for offline reading will appear here.'
-                    : viewConfig.emptyDescription
-                }
+                emptyTitle={emptyStateCopy.title}
+                emptyDescription={emptyStateCopy.description}
               />
 
               {/* Pagination for Bookshelf & Favorites (Threshold-based, hides when <= 12 items on mobile or <= 24 on PC) */}
-              {isShelf && (
+              {(isShelf || isFavorites) && (
                 <Pagination
-                  currentPage={safeShelfPage}
-                  totalPages={totalShelfPages}
+                  currentPage={isShelf ? safeShelfPage : safeFavoritesPage}
+                  totalPages={isShelf ? totalShelfPages : totalFavoritesPages}
                   onPageChange={(newPage) => {
-                    setShelfPage(newPage);
+                    if (isShelf) {
+                      setShelfPage(newPage);
+                    } else {
+                      setFavoritesPage(newPage);
+                    }
                     scrollToCollectionContent();
                   }}
-                  totalItems={sortedSavedBooks.length}
-                  pageSize={collectionPageSize}
-                  className="mt-8"
-                />
-              )}
-
-              {isFavorites && (
-                <Pagination
-                  currentPage={safeFavoritesPage}
-                  totalPages={totalFavoritesPages}
-                  onPageChange={(newPage) => {
-                    setFavoritesPage(newPage);
-                    scrollToCollectionContent();
-                  }}
-                  totalItems={sortedFavoriteBooks.length}
+                  totalItems={filteredCollectionBooks.length}
                   pageSize={collectionPageSize}
                   className="mt-8"
                 />
@@ -873,61 +913,56 @@ function HomeContent() {
         {activeView === 'catalog' && !isOffline && <LiteraryQuotes />}
       </main>
 
-      {/* Desktop 3D Open Book Preview Spread Modal (>= 1024px) */}
-      <div className="hidden lg:contents">
-        <BookPreviewModal
-          book={selectedPreviewBook}
-          originRect={previewOriginRect}
-          isOpen={Boolean(selectedPreviewBook)}
-          activeView={activeView}
-          isOffline={selectedPreviewBook ? isBookOffline(selectedPreviewBook.id) : false}
-          isDownloadingOffline={selectedPreviewBook ? downloadingBookId === selectedPreviewBook.id : false}
-          onToggleOffline={handleToggleOffline}
-          onWillClose={() => {
-            setActivePreviewBookId(null);
-          }}
-          onClose={() => {
-            setSelectedPreviewBook(null);
-            setActivePreviewBookId(null);
-            setPreviewOriginRect(null);
-          }}
-          onReadBook={(book) => {
-            setSelectedPreviewBook(null);
-            setActivePreviewBookId(null);
-            setPreviewOriginRect(null);
-            useReaderStore.getState().openReader(book);
-            router.push(ROUTES.READ(book.id));
-          }}
-        />
-      </div>
+      {/* Desktop 3D Open Book Preview Spread Modal (>= 1024px) & Mobile Sheet (< 1024px) */}
+      {(() => {
+        const isPreviewOffline = Boolean(selectedPreviewBook && isBookOffline(selectedPreviewBook.id));
+        const isPreviewDownloading = Boolean(
+          selectedPreviewBook && downloadingBookId === selectedPreviewBook.id
+        );
+        const closePreview = () => {
+          setSelectedPreviewBook(null);
+          setActivePreviewBookId(null);
+          setPreviewOriginRect(null);
+        };
+        const readPreviewBook = (book: GutendexBook) => {
+          closePreview();
+          useReaderStore.getState().openReader(book);
+          router.push(ROUTES.READ(book.id));
+        };
+        return (
+          <>
+            <div className="hidden lg:contents">
+              <BookPreviewModal
+                book={selectedPreviewBook}
+                originRect={previewOriginRect}
+                isOpen={Boolean(selectedPreviewBook)}
+                activeView={activeView}
+                isOffline={isPreviewOffline}
+                isDownloadingOffline={isPreviewDownloading}
+                onToggleOffline={handleToggleOffline}
+                onWillClose={() => setActivePreviewBookId(null)}
+                onClose={closePreview}
+                onReadBook={readPreviewBook}
+              />
+            </div>
 
-      {/* Mobile/Tablet Touch-Friendly Book Action & Curation Sheet (< 1024px) */}
-      <BookshelfMobileModal
-        className="lg:hidden"
-        selectedMobileBook={selectedPreviewBook}
-          onClose={() => {
-            setSelectedPreviewBook(null);
-            setActivePreviewBookId(null);
-            setPreviewOriginRect(null);
-          }}
-          activeView={activeView}
-          onBookClick={(book) => {
-            setSelectedPreviewBook(null);
-            setActivePreviewBookId(null);
-            setPreviewOriginRect(null);
-            useReaderStore.getState().openReader(book);
-            router.push(ROUTES.READ(book.id));
-          }}
-          onDownloadClick={(book) => {
-            setSelectedPreviewBook(null);
-            setActivePreviewBookId(null);
-            setPreviewOriginRect(null);
-            setSelectedDownloadBook(book);
-          }}
-          isOffline={selectedPreviewBook ? isBookOffline(selectedPreviewBook.id) : false}
-          isDownloadingOffline={selectedPreviewBook ? downloadingBookId === selectedPreviewBook.id : false}
-          onToggleOffline={handleToggleOffline}
-        />
+            <BookshelfMobileModal
+              className="lg:hidden"
+              selectedMobileBook={selectedPreviewBook}
+              onClose={closePreview}
+              activeView={activeView}
+              onBookClick={readPreviewBook}
+              onDownloadClick={(book) => {
+                closePreview();
+                setSelectedDownloadBook(book);
+              }}
+              isOffline={isPreviewOffline}
+              isDownloadingOffline={isPreviewDownloading}
+              onToggleOffline={handleToggleOffline}
+            />
+          </>
+        );
+      })()}
 
       {/* Download Hub Drawer */}
       <DownloadDrawer
@@ -959,15 +994,7 @@ function HomeContent() {
       <Modal
         isOpen={confirmClearType !== null}
         onClose={() => setConfirmClearType(null)}
-        title={
-          confirmClearType === 'favorites'
-            ? 'Clear Favorite Books'
-            : isViewingDownloaded
-            ? 'Clear Downloaded Books'
-            : !isViewingGeneral && activeShelf && !activeShelf.is_default
-            ? `Clear "${activeShelf.name}" Bookshelf`
-            : 'Clear Personal Bookshelf'
-        }
+        title={clearModalCopy.title}
         maxWidth="md"
         backdropClassName="bg-transparent backdrop-blur-none"
       >
@@ -978,22 +1005,10 @@ function HomeContent() {
             </div>
             <div className="space-y-1">
               <p className="font-semibold text-foreground text-sm sm:text-base">
-                {confirmClearType === 'favorites'
-                  ? 'Are you sure you want to clear your favorites?'
-                  : isViewingDownloaded
-                  ? 'Are you sure you want to clear your downloaded shelf?'
-                  : !isViewingGeneral && activeShelf && !activeShelf.is_default
-                  ? `Are you sure you want to clear your "${activeShelf.name}" shelf?`
-                  : 'Are you sure you want to clear your bookshelf?'}
+                {clearModalCopy.heading}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                {confirmClearType === 'favorites'
-                  ? `This will remove all ${favoriteBookIds.length} titles from your curated favorites list. This action cannot be undone.`
-                  : isViewingDownloaded
-                  ? `This will remove the offline copies for all ${currentShelfBooks.length} downloaded titles to free up device storage. Your books will remain preserved on your personal bookshelf.`
-                  : !isViewingGeneral && activeShelf && !activeShelf.is_default
-                  ? `This will remove all ${currentShelfBooks.length} titles currently on "${activeShelf.name}" from your bookshelf. Titles on your other shelves will not be affected. This action cannot be undone.`
-                  : `This will remove all ${savedBooks.length} titles currently preserved across your personal reading shelves. This action cannot be undone.`}
+                {clearModalCopy.description}
               </p>
             </div>
           </div>
@@ -1027,13 +1042,7 @@ function HomeContent() {
               }}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              {confirmClearType === 'favorites'
-                ? 'Yes, Clear Favorites'
-                : isViewingDownloaded
-                ? 'Yes, Clear Downloads'
-                : !isViewingGeneral && activeShelf && !activeShelf.is_default
-                ? `Yes, Clear "${activeShelf.name}"`
-                : 'Yes, Clear Shelf'}
+              {clearModalCopy.confirmLabel}
             </Button>
           </div>
         </div>

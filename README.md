@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-189%20Suites%20%7C%201988%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-95.28%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-189%20Suites%20%7C%202006%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.67%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -40,12 +40,55 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 ---
 
+## 📚 Living Documentation & Quality Assurance Matrix
+
+| Document / Artifact | Scope & Verification Status | Live Resource Link |
+|---|---|---|
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2006 tests across 189 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
+| 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
+| 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
+| 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 70 validated ADRs (ADR-001 through ADR-070) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), Tailwind CSS v4 Oxide & supply-chain hardening, WCAG 2.2 AA focus trapping, zero-any TypeScript strictness, overlay dynamic code-splitting, Phase 5 monolith decomposition, canonical auth redirect origin hardening, layered dual-band overlapping highlights, unified overlapping marginalia cards, >= 85% Vitest coverage enforcement, 7-layer author lifespan self-healing, tier-adaptive gliding active underline cradle, unified personal collection 'downloaded' filtering & smart bookshelf, zero-CLS layout stabilization, catalog pagination smooth-scroll stabilization & header brand page-1 reset, tablet bookshelf spine modal & dedicated bookmark resume CTA, dedicated Favorites cover grid, tablet Notebook toolbar & unified active-shelf clear action, 7-pillar SAST & OWASP security suite & zero-warning ESLint gate, interactive in-page row-snapping bookmark & tablet single-column Notebook layout, offline-first PWA resilience, adaptive offline catalog, bi-directional store outbox sync & Project Gutenberg mirror compliance, and reading ledger offline author preservation, merge guardrails & IndexedDB self-healing. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
+| 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
+| 🚀 **CI/CD Pipeline Guide** | Developer runbook and pipeline execution workflows. | [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) |
+| 🛠️ **Developer Maintenance Hub** | Local setup, environment configuration, and contributor commands. | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
+
+---
+
+## 🛡️ The 7-Gateway Quality Engine
+
+The repository enforces a closed-loop quality verification engine before any release or commit:
+
+```
++-----------------------------------------------------------------------------+
+|                     7-GATEWAY CLOSED-LOOP VERIFICATION                      |
++-----------------------------------------------------------------------------+
+| Pass 0.5  | Secret & Boundary   | Scans secrets & client bundle boundaries  |
+| Pass 0.75 | 7-Pillar SAST/OWASP | CVEs, SSRF, XSS, Redirects, RLS & Headers |
+| Pass 1    | TypeScript Engine   | Strict typecheck with 0 compile errors    |
+| Pass 2    | Vitest Server Mocks | Validates MSW v2 handlers and query hooks |
+| Pass 3    | Vitest Client UI    | Unit & integration tests (>= 85% coverage)|
+| Pass 4    | Living Docs Sync    | Auto-updates ARCHITECTURE, AUDIT, & CHANGE|
+| Pass 5    | ADR Validation      | Validates DECISIONS.md sequential schema  |
+| Pass 6    | Quality & Dead Code | ESLint (--max-warnings 0) and Knip audit  |
+| Pass 7    | Production Build    | Compiles Next.js production bundle        |
++-----------------------------------------------------------------------------+
+```
+
+🔒 **Pre-Commit Enforcement**: Any failure in Passes 0.5 through 7 immediately halts execution, outputs exact error telemetry, and automatically blocks the commit from being created.
+
+---
+
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v2.8.1)
 
-- **Offline-First PWA Resilience, Red Offline Account Indicator, Adaptive Offline Catalog & Undownloaded Volume Restriction Parity (`src/hooks/useNetworkStatus.ts`, `src/components/presentation/Navbar.tsx`, `src/components/presentation/CatalogOfflineView.tsx`, `src/app/page.tsx`, `src/components/presentation/DownloadDrawer.tsx`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/BookPreviewModal.tsx`, `src/components/presentation/NotablePassagesSpread.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/presentation/NotebookQuoteCard.tsx`, `src/hooks/reader/useContinueReadingLedger.ts`, `ADR-069`)**: Created `useNetworkStatus` reactive hook (`useSyncExternalStore`); styled the `Navbar` Account link and Guest Sign-In button in red (`destructive`) with a red status dot (`data-testid="navbar-offline-dot"`) when offline and routed offline guests to `/account`; configured the Catalog to automatically serve the user's downloaded books from IndexedDB (powering the 3D Hero spotlight, search, topic/language/era filters, sorting, and `<BookGrid />` with an offline banner) when cached books exist, or `<CatalogOfflineView />` when 0 books are downloaded; added an Offline Mode Notice Banner and format link disabling in `DownloadDrawer`; unified undownloaded offline books (`isUnavailableOffline`) with copyright-restricted books (`isRestricted`) across all viewports with cover/spine dimming (`opacity-65 grayscale-[35%]`), `Not Downloaded` status badges, `Unavailable Offline` notice banners, and disabled `"Read"` / `"Resume"`, `"Save Offline"`, `"Get"` / `<Download />` format drawer triggers, and Notebook `"Read Passage"` buttons; and gated residual background queries while enriching local metadata resolution with `offlineBooks`.
+- **Offline-First PWA Resilience, Red Offline Account Indicator, Adaptive Offline Catalog & Undownloaded Volume Restriction Parity (`src/hooks/useNetworkStatus.ts`, `src/components/presentation/Navbar.tsx`, `src/components/presentation/CatalogOfflineView.tsx`, `src/app/page.tsx`, `src/components/ui/Modal.tsx`, `src/components/presentation/DownloadDrawer.tsx`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/BookPreviewModal.tsx`, `src/components/presentation/NotablePassagesSpread.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/presentation/NotebookQuoteCard.tsx`, `src/hooks/reader/useContinueReadingLedger.ts`, `ADR-069`)**: Created `useNetworkStatus` reactive hook (`useSyncExternalStore`); styled the `Navbar` Account link and Guest Sign-In button in red (`destructive`) with a red status dot (`data-testid="navbar-offline-dot"`) when offline and routed offline guests to `/account`; configured the Catalog to automatically serve the user's downloaded books from IndexedDB (powering the 3D Hero spotlight, search, topic/language/era filters, sorting, and `<BookGrid />` with an offline banner) when cached books exist, or `<CatalogOfflineView />` when 0 books are downloaded; renamed the download modal to `"Download Hub"`, enforced viewport height safety (`max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh]`) in `Modal.tsx`, compacted `DownloadDrawer` with a responsive `sm:grid-cols-2` 2×2 format grid, and added an Offline Mode Notice Banner with format link disabling; unified undownloaded offline books (`isUnavailableOffline`) with copyright-restricted books (`isRestricted`) across all viewports with cover/spine dimming (`opacity-65 grayscale-[35%]`), `Not Downloaded` status badges (deduplicated to the Volume Header in `NotebookView`), `Unavailable Offline` notice banners, and disabled `"Read"` / `"Resume"`, `"Save Offline"`, `"Get"` / `<Download />` format drawer triggers, and Notebook `"Read Passage"` buttons; and gated residual background queries while enriching local metadata resolution with `offlineBooks`.
 - **Secondary Offline Restriction Parity & Profile Resiliency (`src/components/account/AccountSymposiumSection.tsx`, `src/components/reader/ReaderLanguageDrawer.tsx`, `src/components/profile/PublicProfileView.tsx`, `src/app/u/[username]/page.tsx`, `src/app/page.tsx`, `ADR-069`)**: Extended offline parity to Reader Circles, Symposiums, international editions drawer, and scholar profile pages by dimming uncached symposium cards with `Not Downloaded` badges and replacing reader launch links with disabled `Unavailable Offline` buttons; disabled fellow invitations, live symposium launches, and invitation responses when offline; disabled uncached editions in `ReaderLanguageDrawer` while allowing cached editions with `Downloaded` badges; enforced offline fallback on `/u/[username]` and public bookshelves for authenticated scholars with disabled live invitations and disabled uncached shelf links; and enriched favorite books with `offlineBooks` so offline favorites preserve full metadata.
-- **Offline-First Account Hub & Bi-Directional Supabase Outbox Sync (`src/stores/useAuthStore.ts`, `src/stores/useReaderStore.ts`, `src/stores/useAccoladesStore.ts`, `src/stores/useBookshelfStore.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useFellowshipStore.ts`, `src/lib/sync-utils.ts`, `src/app/account/page.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `src/components/account/AccountSecuritySection.tsx`, `ADR-069`)**: Persisted `user`, `profile`, and `pendingProfileUpdates` in `useAuthStore` (`bookarium-auth-profile`) so offline launches preserve auth state and optimistic profile edits flush on reconnect; added `deletedPositionBookIds` tombstones and local-to-cloud `reading_progress` upsert in `useReaderStore.syncWithCloud`; added `pendingPinUpdates` outbox queue in `useAccoladesStore`; added `MOVE_BOOK` and `UPDATE_SHELF` outbox actions in `bookshelf-cloud-sync.ts` and preserved `activeBookshelfId` on `__downloaded__` and custom shelves; added `pendingSymposiumProgress` outbox in `useFellowshipStore`; and enabled `/account` offline for both authenticated scholars and guests while disabling live-only handle, password, deletion, and fellow invite actions.
+- **Offline-First Account Hub & Bi-Directional Supabase Outbox Sync (`src/stores/useAuthStore.ts`, `src/stores/useReaderStore.ts`, `src/stores/useAccoladesStore.ts`, `src/stores/useBookshelfStore.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useFellowshipStore.ts`, `src/lib/sync-utils.ts`, `src/app/account/page.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `src/components/account/AccountSecuritySection.tsx`, `ADR-069`)**: Persisted `user`, `profile`, and `pendingProfileUpdates` in `useAuthStore` (`bookarium-auth-profile`) so offline launches preserve auth state and optimistic profile edits flush on reconnect; added `deletedPositionBookIds` tombstones and local-to-cloud `reading_progress` upsert in `useReaderStore.syncWithCloud`; added `pendingPinUpdates` outbox queue in `useAccoladesStore`; added `MOVE_BOOK` and `UPDATE_SHELF` outbox actions in `bookshelf-cloud-sync.ts` and preserved `activeBookshelfId` on `__downloaded__` and custom shelves; added `pendingSymposiumProgress` outbox in `useFellowshipStore`; and enabled `/account` offline for both authenticated scholars and guests (defaulting to the `Preferences` tab and positioning the offline preferences/habits workspace above the sign-in card for guests) while disabling live-only handle, password, deletion, and fellow invite actions.
 - **Reading Ledger Offline Author Preservation, Merge Guardrails & IndexedDB Self-Healing (`src/hooks/reader/useContinueReadingLedger.ts`, `src/lib/offline-storage.ts`, `src/hooks/useOfflineBooks.ts`, `src/stores/useReaderStore.ts`, `src/stores/useBookshelfStore.ts`, `ADR-070`)**: Resolved the issue where books saved for offline reading reverted to "Anonymous" on page refresh on `/bookmarks` by verifying authentic non-placeholder authors in `missingIds` to trigger background metadata fetching, preventing candidate books with placeholder authors from overwriting authentic domain authors in `setOrMergeBook`, healing placeholder authors in `bookDictionary` using `readingPositions`, resolving authentic authors from local shelf and reader stores before defaulting to "Anonymous" in `getAllOfflineBookMetas()` with asynchronous IndexedDB back-fill (`patchOfflineBookAuthors`), and updating `useReaderStore.enrichReadingPositions`, `saveReadingPosition`, and `useBookshelfStore.enrichSavedBooks` to heal placeholder authors when incoming fresh books provide authentic names without numeric lifespans.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -168,6 +211,9 @@ flowchart TD
     User["👤 Reader / Public Domain Scholar"]
     
     subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]
+        Providers["providers.tsx\n(QueryClient, Auth Init, Cloud Sync & Dynamic AuthModal)"]
+        SWReg["ServiceWorkerRegister.tsx & public/sw.js\n(App Shell v4, Static Asset Warmup & Offline Fallback)"]
+        AuthModalNode["AuthModal.tsx & EmailSentView.tsx\n(Sign-In, Sign-Up, OAuth, Magic Link & Reset)"]
         Nav["Navbar.tsx\n(Brand Reset, View Switcher, Tier-Adaptive Gliding Active Underline Cradle, Theme Cycler)"]
         Hero["HeroSearch.tsx\n(Dynamic 3D Rotating Spotlight & Search)"]
         Hero3D["HeroFeaturedBook3D.tsx\n(3D Open-Cover Hinge & Leaf-Flip Engine)"]
@@ -185,13 +231,15 @@ flowchart TD
         RemoveOfflineModalNode["RemoveOfflineBookModal.tsx\n(Offline Cache Eviction Confirmation)"]
         CatalogOfflineNode["CatalogOfflineView.tsx\n(Offline Catalog Notice & Collection Quick-Links)"]
         SymposiumInviteModalNode["SymposiumInviteModal.tsx\n(1-on-1 Literary Symposium Companion Picker)"]
+        AccoladesEngine["accolades-engine.ts • ExLibrisBookplate.tsx • AccoladeCelebrationModal.tsx"]
+        PublicSanctuaryNodes["PublicProfileView.tsx • PinnedAccoladesShelf.tsx • PrivateProfileNotice.tsx"]
         
         subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]
             Grid["Catalog View (/)\n(Smooth Scroll Navigation, Adaptive Offline Downloaded Dataset, 2-Col Mobile Grid & 3D Hardwood Shelf)"]
             ShelfView["Bookshelf View (/bookshelf)\n(Curated Library, Custom Named Shelves, Downloaded (N) Smart Shelf, Active-Shelf Clear & 12-Book Row Cap)"]
             FavView["Favorites View (/favorites)\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]
-            MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger, Dedicated Resume CTA & 4-State Offline Controls)"]
-            NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections, Tags & Tablet Icon Mode Switcher)"]
+            MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger, Row-Level Line Badges, Dedicated Resume CTA & 4-State Offline Controls)"]
+            NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections, Tags, Single-Column Tablet Grid & Tablet Icon Mode Switcher)"]
             AccView["Account Hub (/account)\n(Library Stats, Cloud Sync & JSON Backup)"]
             PrivacyView["Privacy Architecture (/privacy)\n(Zero-Tracker Manifesto, COPPA/GDPR Art. 8 & Functional Geo-Cookies)"]
             CopyrightView["Copyright Governance (/copyright)\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]
@@ -209,7 +257,7 @@ flowchart TD
             ControlsDrawer["ReaderControls\n(Typography, Speech & Themes)"]
             LangDrawer["ReaderLanguageDrawer\n(International Editions Handoff)"]
             AnnotDrawer["ReaderAnnotationsDrawer\n(In-Volume Highlights, Notes & Deep Links)"]
-            DownDrawer["DownloadDrawer\n(In-App Offline Storage & EPUB/MOBI/TXT Direct Streams)"]
+            DownDrawer["DownloadDrawer\n(Download Hub: Offline Cache & Compact 2x2 Format Grid)"]
         end
         
         subgraph StateStores ["Zustand Persistent State & Offline Engine"]
@@ -222,8 +270,9 @@ flowchart TD
             StoreHabits[("🔥 useHabitsStore\n(streak, 5m threshold, dual immersion, cloud)")]
             StoreAccolades[("🎖️ useAccoladesStore\n(accolades, showcase pinning, celebrations, cloud)")]
             StoreFellowship[("🤝 useFellowshipStore\n(reader circles, symposiums, companion progress, cloud)")]
+            SyncCoordinator["🔄 sync-utils.ts\n(Unified 6-Store Cloud Sync Coordinator)"]
             BookshelfSyncEngine["🔄 bookshelf-cloud-sync.ts\n(Outbox Replay, Tombstone Filtering & Cloud Sync)"]
-            BackupValidator["🛡️ backup-validator.ts\n(Schema v1.0–v2.2 Validation & Sanitization)"]
+            BackupEngine["📦 library-backup.ts & backup-validator.ts\n(Schema v1.0–v2.2 JSON Backup & RFC 4180 CSV)"]
             StoreJurisdiction[("🌐 useJurisdictionStore\n(country, rule, dev override, cookie sync)")]
             StoreOffline[("📦 IndexedDB Engine\n(unabridged offline volume cache)")]
         end
@@ -278,6 +327,10 @@ flowchart TD
     end
 
     User --> RootProxy
+    RootProxy --> Providers
+    Providers --> SWReg
+    Providers --> AuthModalNode
+    Providers --> SyncCoordinator
     RootProxy --> Nav
     RootProxy --> Hero
     Hero --> Hero3D
@@ -316,14 +369,23 @@ flowchart TD
     DownDrawer --> ContentAdvisory
     AccView --> HabitsCard
     AccView --> AccoladesCard
+    AccoladesCard --> AccoladesEngine
     AccView --> SymposiumCard
     AccView --> PrefsCard
-    PrefsCard --> BackupValidator
+    PrefsCard --> BackupEngine
     SymposiumCard --> StoreFellowship
-    ProfilePage --> StoreFellowship
+    ProfilePage --> PublicSanctuaryNodes
+    PublicSanctuaryNodes --> StoreFellowship
+    SyncCoordinator --> StoreShelf
+    SyncCoordinator --> StoreReader
+    SyncCoordinator --> StoreAnnot
+    SyncCoordinator --> StoreHabits
+    SyncCoordinator --> StoreAccolades
+    SyncCoordinator --> StoreFellowship
     StoreShelf --> BookshelfSyncEngine
     BookshelfSyncEngine -->|Cloud Sync via RLS| SupabaseCloud
     StoreFellowship -->|Circles & Symposium Sync| SupabaseCloud
+    StoreAnnot -->|Marginalia & Symposium Sync| SupabaseCloud
     StoreOffline -->|Adaptive Offline Catalog| Grid
     StoreOffline -->|Offline Volumes & Smart Shelf| ShelfView
     StoreOffline -->|Offline Volumes Filter| LedgerHook
@@ -397,7 +459,7 @@ flowchart LR
         ReadingMode["Reading Mode: Paginated | Scroll"]
         Theme["Theme: Light | Dark | Sepia"]
         Progress["Global Page & Book Progress %"]
-        Positions["Reading Positions Map\n(exact chapter & page restore)"]
+        Positions["Reading Positions Map\n(exact chapter, page & row-snapped bookmarkRow)"]
         FellowState["Active Symposium & Companion Coordinates\n(useFellowshipStore)"]
     end
 
@@ -419,7 +481,7 @@ flowchart LR
     subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]
         Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader)"]
         SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]
-        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap & Amber Sentence Highlight)"]
+        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap, Interactive Row-Snapping Page Bookmark & Amber Sentence Highlight)"]
         ProgressBar["Top Reading Progress Indicator"]
         ResumeToast["Exact-Page Auto-Resume Toast"]
         FooterBar["Sticky Bottom Pagination & Page Jump"]
@@ -704,49 +766,6 @@ Bookarium implements a defense-in-depth security model across the edge, serverle
 | `npm run translations:sync` | Clusters multilingual translations across Gutenberg volumes and batch-upserts into Supabase (`--all`, `--limit=N`, `--dry-run`, `--output=file.sql`) |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
-
----
-
-## 🛡️ The 7-Gateway Quality Engine
-
-The repository enforces a closed-loop quality verification engine before any release or commit:
-
-```
-+-----------------------------------------------------------------------------+
-|                     7-GATEWAY CLOSED-LOOP VERIFICATION                      |
-+-----------------------------------------------------------------------------+
-| Pass 0.5  | Secret & Boundary   | Scans secrets & client bundle boundaries  |
-| Pass 0.75 | 7-Pillar SAST/OWASP | CVEs, SSRF, XSS, Redirects, RLS & Headers |
-| Pass 1    | TypeScript Engine   | Strict typecheck with 0 compile errors    |
-| Pass 2    | Vitest Server Mocks | Validates MSW v2 handlers and query hooks |
-| Pass 3    | Vitest Client UI    | Unit & integration tests (>= 85% coverage)|
-| Pass 4    | Living Docs Sync    | Auto-updates ARCHITECTURE, AUDIT, & CHANGE|
-| Pass 5    | ADR Validation      | Validates DECISIONS.md sequential schema  |
-| Pass 6    | Quality & Dead Code | ESLint (--max-warnings 0) and Knip audit  |
-| Pass 7    | Production Build    | Compiles Next.js production bundle        |
-+-----------------------------------------------------------------------------+
-```
-
-🔒 **Pre-Commit Enforcement**: Any failure in Passes 0.5 through 7 immediately halts execution, outputs exact error telemetry, and automatically blocks the commit from being created.
-
----
-
-## 📚 Living Documentation & Quality Assurance Matrix
-
-| Document / Artifact | Scope & Verification Status | Live Resource Link |
-|---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 1988 tests across 189 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
-| 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
-| 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
-| 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
-| 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
-| 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 70 validated ADRs (ADR-001 through ADR-070) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), Tailwind CSS v4 Oxide & supply-chain hardening, WCAG 2.2 AA focus trapping, zero-any TypeScript strictness, overlay dynamic code-splitting, Phase 5 monolith decomposition, canonical auth redirect origin hardening, layered dual-band overlapping highlights, unified overlapping marginalia cards, >= 85% Vitest coverage enforcement, 7-layer author lifespan self-healing, tier-adaptive gliding active underline cradle, unified personal collection 'downloaded' filtering & smart bookshelf, zero-CLS layout stabilization, catalog pagination smooth-scroll stabilization & header brand page-1 reset, tablet bookshelf spine modal & dedicated bookmark resume CTA, dedicated Favorites cover grid, tablet Notebook toolbar & unified active-shelf clear action, 7-pillar SAST & OWASP security suite & zero-warning ESLint gate, interactive in-page row-snapping bookmark & tablet single-column Notebook layout, offline-first PWA resilience, adaptive offline catalog, bi-directional store outbox sync & Project Gutenberg mirror compliance, and reading ledger offline author preservation, merge guardrails & IndexedDB self-healing. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
-| 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
-| 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
-| 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
-| 🚀 **CI/CD Pipeline Guide** | Developer runbook and pipeline execution workflows. | [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) |
-| 🛠️ **Developer Maintenance Hub** | Local setup, environment configuration, and contributor commands. | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
 
 ---
 

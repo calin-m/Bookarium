@@ -60,7 +60,7 @@ function BookReaderContent() {
     typeof window !== 'undefined'
       ? window.location.pathname.split('?')[0].match(/^\/read\/(\d+)(?:\/|$)/)?.[1] || ''
       : '';
-  const bookId = paramBookId || pathnameBookId;
+  const bookId = pathnameBookId || paramBookId;
   const numericId = parseInt(bookId, 10) || 0;
 
   const urlChapter = searchParams.get('chapter');
@@ -284,19 +284,20 @@ function BookReaderContent() {
   const initializedBookIdRef = React.useRef<number | null>(null);
   useEffect(() => {
     if (numericId <= 0) return;
+    const hasLifespans = (
+      authors?: Array<{ birth_year?: number | null; death_year?: number | null }>
+    ) => Boolean(authors?.some((a) => a.birth_year != null || a.death_year != null));
+
     const existingRecent = useBookshelfStore.getState().recentBooks.find((b) => b.id === numericId);
-    const existingRecentHasLifespans = Boolean(
-      existingRecent?.authors?.some((a) => a.birth_year != null || a.death_year != null)
-    );
-    const resolvedHasLifespans = Boolean(
-      resolvedIdentity.authors?.some((a) => a.birth_year != null || a.death_year != null)
-    );
+    const existingRecentHasLifespans = hasLifespans(existingRecent?.authors);
+    const resolvedHasLifespans = hasLifespans(resolvedIdentity.authors);
 
     if (booksData?.results?.[0]) {
       const apiBook = booksData.results[0];
+      const apiBookHasLifespans = hasLifespans(apiBook.authors);
       const needsEnrichment =
         initializedBookIdRef.current !== numericId ||
-        (!existingRecentHasLifespans && apiBook.authors?.some((a) => a.birth_year != null || a.death_year != null));
+        (!existingRecentHasLifespans && apiBookHasLifespans);
 
       if (needsEnrichment) {
         initializedBookIdRef.current = numericId;
@@ -305,11 +306,7 @@ function BookReaderContent() {
         useBookshelfStore.getState().enrichSavedBooks([apiBook]);
         useReaderStore.getState().enrichReadingPositions([apiBook]);
       }
-      if (
-        isContentError &&
-        autoRetriedBookIdRef.current !== numericId &&
-        apiBook.authors?.some((a) => a.birth_year != null || a.death_year != null)
-      ) {
+      if (isContentError && autoRetriedBookIdRef.current !== numericId && apiBookHasLifespans) {
         autoRetriedBookIdRef.current = numericId;
         void refetch();
       }
@@ -317,40 +314,35 @@ function BookReaderContent() {
       resolvedIdentity.title &&
       !isPlaceholderTitle(resolvedIdentity.title) &&
       (!existingRecent || isPlaceholderTitle(existingRecent.title)) &&
-      (resolvedHasLifespans || !existingRecentHasLifespans)
+      (initializedBookIdRef.current !== numericId ||
+        (resolvedHasLifespans && !existingRecentHasLifespans))
     ) {
-      if (
-        initializedBookIdRef.current !== numericId ||
-        (resolvedHasLifespans && !existingRecentHasLifespans)
-      ) {
-        initializedBookIdRef.current = numericId;
-        const bookObj: GutendexBook = {
-          id: numericId,
-          title: resolvedIdentity.title,
-          authors:
-            resolvedIdentity.authors && resolvedIdentity.authors.length > 0
-              ? resolvedIdentity.authors
-              : resolvedIdentity.author
-              ? [{ name: resolvedIdentity.author, birth_year: null, death_year: null }]
-              : [],
-          translators: resolvedIdentity.translators || [],
-          subjects: resolvedIdentity.primarySubject ? [resolvedIdentity.primarySubject] : [],
-          bookshelves: [],
-          languages: resolvedIdentity.languages || ['en'],
-          copyright: false,
-          media_type: 'Text',
-          formats: {
-            'image/jpeg': `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.cover.medium.jpg`,
-            'application/epub+zip': `https://www.gutenberg.org/ebooks/${numericId}.epub3.images`,
-          },
-          download_count: 0,
-        };
-        useBookshelfStore.getState().addRecentBook(bookObj);
-        useReaderStore.getState().openReader(bookObj);
-        if (resolvedHasLifespans) {
-          useBookshelfStore.getState().enrichSavedBooks([bookObj]);
-          useReaderStore.getState().enrichReadingPositions([bookObj]);
-        }
+      initializedBookIdRef.current = numericId;
+      const bookObj: GutendexBook = {
+        id: numericId,
+        title: resolvedIdentity.title,
+        authors: resolvedIdentity.authors?.length
+          ? resolvedIdentity.authors
+          : resolvedIdentity.author
+          ? [{ name: resolvedIdentity.author, birth_year: null, death_year: null }]
+          : [],
+        translators: resolvedIdentity.translators || [],
+        subjects: resolvedIdentity.primarySubject ? [resolvedIdentity.primarySubject] : [],
+        bookshelves: [],
+        languages: resolvedIdentity.languages || ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {
+          'image/jpeg': `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.cover.medium.jpg`,
+          'application/epub+zip': `https://www.gutenberg.org/ebooks/${numericId}.epub3.images`,
+        },
+        download_count: 0,
+      };
+      useBookshelfStore.getState().addRecentBook(bookObj);
+      useReaderStore.getState().openReader(bookObj);
+      if (resolvedHasLifespans) {
+        useBookshelfStore.getState().enrichSavedBooks([bookObj]);
+        useReaderStore.getState().enrichReadingPositions([bookObj]);
       }
     }
   }, [numericId, booksData, resolvedIdentity, isContentError, refetch]);
@@ -379,22 +371,27 @@ function BookReaderContent() {
   const setReadingStatus = useBookshelfStore((s) => s.setReadingStatus);
   const setBookRating = useBookshelfStore((s) => s.setBookRating);
 
+  const resolveReflowedAnnotationPage = useCallback(
+    (chapterIndex: number, fallbackPage: number, selectedText: string): number => {
+      const chapter = chaptersWithPagination[chapterIndex];
+      const foundIdx = chapter?.pages?.findIndex((p) => p.includes(selectedText)) ?? -1;
+      return foundIdx !== -1 ? foundIdx + 1 : fallbackPage;
+    },
+    [chaptersWithPagination]
+  );
+
   // Resolve dynamic initial position from URL params or targeted annotation (with font reflow healing)
   const initialPosition = useMemo(() => {
     if (urlAnnotationId) {
       const ann = annotations.find((a) => a.id === urlAnnotationId);
       if (ann) {
-        let targetPage = ann.chapterPage;
-        const chapter = chaptersWithPagination[ann.chapterIndex];
-        if (chapter?.pages && chapter.pages.length > 0) {
-          const foundIdx = chapter.pages.findIndex((p) => p.includes(ann.selectedText));
-          if (foundIdx !== -1) {
-            targetPage = foundIdx + 1;
-          }
-        }
         return {
           chapterIndex: ann.chapterIndex,
-          chapterPage: targetPage,
+          chapterPage: resolveReflowedAnnotationPage(
+            ann.chapterIndex,
+            ann.chapterPage,
+            ann.selectedText
+          ),
         };
       }
     }
@@ -409,7 +406,7 @@ function BookReaderContent() {
       }
     }
     return null;
-  }, [urlAnnotationId, urlChapter, urlPage, annotations, chaptersWithPagination]);
+  }, [urlAnnotationId, urlChapter, urlPage, annotations, resolveReflowedAnnotationPage]);
 
   const {
     activeChapterIndex,
@@ -446,16 +443,13 @@ function BookReaderContent() {
     const ann = annotations.find((a) => a.id === urlAnnotationId);
     if (!ann) return;
 
-    let targetPage = ann.chapterPage;
-    const chapter = chaptersWithPagination[ann.chapterIndex];
-    if (chapter?.pages && chapter.pages.length > 0) {
-      const foundIdx = chapter.pages.findIndex((p) => p.includes(ann.selectedText));
-      if (foundIdx !== -1) {
-        targetPage = foundIdx + 1;
-      }
-    }
+    const targetPage = resolveReflowedAnnotationPage(
+      ann.chapterIndex,
+      ann.chapterPage,
+      ann.selectedText
+    );
     jumpTo(ann.chapterIndex, targetPage);
-  }, [urlAnnotationId, chaptersWithPagination, annotations, jumpTo]);
+  }, [urlAnnotationId, chaptersWithPagination.length, annotations, resolveReflowedAnnotationPage, jumpTo]);
 
   const activeChapterAnnotations = useMemo(() => {
     return bookAnnotations.filter((a) => a.chapterIndex === activeChapterIndex);
@@ -618,22 +612,12 @@ function BookReaderContent() {
   const handleTextSelected = useCallback(
     (selection: { text: string; position: { top: number; left: number; bottom?: number } }) => {
       const trimmed = selection.text.trim();
-      const ownMatch =
-        activeChapterAnnotations.find(
-          (a) =>
-            a.selectedText.trim() === trimmed ||
-            a.selectedText === selection.text ||
-            a.selectedText.trim().includes(trimmed) ||
-            trimmed.includes(a.selectedText.trim())
-        ) || null;
-      const fellowMatch =
-        activeChapterFellowAnnotations.find(
-          (a) =>
-            a.selectedText.trim() === trimmed ||
-            a.selectedText === selection.text ||
-            a.selectedText.trim().includes(trimmed) ||
-            trimmed.includes(a.selectedText.trim())
-        ) || null;
+      const matchesPassage = (a: { selectedText: string }) => {
+        const candidate = a.selectedText.trim();
+        return candidate.includes(trimmed) || trimmed.includes(candidate);
+      };
+      const ownMatch = activeChapterAnnotations.find(matchesPassage) || null;
+      const fellowMatch = activeChapterFellowAnnotations.find(matchesPassage) || null;
       setSelectionPopover({
         isOpen: true,
         selectedText: selection.text,
@@ -674,6 +658,27 @@ function BookReaderContent() {
     [activeChapterAnnotations, activeChapterFellowAnnotations]
   );
 
+  const saveNewBookAnnotation = useCallback(
+    async (params: {
+      chapterIndex: number;
+      chapterPage: number;
+      selectedText: string;
+      color: HighlightColor;
+      note?: string;
+    }) => {
+      await addAnnotation(
+        {
+          bookId: numericId,
+          bookTitle: resolvedIdentity.title,
+          bookAuthor: resolvedIdentity.author,
+          ...params,
+        },
+        user?.id
+      );
+    },
+    [addAnnotation, numericId, resolvedIdentity.title, resolvedIdentity.author, user?.id]
+  );
+
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
       if (selectionPopover.activeAnnotation) {
@@ -683,31 +688,22 @@ function BookReaderContent() {
           user?.id
         );
       } else {
-        await addAnnotation(
-          {
-            bookId: numericId,
-            bookTitle: resolvedIdentity.title,
-            bookAuthor: resolvedIdentity.author,
-            chapterIndex: activeChapterIndex,
-            chapterPage: currentChapterPage,
-            selectedText: selectionPopover.selectedText,
-            color,
-          },
-          user?.id
-        );
+        await saveNewBookAnnotation({
+          chapterIndex: activeChapterIndex,
+          chapterPage: currentChapterPage,
+          selectedText: selectionPopover.selectedText,
+          color,
+        });
       }
       setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
     },
     [
       selectionPopover.activeAnnotation,
       selectionPopover.selectedText,
-      numericId,
-      resolvedIdentity.title,
-      resolvedIdentity.author,
       activeChapterIndex,
       currentChapterPage,
       updateAnnotationColor,
-      addAnnotation,
+      saveNewBookAnnotation,
       user?.id,
     ]
   );
@@ -717,19 +713,13 @@ function BookReaderContent() {
       if (selectionPopover.activeAnnotation) {
         await updateAnnotationNote(selectionPopover.activeAnnotation.id, note, user?.id);
       } else {
-        await addAnnotation(
-          {
-            bookId: numericId,
-            bookTitle: resolvedIdentity.title,
-            bookAuthor: resolvedIdentity.author,
-            chapterIndex: activeChapterIndex,
-            chapterPage: currentChapterPage,
-            selectedText: selectionPopover.selectedText,
-            color: 'yellow',
-            note,
-          },
-          user?.id
-        );
+        await saveNewBookAnnotation({
+          chapterIndex: activeChapterIndex,
+          chapterPage: currentChapterPage,
+          selectedText: selectionPopover.selectedText,
+          color: 'yellow',
+          note,
+        });
       }
       setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
     },
@@ -737,10 +727,7 @@ function BookReaderContent() {
       selectionPopover.activeAnnotation,
       selectionPopover.selectedText,
       updateAnnotationNote,
-      addAnnotation,
-      numericId,
-      resolvedIdentity.title,
-      resolvedIdentity.author,
+      saveNewBookAnnotation,
       activeChapterIndex,
       currentChapterPage,
       user?.id,
@@ -985,13 +972,7 @@ function BookReaderContent() {
               bookAnnotations.find((a) => a.id === annotationId) ||
               bookFellowAnnotations.find((a) => a.id === annotationId);
             if (ann) {
-              const chap = chaptersWithPagination[chapterIdx];
-              if (chap?.pages && chap.pages.length > 0) {
-                const foundIdx = chap.pages.findIndex((p) => p.includes(ann.selectedText));
-                if (foundIdx !== -1) {
-                  targetPage = foundIdx + 1;
-                }
-              }
+              targetPage = resolveReflowedAnnotationPage(chapterIdx, page, ann.selectedText);
             }
             setActiveAnnotationTargetId(annotationId);
           }
@@ -1001,19 +982,13 @@ function BookReaderContent() {
         onDeleteAnnotation={(id) => deleteAnnotation(id, user?.id)}
         onUpdateNote={(id, note) => updateAnnotationNote(id, note, user?.id)}
         onSaveFellowAnnotation={async (fellow, noteText, color) => {
-          await addAnnotation(
-            {
-              bookId: numericId,
-              bookTitle: resolvedIdentity.title,
-              bookAuthor: resolvedIdentity.author,
-              chapterIndex: fellow.chapterIndex,
-              chapterPage: fellow.chapterPage,
-              selectedText: fellow.selectedText,
-              color: color || 'yellow',
-              note: noteText,
-            },
-            user?.id
-          );
+          await saveNewBookAnnotation({
+            chapterIndex: fellow.chapterIndex,
+            chapterPage: fellow.chapterPage,
+            selectedText: fellow.selectedText,
+            color: color || 'yellow',
+            note: noteText,
+          });
         }}
       />
 

@@ -4,11 +4,12 @@
  * and seamless fallback for saved IndexedDB book reading in offline mode.
  */
 
-const CACHE_NAME = 'bookarium-app-shell-v3';
+const CACHE_NAME = 'bookarium-app-shell-v4';
 
 const STATIC_PRECACHE = [
   '/',
   '/account',
+  '/read/1342',
   '/manifest.webmanifest',
   '/favicon.ico',
   '/icon.svg',
@@ -18,11 +19,68 @@ const STATIC_PRECACHE = [
   '/icons/icon-maskable-512.png',
 ];
 
+/**
+ * Extracts Next.js static chunk, stylesheet, and font URLs referenced inside an HTML document.
+ */
+function extractStaticAssetUrlsFromHtml(htmlText) {
+  if (!htmlText || typeof htmlText !== 'string') return [];
+  const discovered = new Set();
+
+  const directMatches = htmlText.match(/\/_next\/static\/[^"'\s<>\\]+\.(?:js|css|woff2)/g) || [];
+  for (const raw of directMatches) {
+    discovered.add(raw);
+  }
+
+  const flightChunkMatches = htmlText.match(/static\/chunks\/[^"'\s<>\\]+\.(?:js|css)/g) || [];
+  for (const raw of flightChunkMatches) {
+    discovered.add(`/_next/${raw}`);
+  }
+
+  return Array.from(discovered);
+}
+
+/**
+ * Caches any uncached Next.js static assets discovered inside an HTML response.
+ */
+async function warmStaticAssetsFromHtmlResponse(cache, response) {
+  try {
+    if (!response) return;
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('text/html')) return;
+
+    const htmlText = await response.clone().text();
+    const assetUrls = extractStaticAssetUrlsFromHtml(htmlText);
+    for (const assetUrl of assetUrls) {
+      try {
+        const existingAsset = await cache.match(assetUrl);
+        if (!existingAsset) {
+          const assetResp = await fetch(assetUrl, { credentials: 'same-origin' });
+          if (assetResp && assetResp.status === 200) {
+            await cache.put(assetUrl, assetResp);
+          }
+        }
+      } catch {
+        // Ignore individual chunk warm failures
+      }
+    }
+  } catch {
+    // Non-blocking HTML asset extraction fallback
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(STATIC_PRECACHE))
+      .then(async (cache) => {
+        await cache.addAll(STATIC_PRECACHE);
+        for (const htmlRoute of ['/', '/account', '/read/1342']) {
+          const cachedHtml = await cache.match(htmlRoute, { ignoreSearch: true });
+          if (cachedHtml) {
+            await warmStaticAssetsFromHtmlResponse(cache, cachedHtml);
+          }
+        }
+      })
       .then(() => self.skipWaiting())
       .catch(() => {
         // Non-blocking install fallback
@@ -61,8 +119,11 @@ self.addEventListener('message', (event) => {
             if (!existing) {
               const response = await fetch(rawUrl, { credentials: 'same-origin' });
               if (response && response.status === 200) {
-                await cache.put(rawUrl, response);
+                await cache.put(rawUrl, response.clone());
+                await warmStaticAssetsFromHtmlResponse(cache, response);
               }
+            } else {
+              await warmStaticAssetsFromHtmlResponse(cache, existing);
             }
           } catch {
             // Ignore individual asset warm failures
@@ -116,7 +177,11 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           if (response && response.status === 200 && !isPrivateAuthRoute) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            const warmCopy = response.clone();
+            caches.open(CACHE_NAME).then(async (cache) => {
+              await cache.put(request, copy);
+              await warmStaticAssetsFromHtmlResponse(cache, warmCopy);
+            });
           }
           return response;
         })
@@ -129,6 +194,15 @@ self.addEventListener('fetch', (event) => {
               const contentType = cachedWithoutSearch.headers.get('content-type') || '';
               if (contentType.includes('text/html')) {
                 return cachedWithoutSearch;
+              }
+            }
+            if (url.pathname.startsWith('/read/')) {
+              const cachedReaderShell = await caches.match('/read/1342', { ignoreSearch: true });
+              if (cachedReaderShell) {
+                const readerCt = cachedReaderShell.headers.get('content-type') || '';
+                if (readerCt.includes('text/html')) {
+                  return cachedReaderShell;
+                }
               }
             }
           }

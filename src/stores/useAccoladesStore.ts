@@ -135,7 +135,7 @@ export const useAccoladesStore = create<AccoladesState>()(
           if (userId) {
             if (typeof navigator !== 'undefined' && navigator.onLine === false) {
               set((s) => ({
-                pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: false },
+                pendingPinUpdates: { ...s.pendingPinUpdates, [id]: false },
               }));
               return true;
             }
@@ -148,12 +148,12 @@ export const useAccoladesStore = create<AccoladesState>()(
                 .eq('accolade_id', id);
               if (error) {
                 set((s) => ({
-                  pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: false },
+                  pendingPinUpdates: { ...s.pendingPinUpdates, [id]: false },
                 }));
               }
             } catch {
               set((s) => ({
-                pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: false },
+                pendingPinUpdates: { ...s.pendingPinUpdates, [id]: false },
               }));
             }
           }
@@ -180,7 +180,7 @@ export const useAccoladesStore = create<AccoladesState>()(
           if (userId) {
             if (typeof navigator !== 'undefined' && navigator.onLine === false) {
               set((s) => ({
-                pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: true },
+                pendingPinUpdates: { ...s.pendingPinUpdates, [id]: true },
               }));
               return true;
             }
@@ -193,12 +193,12 @@ export const useAccoladesStore = create<AccoladesState>()(
                 .eq('accolade_id', id);
               if (error) {
                 set((s) => ({
-                  pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: true },
+                  pendingPinUpdates: { ...s.pendingPinUpdates, [id]: true },
                 }));
               }
             } catch {
               set((s) => ({
-                pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: true },
+                pendingPinUpdates: { ...s.pendingPinUpdates, [id]: true },
               }));
             }
           }
@@ -215,7 +215,7 @@ export const useAccoladesStore = create<AccoladesState>()(
         try {
           const supabase = createClient();
 
-          const pendingPins = { ...(get().pendingPinUpdates || {}) };
+          const pendingPins = { ...get().pendingPinUpdates };
           const pendingEntries = Object.entries(pendingPins);
           if (pendingEntries.length > 0) {
             for (const [accId, isPinnedVal] of pendingEntries) {

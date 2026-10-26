@@ -1003,7 +1003,7 @@ describe('useReaderStore', () => {
       useAuthStore.setState({ user: null });
     });
 
-    it('enriches Anonymous or missing authors in readingPositions when fresh book arrives with authentic authors without lifespans', () => {
+    it('enriches Anonymous or missing authors in readingPositions when fresh book arrives with authentic authors without lifespans', async () => {
       useReaderStore.setState({
         readingPositions: {
           500: {
@@ -1047,6 +1047,79 @@ describe('useReaderStore', () => {
       });
 
       expect(useReaderStore.getState().getReadingPosition(500)?.bookAuthors).toEqual(['Doyle, Arthur Conan']);
+
+      // openReader(null) early guard & saveReadingPosition with currentBook matching bookId and posAuthorsMissingOrPlaceholder
+      useReaderStore.getState().openReader(null as any);
+      useReaderStore.setState({
+        currentBook: {
+          id: 500,
+          title: 'A Study in Scarlet',
+          authors: [{ name: 'Doyle, Arthur Conan', birth_year: null, death_year: null }],
+          formats: { 'image/jpeg': 'https://example.com/500.jpg' },
+        } as any,
+      });
+      useReaderStore.getState().saveReadingPosition(500, {
+        chapterIndex: 3,
+        chapterPage: 1,
+        globalPage: 15,
+        lastReadAt: '2026-10-03T10:00:00.000Z',
+        bookTitle: 'A Study in Scarlet',
+        bookAuthors: ['Anonymous'],
+      });
+      expect(useReaderStore.getState().getReadingPosition(500)?.bookAuthors).toEqual(['Doyle, Arthur Conan']);
+      expect(useReaderStore.getState().getReadingPosition(500)?.coverUrl).toBe('https://example.com/500.jpg');
+
+      // clearReadingPosition when online and Supabase delete returns an error or throws -> records tombstone
+      mockFrom.mockReturnValueOnce({
+        delete: () => ({
+          eq: () => ({
+            eq: () => Promise.resolve({ error: new Error('RLS error') }),
+          }),
+        }),
+      });
+      await useReaderStore.getState().clearReadingPosition(500, 'user-err-1');
+      expect(useReaderStore.getState().deletedPositionBookIds).toContain(500);
+
+      mockFrom.mockReturnValueOnce({
+        delete: () => {
+          throw new Error('Connection lost');
+        },
+      });
+      await useReaderStore.getState().clearReadingPosition(501, 'user-err-1');
+      expect(useReaderStore.getState().deletedPositionBookIds).toContain(501);
+
+      // clearAllVolumes when Supabase delete throws
+      mockFrom.mockReturnValueOnce({
+        delete: () => {
+          throw new Error('Delete all failed');
+        },
+      });
+      await useReaderStore.getState().clearAllVolumes('user-err-1');
+      expect(useReaderStore.getState().deletedPositionBookIds).toEqual([]);
+
+      // SSR renderToString coverage for hydration-guarded hooks (hasMounted === false)
+      const React = await import('react');
+      const { renderToString } = await import('react-dom/server');
+      const { useHydratedBookshelf, useSavedBooksCount, useIsBookSaved, useBookCuration } = await import('./useBookshelfStore');
+      const { useHydratedAnnotations } = await import('./useAnnotationStore');
+      const { useHydratedFellowship } = await import('./useFellowshipStore');
+
+      function SsrProbe() {
+        const reader = useHydratedReader();
+        const shelf = useHydratedBookshelf();
+        const savedCount = useSavedBooksCount();
+        const isSaved = useIsBookSaved(1342);
+        const curation = useBookCuration(1342);
+        const anns = useHydratedAnnotations();
+        const fellowship = useHydratedFellowship();
+        return React.createElement(
+          'div',
+          null,
+          `${reader.hasMounted}-${shelf.isSaved(1342)}-${shelf.isFavorite(1342)}-${savedCount}-${isSaved}-${curation.rating}-${anns.annotations.length}-${fellowship.circles.length}`
+        );
+      }
+      const html = renderToString(React.createElement(SsrProbe));
+      expect(html).toContain('false-false-false-0-false-null-0-0');
     });
   });
 });

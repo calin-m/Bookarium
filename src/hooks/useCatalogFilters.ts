@@ -79,7 +79,7 @@ export function parseFiltersFromUrl(
     }
   }
 
-  const pathSegment = (p || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+  const pathSegment = p.replace(/^\/+|\/+$/g, '').toLowerCase();
 
   let pathView: CatalogView | undefined = undefined;
   if (pathSegment && ['catalog', 'bookshelf', 'favorites', 'notebook', 'bookmarks'].includes(pathSegment)) {
@@ -89,7 +89,7 @@ export function parseFiltersFromUrl(
 
   const rawPage = sp?.get('page');
   const parsedPage = rawPage ? parseInt(rawPage, 10) : undefined;
-  const validPage = parsedPage && !isNaN(parsedPage) && parsedPage >= 1 ? parsedPage : undefined;
+  const validPage = parsedPage && parsedPage >= 1 ? parsedPage : undefined;
 
   const rawSize = sp?.get('size');
   let parsedSize: number | undefined = undefined;
@@ -156,13 +156,11 @@ export function useCatalogFilters() {
   const [prevPageSize, setPrevPageSize] = useState(pageSize);
 
   // Translate page coordinates upon responsive breakpoint change to prevent redundant API fetches and preserve reading position
-  if (hasMounted && prevPageSize !== pageSize) {
+  if (prevPageSize !== pageSize) {
     setPrevPageSize(pageSize);
     const currentFirstBookIndex = (page - 1) * prevPageSize;
     const newPage = Math.max(1, Math.floor(currentFirstBookIndex / pageSize) + 1);
     setPage(newPage);
-  } else if (!hasMounted && prevPageSize !== pageSize) {
-    setPrevPageSize(pageSize);
   }
 
   // Sync state to URL search parameters and clean path without page reload (after hydration)
@@ -278,42 +276,45 @@ export function useCatalogFilters() {
     if (search) {
       chips.push({ id: 'search', label: `Search: "${search}"`, type: 'search' });
     }
-    if (topic) {
-      const topicList = topic.split(',').map((t) => t.trim()).filter(Boolean);
-      if (topicList.length === 1) {
-        const facet = GENRE_FACETS.find((f) => f.id === topicList[0]);
-        chips.push({ id: 'topic', label: facet ? facet.label : topicList[0], type: 'topic' });
-      } else if (topicList.length > 1) {
-        chips.push({ id: 'topic', label: `${topicList.length} Subjects`, type: 'topic' });
-      }
-    }
-    if (language) {
-      const langCodes = language.split(',').map((l) => l.trim()).filter(Boolean);
-      if (langCodes.length === 1) {
-        const lang = CATALOG_LANGUAGES.find((l) => l.value === langCodes[0]);
-        chips.push({ id: 'language', label: lang ? lang.label : langCodes[0].toUpperCase(), type: 'language' });
-      } else if (langCodes.length > 1) {
-        chips.push({ id: 'language', label: `${langCodes.length} Languages`, type: 'language' });
-      }
-    }
-    if (era) {
-      const eraList = era.split(',').map((e) => e.trim()).filter(Boolean);
-      if (eraList.length === 1) {
-        const eraObj = LITERARY_ERAS.find((e) => e.id === eraList[0]);
-        chips.push({ id: 'era', label: eraObj ? eraObj.label : eraList[0], type: 'era' });
-      } else if (eraList.length > 1) {
-        chips.push({ id: 'era', label: `${eraList.length} Historical Eras`, type: 'era' });
-      }
-    }
-    if (format) {
-      const formatList = format.split(',').map((f) => f.trim()).filter(Boolean);
-      if (formatList.length === 1) {
-        const fmt = FORMAT_FILTERS.find((f) => f.value === formatList[0]);
-        chips.push({ id: 'format', label: fmt ? fmt.label : 'Format Filter', type: 'format' });
-      } else if (formatList.length > 1) {
-        chips.push({ id: 'format', label: `${formatList.length} Formats`, type: 'format' });
-      }
-    }
+
+    const pushMultiChip = (
+      raw: string,
+      id: ActiveFilterChip['type'],
+      resolveSingleLabel: (val: string) => string,
+      pluralSuffix: string
+    ) => {
+      if (!raw) return;
+      const list = raw.split(',').map((v) => v.trim()).filter(Boolean);
+      if (list.length === 0) return;
+      const label =
+        list.length === 1 ? resolveSingleLabel(list[0]) : `${list.length} ${pluralSuffix}`;
+      chips.push({ id, label, type: id });
+    };
+
+    pushMultiChip(
+      topic,
+      'topic',
+      (val) => GENRE_FACETS.find((f) => f.id === val)?.label || val,
+      'Subjects'
+    );
+    pushMultiChip(
+      language,
+      'language',
+      (val) => CATALOG_LANGUAGES.find((l) => l.value === val)?.label || val.toUpperCase(),
+      'Languages'
+    );
+    pushMultiChip(
+      era,
+      'era',
+      (val) => LITERARY_ERAS.find((e) => e.id === val)?.label || val,
+      'Historical Eras'
+    );
+    pushMultiChip(
+      format,
+      'format',
+      (val) => FORMAT_FILTERS.find((f) => f.value === val)?.label || 'Format Filter',
+      'Formats'
+    );
 
     return chips;
   }, [search, topic, language, era, format]);

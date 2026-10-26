@@ -74,12 +74,12 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isRestricted ? 'Regional Copyright Notice' : 'Zero-Copyright Download Hub'}
+      title={isRestricted ? 'Regional Copyright Notice' : 'Download Hub'}
       maxWidth="lg"
     >
-      <div className="p-6 space-y-6 bg-card text-foreground">
+      <div className="p-4 sm:p-5 space-y-3.5 sm:space-y-4 bg-card text-foreground">
         {/* Book Slip Header Summary */}
-        <div className="p-4 rounded-xl bg-card border border-border shadow-xs space-y-1.5">
+        <div className="p-3 rounded-xl bg-muted/25 border border-border shadow-xs space-y-1">
           <div className="flex items-center gap-2">
             {isRestricted ? (
               <Badge variant="outline" size="sm" className="gap-1 text-[10px] font-mono bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
@@ -92,12 +92,12 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                 Public Domain
               </Badge>
             )}
-            <span className="font-mono text-[11px] text-muted-foreground">ID #{book.id}</span>
+            <span className="font-mono text-[10px] sm:text-[11px] text-muted-foreground">ID #{book.id}</span>
           </div>
-          <h3 className="font-serif font-bold text-base text-foreground">
+          <h3 className="font-serif font-bold text-sm sm:text-base text-foreground line-clamp-1">
             {book.title}
           </h3>
-          <p className="text-xs text-muted-foreground font-serif italic">
+          <p className="text-[11px] sm:text-xs text-muted-foreground font-serif italic line-clamp-1">
             By {formatAuthorNames(book.authors) || 'Anonymous'}
           </p>
         </div>
@@ -119,19 +119,19 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
           />
         ) : (
           /* Formats List */
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-3.5">
             {isNetworkOffline && (
               <div
                 role="status"
                 data-testid="download-drawer-offline-mode-banner"
-                className="flex items-start gap-3 p-3.5 rounded-xl border border-destructive/40 bg-destructive/10 text-destructive shadow-xs"
+                className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-xl border border-destructive/40 bg-destructive/10 text-destructive shadow-xs"
               >
                 <WifiOff className="w-4 h-4 shrink-0 mt-0.5 text-destructive" />
-                <div className="space-y-0.5 text-xs">
+                <div className="space-y-0.5 text-[11px] sm:text-xs">
                   <p className="font-mono font-bold uppercase tracking-wider">
                     Offline Mode Active
                   </p>
-                  <p className="text-foreground/90 font-sans leading-relaxed">
+                  <p className="text-foreground/90 font-sans leading-snug">
                     External format downloads (.epub, .mobi, .txt, .html) and new offline saves require an internet connection. You can only remove already-downloaded books from your local cache while offline.
                   </p>
                 </div>
@@ -139,12 +139,12 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
             )}
 
             {/* In-App Browser Offline Reading Cache */}
-            <div className="space-y-2">
-              <h4 className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+            <div className="space-y-1.5">
+              <h4 className="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
                 In-App Offline Reading
               </h4>
               <div
-                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all gap-3 shadow-xs ${
+                className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-all gap-2.5 sm:gap-3 shadow-xs ${
                   isOffline
                     ? 'border-emerald-500/40 bg-emerald-500/5'
                     : isNetworkOffline
@@ -153,9 +153,9 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                 }`}
                 data-testid="download-drawer-offline-card"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className={`p-2 rounded-lg shrink-0 ${
+                    className={`p-1.5 sm:p-2 rounded-lg shrink-0 ${
                       isOffline ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-primary'
                     }`}
                   >
@@ -166,7 +166,7 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <span className="text-xs sm:text-sm font-serif font-semibold text-foreground">
                         Browser Offline Cache
                       </span>
@@ -180,12 +180,12 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground font-sans truncate">
+                    <p className="text-[10px] sm:text-[11px] text-muted-foreground font-sans truncate">
                       {isOffline
                         ? 'Cached in browser storage for instant offline reading in Bookarium.'
                         : isNetworkOffline
-                          ? 'Connect to the internet to save this volume for offline reading.'
-                          : 'Save directly in your browser to read inside Bookarium without internet.'}
+                           ? 'Connect to the internet to save this volume for offline reading.'
+                           : 'Save directly in your browser to read inside Bookarium without internet.'}
                     </p>
                   </div>
                 </div>
@@ -230,76 +230,84 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
               </div>
             </div>
 
-            <div className="space-y-2.5">
-              <h4 className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+            <div className="space-y-1.5">
+              <h4 className="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
                 Available Zero-DRM Formats
               </h4>
 
-            {downloadOptions.map((option) => (
               <div
-                key={option.format}
-                data-testid={`download-format-row-${option.extension}`}
-                className={`flex items-center justify-between p-3.5 rounded-xl border border-border bg-card transition-all gap-3 shadow-xs ${
-                  isNetworkOffline
-                    ? 'opacity-50 pointer-events-none select-none'
-                    : 'hover:border-primary/50'
-                }`}
+                data-testid="download-formats-grid"
+                className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-muted shrink-0">
-                    {option.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs sm:text-sm font-serif font-semibold text-foreground">
-                        {option.format}
-                      </span>
-                      {option.recommended && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-primary/10 text-primary font-bold">
-                          Default
-                        </span>
+                {downloadOptions.map((option) => (
+                  <div
+                    key={option.format}
+                    data-testid={`download-format-row-${option.extension}`}
+                    className={`flex items-center justify-between sm:flex-col sm:items-stretch sm:justify-between p-2.5 sm:p-3 rounded-xl border border-border bg-card transition-all gap-2.5 shadow-xs ${
+                      isNetworkOffline
+                        ? 'opacity-50 pointer-events-none select-none'
+                        : 'hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center sm:items-start gap-2.5 min-w-0">
+                      <div className="p-1.5 sm:p-2 rounded-lg bg-muted shrink-0">
+                        {option.icon}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-serif font-semibold text-foreground">
+                            {option.format}
+                          </span>
+                          <span className="px-1 py-0.2 rounded text-[9px] font-mono bg-muted text-muted-foreground">
+                            {option.extension}
+                          </span>
+                          {option.recommended && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-primary/10 text-primary font-bold">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] sm:text-[11px] text-muted-foreground font-sans truncate sm:whitespace-normal sm:line-clamp-2 sm:mt-0.5 leading-snug">
+                          {option.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 sm:pt-1 sm:flex sm:justify-end">
+                      {isNetworkOffline ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled
+                          className="text-xs font-mono opacity-60 sm:w-full"
+                        >
+                          Offline
+                        </Button>
+                      ) : option.url ? (
+                        <a
+                          href={option.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-xs font-mono font-bold transition-opacity shadow-xs sm:w-full"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Download</span>
+                        </a>
+                      ) : (
+                        <Button variant="outline" size="sm" disabled className="text-xs opacity-50 sm:w-full">
+                          Unavailable
+                        </Button>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground font-sans truncate">
-                      {option.description}
-                    </p>
                   </div>
-                </div>
-
-                <div>
-                  {isNetworkOffline ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled
-                      className="text-xs font-mono opacity-60"
-                    >
-                      Offline
-                    </Button>
-                  ) : option.url ? (
-                    <a
-                      href={option.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-xs font-mono font-bold transition-opacity shadow-xs"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download</span>
-                    </a>
-                  ) : (
-                    <Button variant="outline" size="sm" disabled className="text-xs opacity-50">
-                      Unavailable
-                    </Button>
-                  )}
-                </div>
+                ))}
               </div>
-            ))}
             </div>
           </div>
         )}
 
-        <div className="p-3 rounded-lg bg-muted/60 border border-border text-[11px] font-mono text-muted-foreground">
+        <div className="px-3 py-2 rounded-lg bg-muted/50 border border-border text-[10px] font-mono text-muted-foreground leading-relaxed">
           <p>
             ℹ️ Bookarium strictly complies with international copyright laws. All public domain volumes are streamed from verified archival mirrors. Zero keys or logins required.
           </p>

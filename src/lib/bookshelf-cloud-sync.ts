@@ -268,7 +268,7 @@ export async function executeBookshelfCloudSync(
         const reconstructedBooks: GutendexBook[] = (items || []).map(toGutendexBookFromCloudRow);
 
         // Tombstone-aware merge: filter out remote items that have been deleted locally
-        const { lastBookshelfSyncAt, deletedBookIds = {} } = get();
+        const { lastBookshelfSyncAt, deletedBookIds } = get();
         const activeReconstructed = reconstructedBooks.filter((b) => !deletedBookIds[b.id]);
 
         // Propagate deletions: if remote contains items that were tombstoned locally, remove them from cloud
@@ -384,8 +384,8 @@ export async function executeBookshelfCloudSync(
       const reconstructedFavorites: GutendexBook[] = (favorites || []).map(toGutendexBookFromCloudRow);
 
       // Reconcile favorites with tombstone awareness and sync anchor
-      const { lastFavoritesSyncAt, deletedFavoriteBookIds = {} } = get();
-      const localFavorites = get().favoriteBooks || [];
+      const { lastFavoritesSyncAt, deletedFavoriteBookIds } = get();
+      const localFavorites = get().favoriteBooks;
 
       const activeReconstructedFavorites = reconstructedFavorites.filter(
         (b) => !deletedFavoriteBookIds[b.id]
@@ -442,9 +442,9 @@ export async function executeBookshelfCloudSync(
       .select('*')
       .eq('user_id', userId);
 
-    const localRatings = { ...(get().bookRatings || {}) };
-    const localStatuses = { ...(get().bookStatuses || {}) };
-    const localHistory = { ...(get().curationHistory || {}) };
+    const localRatings = { ...get().bookRatings };
+    const localStatuses = { ...get().bookStatuses };
+    const localHistory = { ...get().curationHistory };
 
     const remoteMap = new Map<number, Database['public']['Tables']['user_book_curation']['Row']>();
     for (const item of curations || []) {
@@ -458,6 +458,14 @@ export async function executeBookshelfCloudSync(
       reading_status: ReadingStatus | null;
       updated_at: string;
     }> = [];
+
+    const toCurationUpsertRow = (bId: number, updatedAt: string) => ({
+      user_id: userId,
+      book_id: bId,
+      rating: localRatings[bId] ?? null,
+      reading_status: localStatuses[bId] ?? null,
+      updated_at: updatedAt,
+    });
 
     // 4a. Reconcile remote items using Last-Write-Wins (LWW)
     for (const item of curations || []) {
@@ -482,13 +490,7 @@ export async function executeBookshelfCloudSync(
         }
         localHistory[bId] = remoteTimestamp || new Date().toISOString();
       } else {
-        unSyncedCurations.push({
-          user_id: userId,
-          book_id: bId,
-          rating: localRatings[bId] ?? null,
-          reading_status: localStatuses[bId] ?? null,
-          updated_at: localTimestamp,
-        });
+        unSyncedCurations.push(toCurationUpsertRow(bId, localTimestamp));
       }
     }
 
@@ -501,13 +503,7 @@ export async function executeBookshelfCloudSync(
       if (!remoteMap.has(bId)) {
         const localTimestamp = localHistory[bId] || new Date().toISOString();
         localHistory[bId] = localTimestamp;
-        unSyncedCurations.push({
-          user_id: userId,
-          book_id: bId,
-          rating: localRatings[bId] ?? null,
-          reading_status: localStatuses[bId] ?? null,
-          updated_at: localTimestamp,
-        });
+        unSyncedCurations.push(toCurationUpsertRow(bId, localTimestamp));
       }
     }
 
@@ -537,7 +533,7 @@ export async function executeMigrateLocalBooksToCloud(
   get: BookshelfGetState,
   set: BookshelfSetState
 ): Promise<void> {
-  const { savedBooks, favoriteBooks = [], cloudBookshelves } = get();
+  const { savedBooks, favoriteBooks, cloudBookshelves } = get();
   if (!userId) return;
 
   try {
@@ -608,6 +604,55 @@ export async function executeCreateCloudBookshelf(
   return null;
 }
 
+async function mutateCloudBookshelfRow(
+  shelfId: string,
+  userId: string,
+  patch: { name?: string; is_public?: boolean },
+  get: BookshelfGetState,
+  set: BookshelfSetState
+): Promise<boolean> {
+  const applyLocal = () => {
+    set({
+      cloudBookshelves: get().cloudBookshelves.map((s) =>
+        s.id === shelfId ? { ...s, ...patch } : s
+      ),
+    });
+  };
+  const queueOffline = () => {
+    applyLocal();
+    get().queueOutboxAction?.({
+      type: 'UPDATE_SHELF',
+      payload: {
+        shelf_id: shelfId,
+        user_id: userId,
+        ...patch,
+      },
+    });
+    return true;
+  };
+
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return queueOffline();
+  }
+
+  try {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('bookshelves')
+      .update(patch)
+      .eq('id', shelfId)
+      .eq('user_id', userId);
+
+    if (!error) {
+      applyLocal();
+      return true;
+    }
+  } catch {
+    return queueOffline();
+  }
+  return false;
+}
+
 /**
  * Renames a custom shelf and optionally updates its public visibility in Supabase.
  */
@@ -619,70 +664,14 @@ export async function executeUpdateCloudBookshelf(
   get: BookshelfGetState,
   set: BookshelfSetState
 ): Promise<boolean> {
-  if (!shelfId || !name.trim() || !userId) return false;
+  const trimmedName = name.trim();
+  if (!shelfId || !trimmedName || !userId) return false;
 
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    set({
-      cloudBookshelves: get().cloudBookshelves.map((s) =>
-        s.id === shelfId
-          ? { ...s, name: name.trim(), ...(isPublic !== undefined ? { is_public: isPublic } : {}) }
-          : s
-      ),
-    });
-    get().queueOutboxAction?.({
-      type: 'UPDATE_SHELF',
-      payload: {
-        shelf_id: shelfId,
-        user_id: userId,
-        name: name.trim(),
-        ...(isPublic !== undefined ? { is_public: isPublic } : {}),
-      },
-    });
-    return true;
-  }
-
-  try {
-    const supabase = createClient();
-    const payload: { name: string; is_public?: boolean } = { name: name.trim() };
-    if (isPublic !== undefined) {
-      payload.is_public = isPublic;
-    }
-    const { error } = await supabase
-      .from('bookshelves')
-      .update(payload)
-      .eq('id', shelfId)
-      .eq('user_id', userId);
-
-    if (!error) {
-      set({
-        cloudBookshelves: get().cloudBookshelves.map((s) =>
-          s.id === shelfId
-            ? { ...s, name: name.trim(), ...(isPublic !== undefined ? { is_public: isPublic } : {}) }
-            : s
-        ),
-      });
-      return true;
-    }
-  } catch {
-    set({
-      cloudBookshelves: get().cloudBookshelves.map((s) =>
-        s.id === shelfId
-          ? { ...s, name: name.trim(), ...(isPublic !== undefined ? { is_public: isPublic } : {}) }
-          : s
-      ),
-    });
-    get().queueOutboxAction?.({
-      type: 'UPDATE_SHELF',
-      payload: {
-        shelf_id: shelfId,
-        user_id: userId,
-        name: name.trim(),
-        ...(isPublic !== undefined ? { is_public: isPublic } : {}),
-      },
-    });
-    return true;
-  }
-  return false;
+  const patch: { name: string; is_public?: boolean } = {
+    name: trimmedName,
+    ...(isPublic !== undefined ? { is_public: isPublic } : {}),
+  };
+  return mutateCloudBookshelfRow(shelfId, userId, patch, get, set);
 }
 
 /**
@@ -696,57 +685,7 @@ export async function executeUpdateBookshelfPrivacy(
   set: BookshelfSetState
 ): Promise<boolean> {
   if (!shelfId || !userId) return false;
-
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    set({
-      cloudBookshelves: get().cloudBookshelves.map((s) =>
-        s.id === shelfId ? { ...s, is_public: isPublic } : s
-      ),
-    });
-    get().queueOutboxAction?.({
-      type: 'UPDATE_SHELF',
-      payload: {
-        shelf_id: shelfId,
-        user_id: userId,
-        is_public: isPublic,
-      },
-    });
-    return true;
-  }
-
-  try {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('bookshelves')
-      .update({ is_public: isPublic })
-      .eq('id', shelfId)
-      .eq('user_id', userId);
-
-    if (!error) {
-      set({
-        cloudBookshelves: get().cloudBookshelves.map((s) =>
-          s.id === shelfId ? { ...s, is_public: isPublic } : s
-        ),
-      });
-      return true;
-    }
-  } catch {
-    set({
-      cloudBookshelves: get().cloudBookshelves.map((s) =>
-        s.id === shelfId ? { ...s, is_public: isPublic } : s
-      ),
-    });
-    get().queueOutboxAction?.({
-      type: 'UPDATE_SHELF',
-      payload: {
-        shelf_id: shelfId,
-        user_id: userId,
-        is_public: isPublic,
-      },
-    });
-    return true;
-  }
-  return false;
+  return mutateCloudBookshelfRow(shelfId, userId, { is_public: isPublic }, get, set);
 }
 
 /**

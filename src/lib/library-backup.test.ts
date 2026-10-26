@@ -658,5 +658,114 @@ describe('library-backup domain engine', () => {
       getOfflineSpy.mockRestore();
       removeOfflineSpy.mockRestore();
     });
+
+    it('handles partial backup payloads, custom filenames, older merge positions, duplicate queue/annotations, and empty replace shelves', async () => {
+      const createObjectURLMock = vi.fn().mockReturnValue('blob:mock-url');
+      const revokeObjectURLMock = vi.fn();
+      global.URL.createObjectURL = createObjectURLMock;
+      global.URL.revokeObjectURL = revokeObjectURLMock;
+
+      const partialBackup: LibraryBackupPayload = {
+        version: '1.0',
+        app: 'Bookarium',
+        exportedAt: '',
+        summary: {
+          bookCount: 1,
+          customShelfCount: 0,
+          favoriteCount: 0,
+          annotationCount: 1,
+          bookmarkCount: 1,
+        },
+        library: {
+          savedBooks: [
+            {
+              ...mockBook1,
+              formats: { 'image/jpeg': 'https://example.com/cover.jpg' },
+            },
+          ],
+          readingQueue: [mockBook1, mockBook2],
+          favoriteBookIds: undefined as unknown as number[],
+          likedBookIds: undefined,
+          customShelves: [],
+          bookRatings: undefined,
+          bookStatuses: undefined,
+        },
+        reading: {
+          positions: {
+            1342: {
+              chapterIndex: 0,
+              chapterPage: 0,
+              globalPage: 1,
+              lastReadAt: '2020-01-01T00:00:00Z', // Older than existing 2026-09-01
+            },
+          },
+          progress: {
+            1342: 0,
+          },
+        },
+        annotations: [
+          {
+            id: 'ann-1', // Duplicate ID already in store
+            bookId: 1342,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 2,
+            chapterPage: 5,
+            selectedText: 'Duplicate annotation',
+            color: 'amber',
+            createdAt: '2026-09-01T12:05:00Z',
+            updatedAt: '2026-09-01T12:05:00Z',
+          },
+        ],
+        preferences: {},
+      };
+
+      downloadLibraryBackupJSON(partialBackup, 'custom-backup.json');
+      expect(createObjectURLMock).toHaveBeenCalledTimes(1);
+
+      const csv = exportLibraryToCSV(partialBackup);
+      expect(csv).toContain('"No"');
+
+      // Seed current queue with mockBook1 so merge tests duplicate + new queue items
+      useBookshelfStore.setState({
+        readingQueue: [mockBook1],
+      });
+
+      // Merge with existing shelf & existing shelf item + unknown book on shelf
+      const mergeWithShelfPayload: LibraryBackupPayload = {
+        ...partialBackup,
+        library: {
+          ...partialBackup.library,
+          customShelves: [
+            {
+              id: '',
+              name: 'New Shelf Without ID',
+              isDefault: false,
+              bookIds: [1342, 77777],
+            },
+            {
+              id: 'shelf-1',
+              name: 'Classics',
+              isDefault: false,
+              bookIds: [1342], // Already in shelf-1
+            },
+          ],
+        },
+      };
+
+      await restoreLibraryBackup(mergeWithShelfPayload, 'merge');
+      // Position for 1342 should remain chapterIndex 2 (newer than 2020-01-01)
+      expect(useReaderStore.getState().readingPositions[1342].chapterIndex).toBe(2);
+      expect(useBookshelfStore.getState().readingQueue).toHaveLength(2);
+
+      // Replace with empty customShelves and no preferences
+      const emptyShelvesReplace: LibraryBackupPayload = {
+        ...partialBackup,
+        preferences: undefined as unknown as LibraryBackupPayload['preferences'],
+      };
+      await restoreLibraryBackup(emptyShelvesReplace, 'replace');
+      expect(useBookshelfStore.getState().activeBookshelfId).toBeNull();
+      expect(useBookshelfStore.getState().favoriteBookIds).toEqual([]);
+    });
   });
 });

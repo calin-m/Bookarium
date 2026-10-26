@@ -28,15 +28,17 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock useBooks and useBookContent
+const mockUseBooks = vi.fn(() => ({
+  data: {
+    count: 1,
+    results: [mockBooks[0]],
+    source: 'upstream',
+  },
+  isLoading: false,
+}));
+
 vi.mock('@/hooks/queries/useBooks', () => ({
-  useBooks: () => ({
-    data: {
-      count: 1,
-      results: [mockBooks[0]],
-      source: 'upstream',
-    },
-    isLoading: false,
-  }),
+  useBooks: () => mockUseBooks(),
 }));
 
 const chapterSampleText = `*** START OF THE PROJECT GUTENBERG EBOOK PRIDE AND PREJUDICE ***
@@ -995,6 +997,114 @@ describe('Dedicated Reader Page (/read/[id])', () => {
       },
       configurable: true,
       writable: true,
+    });
+  });
+
+  it('hydrates recentBooks and reader store from extracted Gutenberg header metadata when upstream booksData is unavailable (offline fallback)', async () => {
+    mockUseBooks.mockReturnValueOnce({
+      data: { count: 0, results: [], source: 'local' },
+      isLoading: false,
+    });
+    useReaderStore.setState({ currentBook: null });
+    useBookshelfStore.getState().clearBookshelf();
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      const recent = useBookshelfStore.getState().recentBooks;
+      expect(recent.length).toBeGreaterThanOrEqual(1);
+      expect(recent[0].id).toBe(1342);
+      expect(recent[0].title).toBe('Pride and Prejudice');
+    });
+    expect(useReaderStore.getState().currentBook?.id).toBe(1342);
+  });
+
+  it('handles symposium companion derivation as non-host fellow, syncs theme from global store, and re-fetches fellow annotations when opening drawer', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { useThemeStore } = await import('@/stores/useThemeStore');
+    const fetchFellowAnnSpy = vi
+      .spyOn(useAnnotationStore.getState(), 'fetchFellowAnnotationsForBook')
+      .mockResolvedValue([]);
+    const enrichFellowSpy = vi.spyOn(useAnnotationStore.getState(), 'enrichFellowAnnotations');
+
+    act(() => {
+      useThemeStore.setState({ theme: 'sepia' });
+      useReaderStore.setState({ theme: 'light' });
+      useAuthStore.setState({
+        user: { id: 'fellow-user', email: 'fellow@bookarium.test' } as unknown as ReturnType<
+          typeof useAuthStore.getState
+        >['user'],
+      });
+      useFellowshipStore.setState({
+        symposiums: [
+          {
+            id: 'symp-fellow-1342',
+            book_id: 1342,
+            book_title: 'Pride and Prejudice',
+            host_id: 'host-user',
+            host_username: 'host_scholar',
+            host_display_name: 'Host Scholar',
+            fellow_id: 'fellow-user',
+            fellow_username: 'fellow_scholar',
+            fellow_display_name: 'Fellow Scholar',
+            status: 'active',
+            host_progress: 15,
+            host_chapter: 1,
+            fellow_progress: 10,
+            fellow_chapter: 0,
+            created_at: '2026-10-15T10:00:00Z',
+            updated_at: '2026-10-15T10:00:00Z',
+          },
+        ],
+      });
+      useAnnotationStore.setState({
+        fellowAnnotations: [
+          {
+            id: 'f-ann-1',
+            bookId: 1342,
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'Pride and Prejudice',
+            color: 'amber',
+            note: 'Host insight',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+            isFellow: true,
+            fellowUsername: 'host_scholar',
+            fellowDisplayName: 'Host Scholar',
+          },
+        ],
+      });
+    });
+
+    render(<BookReaderPage />);
+
+    // Theme synchronizes from global theme ('sepia')
+    await waitFor(() => {
+      expect(useReaderStore.getState().theme).toBe('sepia');
+      expect(enrichFellowSpy).toHaveBeenCalled();
+    });
+
+    // Since host_progress is 15 (< 25), milestone banner is not shown, companion pill is visible immediately
+    expect(screen.queryByTestId('symposium-milestone-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent(
+      'Host Scholar: Sec. 2 (15%)'
+    );
+
+    // Open annotations drawer -> triggers re-fetch of fellow annotations
+    fetchFellowAnnSpy.mockClear();
+    fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+    await waitFor(() => {
+      expect(fetchFellowAnnSpy).toHaveBeenCalledWith(1342, 'fellow-user');
+    });
+
+    fetchFellowAnnSpy.mockRestore();
+    enrichFellowSpy.mockRestore();
+    act(() => {
+      useAuthStore.setState({ user: null });
+      useThemeStore.setState({ theme: 'light' });
+      useFellowshipStore.getState().clearFellowshipState();
+      useAnnotationStore.setState({ fellowAnnotations: [], annotations: [] });
     });
   });
 });

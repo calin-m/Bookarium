@@ -1840,6 +1840,144 @@ describe('useBookshelfStore', () => {
       expect(state.savedBooks[0].authors[0].name).toBe('Agatha Christie');
       expect(state.favoriteBooks[0].authors[0].name).toBe('Jules Verne');
     });
+
+    it('covers enrichSavedBooks with recentBooks, cloudBookshelfItems, authenticated userId, and clearCustomShelfBooks cloud delete', async () => {
+      const { useAuthStore } = await import('./useAuthStore');
+      useAuthStore.setState({ user: { id: 'user-enrich-1' } as any });
+
+      // Empty freshBooks guard
+      await useBookshelfStore.getState().enrichSavedBooks([]);
+
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            id: 700,
+            title: 'Book 700',
+            authors: [{ name: 'Anonymous', birth_year: null, death_year: null }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 0,
+          },
+        ],
+        recentBooks: [
+          {
+            id: 701,
+            title: 'Book 701',
+            authors: [{ name: 'Anonymous', birth_year: null, death_year: null }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 0,
+          },
+        ],
+        cloudBookshelfItems: [
+          {
+            id: 'item-700',
+            bookshelf_id: 'shelf-1',
+            user_id: 'user-enrich-1',
+            book_id: 700,
+            book_title: 'Book 700',
+            book_authors: [],
+            cover_url: null,
+            added_at: '',
+          },
+          {
+            id: 'item-unmatched',
+            bookshelf_id: 'shelf-1',
+            user_id: 'user-enrich-1',
+            book_id: 99999,
+            book_title: 'Other',
+            book_authors: [],
+            cover_url: 'https://example.com/existing.jpg',
+            added_at: '',
+          },
+        ],
+      });
+
+      const updateSpy = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      });
+      mockFrom.mockReturnValue({
+        update: updateSpy,
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+      });
+
+      const freshBooks: GutendexBook[] = [
+        {
+          id: 700,
+          title: 'Book 700',
+          authors: [{ name: 'Homer', birth_year: -800, death_year: -701 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: { 'image/jpeg': 'https://example.com/homer.jpg' },
+          download_count: 100,
+        },
+        {
+          id: 701,
+          title: 'Book 701',
+          authors: [{ name: 'Virgil', birth_year: -70, death_year: -19 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 100,
+        },
+      ];
+
+      await useBookshelfStore.getState().enrichSavedBooks(freshBooks);
+      expect(useBookshelfStore.getState().recentBooks[0].authors[0].name).toBe('Virgil');
+      expect(updateSpy).toHaveBeenCalled();
+
+      // Second call with no new metadata returns early
+      await useBookshelfStore.getState().enrichSavedBooks(freshBooks);
+
+      // clearCustomShelfBooks on empty shelf returns early
+      await useBookshelfStore.getState().clearCustomShelfBooks('empty-shelf-id', 'user-enrich-1');
+      // clearCustomShelfBooks on populated shelf with userId
+      await useBookshelfStore.getState().clearCustomShelfBooks('shelf-1', 'user-enrich-1');
+      expect(useBookshelfStore.getState().cloudBookshelfItems).toHaveLength(0);
+
+      // toggleSaveBook when activeBookshelfId is '__downloaded__' and unsave fails in cloud -> queues DELETE_BOOK
+      useBookshelfStore.setState({
+        savedBooks: [freshBooks[0]],
+        cloudBookshelves: [{ id: 'shelf-def', user_id: 'user-enrich-1', name: 'General', is_default: true, created_at: '', updated_at: '' }],
+        activeBookshelfId: '__downloaded__',
+        outbox: [],
+      });
+      mockFrom.mockReturnValue({
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: new Error('Delete failed') }),
+          }),
+        }),
+      });
+      await useBookshelfStore.getState().toggleSaveBook(freshBooks[0], 'user-enrich-1');
+      expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'DELETE_BOOK')).toBe(true);
+
+      useAuthStore.setState({ user: null });
+    });
   });
 });
 

@@ -472,5 +472,193 @@ describe('bookshelf-cloud-sync', () => {
     await executeDeleteCloudBookshelf('s-custom', 'u1', get, set);
     expect(state.cloudBookshelfItems.every((i) => i.bookshelf_id === 's-def')).toBe(true);
   });
+
+  it('dispatches MOVE_BOOK and UPDATE_SHELF outbox actions and handles offline / error outbox queuing', async () => {
+    const queued: unknown[] = [];
+    state.queueOutboxAction = (action) => {
+      queued.push(action);
+    };
+    state.cloudBookshelves = [
+      { id: 's-1', user_id: 'u1', name: 'Poetry', is_default: false, is_public: true, created_at: '', updated_at: '' },
+      { id: 's-2', user_id: 'u1', name: 'Drama', is_default: false, is_public: false, created_at: '', updated_at: '' },
+    ];
+
+    state.outbox = [
+      {
+        id: 'm1',
+        timestamp: '',
+        type: 'MOVE_BOOK',
+        payload: { user_id: 'u1', book_id: 1342, bookshelf_id: 's-1' },
+      },
+      {
+        id: 'u1',
+        timestamp: '',
+        type: 'UPDATE_SHELF',
+        payload: { shelf_id: 's-1', user_id: 'u1', name: 'Modern Poetry', is_public: false },
+      },
+    ];
+
+    mockFrom.mockReturnValue({
+      update: () => ({
+        eq: () => ({
+          eq: () => Promise.resolve({ error: null }),
+        }),
+      }),
+    });
+
+    await executeFlushOutbox('u1', get, set);
+    expect(state.outbox).toHaveLength(0);
+
+    // Offline queuing for executeBookshelfCloudSync, executeUpdateCloudBookshelf, executeUpdateBookshelfPrivacy, executeMoveBookToShelf
+    const onLineSpy = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    await executeBookshelfCloudSync('u1', get, set);
+    expect(state.isSyncing).toBe(false);
+
+    expect(await executeUpdateCloudBookshelf('s-1', 'Offline Poetry', 'u1', true, get, set)).toBe(true);
+    expect(state.cloudBookshelves.find((s) => s.id === 's-1')?.name).toBe('Offline Poetry');
+    expect(await executeUpdateBookshelfPrivacy('s-1', false, 'u1', get, set)).toBe(true);
+    expect(state.cloudBookshelves.find((s) => s.id === 's-1')?.is_public).toBe(false);
+    expect(await executeMoveBookToShelf(9999, 's-1', 'u1', get, set)).toBe(true);
+    expect(queued).toHaveLength(3);
+
+    onLineSpy.mockReturnValue(true);
+
+    // Network exception catch blocks queuing outbox actions
+    mockFrom.mockImplementation(() => {
+      throw new Error('Network disconnected');
+    });
+    expect(await executeUpdateCloudBookshelf('s-1', 'Catch Poetry', 'u1', undefined, get, set)).toBe(true);
+    expect(await executeUpdateBookshelfPrivacy('s-1', true, 'u1', get, set)).toBe(true);
+    expect(await executeMoveBookToShelf(1342, 's-2', 'u1', get, set)).toBe(true);
+    expect(queued).toHaveLength(6);
+
+    onLineSpy.mockRestore();
+  });
+
+  it('handles subsequent cloud sync (authoritative mode), __downloaded__ active shelf preservation, and query error branches', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    state.activeBookshelfId = '__downloaded__';
+    state.lastBookshelfSyncAt = '2026-10-01T00:00:00Z';
+    state.lastFavoritesSyncAt = '2026-10-01T00:00:00Z';
+
+    // First pass: trigger itemsError and favoritesError + remote curation with non-null rating & status
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'bookshelves') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [{ id: 's-def', user_id: 'u1', name: 'General', is_default: true }],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'bookshelf_items') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => Promise.resolve({ data: null, error: new Error('Items query error') }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_favorites') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => Promise.resolve({ data: null, error: new Error('Favorites query error') }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_book_curation') {
+        return {
+          select: () => ({
+            eq: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    user_id: 'u1',
+                    book_id: 1342,
+                    rating: 5,
+                    reading_status: 'finished',
+                    updated_at: '2026-10-15T00:00:00Z',
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        };
+      }
+      return {};
+    });
+
+    await executeBookshelfCloudSync('u1', get, set);
+    expect(state.activeBookshelfId).toBe('__downloaded__');
+    expect(state.bookRatings[1342]).toBe(5);
+    expect(state.bookStatuses[1342]).toBe('finished');
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+
+    // Second pass: authoritative sync when lastBookshelfSyncAt & lastFavoritesSyncAt are set and queries succeed
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'bookshelves') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [{ id: 's-def', user_id: 'u1', name: 'General', is_default: true }],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'bookshelf_items') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [{ id: 'bi-1', bookshelf_id: 's-def', user_id: 'u1', book_id: 84, book_title: 'Frankenstein', book_authors: ['Shelley'] }],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_favorites') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [{ user_id: 'u1', book_id: 84, book_title: 'Frankenstein', book_authors: ['Shelley'] }],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_book_curation') {
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ data: [], error: null }),
+          }),
+          upsert: () => Promise.resolve({ error: null }),
+        };
+      }
+      return {};
+    });
+
+    await executeBookshelfCloudSync('u1', get, set);
+    expect(state.savedBooks.map((b) => b.id)).toEqual([84]);
+    expect(state.favoriteBookIds).toEqual([84]);
+
+    consoleErrorSpy.mockRestore();
+  });
 });
 

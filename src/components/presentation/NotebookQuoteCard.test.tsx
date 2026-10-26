@@ -375,10 +375,10 @@ describe('NotebookQuoteCard', () => {
     );
   });
 
-  it('renders Not Downloaded badge and disables Read Passage button when isUnavailableOffline is true', () => {
+  it('disables Read Passage button without repeating topline Not Downloaded pill when isUnavailableOffline is true', () => {
     render(<NotebookQuoteCard {...defaultProps} isUnavailableOffline={true} />);
 
-    expect(screen.getByTestId('quote-card-offline-badge-ann-1')).toHaveTextContent('Not Downloaded');
+    expect(screen.queryByTestId('quote-card-offline-badge-ann-1')).not.toBeInTheDocument();
     const jumpBtn = screen.getByTestId('jump-reader-btn-ann-1');
     expect(jumpBtn).toBeDisabled();
     expect(jumpBtn).toHaveTextContent('Unavailable Offline');

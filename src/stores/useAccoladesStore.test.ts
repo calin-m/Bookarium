@@ -234,6 +234,36 @@ describe('useAccoladesStore', () => {
     await useAccoladesStore.getState().syncWithCloud('user-123');
     expect(useAccoladesStore.getState().pendingPinUpdates).toEqual({});
     expect(useAccoladesStore.getState().isPinned('seven-day-sage')).toBe(true);
+
+    // Offline unpin + offline syncWithCloud early return
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+    await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
+    expect(useAccoladesStore.getState().isPinned('seven-day-sage')).toBe(false);
+    expect(useAccoladesStore.getState().pendingPinUpdates).toEqual({
+      'seven-day-sage': false,
+    });
+    await useAccoladesStore.getState().syncWithCloud('user-123');
+    expect(useAccoladesStore.getState().pendingPinUpdates).toEqual({
+      'seven-day-sage': false,
+    });
+
+    // Online pin/unpin when Supabase returns an error or throws
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+    mockEq.mockReturnValueOnce({ eq: vi.fn().mockResolvedValue({ error: new Error('Pin failed') }) });
+    await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
+    expect(useAccoladesStore.getState().pendingPinUpdates['seven-day-sage']).toBe(true);
+
+    mockEq.mockReturnValueOnce({ eq: vi.fn().mockResolvedValue({ error: new Error('Unpin failed') }) });
+    await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
+    expect(useAccoladesStore.getState().pendingPinUpdates['seven-day-sage']).toBe(false);
+
+    mockEq.mockReturnValueOnce({ eq: vi.fn().mockRejectedValue(new Error('Pin crash')) });
+    await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
+    expect(useAccoladesStore.getState().pendingPinUpdates['seven-day-sage']).toBe(true);
+
+    mockEq.mockReturnValueOnce({ eq: vi.fn().mockRejectedValue(new Error('Unpin crash')) });
+    await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
+    expect(useAccoladesStore.getState().pendingPinUpdates['seven-day-sage']).toBe(false);
   });
 });
 

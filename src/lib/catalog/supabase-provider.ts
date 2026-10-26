@@ -23,12 +23,12 @@ export const CATALOG_METADATA_COLUMNS =
  * Checks if Supabase credentials are genuinely configured (non-empty, non-placeholder).
  */
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
   if (!url || !key) return false;
-  const cleanUrl = url.trim();
-  if (!cleanUrl || cleanUrl.includes('placeholder.supabase.co')) return false;
-  if (!key || key.includes('placeholder-anon-key')) return false;
+  if (url.includes('placeholder.supabase.co') || key.includes('placeholder-anon-key')) {
+    return false;
+  }
   return true;
 }
 
@@ -153,26 +153,11 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       const cleanSearch = options.search && options.search.trim().length >= 2 ? options.search.trim() : null;
       const cleanTopic = options.topic && options.topic.trim().length > 0 ? options.topic.trim() : null;
       const topicList = cleanTopic ? cleanTopic.split(',').map((t) => t.trim()).filter(Boolean) : [];
+      const searchVectorQuery = [cleanSearch, topicList.join(' or ')].filter(Boolean).join(' ');
 
-      if (cleanSearch && topicList.length > 0) {
-        const topicQuery = topicList.length > 1 ? topicList.join(' or ') : topicList[0];
-        query = query.textSearch('search_vector', `${cleanSearch} ${topicQuery}`, {
-          type: 'websearch',
-          config: 'english',
-        });
-      } else if (cleanSearch) {
-        query = query.textSearch('search_vector', cleanSearch, {
-          type: 'websearch',
-          config: 'english',
-        });
-      } else if (topicList.length > 1) {
-        query = query.textSearch('search_vector', topicList.join(' or '), {
-          type: 'websearch',
-          config: 'english',
-        });
-      } else if (topicList.length === 1) {
-        query = query.textSearch('search_vector', topicList[0], {
-          type: 'plain',
+      if (searchVectorQuery) {
+        query = query.textSearch('search_vector', searchVectorQuery, {
+          type: !cleanSearch && topicList.length === 1 ? 'plain' : 'websearch',
           config: 'english',
         });
       }
@@ -378,10 +363,8 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
 
       // Sort: Current book first, then original edition, then by download_count
       return results.sort((a, b) => {
-        if (a.isCurrent && !b.isCurrent) return -1;
-        if (!a.isCurrent && b.isCurrent) return 1;
-        if (a.isOriginal && !b.isOriginal) return -1;
-        if (!a.isOriginal && b.isOriginal) return 1;
+        if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
+        if (a.isOriginal !== b.isOriginal) return a.isOriginal ? -1 : 1;
         const countA = booksMap.get(a.bookId)?.download_count ?? 0;
         const countB = booksMap.get(b.bookId)?.download_count ?? 0;
         return countB - countA;

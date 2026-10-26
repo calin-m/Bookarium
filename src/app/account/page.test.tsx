@@ -810,10 +810,15 @@ describe('AccountPage', () => {
           /Offline Mode — Manage your local reading preferences, streaks, accolades, and library backups offline/i
         );
         expect(screen.getByRole('button', { name: /Sign In \/ Sign Up/i })).toBeDisabled();
-        expect(screen.getByTestId('guest-offline-workspace')).toBeInTheDocument();
+        const guestWorkspace = screen.getByTestId('guest-offline-workspace');
+        const guestSignInCard = screen.getByTestId('guest-signin-card');
+        expect(guestWorkspace).toBeInTheDocument();
+        expect(
+          guestWorkspace.compareDocumentPosition(guestSignInCard) & Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
         unmount();
 
-        // 2. Authenticated Offline Mode
+        // 2. Authenticated Offline Mode (defaults to Preferences tab when no ?tab= param is set)
         useAuthStore.setState({
           user: { id: 'u1', email: 'austen@bookarium.test' } as any,
           profile: { id: 'u1', display_name: 'Jane Austen' } as any,
@@ -824,6 +829,9 @@ describe('AccountPage', () => {
         expect(screen.getByTestId('account-offline-banner')).toHaveTextContent(
           /Offline Mode — Changes to your preferences, habits, and profile are saved locally and will sync automatically when you reconnect/i
         );
+        const preferencesTab = screen.getByRole('tab', { name: /Preferences/i });
+        expect(preferencesTab).toHaveAttribute('aria-selected', 'true');
+        expect(document.getElementById('account-tabpanel-preferences')).not.toHaveClass('hidden');
       } finally {
         Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
       }

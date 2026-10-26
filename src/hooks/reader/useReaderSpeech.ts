@@ -90,6 +90,26 @@ function getVoiceQualityScore(voice: SpeechSynthesisVoice, targetLang: string): 
   return score;
 }
 
+function computeVoicePartitions(language: string, preferredVoiceURI?: string | null) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    return { sorted: [], natural: [], standard: [], best: null };
+  }
+  const raw = window.speechSynthesis.getVoices();
+  if (raw.length === 0) {
+    return { sorted: [], natural: [], standard: [], best: null };
+  }
+  const sorted = [...raw].sort(
+    (a, b) => getVoiceQualityScore(b, language) - getVoiceQualityScore(a, language)
+  );
+  const natural = sorted.filter(isNaturalVoice);
+  const standard = sorted.filter((v) => !isNaturalVoice(v));
+  const preferred = preferredVoiceURI
+    ? sorted.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI)
+    : null;
+  const best = preferred || natural[0] || sorted[0] || null;
+  return { sorted, natural, standard, best };
+}
+
 /**
  * Headless speech synthesis hook providing offline text-to-speech,
  * sentence-level segmentation, natural voice prioritization, and MediaSession controls.
@@ -116,34 +136,18 @@ export function useReaderSpeech({
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>(0);
   const [rate, setRateState] = useState<number>(defaultRate || 1.0);
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
-    const raw = window.speechSynthesis.getVoices();
-    return [...raw].sort((a, b) => getVoiceQualityScore(b, language) - getVoiceQualityScore(a, language));
-  });
-  const [naturalVoices, setNaturalVoices] = useState<SpeechSynthesisVoice[]>(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
-    const raw = window.speechSynthesis.getVoices();
-    const sorted = [...raw].sort((a, b) => getVoiceQualityScore(b, language) - getVoiceQualityScore(a, language));
-    return sorted.filter(isNaturalVoice);
-  });
-  const [standardVoices, setStandardVoices] = useState<SpeechSynthesisVoice[]>(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
-    const raw = window.speechSynthesis.getVoices();
-    const sorted = [...raw].sort((a, b) => getVoiceQualityScore(b, language) - getVoiceQualityScore(a, language));
-    return sorted.filter((v) => !isNaturalVoice(v));
-  });
-  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
-    const raw = window.speechSynthesis.getVoices();
-    if (raw.length === 0) return null;
-    const sorted = [...raw].sort((a, b) => getVoiceQualityScore(b, language) - getVoiceQualityScore(a, language));
-    const natural = sorted.filter(isNaturalVoice);
-    const preferred = preferredVoiceURI
-      ? sorted.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI)
-      : null;
-    return preferred || natural[0] || sorted[0] || null;
-  });
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>(
+    () => computeVoicePartitions(language, preferredVoiceURI).sorted
+  );
+  const [naturalVoices, setNaturalVoices] = useState<SpeechSynthesisVoice[]>(
+    () => computeVoicePartitions(language, preferredVoiceURI).natural
+  );
+  const [standardVoices, setStandardVoices] = useState<SpeechSynthesisVoice[]>(
+    () => computeVoicePartitions(language, preferredVoiceURI).standard
+  );
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(
+    () => computeVoicePartitions(language, preferredVoiceURI).best
+  );
 
   // References to track active playback state across asynchronous events
   const sentences = useMemo(() => segmentTextIntoSentences(text), [text]);
@@ -174,33 +178,15 @@ export function useReaderSpeech({
 
   // Populate and score available system voices with quality and language filtering
   const populateVoices = useCallback(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length === 0) return;
-
-    // Score and sort all available system voices:
-    // Prioritize language compatibility and high-definition neural engines,
-    // while keeping all installed system voices accessible (100% parity with Account panel).
-    const sorted = [...voices].sort((a, b) => {
-      return getVoiceQualityScore(b, language) - getVoiceQualityScore(a, language);
-    });
+    const { sorted, natural, standard, best } = computeVoicePartitions(language, preferredVoiceURI);
+    if (sorted.length === 0) return;
 
     setAvailableVoices(sorted);
-
-    // Partition into Natural/Neural vs Standard voices
-    const natural = sorted.filter(isNaturalVoice);
-    const standard = sorted.filter((v) => !isNaturalVoice(v));
-
     setNaturalVoices(natural);
     setStandardVoices(standard);
 
     // Pick user preferred voice if available, otherwise highest scoring voice for the current language
     if (!selectedVoiceRef.current) {
-      const preferred = preferredVoiceURI
-        ? sorted.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI)
-        : null;
-      const best = preferred || natural[0] || sorted[0] || null;
       selectedVoiceRef.current = best;
       setSelectedVoice(best);
     }

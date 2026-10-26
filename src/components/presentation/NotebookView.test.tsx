@@ -1846,6 +1846,7 @@ describe('NotebookView component', () => {
       const { unmount } = render(<NotebookView />);
 
       expect(screen.getByTestId('notebook-volume-offline-badge-1342')).toHaveTextContent('Not Downloaded');
+      expect(screen.getAllByText('Not Downloaded')).toHaveLength(1);
       const jumpBtn = screen.getByTestId(`jump-reader-btn-${ann.id}`);
       expect(jumpBtn).toBeDisabled();
       expect(jumpBtn).toHaveTextContent('Unavailable Offline');
@@ -1862,6 +1863,92 @@ describe('NotebookView component', () => {
       expect(screen.getByTestId(`jump-reader-btn-${ann.id}`)).not.toBeDisabled();
 
       networkSpy.mockRestore();
+    });
+
+    it('covers paired fellow search/color matching and chronological & volume sort options including downloaded filter reset', async () => {
+      mockNotebookOfflineIds = [];
+      useAnnotationStore.setState({
+        annotations: [
+          {
+            id: 'own-1',
+            bookId: 1342,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'It is a truth universally acknowledged that a single man',
+            color: 'yellow',
+            note: 'Own reflection',
+            createdAt: '2026-10-10T10:00:00Z',
+            updatedAt: '2026-10-10T10:00:00Z',
+          },
+          {
+            id: 'own-2',
+            bookId: 84,
+            bookTitle: 'Frankenstein',
+            bookAuthor: 'Mary Shelley',
+            chapterIndex: 1,
+            chapterPage: 2,
+            selectedText: 'Beware; for I am fearless, and therefore powerful.',
+            color: 'mint',
+            createdAt: '2026-10-12T10:00:00Z',
+            updatedAt: '2026-10-12T10:00:00Z',
+          },
+        ],
+        fellowAnnotations: [
+          {
+            id: 'fellow-overlap-1',
+            bookId: 1342,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'It is a truth universally acknowledged that a single man',
+            color: 'rose',
+            note: 'Paired fellow reflection keyword',
+            createdAt: '2026-10-14T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+            isFellow: true,
+            fellowUsername: 'lord_byron',
+            fellowDisplayName: 'Lord Byron',
+          },
+        ],
+        marginaliaSourceFilter: 'all',
+      });
+
+      render(<NotebookView />);
+
+      // 1. Filter by paired fellow color ('rose') matches the paired card even though own color is 'yellow'
+      fireEvent.click(screen.getByTestId('notebook-filter-rose'));
+      expect(screen.getByText(/Own reflection/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('notebook-filter-all'));
+
+      // 2. Search by paired fellow displayName ('Lord Byron') and paired fellow note ('Paired fellow reflection keyword')
+      const searchInput = screen.getByTestId('notebook-search-input');
+      fireEvent.change(searchInput, { target: { value: 'Lord Byron' } });
+      expect(screen.getByText(/Own reflection/i)).toBeInTheDocument();
+      fireEvent.change(searchInput, { target: { value: 'Paired fellow reflection keyword' } });
+      expect(screen.getByText(/Own reflection/i)).toBeInTheDocument();
+      fireEvent.change(searchInput, { target: { value: '' } });
+
+      // 3. Volume sort options ('recent', 'count_desc', 'author_desc', 'title_desc')
+      const sortSelect = screen.getByLabelText('Sort book groups');
+      fireEvent.change(sortSelect, { target: { value: 'recent' } });
+      fireEvent.change(sortSelect, { target: { value: 'count_desc' } });
+      fireEvent.change(sortSelect, { target: { value: 'author_desc' } });
+
+      // 4. Switch to Chronological mode and test chronoSort options ('date_asc', 'title_asc', 'author_asc', 'downloaded')
+      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      const chronoSortSelect = screen.getByLabelText('Sort quotes chronologically');
+      fireEvent.change(chronoSortSelect, { target: { value: 'date_asc' } });
+      fireEvent.change(chronoSortSelect, { target: { value: 'title_asc' } });
+      fireEvent.change(chronoSortSelect, { target: { value: 'author_asc' } });
+      fireEvent.change(chronoSortSelect, { target: { value: 'downloaded' } });
+
+      // Since mockNotebookOfflineIds is empty, 'downloaded' sort shows zero-results message and Reset Filters resets chronoSort to 'date_desc'
+      expect(screen.getByText(/No passages from downloaded volumes match your current filter/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Reset Filters/i }));
+      expect(screen.getByText(/Own reflection/i)).toBeInTheDocument();
     });
   });
 });

@@ -63,12 +63,7 @@ export function determineBookEra(book: GutendexBook): string | null {
  */
 export function isAncientBook(book: GutendexBook): boolean {
   const era = determineBookEra(book);
-  if (era === 'antiquity' || era === 'middle-ages') {
-    return true;
-  }
-  const author = book.authors?.[0];
-  const year = author?.death_year ?? author?.birth_year ?? null;
-  return year !== null && year <= 1400;
+  return era === 'antiquity' || era === 'middle-ages';
 }
 
 export interface BuildAccoladeContextParams {
@@ -108,16 +103,6 @@ export function buildAccoladeContext(params: BuildAccoladeContextParams): Accola
     const era = determineBookEra(book);
     if (era) erasSet.add(era);
     if (isAncientBook(book)) hasAncient = true;
-  }
-
-  // Also check if any saved books or active reading volumes satisfy ancient
-  if (!hasAncient) {
-    for (const book of savedBooks) {
-      if (bookStatuses[book.id] === 'finished' && isAncientBook(book)) {
-        hasAncient = true;
-        break;
-      }
-    }
   }
 
   // Extract highlight colors used

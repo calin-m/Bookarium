@@ -102,7 +102,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       // Top boundary: near page top
       if (window.scrollY <= 32) {
         const firstId = Number(cardEls[0].getAttribute('data-bookmark-card-id'));
-        if (firstId && !isNaN(firstId)) {
+        if (firstId) {
           setActiveBookId(firstId);
           return;
         }
@@ -112,7 +112,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 32;
       if (isAtBottom) {
         const lastId = Number(cardEls[cardEls.length - 1].getAttribute('data-bookmark-card-id'));
-        if (lastId && !isNaN(lastId)) {
+        if (lastId) {
           setActiveBookId(lastId);
           return;
         }
@@ -131,7 +131,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           if (dist < minDistance) {
             minDistance = dist;
             const id = Number(el.getAttribute('data-bookmark-card-id'));
-            if (id && !isNaN(id)) {
+            if (id) {
               closestId = id;
             }
           }

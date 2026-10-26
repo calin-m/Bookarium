@@ -126,26 +126,47 @@ function setOrUpdateFellowMapEntry(
 
   // If existing already has a real handle and incoming is a placeholder, retain existing real handle
   const resolvedUsername =
-    existingIsPlaceholder && !nextIsPlaceholder
-      ? username
-      : !existingIsPlaceholder && nextIsPlaceholder
-      ? existing.username
-      : username || existing.username;
+    !existingIsPlaceholder && nextIsPlaceholder ? existing.username : username;
   const displayNameIsPlaceholder =
     !displayName || isPlaceholderUsername(displayName);
   const existingDisplayNameIsPlaceholder =
     !existing.display_name || isPlaceholderUsername(existing.display_name);
 
-  const resolvedDisplayName =
-    !displayNameIsPlaceholder
-      ? displayName
-      : !existingDisplayNameIsPlaceholder
-      ? existing.display_name
-      : displayName || existing.display_name;
+  const resolvedDisplayName = !displayNameIsPlaceholder
+    ? displayName
+    : !existingDisplayNameIsPlaceholder
+    ? existing.display_name
+    : displayName || existing.display_name;
 
   map[userId] = {
     username: resolvedUsername,
     display_name: resolvedDisplayName || undefined,
+  };
+}
+
+function mapRowToFellowAnnotation(
+  row: Record<string, unknown>,
+  resolvedMap: Record<string, { username: string; display_name?: string | null }>,
+  cachedMeta?: { title?: string; author?: string }
+): FellowAnnotation {
+  const fellowUserId = String(row.user_id);
+  const fellowInfo = resolvedMap[fellowUserId];
+  return {
+    id: String(row.id),
+    userId: fellowUserId,
+    bookId: Number(row.book_id),
+    bookTitle: cachedMeta?.title,
+    bookAuthor: cachedMeta?.author,
+    chapterIndex: Number(row.chapter_index),
+    chapterPage: Number(row.chapter_page),
+    selectedText: String(row.selected_text),
+    color: (row.color as HighlightColor) || 'amber',
+    note: (row.note as string) || undefined,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    isFellow: true,
+    fellowUsername: fellowInfo?.username || 'fellow_scholar',
+    fellowDisplayName: fellowInfo?.display_name || undefined,
   };
 }
 
@@ -159,7 +180,7 @@ export function buildFellowScholarsMap(
   const map: Record<string, { username: string; display_name?: string | null }> = {};
   const fellowshipState = useFellowshipStore.getState();
 
-  for (const circle of fellowshipState.circles || []) {
+  for (const circle of fellowshipState.circles) {
     if (circle.requester_id && circle.requester_username) {
       setOrUpdateFellowMapEntry(
         map,
@@ -178,7 +199,7 @@ export function buildFellowScholarsMap(
     }
   }
 
-  for (const sym of fellowshipState.symposiums || []) {
+  for (const sym of fellowshipState.symposiums) {
     if (sym.host_id && sym.host_username) {
       setOrUpdateFellowMapEntry(
         map,
@@ -214,6 +235,56 @@ type AnnotationOutboxDispatcher = (
   payload: Record<string, unknown>
 ) => PromiseLike<{ error: unknown }>;
 
+async function resolveFellowIdentityMap(
+  rows: Record<string, unknown>[],
+  currentUserId: string,
+  fellowScholarsMap: Record<string, { username: string; display_name?: string | null }> | undefined,
+  supabase: ReturnType<typeof createClient>
+): Promise<Record<string, { username: string; display_name?: string | null }>> {
+  const resolvedMap = buildFellowScholarsMap(fellowScholarsMap);
+
+  const missingIds = Array.from(
+    new Set(
+      rows
+        .map((r) => String(r.user_id || ''))
+        .filter(
+          (uid) =>
+            uid &&
+            uid !== currentUserId &&
+            (!resolvedMap[uid]?.username ||
+              isPlaceholderUsername(resolvedMap[uid]?.username))
+        )
+    )
+  );
+
+  if (missingIds.length > 0) {
+    try {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .in('id', missingIds);
+      if (Array.isArray(profilesData)) {
+        for (const prof of profilesData as Array<{
+          id: string;
+          username: string | null;
+          display_name: string | null;
+        }>) {
+          if (prof.id && (prof.username || prof.display_name)) {
+            resolvedMap[prof.id] = {
+              username: prof.username || prof.display_name || 'fellow_scholar',
+              display_name: prof.display_name || undefined,
+            };
+          }
+        }
+      }
+    } catch {
+      // Non-blocking if profiles query is unavailable or offline
+    }
+  }
+
+  return resolvedMap;
+}
+
 const ANNOTATION_OUTBOX_DISPATCHERS: Record<
   AnnotationOutboxAction['type'],
   AnnotationOutboxDispatcher
@@ -226,6 +297,43 @@ const ANNOTATION_OUTBOX_DISPATCHERS: Record<
       { onConflict: 'id' }
     ),
 };
+
+function toAnnotationDbRow(a: Annotation, userId: string) {
+  return {
+    id: a.id,
+    user_id: userId,
+    book_id: a.bookId,
+    chapter_index: a.chapterIndex,
+    chapter_page: a.chapterPage,
+    selected_text: a.selectedText,
+    color: a.color,
+    note: a.note ?? null,
+    created_at: a.createdAt,
+    updated_at: a.updatedAt,
+  };
+}
+
+async function syncAnnotationMutation(
+  target: Annotation,
+  userId: string,
+  mutateCloud: (
+    supabase: ReturnType<typeof createClient>,
+    dbPayload: ReturnType<typeof toAnnotationDbRow>
+  ) => PromiseLike<{ error: unknown }>,
+  queueOutboxAction: AnnotationState['queueOutboxAction']
+) {
+  const dbPayload = toAnnotationDbRow(target, userId);
+  try {
+    const supabase = createClient();
+    const { error } = await mutateCloud(supabase, dbPayload);
+    if (error) throw error;
+  } catch {
+    queueOutboxAction({
+      type: 'UPSERT_ANNOTATION',
+      payload: dbPayload,
+    });
+  }
+}
 
 export const useAnnotationStore = create<AnnotationState>()(
   persist(
@@ -252,7 +360,7 @@ export const useAnnotationStore = create<AnnotationState>()(
 
       enrichFellowAnnotations: (fellowScholarsMap) => {
         const resolvedMap = buildFellowScholarsMap(fellowScholarsMap);
-        const fellowshipSymposiums = useFellowshipStore.getState().symposiums || [];
+        const fellowshipSymposiums = useFellowshipStore.getState().symposiums;
 
         set((state) => {
           let modified = false;
@@ -261,22 +369,15 @@ export const useAnnotationStore = create<AnnotationState>()(
             let resolvedUsername = directInfo?.username;
             let resolvedDisplayName = directInfo?.display_name || undefined;
 
-            if (!resolvedUsername && fa.bookId) {
+            if (!resolvedUsername && !fa.userId && fa.bookId) {
               const matchingSym = fellowshipSymposiums.find(
                 (s) =>
                   s.book_id === fa.bookId &&
-                  (s.status === 'active' || s.status === 'completed') &&
-                  (!fa.userId || s.host_id === fa.userId || s.fellow_id === fa.userId)
+                  (s.status === 'active' || s.status === 'completed')
               );
               if (matchingSym) {
-                const isFellowTheHost = fa.userId ? matchingSym.host_id === fa.userId : false;
-                resolvedUsername = isFellowTheHost
-                  ? matchingSym.host_username
-                  : matchingSym.fellow_username;
-                resolvedDisplayName =
-                  (isFellowTheHost
-                    ? matchingSym.host_display_name
-                    : matchingSym.fellow_display_name) || undefined;
+                resolvedUsername = matchingSym.fellow_username;
+                resolvedDisplayName = matchingSym.fellow_display_name || undefined;
               }
             }
 
@@ -368,60 +469,12 @@ export const useAnnotationStore = create<AnnotationState>()(
           if (error) throw error;
 
           const rows = (data || []) as Record<string, unknown>[];
-          const resolvedMap = buildFellowScholarsMap(fellowScholarsMap);
-          const fellowshipSymposiums = useFellowshipStore.getState().symposiums || [];
-
-          for (const s of fellowshipSymposiums) {
-            if (s.status === 'active' || s.status === 'completed') {
-              const companionId = s.host_id === currentUserId ? s.fellow_id : s.host_id;
-              const companionUsername = s.host_id === currentUserId ? s.fellow_username : s.host_username;
-              const companionDisplayName = s.host_id === currentUserId ? s.fellow_display_name : s.host_display_name;
-              if (companionId && companionUsername && !resolvedMap[companionId]) {
-                resolvedMap[companionId] = {
-                  username: companionUsername,
-                  display_name: companionDisplayName || undefined,
-                };
-              }
-            }
-          }
-
-          const missingIds = Array.from(
-            new Set(
-              rows
-                .map((r) => String(r.user_id || ''))
-                .filter(
-                  (uid) =>
-                    uid &&
-                    (!resolvedMap[uid]?.username ||
-                      isPlaceholderUsername(resolvedMap[uid]?.username))
-                )
-            )
+          const resolvedMap = await resolveFellowIdentityMap(
+            rows,
+            currentUserId,
+            fellowScholarsMap,
+            supabase
           );
-
-          if (missingIds.length > 0) {
-            try {
-              const { data: profilesData } = await supabase
-                .from('profiles')
-                .select('id, username, display_name')
-                .in('id', missingIds);
-              if (Array.isArray(profilesData)) {
-                for (const prof of profilesData as Array<{
-                  id: string;
-                  username: string | null;
-                  display_name: string | null;
-                }>) {
-                  if (prof.id && (prof.username || prof.display_name)) {
-                    resolvedMap[prof.id] = {
-                      username: prof.username || prof.display_name || 'fellow_scholar',
-                      display_name: prof.display_name || undefined,
-                    };
-                  }
-                }
-              }
-            } catch {
-              // Non-blocking
-            }
-          }
 
           const currentFellow = get().fellowAnnotations;
           const currentOwn = get().annotations;
@@ -437,30 +490,9 @@ export const useAnnotationStore = create<AnnotationState>()(
             }
           }
 
-          const mapped: FellowAnnotation[] = rows.map((row: Record<string, unknown>) => {
-            const fellowUserId = String(row.user_id);
-            const fellowInfo = resolvedMap[fellowUserId];
-            const bId = Number(row.book_id);
-            const cachedMeta = bookMetaMap.get(bId);
-
-            return {
-              id: String(row.id),
-              userId: fellowUserId,
-              bookId: bId,
-              bookTitle: cachedMeta?.title,
-              bookAuthor: cachedMeta?.author,
-              chapterIndex: Number(row.chapter_index),
-              chapterPage: Number(row.chapter_page),
-              selectedText: String(row.selected_text),
-              color: (row.color as HighlightColor) || 'amber',
-              note: (row.note as string) || undefined,
-              createdAt: String(row.created_at),
-              updatedAt: String(row.updated_at),
-              isFellow: true,
-              fellowUsername: fellowInfo?.username || 'fellow_scholar',
-              fellowDisplayName: fellowInfo?.display_name || undefined,
-            };
-          });
+          const mapped: FellowAnnotation[] = rows.map((row: Record<string, unknown>) =>
+            mapRowToFellowAnnotation(row, resolvedMap, bookMetaMap.get(Number(row.book_id)))
+          );
 
           set({ fellowAnnotations: mapped });
           return mapped;
@@ -483,94 +515,16 @@ export const useAnnotationStore = create<AnnotationState>()(
           if (error) throw error;
 
           const rows = (data || []) as Record<string, unknown>[];
-          const resolvedMap = buildFellowScholarsMap(fellowScholarsMap);
-
-          // Also cross-reference active/completed symposiums for this volume if any row user_id is missing
-          const fellowshipSymposiums = useFellowshipStore.getState().symposiums || [];
-          const bookSymposium = fellowshipSymposiums.find(
-            (s) =>
-              s.book_id === bookId &&
-              (s.status === 'active' || s.status === 'completed') &&
-              (s.host_id === currentUserId || s.fellow_id === currentUserId)
+          const resolvedMap = await resolveFellowIdentityMap(
+            rows,
+            currentUserId,
+            fellowScholarsMap,
+            supabase
           );
-          if (bookSymposium) {
-            const companionId =
-              bookSymposium.host_id === currentUserId
-                ? bookSymposium.fellow_id
-                : bookSymposium.host_id;
-            const companionUsername =
-              bookSymposium.host_id === currentUserId
-                ? bookSymposium.fellow_username
-                : bookSymposium.host_username;
-            const companionDisplayName =
-              bookSymposium.host_id === currentUserId
-                ? bookSymposium.fellow_display_name
-                : bookSymposium.host_display_name;
-            if (companionId && companionUsername && !resolvedMap[companionId]) {
-              resolvedMap[companionId] = {
-                username: companionUsername,
-                display_name: companionDisplayName || undefined,
-              };
-            }
-          }
 
-          // Fallback profile lookup for any fellow user_id still absent from resolvedMap or with placeholder handle
-          const missingIds = Array.from(
-            new Set(
-              rows
-                .map((r) => String(r.user_id || ''))
-                .filter(
-                  (uid) =>
-                    uid &&
-                    (!resolvedMap[uid]?.username ||
-                      isPlaceholderUsername(resolvedMap[uid]?.username))
-                )
-            )
+          const mapped: FellowAnnotation[] = rows.map((row: Record<string, unknown>) =>
+            mapRowToFellowAnnotation(row, resolvedMap)
           );
-          if (missingIds.length > 0) {
-            try {
-              const { data: profilesData } = await supabase
-                .from('profiles')
-                .select('id, username, display_name')
-                .in('id', missingIds);
-              if (Array.isArray(profilesData)) {
-                for (const prof of profilesData as Array<{
-                  id: string;
-                  username: string | null;
-                  display_name: string | null;
-                }>) {
-                  if (prof.id && (prof.username || prof.display_name)) {
-                    resolvedMap[prof.id] = {
-                      username: prof.username || prof.display_name || 'fellow_scholar',
-                      display_name: prof.display_name || undefined,
-                    };
-                  }
-                }
-              }
-            } catch {
-              // Non-blocking if profiles query is unavailable or offline
-            }
-          }
-
-          const mapped: FellowAnnotation[] = rows.map((row: Record<string, unknown>) => {
-            const fellowUserId = String(row.user_id);
-            const fellowInfo = resolvedMap[fellowUserId];
-            return {
-              id: String(row.id),
-              userId: fellowUserId,
-              bookId: Number(row.book_id),
-              chapterIndex: Number(row.chapter_index),
-              chapterPage: Number(row.chapter_page),
-              selectedText: String(row.selected_text),
-              color: (row.color as HighlightColor) || 'amber',
-              note: (row.note as string) || undefined,
-              createdAt: String(row.created_at),
-              updatedAt: String(row.updated_at),
-              isFellow: true,
-              fellowUsername: fellowInfo?.username || 'fellow_scholar',
-              fellowDisplayName: fellowInfo?.display_name || undefined,
-            };
-          });
 
           set((state) => ({
             fellowAnnotations: [
@@ -637,37 +591,28 @@ export const useAnnotationStore = create<AnnotationState>()(
           }
           if (trimmedText.length > existing.selectedText.length) {
             const now = new Date().toISOString();
+            const expanded: Annotation = {
+              ...existing,
+              selectedText: trimmedText,
+              updatedAt: now,
+            };
             set((state) => ({
               annotations: state.annotations.map((a) =>
-                a.id === existing.id ? { ...a, selectedText: trimmedText, updatedAt: now } : a
+                a.id === existing.id ? expanded : a
               ),
             }));
             if (userId) {
-              const dbPayload = {
-                id: existing.id,
-                user_id: userId,
-                book_id: existing.bookId,
-                chapter_index: existing.chapterIndex,
-                chapter_page: existing.chapterPage,
-                selected_text: trimmedText,
-                color: existing.color,
-                note: existing.note || null,
-                updated_at: now,
-              };
-              try {
-                const supabase = createClient();
-                const { error } = await supabase
-                  .from('user_annotations')
-                  .update({ selected_text: trimmedText, updated_at: now })
-                  .eq('id', existing.id)
-                  .eq('user_id', userId);
-                if (error) throw error;
-              } catch {
-                get().queueOutboxAction({
-                  type: 'UPSERT_ANNOTATION',
-                  payload: dbPayload,
-                });
-              }
+              await syncAnnotationMutation(
+                expanded,
+                userId,
+                (sb) =>
+                  sb
+                    .from('user_annotations')
+                    .update({ selected_text: trimmedText, updated_at: now })
+                    .eq('id', existing.id)
+                    .eq('user_id', userId),
+                get().queueOutboxAction
+              );
             }
           }
           return get().annotations.find((a) => a.id === existing.id) || existing;
@@ -697,29 +642,12 @@ export const useAnnotationStore = create<AnnotationState>()(
 
         // 2. Cloud synchronization if logged in
         if (userId) {
-          const dbPayload = {
-            id: newAnnotation.id,
-            user_id: userId,
-            book_id: newAnnotation.bookId,
-            chapter_index: newAnnotation.chapterIndex,
-            chapter_page: newAnnotation.chapterPage,
-            selected_text: newAnnotation.selectedText,
-            color: newAnnotation.color,
-            note: newAnnotation.note || null,
-            created_at: newAnnotation.createdAt,
-            updated_at: newAnnotation.updatedAt,
-          };
-
-          try {
-            const supabase = createClient();
-            const { error } = await supabase.from('user_annotations').insert(dbPayload);
-            if (error) throw error;
-          } catch {
-            get().queueOutboxAction({
-              type: 'UPSERT_ANNOTATION',
-              payload: dbPayload,
-            });
-          }
+          await syncAnnotationMutation(
+            newAnnotation,
+            userId,
+            (sb, dbPayload) => sb.from('user_annotations').insert(dbPayload),
+            get().queueOutboxAction
+          );
         }
 
         return newAnnotation;
@@ -736,37 +664,19 @@ export const useAnnotationStore = create<AnnotationState>()(
         }));
 
         // 2. Cloud synchronization if logged in
-        if (userId) {
-          const target = get().annotations.find((a) => a.id === id);
-          if (target) {
-            const dbPayload = {
-              id: target.id,
-              user_id: userId,
-              book_id: target.bookId,
-              chapter_index: target.chapterIndex,
-              chapter_page: target.chapterPage,
-              selected_text: target.selectedText,
-              color,
-              note: target.note || null,
-              created_at: target.createdAt,
-              updated_at: now,
-            };
-
-            try {
-              const supabase = createClient();
-              const { error } = await supabase
+        const target = userId ? get().annotations.find((a) => a.id === id) : undefined;
+        if (userId && target) {
+          await syncAnnotationMutation(
+            target,
+            userId,
+            (sb) =>
+              sb
                 .from('user_annotations')
                 .update({ color, updated_at: now })
                 .eq('id', id)
-                .eq('user_id', userId);
-              if (error) throw error;
-            } catch {
-              get().queueOutboxAction({
-                type: 'UPSERT_ANNOTATION',
-                payload: dbPayload,
-              });
-            }
-          }
+                .eq('user_id', userId),
+            get().queueOutboxAction
+          );
         }
 
         return true;
@@ -784,36 +694,19 @@ export const useAnnotationStore = create<AnnotationState>()(
         }));
 
         // 2. Cloud synchronization if logged in
-        if (userId) {
-          const target = get().annotations.find((a) => a.id === id);
-          if (target) {
-            const dbPayload = {
-              id: target.id,
-              user_id: userId,
-              book_id: target.bookId,
-              chapter_index: target.chapterIndex,
-              chapter_page: target.chapterPage,
-              selected_text: target.selectedText,
-              color: target.color,
-              note: trimmedNote || null,
-              updated_at: now,
-            };
-
-            try {
-              const supabase = createClient();
-              const { error } = await supabase
+        const target = userId ? get().annotations.find((a) => a.id === id) : undefined;
+        if (userId && target) {
+          await syncAnnotationMutation(
+            target,
+            userId,
+            (sb) =>
+              sb
                 .from('user_annotations')
                 .update({ note: trimmedNote || null, updated_at: now })
                 .eq('id', id)
-                .eq('user_id', userId);
-              if (error) throw error;
-            } catch {
-              get().queueOutboxAction({
-                type: 'UPSERT_ANNOTATION',
-                payload: dbPayload,
-              });
-            }
-          }
+                .eq('user_id', userId),
+            get().queueOutboxAction
+          );
         }
 
         return true;
@@ -908,7 +801,7 @@ export const useAnnotationStore = create<AnnotationState>()(
 
         try {
           const supabase = createClient();
-          const currentTombstones = get().tombstones || [];
+          const currentTombstones = get().tombstones;
 
           // Fetch cloud annotations
           const { data, error } = await supabase
@@ -966,19 +859,7 @@ export const useAnnotationStore = create<AnnotationState>()(
 
           // Bidirectional sync: upload guest annotations to Supabase
           if (unSyncedGuestAnnotations.length > 0) {
-            const inserts = unSyncedGuestAnnotations.map((a) => ({
-              id: a.id,
-              user_id: userId,
-              book_id: a.bookId,
-              chapter_index: a.chapterIndex,
-              chapter_page: a.chapterPage,
-              selected_text: a.selectedText,
-              color: a.color,
-              note: a.note || null,
-              created_at: a.createdAt,
-              updated_at: a.updatedAt,
-            }));
-
+            const inserts = unSyncedGuestAnnotations.map((a) => toAnnotationDbRow(a, userId));
             await supabase.from('user_annotations').upsert(inserts, { onConflict: 'id' });
           }
 
@@ -1035,13 +916,25 @@ export function useHydratedAnnotations() {
   const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
   const clearAllAnnotations = useAnnotationStore((s) => s.clearAllAnnotations);
 
+  const hydratedState = hasMounted
+    ? {
+        annotations,
+        fellowAnnotations,
+        marginaliaSourceFilter,
+        spoilerShieldEnabled,
+        isSyncing,
+      }
+    : {
+        annotations: [] as Annotation[],
+        fellowAnnotations: [] as FellowAnnotation[],
+        marginaliaSourceFilter: 'all' as MarginaliaSourceFilter,
+        spoilerShieldEnabled: true,
+        isSyncing: false,
+      };
+
   return {
     hasMounted,
-    annotations: hasMounted ? annotations : [],
-    fellowAnnotations: hasMounted ? fellowAnnotations : [],
-    marginaliaSourceFilter: hasMounted ? marginaliaSourceFilter : ('all' as MarginaliaSourceFilter),
-    spoilerShieldEnabled: hasMounted ? spoilerShieldEnabled : true,
-    isSyncing: hasMounted ? isSyncing : false,
+    ...hydratedState,
     setMarginaliaSourceFilter,
     setSpoilerShieldEnabled,
     fetchAllFellowAnnotations,

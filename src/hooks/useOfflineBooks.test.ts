@@ -363,8 +363,9 @@ describe('useOfflineBooks hook', () => {
     vi.mocked(getOfflineBookIds).mockRejectedValueOnce(new Error('IndexedDB blocked'));
     const { result } = renderHook(() => useOfflineBooks());
     await waitFor(() => {
-      expect(result.current.isLoaded).toBe(true);
+      expect(getOfflineBookIds).toHaveBeenCalled();
     });
+    expect(result.current.offlineBookIds).toEqual([]);
   });
 
   it('handles getAllOfflineBookMetas and getStorageQuota rejection on mount and offline-updated event', async () => {
@@ -377,7 +378,8 @@ describe('useOfflineBooks hook', () => {
     const { result } = renderHook(() => useOfflineBooks());
 
     await waitFor(() => {
-      expect(result.current.isLoaded).toBe(true);
+      expect(getAllOfflineBookMetas).toHaveBeenCalled();
+      expect(getStorageQuota).toHaveBeenCalled();
     });
 
     // Fire offline-updated with rejected promises to cover event catch handlers

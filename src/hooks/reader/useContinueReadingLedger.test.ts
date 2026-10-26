@@ -962,5 +962,70 @@ describe('useContinueReadingLedger', () => {
       { name: 'Renowned Translator', birth_year: 1850, death_year: 1910 },
     ]);
   });
+
+  it('covers bookmarkRow inclusion at 0% progress, position authorDetails healing on anonymous book, and Public Domain Author fallbacks', () => {
+    mockOfflineBookIds = [1342];
+    mockOfflineBooks = [
+      {
+        ...mockBook,
+        id: 1342,
+        authors: [{ name: 'Anonymous', birth_year: null, death_year: null }],
+      },
+    ];
+
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [], favoriteBooks: [], recentBooks: [] });
+      useReaderStore.setState({
+        readingPositions: {
+          // 1. 0% progress on page 1, but has bookmarkRow > 0 AND heals anonymous offline book with lifespan
+          1342: {
+            chapterIndex: 0,
+            chapterPage: 1,
+            globalPage: 1,
+            bookmarkRow: 14,
+            lastReadAt: '2026-10-05T12:00:00Z',
+            bookTitle: 'Pride and Prejudice',
+            bookAuthors: ['Austen, Jane, 1775-1817'],
+          },
+          // 2. Unknown book with position.bookTitle but empty bookAuthors -> falls back to Public Domain Author
+          999991: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 5,
+            lastReadAt: '2026-10-04T12:00:00Z',
+            bookTitle: 'Mystery Codex',
+            bookAuthors: [],
+          },
+          // 3. Unknown book without position.bookTitle -> falls back to Volume #id and Public Domain Author
+          999992: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 5,
+            lastReadAt: '2026-10-03T12:00:00Z',
+          },
+        },
+        readingProgress: {
+          1342: 0,
+          999991: 10,
+          999992: 20,
+        },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    const vol1342 = result.current.volumes.find((v) => v.book.id === 1342);
+    expect(vol1342?.bookmarkRow).toBe(14);
+    expect(vol1342?.book.authorDetails?.[0].death_year).toBe(1817);
+
+    const vol999991 = result.current.volumes.find((v) => v.book.id === 999991);
+    expect(vol999991?.book.title).toBe('Mystery Codex');
+    expect(vol999991?.book.authors).toEqual(['Public Domain Author']);
+
+    const vol999992 = result.current.volumes.find((v) => v.book.id === 999992);
+    expect(vol999992?.book.authors).toEqual(['Public Domain Author']);
+
+    mockOfflineBooks = [];
+    mockOfflineBookIds = [];
+  });
 });
 

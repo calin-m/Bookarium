@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-10-26`  
-> **Topology Health**: `195` Modules Analyzed • `766` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
+> **Topology Health**: `195` Modules Analyzed • `767` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
 
@@ -17,6 +17,9 @@ flowchart TD
     User["👤 Reader / Public Domain Scholar"]
     
     subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]
+        Providers["providers.tsx\n(QueryClient, Auth Init, Cloud Sync & Dynamic AuthModal)"]
+        SWReg["ServiceWorkerRegister.tsx & public/sw.js\n(App Shell v4, Static Asset Warmup & Offline Fallback)"]
+        AuthModalNode["AuthModal.tsx & EmailSentView.tsx\n(Sign-In, Sign-Up, OAuth, Magic Link & Reset)"]
         Nav["Navbar.tsx\n(Brand Reset, View Switcher, Tier-Adaptive Gliding Active Underline Cradle, Theme Cycler)"]
         Hero["HeroSearch.tsx\n(Dynamic 3D Rotating Spotlight & Search)"]
         Hero3D["HeroFeaturedBook3D.tsx\n(3D Open-Cover Hinge & Leaf-Flip Engine)"]
@@ -34,6 +37,8 @@ flowchart TD
         RemoveOfflineModalNode["RemoveOfflineBookModal.tsx\n(Offline Cache Eviction Confirmation)"]
         CatalogOfflineNode["CatalogOfflineView.tsx\n(Offline Catalog Notice & Collection Quick-Links)"]
         SymposiumInviteModalNode["SymposiumInviteModal.tsx\n(1-on-1 Literary Symposium Companion Picker)"]
+        AccoladesEngine["accolades-engine.ts • ExLibrisBookplate.tsx • AccoladeCelebrationModal.tsx"]
+        PublicSanctuaryNodes["PublicProfileView.tsx • PinnedAccoladesShelf.tsx • PrivateProfileNotice.tsx"]
         
         subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]
             Grid["Catalog View (/)\n(Smooth Scroll Navigation, Adaptive Offline Downloaded Dataset, 2-Col Mobile Grid & 3D Hardwood Shelf)"]
@@ -58,7 +63,7 @@ flowchart TD
             ControlsDrawer["ReaderControls\n(Typography, Speech & Themes)"]
             LangDrawer["ReaderLanguageDrawer\n(International Editions Handoff)"]
             AnnotDrawer["ReaderAnnotationsDrawer\n(In-Volume Highlights, Notes & Deep Links)"]
-            DownDrawer["DownloadDrawer\n(In-App Offline Storage & EPUB/MOBI/TXT Direct Streams)"]
+            DownDrawer["DownloadDrawer\n(Download Hub: Offline Cache & Compact 2x2 Format Grid)"]
         end
         
         subgraph StateStores ["Zustand Persistent State & Offline Engine"]
@@ -71,8 +76,9 @@ flowchart TD
             StoreHabits[("🔥 useHabitsStore\n(streak, 5m threshold, dual immersion, cloud)")]
             StoreAccolades[("🎖️ useAccoladesStore\n(accolades, showcase pinning, celebrations, cloud)")]
             StoreFellowship[("🤝 useFellowshipStore\n(reader circles, symposiums, companion progress, cloud)")]
+            SyncCoordinator["🔄 sync-utils.ts\n(Unified 6-Store Cloud Sync Coordinator)"]
             BookshelfSyncEngine["🔄 bookshelf-cloud-sync.ts\n(Outbox Replay, Tombstone Filtering & Cloud Sync)"]
-            BackupValidator["🛡️ backup-validator.ts\n(Schema v1.0–v2.2 Validation & Sanitization)"]
+            BackupEngine["📦 library-backup.ts & backup-validator.ts\n(Schema v1.0–v2.2 JSON Backup & RFC 4180 CSV)"]
             StoreJurisdiction[("🌐 useJurisdictionStore\n(country, rule, dev override, cookie sync)")]
             StoreOffline[("📦 IndexedDB Engine\n(unabridged offline volume cache)")]
         end
@@ -127,6 +133,10 @@ flowchart TD
     end
 
     User --> RootProxy
+    RootProxy --> Providers
+    Providers --> SWReg
+    Providers --> AuthModalNode
+    Providers --> SyncCoordinator
     RootProxy --> Nav
     RootProxy --> Hero
     Hero --> Hero3D
@@ -165,14 +175,23 @@ flowchart TD
     DownDrawer --> ContentAdvisory
     AccView --> HabitsCard
     AccView --> AccoladesCard
+    AccoladesCard --> AccoladesEngine
     AccView --> SymposiumCard
     AccView --> PrefsCard
-    PrefsCard --> BackupValidator
+    PrefsCard --> BackupEngine
     SymposiumCard --> StoreFellowship
-    ProfilePage --> StoreFellowship
+    ProfilePage --> PublicSanctuaryNodes
+    PublicSanctuaryNodes --> StoreFellowship
+    SyncCoordinator --> StoreShelf
+    SyncCoordinator --> StoreReader
+    SyncCoordinator --> StoreAnnot
+    SyncCoordinator --> StoreHabits
+    SyncCoordinator --> StoreAccolades
+    SyncCoordinator --> StoreFellowship
     StoreShelf --> BookshelfSyncEngine
     BookshelfSyncEngine -->|Cloud Sync via RLS| SupabaseCloud
     StoreFellowship -->|Circles & Symposium Sync| SupabaseCloud
+    StoreAnnot -->|Marginalia & Symposium Sync| SupabaseCloud
     StoreOffline -->|Adaptive Offline Catalog| Grid
     StoreOffline -->|Offline Volumes & Smart Shelf| ShelfView
     StoreOffline -->|Offline Volumes Filter| LedgerHook
@@ -513,7 +532,7 @@ Zustand client-side state stores programmatically verified across **10 Persisten
 | **`/api/books/translations`** | `GET` | [`src/app/api/books/translations/route.ts`](src/app/api/books/translations/route.ts) | `s-maxage=86400, stale-while-revalidate=604800` • Sliding-Window Rate Limit & Jurisdictional Filter | Supabase `public.book_translations` & `public.books` |
 | **`/auth/callback`** | `GET` | [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) | `No-Store Auth Exchange` • PKCE & OTP Verification + Canonical Origin Redirect Sanitizer | Supabase Auth (`exchangeCodeForSession`, `verifyOtp`) |
 
-### 2. App Router Pages, Layouts & Metadata Entrypoints
+### 2. App Router Pages, Layouts, Providers & Styling Entrypoints
 
 | Route / URI | Entrypoint Type | Rendering Strategy | Source File | Architectural Responsibility |
 | :--- | :--- | :--- | :--- | :--- |
@@ -523,12 +542,14 @@ Zustand client-side state stores programmatically verified across **10 Persisten
 | **`/copyright`** | App Page | React Server Component (SSR / Static) | [`src/app/copyright/page.tsx`](src/app/copyright/page.tsx) | Multi-Jurisdictional Public Domain Copyright Governance manifesto, territory rules table, and takedown notice channel. |
 | **`/`** | App Error Boundary | Client Interactive (`"use client"`) | [`src/app/error.tsx`](src/app/error.tsx) | Route-level React Error Boundary providing graceful recovery UI and diagnostic fallback. |
 | **`/`** | App Error Boundary | Client Interactive (`"use client"`) | [`src/app/global-error.tsx`](src/app/global-error.tsx) | Root document-level React Error Boundary catching fatal top-level layout exceptions. |
+| **`/ (Global CSS)`** | Tailwind CSS v4 Oxide Theme & 3D Book Surface Stylesheet | PostCSS / Tailwind CSS v4 Oxide Bundle | [`src/app/globals.css`](src/app/globals.css) | Tailwind CSS v4 Oxide stylesheet defining Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) theme tokens, 3D hardcover book hinge physics (`.book-center-crease`, `.preserve-3d`), and custom reader scrollbars. |
 | **`/`** | Root Layout | React Server Component (SSR / Static) | [`src/app/layout.tsx`](src/app/layout.tsx) | Root HTML shell, font initialization, theme class hydration, and global React Query / Service Worker provider wrapper. |
 | **`/manifest.webmanifest`** | PWA Metadata Route | React Server Component (SSR / Static) | [`src/app/manifest.ts`](src/app/manifest.ts) | Progressive Web App (PWA) Web App Manifest configuring standalone display, theme colors, and multi-resolution icons. |
 | **`/`** | App 404 Boundary | React Server Component (SSR / Static) | [`src/app/not-found.tsx`](src/app/not-found.tsx) | Editorial 404 Not Found boundary with direct navigation back to the public domain catalog. |
 | **`/`** | App Page | Client Interactive (`"use client"`) | [`src/app/page.tsx`](src/app/page.tsx) | Primary SPA workbench hosting Catalog, Bookshelf, Favorites, Bookmarks, and Commonplace Notebook views with edge URL rewrites. |
 | **`/privacy`** | Route Layout & SSR Metadata | React Server Component (SSR / Static) | [`src/app/privacy/layout.tsx`](src/app/privacy/layout.tsx) | Server layout defining canonical SEO and OpenGraph metadata for the Privacy Architecture manifesto. |
 | **`/privacy`** | App Page | React Server Component (SSR / Static) | [`src/app/privacy/page.tsx`](src/app/privacy/page.tsx) | Zero-Tracker Privacy Architecture manifesto, functional geo-cookie disclosure, and COPPA / GDPR Art. 8 governance. |
+| **`/ (Root Provider)`** | Root Client Provider & Auth/Sync Orchestrator | Client Interactive (`"use client"`) | [`src/app/providers.tsx`](src/app/providers.tsx) | Root client provider initializing TanStack `QueryClient`, Supabase authentication listener, `syncAllUserStores` cloud reconciliation, `online` event outbox flushing, and dynamic `AuthModal` rendering. |
 | **`/read/[id]`** | Route Layout & SSR Metadata | React Server Component (SSR / Static) | [`src/app/read/[id]/layout.tsx`](src/app/read/[id]/layout.tsx) | Server layout generating ISR 24h dynamic OpenGraph, Twitter Card, and Schema.org Book JSON-LD metadata (`React.cache`). |
 | **`/read/[id]`** | App Page | Client Interactive (`"use client"`) | [`src/app/read/[id]/page.tsx`](src/app/read/[id]/page.tsx) | Dedicated distraction-free Focus Reader with continuous pagination, Web Worker AST segmentation, TTS narration, and Symposium marginalia. |
 | **`/robots.txt`** | SEO Metadata Route | React Server Component (SSR / Static) | [`src/app/robots.ts`](src/app/robots.ts) | Search engine crawler directives permitting public catalog and reader indexing while protecting `/api/` and `/auth/` routes. |
@@ -631,10 +652,11 @@ Automated ingestion pipelines, periodic synchronization jobs, and GitHub Actions
 
 ## 🗄️ Database Architecture & Row Level Security (RLS) Policies
 
-Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **13 Database Tables** with strict Row Level Security (Rule 9):
+Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **14 Database Tables** with strict Row Level Security (Rule 9):
 
 | Table Name | RLS Governance | Client State Store | Domain Role & Security Description |
 | :--- | :--- | :--- | :--- |
+| **`supabase_migrations.schema_migrations`** | Enabled (`No Client Access`) | _Supabase CLI / Studio Tracker_ | Internal Supabase migration ledger preventing `42P01` dashboard warnings and tracking applied DDL versions with RLS enabled. |
 | **`public.profiles`** | Enabled (`auth.uid()`) | `useAuthStore` | User profile display name, `@username` handle, theme preferences, and typography choices (auto-created on signup, with companion identity RLS resolution for Reader Circles & Symposiums). |
 | **`public.bookshelves`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Default master "General" shelf and custom user-created named shelves. |
 | **`public.bookshelf_items`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Books filed in specific shelves with user-scoped uniqueness constraints. |
@@ -649,22 +671,54 @@ Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified 
 | **`public.reader_circles`** | Enabled (`auth.uid()`) | `useFellowshipStore` | Mutual Literary Fellowship pairings (pending/accepted) with RLS participant isolation. |
 | **`public.symposium_sessions`** | Enabled (`auth.uid()`) | `useFellowshipStore` | Dual-reading Literary Symposium sessions tracking shared volume progress and chapter coordinates for two fellows. |
 
-### Stored Logic, Triggers & Search Indexes
+### 1. Stored Logic, Triggers & RPC Functions
 
-| Database Object | Type | Target Table | Functionality & Security Scope |
+| Database Function / Trigger | Type | Target Table(s) | Functionality & Security Scope |
 | :--- | :--- | :--- | :--- |
-| **`public.books_search_vector_trigger`** | Trigger / Function | `public.books` | Automatically generates and updates `search_vector tsvector` from title and subjects on insert/update (execution revoked from public/anon/authenticated; immutable search path). |
-| **`idx_books_search_vector`** | GIN Index | `public.books` | Full-text search index over `search_vector` TSVECTOR for rapid multi-word search matching. |
-| **`idx_books_languages`** | GIN Index | `public.books` | Inverted index for array containment queries on ISO 639 language codes (`languages && ARRAY[...]`). |
-| **`idx_books_subjects`** | GIN Index | `public.books` | Inverted index for subject facet queries (`subjects && ARRAY[...]`). |
-| **`idx_books_author_death_year`** | B-Tree Index | `public.books` | Index on `max_author_death_year` for instant server-side jurisdictional copyright enforcement. |
-| **`idx_book_translations_book_id`** | B-Tree Index | `public.book_translations` | Single-book translation query index for instant reader drawer lookups. |
-| **`idx_book_translations_work_id`** | B-Tree Index | `public.book_translations` | Canonical literary work grouping index for cluster traversal. |
-| **`idx_book_translations_work_lang`** | Composite Index | `public.book_translations` | Composite index on `(work_id, language)` for fast language filtering within a literary work cluster. |
-| **`public.handle_new_user()`** | Trigger / Function | `auth.users` -> `public.profiles` | Auto-provisions profile and default General shelf on signup (execution revoked from public/anon/authenticated; immutable search path). |
-| **`public.handle_profile_identity_sync()`** | Trigger / Function | `public.profiles` -> `reader_circles`, `symposium_sessions` | Propagates scholar `@username` and `display_name` updates across active/pending fellowship circles and symposium sessions on profile update (immutable search path). |
-| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (authenticated-only execution, null session guard, immutable search path). |
-| **`public.lookup_scholar_by_username()`** | RPC Function | `public.profiles` | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`is_public = false`). |
+| **`public.handle_new_user()`** | Trigger / Function (`on_auth_user_created`) | `auth.users` -> `public.profiles`, `public.bookshelves` | Auto-provisions scholar profile and default `General` shelf on signup (`SECURITY DEFINER`, `SET search_path = ''`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |
+| **`public.books_search_vector_trigger()`** | Trigger / Function (`trigger_books_search_vector`) | `public.books` | Automatically generates and updates `search_vector tsvector` from title and subjects on insert/update (`SET search_path = ''`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |
+| **`public.handle_profile_identity_sync()`** | Trigger / Function (`trg_profile_identity_sync`) | `public.profiles` -> `reader_circles`, `symposium_sessions` | Propagates scholar `@username` and `display_name` updates across active/pending fellowship circles and symposium sessions on profile update (`SECURITY DEFINER`, `SET search_path = ''`). |
+| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (`SECURITY DEFINER`, `SET search_path = ''`, authenticated-only execution, null session guard). |
+| **`public.lookup_scholar_by_username()`** | RPC Function | `public.profiles` | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`SECURITY DEFINER`, `SET search_path = ''`, authenticated-only). |
+| **`public.rls_auto_enable()` (Guard)** | Conditional Hardening Block | `pg_proc` (`public.rls_auto_enable`) | Idempotent `DO $$` guard revoking RPC execution from `PUBLIC, anon, authenticated` and locking `search_path = ''` if provisioned on the remote Supabase instance. |
+
+### 2. Search, Uniqueness & Foreign-Key Indexes (22 Explicit Indexes)
+
+Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements in [`supabase/schema.sql`](supabase/schema.sql):
+
+| Index Name | Index Type | Target Table | Indexed Expression & Filter | Query & Integrity Responsibility |
+| :--- | :--- | :--- | :--- | :--- |
+| **`unique_profile_username_lower`** | Partial Unique Index | `public.profiles` | `(lower(trim(username))) WHERE username IS NOT NULL` | Case-insensitive partial unique index (`lower(trim(username)) WHERE username IS NOT NULL`) enforcing globally unique scholar `@username` handles. |
+| **`unique_user_default_bookshelf`** | Partial Unique Index | `public.bookshelves` | `(user_id) WHERE is_default = true` | Partial unique index (`(user_id) WHERE is_default = true`) guaranteeing each scholar has at most one master `General` shelf. |
+| **`unique_user_shelf_name`** | Unique B-Tree Index | `public.bookshelves` | `(user_id, lower(trim(name)))` | Case-insensitive composite unique index (`(user_id, lower(trim(name)))`) preventing duplicate custom shelf names per user. |
+| **`idx_bookshelf_items_user_id`** | B-Tree Index | `public.bookshelf_items` | `(user_id)` | B-Tree foreign-key index on `(user_id)` accelerating user-scoped shelf item queries and cascading account deletion. |
+| **`idx_user_annotations_user_book`** | B-Tree Index | `public.user_annotations` | `(user_id, book_id)` | Composite B-Tree index on `(user_id, book_id)` for fast per-volume highlight and marginalia lookups. |
+| **`idx_user_book_curation_user_book`** | B-Tree Index | `public.user_book_curation` | `(user_id, book_id)` | Composite B-Tree index on `(user_id, book_id)` for personal 1–5 star ratings and reading status lookups. |
+| **`idx_user_reading_habits_user`** | B-Tree Index | `public.user_reading_habits` | `(user_id)` | B-Tree index on `(user_id)` accelerating streak and dual immersion telemetry queries. |
+| **`unique_user_accolade`** | Unique B-Tree Index | `public.user_accolades` | `(user_id, accolade_id)` | Composite unique index on `(user_id, accolade_id)` ensuring idempotent accolade unlocks per scholar. |
+| **`idx_user_accolades_user`** | B-Tree Index | `public.user_accolades` | `(user_id)` | B-Tree index on `(user_id)` for fast Ex-Libris bookplate and pinned showcase queries. |
+| **`idx_books_search_vector`** | GIN Index | `public.books` | `(search_vector)` | Inverted GIN index on `search_vector` TSVECTOR for sub-second multi-word full-text catalog search. |
+| **`idx_books_languages`** | GIN Index | `public.books` | `(languages)` | Inverted GIN index on `languages` TEXT[] for array-containment language filtering (`languages && ARRAY[...]`). |
+| **`idx_books_subjects`** | GIN Index | `public.books` | `(subjects)` | Inverted GIN index on `subjects` TEXT[] for topic/subject facet containment queries. |
+| **`idx_books_download_count`** | B-Tree Index | `public.books` | `(download_count DESC)` | Descending B-Tree index on `(download_count DESC)` for popularity sorting across 78,000+ volumes. |
+| **`idx_books_author_death_year`** | B-Tree Index | `public.books` | `(max_author_death_year)` | B-Tree index on `(max_author_death_year)` for sub-50ms server-side jurisdictional copyright filtering. |
+| **`idx_book_translations_book_id`** | B-Tree Index | `public.book_translations` | `(book_id)` | B-Tree index on `(book_id)` for instant single-book translation lookups in `ReaderLanguageDrawer`. |
+| **`idx_book_translations_work_id`** | B-Tree Index | `public.book_translations` | `(work_id)` | B-Tree index on `(work_id)` for canonical FRBR literary work cluster traversal. |
+| **`idx_book_translations_work_lang`** | B-Tree Index | `public.book_translations` | `(work_id, language)` | Composite B-Tree index on `(work_id, language)` for fast language-filtered edition resolution. |
+| **`idx_reader_circles_requester`** | B-Tree Index | `public.reader_circles` | `(requester_id)` | B-Tree index on `(requester_id)` for outbound Reader Circle fellowship and companion RLS lookups. |
+| **`idx_reader_circles_recipient`** | B-Tree Index | `public.reader_circles` | `(recipient_id)` | B-Tree index on `(recipient_id)` for inbound Reader Circle invitation and companion RLS lookups. |
+| **`idx_symposium_sessions_host`** | B-Tree Index | `public.symposium_sessions` | `(host_id)` | B-Tree index on `(host_id)` for host-side Literary Symposium and fellow marginalia RLS evaluation. |
+| **`idx_symposium_sessions_fellow`** | B-Tree Index | `public.symposium_sessions` | `(fellow_id)` | B-Tree index on `(fellow_id)` for fellow-side Literary Symposium and companion progress queries. |
+| **`idx_symposium_sessions_book`** | B-Tree Index | `public.symposium_sessions` | `(book_id)` | B-Tree index on `(book_id)` for volume-scoped Symposium session and shared annotation lookups. |
+
+### 3. Schema DDL, Offline SQL Seeds & Authority Cache Artifacts
+
+| Artifact File | Classification | File Size | Architectural Responsibility |
+| :--- | :--- | :--- | :--- |
+| [`supabase/schema.sql`](supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `40.3 KB` | Single source of truth defining all 14 database tables, 38 granular RLS policies, 6 stored functions/triggers, and 22 explicit search/uniqueness indexes. |
+| [`supabase/seed_books.sql`](supabase/seed_books.sql) | Curated Public Domain Catalog Seed | `11.4 KB` | Idempotent starter SQL seed (`ON CONFLICT (id) DO UPDATE`) provisioning curated Project Gutenberg masterworks for zero-network local development. |
+| [`supabase/seed_translations.sql`](supabase/seed_translations.sql) | Relational FRBR Translations Seed | `12.1 KB` | Idempotent SQL seed (`ON CONFLICT (work_id, book_id) DO UPDATE`) linking multilingual Project Gutenberg editions into canonical literary works. |
+| [`scripts/data/wikidata-translations-cache.json`](scripts/data/wikidata-translations-cache.json) | Offline Wikidata Authority Snapshot | `2.0 KB` | Verified CC0 Wikidata SPARQL authority cache (`P2034` Gutenberg IDs + `P407` language tags) enabling deterministic offline translation clustering when Wikidata is unreachable. |
 
 ---
 
@@ -703,14 +757,27 @@ Programmatically extracted from **4 TypeScript Type Modules** in `src/types/` us
 
 ---
 
-## ⚙️ Background Web Worker & Offline PWA Architecture
+## ⚙️ Background Web Worker, Offline PWA & Static Asset Pipeline (`src/workers/` & `public/`)
 
-Dedicated off-thread compute and Progressive Web App service worker modules in `src/workers/` and `public/`:
+### 1. Off-Thread Compute & Service Worker Runtime
 
 | Worker Module | Source File | Architectural Responsibility |
 | :--- | :--- | :--- |
 | **`gutenberg.worker`** | [`src/workers/gutenberg.worker.ts`](src/workers/gutenberg.worker.ts) | Dedicated off-thread Web Worker parsing raw Project Gutenberg plain-text AST, calculating chapter segmentation boundaries, and computing fluid paginated layouts without blocking the UI thread. |
-| **`sw`** | [`public/sw.js`](public/sw.js) | Progressive Web App (PWA) Service Worker (`bookarium-app-shell-v3`) providing offline App Shell caching, static asset resilience, `_rsc` Flight isolation, and `/read/*` navigation fallback for 100% offline reading. |
+| **`sw`** | [`public/sw.js`](public/sw.js) | Progressive Web App (PWA) Service Worker (`bookarium-app-shell-v4`) providing offline App Shell caching (`/` + `/account` + `/read/1342`), HTML-embedded `/_next/static/` chunk extraction, `_rsc` Flight isolation, and `/read/*` navigation fallback for 100% offline reading. |
+
+### 2. Static & PWA Multi-Resolution Asset Inventory (`public/` — 8 Assets)
+
+| Asset File | Format | Size | Architectural Role & Platform Target |
+| :--- | :--- | :--- | :--- |
+| [`public/favicon.ico`](public/favicon.ico) | `ICO` | `0.9 KB` | Multi-resolution 32-bit RGBA binary icon container (`16×16`, `32×32`, `48×48`) with anti-aliased squircle transparency for browser tabs. |
+| [`public/icon.svg`](public/icon.svg) | `SVG` | `0.4 KB` | Scalable vector editorial bookplate icon with warm archival gold accents and transparent squircle geometry. |
+| [`public/icons/apple-touch-icon.png`](public/icons/apple-touch-icon.png) | `PNG` | `1.3 KB` | iOS / iPadOS Home Screen Web Clip icon (`180×180` PNG). |
+| [`public/icons/icon-192.png`](public/icons/icon-192.png) | `PNG` | `2.2 KB` | Standard PWA Web App Manifest home screen icon (`192×192` PNG, `purpose: "any"`). |
+| [`public/icons/icon-512.png`](public/icons/icon-512.png) | `PNG` | `8.3 KB` | High-DPI PWA splash screen and desktop application icon (`512×512` PNG, `purpose: "any"`). |
+| [`public/icons/icon-maskable-192.png`](public/icons/icon-maskable-192.png) | `PNG` | `1.4 KB` | Android adaptive launcher maskable icon with safe-zone padding (`192×192` PNG, `purpose: "maskable"`). |
+| [`public/icons/icon-maskable-512.png`](public/icons/icon-maskable-512.png) | `PNG` | `5.1 KB` | High-DPI Android adaptive launcher maskable icon (`512×512` PNG, `purpose: "maskable"`). |
+| [`public/sw.js`](public/sw.js) | `JS` | `8.2 KB` | PWA Service Worker (`bookarium-app-shell-v4`) managing App Shell caching, static asset discovery, and offline route navigation fallback. |
 
 ---
 
@@ -722,6 +789,82 @@ Dedicated off-thread compute and Progressive Web App service worker modules in `
 
 ---
 
+## 🔧 Workspace Configuration, Styling, Deployment & Governance Matrix
+
+Root build, compiler, styling, deployment, static analysis, and multi-agent governance manifests verified across **12 Workspace Configuration Files**:
+
+| Configuration / Manifest | Source File | Subsystem / Layer | Architectural & Governance Responsibility |
+| :--- | :--- | :--- | :--- |
+| **`next.config.ts`** | [`next.config.ts`](next.config.ts) | Next.js 16 Build, Rewrites & OWASP Headers | Configures Next.js 16 App Router image remote patterns (`gutenberg.org`), clean path Edge rewrites (`/bookshelf`, `/favorites`, `/notebook`, `/bookmarks` -> `/?view=*`), and all 7 mandatory OWASP HTTP security headers (`Content-Security-Policy` with production `unsafe-eval` stripping, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`). |
+| **`vercel.json`** | [`vercel.json`](vercel.json) | Edge Deployment & Datacenter Pinning | Pins serverless function execution to `iad1` (Washington D.C. / US-East) adjacent to Project Gutenberg & Gutendex nodes with 1024 MB memory and 30s max duration for `/api/books/**` routes. |
+| **`tsconfig.json`** | [`tsconfig.json`](tsconfig.json) | TypeScript 5.9 Strict Compiler Config | Enforces `strict: true`, `noEmit: true`, `moduleResolution: "bundler"`, `jsx: "react-jsx"`, and `@/* -> ./src/*` path aliases across all source and test files. |
+| **`tailwind.config.ts`** | [`tailwind.config.ts`](tailwind.config.ts) | Editorial Design System & Theme Tokens | Defines Booksaw editorial color variables (`background`, `foreground`, `primary`, `surface-elevated`), serif/sans/mono font stacks, `shadow-booksaw` depth shadows, and 3D page-turn keyframes. |
+| **`postcss.config.mjs`** | [`postcss.config.mjs`](postcss.config.mjs) | Tailwind CSS v4 Oxide PostCSS Pipeline | Registers `@tailwindcss/postcss` v4 Oxide compiler plugin for zero-runtime CSS generation. |
+| **`src/app/globals.css`** | [`src/app/globals.css`](src/app/globals.css) | Global Theme Palettes & 3D Book Physics CSS | Configures `@import "tailwindcss"`, `@config "../../tailwind.config.ts"`, Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) CSS custom properties, 3D perspective book spreads (`.book-center-crease`, `.preserve-3d`), and custom reader scrollbars (`--reader-sb-*`). |
+| **`eslint.config.mjs`** | [`eslint.config.mjs`](eslint.config.mjs) | ESLint 9 Flat Config & Zero-Any Gate | Enforces `eslint-config-next/core-web-vitals`, `eslint-config-next/typescript`, and strict `@typescript-eslint/no-explicit-any: "error"` with `--max-warnings 0`. |
+| **`knip.json`** | [`knip.json`](knip.json) | Dead Code & Orphan Dependency Auditor | Configures Knip entrypoints (`src/proxy.ts`, `src/workers/*.ts`, `src/components/motion/*.tsx`) to guarantee zero unused files, zero dead exports, and zero orphan dependencies in Pass 6. |
+| **`vitest.config.mts`** | [`vitest.config.mts`](vitest.config.mts) | Vitest Runner & >= 85% V8 Coverage Gate | Configures JSDOM test environment, `src/test/setup.ts` bootstrap, `maxWorkers: 4`, and hard `85%` coverage thresholds across lines, functions, branches, and statements. |
+| **`.husky/pre-commit`** | [`.husky/pre-commit`](.husky/pre-commit) | Git Pre-Commit Quality & Approval Gate | Executes `npm run gate:approve` (`scripts/approval-gate.js`) and `npm run verify` (`scripts/verify-build.js`) prior to any commit creation. |
+| **`AGENTS.md & .agents/AGENTS.md`** | [`.agents/AGENTS.md`](.agents/AGENTS.md) | Enterprise Multi-Agent Governance Protocol | Canonical specification of Rules 0–9 (Approval-First Execution, Living AST Docs Co-Evolution, Zero-Bloat AST Truth, >=85% Co-Located Testing, Public Domain Integrity, Conventional Commits, 7-Gateway Engine, ADRs, Secret Prevention, and Idempotent RLS Schema Co-Evolution). |
+| **`.agents/hooks.json`** | [`.agents/hooks.json`](.agents/hooks.json) | Deterministic Mutation Approval Ledger | Machine-verified governance configuration gating file mutations and pre-commit verification. |
+
+---
+
+## 🧪 Hermetic Testing, MSW v2 Network Isolation & Coverage Architecture
+
+Bookarium enforces a 4-tier hermetic testing architecture across **189 Test Suites** (`187` co-located `src/**/*.test.{ts,tsx}` suites + `2` CLI pipeline suites in `scripts/`) with zero external network calls:
+
+| Test Harness Module | Source File | Testing Layer | Architectural Responsibility |
+| :--- | :--- | :--- | :--- |
+| **`setup`** | [`src/test/setup.ts`](src/test/setup.ts) | JSDOM & Browser API Test Bootstrap | Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, MSW v2 server lifecycle (`listen`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `SpeechSynthesis`, `IndexedDB`). |
+| **`handlers`** | [`src/mocks/handlers.ts`](src/mocks/handlers.ts) | MSW v2 HTTP Interception Handlers | Canonical Mock Service Worker v2 HTTP request handlers and `mockBooks` public domain fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, Gutendex API, and Project Gutenberg CDN streams for zero-network deterministic testing. |
+| **`server`** | [`src/mocks/server.ts`](src/mocks/server.ts) | MSW v2 Node Server Instance | Node.js `setupServer(...handlers)` singleton providing hermetic request interception across all unit and integration test suites. |
+| **`vitest.config.mts`** | [`vitest.config.mts`](vitest.config.mts) | Vitest Runner & V8 Coverage Engine | Vite-native test runner configuration (`jsdom`, `maxWorkers: 4`, `@` path alias) enforcing the hard `>= 85%` V8 coverage floor across `lines`, `functions`, `branches`, and `statements` while excluding non-executable type contracts and barrels. |
+| **`ingest-translations.test.ts`** | [`scripts/ingest-translations.test.ts`](scripts/ingest-translations.test.ts) | CLI Data Pipeline Test Suite | Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation. |
+| **`sync-gutenberg-catalog.test.ts`** | [`scripts/sync-gutenberg-catalog.test.ts`](scripts/sync-gutenberg-catalog.test.ts) | CLI Data Pipeline Test Suite | Hermetic unit & integration tests verifying Project Gutenberg `pg_catalog.csv.gz` streaming decompression, CSV RFC 4180 parsing, author lifespan extraction, and adaptive Supabase batch upserts. |
+
+---
+
+## 🗂️ Repository Directory & Living Documentation Topology Map
+
+### 1. Structural Directory Map
+
+| Workspace Path | Architectural Layer & Contents |
+| :--- | :--- |
+| **`src/app/`** | Next.js 16 App Router pages, SSR layouts, metadata routes (`manifest.ts`, `robots.ts`, `sitemap.ts`), global providers (`providers.tsx`), and serverless API route handlers (`/api/books/**`, `/auth/callback`). |
+| **`src/components/`** | 76 production React 19 UI components organized across `account/`, `accolades/`, `auth/`, `layout/`, `motion/`, `presentation/` (including `bookshelf/`), `profile/`, `pwa/`, `reader/`, `symposium/`, and `ui/`, each paired with co-located `*.test.tsx` suites. |
+| **`src/stores/`** | 10 Zustand client-side state stores (`useBookshelfStore`, `useReaderStore`, `useAuthStore`, `useFellowshipStore`, `useAnnotationStore`, `useAccoladesStore`, `useHabitsStore`, `useJurisdictionStore`, `usePreferencesStore`, `useThemeStore`) with `localStorage` persistence and bi-directional Supabase cloud outbox synchronization. |
+| **`src/hooks/`** | 22 custom React hooks organized into `queries/` (TanStack Query v5 data fetching), `reader/` (Web Speech TTS, session coordinates, gestures, worker AST, reading ledger), and root UI/network/copyright hooks (`useNetworkStatus`, `useOfflineBooks`, `useBookCopyright`, `useCatalogFilters`, `useCollectionAutoHeal`). |
+| **`src/lib/`** | 40 pure domain computational engines and adapters covering Gutenberg AST segmentation/pagination/reflow (`gutenberg/`), dual-provider catalog resolution (`catalog/`), Supabase SSR/browser clients (`supabase/`), multi-jurisdictional copyright (`copyright-engine.ts`), IndexedDB storage (`offline-storage.ts`), interval annotation partitioning (`reader-annotator.ts`), cloud bookshelf sync (`bookshelf-cloud-sync.ts`), and portable backups (`library-backup.ts`, `backup-validator.ts`). |
+| **`src/config/`** | 13 centralized design token, routing, theme, language, era, literary quote, and 27-masterwork curated anthology configuration modules. |
+| **`src/types/`** | 4 canonical TypeScript type contract modules (`book.types.ts`, `database.types.ts`, `catalog.types.ts`, `accolades.types.ts`) defining zero-any domain and PostgreSQL row schemas. |
+| **`src/workers/`** | Dedicated off-thread Web Worker (`gutenberg.worker.ts`) executing Gutenberg plain-text segmentation and virtual page layout calculations. |
+| **`src/mocks/ & src/test/`** | Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`) and JSDOM test environment bootstrap (`setup.ts`). |
+| **`public/`** | Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`). |
+| **`supabase/`** | Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 22 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`). |
+| **`scripts/`** | 14 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites. |
+| **`docs/`** | Living architectural reference (`ARCHITECTURE.md`), 70 Architecture Decision Records (`DECISIONS.md`), AST-compiled parser specification (`GUTENBERG_PARSER.md`), CI/CD runbook (`PIPELINE_GUIDE.md`), and live 7-Gateway quality telemetry (`QUALITY_AUDIT_REPORT.md`, `quality-audit-results.json`). |
+| **`.github/workflows/ & .husky/`** | Automated GitHub Actions CI/CD (`ci.yml`) and weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), plus Husky pre-commit quality gates. |
+
+### 2. Living Documentation & Governance Artifacts Catalog
+
+| Document / Artifact | Maintenance Mode | Generator / Verification Script | Scope & Architectural Purpose |
+| :--- | :--- | :--- | :--- |
+| **[`README.md`](README.md)** | Hybrid (Curated + Script-Synced) | `scripts/generate-changelog.js` & `scripts/generate-quality-report.js` | Primary project overview, system architecture diagrams, Supabase setup guide, and live test/coverage/release blocks. |
+| **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** | 100% AST-Generated | `scripts/generate-architecture-matrix.js` | Complete full-repository C4 architecture map, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology. |
+| **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | Append-Only Governance Ledger | `scripts/new-adr.js` (Validated in Pass 5) | Sequential Architectural Decision Records (ADR-001 through ADR-070) documenting context, trade-offs, and consequences. |
+| **[`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md)** | 100% AST-Generated | `scripts/generate-parser-docs.js` | Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine. |
+| **[`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all 189 test suites and 2,006 tests. |
+| **[`docs/quality-audit-results.json`](docs/quality-audit-results.json)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Machine-readable JSON telemetry of all 7 gateway passes, coverage percentages, ESLint/Knip counts, and suite totals. |
+| **[`ROADMAP.md`](ROADMAP.md)** | 100% AST-Generated | `scripts/generate-roadmap.js` | Zero-drift product roadmap verifying feature completion directly against source files and AST patterns across Milestones 0–7. |
+| **[`CHANGELOG.md`](CHANGELOG.md)** | 100% Script-Generated | `scripts/generate-changelog.js` | Chronological Keep a Changelog 1.0.0 & SemVer release ledger across all application versions. |
+| **[`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md)** | Curated Engineering Runbook | _Source-of-Truth Runbook_ | Operational guide for the 7-Gateway Quality Engine, GitHub Actions workflows, and catalog/translation ingestion pipelines. |
+| **[`DEVELOPMENT.md`](DEVELOPMENT.md) & [`CONTRIBUTING.md`](CONTRIBUTING.md)** | Curated Contributor Guides | _Source-of-Truth Guides_ | Local development environment setup, testing standards, and conventional commit protocols. |
+| **[`SECURITY.md`](SECURITY.md) & [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)** | Curated Governance Policies | _Source-of-Truth Policies_ | Vulnerability disclosure policy, OWASP defense-in-depth overview, and Contributor Covenant v2.1 standards. |
+| **[`AGENTS.md`](AGENTS.md) & [`.agents/AGENTS.md`](.agents/AGENTS.md)** | Immutable Agent Governance | _Canonical Agent Rules_ | Master operational rules (Rules 0–9) governing human and AI multi-agent engineering in Bookarium. |
+
+---
+
 ## 🔗 AST Module Interconnection & Topology Matrix
 
 Every source file is analyzed for upstream imports and downstream consumers to guarantee zero orphaned or unlinked code:
@@ -729,7 +872,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | Module / Component | Upstream Dependencies (Imports) | Downstream Consumers (Consumed By) | Role & Responsibilities |
 | :--- | :--- | :--- | :--- |
 | [`app/account/layout.tsx`](src/app/account/layout.tsx) | _Root Primitive_ | _App Route Entry_ | App Router Layout |
-| [`app/account/page.tsx`](src/app/account/page.tsx) | `stores/useAuthStore`, `hooks/useNetworkStatus`, `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useThemeStore`, `stores/usePreferencesStore`, `stores/useHabitsStore`, `stores/useFellowshipStore`, `hooks/useScrollDirection`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `components/ui/BackToTop`, `components/account/AccountIdentityCard`, `components/account/AccountHabitsCard`, `components/account/AccountAccoladesCard`, `components/account/AccountPublicProfileSection`, `components/account/AccountSymposiumSection`, `components/account/AccountSecuritySection`, `components/account/AccountPreferencesSection`, `components/account/AccountDeleteModal`, `lib/password`, `hooks/useMobileViewSwipe`, `config/views.config`, `config/routes`, `types/database.types` | _App Route Entry_ | App Router Page |
+| [`app/account/page.tsx`](src/app/account/page.tsx) | `stores/useAuthStore`, `hooks/useNetworkStatus`, `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useThemeStore`, `stores/usePreferencesStore`, `stores/useHabitsStore`, `stores/useFellowshipStore`, `hooks/useScrollDirection`, `components/presentation/Navbar`, `components/presentation/Footer`, `components/ui/Button`, `components/ui/BackToTop`, `components/account/AccountIdentityCard`, `components/account/AccountHabitsCard`, `components/account/AccountAccoladesCard`, `components/account/AccountPublicProfileSection`, `components/account/AccountSymposiumSection`, `components/account/AccountSecuritySection`, `components/account/AccountPreferencesSection`, `components/account/AccountDeleteModal`, `lib/password`, `hooks/useMobileViewSwipe`, `config/views.config`, `config/routes`, `types/database.types` | `ServiceWorkerRegister.tsx` | App Router Page |
 | [`metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts) | `config/api-endpoints`, `config/site-config`, `config/featured-books`, `lib/copyright-engine`, `lib/catalog/supabase-provider`, `lib/supabase/client` | `app/api/books/content/route.ts` | Server Route Utility |
 | [`app/api/books/content/route.ts`](src/app/api/books/content/route.ts) | `config/site-config`, `lib/rate-limiter`, `lib/api-utils`, `lib/copyright-engine`, `lib/country-resolver`, `./url-validator`, `./metadata-cache`, `lib/catalog/supabase-provider`, `lib/supabase/client` | _App Route Entry_ | Server Route Handler |
 | [`url-validator.ts`](src/app/api/books/content/url-validator.ts) | _Root Primitive_ | `app/api/books/content/route.ts` | Server Route Utility |
@@ -803,7 +946,7 @@ Every source file is analyzed for upstream imports and downstream consumers to g
 | [`PinnedAccoladesShelf.tsx`](src/components/profile/PinnedAccoladesShelf.tsx) | `types/accolades.types`, `components/accolades/ExLibrisBookplate` | `app/u/[username]/page.tsx`, `PublicProfileView.tsx` | Scholar Sanctuary Component |
 | [`PrivateProfileNotice.tsx`](src/components/profile/PrivateProfileNotice.tsx) | `config/routes`, `components/ui/Button` | `app/u/[username]/page.tsx`, `PublicProfileView.tsx` | Scholar Sanctuary Component |
 | [`PublicProfileView.tsx`](src/components/profile/PublicProfileView.tsx) | `config/routes`, `components/ui/Button`, `components/profile/PrivateProfileNotice`, `components/profile/PinnedAccoladesShelf`, `stores/useAuthStore`, `stores/useFellowshipStore`, `hooks/useNetworkStatus`, `hooks/useOfflineBooks`, `components/symposium/SymposiumInviteModal` | `app/u/[username]/page.tsx` | Scholar Sanctuary Component |
-| [`ServiceWorkerRegister.tsx`](src/components/pwa/ServiceWorkerRegister.tsx) | `app/read/[id]/page`, `components/presentation/BookPreviewModal`, `components/presentation/DownloadDrawer` | `providers.tsx` | PWA Lifecycle Component |
+| [`ServiceWorkerRegister.tsx`](src/components/pwa/ServiceWorkerRegister.tsx) | `app/read/[id]/page`, `app/account/page`, `components/presentation/BookPreviewModal`, `components/presentation/DownloadDrawer` | `providers.tsx` | PWA Lifecycle Component |
 | [`DeleteAnnotationModal.tsx`](src/components/reader/DeleteAnnotationModal.tsx) | `components/ui/Modal`, `components/ui/Button`, `./QuoteDeletePreview` | `app/read/[id]/page.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx` | Focus Reader Component |
 | [`GutenbergInfoModal.tsx`](src/components/reader/GutenbergInfoModal.tsx) | `config/site-config`, `config/reader-themes`, `components/ui/Modal`, `lib/utils`, `components/presentation/ContentAdvisoryBanner`, `lib/content-advisory` | `ReaderHeader.tsx` | Focus Reader Component |
 | [`QuoteDeletePreview.tsx`](src/components/reader/QuoteDeletePreview.tsx) | _Root Primitive_ | `DeleteAnnotationModal.tsx` | Focus Reader Component |

@@ -80,6 +80,20 @@ vi.mock('@/components/presentation/HeroFeaturedBook3D', () => ({
       >
         Read Featured
       </button>
+      <button
+        type="button"
+        data-testid="read-featured-empty-btn"
+        onClick={() => onReadFeaturedBook?.(undefined)}
+      >
+        Read Featured Empty
+      </button>
+      <button
+        type="button"
+        data-testid="read-featured-minimal-btn"
+        onClick={() => onReadFeaturedBook?.({ id: 1342, title: 'Pride and Prejudice' })}
+      >
+        Read Featured Minimal
+      </button>
     </div>
   ),
 }));
@@ -342,12 +356,12 @@ describe('Home page integration', () => {
     const downloadBtn = screen.getByLabelText(`Download options for ${mockBooks[0].title}`);
     fireEvent.click(downloadBtn);
 
-    expect(screen.getByText('Zero-Copyright Download Hub')).toBeInTheDocument();
+    expect(screen.getByText('Download Hub')).toBeInTheDocument();
     expect(screen.getByText('EPUB E-Reader')).toBeInTheDocument();
 
     const closeBtn = screen.getByLabelText('Close modal');
     fireEvent.click(closeBtn);
-    expect(screen.queryByText('Zero-Copyright Download Hub')).not.toBeInTheDocument();
+    expect(screen.queryByText('Download Hub')).not.toBeInTheDocument();
   });
 
   it('should open 3D book preview modal when book cover is clicked and close it on desktop', () => {
@@ -1118,7 +1132,7 @@ describe('Home page integration', () => {
       name: `Download ${mockBooks[0].title}`,
     });
     fireEvent.click(mobileDownloadBtn);
-    expect(screen.getByText('Zero-Copyright Download Hub')).toBeInTheDocument();
+    expect(screen.getByText('Download Hub')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Close modal'));
 
     // Re-open preview and click Read inside mobile sheet
@@ -1377,6 +1391,115 @@ describe('Home page integration', () => {
       fireEvent.change(searchInput, { target: { value: 'Frankenstein' } });
       fireEvent.click(screen.getByRole('button', { name: /^Search$/i }));
       expect(screen.getByTestId(`book-card-${pageMockBooks[1].id}`)).toBeInTheDocument();
+    } finally {
+      mockOfflineBooks = [];
+      mockIsBookOffline.mockReturnValue(false);
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+    }
+  });
+
+  it('filters offline catalog by topic, language, era, and sort order, and supports clearing Downloaded and Custom shelves', async () => {
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+    mockOfflineBooks = [
+      pageMockBooks[0],
+      pageMockBooks[1],
+      {
+        ...pageMockBooks[0],
+        id: 9991,
+        title: 'No Author Book',
+        authors: [],
+        languages: ['fr'],
+      },
+      {
+        ...pageMockBooks[0],
+        id: 9992,
+        title: 'Dateless Author Book',
+        authors: [{ name: 'Mystery Writer', birth_year: null, death_year: null }],
+        languages: ['en'],
+      },
+    ];
+    mockIsBookOffline.mockReturnValue(true);
+
+    try {
+      renderHome();
+
+      // Test HeroFeaturedBook3D fallback callbacks
+      fireEvent.click(screen.getByTestId('read-featured-minimal-btn'));
+      expect(mockPush).toHaveBeenCalledWith(ROUTES.READ(1342));
+      fireEvent.click(screen.getByTestId('read-featured-empty-btn'));
+
+      // Filter by topic chip and language in HeroSearch while offline
+      fireEvent.click(screen.getByTestId('topic-chip-fiction'));
+      fireEvent.change(screen.getByTestId('language-select'), { target: { value: 'en' } });
+
+      // Open filter drawer and apply era ('victorian') and sort ('ascending' then 'descending' then 'popular')
+      fireEvent.click(screen.getByTestId('open-filters-btn'));
+      expect(screen.getByTestId('advanced-filter-drawer')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('era-option-victorian'));
+      fireEvent.click(screen.getByTestId('sort-option-ascending'));
+      fireEvent.click(screen.getByTestId('apply-filters-btn'));
+
+      fireEvent.click(screen.getByTestId('open-filters-btn'));
+      fireEvent.click(screen.getByTestId('sort-option-descending'));
+      fireEvent.click(screen.getByTestId('apply-filters-btn'));
+
+      fireEvent.click(screen.getByTestId('open-filters-btn'));
+      fireEvent.click(screen.getByTestId('sort-option-popular'));
+      fireEvent.click(screen.getByTestId('apply-filters-btn'));
+
+      // Switch to Bookshelf with Downloaded shelf active and test Clear Downloaded Shelf modal
+      act(() => {
+        useBookshelfStore.setState({
+          savedBooks: [pageMockBooks[0], pageMockBooks[1]],
+          activeBookshelfId: '__downloaded__',
+          cloudBookshelves: [
+            { id: 'shelf-gen', user_id: 'u1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+            { id: 'shelf-poetry', user_id: 'u1', name: 'Poetry', is_default: false, is_public: true, created_at: '', updated_at: '' },
+          ],
+          cloudBookshelfItems: [
+            {
+              id: 'item-p1',
+              bookshelf_id: 'shelf-poetry',
+              user_id: 'u1',
+              book_id: pageMockBooks[0].id,
+              book_title: pageMockBooks[0].title,
+              book_authors: ['Jane Austen'],
+              cover_url: null,
+              added_at: '',
+            },
+          ],
+        });
+      });
+
+      const banner = screen.getByRole('banner');
+      const bookshelfTab = within(banner).getByRole('button', { name: /^Bookshelf$/i });
+      fireEvent.click(bookshelfTab);
+      // Click already-active Bookshelf tab to reset page
+      fireEvent.click(bookshelfTab);
+
+      const clearDownloadedBtn = screen.getByRole('button', { name: /Clear Downloaded Shelf/i });
+      fireEvent.click(clearDownloadedBtn);
+      expect(screen.getByText(/Are you sure you want to clear your downloaded shelf\?/i)).toBeInTheDocument();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Yes, Clear Downloads/i }));
+      });
+
+      // Switch active shelf to custom shelf ('shelf-poetry') and test Clear "Poetry" Shelf modal
+      act(() => {
+        useBookshelfStore.setState({ activeBookshelfId: 'shelf-poetry' });
+      });
+      const clearCustomBtn = screen.getByRole('button', { name: /Clear "Poetry" Shelf/i });
+      fireEvent.click(clearCustomBtn);
+      expect(screen.getByText(/Are you sure you want to clear your "Poetry" shelf\?/i)).toBeInTheDocument();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Yes, Clear "Poetry"/i }));
+      });
+
+      // Switch to Favorites and click already-active Favorites tab
+      const favoritesTab = within(banner).getByRole('button', { name: /^Favorites$/i });
+      fireEvent.click(favoritesTab);
+      fireEvent.click(favoritesTab);
     } finally {
       mockOfflineBooks = [];
       mockIsBookOffline.mockReturnValue(false);

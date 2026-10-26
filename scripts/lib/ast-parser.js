@@ -416,6 +416,8 @@ function extractApiAndHookCatalog(srcDir) {
       } else if (
         entry.name === 'page.tsx' ||
         entry.name === 'layout.tsx' ||
+        entry.name === 'providers.tsx' ||
+        entry.name === 'globals.css' ||
         entry.name === 'error.tsx' ||
         entry.name === 'global-error.tsx' ||
         entry.name === 'not-found.tsx' ||
@@ -428,8 +430,16 @@ function extractApiAndHookCatalog(srcDir) {
         const isClient = content.includes("'use client'") || content.includes('"use client"');
         let routeUri = routePath || '/';
         let kind = 'App Page';
+        let rendering = isClient ? 'Client Interactive (`"use client"`)' : 'React Server Component (SSR / Static)';
         if (entry.name === 'layout.tsx') {
           kind = routeUri === '/' ? 'Root Layout' : 'Route Layout & SSR Metadata';
+        } else if (entry.name === 'providers.tsx') {
+          routeUri = '/ (Root Provider)';
+          kind = 'Root Client Provider & Auth/Sync Orchestrator';
+        } else if (entry.name === 'globals.css') {
+          routeUri = '/ (Global CSS)';
+          kind = 'Tailwind CSS v4 Oxide Theme & 3D Book Surface Stylesheet';
+          rendering = 'PostCSS / Tailwind CSS v4 Oxide Bundle';
         } else if (entry.name === 'error.tsx' || entry.name === 'global-error.tsx') {
           kind = 'App Error Boundary';
         } else if (entry.name === 'not-found.tsx') {
@@ -448,7 +458,7 @@ function extractApiAndHookCatalog(srcDir) {
         appPages.push({
           route: routeUri,
           kind,
-          rendering: isClient ? 'Client Interactive (`"use client"`)' : 'React Server Component (SSR / Static)',
+          rendering,
           file: fileRel,
         });
       }
@@ -776,11 +786,127 @@ function extractWorkerCatalog(srcDir) {
     workers.push({
       name: 'sw',
       file: 'public/sw.js',
-      role: 'Progressive Web App (PWA) Service Worker (`bookarium-app-shell-v3`) providing offline App Shell caching, static asset resilience, `_rsc` Flight isolation, and `/read/*` navigation fallback for 100% offline reading.',
+      role: 'Progressive Web App (PWA) Service Worker (`bookarium-app-shell-v4`) providing offline App Shell caching (`/` + `/account` + `/read/1342`), HTML-embedded `/_next/static/` chunk extraction, `_rsc` Flight isolation, and `/read/*` navigation fallback for 100% offline reading.',
     });
   }
 
   return workers;
+}
+
+/**
+ * Extracts Hermetic Testing, MSW v2 Network Isolation & Coverage Harness metadata from src/test/, src/mocks/, vitest.config.mts, and test suites.
+ */
+function extractTestHarnessCatalog(srcDir, rootDir) {
+  const harnessModules = [];
+
+  const candidates = [
+    {
+      name: 'setup',
+      file: 'src/test/setup.ts',
+      layer: 'JSDOM & Browser API Test Bootstrap',
+      role: 'Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, MSW v2 server lifecycle (`listen`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `SpeechSynthesis`, `IndexedDB`).',
+    },
+    {
+      name: 'handlers',
+      file: 'src/mocks/handlers.ts',
+      layer: 'MSW v2 HTTP Interception Handlers',
+      role: 'Canonical Mock Service Worker v2 HTTP request handlers and `mockBooks` public domain fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, Gutendex API, and Project Gutenberg CDN streams for zero-network deterministic testing.',
+    },
+    {
+      name: 'server',
+      file: 'src/mocks/server.ts',
+      layer: 'MSW v2 Node Server Instance',
+      role: 'Node.js `setupServer(...handlers)` singleton providing hermetic request interception across all unit and integration test suites.',
+    },
+    {
+      name: 'vitest.config.mts',
+      file: 'vitest.config.mts',
+      layer: 'Vitest Runner & V8 Coverage Engine',
+      role: 'Vite-native test runner configuration (`jsdom`, `maxWorkers: 4`, `@` path alias) enforcing the hard `>= 85%` V8 coverage floor across `lines`, `functions`, `branches`, and `statements` while excluding non-executable type contracts and barrels.',
+    },
+  ];
+
+  for (const c of candidates) {
+    const full = path.join(rootDir, c.file);
+    if (fs.existsSync(full)) {
+      harnessModules.push(c);
+    }
+  }
+
+  const testSuites = [];
+  function scanTests(dir) {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'node_modules' && entry.name !== '.next' && entry.name !== 'coverage') {
+          scanTests(full);
+        }
+      } else if (entry.name.endsWith('.test.ts') || entry.name.endsWith('.test.tsx')) {
+        const rel = path.relative(rootDir, full).replace(/\\/g, '/');
+        testSuites.push(rel);
+      }
+    }
+  }
+
+  scanTests(srcDir);
+  scanTests(path.join(rootDir, 'scripts'));
+
+  const srcSuiteCount = testSuites.filter((f) => f.startsWith('src/')).length;
+  const scriptSuites = testSuites.filter((f) => f.startsWith('scripts/'));
+
+  return {
+    harnessModules,
+    totalSuites: testSuites.length,
+    srcSuiteCount,
+    scriptSuites,
+  };
+}
+
+/**
+ * Extracts static and PWA asset files from public/.
+ */
+function extractPublicAssetsCatalog(rootDir) {
+  const publicDir = path.join(rootDir, 'public');
+  if (!fs.existsSync(publicDir)) return [];
+
+  const assets = [];
+  const roleMap = {
+    'public/sw.js': 'PWA Service Worker (`bookarium-app-shell-v4`) managing App Shell caching, static asset discovery, and offline route navigation fallback.',
+    'public/favicon.ico': 'Multi-resolution 32-bit RGBA binary icon container (`16×16`, `32×32`, `48×48`) with anti-aliased squircle transparency for browser tabs.',
+    'public/icon.svg': 'Scalable vector editorial bookplate icon with warm archival gold accents and transparent squircle geometry.',
+    'public/icons/apple-touch-icon.png': 'iOS / iPadOS Home Screen Web Clip icon (`180×180` PNG).',
+    'public/icons/icon-192.png': 'Standard PWA Web App Manifest home screen icon (`192×192` PNG, `purpose: "any"`).',
+    'public/icons/icon-512.png': 'High-DPI PWA splash screen and desktop application icon (`512×512` PNG, `purpose: "any"`).',
+    'public/icons/icon-maskable-192.png': 'Android adaptive launcher maskable icon with safe-zone padding (`192×192` PNG, `purpose: "maskable"`).',
+    'public/icons/icon-maskable-512.png': 'High-DPI Android adaptive launcher maskable icon (`512×512` PNG, `purpose: "maskable"`).',
+  };
+
+  function scanPublic(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scanPublic(full);
+      } else {
+        const rel = path.relative(rootDir, full).replace(/\\/g, '/');
+        const stat = fs.statSync(full);
+        const sizeKb = (stat.size / 1024).toFixed(1) + ' KB';
+        const ext = path.extname(entry.name).replace('.', '').toUpperCase() || 'ASSET';
+        assets.push({
+          name: entry.name,
+          file: rel,
+          format: ext,
+          size: sizeKb,
+          role: roleMap[rel] || 'Static public asset served at root edge path.',
+        });
+      }
+    }
+  }
+
+  scanPublic(publicDir);
+  return assets.sort((a, b) => a.file.localeCompare(b.file));
 }
 
 module.exports = {
@@ -796,5 +922,7 @@ module.exports = {
   extractConfigurationCatalog,
   extractTypeCatalog,
   extractWorkerCatalog,
+  extractTestHarnessCatalog,
+  extractPublicAssetsCatalog,
 };
 

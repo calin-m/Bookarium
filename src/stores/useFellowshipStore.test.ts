@@ -697,6 +697,37 @@ describe('useFellowshipStore', () => {
       );
       expect(mockUpdateEq).toHaveBeenCalledWith('id', 'sym-offline-1');
       expect(useFellowshipStore.getState().pendingSymposiumProgress).toEqual({});
+
+      // Test online syncSymposiumProgress when update returns an error -> queues pendingSymposiumProgress,
+      // followed by successful online syncSymposiumProgress -> clears pendingSymposiumProgress
+      mockUpdateEq.mockResolvedValueOnce({ error: new Error('Update failed') });
+      await useFellowshipStore.getState().syncSymposiumProgress(1342, 6, 75);
+      expect(useFellowshipStore.getState().pendingSymposiumProgress['sym-offline-1']).toBeDefined();
+
+      mockUpdateEq.mockResolvedValueOnce({ error: null });
+      await useFellowshipStore.getState().syncSymposiumProgress(1342, 7, 85);
+      expect(useFellowshipStore.getState().pendingSymposiumProgress['sym-offline-1']).toBeUndefined();
+
+      // Test fellow (isHost: false) pendingSymposiumProgress flush when flushErr occurs and when offline fetchFellowshipData aborts
+      useFellowshipStore.setState({
+        pendingSymposiumProgress: {
+          'sym-offline-fellow': {
+            chapterIndex: 4,
+            progressPct: 50,
+            status: 'active',
+            isHost: false,
+            updatedAt: '2026-10-20T00:00:00Z',
+          },
+        },
+      });
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+      await useFellowshipStore.getState().fetchFellowshipData('user-fellow');
+      expect(useFellowshipStore.getState().pendingSymposiumProgress['sym-offline-fellow']).toBeDefined();
+
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+      mockUpdateEq.mockResolvedValueOnce({ error: new Error('Flush error') });
+      await useFellowshipStore.getState().fetchFellowshipData('user-fellow');
+      expect(useFellowshipStore.getState().pendingSymposiumProgress['sym-offline-fellow']).toBeDefined();
     } finally {
       Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
     }

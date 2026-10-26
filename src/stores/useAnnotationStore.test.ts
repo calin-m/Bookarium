@@ -1151,6 +1151,194 @@ describe('useAnnotationStore', () => {
     expect(annChap0.id).not.toBe(annChap1.id);
     expect(useAnnotationStore.getState().annotations.filter((a) => a.selectedText === 'Indeed.')).toHaveLength(2);
   });
+
+  it('covers setOrUpdateFellowMapEntry placeholder upgrade, enrichFellowAnnotations host matching, cached fellow bookMeta, and addAnnotation expand outbox fallback', async () => {
+    const { buildFellowScholarsMap } = await import('./useAnnotationStore');
+    const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+
+    // 1. Circle has placeholder first, Symposium upgrades to real handle; explicitMap has placeholder
+    useFellowshipStore.setState({
+      circles: [
+        {
+          id: 'c-placeholder',
+          requester_id: 'u-upgrade',
+          requester_username: 'scholar',
+          requester_display_name: 'Scholar',
+          recipient_id: 'u-other',
+          recipient_username: 'real_recipient',
+          recipient_display_name: null,
+          status: 'accepted',
+          created_at: '',
+          updated_at: '',
+        } as any,
+      ],
+      symposiums: [
+        {
+          id: 's-upgrade',
+          book_id: 99,
+          host_id: 'u-upgrade',
+          host_username: 'virgil_poet',
+          host_display_name: 'Publius Vergilius Maro',
+          fellow_id: 'u-other',
+          fellow_username: 'real_recipient',
+          fellow_display_name: 'Real Recipient Name',
+          status: 'completed',
+        } as any,
+      ],
+    });
+
+    const map = buildFellowScholarsMap({
+      'u-upgrade': { username: 'fellow_scholar', display_name: 'Scholar' },
+      'u-other': { username: 'real_recipient', display_name: null },
+    });
+    expect(map['u-upgrade'].username).toBe('virgil_poet');
+    expect(map['u-upgrade'].display_name).toBe('Publius Vergilius Maro');
+    expect(map['u-other'].display_name).toBe('Real Recipient Name');
+
+    // 2. enrichFellowAnnotations when fellow is host_id (isFellowTheHost = true) & cached fellow bookMeta in fetchAllFellowAnnotations
+    useFellowshipStore.setState({
+      circles: [],
+      symposiums: [
+        {
+          id: 's-host-match',
+          book_id: 500,
+          host_id: 'host-500',
+          host_username: 'dante_alighieri',
+          host_display_name: 'Dante',
+          fellow_id: 'me-500',
+          fellow_username: 'beatrice',
+          fellow_display_name: 'Beatrice',
+          status: 'completed',
+        } as any,
+      ],
+    });
+
+    useAnnotationStore.setState({
+      annotations: [],
+      fellowAnnotations: [
+        {
+          id: 'fa-500',
+          userId: 'host-500',
+          bookId: 500,
+          bookTitle: 'The Divine Comedy',
+          bookAuthor: 'Dante Alighieri',
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Midway upon the journey of our life',
+          color: 'amber',
+          isFellow: true,
+          fellowUsername: 'dante_alighieri',
+          fellowDisplayName: undefined,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+    });
+
+    // Enriches missing fellowDisplayName even when fellowUsername already matches, plus !fa.userId fallback
+    useAnnotationStore.setState({
+      annotations: [],
+      fellowAnnotations: [
+        {
+          id: 'fa-500',
+          userId: 'host-500',
+          bookId: 500,
+          bookTitle: 'The Divine Comedy',
+          bookAuthor: 'Dante Alighieri',
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Midway upon the journey of our life',
+          color: 'amber',
+          isFellow: true,
+          fellowUsername: 'dante_alighieri',
+          fellowDisplayName: undefined,
+          createdAt: '',
+          updatedAt: '',
+        },
+        {
+          id: 'fa-500-no-uid',
+          userId: undefined,
+          bookId: 500,
+          chapterIndex: 0,
+          chapterPage: 2,
+          selectedText: 'Legacy fellow annotation without userId',
+          color: 'mint',
+          isFellow: true,
+          fellowUsername: 'fellow_scholar',
+          fellowDisplayName: undefined,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+    });
+
+    useAnnotationStore.getState().enrichFellowAnnotations({});
+    expect(useAnnotationStore.getState().fellowAnnotations[0].fellowDisplayName).toBe('Dante');
+    expect(useAnnotationStore.getState().fellowAnnotations[1].fellowUsername).toBe('beatrice');
+    expect(useAnnotationStore.getState().fellowAnnotations[1].fellowDisplayName).toBe('Beatrice');
+
+    // Guard checks on updateBookMetadata
+    useAnnotationStore.getState().updateBookMetadata(0, 'Valid Title', 'Valid Author');
+    useAnnotationStore.getState().updateBookMetadata(500, 'Gutenberg Volume #500', 'Anonymous');
+    useAnnotationStore.getState().updateBookMetadata(500, 'The Divine Comedy', 'by Dante Alighieri');
+    expect(useAnnotationStore.getState().fellowAnnotations[1].bookTitle).toBe('The Divine Comedy');
+    expect(useAnnotationStore.getState().fellowAnnotations[1].bookAuthor).toBe('Dante Alighieri');
+
+    // 3. fetchAllFellowAnnotations inherits bookTitle/bookAuthor from existing fellowAnnotations and handles profiles query rejection
+    mockSelect.mockReturnValueOnce({
+      neq: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValueOnce({
+          data: [
+            {
+              id: 'fa-500-remote',
+              user_id: 'unknown-500',
+              book_id: 500,
+              chapter_index: 1,
+              chapter_page: 2,
+              selected_text: 'Abandon all hope',
+              color: 'rose',
+              note: 'Inferno',
+              created_at: '2026-10-25T12:00:00Z',
+              updated_at: '2026-10-25T12:00:00Z',
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+    mockProfilesIn.mockRejectedValueOnce(new Error('Profiles offline'));
+
+    const allFetched = await useAnnotationStore.getState().fetchAllFellowAnnotations('me-500');
+    expect(allFetched[0].bookTitle).toBe('The Divine Comedy');
+    expect(allFetched[0].bookAuthor).toBe('Dante Alighieri');
+    expect(allFetched[0].fellowUsername).toBe('fellow_scholar');
+
+    // 4. addAnnotation queues UPSERT_ANNOTATION when expanding selectedText fails in Supabase
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 500,
+      chapterIndex: 2,
+      chapterPage: 1,
+      selectedText: 'Short span',
+      color: 'yellow',
+    });
+    mockUpdate.mockReturnValueOnce({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValueOnce({ error: new Error('Offline update error') }),
+      }),
+    });
+    await useAnnotationStore.getState().addAnnotation(
+      {
+        bookId: 500,
+        chapterIndex: 2,
+        chapterPage: 1,
+        selectedText: 'Short span expanded while offline',
+        color: 'mint',
+        note: 'Added note on expand',
+      },
+      'me-500'
+    );
+    expect(useAnnotationStore.getState().outbox.some((o) => o.type === 'UPSERT_ANNOTATION')).toBe(true);
+  });
 });
 
 

@@ -35,6 +35,12 @@ function isPositionIncomplete(bookAuthors?: string[]): boolean {
   });
 }
 
+function findFeaturedHero(bookId: number) {
+  return FEATURED_HERO_BOOKS.find(
+    (h) => h.id === bookId && (h.authorBirthYear ?? h.authorDeathYear) != null
+  );
+}
+
 /**
  * Unified Collection Auto-Healing Hook.
  * Scans user collections (Bookshelf, Favorites, and Reading Positions) for volumes with missing or incomplete metadata,
@@ -46,13 +52,13 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
   const { isOffline } = useNetworkStatus();
 
   const favoriteBookIds = useBookshelfStore((s) => s.favoriteBookIds);
-  const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks || []);
-  const savedBooks = useBookshelfStore((s) => s.savedBooks || []);
-  const recentBooks = useBookshelfStore((s) => s.recentBooks || []);
-  const readingPositions = useReaderStore((s) => s.readingPositions || {});
-  const annotations = useAnnotationStore((s) => s.annotations || []);
-  const fellowAnnotations = useAnnotationStore((s) => s.fellowAnnotations || []);
-  const symposiums = useFellowshipStore((s) => s.symposiums || []);
+  const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks);
+  const savedBooks = useBookshelfStore((s) => s.savedBooks);
+  const recentBooks = useBookshelfStore((s) => s.recentBooks);
+  const readingPositions = useReaderStore((s) => s.readingPositions);
+  const annotations = useAnnotationStore((s) => s.annotations);
+  const fellowAnnotations = useAnnotationStore((s) => s.fellowAnnotations);
+  const symposiums = useFellowshipStore((s) => s.symposiums);
 
   // Track book IDs queried this session to prevent infinite re-query loops on authors without known lifespans
   const [attemptedHealIds, setAttemptedHealIds] = useState<Set<number>>(() => {
@@ -117,20 +123,20 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
 
     const heroBooksToEnrich: GutendexBook[] = [];
     for (const id of candidateIds) {
-      const hero = FEATURED_HERO_BOOKS.find((h) => h.id === id);
-      if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
+      const hero = findFeaturedHero(id);
+      if (hero) {
         heroBooksToEnrich.push({
           id: hero.id,
           title: hero.title,
           authors: [
             {
               name: hero.author,
-              birth_year: hero.authorBirthYear ?? null,
-              death_year: hero.authorDeathYear ?? null,
+              birth_year: hero.authorBirthYear,
+              death_year: hero.authorDeathYear,
             },
           ],
           translators: [],
-          subjects: hero.primarySubject ? [hero.primarySubject] : [],
+          subjects: [hero.primarySubject],
           bookshelves: [],
           languages: ['en'],
           copyright: false,
@@ -144,7 +150,7 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
       useBookshelfStore.getState().enrichSavedBooks(heroBooksToEnrich);
       useReaderStore.getState().enrichReadingPositions(heroBooksToEnrich);
       for (const book of heroBooksToEnrich) {
-        const author = book.authors ? formatAuthorNames(book.authors) : undefined;
+        const author = formatAuthorNames(book.authors);
         useAnnotationStore.getState().updateBookMetadata(book.id, book.title, author);
       }
     }
@@ -153,15 +159,12 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
   // 1. Detect favorite IDs in localStorage/cloud that lack full book metadata or author lifespans
   const missingFavoriteIds = useMemo(() => {
     if (!hasMounted) return [];
-    const knownIds = new Set((favoriteBooks || []).map((b) => b.id));
+    const knownIds = new Set(favoriteBooks.map((b) => b.id));
     const missing = new Set<number>(favoriteBookIds.filter((id) => !knownIds.has(id)));
     for (const b of favoriteBooks) {
       if (attemptedHealIds.has(b.id)) continue;
       if (isBookIncomplete(b)) {
-        const hero = FEATURED_HERO_BOOKS.find((h) => h.id === b.id);
-        if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
-          continue;
-        }
+        if (findFeaturedHero(b.id)) continue;
         missing.add(b.id);
       }
     }
@@ -179,11 +182,7 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
         completeBookIds.add(b.id);
         continue;
       }
-      if (attemptedHealIds.has(b.id)) continue;
-      const hero = FEATURED_HERO_BOOKS.find((h) => h.id === b.id);
-      if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
-        continue; // Handled synchronously via local fixture fast-path
-      }
+      if (attemptedHealIds.has(b.id) || findFeaturedHero(b.id)) continue;
       ids.add(b.id);
     }
 
@@ -198,10 +197,7 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
       const id = Number(idStr);
       if (Number.isNaN(id) || !pos || attemptedHealIds.has(id) || completeBookIds.has(id)) continue;
       if (isPositionIncomplete(pos.bookAuthors)) {
-        const hero = FEATURED_HERO_BOOKS.find((h) => h.id === id);
-        if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
-          continue;
-        }
+        if (findFeaturedHero(id)) continue;
         ids.add(id);
       } else {
         completeBookIds.add(id);
@@ -212,10 +208,7 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
       const id = ann?.bookId;
       if (!id || id <= 0 || attemptedHealIds.has(id) || completeBookIds.has(id)) continue;
       if (!ann.bookTitle || !ann.bookAuthor || isPositionIncomplete([ann.bookAuthor])) {
-        const hero = FEATURED_HERO_BOOKS.find((h) => h.id === id);
-        if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
-          continue;
-        }
+        if (findFeaturedHero(id)) continue;
         ids.add(id);
       }
     }
@@ -223,10 +216,7 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     for (const sym of symposiums) {
       const id = sym?.book_id;
       if (!id || id <= 0 || attemptedHealIds.has(id) || completeBookIds.has(id)) continue;
-      const hero = FEATURED_HERO_BOOKS.find((h) => h.id === id);
-      if (hero && (hero.authorBirthYear != null || hero.authorDeathYear != null)) {
-        continue;
-      }
+      if (findFeaturedHero(id)) continue;
       ids.add(id);
     }
 

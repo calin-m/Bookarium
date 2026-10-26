@@ -86,15 +86,16 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   const lineStepPx = Math.max(16, fontSize * lineHeight);
   const contentToDisplay = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
   const estimatedMaxBookmarkRows = Math.max(10, Math.ceil((contentToDisplay?.length || 800) / 65));
+  const isBookmarkActive = bookmarkRow > 0 || isDraggingBookmark;
 
   const getMaxBookmarkRows = useCallback(() => {
     const el = contentBodyRef.current;
     const measuredHeight = el ? el.scrollHeight || el.getBoundingClientRect().height || 0 : 0;
     if (measuredHeight <= 0) {
-      return Math.max(10, Math.ceil((contentToDisplay?.length || 800) / 65));
+      return estimatedMaxBookmarkRows;
     }
     return Math.max(0, Math.floor((measuredHeight - lineStepPx / 2) / lineStepPx));
-  }, [contentToDisplay, lineStepPx]);
+  }, [estimatedMaxBookmarkRows, lineStepPx]);
 
   const computeRowFromClientY = useCallback(
     (clientY: number) => {
@@ -157,21 +158,23 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   // Smooth animated scroll-to-top on page or chapter transition, or center on bookmarked row when resuming
   useEffect(() => {
     if (readingMode === 'paginated' && mainRef.current && !targetAnnotationId && !isDraggingBookmark) {
-      const prefersReducedMotion =
+      const behavior: ScrollBehavior =
         typeof window !== 'undefined' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth';
       if (bookmarkRow > 0) {
         if (!hasScrolledBookmarkRef.current && bookmarkElRef.current) {
           hasScrolledBookmarkRef.current = true;
           bookmarkElRef.current.scrollIntoView?.({
-            behavior: prefersReducedMotion ? 'instant' : 'smooth',
+            behavior,
             block: 'center',
           });
         }
       } else {
         mainRef.current.scrollTo({
           top: 0,
-          behavior: prefersReducedMotion ? 'instant' : 'smooth',
+          behavior,
         });
       }
     }
@@ -443,7 +446,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
                   <div
                     data-prevent-swipe
                     className={`pointer-events-auto absolute right-full mr-1.5 sm:mr-2.5 origin-right top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded-l-md rounded-r-xs border transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
-                      bookmarkRow > 0 || isDraggingBookmark
+                      isBookmarkActive
                         ? 'bg-primary text-primary-foreground border-primary scale-105 opacity-100'
                         : 'bg-card/85 text-primary border-primary/30 opacity-65 hover:opacity-100 group-focus-visible/bookmark:opacity-100 group-focus-visible/bookmark:ring-2 group-focus-visible/bookmark:ring-primary'
                     }`}
@@ -452,7 +455,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
                     <span
                       data-testid="reader-bookmark-line-badge"
                       className={`text-[9px] font-mono font-bold leading-none ${
-                        bookmarkRow > 0 || isDraggingBookmark
+                        isBookmarkActive
                           ? 'inline'
                           : 'hidden sm:group-hover/bookmark:inline'
                       }`}
@@ -465,7 +468,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
                   <div
                     data-testid="reader-bookmark-guide-line"
                     className={`w-full h-full rounded-xs border-b transition-opacity duration-150 ${
-                      bookmarkRow > 0 || isDraggingBookmark
+                      isBookmarkActive
                         ? 'opacity-100 border-primary/45 bg-primary/[0.04] dark:bg-primary/[0.08]'
                         : 'opacity-0 border-transparent bg-transparent'
                     }`}
@@ -520,32 +523,38 @@ function renderContentWithAnnotations(
   }
 
   const speechHighlightClass = getReaderTheme(theme).speechHighlight;
+  const renderSliceWithSpeechHighlight = (
+    rawSlice: string,
+    keyPrefix: string
+  ): React.ReactNode => {
+    if (!highlightedSentence || !rawSlice.includes(highlightedSentence)) {
+      return rawSlice;
+    }
+    return (
+      <React.Fragment key={keyPrefix}>
+        {rawSlice.split(highlightedSentence).map((part, pIdx, pArr) => (
+          <React.Fragment key={pIdx}>
+            {part}
+            {pIdx < pArr.length - 1 && (
+              <mark
+                data-testid="speech-highlight"
+                className={`rounded-xs px-1 transition-colors duration-200 ${speechHighlightClass}`}
+              >
+                {highlightedSentence}
+              </mark>
+            )}
+          </React.Fragment>
+        ))}
+      </React.Fragment>
+    );
+  };
 
   const matchingAnnotations = (annotations || []).filter(
     (a) => a.selectedText && text.includes(a.selectedText)
   );
 
   if (matchingAnnotations.length === 0) {
-    if (highlightedSentence && text.includes(highlightedSentence)) {
-      return (
-        <>
-          {text.split(highlightedSentence).map((part, index, arr) => (
-            <React.Fragment key={index}>
-              {part}
-              {index < arr.length - 1 && (
-                <mark
-                  data-testid="speech-highlight"
-                  className={`rounded-xs px-1 transition-colors duration-200 ${speechHighlightClass}`}
-                >
-                  {highlightedSentence}
-                </mark>
-              )}
-            </React.Fragment>
-          ))}
-        </>
-      );
-    }
-    return text;
+    return renderSliceWithSpeechHighlight(text, 'text-full');
   }
 
   const cleanSpans = computeAnnotationSpans(text, matchingAnnotations);
@@ -555,27 +564,8 @@ function renderContentWithAnnotations(
 
   cleanSpans.forEach((span, i) => {
     if (span.start > currentIndex) {
-      const rawSlice = text.slice(currentIndex, span.start);
       elements.push(
-        highlightedSentence && rawSlice.includes(highlightedSentence) ? (
-          <React.Fragment key={`text-${i}`}>
-            {rawSlice.split(highlightedSentence).map((part, pIdx, pArr) => (
-              <React.Fragment key={pIdx}>
-                {part}
-                {pIdx < pArr.length - 1 && (
-                  <mark
-                    data-testid="speech-highlight"
-                    className={`rounded-xs px-1 transition-colors duration-200 ${speechHighlightClass}`}
-                  >
-                    {highlightedSentence}
-                  </mark>
-                )}
-              </React.Fragment>
-            ))}
-          </React.Fragment>
-        ) : (
-          rawSlice
-        )
+        renderSliceWithSpeechHighlight(text.slice(currentIndex, span.start), `text-${i}`)
       );
     }
 
@@ -644,28 +634,7 @@ function renderContentWithAnnotations(
   });
 
   if (currentIndex < text.length) {
-    const rawSlice = text.slice(currentIndex);
-    elements.push(
-      highlightedSentence && rawSlice.includes(highlightedSentence) ? (
-        <React.Fragment key="text-end">
-          {rawSlice.split(highlightedSentence).map((part, pIdx, pArr) => (
-            <React.Fragment key={pIdx}>
-              {part}
-              {pIdx < pArr.length - 1 && (
-                <mark
-                  data-testid="speech-highlight"
-                  className={`rounded-xs px-1 transition-colors duration-200 ${speechHighlightClass}`}
-                >
-                  {highlightedSentence}
-                </mark>
-              )}
-            </React.Fragment>
-          ))}
-        </React.Fragment>
-      ) : (
-        rawSlice
-      )
-    );
+    elements.push(renderSliceWithSpeechHighlight(text.slice(currentIndex), 'text-end'));
   }
 
   return <>{elements}</>;

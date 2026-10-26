@@ -283,47 +283,31 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
             ? resolved.authors
             : undefined;
 
-        if (position?.bookTitle) {
-          book = {
-            id: bookId,
-            title: cleanBookTitle(position.bookTitle),
-            authors:
-              posDisplayAuthors.length > 0
-                ? posDisplayAuthors
-                : resolved.authors.length > 0
-                ? resolved.authors.map((a) => normalizeAuthorName(a.name))
-                : ['Public Domain Author'],
-            ...(effectiveAuthorDetails ? { authorDetails: effectiveAuthorDetails } : {}),
-            ...(resolved.translators.length > 0 ? { translators: resolved.translators } : {}),
-            subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
-            languages: resolved.languages || ['en'],
-            coverUrl: position.coverUrl || `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
-            epubUrl: `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
-            htmlUrl: null,
-            txtUrl: null,
-            downloadCount: 0,
-          };
-        } else {
-          book = {
-            id: bookId,
-            title: cleanBookTitle(resolved.title) || `Volume #${bookId}`,
-            authors:
-              resolved.authors.length > 0
-                ? resolved.authors.map((a) => normalizeAuthorName(a.name))
-                : resolved.author
-                ? [normalizeAuthorName(resolved.author)]
-                : ['Public Domain Author'],
-            ...(effectiveAuthorDetails ? { authorDetails: effectiveAuthorDetails } : {}),
-            ...(resolved.translators.length > 0 ? { translators: resolved.translators } : {}),
-            subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
-            languages: resolved.languages || ['en'],
-            coverUrl: `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
-            epubUrl: `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
-            htmlUrl: null,
-            txtUrl: null,
-            downloadCount: 0,
-          };
-        }
+        const fallbackAuthors =
+          posDisplayAuthors.length > 0
+            ? posDisplayAuthors
+            : resolved.authors.length > 0
+            ? resolved.authors.map((a) => normalizeAuthorName(a.name))
+            : resolved.author
+            ? [normalizeAuthorName(resolved.author)]
+            : ['Public Domain Author'];
+
+        book = {
+          id: bookId,
+          title: cleanBookTitle(position?.bookTitle || resolved.title) || `Volume #${bookId}`,
+          authors: fallbackAuthors,
+          ...(effectiveAuthorDetails ? { authorDetails: effectiveAuthorDetails } : {}),
+          ...(resolved.translators.length > 0 ? { translators: resolved.translators } : {}),
+          subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
+          languages: resolved.languages,
+          coverUrl:
+            position?.coverUrl ||
+            `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
+          epubUrl: `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
+          htmlUrl: null,
+          txtUrl: null,
+          downloadCount: 0,
+        };
       } else {
         let enrichedDetails = book.authorDetails;
         if (!hasLifespan(book)) {
@@ -439,24 +423,21 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     const sortedResult = [...result].sort((a, b) => {
       switch (sortBy) {
         case 'title_asc':
-          return (a.book.title || '').localeCompare(b.book.title || '', undefined, { sensitivity: 'base' });
+          return a.book.title.localeCompare(b.book.title, undefined, { sensitivity: 'base' });
         case 'title_desc':
-          return (b.book.title || '').localeCompare(a.book.title || '', undefined, { sensitivity: 'base' });
-        case 'author_asc': {
-          const authorA = a.book.authors?.[0] || '';
-          const authorB = b.book.authors?.[0] || '';
-          return authorA.localeCompare(authorB, undefined, { sensitivity: 'base' });
-        }
+          return b.book.title.localeCompare(a.book.title, undefined, { sensitivity: 'base' });
+        case 'author_asc':
         case 'author_desc': {
-          const authorA = a.book.authors?.[0] || '';
-          const authorB = b.book.authors?.[0] || '';
-          return authorB.localeCompare(authorA, undefined, { sensitivity: 'base' });
+          const authorA = a.book.authors[0] || '';
+          const authorB = b.book.authors[0] || '';
+          return sortBy === 'author_asc'
+            ? authorA.localeCompare(authorB, undefined, { sensitivity: 'base' })
+            : authorB.localeCompare(authorA, undefined, { sensitivity: 'base' });
         }
         case 'progress_desc':
           return b.progressPercent - a.progressPercent;
         case 'progress_asc':
           return a.progressPercent - b.progressPercent;
-        case 'downloaded':
         case 'recent':
         default: {
           const timeA = new Date(a.lastReadAt).getTime();
