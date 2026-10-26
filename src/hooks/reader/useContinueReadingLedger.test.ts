@@ -8,9 +8,11 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import type { GutendexBook } from '@/types/book.types';
 
 let mockOfflineBookIds: number[] = [];
+let mockOfflineBooks: GutendexBook[] = [];
 vi.mock('@/hooks/useOfflineBooks', () => ({
   useOfflineBooks: () => ({
     offlineBookIds: mockOfflineBookIds,
+    offlineBooks: mockOfflineBooks,
     isBookOffline: (id: number) => mockOfflineBookIds.includes(id),
   }),
 }));
@@ -221,6 +223,25 @@ describe('useContinueReadingLedger', () => {
 
     expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('want_to_read');
     expect(result.current.volumes[0].status).toBe('on_hold');
+
+    // Update to in_progress when progress is 100% (resets position and progress to 0)
+    act(() => {
+      useReaderStore.getState().setProgress(1342, 100);
+    });
+    await act(async () => {
+      await result.current.updateVolumeStatus(1342, 'in_progress');
+    });
+    expect(useReaderStore.getState().readingProgress[1342]).toBe(0);
+    expect(useReaderStore.getState().readingPositions[1342].chapterPage).toBe(1);
+
+    // Update to completed when progress is < 100% (sets progress to 100)
+    act(() => {
+      useReaderStore.getState().setProgress(1342, 50);
+    });
+    await act(async () => {
+      await result.current.updateVolumeStatus(1342, 'completed');
+    });
+    expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
   });
 
   it('infers completed status when progress is 100% on uncurated volume', () => {
@@ -743,6 +764,203 @@ describe('useContinueReadingLedger', () => {
       expect(result.current.filteredVolumes).toHaveLength(1);
       expect(result.current.filteredVolumes[0].book.id).toBe(1342);
     });
+  });
+
+  it('resolves volume metadata directly from offlineBooks when book is not in savedBooks or favoriteBooks', () => {
+    mockOfflineBookIds = [1342];
+    mockOfflineBooks = [mockBook];
+
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [], favoriteBooks: [], recentBooks: [] });
+      useReaderStore.setState({
+        readingProgress: { 1342: 65 },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    expect(result.current.volumes).toHaveLength(1);
+    expect(result.current.volumes[0].book.title).toBe('Pride and Prejudice');
+    expect(result.current.volumes[0].book.authors).toEqual(['Jane Austen']);
+
+    mockOfflineBooks = [];
+  });
+
+  it('never overwrites authentic authors with Anonymous from offlineBooks in setOrMergeBook', () => {
+    mockOfflineBookIds = [1342];
+    mockOfflineBooks = [
+      {
+        ...mockBook,
+        authors: [{ name: 'Anonymous', birth_year: null, death_year: null }],
+      },
+    ];
+
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [mockBook] });
+      useReaderStore.setState({
+        readingProgress: { 1342: 45 },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    expect(result.current.volumes).toHaveLength(1);
+    expect(result.current.volumes[0].book.authors).toEqual(['Jane Austen']);
+    expect(result.current.volumes[0].book.authorDetails).toBeDefined();
+
+    mockOfflineBooks = [];
+    mockOfflineBookIds = [];
+  });
+
+  it('heals Anonymous authors when readingPosition has authentic bookAuthors', () => {
+    mockOfflineBookIds = [1342];
+    mockOfflineBooks = [
+      {
+        ...mockBook,
+        authors: [{ name: 'Anonymous', birth_year: null, death_year: null }],
+      },
+    ];
+
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [], favoriteBooks: [], recentBooks: [] });
+      useReaderStore.setState({
+        readingPositions: {
+          1342: {
+            bookTitle: 'Pride and Prejudice',
+            bookAuthors: ['Austen, Jane'],
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 10,
+            lastReadAt: '2026-10-01T12:00:00Z',
+          },
+        },
+        readingProgress: { 1342: 30 },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    expect(result.current.volumes).toHaveLength(1);
+    expect(result.current.volumes[0].book.authors).toEqual(['Jane Austen']);
+
+    mockOfflineBooks = [];
+    mockOfflineBookIds = [];
+  });
+
+  it('handles setOrMergeBook lifespan preservation, translator merging, and currentBook in missingIds', () => {
+    // 1. Current book in useReaderStore recognized in known set
+    act(() => {
+      useReaderStore.setState({
+        currentBook: {
+          id: 55179,
+          title: 'Current Volume',
+          authors: [{ name: 'Current Author', birth_year: 1850, death_year: 1910 }],
+          translators: [{ name: 'Translator 1', birth_year: 1860, death_year: 1920 }],
+          subjects: ['Subject'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 50,
+        },
+        readingProgress: { 55179: 25 },
+      });
+      useBookshelfStore.setState({
+        favoriteBooks: [
+          {
+            id: 55179,
+            title: 'Current Volume',
+            authors: [{ name: 'Current Author', birth_year: null, death_year: null }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 50,
+          },
+        ],
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    expect(result.current.volumes.find((v) => v.book.id === 55179)).toBeDefined();
+    const vol = result.current.volumes.find((v) => v.book.id === 55179)!;
+    expect(vol.book.authorDetails?.[0].birth_year).toBe(1850);
+    expect(vol.book.translators?.length).toBeGreaterThan(0);
+  });
+
+  it('heals authorDetails from readingPositions with embedded lifespans when book has empty authors', () => {
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [], favoriteBooks: [], recentBooks: [] });
+      useReaderStore.setState({
+        readingPositions: {
+          444: {
+            bookTitle: 'Lifespan Book',
+            bookAuthors: ['Doyle, Arthur Conan, 1859-1930'],
+            chapterIndex: 0,
+            chapterPage: 1,
+            globalPage: 1,
+            lastReadAt: '2026-10-01T12:00:00Z',
+          },
+        },
+        readingProgress: { 444: 15 },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    const vol = result.current.volumes.find((v) => v.book.id === 444);
+    expect(vol).toBeDefined();
+    expect(vol?.book.authors).toEqual(['Arthur Conan Doyle']);
+    expect(vol?.book.authorDetails?.[0].birth_year).toBe(1859);
+    expect(vol?.book.authorDetails?.[0].death_year).toBe(1930);
+  });
+
+  it('preserves existing authors and translators when candidate from offline has anonymous author and empty translators', () => {
+    act(() => {
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            id: 8881,
+            title: 'Translated Work',
+            authors: [{ name: 'Original Author', birth_year: 1820, death_year: 1890 }],
+            translators: [{ name: 'Renowned Translator', birth_year: 1850, death_year: 1910 }],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 100,
+          },
+        ],
+        favoriteBooks: [],
+        recentBooks: [],
+      });
+      useReaderStore.setState({
+        readingPositions: {
+          8881: {
+            bookTitle: 'Translated Work',
+            bookAuthors: ['Anonymous'],
+            chapterIndex: 0,
+            chapterPage: 1,
+            globalPage: 2,
+            lastReadAt: '2026-10-01T12:00:00Z',
+          },
+        },
+        readingProgress: { 8881: 25 },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    const vol = result.current.volumes.find((v) => v.book.id === 8881);
+    expect(vol).toBeDefined();
+    expect(vol?.book.authors).toEqual(['Original Author']);
+    expect(vol?.book.translators).toEqual([
+      { name: 'Renowned Translator', birth_year: 1850, death_year: 1910 },
+    ]);
   });
 });
 

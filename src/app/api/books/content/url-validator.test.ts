@@ -6,6 +6,8 @@ describe('url-validator', () => {
     it('accepts legitimate Project Gutenberg URLs', () => {
       expect(isSafeUpstreamUrl('https://www.gutenberg.org/cache/epub/1342/pg1342.txt')).toBe(true);
       expect(isSafeUpstreamUrl('https://gutenberg.org/files/1342/1342-0.txt')).toBe(true);
+      expect(isSafeUpstreamUrl('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt')).toBe(true);
+      expect(isSafeUpstreamUrl('/cache/epub/1342/pg1342.txt', 'https://aleph.gutenberg.org')).toBe(true);
       expect(isSafeUpstreamUrl('http://www.gutenberg.org/cache/epub/84/pg84.txt')).toBe(true);
     });
 

@@ -118,7 +118,8 @@ describe('BookGrid component', () => {
 
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
     expect(screen.getByText('General')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /download all books on this shelf/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in to sync/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /download all books on this shelf/i })).not.toBeInTheDocument();
   });
 
   it('applies tightened 2-column mobile grid gap classes to prevent grid blowout', () => {

@@ -25,11 +25,11 @@ Every commit and pull request must pass all quality gateways with zero blockers:
 
 | Pass | Gateway | Stage Name | Target & Tooling | Enforcement & Governance |
 | :--- | :--- | :--- | :--- | :--- |
-| **Pass 0.5** | Pre-Commit | Secret Scanner | Regex scan across all files | Scans all repository files for private keys, AWS/GCP tokens, or exposed API credentials (`0 exposed secrets`). |
-| **Pass 0.75** | Pre-Commit | SAST & OWASP Security Suite | `npm audit`, SSRF AST & XSS AST guards | Audits dependencies for high/critical CVEs, prevents dynamic fetch SSRF taint flows, blocks dangerous client-side injection, sanitizes redirects, and verifies public domain licenses. |
+| **Pass 0.5** | Pre-Commit | Secret Scanner | Regex scan across all files | Scans all repository files for private keys, fine-grained PATs, Supabase tokens, webhooks, or client-bundle service-role leaks (`0 exposed secrets`). |
+| **Pass 0.75** | Pre-Commit | 7-Pillar SAST & OWASP Security Suite | `npm audit`, SSRF/XSS/RLS/Headers AST guards | Audits dependencies for high/critical CVEs, enforces API rate limiting & mirror allowlist SSRF guards, blocks DOM XSS sinks, sanitizes redirects, verifies MIT & public domain integrity, checks PostgreSQL RLS across all 13 tables (`SET search_path = ''`), and verifies all 7 OWASP HTTP security headers. |
 | **Pass 1** | Compiler | TypeScript Engine Strict Verification | `tsc --noEmit` | Strict type safety across all components, stores, hooks, route handlers, and types (`0 compile errors`, `0 any`). |
 | **Pass 2** | Network | MSW Server & React Query Validation | Vitest + MSW v2 | Validates Mock Service Worker v2 network interception, error fallbacks, and TanStack React Query hooks. |
-| **Pass 3** | Test Suite | Vitest Unit Suite & Coverage Floor | `vitest run --coverage` | Asserts all 184 unit/integration test suites pass with $\ge$ 80% code coverage across lines, statements, functions, and branches. |
+| **Pass 3** | Test Suite | Vitest Unit Suite & Coverage Floor | `vitest run --coverage` | Asserts all 189 unit/integration test suites pass with $\ge$ 85% code coverage across lines, statements, functions, and branches. |
 | **Pass 4** | Living Docs | Living AST Documentation Sync | `docs:sync` toolchain | Programmatically recompiles `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `ROADMAP.md`, `docs/GUTENBERG_PARSER.md`, and `docs/QUALITY_AUDIT_REPORT.md` from AST with zero drift. |
 | **Pass 5** | ADR Ledger | ADR Schema & Ledger Validation | Markdown AST verification | Validates sequential numbering and strict schema conformance (Status, Context, Decision, Consequences) in `docs/DECISIONS.md`. |
 | **Pass 6** | Quality Suite | Code Quality & Dead Code Audit | ESLint 9 & Knip | Zero ESLint warnings/errors, zero unreferenced dead files/exports, and zero orphan dependencies. |

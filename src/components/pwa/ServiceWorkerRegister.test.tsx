@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ServiceWorkerRegister } from './ServiceWorkerRegister';
+
+vi.mock('@/app/read/[id]/page', () => ({ default: () => null }));
+vi.mock('@/components/presentation/BookPreviewModal', () => ({ BookPreviewModal: () => null }));
+vi.mock('@/components/presentation/DownloadDrawer', () => ({ DownloadDrawer: () => null }));
 
 describe('ServiceWorkerRegister', () => {
   const originalNavigator = global.navigator;
@@ -12,6 +16,11 @@ describe('ServiceWorkerRegister', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    Object.defineProperty(global, 'navigator', {
+      value: originalNavigator,
+      configurable: true,
+      writable: true,
+    });
   });
 
   it('renders null without throwing', () => {
@@ -19,9 +28,64 @@ describe('ServiceWorkerRegister', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('attempts registration in production when serviceWorker is available', () => {
+  it('attempts registration immediately in production when document.readyState is complete and posts CACHE_URLS', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const postMessageMock = vi.fn();
+    const registerMock = vi.fn().mockResolvedValue({
+      active: { postMessage: postMessageMock },
+    } as unknown as ServiceWorkerRegistration);
+
+    Object.defineProperty(global, 'navigator', {
+      value: {
+        ...originalNavigator,
+        serviceWorker: {
+          register: registerMock,
+        },
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    const scriptEl = document.createElement('script');
+    scriptEl.src = 'http://localhost:3000/_next/static/chunks/main.js';
+    const linkEl = document.createElement('link');
+    linkEl.rel = 'stylesheet';
+    linkEl.href = 'http://localhost:3000/_next/static/css/app.css';
+    document.head.appendChild(scriptEl);
+    document.head.appendChild(linkEl);
+
+    const { unmount } = render(<ServiceWorkerRegister />);
+
+    expect(registerMock).toHaveBeenCalledWith('/sw.js', { scope: '/' });
+
+    await waitFor(() => {
+      expect(postMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'CACHE_URLS',
+          urls: expect.arrayContaining([
+            '/',
+            '/account',
+            'http://localhost:3000/_next/static/chunks/main.js',
+            'http://localhost:3000/_next/static/css/app.css',
+          ]),
+        })
+      );
+    });
+
+    unmount();
+    scriptEl.remove();
+    linkEl.remove();
+  });
+
+  it('registers on window load event when document.readyState is loading', () => {
     vi.stubEnv('NODE_ENV', 'production');
     const registerMock = vi.fn().mockResolvedValue({} as ServiceWorkerRegistration);
+    const originalReadyState = Object.getOwnPropertyDescriptor(document, 'readyState');
+
+    Object.defineProperty(document, 'readyState', {
+      configurable: true,
+      get: () => 'loading',
+    });
 
     Object.defineProperty(global, 'navigator', {
       value: {
@@ -35,18 +99,20 @@ describe('ServiceWorkerRegister', () => {
     });
 
     const { unmount } = render(<ServiceWorkerRegister />);
+    expect(registerMock).not.toHaveBeenCalled();
 
-    // Trigger load event
     window.dispatchEvent(new Event('load'));
-
     expect(registerMock).toHaveBeenCalledWith('/sw.js', { scope: '/' });
-    unmount();
 
-    Object.defineProperty(global, 'navigator', {
-      value: originalNavigator,
-      configurable: true,
-      writable: true,
-    });
+    unmount();
+    if (originalReadyState) {
+      Object.defineProperty(document, 'readyState', originalReadyState);
+    } else {
+      Object.defineProperty(document, 'readyState', {
+        configurable: true,
+        get: () => 'complete',
+      });
+    }
   });
 
   it('does not attempt registration in development mode', () => {
@@ -69,11 +135,5 @@ describe('ServiceWorkerRegister', () => {
 
     expect(registerMock).not.toHaveBeenCalled();
     unmount();
-
-    Object.defineProperty(global, 'navigator', {
-      value: originalNavigator,
-      configurable: true,
-      writable: true,
-    });
   });
 });

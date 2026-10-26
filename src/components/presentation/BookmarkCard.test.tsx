@@ -366,5 +366,58 @@ describe('BookmarkCard', () => {
     render(<BookmarkCard volume={{ ...mockVolume, bookmarkRow: 8 }} />);
     expect(screen.getByText(/Chapter 3 • Page 48 • Line 9/i)).toBeInTheDocument();
   });
+
+  it('disables Resume, Save for offline reading, and Symposium Invite when network is offline and book is not cached, but enables Resume and Remove when cached', async () => {
+    const networkModule = await import('@/hooks/useNetworkStatus');
+    const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+      isOnline: false,
+      isOffline: true,
+    });
+
+    const handleToggleOffline = vi.fn();
+    const { rerender } = render(
+      <BookmarkCard
+        volume={mockVolume}
+        isOffline={false}
+        onToggleOffline={handleToggleOffline}
+      />
+    );
+
+    const offlineResumeBtn = screen.getByRole('button', {
+      name: `Resume reading ${mockVolume.book.title} (Unavailable offline)`,
+    });
+    expect(offlineResumeBtn).toBeDisabled();
+    expect(offlineResumeBtn).toHaveTextContent('Offline');
+
+    const saveOfflineBtn = screen.getByTestId('bookmark-card-offline-toggle-btn');
+    expect(saveOfflineBtn).toBeDisabled();
+
+    const symposiumBtn = screen.getByTestId('bookmark-card-invite-symposium-btn');
+    expect(symposiumBtn).toBeDisabled();
+
+    expect(screen.getByTestId(`bookmark-card-offline-overlay-${mockVolume.book.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`bookmark-card-unavailable-offline-badge-${mockVolume.book.id}`)).toHaveTextContent('Not Downloaded');
+    expect(screen.getByAltText(`Cover of ${mockVolume.book.title}`)).toHaveClass('opacity-65', 'grayscale-[35%]');
+
+    // When cached (isOffline: true), Resume and Remove are active even when network is offline
+    rerender(
+      <BookmarkCard
+        volume={mockVolume}
+        isOffline={true}
+        onToggleOffline={handleToggleOffline}
+      />
+    );
+
+    const activeResumeBtn = screen.getByRole('button', {
+      name: `Resume reading ${mockVolume.book.title}`,
+    });
+    expect(activeResumeBtn).not.toBeDisabled();
+
+    const removeOfflineBtn = screen.getByTestId('bookmark-card-offline-toggle-btn');
+    expect(removeOfflineBtn).not.toBeDisabled();
+    expect(screen.queryByTestId(`bookmark-card-unavailable-offline-badge-${mockVolume.book.id}`)).not.toBeInTheDocument();
+
+    networkSpy.mockRestore();
+  });
 });
 

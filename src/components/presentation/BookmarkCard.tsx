@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2 } from 'lucide-react';
+import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff } from 'lucide-react';
 import type { ActiveReadingVolume, LedgerItemStatus, GutendexBook, Book } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { formatAuthorNames, formatRelativeTime } from '@/lib/utils';
 
 const SymposiumInviteModal = dynamic(
@@ -48,9 +49,11 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
   const { country, evaluation, isRestricted } = useBookCopyright(book);
+  const { isOffline: isNetworkOffline } = useNetworkStatus();
+  const isUnavailableOffline = isNetworkOffline && !isOffline;
 
   const handleResume = () => {
-    if (isRestricted) return;
+    if (isRestricted || isUnavailableOffline) return;
     useReaderStore.getState().openReader(book);
     if (onResume) {
       onResume(book.id);
@@ -125,7 +128,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           <div
             data-testid="bookmark-card-cover"
             className={`group/cover relative w-16 h-24 shrink-0 rounded overflow-hidden bg-muted border border-border shadow-2xs select-none ${
-              isRestricted ? 'cursor-not-allowed' : ''
+              isRestricted || isUnavailableOffline ? 'cursor-not-allowed' : ''
             }`}
           >
             {book.coverUrl && !imageError ? (
@@ -135,7 +138,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 loading="lazy"
                 onError={() => setImageError(true)}
                 className={`w-full h-full object-cover transition-transform duration-300 ${
-                  isRestricted
+                  isRestricted || isUnavailableOffline
                     ? 'opacity-65 grayscale-[35%]'
                     : 'group-hover/cover:scale-105'
                 }`}
@@ -148,7 +151,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 </span>
               </div>
             )}
-            {isRestricted && (
+            {isRestricted ? (
               <div
                 className="absolute inset-0 bg-background/50 backdrop-blur-[1px] flex items-center justify-center"
                 title={evaluation.reason || `Protected by copyright in ${country}`}
@@ -157,7 +160,17 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                   <Lock className="w-3.5 h-3.5" />
                 </div>
               </div>
-            )}
+            ) : isUnavailableOffline ? (
+              <div
+                className="absolute inset-0 bg-background/50 backdrop-blur-[1px] flex items-center justify-center"
+                title="Not downloaded for offline reading"
+                data-testid={`bookmark-card-offline-overlay-${book.id}`}
+              >
+                <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 sepia:text-amber-400 shadow-xs">
+                  <WifiOff className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex-1 min-w-0 pr-4">
@@ -168,7 +181,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 {currentBadge.icon}
                 <span>{currentBadge.label}</span>
               </span>
-              {isRestricted && (
+              {isRestricted ? (
                 <span
                   className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30"
                   title={evaluation.reason || `Protected by copyright in ${country}`}
@@ -177,14 +190,28 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                   <Lock className="w-2.5 h-2.5 shrink-0" />
                   <span>Protected ({country})</span>
                 </span>
-              )}
+              ) : isUnavailableOffline ? (
+                <span
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30"
+                  title="Not downloaded for offline reading"
+                  aria-label="Not downloaded for offline reading"
+                  data-testid={`bookmark-card-unavailable-offline-badge-${book.id}`}
+                >
+                  <WifiOff className="w-2.5 h-2.5 shrink-0" />
+                  <span>Not Downloaded</span>
+                </span>
+              ) : null}
             </div>
 
             <h3 className="font-serif font-bold text-base text-foreground leading-snug line-clamp-2 transition-colors">
-              {isRestricted ? (
+              {isRestricted || isUnavailableOffline ? (
                 <span
                   className="cursor-not-allowed opacity-85"
-                  title={evaluation.reason || `Protected by copyright in ${country}`}
+                  title={
+                    isRestricted
+                      ? evaluation.reason || `Protected by copyright in ${country}`
+                      : 'Not downloaded for offline reading'
+                  }
                 >
                   {book.title}
                 </span>
@@ -255,6 +282,18 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             <AlertTriangle className="w-3.5 h-3.5" />
             <span>Restricted</span>
           </Button>
+        ) : isUnavailableOffline ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled
+            className="flex-1 gap-1.5 font-mono text-xs uppercase tracking-wider font-bold opacity-60 cursor-not-allowed"
+            aria-label={`Resume reading ${book.title} (Unavailable offline)`}
+            title="Not downloaded for offline reading"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Offline</span>
+          </Button>
         ) : (
           <Button
             variant="primary"
@@ -297,7 +336,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         {!isRestricted && onToggleOffline && (
           <button
             type="button"
-            disabled={isDownloadingOffline}
+            disabled={isDownloadingOffline || isUnavailableOffline}
             onClick={() => onToggleOffline(book)}
             data-testid="bookmark-card-offline-toggle-btn"
             aria-label={
@@ -310,6 +349,8 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             title={
               isDownloadingOffline
                 ? 'Saving for offline reading...'
+                : isUnavailableOffline
+                ? 'Connect to the internet to save for offline reading'
                 : isOffline
                 ? 'Offline copy ready (Click to remove)'
                 : 'Save for offline reading'
@@ -317,6 +358,8 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             className={`h-8 w-8 flex items-center justify-center rounded border transition-colors shrink-0 ${
               isDownloadingOffline
                 ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
+                : isUnavailableOffline
+                ? 'border-border bg-background text-muted-foreground/50 opacity-50 cursor-not-allowed'
                 : isOffline
                 ? 'group/offline-btn border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive cursor-pointer'
                 : 'border-border bg-background text-muted-foreground hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer'
@@ -338,11 +381,16 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         {!isRestricted && (
           <button
             type="button"
+            disabled={isNetworkOffline}
             onClick={() => setIsSymposiumModalOpen(true)}
             data-testid="bookmark-card-invite-symposium-btn"
             aria-label={`Invite Fellow to Symposium on ${book.title}`}
-            title="Invite Fellow to Symposium"
-            className="h-8 w-8 flex items-center justify-center rounded border border-border bg-background text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer shrink-0"
+            title={isNetworkOffline ? 'Connect to the internet to invite a Fellow' : 'Invite Fellow to Symposium'}
+            className={`h-8 w-8 flex items-center justify-center rounded border border-border bg-background text-muted-foreground transition-colors shrink-0 ${
+              isNetworkOffline
+                ? 'opacity-50 cursor-not-allowed'
+                : 'hover:text-primary hover:border-primary/40 hover:bg-primary/5 cursor-pointer'
+            }`}
           >
             <Handshake className="w-3.5 h-3.5" />
           </button>

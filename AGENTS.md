@@ -9,10 +9,10 @@ Welcome to **Bookarium**. When contributing or generating code for this reposito
 2. **Public Domain Integrity**: Do not introduce any closed-source, DRM-restricted, or copyright-infringing book sources. Ensure all queries pass `copyright=false`.
 3. **Zero API Key Requirement**: The core user experience must work without any third-party paid keys, auth sign-in, or backend database setup.
 4. **State Architecture**:
-   - Remote data: TanStack React Query (`useBooks`, `useBookContent`).
-   - Local persistent state: Zustand (`useBookshelfStore`, `useReaderStore`).
+   - Remote data: TanStack React Query (`useBooks`, `useBookContent`, `useBookTranslations`).
+   - Local persistent state: 10 Zustand stores (`useBookshelfStore`, `useReaderStore`, `useAuthStore`, `useFellowshipStore`, `useAnnotationStore`, `useAccoladesStore`, `useHabitsStore`, `useJurisdictionStore`, `useFontStore`, `useSearchStore`).
 5. **Co-located Testing & Anti-Regression Accuracy**: Every single component (`*.tsx`), hook (`*.ts`), store (`*.ts`), and route handler (`route.ts`) must have an adjacent `*.test.ts` or `*.test.tsx` testing authentic user journeys with `@testing-library/react` and MSW. Zero synthetic/fake tests, no loose assertions, and mandatory co-evolution on every code change.
-6. **Coverage Enforcement**: Never allow test coverage to drop below 80% on lines, functions, statements, or branches (target: >= 85%).
+6. **Coverage Enforcement**: Never allow test coverage to drop below 85% on lines, functions, statements, or branches (floor: >= 85%).
 7. **Git Protocol (Human Execution Only)**: Provide in-depth structured conventional commit commands (`[PHASE]`, `[WHY]`, `[WHAT]`, `[VERIFICATION]`) only when explicitly requested by the user. AI agents must never execute `git commit` or `git push` directly.
 8. **7-Gateway Quality Engine**: Run `npm run verify` only when explicitly requested by the user or when actively investigating/debugging an encountered error in code to guarantee zero errors across all passes.
 9. **Rule 9 (Idempotent Database Schema Co-Evolution, RLS Governance & Live SQL Hand-Off)**: All database modifications must co-evolve `supabase/schema.sql`, `src/types/database.types.ts`, and `README.md` using strictly idempotent SQL (`CREATE TABLE IF NOT EXISTS`, `DROP POLICY IF EXISTS`) with strict Row Level Security enabled for user isolation. Whenever `supabase/schema.sql` is modified, the agent must output a standalone, copy-paste-ready idempotent SQL migration block directly in chat so the user can immediately execute it in the deployed Supabase SQL Editor.

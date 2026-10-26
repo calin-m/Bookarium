@@ -11,6 +11,7 @@ import {
   Palette,
   Lock,
   Feather,
+  WifiOff,
 } from 'lucide-react';
 import type { Annotation, FellowAnnotation, HighlightColor } from '@/stores/useAnnotationStore';
 import { formatFellowScholarLabel } from '@/stores/useFellowshipStore';
@@ -61,6 +62,7 @@ export interface NotebookQuoteCardProps {
   bookTitle: string;
   bookAuthor: string;
   isRestricted?: boolean;
+  isUnavailableOffline?: boolean;
   jurisdictionCountry?: string;
   isEditing?: boolean;
   onStartEdit?: (ann: Annotation) => void;
@@ -93,6 +95,7 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   bookTitle,
   bookAuthor,
   isRestricted = false,
+  isUnavailableOffline = false,
   jurisdictionCountry,
   isEditing = false,
   onStartEdit,
@@ -195,7 +198,7 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               {bookTitle}
             </span>
             <span className="text-muted-foreground hidden sm:inline truncate">by {bookAuthor}</span>
-            {isRestricted && (
+            {isRestricted ? (
               <span
                 className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0"
                 title={`Protected by copyright in ${jurisdictionCountry || 'your jurisdiction'}`}
@@ -203,7 +206,16 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
                 <Lock className="w-2 h-2" />
                 Protected
               </span>
-            )}
+            ) : isUnavailableOffline ? (
+              <span
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0"
+                title="Not downloaded for offline reading"
+                data-testid={`quote-card-offline-badge-${ann.id}`}
+              >
+                <WifiOff className="w-2 h-2" />
+                Not Downloaded
+              </span>
+            ) : null}
             <span>•</span>
             <span className="truncate">
               Section {ann.chapterIndex + 1}, p. {ann.chapterPage}
@@ -646,11 +658,20 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
         {/* Jump to Reader */}
         <button
           type="button"
-          onClick={() => onJumpToReader(ann)}
+          disabled={isUnavailableOffline}
+          onClick={() => {
+            if (isUnavailableOffline) return;
+            onJumpToReader(ann);
+          }}
           data-testid={`jump-reader-btn-${ann.id}`}
-          className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer font-medium text-[11px]"
+          title={isUnavailableOffline ? 'Not downloaded for offline reading' : undefined}
+          className={`inline-flex items-center gap-1 font-medium text-[11px] ${
+            isUnavailableOffline
+              ? 'text-muted-foreground opacity-60 cursor-not-allowed'
+              : 'text-primary hover:underline cursor-pointer'
+          }`}
         >
-          <span>Read Passage</span>
+          <span>{isUnavailableOffline ? 'Unavailable Offline' : 'Read Passage'}</span>
           <ExternalLink className="w-3 h-3" />
         </button>
       </div>

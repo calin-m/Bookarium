@@ -336,4 +336,48 @@ describe('BookshelfSpine Component', () => {
     expect(downloadingBtn).toBeDisabled();
     expect(screen.getByText('Saving for Offline...')).toBeInTheDocument();
   });
+
+  it('disables Read and Save for offline reading on hover card when network is offline and book is not cached', async () => {
+    const networkModule = await import('@/hooks/useNetworkStatus');
+    const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+      isOnline: false,
+      isOffline: true,
+    });
+
+    render(
+      <BookshelfSpine
+        book={mockBook}
+        bookIndex={0}
+        isSaved={true}
+        isFavorite={false}
+        isOffline={false}
+        onToggleSave={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onToggleOffline={vi.fn()}
+        onSpineClick={vi.fn()}
+      />
+    );
+
+    const offlineReadBtn = screen.getByRole('button', {
+      name: `Open reader for ${mockBook.title} (Unavailable offline)`,
+    });
+    expect(offlineReadBtn).toBeDisabled();
+    expect(offlineReadBtn).toHaveTextContent('Offline');
+
+    const saveOfflineBtn = screen.getByRole('button', {
+      name: `Download ${mockBook.title} for offline reading`,
+    });
+    expect(saveOfflineBtn).toBeDisabled();
+
+    const downloadFormatsBtn = screen.getByRole('button', {
+      name: `Download formats for ${mockBook.title}`,
+    });
+    expect(downloadFormatsBtn).toBeDisabled();
+
+    expect(screen.getByTestId(`spine-offline-unavailable-badge-${mockBook.id}`)).toHaveTextContent('OFF');
+    expect(screen.getByTestId(`spine-card-offline-unavailable-${mockBook.id}`)).toHaveTextContent('Not Downloaded');
+    expect(screen.getByTestId(`spine-offline-unavailable-banner-${mockBook.id}`)).toHaveTextContent('Unavailable Offline');
+
+    networkSpy.mockRestore();
+  });
 });

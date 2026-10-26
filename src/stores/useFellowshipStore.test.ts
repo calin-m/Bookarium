@@ -620,6 +620,88 @@ describe('useFellowshipStore', () => {
     expect(updatedActive?.host_progress).toBe(30);
   });
 
+  it('queues pendingSymposiumProgress when offline and flushes to Supabase on syncWithCloud', async () => {
+    const originalOnLine = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+
+    try {
+      useFellowshipStore.setState({
+        symposiums: [
+          {
+            id: 'sym-offline-1',
+            book_id: 1342,
+            book_title: 'Pride and Prejudice',
+            host_id: 'user-host',
+            host_username: 'jane_austen',
+            host_display_name: 'Jane Austen',
+            fellow_id: 'user-fellow',
+            fellow_username: 'charlotte_bronte',
+            fellow_display_name: 'Charlotte Brontë',
+            status: 'active',
+            host_chapter: 1,
+            host_progress: 10,
+            fellow_chapter: 1,
+            fellow_progress: 10,
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+        pendingSymposiumProgress: {},
+      });
+
+      await useFellowshipStore.getState().syncSymposiumProgress(1342, 5, 65);
+
+      const stateOffline = useFellowshipStore.getState();
+      expect(stateOffline.symposiums[0].host_chapter).toBe(5);
+      expect(stateOffline.symposiums[0].host_progress).toBe(65);
+      expect(stateOffline.pendingSymposiumProgress['sym-offline-1']).toEqual(
+        expect.objectContaining({
+          chapterIndex: 5,
+          progressPct: 65,
+          status: 'active',
+          isHost: true,
+        })
+      );
+
+      // Reconnect and flush via syncWithCloud
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+      const mockUpdateEq = vi.fn().mockResolvedValue({ error: null });
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'symposium_sessions') {
+          return {
+            update: mockUpdate,
+            select: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: stateOffline.symposiums,
+              error: null,
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          or: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      });
+
+      await useFellowshipStore.getState().syncWithCloud('user-host');
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          host_chapter: 5,
+          host_progress: 65,
+          status: 'active',
+        })
+      );
+      expect(mockUpdateEq).toHaveBeenCalledWith('id', 'sym-offline-1');
+      expect(useFellowshipStore.getState().pendingSymposiumProgress).toEqual({});
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
+    }
+  });
+
   describe('isPlaceholderUsername and formatFellowScholarLabel helpers', () => {
     it('correctly identifies placeholder usernames', () => {
       expect(isPlaceholderUsername(null)).toBe(true);

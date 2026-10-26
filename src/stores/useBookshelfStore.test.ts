@@ -23,6 +23,7 @@ vi.mock('@/lib/supabase/client', () => ({
 describe('useBookshelfStore', () => {
   beforeEach(() => {
     useBookshelfStore.getState().clearBookshelf();
+    useBookshelfStore.setState({ outbox: [] });
   });
 
   it('should initialize with empty collections', () => {
@@ -894,7 +895,7 @@ describe('useBookshelfStore', () => {
       const outbox = useBookshelfStore.getState().outbox;
       expect(outbox).toHaveLength(1);
       expect(outbox[0].type).toBe('DELETE_BOOK');
-      expect(outbox[0].payload.book_id).toBe(mockBooks[0].id);
+      expect((outbox[0].payload as { book_id: number }).book_id).toBe(mockBooks[0].id);
 
       // 3. Now simulate reconnection and flush
       const successfulDeleteEq = vi.fn().mockReturnValue({
@@ -932,6 +933,95 @@ describe('useBookshelfStore', () => {
 
       await useBookshelfStore.getState().flushOutbox('user-1');
       expect(useBookshelfStore.getState().outbox).toHaveLength(0);
+    });
+
+    it('queues MOVE_BOOK and UPDATE_SHELF to outbox when offline and flushes them on reconnect', async () => {
+      useBookshelfStore.setState({
+        cloudBookshelves: [
+          { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, is_public: true, created_at: '', updated_at: '' },
+          { id: 'shelf-2', user_id: 'user-1', name: 'Classics', is_default: false, is_public: true, created_at: '', updated_at: '' },
+        ],
+        cloudBookshelfItems: [
+          {
+            id: 'item-84',
+            bookshelf_id: 'shelf-1',
+            user_id: 'user-1',
+            book_id: 84,
+            book_title: 'Frankenstein',
+            book_authors: ['Mary Shelley'],
+            cover_url: null,
+            added_at: '',
+          },
+        ],
+        outbox: [],
+      });
+
+      // Simulate offline network rejection on moveBookToShelf and updateCloudBookshelf
+      mockFrom.mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockRejectedValue(new Error('Network Offline')),
+          }),
+        }),
+      });
+
+      const moveResult = await useBookshelfStore.getState().moveBookToShelf(84, 'shelf-2', 'user-1');
+      expect(moveResult).toBe(true);
+      expect(useBookshelfStore.getState().cloudBookshelfItems[0].bookshelf_id).toBe('shelf-2');
+
+      const updateResult = await useBookshelfStore.getState().updateCloudBookshelf('shelf-2', 'Gothic Classics', 'user-1', false);
+      expect(updateResult).toBe(true);
+      expect(useBookshelfStore.getState().cloudBookshelves.find((s) => s.id === 'shelf-2')?.name).toBe('Gothic Classics');
+      expect(useBookshelfStore.getState().cloudBookshelves.find((s) => s.id === 'shelf-2')?.is_public).toBe(false);
+
+      const outbox = useBookshelfStore.getState().outbox;
+      expect(outbox).toHaveLength(2);
+      expect(outbox[0].type).toBe('MOVE_BOOK');
+      expect(outbox[1].type).toBe('UPDATE_SHELF');
+
+      // Reconnect and flush outbox
+      const mockUpdateEq2 = vi.fn().mockResolvedValue({ error: null });
+      const mockUpdateEq1 = vi.fn().mockReturnValue({ eq: mockUpdateEq2 });
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq1 });
+      mockFrom.mockReturnValue({
+        update: mockUpdate,
+      });
+
+      await useBookshelfStore.getState().flushOutbox('user-1');
+      expect(useBookshelfStore.getState().outbox).toHaveLength(0);
+      expect(mockUpdate).toHaveBeenCalledTimes(2);
+    });
+
+    it('preserves activeBookshelfId when set to __downloaded__ during syncWithCloud', async () => {
+      useBookshelfStore.setState({
+        activeBookshelfId: '__downloaded__',
+        cloudBookshelves: [],
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' }],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        };
+      });
+
+      await useBookshelfStore.getState().syncWithCloud('user-1');
+      expect(useBookshelfStore.getState().activeBookshelfId).toBe('__downloaded__');
     });
   });
 
@@ -1681,6 +1771,74 @@ describe('useBookshelfStore', () => {
     it('returns original query if query has no order function', () => {
       const mockQuery = { select: vi.fn(), order: undefined };
       expect(applyDeterministicItemOrdering(mockQuery)).toBe(mockQuery);
+    });
+
+    it('enriches savedBooks and favoriteBooks with authentic authors when incoming fresh books have authentic authors without lifespans', async () => {
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            id: 600,
+            title: 'Book 600',
+            authors: [{ name: 'Anonymous', birth_year: null, death_year: null }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 0,
+          },
+        ],
+        favoriteBooks: [
+          {
+            id: 601,
+            title: 'Book 601',
+            authors: [{ name: 'Anonymous', birth_year: null, death_year: null }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 0,
+          },
+        ],
+      });
+
+      await useBookshelfStore.getState().enrichSavedBooks([
+        {
+          id: 600,
+          title: 'Book 600',
+          authors: [{ name: 'Agatha Christie', birth_year: null, death_year: null }],
+          translators: [{ name: 'Translator Guy', birth_year: null, death_year: null }],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 0,
+        },
+        {
+          id: 601,
+          title: 'Book 601',
+          authors: [{ name: 'Jules Verne', birth_year: null, death_year: null }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 0,
+        },
+      ]);
+
+      const state = useBookshelfStore.getState();
+      expect(state.savedBooks[0].authors[0].name).toBe('Agatha Christie');
+      expect(state.favoriteBooks[0].authors[0].name).toBe('Jules Verne');
     });
   });
 });

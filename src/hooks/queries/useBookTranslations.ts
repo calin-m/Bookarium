@@ -108,7 +108,8 @@ export function useBookTranslations(
   title?: string,
   author?: string,
   currentBookId?: number,
-  currentBookLanguages?: string[]
+  currentBookLanguages?: string[],
+  enabled = true
 ): UseBookTranslationsResult {
   const titleKeywords = useMemo(() => extractSignificantTitleKeywords(title || ''), [title]);
   const authorSurname = useMemo(() => extractAuthorSurname(author || ''), [author]);
@@ -142,7 +143,7 @@ export function useBookTranslations(
       if (!res.ok) return { results: [] };
       return res.json();
     },
-    enabled: Boolean(currentBookId && currentBookId > 0),
+    enabled: Boolean(enabled && currentBookId && currentBookId > 0),
     staleTime: 1000 * 60 * 30, // 30 minutes cache
     gcTime: 1000 * 60 * 60, // 1 hour garbage collection
   });
@@ -171,7 +172,7 @@ export function useBookTranslations(
       }
       return res.json();
     },
-    enabled: Boolean(!hasDbEditions && searchQuery && currentBookId && currentBookId > 0),
+    enabled: Boolean(enabled && !hasDbEditions && searchQuery && currentBookId && currentBookId > 0),
     staleTime: 1000 * 60 * 30,
     gcTime: 1000 * 60 * 60,
   });

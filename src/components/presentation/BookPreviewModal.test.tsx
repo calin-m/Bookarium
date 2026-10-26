@@ -500,6 +500,39 @@ describe('BookPreviewModal component', () => {
     expect(screen.queryByTestId(`preview-offline-toggle-${defaultBook.id}`)).not.toBeInTheDocument();
     expect(screen.queryByTestId(`book-card-offline-badge-${defaultBook.id}`)).not.toBeInTheDocument();
   });
+
+  it('disables Read button in spread footer when network is offline and book is not cached', async () => {
+    const networkModule = await import('@/hooks/useNetworkStatus');
+    const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+      isOnline: false,
+      isOffline: true,
+    });
+
+    renderWithQueryClient(
+      <BookPreviewModal
+        book={defaultBook}
+        isOpen={true}
+        isOffline={false}
+        onReadBook={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    const offlineBtns = screen.getAllByRole('button', { name: `Read ${defaultBook.title} (Unavailable offline)` });
+    expect(offlineBtns.length).toBeGreaterThanOrEqual(1);
+    offlineBtns.forEach((btn) => {
+      expect(btn).toBeDisabled();
+    });
+
+    expect(screen.getByTestId(`preview-offline-unavailable-badge-left-${defaultBook.id}`)).toHaveTextContent('Not Downloaded');
+    expect(screen.getByTestId('notable-passages-offline-unavailable-badge')).toHaveTextContent('Not Downloaded');
+
+    networkSpy.mockRestore();
+  });
 });
 
 

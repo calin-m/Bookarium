@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PublicScholarProfilePage from './page';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useAccoladesStore } from '@/stores/useAccoladesStore';
+import { useHabitsStore } from '@/stores/useHabitsStore';
 
 const mockPush = vi.fn();
 let mockParams = { username: 'jane_austen' };
@@ -533,6 +535,74 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     render(<PublicScholarProfilePage />);
     await waitFor(() => {
       expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
+    });
+  });
+
+  it('falls back to local auth, accolades, habits, and bookshelf stores when offline query throws or errors', async () => {
+    mockParams = { username: 'jane_austen' };
+
+    useAuthStore.setState({
+      user: { id: 'u-self-offline', email: 'jane@bookarium.test' } as any,
+      profile: {
+        id: 'u-self-offline',
+        username: 'jane_austen',
+        display_name: 'Jane Austen Local',
+        bio: 'Local offline sanctuary',
+        is_public: true,
+        show_streak: true,
+        show_challenge: true,
+        show_bookshelves: true,
+        created_at: '2025-01-01T00:00:00.000Z',
+      } as any,
+    });
+
+    useAccoladesStore.setState({
+      pinnedAccoladeIds: ['seven-day-sage'],
+      unlockedAccolades: {
+        'seven-day-sage': {
+          id: 'seven-day-sage',
+          unlockedAt: '2025-02-01T00:00:00.000Z',
+        } as any,
+      } as unknown as Record<string, any>,
+    });
+
+    useHabitsStore.setState({
+      annualGoal: 20,
+      activeDates: ['2025-02-01', '2025-02-02'],
+    });
+
+    // Remote query returns network error (offline)
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: null,
+                  error: new Error('Failed to fetch (offline)'),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: new Error('Network error') }),
+            order: vi.fn().mockResolvedValue({ data: null, error: new Error('Network error') }),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: new Error('Network error') }),
+          }),
+        }),
+      };
+    });
+
+    render(<PublicScholarProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Jane Austen Local')).toBeInTheDocument();
+      expect(screen.getByText(/Local offline sanctuary/i)).toBeInTheDocument();
     });
   });
 });

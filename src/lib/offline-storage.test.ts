@@ -6,6 +6,7 @@ import {
   removeOfflineBook,
   getOfflineBookIds,
   getAllOfflineBooks,
+  getAllOfflineBookMetas,
   clearAllOfflineBooks,
   type OfflineBookRecord,
 } from './offline-storage';
@@ -133,13 +134,112 @@ describe('offline-storage (IndexedDB engine)', () => {
     expect(ids).toHaveLength(2);
   });
 
-  it('retrieves all offline books metadata without returning full text payloads', async () => {
+  it('retrieves all offline books metadata without returning full text payloads and self-heals authors', async () => {
     await saveOfflineBook(11, 'Alice in Wonderland', 'Some text');
     const list = await getAllOfflineBooks();
     expect(list).toHaveLength(1);
     expect(list[0].bookId).toBe(11);
     expect(list[0].title).toBe('Alice in Wonderland');
     expect(list[0]).not.toHaveProperty('text');
+
+    const metas = await getAllOfflineBookMetas();
+    expect(metas).toHaveLength(1);
+    expect(metas[0].id).toBe(11);
+    expect(metas[0].title).toBe('Alice in Wonderland');
+    // Recovers authentic author from fixture rather than hardcoded Anonymous
+    expect(metas[0].authors[0].name).toBe('Lewis Carroll');
+
+    // Unknown volume without store records or fixture falls back to Anonymous
+    await saveOfflineBook(999999, 'Unknown Book', 'Some text');
+    const metasWithUnknown = await getAllOfflineBookMetas();
+    const unknown = metasWithUnknown.find((m) => m.id === 999999);
+    expect(unknown?.authors[0].name).toBe('Anonymous');
+
+    await saveOfflineBook(12, 'Through the Looking-Glass', 'More text', [
+      { name: 'Carroll, Lewis', birth_year: 1832, death_year: 1898 },
+    ]);
+    const metasWithAuthors = await getAllOfflineBookMetas();
+    const book12 = metasWithAuthors.find((m) => m.id === 12);
+    expect(book12?.authors[0].name).toBe('Carroll, Lewis');
+
+    // Test recovering authors from useBookshelfStore (savedBooks, favoriteBooks, recentBooks)
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    useBookshelfStore.setState({
+      savedBooks: [
+        {
+          id: 101,
+          title: 'Saved Title',
+          authors: [{ name: 'Saved Author', birth_year: 1840, death_year: 1910 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 5,
+        },
+      ],
+      favoriteBooks: [
+        {
+          id: 102,
+          title: 'Favorite Title',
+          authors: [{ name: 'Favorite Author', birth_year: 1850, death_year: 1920 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 5,
+        },
+      ],
+      recentBooks: [
+        {
+          id: 103,
+          title: 'Recent Title',
+          authors: [{ name: 'Recent Author', birth_year: 1860, death_year: 1930 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 5,
+        },
+      ],
+    });
+
+    await saveOfflineBook(101, 'Saved Title', 'Text 101', [{ name: 'Anonymous', birth_year: null, death_year: null }]);
+    await saveOfflineBook(102, 'Favorite Title', 'Text 102', []);
+    await saveOfflineBook(103, 'Recent Title', 'Text 103', [{ name: 'Anonymous', birth_year: null, death_year: null }]);
+
+    // Test recovering authors from useReaderStore readingPositions
+    const { useReaderStore } = await import('@/stores/useReaderStore');
+    useReaderStore.setState({
+      readingPositions: {
+        104: {
+          bookTitle: 'Position Title',
+          bookAuthors: ['Position Author, 1870-1940'],
+          chapterIndex: 0,
+          chapterPage: 1,
+          globalPage: 1,
+          lastReadAt: '2026-01-01',
+        },
+      },
+    });
+    await saveOfflineBook(104, 'Position Title', 'Text 104', [{ name: 'Anonymous', birth_year: null, death_year: null }]);
+
+    const healedMetas = await getAllOfflineBookMetas();
+    expect(healedMetas.find((m) => m.id === 101)?.authors[0].name).toBe('Saved Author');
+    expect(healedMetas.find((m) => m.id === 102)?.authors[0].name).toBe('Favorite Author');
+    expect(healedMetas.find((m) => m.id === 103)?.authors[0].name).toBe('Recent Author');
+    const meta104 = healedMetas.find((m) => m.id === 104);
+    expect(meta104?.authors[0].name).toBe('Position Author, 1870-1940');
+    expect(meta104?.authors[0].birth_year).toBe(1870);
+    expect(meta104?.authors[0].death_year).toBe(1940);
   });
 
   it('clears all offline books', async () => {
@@ -544,6 +644,59 @@ describe('offline-storage (IndexedDB engine)', () => {
       expect(await evictOldestBooksToFreeSpace(100)).toBe(0);
 
       (globalThis as any).indexedDB = originalIndexedDB;
+    });
+
+    it('updates offline book authors when stored record has missing or placeholder authors', async () => {
+      const { patchOfflineBookAuthors, evictOldestBooksToFreeSpace } = await import(
+        './offline-storage'
+      );
+
+      // 1. Book with placeholder authors gets updated
+      await saveOfflineBook(301, 'Anon Book', 'Text', [{ name: 'Anonymous', birth_year: null, death_year: null }]);
+      await patchOfflineBookAuthors(301, [{ name: 'Real Author', birth_year: 1800, death_year: 1870 }]);
+      expect(store.get(301)?.authors?.[0].name).toBe('Real Author');
+
+      // 2. Book with authentic authors does NOT get overwritten
+      await patchOfflineBookAuthors(301, [{ name: 'Another Author', birth_year: 1820, death_year: 1890 }]);
+      expect(store.get(301)?.authors?.[0].name).toBe('Real Author');
+
+      // 3. Book with empty authors array gets updated
+      store.set(302, {
+        bookId: 302,
+        title: 'Empty Author Book',
+        text: 'Text',
+        authors: [],
+        downloadedAt: new Date().toISOString(),
+        byteSize: 100,
+      });
+      await patchOfflineBookAuthors(302, [{ name: 'Added Author', birth_year: null, death_year: null }]);
+      expect(store.get(302)?.authors?.[0].name).toBe('Added Author');
+
+      // 4. Book with undefined authors gets updated
+      store.set(303, {
+        bookId: 303,
+        title: 'Undefined Author Book',
+        text: 'Text',
+        authors: undefined as any,
+        downloadedAt: new Date().toISOString(),
+        byteSize: 100,
+      });
+      await patchOfflineBookAuthors(303, [{ name: 'Defined Author', birth_year: null, death_year: null }]);
+      expect(store.get(303)?.authors?.[0].name).toBe('Defined Author');
+
+      // 5. Non-existent record does not crash
+      await patchOfflineBookAuthors(99999, [{ name: 'Ghost', birth_year: null, death_year: null }]);
+
+      // 6. evictOldestBooksToFreeSpace catch fallback
+      const originalDB = (globalThis as any).indexedDB;
+      (globalThis as any).indexedDB = {
+        open: vi.fn(() => {
+          throw new Error('DB Crash');
+        }),
+      };
+      const freed = await evictOldestBooksToFreeSpace(500);
+      expect(freed).toBe(0);
+      (globalThis as any).indexedDB = originalDB;
     });
   });
 });

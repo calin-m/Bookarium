@@ -603,6 +603,36 @@ describe('BookCard component', () => {
     fireEvent.click(badge);
     expect(handleRemoveOffline).toHaveBeenCalledWith(book);
   });
+
+  it('dims cover, shows Not Downloaded status, and disables Read and Get buttons when network is offline and book is not cached, while keeping them active when cached', async () => {
+    const book = mockBooks[0];
+    const networkModule = await import('@/hooks/useNetworkStatus');
+    const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+      isOnline: false,
+      isOffline: true,
+    });
+
+    const { rerender } = render(<BookCard book={book} isOffline={false} />);
+    const offlineReadBtn = screen.getByRole('button', { name: `Read ${book.title} (Unavailable offline)` });
+    expect(offlineReadBtn).toBeDisabled();
+    expect(offlineReadBtn).toHaveTextContent('Offline');
+
+    const offlineGetBtn = screen.getByRole('button', { name: `Download unavailable for ${book.title} (Offline)` });
+    expect(offlineGetBtn).toBeDisabled();
+
+    expect(screen.getByTestId(`book-card-unavailable-offline-${book.id}`)).toHaveTextContent('Not Downloaded');
+    const coverImg = screen.getByAltText(`Cover of ${book.title}`);
+    expect(coverImg).toHaveClass('opacity-65', 'grayscale-[35%]');
+
+    rerender(<BookCard book={book} isOffline={true} />);
+    const activeReadLink = screen.getByRole('link', { name: `Read ${book.title}` });
+    expect(activeReadLink).toHaveAttribute('href', `/read/${book.id}`);
+    const activeGetBtn = screen.getByRole('button', { name: `Download options for ${book.title}` });
+    expect(activeGetBtn).not.toBeDisabled();
+    expect(screen.queryByTestId(`book-card-unavailable-offline-${book.id}`)).not.toBeInTheDocument();
+
+    networkSpy.mockRestore();
+  });
 });
 
 

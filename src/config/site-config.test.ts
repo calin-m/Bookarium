@@ -7,6 +7,7 @@ describe('SITE_CONFIG & STORAGE_KEYS', () => {
     expect(SITE_CONFIG.LOGO_TEXT).toBe('BOOKARIUM');
     expect(SITE_CONFIG.TAGLINE).toBe('Crafted with care for book lovers everywhere');
     expect(SITE_CONFIG.GITHUB_PROFILE).toBe('https://github.com/calin-m');
+    expect(SITE_CONFIG.USER_AGENT).toContain('Bookarium-PublicDomain-Reader/1.0');
     expect(SITE_CONFIG.PROJECT_GUTENBERG).toBe('https://www.gutenberg.org');
     expect(SITE_CONFIG.GUTENDEX).toBe('https://gutendex.com');
   });

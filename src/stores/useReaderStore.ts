@@ -9,6 +9,7 @@ import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { formatAuthorWithLifespan } from '@/lib/adapters/book.adapter';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
+import { isPlaceholderAuthor } from '@/lib/book-metadata';
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
@@ -33,6 +34,7 @@ export interface ReaderState {
   theme: ReaderTheme;
   readingProgress: Record<number, number>;
   readingPositions: Record<number, BookReadingPosition>;
+  deletedPositionBookIds: number[];
   isMobileTrayOpen: boolean;
 
   /**
@@ -135,6 +137,7 @@ export const useReaderStore = create<ReaderState>()(
       theme: 'light',
       readingProgress: {},
       readingPositions: {},
+      deletedPositionBookIds: [],
       isMobileTrayOpen: false,
 
       openReader: (book) => {
@@ -246,6 +249,11 @@ export const useReaderStore = create<ReaderState>()(
             bookWithCover.coverUrl ||
             null;
 
+          const posAuthorsMissingOrPlaceholder =
+            !position.bookAuthors ||
+            position.bookAuthors.length === 0 ||
+            position.bookAuthors.every(isPlaceholderAuthor);
+
           if (!position.bookTitle) {
             enrichedPosition = {
               ...position,
@@ -255,6 +263,12 @@ export const useReaderStore = create<ReaderState>()(
                   ? authors
                   : existingPos?.bookAuthors || [],
               coverUrl: coverUrl ?? existingPos?.coverUrl ?? null,
+            };
+          } else if (posAuthorsMissingOrPlaceholder && (authors.length > 0 || existingPos?.bookAuthors?.length)) {
+            enrichedPosition = {
+              ...position,
+              bookAuthors: authors.length > 0 ? authors : existingPos?.bookAuthors || [],
+              coverUrl: position.coverUrl ?? coverUrl ?? existingPos?.coverUrl ?? null,
             };
           } else if (
             !hasEmbeddedLifespans(position.bookAuthors) &&
@@ -283,6 +297,18 @@ export const useReaderStore = create<ReaderState>()(
             ...enrichedPosition,
             bookAuthors: existingPos!.bookAuthors,
           };
+        } else if (
+          (!enrichedPosition.bookAuthors ||
+            enrichedPosition.bookAuthors.length === 0 ||
+            enrichedPosition.bookAuthors.every(isPlaceholderAuthor)) &&
+          existingPos?.bookAuthors &&
+          existingPos.bookAuthors.length > 0 &&
+          !existingPos.bookAuthors.every(isPlaceholderAuthor)
+        ) {
+          enrichedPosition = {
+            ...enrichedPosition,
+            bookAuthors: existingPos.bookAuthors,
+          };
         }
 
         set((state) => ({
@@ -290,6 +316,7 @@ export const useReaderStore = create<ReaderState>()(
             ...state.readingPositions,
             [bookId]: enrichedPosition,
           },
+          deletedPositionBookIds: (state.deletedPositionBookIds || []).filter((id) => id !== bookId),
         }));
 
         const currentUserId = userId || useAuthStore.getState().user?.id;
@@ -322,14 +349,21 @@ export const useReaderStore = create<ReaderState>()(
 
           const freshAuthors = (fresh.authors || [])
             .map((a) => formatAuthorWithLifespan(a))
-            .filter((name) => Boolean(name && name !== 'Anonymous'));
+            .filter((name) => Boolean(name && !isPlaceholderAuthor(name)));
           const posHasLifespans = hasEmbeddedLifespans(pos.bookAuthors);
           const freshHasLifespans = hasEmbeddedLifespans(freshAuthors);
+          const posHasAuthenticAuthors =
+            Array.isArray(pos.bookAuthors) &&
+            pos.bookAuthors.length > 0 &&
+            !pos.bookAuthors.every(isPlaceholderAuthor);
+          const freshHasAuthenticAuthors = freshAuthors.length > 0;
+          const needsAuthorEnrichment = !posHasAuthenticAuthors && freshHasAuthenticAuthors;
           const freshCover = fresh.formats?.['image/jpeg'] || null;
 
           if (
             (!pos.bookTitle && fresh.title) ||
             (!posHasLifespans && freshHasLifespans) ||
+            needsAuthorEnrichment ||
             (!pos.coverUrl && freshCover)
           ) {
             hasChanges = true;
@@ -337,7 +371,7 @@ export const useReaderStore = create<ReaderState>()(
             nextPositions[fresh.id] = {
               ...pos,
               bookTitle: pos.bookTitle || fresh.title,
-              bookAuthors: freshHasLifespans ? freshAuthors : pos.bookAuthors || freshAuthors,
+              bookAuthors: freshHasLifespans || needsAuthorEnrichment ? freshAuthors : pos.bookAuthors || freshAuthors,
               coverUrl: pos.coverUrl || freshCover,
             };
           }
@@ -453,8 +487,21 @@ export const useReaderStore = create<ReaderState>()(
 
       syncWithCloud: async (userId: string) => {
         if (!userId) return;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
         try {
           const supabase = createClient();
+
+          const pendingDeletes = [...(get().deletedPositionBookIds || [])];
+          if (pendingDeletes.length > 0) {
+            for (const delBookId of pendingDeletes) {
+              await supabase
+                .from('reading_progress')
+                .delete()
+                .eq('user_id', userId)
+                .eq('book_id', delBookId);
+            }
+            set({ deletedPositionBookIds: [] });
+          }
 
           // Cloud sanitization: purge legacy 0% Page-1 orphaned records
           await supabase
@@ -474,6 +521,7 @@ export const useReaderStore = create<ReaderState>()(
           if (error || !data) return;
 
           const healedInCloud: Array<{ bookId: number; position: BookReadingPosition }> = [];
+          const remoteBookIds = new Set<number>();
 
           set((state) => {
             const nextPositions = { ...state.readingPositions };
@@ -504,6 +552,7 @@ export const useReaderStore = create<ReaderState>()(
               if (isGhost) return;
 
               const bookId = row.book_id;
+              remoteBookIds.add(bookId);
               const localPos = nextPositions[bookId];
               const remoteTime = new Date(row.last_read_at).getTime();
               const localTime = localPos?.lastReadAt ? new Date(localPos.lastReadAt).getTime() : 0;
@@ -537,6 +586,17 @@ export const useReaderStore = create<ReaderState>()(
                 if (shouldKeepLocalAuthors) {
                   healedInCloud.push({ bookId, position: mergedPosition });
                 }
+              } else {
+                // Local position is newer than remote (e.g. read offline) -> push local to cloud
+                healedInCloud.push({ bookId, position: localPos });
+              }
+            });
+
+            // Push any non-ghost local positions that do not yet exist in cloud
+            Object.entries(nextPositions).forEach(([idStr, pos]) => {
+              const id = Number(idStr);
+              if (!remoteBookIds.has(id)) {
+                healedInCloud.push({ bookId: id, position: pos });
               }
             });
 
@@ -572,15 +632,34 @@ export const useReaderStore = create<ReaderState>()(
 
         const currentUserId = userId || useAuthStore.getState().user?.id;
         if (currentUserId) {
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            set((state) => ({
+              deletedPositionBookIds: Array.from(
+                new Set([...(state.deletedPositionBookIds || []), bookId])
+              ),
+            }));
+            return;
+          }
           try {
             const supabase = createClient();
-            await supabase
+            const { error } = await supabase
               .from('reading_progress')
               .delete()
               .eq('user_id', currentUserId)
               .eq('book_id', bookId);
+            if (error) {
+              set((state) => ({
+                deletedPositionBookIds: Array.from(
+                  new Set([...(state.deletedPositionBookIds || []), bookId])
+                ),
+              }));
+            }
           } catch {
-            // Non-blocking fallback
+            set((state) => ({
+              deletedPositionBookIds: Array.from(
+                new Set([...(state.deletedPositionBookIds || []), bookId])
+              ),
+            }));
           }
         }
       },
@@ -592,6 +671,7 @@ export const useReaderStore = create<ReaderState>()(
         set({
           readingProgress: {},
           readingPositions: {},
+          deletedPositionBookIds: [],
           currentBook: null,
         });
 

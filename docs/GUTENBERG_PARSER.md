@@ -1,7 +1,7 @@
 # Project Gutenberg Text Processing & Segmentation Engine — Bookarium
 
 > **Auto-Generated Living Reference**: Programmatically compiled from Source AST via `scripts/generate-parser-docs.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-10-25`  
+> **Last Synchronized**: `2026-10-26`  
 > **Target Subsystem**: `src/lib/gutenberg/` (100% Client/Worker Compatible, Zero Node.js Dependencies)
 
 ---
@@ -153,6 +153,10 @@ Splits prose without ever breaking words across virtual page turns using a 3-tie
 ### 5. Paragraph Reflow (`reflowGutenbergParagraphs`)
 - Joins single hard newlines (70–75 chars) with a single space for responsive fluid reading across any device viewport.
 - Preserves poetry, verse, and blockquotes if all lines are indented with 4+ spaces or if lines are consistently under 45 characters.
+
+### 6. Single-Section Colophon & License Preservation (`segmentBookChapters`)
+- When an unabridged volume contains no recognizable structural chapter headings (`splitIndices.length === 0`) and falls back to a single `Complete Volume` section at `index: 0`, the parser still inspects `licenseContent` extracted after `*** END OF THE PROJECT GUTENBERG EBOOK ... ***`.
+- If an explicit Project Gutenberg footer/license marker is present, a dedicated `Colophon & License` section (`id: "colophon-license"`) is appended at `index: 1` to guarantee 100% Project Gutenberg trademark and license compliance on single-section monographs, essays, and plays.
 
 ---
 

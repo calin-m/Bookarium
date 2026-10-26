@@ -4,12 +4,13 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Download, Library, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle, Loader2, Trash2, WifiOff } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { CopyrightNoticeBanner } from '@/components/presentation/CopyrightNoticeBanner';
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
@@ -66,6 +67,8 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
 }) => {
   const router = useRouter();
   const hasMounted = useHasMounted();
+  const { isOffline: isNetworkOffline } = useNetworkStatus();
+  const isUnavailableOffline = isNetworkOffline && !isOffline;
 
   const {
     isSaved: storeIsSaved,
@@ -158,6 +161,14 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                         <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
                         <span>Protected ({country})</span>
                       </span>
+                    ) : isUnavailableOffline ? (
+                      <span
+                        className="text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold"
+                        data-testid={`mobile-offline-unavailable-badge-${selectedMobileBook.id}`}
+                      >
+                        <WifiOff className="w-3 h-3 text-amber-500 shrink-0" />
+                        <span>Not Downloaded</span>
+                      </span>
                     ) : (
                       <>
                         <Sparkles className="w-3 h-3" />
@@ -204,8 +215,8 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                 </button>
               </div>
 
-              {/* Regional Copyright Notice Banner if Restricted */}
-              {isRestricted && (
+              {/* Regional Copyright Notice Banner if Restricted, or Offline Notice Banner if Not Downloaded */}
+              {isRestricted ? (
                 <CopyrightNoticeBanner
                   country={country}
                   ruleDescription={ruleDescription}
@@ -214,7 +225,20 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                   compact
                   testId="mobile-restricted-notice"
                 />
-              )}
+              ) : isUnavailableOffline ? (
+                <div
+                  data-testid="mobile-offline-unavailable-notice"
+                  className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs space-y-1"
+                >
+                  <div className="font-mono font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                    <WifiOff className="w-3.5 h-3.5 shrink-0" />
+                    <span>Unavailable Offline</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
+                    This volume has not been saved to your device. Reconnect to the internet to read or download it.
+                  </p>
+                </div>
+              ) : null}
 
               {/* Quick Actions Row */}
               <div className="flex items-center gap-2 pt-1">
@@ -229,6 +253,18 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                   >
                     <BookOpen className="w-4 h-4" />
                     <span>Restricted</span>
+                  </Button>
+                ) : isUnavailableOffline ? (
+                  <Button
+                    variant="outline"
+                    size="md"
+                    disabled
+                    className="flex-1 font-mono text-xs uppercase tracking-wider font-bold gap-1.5 opacity-60 cursor-not-allowed"
+                    title="Not downloaded for offline reading"
+                    aria-label={`Read ${selectedMobileBook.title} (Unavailable offline)`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Offline</span>
                   </Button>
                 ) : (
                   <Button
@@ -262,11 +298,13 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                 ) : (
                   <button
                     type="button"
-                    disabled={isDownloadingOffline}
+                    disabled={isDownloadingOffline || isUnavailableOffline}
                     onClick={() => onToggleOffline?.(selectedMobileBook)}
                     className={`p-2.5 rounded-xl border transition-colors shrink-0 ${
                       isDownloadingOffline
                         ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
+                        : isUnavailableOffline
+                        ? 'border-border text-muted-foreground/50 opacity-50 cursor-not-allowed'
                         : isOffline
                         ? 'group/offline-btn border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive cursor-pointer'
                         : 'border-border text-foreground hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer'
@@ -281,6 +319,8 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                     title={
                       isDownloadingOffline
                         ? 'Saving for offline reading...'
+                        : isUnavailableOffline
+                        ? 'Connect to the internet to save for offline reading'
                         : isOffline
                         ? 'Offline copy ready (Click to remove)'
                         : 'Save for offline reading'
@@ -301,11 +341,23 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
 
                 <button
                   type="button"
+                  disabled={isRestricted || isUnavailableOffline}
                   onClick={() => {
                     if (onDownloadClick) onDownloadClick(selectedMobileBook);
                     onClose();
                   }}
-                  className="p-2.5 rounded-xl border border-border hover:bg-muted text-foreground transition-colors shrink-0 cursor-pointer"
+                  className={`p-2.5 rounded-xl border border-border transition-colors shrink-0 ${
+                    isRestricted || isUnavailableOffline
+                      ? 'text-muted-foreground/50 opacity-50 cursor-not-allowed'
+                      : 'hover:bg-muted text-foreground cursor-pointer'
+                  }`}
+                  title={
+                    isRestricted
+                      ? `Download unavailable in ${country}`
+                      : isUnavailableOffline
+                      ? 'Connect to the internet to download this volume'
+                      : undefined
+                  }
                   aria-label={`Download ${selectedMobileBook.title}`}
                 >
                   <Download className="w-4 h-4" />

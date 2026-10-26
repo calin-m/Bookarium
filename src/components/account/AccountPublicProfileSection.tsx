@@ -22,6 +22,7 @@ import {
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/database.types';
 import { useAuthStore, validateUsername } from '@/stores/useAuthStore';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { ROUTES } from '@/config/routes';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -49,6 +50,7 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
 }) => {
   const defaultUpdateProfile = useAuthStore((s) => s.updateProfile);
   const updateFn = onUpdateProfile || defaultUpdateProfile;
+  const { isOffline } = useNetworkStatus();
 
   const [activeSubTab, setActiveSubTab] = useState<ProfileSubTabId>('identity');
   const [username, setUsername] = useState(profile?.username || '');
@@ -251,12 +253,21 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
                   placeholder="e.g. jane_austen"
                   value={username}
                   onChange={(e) => handleUsernameChange(e.target.value)}
+                  disabled={isOffline}
                   icon={<AtSign className="w-4 h-4" />}
                   className="font-mono text-sm"
                   aria-invalid={Boolean(usernameError)}
                   aria-describedby={usernameError ? 'username-error-desc' : undefined}
                 />
               </div>
+              {isOffline && (
+                <p
+                  data-testid="username-offline-hint"
+                  className="text-xs font-mono text-muted-foreground"
+                >
+                  Username changes require an internet connection to verify handle availability.
+                </p>
+              )}
               {usernameError && (
                 <p id="username-error-desc" className="text-xs font-mono text-destructive">
                   {usernameError}

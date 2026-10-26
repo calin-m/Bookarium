@@ -10,6 +10,7 @@ import {
   Clock,
   AlertTriangle,
   Lock,
+  WifiOff,
 } from 'lucide-react';
 import { NotebookQuoteCard } from './NotebookQuoteCard';
 import { CollectionToolbar } from './CollectionToolbar';
@@ -29,6 +30,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import {
   isBookPublicDomainInJurisdiction,
   parseLifespansFromName,
@@ -130,7 +132,8 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const recentBooks = useBookshelfStore((s) => s.recentBooks || []);
   const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
   const { country } = useJurisdiction();
-  const { isBookOffline } = useOfflineBooks();
+  const { isBookOffline, offlineBooks = [] } = useOfflineBooks();
+  const { isOnline, isOffline } = useNetworkStatus();
 
   // Identify book IDs across own and fellow annotations that lack resolved titles/authors
   // (or lack author lifespans in non-US jurisdictions) and are not in local stores or static fixtures
@@ -164,19 +167,20 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       const inSaved = savedBooks.some((b) => b.id === ann.bookId && hasVerifiedStoreAuthors(b));
       const inFavorite = favoriteBooks.some((b) => b.id === ann.bookId && hasVerifiedStoreAuthors(b));
       const inRecent = recentBooks.some((b) => b.id === ann.bookId && hasVerifiedStoreAuthors(b));
+      const inOffline = offlineBooks.some((b) => b.id === ann.bookId && hasVerifiedStoreAuthors(b));
       const inFeatured = FEATURED_HERO_BOOKS.some((b) => b.id === ann.bookId);
 
-      if (!inSaved && !inFavorite && !inRecent && !inFeatured) {
+      if (!inSaved && !inFavorite && !inRecent && !inOffline && !inFeatured) {
         ids.add(ann.bookId);
       }
     }
     return Array.from(ids).sort((a, b) => a - b);
-  }, [annotations, fellowAnnotations, savedBooks, favoriteBooks, recentBooks, country]);
+  }, [annotations, fellowAnnotations, savedBooks, favoriteBooks, recentBooks, offlineBooks, country]);
 
   // Query Gutendex remote API / cache for any unindexed annotated books
   const { data: remoteBooksData } = useBooks(
     { ids: missingMetadataBookIds.join(','), page: 1, copyright: false, includeRestrictedMetadata: true },
-    { enabled: missingMetadataBookIds.length > 0 }
+    { enabled: isOnline && missingMetadataBookIds.length > 0 }
   );
 
   // Auto-heal missing metadata in local annotations, bookshelf, and reading positions when remote books resolve
@@ -192,7 +196,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   // Hydrate reader circle and symposium companion identities and resolve any stale placeholder usernames
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !isOnline) return;
     const fellowshipStore = useFellowshipStore.getState();
     const annotationStore = useAnnotationStore.getState();
 
@@ -206,7 +210,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       .catch(() => {
         // Non-blocking
       });
-  }, [user?.id]);
+  }, [user?.id, isOnline]);
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -244,6 +248,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       const fromSaved = savedBooks.find((b) => b.id === ann.bookId);
       const fromFavorite = favoriteBooks.find((b) => b.id === ann.bookId);
       const fromRecent = recentBooks.find((b) => b.id === ann.bookId);
+      const fromOffline = offlineBooks.find((b) => b.id === ann.bookId);
       const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === ann.bookId);
       const fromApi = remoteBooksData?.results?.find((b: GutendexBook) => b.id === ann.bookId);
 
@@ -255,6 +260,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         fromSaved?.title ||
         fromFavorite?.title ||
         fromRecent?.title ||
+        fromOffline?.title ||
         fromFeatured?.title ||
         fromApi?.title ||
         cleanedAnnTitle;
@@ -264,6 +270,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       const savedAuthor = fromSaved?.authors ? formatAuthorNames(fromSaved.authors) : '';
       const favoriteAuthor = fromFavorite?.authors ? formatAuthorNames(fromFavorite.authors) : '';
       const recentAuthor = fromRecent?.authors ? formatAuthorNames(fromRecent.authors) : '';
+      const offlineAuthor = fromOffline?.authors ? formatAuthorNames(fromOffline.authors) : '';
       const apiAuthor = fromApi?.authors ? formatAuthorNames(fromApi.authors) : '';
 
       const candidateAuthor =
@@ -271,6 +278,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         (!isPlaceholderAuthor(savedAuthor) ? savedAuthor : '') ||
         (!isPlaceholderAuthor(favoriteAuthor) ? favoriteAuthor : '') ||
         (!isPlaceholderAuthor(recentAuthor) ? recentAuthor : '') ||
+        (!isPlaceholderAuthor(offlineAuthor) ? offlineAuthor : '') ||
         fromFeatured?.author ||
         (!isPlaceholderAuthor(apiAuthor) ? apiAuthor : '') ||
         '';
@@ -282,6 +290,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         cleanBookTitle(fromSaved?.title) ||
         cleanBookTitle(fromFavorite?.title) ||
         cleanBookTitle(fromRecent?.title) ||
+        cleanBookTitle(fromOffline?.title) ||
         cleanBookTitle(fromApi?.title) ||
         (ann.bookId ? `Volume #${ann.bookId}` : 'Public Domain Classic');
 
@@ -295,6 +304,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         fromSaved ||
         fromFavorite ||
         fromRecent ||
+        fromOffline ||
         fromApi ||
         (fromFeatured
           ? {
@@ -385,7 +395,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         country,
       };
     },
-    [savedBooks, favoriteBooks, recentBooks, remoteBooksData, country]
+    [savedBooks, favoriteBooks, recentBooks, offlineBooks, remoteBooksData, country]
   );
 
   const pairedAllAnnotations = useMemo(() => {
@@ -636,11 +646,13 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   };
 
   const handleJumpToReader = (ann: Annotation) => {
+    if (isOffline && !isBookOffline(ann.bookId)) return;
     const matchedBook =
       remoteBooksData?.results?.find((b) => b.id === ann.bookId) ||
       savedBooks.find((b) => b.id === ann.bookId) ||
       favoriteBooks.find((b) => b.id === ann.bookId) ||
-      recentBooks.find((b) => b.id === ann.bookId);
+      recentBooks.find((b) => b.id === ann.bookId) ||
+      offlineBooks.find((b) => b.id === ann.bookId);
     if (matchedBook) {
       useReaderStore.getState().openReader(matchedBook);
     } else {
@@ -916,20 +928,43 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                     {/* Volume Header */}
                     <div className="flex items-center justify-between border-b border-border pb-2">
                       <div className="flex items-baseline gap-2.5 flex-wrap">
-                        <h2 className="text-lg sm:text-xl font-serif font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
-                          onClick={() => router.push(`/read/${group.bookId}`)}
-                        >
-                          {group.title}
-                        </h2>
-                        <span className="text-xs font-mono text-muted-foreground">
-                          by {group.author}
-                        </span>
-                        {group.isRestricted && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                            <Lock className="w-2.5 h-2.5" />
-                            Protected ({group.country || 'Jurisdiction'})
-                          </span>
-                        )}
+                        {(() => {
+                          const isGroupUnavailableOffline = isOffline && !isBookOffline(group.bookId);
+                          return (
+                            <>
+                              <h2
+                                className={`text-lg sm:text-xl font-serif font-bold text-foreground transition-colors ${
+                                  group.isRestricted || isGroupUnavailableOffline
+                                    ? 'cursor-not-allowed opacity-85'
+                                    : 'hover:text-primary cursor-pointer'
+                                }`}
+                                onClick={() => {
+                                  if (group.isRestricted || isGroupUnavailableOffline) return;
+                                  router.push(`/read/${group.bookId}`);
+                                }}
+                              >
+                                {group.title}
+                              </h2>
+                              <span className="text-xs font-mono text-muted-foreground">
+                                by {group.author}
+                              </span>
+                              {group.isRestricted ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                                  <Lock className="w-2.5 h-2.5" />
+                                  Protected ({group.country || 'Jurisdiction'})
+                                </span>
+                              ) : isGroupUnavailableOffline ? (
+                                <span
+                                  data-testid={`notebook-volume-offline-badge-${group.bookId}`}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                                >
+                                  <WifiOff className="w-2.5 h-2.5" />
+                                  Not Downloaded
+                                </span>
+                              ) : null}
+                            </>
+                          );
+                        })()}
                       </div>
                       <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
                         {group.items.length} quote{group.items.length === 1 ? '' : 's'}
@@ -1096,6 +1131,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         bookTitle={title}
         bookAuthor={author}
         isRestricted={isRestricted}
+        isUnavailableOffline={isOffline && !isBookOffline(ann.bookId)}
         jurisdictionCountry={country}
         isEditing={editingAnnotationId === ann.id}
         onStartEdit={(target) => setEditingAnnotationId(target.id)}

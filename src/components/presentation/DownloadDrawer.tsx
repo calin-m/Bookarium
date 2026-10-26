@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Download, FileText, Globe, Smartphone, ShieldCheck, AlertTriangle, HardDriveDownload, CheckCircle2, Loader2, Trash2 } from 'lucide-react';
+import { Download, FileText, Globe, Smartphone, ShieldCheck, AlertTriangle, HardDriveDownload, CheckCircle2, Loader2, Trash2, WifiOff } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { CopyrightNoticeBanner } from '@/components/presentation/CopyrightNoticeBanner';
 import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisoryBanner';
 import { evaluateContentAdvisory } from '@/lib/content-advisory';
@@ -23,6 +24,7 @@ export interface DownloadDrawerProps {
 export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, onClose }) => {
   const { country, isRestricted, ruleDescription, publicDomainYear } = useBookCopyright(book);
   const { isBookOffline, downloadBook, removeBook, downloadingBookId } = useOfflineBooks();
+  const { isOffline: isNetworkOffline } = useNetworkStatus();
   const [isRemoveOfflineModalOpen, setIsRemoveOfflineModalOpen] = React.useState(false);
 
   if (!book) return null;
@@ -118,6 +120,24 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
         ) : (
           /* Formats List */
           <div className="space-y-4">
+            {isNetworkOffline && (
+              <div
+                role="status"
+                data-testid="download-drawer-offline-mode-banner"
+                className="flex items-start gap-3 p-3.5 rounded-xl border border-destructive/40 bg-destructive/10 text-destructive shadow-xs"
+              >
+                <WifiOff className="w-4 h-4 shrink-0 mt-0.5 text-destructive" />
+                <div className="space-y-0.5 text-xs">
+                  <p className="font-mono font-bold uppercase tracking-wider">
+                    Offline Mode Active
+                  </p>
+                  <p className="text-foreground/90 font-sans leading-relaxed">
+                    External format downloads (.epub, .mobi, .txt, .html) and new offline saves require an internet connection. You can only remove already-downloaded books from your local cache while offline.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* In-App Browser Offline Reading Cache */}
             <div className="space-y-2">
               <h4 className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
@@ -127,7 +147,9 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                 className={`flex items-center justify-between p-3.5 rounded-xl border transition-all gap-3 shadow-xs ${
                   isOffline
                     ? 'border-emerald-500/40 bg-emerald-500/5'
-                    : 'border-border hover:border-primary/50 bg-card'
+                    : isNetworkOffline
+                      ? 'border-border bg-muted/30 opacity-60'
+                      : 'border-border hover:border-primary/50 bg-card'
                 }`}
                 data-testid="download-drawer-offline-card"
               >
@@ -161,7 +183,9 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                     <p className="text-[11px] text-muted-foreground font-sans truncate">
                       {isOffline
                         ? 'Cached in browser storage for instant offline reading in Bookarium.'
-                        : 'Save directly in your browser to read inside Bookarium without internet.'}
+                        : isNetworkOffline
+                          ? 'Connect to the internet to save this volume for offline reading.'
+                          : 'Save directly in your browser to read inside Bookarium without internet.'}
                     </p>
                   </div>
                 </div>
@@ -191,8 +215,9 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                     </Button>
                   ) : (
                     <Button
-                      variant="primary"
+                      variant={isNetworkOffline ? 'outline' : 'primary'}
                       size="sm"
+                      disabled={isNetworkOffline}
                       onClick={() => downloadBook(book)}
                       className="text-xs font-mono font-bold gap-1.5"
                       aria-label={`Save ${book.title} for offline reading`}
@@ -213,7 +238,12 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
             {downloadOptions.map((option) => (
               <div
                 key={option.format}
-                className="flex items-center justify-between p-3.5 rounded-xl border border-border hover:border-primary/50 bg-card transition-all gap-3 shadow-xs"
+                data-testid={`download-format-row-${option.extension}`}
+                className={`flex items-center justify-between p-3.5 rounded-xl border border-border bg-card transition-all gap-3 shadow-xs ${
+                  isNetworkOffline
+                    ? 'opacity-50 pointer-events-none select-none'
+                    : 'hover:border-primary/50'
+                }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="p-2 rounded-lg bg-muted shrink-0">
@@ -237,7 +267,16 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                 </div>
 
                 <div>
-                  {option.url ? (
+                  {isNetworkOffline ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      className="text-xs font-mono opacity-60"
+                    >
+                      Offline
+                    </Button>
+                  ) : option.url ? (
                     <a
                       href={option.url}
                       target="_blank"

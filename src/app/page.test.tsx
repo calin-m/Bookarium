@@ -88,10 +88,12 @@ const mockIsBookOffline = vi.fn().mockReturnValue(false);
 const mockRemoveBook = vi.fn().mockResolvedValue(true);
 const mockRemoveAll = vi.fn().mockResolvedValue(undefined);
 const mockDownloadBook = vi.fn().mockResolvedValue(true);
+let mockOfflineBooks: any[] = [];
 
 vi.mock('@/hooks/useOfflineBooks', () => ({
   useOfflineBooks: () => ({
-    offlineBookIds: [],
+    offlineBookIds: mockOfflineBooks.map((b) => b.id),
+    offlineBooks: mockOfflineBooks,
     isLoading: false,
     downloadingIds: [],
     storageQuota: null,
@@ -1337,6 +1339,49 @@ describe('Home page integration', () => {
     const catalogSection = container.querySelector('#catalog-section');
     expect(catalogSection).toBeInTheDocument();
     expect(catalogSection).toHaveClass('pt-6', 'sm:pt-12', 'pb-8', 'sm:pb-12');
+  });
+
+  it('renders CatalogOfflineView when offline and 0 books are downloaded, allowing navigation to Bookshelf', () => {
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+    mockOfflineBooks = [];
+    mockIsBookOffline.mockReturnValue(false);
+
+    try {
+      renderHome();
+
+      expect(screen.getByTestId('catalog-offline-view')).toBeInTheDocument();
+      expect(screen.queryByTestId('sticky-catalog-toolbar')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('offline-nav-bookshelf'));
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+    }
+  });
+
+  it('serves downloaded books locally in Catalog with an Offline Mode banner when offline and downloaded books exist', () => {
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+    mockOfflineBooks = [pageMockBooks[0], pageMockBooks[1]];
+    mockIsBookOffline.mockImplementation((id: number) => id === pageMockBooks[0].id || id === pageMockBooks[1].id);
+
+    try {
+      renderHome();
+
+      const banner = screen.getByTestId('catalog-offline-downloaded-banner');
+      expect(banner).toHaveTextContent(/Offline Mode — Browsing your 2 downloaded volumes/i);
+      expect(screen.getByTestId(`book-card-${pageMockBooks[0].id}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`book-card-${pageMockBooks[1].id}`)).toBeInTheDocument();
+
+      // Local search filtering in offline catalog
+      const searchInput = screen.getByTestId('search-input');
+      fireEvent.change(searchInput, { target: { value: 'Frankenstein' } });
+      fireEvent.click(screen.getByRole('button', { name: /^Search$/i }));
+      expect(screen.getByTestId(`book-card-${pageMockBooks[1].id}`)).toBeInTheDocument();
+    } finally {
+      mockOfflineBooks = [];
+      mockIsBookOffline.mockReturnValue(false);
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+    }
   });
 });
 

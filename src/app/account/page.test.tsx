@@ -792,6 +792,42 @@ describe('AccountPage', () => {
         expect(mockPush).toHaveBeenCalledWith(ROUTES.HOME);
       });
     }, 15000);
+
+    it('renders offline banner and guest local workspace when offline as a guest, and authenticated offline banner when signed in', () => {
+      const originalOnLine = navigator.onLine;
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+
+      try {
+        // 1. Guest Offline Mode
+        useAuthStore.setState({
+          user: null,
+          profile: null,
+          isLoading: false,
+        });
+
+        const { unmount } = render(<AccountPage />);
+        expect(screen.getByTestId('account-offline-banner')).toHaveTextContent(
+          /Offline Mode — Manage your local reading preferences, streaks, accolades, and library backups offline/i
+        );
+        expect(screen.getByRole('button', { name: /Sign In \/ Sign Up/i })).toBeDisabled();
+        expect(screen.getByTestId('guest-offline-workspace')).toBeInTheDocument();
+        unmount();
+
+        // 2. Authenticated Offline Mode
+        useAuthStore.setState({
+          user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+          profile: { id: 'u1', display_name: 'Jane Austen' } as any,
+          isLoading: false,
+        });
+
+        render(<AccountPage />);
+        expect(screen.getByTestId('account-offline-banner')).toHaveTextContent(
+          /Offline Mode — Changes to your preferences, habits, and profile are saved locally and will sync automatically when you reconnect/i
+        );
+      } finally {
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
+      }
+    });
   });
 });
 

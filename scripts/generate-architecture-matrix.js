@@ -115,7 +115,7 @@ function extractNodeEcosystemCatalog(rootDirPath) {
     postcss: 'CSS transformer tool for Tailwind CSS v4 processing.',
     tailwindcss: 'Utility-first CSS framework v4 with Oxide compiler engine.',
     typescript: 'Static type system verifying strict compile-time safety (zero any).',
-    vitest: 'Fast Vite-native test runner executing all 187 unit and integration suites.',
+    vitest: 'Fast Vite-native test runner executing all 189 unit and integration suites.',
 
     // Overrides
     'fast-glob': 'Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities.',
@@ -332,10 +332,11 @@ function generateMarkdown() {
     '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(3D Hardwood Shelf, Custom Shelves & <1024px Touch Modal Trigger)"]',
     '        BookshelfMobileModalNode["BookshelfMobileModal.tsx\\n(Mobile & Tablet <1024px Action & Curation Sheet)"]',
     '        RemoveOfflineModalNode["RemoveOfflineBookModal.tsx\\n(Offline Cache Eviction Confirmation)"]',
+    '        CatalogOfflineNode["CatalogOfflineView.tsx\\n(Offline Catalog Notice & Collection Quick-Links)"]',
     '        SymposiumInviteModalNode["SymposiumInviteModal.tsx\\n(1-on-1 Literary Symposium Companion Picker)"]',
     '        ',
     '        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]',
-    '            Grid["Catalog View (/)\\n(Smooth Scroll Navigation, 2-Col Mobile Grid, Multi-Col Desktop & 3D Hardwood Shelf)"]',
+    '            Grid["Catalog View (/)\\n(Smooth Scroll Navigation, Adaptive Offline Downloaded Dataset, 2-Col Mobile Grid & 3D Hardwood Shelf)"]',
     '            ShelfView["Bookshelf View (/bookshelf)\\n(Curated Library, Custom Named Shelves, Downloaded (N) Smart Shelf, Active-Shelf Clear & 12-Book Row Cap)"]',
     '            FavView["Favorites View (/favorites)\\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]',
     '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger, Row-Level Line Badges, Dedicated Resume CTA & 4-State Offline Controls)"]',
@@ -386,10 +387,11 @@ function generateMarkdown() {
     '        end',
     '        ',
     '        HookCopyright["⚖️ useBookCopyright\\n(Declarative Facade: Rules, Lifespans & Status)"]',
+    '        HookNetwork["📡 useNetworkStatus\\n(Reactive Online/Offline External Store Hook)"]',
     '        HookAutoHeal["🩺 useCollectionAutoHeal\\n(Author Lifespan Scanning & Auto-Rehydration)"]',
     '        HookCatalogFilters["🎛️ useCatalogFilters\\n(Default Recently Added Sort, Atomic Filter Staging, Multi-Era Bounding, URL Serialization)"]',
     '        QueryBooks["🔄 useBooks & usePrefetchNextPage\\n(Windowed Sub-Pages & Predictive Prefetch)"]',
-    '        QueryContent["🔄 useBookContent(url, bookId)\\n(IndexedDB Check to CDN Stream)"]',
+    '        QueryContent["🔄 useBookContent(url, bookId)\\n(Offline-Always IndexedDB Check to CDN Stream)"]',
     '        QueryTranslate["🌐 useBookTranslations\\n(International Editions Relational Handoff)"]',
     '        Telemetry["📊 Vercel Telemetry\\n(Analytics & Speed Insights)"]',
     '    end',
@@ -416,7 +418,7 @@ function generateMarkdown() {
     '',
     '    subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]',
     '        Gutendex["🌐 Gutendex Search API\\n(Upstream Search Fallback)"]',
-    '        GutenbergCDN["🌐 Project Gutenberg Mirrors\\n(aleph.gutenberg.org, gutenberg.readingroo.ms, www.gutenberg.org)"]',
+    '        GutenbergCDN["🌐 Project Gutenberg Mirrors\\n(aleph.gutenberg.org, gutenberg.pglaf.org, gutenberg.readingroo.ms, www.gutenberg.org)"]',
     '        WikidataSPARQL["🌐 Wikidata SPARQL (CC0 1.0)\\n(P2034 Gutenberg ID & P407/P424 Language Clusters)"]',
     '        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]',
     '        SyncEngine["🔄 Gutenberg Catalog Sync Engine\\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]',
@@ -438,6 +440,9 @@ function generateMarkdown() {
     '    Grid --> CopyrightBanner',
     '    Grid --> ContentAdvisory',
     '    Grid --> HookCopyright',
+    '    Grid --> HookNetwork',
+    '    Grid -->|Zero Offline Books| CatalogOfflineNode',
+    '    Nav --> HookNetwork',
     '    Grid --> EditorialQuote',
     '    Grid --> LiteraryQuotes',
     '    Grid --> BookPreviewModalNode',
@@ -468,6 +473,7 @@ function generateMarkdown() {
     '    StoreShelf --> BookshelfSyncEngine',
     '    BookshelfSyncEngine -->|Cloud Sync via RLS| SupabaseCloud',
     '    StoreFellowship -->|Circles & Symposium Sync| SupabaseCloud',
+    '    StoreOffline -->|Adaptive Offline Catalog| Grid',
     '    StoreOffline -->|Offline Volumes & Smart Shelf| ShelfView',
     '    StoreOffline -->|Offline Volumes Filter| LedgerHook',
     '    ShelfView --> CollectionToolbarNode',
@@ -615,16 +621,16 @@ function generateMarkdown() {
     '    subgraph Storage ["Persistent State Stores"]',
     '        RS["📖 useReaderStore\\n• readingPositions (exact coordinates & timestamp)\\n• readingProgress (0-100%)\\n• openReader(book) [warm cache]"]',
     '        BS["⚡ useBookshelfStore\\n• savedBooks []\\n• recentBooks [] (cached identity)\\n• bookStatuses {} (\'currently_reading\', etc.)"]',
-    '        IDB["📦 IndexedDB (useOfflineBooks)\\n• cached offline book bundles"]',
+    '        IDB["📦 IndexedDB (useOfflineBooks)\\n• offlineBookIds & offlineBooks (unabridged cache)"]',
     '    end',
     '',
     '    subgraph LedgerHook ["useContinueReadingLedger Hook"]',
     '        FilterActive["Active Telemetry Filter\\n(readingPositions exists OR readingProgress > 0)\\n⚠️ Excludes un-opened shelved books"]',
-    '        MissingCheck{"Missing Cached\\nIdentity?"}',
+    '        MissingCheck{"Missing Identity or\\nPlaceholder Author?"}',
     '        QueryMissing["🔄 useBooks(ids: missingIds)\\n(TanStack Query - Catalog Seam)"]',
-    '        EnrichDict["Enriched Book Dictionary\\n(savedBooks + recentBooks + queryResults)"]',
+    '        EnrichDict["Enriched Book Dictionary (setOrMergeBook)\\n(savedBooks + recentBooks + offlineBooks + queryResults • Author Merge Guardrails)"]',
     '        Parser["Canonical Utilities (@/lib/utils)\\n• formatAuthorNames (reverse \'Last, First\' & strip dates)\\n• cleanBookTitle (strip Gutenberg prefixes)\\n• formatRelativeTime (\'Recently\', \'2h ago\')"]',
-    '        Assembly["Assemble ActiveReadingVolume[]\\n• progress, chapter, coordinates, lastReadAt\\n• status (in_progress / completed / on_hold)\\n• isOffline badge"]',
+    '        Assembly["Assemble ActiveReadingVolume[]\\n• progress, chapter, coordinates, lastReadAt\\n• status (in_progress / completed / on_hold)\\n• isOffline / Not Downloaded badge • Line X coordinates"]',
     '        FilterSort["Client Search & Status Filter\\n• \'all\' | \'in_progress\' | \'completed\' | \'on_hold\'\\n• CollectionSearchBar token matching\\n• Multi-mode sort (\'recent\' | \'progress\' | \'title\' | \'author\' | \'downloaded\')"]',
     '    end',
     '',
@@ -639,10 +645,12 @@ function generateMarkdown() {
     '    RS --> FilterActive',
     '    FilterActive --> MissingCheck',
     '    BS --> MissingCheck',
+    '    IDB --> MissingCheck',
     '    MissingCheck -->|"Yes (e.g. un-shelved #55179)"| QueryMissing',
     '    QueryMissing --> EnrichDict',
     '    MissingCheck -->|"No"| EnrichDict',
     '    BS --> EnrichDict',
+    '    IDB --> EnrichDict',
     '    EnrichDict --> Parser',
     '    Parser --> Assembly',
     '    IDB --> Assembly',
@@ -691,15 +699,15 @@ function generateMarkdown() {
 
   const storeDescriptions = {
     useAccoladesStore:
-      'Deterministic literary accolades evaluation, celebration queues, personal showcase pinning (max 3 bookplates), and bi-directional Supabase cloud synchronization.',
+      'Deterministic literary accolades evaluation, celebration queues, personal showcase pinning (max 3 bookplates), offline pin mutation queue (`pendingPinUpdates`), and bi-directional Supabase cloud synchronization.',
     useAnnotationStore:
       'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), reflections, and commonplace book exports.',
     useAuthStore:
-      'Supabase session authentication, guest status, password generation, and cloud profile synchronization with live companion identity propagation.',
+      'Supabase session authentication, offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), guest status, password generation, and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
-      'Personal library collections, reading queue, reading history, custom named shelves, active-shelf-aware book clearing (`clearSavedBooks`, `clearCustomShelfBooks`), deletion tombstones, ratings, and cloud outbox reconciliation via `bookshelf-cloud-sync.ts`.',
+      'Personal library collections, reading queue, reading history, custom named shelves, active-shelf-aware book clearing (`clearSavedBooks`, `clearCustomShelfBooks`), placeholder-to-authentic author self-healing (`enrichSavedBooks`), deletion tombstones, ratings, and cloud outbox reconciliation (`ADD_BOOK`, `REMOVE_BOOK`, `MOVE_BOOK`, `UPDATE_SHELF`, `ADD_FAVORITE`, `REMOVE_FAVORITE`) via `bookshelf-cloud-sync.ts`.',
     useFellowshipStore:
-      'Opt-in 1-on-1 Reader Circle fellowships, per-volume Literary Symposium sessions, companion progress coordinates, scholar handle formatting (`formatFellowScholarLabel`, `isPlaceholderUsername`), pending invitation badges, and bi-directional Supabase cloud synchronization.',
+      'Opt-in 1-on-1 Reader Circle fellowships, per-volume Literary Symposium sessions, companion progress coordinates, offline symposium progress outbox (`pendingSymposiumProgress`), scholar handle formatting (`formatFellowScholarLabel`, `isPlaceholderUsername`), pending invitation badges, and bi-directional Supabase cloud synchronization.',
     useHabitsStore:
       'Reading streaks with 5-minute active immersion threshold, daily calendar activity dates, annual volume challenge goals, dual immersion telemetry (reading vs listening), and multi-device Supabase cloud synchronization.',
     useJurisdictionStore:
@@ -707,7 +715,7 @@ function generateMarkdown() {
     usePreferencesStore:
       'Reader display choices, sticky header auto-hide preferences, and navigation behaviors.',
     useReaderStore:
-      'Active book payload with verified lifespan preservation, typography settings (size, family, line height), reading mode (paginated vs scroll), chapter/page/row coordinates (`bookmarkRow`), and bidirectional Supabase `reading_progress` lifespan self-healing.',
+      'Active book payload with verified lifespan preservation, typography settings (size, family, line height), reading mode (paginated vs scroll), chapter/page/row coordinates (`bookmarkRow`), bookmark deletion tombstones (`deletedPositionBookIds`), placeholder-to-authentic author & lifespan self-healing (`enrichReadingPositions`, `saveReadingPosition`), and bidirectional Supabase `reading_progress` sync.',
     useThemeStore:
       'Global application theme state (Day Paper, Sepia Parchment, Obsidian Dark) with immediate document class application.',
   };
@@ -794,18 +802,18 @@ function generateMarkdown() {
 
   const hookRoles = {
     useBooks: 'TanStack Query fetching catalog volumes with sub-pagination and client failover.',
-    useBookContent: 'TanStack Query fetching book plain text with IndexedDB offline-first check, multi-store lifespan verification (`resolveAuthoritativeLocalAuthors`), and online server-gatekeeper deferral.',
-    useBookTranslations: 'TanStack Query aggregating international language translations and editions.',
+    useBookContent: 'TanStack Query (`networkMode: "always"`) fetching book plain text with IndexedDB offline-first check, multi-store lifespan verification (`resolveAuthoritativeLocalAuthors`), and online server-gatekeeper deferral.',
+    useBookTranslations: 'TanStack Query aggregating international language translations and editions (gated when offline).',
     useReaderSpeech: 'Browser-native Web Speech synthesis with boundary word highlighting and auto-flip.',
     useReaderSession: 'Reading coordinates restoration, resume ribbons, and cloud session synchronization.',
-    useContinueReadingLedger: 'Headless continue reading ledger with authentic telemetry enrollment, query hydration, multi-attribute sorting, and offline volume filtering (useOfflineBooks).',
+    useContinueReadingLedger: 'Headless continue reading ledger with authentic telemetry enrollment, placeholder-author detection (`hasAuthenticAuthor`), non-regressive author merge guardrails (`setOrMergeBook`), `readingPositions` author healing, query hydration, multi-attribute sorting, and offline volume filtering (`useOfflineBooks`).',
     useReaderDrawers: 'Mutual exclusivity coordination for in-reader tool drawers and modals.',
     useReaderGestures: 'Touch swipe detection, keyboard shortcuts, and selection gesture conflict guards.',
     useGutenbergParserWorker: 'Persistent Web Worker chapter segmentation and layout pagination calculations.',
     useCatalogFilters: 'Catalog filter state URL binding, default Recently Added (descending) sort, atomic filter staging, multi-era bounding calculation, and multi-filter query synchronization.',
     useScrollDirection: 'Stepped directional scroll detection with user auto-hide preference persistence.',
     usePerformanceTier: 'Hardware concurrency and memory heuristic detection for fluid 60fps animations.',
-    useOfflineBooks: 'IndexedDB cache enumeration, reactive cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading state propagation (`OFFLINE_DOWNLOADING_EVENT`), author lifespan normalization (`normalizeOfflineAuthors`), and local offline book download/deletion management.',
+    useOfflineBooks: 'IndexedDB cache enumeration (`offlineIds` & `offlineBooks`), reactive cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading state propagation (`OFFLINE_DOWNLOADING_EVENT`), author lifespan normalization (`normalizeOfflineAuthors`), and individual-only offline book download/deletion management.',
     useCursorTooltip: 'Adaptive unconstrained cursor tooltips for interactive bookshelf elements.',
     useBookPassageShuffle: 'Autonomous literary quote selection and multi-chapter shuffle engine.',
     useHasMounted: 'SSR hydration barrier hook preventing client-server markup mismatches.',
@@ -814,6 +822,7 @@ function generateMarkdown() {
     useMobileViewSwipe: 'Tactile touch gesture navigation hook enabling horizontal view swiping across primary views on mobile and tactile tablets.',
     useTouchDevice: 'SSR-safe tactile capability and viewport boundary detection enabling touch gestures on tablets and mobile.',
     useBookCopyright: 'Declarative jurisdictional copyright facade hook coordinating territory rules, author lifespan restrictions, and public domain badges.',
+    useNetworkStatus: 'Reactive browser online/offline external store hook (`useSyncExternalStore`) driving red offline Account indicators, adaptive offline Catalog fallback, and network-gated controls.',
   };
 
   for (const h of hooks) {
@@ -876,7 +885,7 @@ function generateMarkdown() {
     'library-backup':
       'Complete library export and import engine handling JSON backup schemas, CSV export, validation, and merge restoration.',
     'offline-storage':
-      'IndexedDB storage abstraction providing offline book content caching, storage change notifications (`notifyOfflineStorageChanged`), quota calculation, and LRU eviction.',
+      'IndexedDB storage abstraction providing offline book content caching, local store author resolution and asynchronous IndexedDB author back-fill (`patchOfflineBookAuthors`), storage change notifications (`notifyOfflineStorageChanged`), quota calculation, and LRU eviction.',
     password:
       'Cryptographically secure password generation and multi-factor entropy evaluation engine.',
     'query-parser':
@@ -914,7 +923,7 @@ function generateMarkdown() {
     'metadata-cache':
       '3-tier in-memory LRU author lifespan cache (24h TTL, 1,000 entries) resolving contributor birth/death years via Supabase `public.books`, upstream Gutendex API, and `FEATURED_HERO_BOOKS` fallback.',
     'url-validator':
-      'Zero-trust anti-SSRF upstream URL validator enforcing HTTPS and strict Project Gutenberg hostname allowlisting (`gutenberg.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`).',
+      'Zero-trust anti-SSRF upstream URL validator enforcing HTTPS, relative Location redirect resolution, and strict Project Gutenberg hostname allowlisting (`gutenberg.org`, `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`).',
     'reader-layout-utils':
       'Server-side metadata resolution and Next.js RSC request header detector for `/read/[id]` OpenGraph, Twitter Card, and Schema.org Book JSON-LD generation.',
   };
@@ -1143,7 +1152,7 @@ function generateMarkdown() {
     '3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.',
     '4. **Edge SWR Caching & Geographic Vary Partitioning**: Catalog queries are cached with `s-maxage=3600, stale-while-revalidate=86400` (`/api/books`) and content/translation streams with `s-maxage=86400, stale-while-revalidate=604800`, partitioned across jurisdictions via `Vary: x-vercel-ip-country, Accept-Encoding` to prevent cross-border cache pollution.',
     '5. **Jurisdictional Copyright Gatekeeping & Bibliographic Preservation**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles. Concurrently, the catalog pipeline supports `includeRestrictedMetadata=true` for explicit IDs, ensuring personal collections (Notebook, Bookmarks) and reader error screens display authentic bibliographic citations (titles, authors, subjects) without opening prohibited full-text streams.',
-    '6. **Multi-Tier Text Streaming & Multi-Mirror Failover**: Plain text is served on-demand from Tier 1 (self-hosted Supabase plain-text cache if present) or Tier 2 (multi-mirror fallback across `aleph.gutenberg.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.',
+    '6. **Multi-Tier Text Streaming & Multi-Mirror Failover**: Plain text is served on-demand from Tier 1 (self-hosted Supabase plain-text cache if present) or Tier 2 (mirror-first fallback across `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.',
     '7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.',
     '8. **Autonomous Weekly Catalog Synchronization**: Project Gutenberg official catalog dump (`pg_catalog.csv.gz`, 78,000+ public domain titles) is streamed and decompressed on-the-fly via GitHub Actions (`.github/workflows/catalog-sync.yml`) or `npm run catalog:sync`, updating Supabase with zero manual SQL intervention and minimal storage footprint (~105 MB).',
     '',
@@ -1196,7 +1205,7 @@ function generateMarkdown() {
     '| **Pass 0.75** | 7-Pillar SAST & OWASP Security Suite | `npm audit`, AST taint guards, SQL RLS & HTTP Header auditors | Enforces 0 High/Critical CVEs, SSRF allowlist & rate limiting, DOM XSS guards, open-redirect sanitization, license compliance, PostgreSQL RLS + `SECURITY DEFINER` `search_path`, and OWASP HTTP headers/CSP |',
     '| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |',
     '| **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |',
-    '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 80% coverage floor (target >= 85%) across all co-located suites |',
+    '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 85% coverage floor across all co-located suites |',
     '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md`, `GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |',
     '| **Pass 5** | ADR Schema & Ledger Validation | Markdown AST verification | Validates all ADRs in `docs/DECISIONS.md` conform to Status, Context, Decision, Consequences |',
     '| **Pass 6** | Code Quality & Dead Code Audit | `eslint . --max-warnings 0` & Knip | Zero ESLint errors or warnings (`--max-warnings 0`), zero unreferenced dead files/exports |',

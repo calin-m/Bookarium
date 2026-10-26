@@ -40,13 +40,23 @@ export interface AcceptedFellowSummary {
   displayName: string;
 }
 
+export interface PendingSymposiumProgressUpdate {
+  chapterIndex: number;
+  progressPct: number;
+  status: SymposiumSessionRow['status'];
+  isHost: boolean;
+  updatedAt: string;
+}
+
 export interface FellowshipState {
   circles: ReaderCircleRow[];
   symposiums: SymposiumSessionRow[];
+  pendingSymposiumProgress: Record<string, PendingSymposiumProgressUpdate>;
   isLoading: boolean;
   error: string | null;
 
   fetchFellowshipData: (userId?: string) => Promise<void>;
+  syncWithCloud: (userId?: string) => Promise<void>;
   inviteFellowByUsername: (
     username: string
   ) => Promise<{ error: Error | null; circle?: ReaderCircleRow }>;
@@ -100,16 +110,57 @@ export const useFellowshipStore = create<FellowshipState>()(
     (set, get) => ({
       circles: [],
       symposiums: [],
+      pendingSymposiumProgress: {},
       isLoading: false,
       error: null,
 
+      syncWithCloud: async (explicitUserId) => {
+        await get().fetchFellowshipData(explicitUserId);
+      },
+
       fetchFellowshipData: async (explicitUserId) => {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
         const authState = useAuthStore.getState();
         const userId = explicitUserId || authState.user?.id;
         if (!userId) return;
 
         const supabase = createClient();
         if (!supabase) return;
+
+        // Flush any queued offline symposium progress updates before pulling remote rows
+        const pendingEntries = Object.entries(get().pendingSymposiumProgress || {});
+        if (pendingEntries.length > 0) {
+          const remainingPending = { ...get().pendingSymposiumProgress };
+          for (const [sessionId, pending] of pendingEntries) {
+            try {
+              const { error: flushErr } = await supabase
+                .from('symposium_sessions')
+                .update(
+                  pending.isHost
+                    ? {
+                        host_chapter: pending.chapterIndex,
+                        host_progress: pending.progressPct,
+                        status: pending.status,
+                        updated_at: pending.updatedAt,
+                      }
+                    : {
+                        fellow_chapter: pending.chapterIndex,
+                        fellow_progress: pending.progressPct,
+                        status: pending.status,
+                        updated_at: pending.updatedAt,
+                      }
+                )
+                .eq('id', sessionId);
+              if (!flushErr) {
+                delete remainingPending[sessionId];
+              }
+            } catch {
+              // Keep in pendingSymposiumProgress for next retry
+            }
+          }
+          set({ pendingSymposiumProgress: remainingPending });
+        }
 
         set({ isLoading: true, error: null });
         try {
@@ -637,38 +688,73 @@ export const useFellowshipStore = create<FellowshipState>()(
         }));
 
         const supabase = createClient();
-        if (supabase) {
-          for (const sym of activeSessions) {
-            const isHost = sym.host_id === currentUserId;
-            const updatedHostProgress = isHost ? clampedProgress : sym.host_progress;
-            const updatedFellowProgress = isHost ? sym.fellow_progress : clampedProgress;
-            const nextStatus =
-              updatedHostProgress >= 100 && updatedFellowProgress >= 100
-                ? 'completed'
-                : sym.status;
+        const isOfflineNow = typeof navigator !== 'undefined' && navigator.onLine === false;
 
-            try {
-              await supabase
-                .from('symposium_sessions')
-                .update(
-                  isHost
-                    ? {
-                        host_chapter: chapterIndex,
-                        host_progress: clampedProgress,
-                        status: nextStatus,
-                        updated_at: now,
-                      }
-                    : {
-                        fellow_chapter: chapterIndex,
-                        fellow_progress: clampedProgress,
-                        status: nextStatus,
-                        updated_at: now,
-                      }
-                )
-                .eq('id', sym.id);
-            } catch {
-              // Ignore offline error
+        for (const sym of sessionsNeedingUpdate) {
+          const isHost = sym.host_id === currentUserId;
+          const updatedHostProgress = isHost ? clampedProgress : sym.host_progress;
+          const updatedFellowProgress = isHost ? sym.fellow_progress : clampedProgress;
+          const nextStatus =
+            updatedHostProgress >= 100 && updatedFellowProgress >= 100
+              ? 'completed'
+              : sym.status;
+
+          if (isOfflineNow || !supabase) {
+            set((s) => ({
+              pendingSymposiumProgress: {
+                ...(s.pendingSymposiumProgress || {}),
+                [sym.id]: {
+                  chapterIndex,
+                  progressPct: clampedProgress,
+                  status: nextStatus,
+                  isHost,
+                  updatedAt: now,
+                },
+              },
+            }));
+            continue;
+          }
+
+          try {
+            const { error: updateErr } = await supabase
+              .from('symposium_sessions')
+              .update(
+                isHost
+                  ? {
+                      host_chapter: chapterIndex,
+                      host_progress: clampedProgress,
+                      status: nextStatus,
+                      updated_at: now,
+                    }
+                  : {
+                      fellow_chapter: chapterIndex,
+                      fellow_progress: clampedProgress,
+                      status: nextStatus,
+                      updated_at: now,
+                    }
+              )
+              .eq('id', sym.id);
+            if (updateErr) throw updateErr;
+            if (get().pendingSymposiumProgress?.[sym.id]) {
+              set((s) => {
+                const nextPending = { ...(s.pendingSymposiumProgress || {}) };
+                delete nextPending[sym.id];
+                return { pendingSymposiumProgress: nextPending };
+              });
             }
+          } catch {
+            set((s) => ({
+              pendingSymposiumProgress: {
+                ...(s.pendingSymposiumProgress || {}),
+                [sym.id]: {
+                  chapterIndex,
+                  progressPct: clampedProgress,
+                  status: nextStatus,
+                  isHost,
+                  updatedAt: now,
+                },
+              },
+            }));
           }
         }
       },
@@ -717,7 +803,7 @@ export const useFellowshipStore = create<FellowshipState>()(
       },
 
       clearFellowshipState: () => {
-        set({ circles: [], symposiums: [], isLoading: false, error: null });
+        set({ circles: [], symposiums: [], pendingSymposiumProgress: {}, isLoading: false, error: null });
       },
     }),
     {
@@ -725,6 +811,7 @@ export const useFellowshipStore = create<FellowshipState>()(
       partialize: (state) => ({
         circles: state.circles,
         symposiums: state.symposiums,
+        pendingSymposiumProgress: state.pendingSymposiumProgress,
       }),
     }
   )

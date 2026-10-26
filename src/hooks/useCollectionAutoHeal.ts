@@ -5,6 +5,7 @@ import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import { formatAuthorNames } from '@/lib/utils';
@@ -42,6 +43,7 @@ function isPositionIncomplete(bookAuthors?: string[]): boolean {
  */
 export function useCollectionAutoHeal(): CollectionAutoHealResult {
   const hasMounted = useHasMounted();
+  const { isOffline } = useNetworkStatus();
 
   const favoriteBookIds = useBookshelfStore((s) => s.favoriteBookIds);
   const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks || []);
@@ -249,10 +251,10 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
 
   const missingIdsParam = combinedMissingIds.length > 0 ? combinedMissingIds.join(',') : undefined;
 
-  // 4. Single batched query to /api/books?ids=... (dormant when combinedMissingIds is empty)
+  // 4. Single batched query to /api/books?ids=... (dormant when combinedMissingIds is empty or offline)
   const { data: missingBooksData, isLoading: isHealing } = useBooks(
     missingIdsParam ? { ids: missingIdsParam, includeRestrictedMetadata: true } : undefined,
-    { enabled: Boolean(missingIdsParam) }
+    { enabled: Boolean(missingIdsParam) && !isOffline }
   );
 
   // Adjust attempted heal session tracking during render when fresh upstream books arrive

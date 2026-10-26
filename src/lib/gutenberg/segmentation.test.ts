@@ -17,6 +17,24 @@ describe('segmentation subsystem', () => {
     expect(chapters[0].content).toBe(unformatted);
   });
 
+  it('appends Colophon & License at index 1 on single-section books with an explicit Gutenberg end marker', () => {
+    const singleSectionWithLicense = `
+*** START OF THE PROJECT GUTENBERG EBOOK SHORT TREATISE ***
+
+Short standalone treatise with no chapter markers.
+
+*** END OF THE PROJECT GUTENBERG EBOOK SHORT TREATISE ***
+
+Full Project Gutenberg License terms and trademark notice.
+`;
+    const chapters = parseGutenbergChapters(singleSectionWithLicense);
+    expect(chapters.length).toBe(2);
+    expect(chapters[0].title).toBe('Complete Volume');
+    expect(chapters[0].content).toContain('Short standalone treatise');
+    expect(chapters[1].displayTitle).toBe('Colophon & License');
+    expect(chapters[1].content).toContain('Full Project Gutenberg License terms');
+  });
+
   it('parses structured Project Gutenberg eBook into preamble, chapters, and license colophon', () => {
     const sampleBook = `
 *** START OF THE PROJECT GUTENBERG EBOOK PRIDE AND PREJUDICE ***

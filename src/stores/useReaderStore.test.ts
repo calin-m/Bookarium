@@ -813,6 +813,38 @@ describe('useReaderStore', () => {
       ]);
       expect(mockUpsert).toHaveBeenCalled();
 
+      // 7. enrichReadingPositions heals Anonymous author and missing coverUrl
+      useReaderStore.setState({
+        readingPositions: {
+          85: {
+            chapterIndex: 0,
+            chapterPage: 1,
+            globalPage: 1,
+            lastReadAt: '2026-09-12T10:00:00.000Z',
+            bookTitle: 'Some Book',
+            bookAuthors: ['Anonymous'],
+          },
+        },
+        readingProgress: { 85: 10 },
+      });
+      useReaderStore.getState().enrichReadingPositions([
+        {
+          id: 85,
+          title: 'Some Book',
+          authors: [{ name: 'Verne, Jules', birth_year: null, death_year: null }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: { 'image/jpeg': 'https://example.com/cover85.jpg' },
+          download_count: 100,
+        },
+      ]);
+      expect(useReaderStore.getState().getReadingPosition(85)?.bookAuthors).toEqual(['Verne, Jules']);
+      expect(useReaderStore.getState().getReadingPosition(85)?.coverUrl).toBe('https://example.com/cover85.jpg');
+
       useAuthStore.setState({ user: null });
     });
 
@@ -901,6 +933,120 @@ describe('useReaderStore', () => {
       expect(pos?.chapterIndex).toBe(2);
       expect(pos?.chapterPage).toBe(4);
       expect(pos?.bookmarkRow).toBe(15);
+    });
+
+    it('records deletedPositionBookIds tombstones when clearing a position offline and flushes deletions + local-only positions on syncWithCloud', async () => {
+      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+      useAuthStore.setState({ user: { id: 'user-offline-sync' } as any });
+      useReaderStore.setState({
+        readingPositions: {
+          84: {
+            chapterIndex: 2,
+            chapterPage: 3,
+            globalPage: 10,
+            lastReadAt: '2026-10-25T10:00:00.000Z',
+            bookTitle: 'Frankenstein',
+          },
+          1342: {
+            chapterIndex: 4,
+            chapterPage: 2,
+            globalPage: 25,
+            lastReadAt: '2026-10-26T10:00:00.000Z',
+            bookTitle: 'Pride and Prejudice',
+          },
+        },
+        readingProgress: { 84: 25, 1342: 60 },
+        deletedPositionBookIds: [],
+      });
+
+      await useReaderStore.getState().clearReadingPosition(84, 'user-offline-sync');
+      expect(useReaderStore.getState().getReadingPosition(84)).toBeNull();
+      expect(useReaderStore.getState().deletedPositionBookIds).toContain(84);
+
+      // Reconnect and syncWithCloud
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+      const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+      const mockDeleteEq2 = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          lte: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      });
+      const mockDeleteEq1 = vi.fn().mockReturnValue({
+        eq: mockDeleteEq2,
+      });
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockDeleteEq1 });
+
+      mockFrom.mockReturnValue({
+        delete: mockDelete,
+        upsert: mockUpsert,
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({
+              data: [],
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      await useReaderStore.getState().syncWithCloud('user-offline-sync');
+
+      expect(useReaderStore.getState().deletedPositionBookIds).toEqual([]);
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'user-offline-sync',
+          book_id: 1342,
+          progress_percent: 60,
+        }),
+        { onConflict: 'user_id,book_id' }
+      );
+      useAuthStore.setState({ user: null });
+    });
+
+    it('enriches Anonymous or missing authors in readingPositions when fresh book arrives with authentic authors without lifespans', () => {
+      useReaderStore.setState({
+        readingPositions: {
+          500: {
+            chapterIndex: 1,
+            chapterPage: 1,
+            globalPage: 5,
+            lastReadAt: '2026-10-01T10:00:00.000Z',
+            bookTitle: 'A Study in Scarlet',
+            bookAuthors: ['Anonymous'],
+          },
+        },
+      });
+
+      useReaderStore.getState().enrichReadingPositions([
+        {
+          id: 500,
+          title: 'A Study in Scarlet',
+          authors: [{ name: 'Doyle, Arthur Conan', birth_year: null, death_year: null }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 500,
+        },
+      ]);
+
+      const updated = useReaderStore.getState().getReadingPosition(500);
+      expect(updated?.bookAuthors).toEqual(['Doyle, Arthur Conan']);
+
+      // Also verify saveReadingPosition preserves authentic author when incoming position has Anonymous
+      useReaderStore.getState().saveReadingPosition(500, {
+        chapterIndex: 2,
+        chapterPage: 3,
+        globalPage: 12,
+        lastReadAt: '2026-10-02T10:00:00.000Z',
+        bookTitle: 'A Study in Scarlet',
+        bookAuthors: ['Anonymous'],
+      });
+
+      expect(useReaderStore.getState().getReadingPosition(500)?.bookAuthors).toEqual(['Doyle, Arthur Conan']);
     });
   });
 });

@@ -31,6 +31,7 @@ import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
 import { useReaderSession } from '@/hooks/reader/useReaderSession';
 import { useReadingTimer } from '@/hooks/useReadingTimer';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import {
@@ -137,10 +138,11 @@ function BookReaderContent() {
     syncSymposiumProgress,
   } = useHydratedFellowship();
   const user = useAuthStore((s) => s.user);
+  const { isOffline } = useNetworkStatus();
 
-  // Sync annotations and fellowship symposium state on load if authenticated
+  // Sync annotations and fellowship symposium state on load if authenticated and online
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && !isOffline) {
       syncWithCloud(user.id);
       const syncFellowshipAndMarginalia = async () => {
         await fetchFellowshipData(user.id);
@@ -153,6 +155,7 @@ function BookReaderContent() {
     }
   }, [
     user?.id,
+    isOffline,
     numericId,
     syncWithCloud,
     fetchFellowshipData,
@@ -169,10 +172,10 @@ function BookReaderContent() {
 
   // Re-fetch fellow annotations when opening annotations drawer to capture any live fellow notes
   useEffect(() => {
-    if (isAnnotationsOpen && user?.id && numericId > 0) {
+    if (isAnnotationsOpen && user?.id && numericId > 0 && !isOffline) {
       void fetchFellowAnnotationsForBook(numericId, user.id);
     }
-  }, [isAnnotationsOpen, user?.id, numericId, fetchFellowAnnotationsForBook]);
+  }, [isAnnotationsOpen, user?.id, numericId, isOffline, fetchFellowAnnotationsForBook]);
 
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [selectionPopover, setSelectionPopover] = useState<{
@@ -237,12 +240,15 @@ function BookReaderContent() {
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, error: contentError, refetch } = useBookContent(undefined, numericId);
-  const { data: booksData } = useBooks({
-    ids: numericId > 0 ? String(numericId) : '',
-    page: 1,
-    copyright: false,
-    includeRestrictedMetadata: true,
-  });
+  const { data: booksData } = useBooks(
+    {
+      ids: numericId > 0 ? String(numericId) : '',
+      page: 1,
+      copyright: false,
+      includeRestrictedMetadata: true,
+    },
+    { enabled: !isOffline && numericId > 0 }
+  );
   
   // Multi-tier metadata resolution: Client Store -> Fixture -> API Result -> Raw Gutenberg Header Extraction
   const extractedMeta = useMemo(() => {
@@ -357,7 +363,8 @@ function BookReaderContent() {
     bookTitle,
     bookAuthor,
     numericId,
-    resolvedIdentity.languages
+    resolvedIdentity.languages,
+    !isOffline
   );
 
   // Parse Chapters and Volume Spread via Web Worker

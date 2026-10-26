@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import type { PasswordStrength } from '@/lib/password';
 
 export interface AccountSecuritySectionProps {
@@ -53,6 +54,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
   onOpenDeleteModal,
   userEmail,
 }) => {
+  const { isOffline } = useNetworkStatus();
   return (
     <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
       {/* Master Card Header */}
@@ -165,7 +167,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                 variant="primary"
                 size="chip"
                 isLoading={isUpdatingPassword}
-                disabled={!newPassword || !confirmPassword}
+                disabled={isOffline || !newPassword || !confirmPassword}
                 aria-label="Update Password"
               >
                 <Check className="w-3.5 h-3.5" />
@@ -178,6 +180,14 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                 </span>
               )}
             </div>
+            {isOffline && (
+              <p
+                data-testid="security-offline-hint"
+                className="text-xs font-mono text-muted-foreground"
+              >
+                Password updates and account deletion require an active internet connection.
+              </p>
+            )}
           </form>
         </div>
 
@@ -230,6 +240,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                 variant="outline"
                 size="chip"
                 onClick={onOpenDeleteModal}
+                disabled={isOffline}
                 className="w-full justify-center border-destructive/50 dark:border-destructive/60 text-destructive hover:bg-destructive/10 font-mono text-xs cursor-pointer"
                 aria-label="Delete Account"
               >

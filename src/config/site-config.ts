@@ -16,6 +16,7 @@ export const SITE_CONFIG = {
   // Author & Repository Links
   GITHUB_PROFILE: 'https://github.com/calin-m',
   GITHUB_REPO: 'https://github.com/calin-m/Bookarium',
+  USER_AGENT: 'Bookarium-PublicDomain-Reader/1.0 (+https://github.com/calin-m/Bookarium)',
 
   // Support, Inquiries & Legal Intake (Configurable via NEXT_PUBLIC_LEGAL_CONTACT_FORM)
   LEGAL_CONTACT_FORM: process.env.NEXT_PUBLIC_LEGAL_CONTACT_FORM || '',

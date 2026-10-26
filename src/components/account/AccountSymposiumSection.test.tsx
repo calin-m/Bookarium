@@ -5,9 +5,18 @@ import { AccountSymposiumSection } from './AccountSymposiumSection';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 
+let mockAccountOfflineIds: number[] = [];
+vi.mock('@/hooks/useOfflineBooks', () => ({
+  useOfflineBooks: () => ({
+    offlineBookIds: mockAccountOfflineIds,
+    isBookOffline: (id: number) => mockAccountOfflineIds.includes(id),
+  }),
+}));
+
 describe('AccountSymposiumSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAccountOfflineIds = [];
     useFellowshipStore.getState().clearFellowshipState();
     useAuthStore.setState({
       user: { id: 'u1', email: 'austen@bookarium.test' } as any,
@@ -350,6 +359,171 @@ describe('AccountSymposiumSection', () => {
     // Switch back to Active Symposiums tab
     fireEvent.click(screen.getByRole('tab', { name: /Active Symposiums/i }));
     expect(screen.getByText('No Active Literary Symposiums')).toBeInTheDocument();
+  });
+
+  it('disables live invitation controls and enforces offline parity for uncached symposiums when offline', () => {
+    const originalOnLine = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+
+    // 1342 is not downloaded, 84 is downloaded
+    mockAccountOfflineIds = [84];
+
+    useFellowshipStore.setState({
+      symposiums: [
+        {
+          id: 's-uncached',
+          book_id: 1342,
+          book_title: 'Pride and Prejudice',
+          host_id: 'u1',
+          host_username: 'jane_austen',
+          host_display_name: 'Jane Austen',
+          fellow_id: 'u2',
+          fellow_username: 'bronte',
+          fellow_display_name: 'Charlotte Brontë',
+          status: 'active',
+          host_chapter: 1,
+          host_progress: 10,
+          fellow_chapter: 1,
+          fellow_progress: 15,
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 's-cached',
+          book_id: 84,
+          book_title: 'Frankenstein',
+          host_id: 'u1',
+          host_username: 'jane_austen',
+          host_display_name: 'Jane Austen',
+          fellow_id: 'u3',
+          fellow_username: 'shelley',
+          fellow_display_name: 'Mary Shelley',
+          status: 'active',
+          host_chapter: 2,
+          host_progress: 25,
+          fellow_chapter: 2,
+          fellow_progress: 30,
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 'sym-incoming-offline',
+          book_id: 2701,
+          book_title: 'Moby Dick',
+          host_id: 'u4',
+          host_username: 'melville',
+          host_display_name: 'Herman Melville',
+          fellow_id: 'u1',
+          fellow_username: 'jane_austen',
+          fellow_display_name: 'Jane Austen',
+          status: 'pending',
+          host_chapter: 0,
+          host_progress: 0,
+          fellow_chapter: 0,
+          fellow_progress: 0,
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 'sym-outgoing-offline',
+          book_id: 11,
+          book_title: "Alice's Adventures in Wonderland",
+          host_id: 'u1',
+          host_username: 'jane_austen',
+          host_display_name: 'Jane Austen',
+          fellow_id: 'u5',
+          fellow_username: 'carroll',
+          fellow_display_name: 'Lewis Carroll',
+          status: 'pending',
+          host_chapter: 0,
+          host_progress: 0,
+          fellow_chapter: 0,
+          fellow_progress: 0,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      circles: [
+        {
+          id: 'c-active-offline',
+          requester_id: 'u1',
+          requester_username: 'jane_austen',
+          requester_display_name: 'Jane Austen',
+          recipient_id: 'u2',
+          recipient_username: 'bronte',
+          recipient_display_name: 'Charlotte Brontë',
+          status: 'accepted',
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 'c-incoming-offline',
+          requester_id: 'u3',
+          requester_username: 'shelley',
+          requester_display_name: 'Mary Shelley',
+          recipient_id: 'u1',
+          recipient_username: 'jane_austen',
+          recipient_display_name: 'Jane Austen',
+          status: 'pending',
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 'c-outgoing-offline',
+          requester_id: 'u1',
+          requester_username: 'jane_austen',
+          requester_display_name: 'Jane Austen',
+          recipient_id: 'u4',
+          recipient_username: 'melville',
+          recipient_display_name: 'Herman Melville',
+          status: 'pending',
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+    });
+
+    try {
+      render(<AccountSymposiumSection userId="u1" />);
+
+      // Active Symposiums sub-tab checks
+      expect(screen.getByRole('button', { name: /New Symposium Pact/i })).toBeDisabled();
+
+      // Uncached symposium (1342) shows Not Downloaded badge & disabled Unavailable Offline button
+      expect(screen.getByTestId('symposium-offline-badge-1342')).toHaveTextContent('Not Downloaded');
+      expect(screen.getByTestId('symposium-read-disabled-1342')).toBeDisabled();
+      expect(screen.getByTestId('symposium-read-disabled-1342')).toHaveTextContent('Unavailable Offline');
+
+      // Cached symposium (84) does NOT show Not Downloaded badge and has active Read link
+      expect(screen.queryByTestId('symposium-offline-badge-84')).toBeNull();
+      expect(screen.getByRole('link', { name: /^Read$/i })).toHaveAttribute('href', '/read/84');
+
+      // Leave symposium buttons are disabled when offline
+      const leaveButtons = screen.getAllByRole('button', { name: /Leave Symposium/i });
+      leaveButtons.forEach((btn) => expect(btn).toBeDisabled());
+
+      // Reader Circle sub-tab checks
+      fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
+      expect(screen.getByLabelText(/Invite Fellow Scholar/i)).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Send Circle Invitation/i })).toBeDisabled();
+      expect(screen.getByTestId('circle-invite-offline-hint')).toHaveTextContent(
+        /Inviting Fellow Scholars requires an internet connection/i
+      );
+      expect(screen.getByRole('button', { name: /^Symposium$/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Remove @bronte from Reader Circle/i })).toBeDisabled();
+
+      // Invitations sub-tab checks
+      fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
+      expect(screen.getByRole('button', { name: /Accept Fellow/i })).toBeDisabled();
+      const declineButtons = screen.getAllByRole('button', { name: /^Decline$/i });
+      expect(declineButtons).toHaveLength(2);
+      declineButtons.forEach((btn) => expect(btn).toBeDisabled());
+      expect(screen.getByRole('button', { name: /Cancel Request/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Accept Pact/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Cancel Pact/i })).toBeDisabled();
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
+    }
   });
 });
 

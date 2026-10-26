@@ -14,9 +14,11 @@ import {
   ShieldCheck,
   Flame,
   Award,
+  WifiOff,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
@@ -92,6 +94,7 @@ const ACCOUNT_TABS: readonly AccountTabConfig[] = [
 
 function AccountDashboardContent() {
   const router = useRouter();
+  const { isOffline } = useNetworkStatus();
   const {
     user: authUser,
     profile: authProfile,
@@ -501,33 +504,74 @@ function AccountDashboardContent() {
           </div>
         </div>
 
+        {/* Offline Mode Banner */}
+        {isOffline && (
+          <div
+            data-testid="account-offline-banner"
+            role="status"
+            className="flex items-start sm:items-center gap-3 px-4 py-3 rounded-xl border border-destructive/40 bg-destructive/10 text-xs font-mono text-foreground"
+          >
+            <WifiOff className="w-4 h-4 text-destructive shrink-0 mt-0.5 sm:mt-0" />
+            <span>
+              {user
+                ? 'Offline Mode — Changes to your preferences, habits, and profile are saved locally and will sync automatically when you reconnect.'
+                : 'Offline Mode — Manage your local reading preferences, streaks, accolades, and library backups offline. Sign in will be available once your connection is restored.'}
+            </span>
+          </div>
+        )}
+
         {/* Guest View Prompt */}
         {!isLoading && !user && (
-          <div className="max-w-xl mx-auto bg-card border border-border rounded-2xl p-8 sm:p-12 text-center space-y-4 shadow-booksaw">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-border text-primary flex items-center justify-center mx-auto shadow-inner">
-              <UserIcon className="w-7 h-7" />
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-2xl font-serif font-bold">Guest Reader</h2>
-              <p className="text-xs text-muted-foreground font-sans max-w-sm mx-auto">
-                Sign in or create an account to customize your profile, sync bookshelves to the cloud, and save your reading preferences across devices.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => openAuthModal('sign_in')}
-                className="font-mono text-xs uppercase"
-              >
-                Sign In / Sign Up
-              </Button>
-              <Link href={ROUTES.HOME}>
-                <Button variant="outline" size="md" className="font-mono text-xs uppercase">
-                  Browse Catalog
+          <div className="space-y-6">
+            <div className="max-w-xl mx-auto bg-card border border-border rounded-2xl p-8 sm:p-12 text-center space-y-4 shadow-booksaw">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-border text-primary flex items-center justify-center mx-auto shadow-inner">
+                <UserIcon className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-2xl font-serif font-bold">Guest Reader</h2>
+                <p className="text-xs text-muted-foreground font-sans max-w-sm mx-auto">
+                  Sign in or create an account to customize your profile, sync bookshelves to the cloud, and save your reading preferences across devices.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button
+                  variant="primary"
+                  size="md"
+                  disabled={isOffline}
+                  onClick={() => openAuthModal('sign_in')}
+                  className="font-mono text-xs uppercase"
+                >
+                  Sign In / Sign Up
                 </Button>
-              </Link>
+                <Link href={ROUTES.HOME}>
+                  <Button variant="outline" size="md" className="font-mono text-xs uppercase">
+                    Browse Catalog
+                  </Button>
+                </Link>
+              </div>
             </div>
+
+            {isOffline && (
+              <div data-testid="guest-offline-workspace" className="space-y-6">
+                <AccountPreferencesSection
+                  theme={theme}
+                  onThemeChange={handleThemeChange}
+                  stickyScrollEnabled={stickyScrollEnabled}
+                  onStickyScrollChange={setStickyScrollEnabled}
+                  speechRate={speechRate}
+                  onSpeechRateChange={setSpeechRate}
+                  speechVoiceURI={speechVoiceURI}
+                  onSpeechVoiceChange={setSpeechVoiceURI}
+                  speechAutoPageAdvance={speechAutoPageAdvance}
+                  onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
+                  speechHighlightEnabled={speechHighlightEnabled}
+                  onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
+                  onResetSpeechPreferences={resetSpeechPreferences}
+                />
+                <AccountHabitsCard completedBooksCount={completedBooksCount} />
+                <AccountAccoladesCard />
+              </div>
+            )}
           </div>
         )}
 

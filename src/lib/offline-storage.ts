@@ -3,7 +3,10 @@
  * Allows storing full text of classic literature beyond localStorage's 5MB quota.
  */
 
-import type { Author } from '@/types/book.types';
+import type { Author, GutendexBook } from '@/types/book.types';
+import { isPlaceholderAuthor } from '@/lib/book-metadata';
+import { parseLifespansFromName } from '@/lib/copyright-engine';
+import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 
 const DB_NAME = 'BookariumOfflineDB';
 const DB_VERSION = 1;
@@ -288,6 +291,129 @@ export async function getAllOfflineBooks(): Promise<OfflineBookMetadata[]> {
   } catch {
     return [];
   }
+}
+
+async function resolveLocalAuthorsForBook(bookId: number): Promise<Author[] | null> {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    const shelfState = useBookshelfStore.getState();
+    const match =
+      shelfState.savedBooks?.find((b) => b.id === bookId) ||
+      shelfState.favoriteBooks?.find((b) => b.id === bookId) ||
+      shelfState.recentBooks?.find((b) => b.id === bookId);
+    if (match?.authors && match.authors.length > 0) {
+      const hasAuth = match.authors.some((a) => a.name && !isPlaceholderAuthor(a.name));
+      if (hasAuth) return match.authors;
+    }
+  } catch {}
+
+  try {
+    const { useReaderStore } = await import('@/stores/useReaderStore');
+    const pos = useReaderStore.getState().readingPositions?.[bookId];
+    if (pos?.bookAuthors && pos.bookAuthors.length > 0) {
+      const valid = pos.bookAuthors.filter((name) => name && !isPlaceholderAuthor(name));
+      if (valid.length > 0) {
+        return valid.map((name) => {
+          const parsed = parseLifespansFromName(name);
+          return {
+            name,
+            birth_year: parsed.birthYear,
+            death_year: parsed.deathYear,
+          };
+        });
+      }
+    }
+  } catch {}
+
+  const hero = FEATURED_HERO_BOOKS.find((h) => h.id === bookId);
+  if (hero && hero.author && !isPlaceholderAuthor(hero.author)) {
+    return [
+      {
+        name: hero.author,
+        birth_year: hero.authorBirthYear ?? null,
+        death_year: hero.authorDeathYear ?? null,
+      },
+    ];
+  }
+
+  return null;
+}
+
+export async function patchOfflineBookAuthors(bookId: number, authors: Author[]): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const getReq = store.get(bookId);
+      getReq.onsuccess = () => {
+        const record = getReq.result as OfflineBookRecord | undefined;
+        if (
+          record &&
+          (!record.authors ||
+            record.authors.length === 0 ||
+            record.authors.every((a) => isPlaceholderAuthor(a.name)))
+        ) {
+          record.authors = authors;
+          const putReq = store.put(record);
+          putReq.onsuccess = () => resolve();
+          putReq.onerror = () => resolve();
+        } else {
+          resolve();
+        }
+      };
+      getReq.onerror = () => resolve();
+      transaction.onerror = () => resolve();
+    });
+  } catch {
+    // Non-blocking fallback
+  }
+}
+
+/**
+ * Reconstructs GutendexBook objects from IndexedDB offline metadata records.
+ */
+export async function getAllOfflineBookMetas(): Promise<GutendexBook[]> {
+  const records = await getAllOfflineBooks();
+  const metas: GutendexBook[] = [];
+
+  for (const rec of records) {
+    let authors = rec.authors;
+    const hasValidAuthors =
+      authors && authors.length > 0 && !authors.every((a) => isPlaceholderAuthor(a.name));
+
+    if (!hasValidAuthors) {
+      const recovered = await resolveLocalAuthorsForBook(rec.bookId);
+      if (recovered && recovered.length > 0) {
+        authors = recovered;
+        void patchOfflineBookAuthors(rec.bookId, recovered);
+      }
+    }
+
+    metas.push({
+      id: rec.bookId,
+      title: rec.title,
+      authors:
+        authors && authors.length > 0
+          ? authors
+          : [{ name: 'Anonymous', birth_year: null, death_year: null }],
+      translators: [],
+      subjects: [],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {
+        'image/jpeg': `https://www.gutenberg.org/cache/epub/${rec.bookId}/pg${rec.bookId}.cover.medium.jpg`,
+        'application/epub+zip': `https://www.gutenberg.org/ebooks/${rec.bookId}.epub3.images`,
+      },
+      download_count: 0,
+    });
+  }
+
+  return metas;
 }
 
 /**

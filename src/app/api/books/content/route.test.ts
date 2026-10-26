@@ -265,7 +265,9 @@ describe('GET /api/books/content', () => {
     expect(res.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalled();
     const calledUrl = fetchSpy.mock.calls[0][0] as string;
-    expect(calledUrl).toMatch(/^https:\/\/www\.gutenberg\.org\/(cache\/epub|files)\/\d{1,8}\//);
+    expect(calledUrl).toMatch(
+      /^https:\/\/(aleph\.gutenberg\.org|gutenberg\.pglaf\.org|gutenberg\.readingroo\.ms|www\.gutenberg\.org)\/(cache\/epub|files)\/\d{1,8}\//
+    );
   });
 
   it('falls back to secondary mirror when primary mirror returns 404', async () => {
@@ -349,5 +351,117 @@ describe('GET /api/books/content', () => {
     expect(fetchSpy.mock.calls[1][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
     const text = await res.text();
     expect(text).toContain('Pride and Prejudice');
+  });
+
+  describe('6-Tier Project Gutenberg Mirror & Fallback Cascade', () => {
+    it('Tier 1: serves directly from aleph.gutenberg.org when available', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy.mock.calls[0][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
+    });
+
+    it('Tier 2: falls back to gutenberg.pglaf.org when aleph.gutenberg.org returns 503', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('Service Unavailable', { status: 503 }))
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy.mock.calls[0][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
+      expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt');
+    });
+
+    it('Tier 3: falls back to gutenberg.readingroo.ms when aleph and pglaf mirrors fail', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      expect(fetchSpy.mock.calls[2][0]).toBe('https://gutenberg.readingroo.ms/cache/epub/1342/pg1342.txt');
+    });
+
+    it('Tier 4: falls back to www.gutenberg.org/cache/epub when all 3 harvest mirrors fail', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(fetchSpy.mock.calls[3][0]).toBe('https://www.gutenberg.org/cache/epub/1342/pg1342.txt');
+    });
+
+    it('Tier 5: falls back to www.gutenberg.org/files/{id}/{id}-0.txt when all /cache/epub endpoints return 404', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(5);
+      expect(fetchSpy.mock.calls[4][0]).toBe('https://www.gutenberg.org/files/1342/1342-0.txt');
+    });
+
+    it('Tier 6: falls back to legacy www.gutenberg.org/files/{id}/{id}.txt when all 5 prior tiers fail', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(6);
+      expect(fetchSpy.mock.calls[5][0]).toBe('https://www.gutenberg.org/files/1342/1342.txt');
+    });
+
+    it('resolves relative Location redirect paths against the active mirror origin', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(
+          new Response(null, {
+            status: 302,
+            headers: new Headers({
+              Location: '/files/1342/1342-0.txt',
+            }),
+          })
+        )
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt');
+      expect(fetchSpy.mock.calls[2][0]).toBe('https://gutenberg.pglaf.org/files/1342/1342-0.txt');
+    });
   });
 });

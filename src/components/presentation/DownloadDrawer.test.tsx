@@ -8,6 +8,7 @@ import type { GutendexBook } from '@/types/book.types';
 
 vi.mock('@/lib/offline-storage', () => ({
   getOfflineBookIds: vi.fn().mockResolvedValue([]),
+  getAllOfflineBookMetas: vi.fn().mockResolvedValue([]),
   saveOfflineBook: vi.fn().mockResolvedValue(undefined),
   removeOfflineBook: vi.fn().mockResolvedValue(undefined),
   getStorageQuota: vi.fn().mockResolvedValue(null),
@@ -177,5 +178,78 @@ describe('DownloadDrawer component', () => {
 
     expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
     fetchSpy.mockRestore();
+  });
+
+  it('displays Offline Mode Notice Banner, disables external format links and Save Offline when offline and book is not cached', async () => {
+    const { getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    const networkModule = await import('@/hooks/useNetworkStatus');
+    const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+      isOnline: false,
+      isOffline: true,
+    });
+
+    render(
+      <DownloadDrawer
+        book={mockBooks[0]}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    const banner = screen.getByTestId('download-drawer-offline-mode-banner');
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent(/Offline Mode Active/i);
+    expect(banner).toHaveTextContent(/You can only remove already-downloaded books/i);
+
+    const saveOfflineBtn = screen.getByRole('button', { name: `Save ${mockBooks[0].title} for offline reading` });
+    expect(saveOfflineBtn).toBeDisabled();
+
+    // External format download links should be replaced with disabled Offline buttons
+    expect(screen.queryByRole('link', { name: /Download/i })).not.toBeInTheDocument();
+    const offlineFormatButtons = screen.getAllByRole('button', { name: 'Offline' });
+    expect(offlineFormatButtons.length).toBe(4);
+    offlineFormatButtons.forEach((btn) => {
+      expect(btn).toBeDisabled();
+    });
+
+    networkSpy.mockRestore();
+  });
+
+  it('keeps Remove button active when offline and book is already downloaded', async () => {
+    const { getOfflineBookIds, removeOfflineBook } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
+
+    const networkModule = await import('@/hooks/useNetworkStatus');
+    const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+      isOnline: false,
+      isOffline: true,
+    });
+
+    render(
+      <DownloadDrawer
+        book={mockBooks[0]}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId('download-drawer-offline-mode-banner')).toBeInTheDocument();
+
+    const removeBtn = await screen.findByRole('button', { name: `Remove offline copy of ${mockBooks[0].title}` });
+    expect(removeBtn).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(removeBtn);
+    });
+
+    const confirmModal = screen.getByTestId('remove-offline-book-dialog');
+    await act(async () => {
+      fireEvent.click(within(confirmModal).getByRole('button', { name: /remove download/i }));
+    });
+
+    expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
+    networkSpy.mockRestore();
   });
 });

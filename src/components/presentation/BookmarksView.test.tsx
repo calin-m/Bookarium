@@ -28,10 +28,17 @@ vi.mock('next/navigation', () => ({
 }));
 
 let mockOfflineBookIds: number[] = [];
+let mockOfflineBooks: GutendexBook[] = [];
+const mockDownloadBook = vi.fn();
+const mockRemoveBook = vi.fn();
 vi.mock('@/hooks/useOfflineBooks', () => ({
   useOfflineBooks: () => ({
     offlineBookIds: mockOfflineBookIds,
+    offlineBooks: mockOfflineBooks,
     isBookOffline: (id: number) => mockOfflineBookIds.includes(id),
+    downloadBook: mockDownloadBook,
+    removeBook: mockRemoveBook,
+    downloadingBookId: null,
   }),
 }));
 
@@ -55,6 +62,7 @@ describe('BookmarksView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockOfflineBookIds = [];
+    mockOfflineBooks = [];
     useReaderStore.setState({
       readingProgress: {},
       readingPositions: {},
@@ -667,6 +675,137 @@ describe('BookmarksView', () => {
 
     fireEvent.mouseLeave(card);
     expect(card).toHaveAttribute('data-active', 'false');
+
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
+  });
+
+  it('renders authentic author name for offline-saved volume on page refresh without reverting to Anonymous', () => {
+    mockOfflineBookIds = [1342];
+    mockOfflineBooks = [
+      {
+        ...mockBook,
+        authors: [{ name: 'Anonymous', birth_year: null, death_year: null }],
+      },
+    ];
+
+    useBookshelfStore.setState({
+      savedBooks: [mockBook],
+    });
+    useReaderStore.setState({
+      readingPositions: {
+        1342: {
+          chapterIndex: 1,
+          chapterPage: 1,
+          globalPage: 5,
+          lastReadAt: new Date().toISOString(),
+          bookTitle: 'Pride and Prejudice',
+          bookAuthors: ['Austen, Jane'],
+        },
+      },
+      readingProgress: { 1342: 25 },
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.getByText('Jane Austen')).toBeInTheDocument();
+    expect(screen.queryByText('Anonymous')).not.toBeInTheDocument();
+  });
+
+  it('handles offline download toggle, removal confirmation modal, and resume navigation', async () => {
+    mockOfflineBookIds = [];
+    mockDownloadBook.mockReset().mockResolvedValue(true);
+    mockRemoveBook.mockReset().mockResolvedValue(undefined);
+
+    useBookshelfStore.setState({ savedBooks: [mockBook] });
+    useReaderStore.setState({
+      readingProgress: { 1342: 40 },
+      readingPositions: {
+        1342: { chapterIndex: 1, chapterPage: 2, globalPage: 6, lastReadAt: new Date().toISOString() },
+      },
+    });
+
+    const { unmount } = renderWithClient(<BookmarksView />);
+
+    // 1. Download book offline
+    const offlineBtn = screen.getByTestId('bookmark-card-offline-toggle-btn');
+    await act(async () => {
+      fireEvent.click(offlineBtn);
+    });
+    expect(mockDownloadBook).toHaveBeenCalled();
+
+    // 2. Resume navigation
+    const resumeBtn = screen.getByRole('button', { name: /Resume/i });
+    fireEvent.click(resumeBtn);
+    expect(mockPush).toHaveBeenCalledWith('/read/1342');
+
+    unmount();
+
+    // 3. Remove offline book with modal
+    mockOfflineBookIds = [1342];
+    renderWithClient(<BookmarksView />);
+    const removeOfflineBtn = screen.getByTestId('bookmark-card-offline-toggle-btn');
+    fireEvent.click(removeOfflineBtn);
+
+    // Modal opens
+    const modal = screen.getByRole('dialog');
+    expect(modal).toBeInTheDocument();
+    const cancelModalBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelModalBtn);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    // Open again and confirm
+    fireEvent.click(screen.getByTestId('bookmark-card-offline-toggle-btn'));
+    const confirmRemoveBtn = screen.getByRole('button', { name: /Remove Download/i });
+    await act(async () => {
+      fireEvent.click(confirmRemoveBtn);
+    });
+    expect(mockRemoveBook).toHaveBeenCalledWith(1342);
+  });
+
+  it('paginates volumes when count exceeds page size of 12 and handles mobile scroll focus', () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 390 });
+
+    const thirteenBooks: GutendexBook[] = Array.from({ length: 13 }, (_, i) => ({
+      ...mockBook,
+      id: 2000 + i,
+      title: `Volume ${i + 1}`,
+    }));
+
+    const positions: Record<number, any> = {};
+    const progress: Record<number, number> = {};
+    thirteenBooks.forEach((b, idx) => {
+      positions[b.id] = {
+        chapterIndex: 0,
+        chapterPage: 1,
+        globalPage: 1,
+        lastReadAt: new Date(1700000000000 - idx * 10000).toISOString(),
+      };
+      progress[b.id] = 10;
+    });
+
+    useBookshelfStore.setState({ savedBooks: thirteenBooks });
+    useReaderStore.setState({ readingPositions: positions, readingProgress: progress });
+
+    renderWithClient(<BookmarksView />);
+
+    // First page shows 12 volumes
+    expect(screen.getByText('Volume 1')).toBeInTheDocument();
+    expect(screen.getByText('Volume 12')).toBeInTheDocument();
+    expect(screen.queryByText('Volume 13')).not.toBeInTheDocument();
+
+    // Go to page 2
+    const page2Btn = screen.getByRole('button', { name: /Page 2/i });
+    fireEvent.click(page2Btn);
+    expect(screen.getByText('Volume 13')).toBeInTheDocument();
+
+    // Trigger mobile scroll event
+    fireEvent.scroll(window);
+    fireEvent.resize(window);
+
+    // Tap outside cards
+    fireEvent.pointerDown(document.body);
 
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
   });

@@ -566,4 +566,86 @@ describe('useAuthStore', () => {
       expect(useAuthStore.getState().profile).toBeNull();
     });
   });
+
+  describe('offline-first auth & profile sync', () => {
+    it('preserves persisted user and profile when initializeAuth runs offline', async () => {
+      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+      useAuthStore.setState({
+        user: { id: 'offline-user', email: 'offline@bookarium.test' } as any,
+        profile: { id: 'offline-user', display_name: 'Offline Scholar' } as any,
+        isLoading: true,
+      });
+      mockGetUser.mockResolvedValueOnce({ data: { user: null }, error: { message: 'Network error' } });
+      mockOnAuthStateChange.mockImplementationOnce((cb: any) => {
+        cb('INITIAL_SESSION', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      try {
+        useAuthStore.getState().initializeAuth();
+        await Promise.resolve();
+
+        expect(useAuthStore.getState().user?.id).toBe('offline-user');
+        expect(useAuthStore.getState().profile?.display_name).toBe('Offline Scholar');
+        expect(useAuthStore.getState().isLoading).toBe(false);
+      } finally {
+        Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+      }
+    });
+
+    it('updates profile optimistically offline and flushes pendingProfileUpdates on syncWithCloud when online', async () => {
+      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+      useAuthStore.setState({
+        user: { id: 'offline-user', email: 'offline@bookarium.test' } as any,
+        profile: { id: 'offline-user', display_name: 'Before Offline Edit', is_public: false } as any,
+        pendingProfileUpdates: null,
+      });
+
+      const res = await useAuthStore.getState().updateProfile({
+        display_name: 'Edited Offline',
+        bio: 'Offline biography note',
+        is_public: true,
+      });
+
+      expect(res.error).toBeNull();
+      expect(useAuthStore.getState().profile?.display_name).toBe('Edited Offline');
+      expect(useAuthStore.getState().profile?.bio).toBe('Offline biography note');
+      expect(useAuthStore.getState().pendingProfileUpdates).toEqual(
+        expect.objectContaining({
+          display_name: 'Edited Offline',
+          bio: 'Offline biography note',
+          is_public: true,
+        })
+      );
+
+      // Reconnect and syncWithCloud
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+      const mockUpdateEq = vi.fn().mockResolvedValue({ error: null });
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq });
+      const mockSelectSingle = vi.fn().mockResolvedValue({
+        data: {
+          id: 'offline-user',
+          display_name: 'Edited Offline',
+          bio: 'Offline biography note',
+          is_public: true,
+        },
+        error: null,
+      });
+      mockFrom.mockImplementation(() => ({
+        update: mockUpdate,
+        select: () => ({ eq: () => ({ single: mockSelectSingle }) }),
+      }));
+
+      await useAuthStore.getState().syncWithCloud('offline-user');
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          display_name: 'Edited Offline',
+          bio: 'Offline biography note',
+          is_public: true,
+        })
+      );
+      expect(useAuthStore.getState().pendingProfileUpdates).toBeNull();
+    });
+  });
 });

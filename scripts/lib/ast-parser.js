@@ -776,7 +776,7 @@ function extractWorkerCatalog(srcDir) {
     workers.push({
       name: 'sw',
       file: 'public/sw.js',
-      role: 'Progressive Web App (PWA) Service Worker (`bookarium-app-shell-v2`) providing offline App Shell caching, static asset resilience, and `/read/*` RSC navigation fallback for 100% offline reading.',
+      role: 'Progressive Web App (PWA) Service Worker (`bookarium-app-shell-v3`) providing offline App Shell caching, static asset resilience, `_rsc` Flight isolation, and `/read/*` navigation fallback for 100% offline reading.',
     });
   }
 

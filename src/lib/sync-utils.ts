@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -21,6 +22,7 @@ export async function syncAllStoresWithCloud(userId: string): Promise<void> {
   if (!userId) return;
 
   await Promise.allSettled([
+    useAuthStore.getState().syncWithCloud(userId),
     useBookshelfStore.getState().syncWithCloud(userId),
     useAnnotationStore.getState().syncWithCloud(userId),
     useReaderStore.getState().syncWithCloud(userId),

@@ -1,10 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Globe, Check, BookOpen } from 'lucide-react';
+import { Globe, Check, BookOpen, WifiOff } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { ReaderDrawerShell } from './ReaderDrawerShell';
 
 export interface ReaderLanguageDrawerProps {
@@ -23,6 +25,8 @@ export const ReaderLanguageDrawer: React.FC<ReaderLanguageDrawerProps> = ({
   theme = 'light',
 }) => {
   const activeTheme = getReaderTheme(theme);
+  const { isOffline } = useNetworkStatus();
+  const { isBookOffline } = useOfflineBooks();
 
   const titleContent = (
     <div>
@@ -63,50 +67,81 @@ export const ReaderLanguageDrawer: React.FC<ReaderLanguageDrawerProps> = ({
                 No other archival editions available in Gutenberg.
               </div>
             ) : (
-              translations.map((t) => (
-                <button
-                  key={`${t.languageCode}-${t.bookId}`}
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    if (!t.isCurrent && onSelectTranslation) {
-                      onSelectTranslation(t.bookId);
-                    }
-                  }}
-                  className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-left text-xs font-mono transition-colors cursor-pointer border ${
-                    t.isCurrent
-                      ? `${activeTheme.drawerActive} font-bold`
-                      : `${activeTheme.pill} ${activeTheme.drawerHover}`
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`uppercase text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                          t.isCurrent
-                            ? theme === 'sepia'
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                              : 'bg-primary-500/15 dark:bg-primary-500/25 text-primary-600 dark:text-primary-400 border-primary-500/30 dark:border-primary-500/40'
-                            : `${activeTheme.border} ${activeTheme.pill}`
-                        }`}
-                      >
-                        {t.languageCode}
+              translations.map((t) => {
+                const isEditionOffline = isBookOffline(t.bookId);
+                const isUnavailableOffline = isOffline && !t.isCurrent && !isEditionOffline;
+
+                return (
+                  <button
+                    key={`${t.languageCode}-${t.bookId}`}
+                    type="button"
+                    disabled={isUnavailableOffline}
+                    onClick={() => {
+                      if (isUnavailableOffline) return;
+                      onClose();
+                      if (!t.isCurrent && onSelectTranslation) {
+                        onSelectTranslation(t.bookId);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-left text-xs font-mono transition-colors border ${
+                      isUnavailableOffline
+                        ? 'opacity-60 cursor-not-allowed border-dashed border-border'
+                        : 'cursor-pointer'
+                    } ${
+                      t.isCurrent
+                        ? `${activeTheme.drawerActive} font-bold`
+                        : `${activeTheme.pill} ${activeTheme.drawerHover}`
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`uppercase text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                            t.isCurrent
+                              ? theme === 'sepia'
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                : 'bg-primary-500/15 dark:bg-primary-500/25 text-primary-600 dark:text-primary-400 border-primary-500/30 dark:border-primary-500/40'
+                              : `${activeTheme.border} ${activeTheme.pill}`
+                          }`}
+                        >
+                          {t.languageCode}
+                        </span>
+                        <span className="truncate font-medium">{t.languageLabel}</span>
+                      </div>
+                      <span className={`text-[10px] truncate block mt-0.5 ${activeTheme.textMuted}`}>
+                        {t.title} (#{t.bookId})
                       </span>
-                      <span className="truncate font-medium">{t.languageLabel}</span>
                     </div>
-                    <span className={`text-[10px] truncate block mt-0.5 ${activeTheme.textMuted}`}>
-                      {t.title} (#{t.bookId})
-                    </span>
-                  </div>
-                  {t.isCurrent && (
-                    <Check
-                      className={`w-4 h-4 shrink-0 ${
-                        theme === 'sepia' ? 'text-amber-500' : 'text-primary'
-                      }`}
-                    />
-                  )}
-                </button>
-              ))
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isUnavailableOffline && (
+                        <span
+                          data-testid={`translation-offline-badge-${t.bookId}`}
+                          className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold"
+                        >
+                          <WifiOff className="w-2.5 h-2.5" />
+                          <span>Not Downloaded</span>
+                        </span>
+                      )}
+                      {!t.isCurrent && !isUnavailableOffline && isEditionOffline && (
+                        <span
+                          data-testid={`translation-downloaded-badge-${t.bookId}`}
+                          className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold"
+                        >
+                          <span>Downloaded</span>
+                        </span>
+                      )}
+                      {t.isCurrent && (
+                        <Check
+                          className={`w-4 h-4 shrink-0 ${
+                            theme === 'sepia' ? 'text-amber-500' : 'text-primary'
+                          }`}
+                        />
+                      )}
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>

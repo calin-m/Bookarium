@@ -8,12 +8,14 @@ export interface NotablePassagesSpreadProps {
     tertiaryQuote?: string;
   };
   isRestricted?: boolean;
+  isUnavailableOffline?: boolean;
   country?: string;
 }
 
 export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({
   passage,
   isRestricted = false,
+  isUnavailableOffline = false,
   country,
 }) => {
   const rightQuotesCount = 1 + (passage.rightPageQuote2 ? 1 : 0) + (passage.tertiaryQuote ? 1 : 0);
@@ -25,6 +27,10 @@ export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({
         {isRestricted ? (
           <span className="text-amber-600 dark:text-amber-400 font-bold uppercase" data-testid="notable-passages-restricted-badge">
             Protected ({country || 'Restricted'})
+          </span>
+        ) : isUnavailableOffline ? (
+          <span className="text-amber-600 dark:text-amber-400 font-bold uppercase" data-testid="notable-passages-offline-unavailable-badge">
+            Not Downloaded
           </span>
         ) : (
           <span className="text-success font-bold uppercase">CC0 / Free</span>

@@ -8,6 +8,14 @@ import {
   type PublicBookshelfWithItems,
 } from './PublicProfileView';
 
+let mockProfileOfflineIds: number[] = [];
+vi.mock('@/hooks/useOfflineBooks', () => ({
+  useOfflineBooks: () => ({
+    offlineBookIds: mockProfileOfflineIds,
+    isBookOffline: (id: number) => mockProfileOfflineIds.includes(id),
+  }),
+}));
+
 const mockProfile: PublicScholarProfile = {
   id: 'user-scholar-1',
   display_name: 'Jane Austen',
@@ -48,6 +56,7 @@ describe('PublicProfileView', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockProfileOfflineIds = [];
     writeTextMock = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, {
       clipboard: {
@@ -303,5 +312,76 @@ describe('PublicProfileView', () => {
     expect(html).not.toContain('hover:border-primary/40');
     expect(html).toContain('hover:shadow-booksaw-hover');
   });
-});
 
+  it('enforces offline parity: disables fellowship actions and uncached bookshelf items when offline', async () => {
+    const originalOnLine = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+
+    // Book 84 is downloaded; book 1342 is NOT downloaded
+    mockProfileOfflineIds = [84];
+
+    act(() => {
+      useAuthStore.setState({
+        user: { id: 'visitor-user-2', email: 'visitor@bookarium.test' } as unknown as ReturnType<typeof useAuthStore.getState>['user'],
+      });
+      useFellowshipStore.setState({
+        circles: [],
+      });
+    });
+
+    const multiItemShelves: PublicBookshelfWithItems[] = [
+      {
+        id: 'mixed-shelf',
+        name: 'Classical Collection',
+        description: 'Classics shelf',
+        items: [
+          {
+            book_id: 1342,
+            book_title: 'Pride and Prejudice',
+            book_authors: ['Jane Austen'],
+          },
+          {
+            book_id: 84,
+            book_title: 'Frankenstein',
+            book_authors: ['Mary Shelley'],
+          },
+        ],
+      },
+    ];
+
+    try {
+      render(
+        <PublicProfileView
+          profile={mockProfile}
+          habits={mockHabits}
+          bookshelves={multiItemShelves}
+        />
+      );
+
+      // Social / fellowship action is disabled when offline
+      const inviteBtn = screen.getByTestId('public-profile-invite-circle-btn');
+      expect(inviteBtn).toBeDisabled();
+
+      // Uncached item (1342) shows Not Downloaded badge and disabled Unavailable Offline button
+      expect(screen.getByTestId('public-shelf-offline-badge-1342')).toHaveTextContent('Not Downloaded');
+      const disabledReadBtn = screen.getByTestId('public-shelf-read-disabled-1342');
+      expect(disabledReadBtn).toBeDisabled();
+      expect(disabledReadBtn).toHaveTextContent('Unavailable Offline');
+
+      // Cached item (84) does NOT show Not Downloaded badge and has active Read Work link
+      expect(screen.queryByTestId('public-shelf-offline-badge-84')).toBeNull();
+      const readLinks = screen.getAllByRole('link', { name: /Read Work/i });
+      expect(readLinks).toHaveLength(1);
+      expect(readLinks[0]).toHaveAttribute('href', '/read/84');
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
+      act(() => {
+        useAuthStore.setState({ user: null });
+        useFellowshipStore.getState().clearFellowshipState();
+      });
+    }
+  });
+});

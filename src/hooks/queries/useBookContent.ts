@@ -222,10 +222,12 @@ export function useBookContent(contentUrl?: string, bookId?: number) {
     queryKey: ['book-content', contentUrl, bookId],
     queryFn: () => fetchBookContent(contentUrl, bookId),
     enabled: Boolean(contentUrl || bookId),
+    networkMode: 'always',
     staleTime: 60 * 60 * 1000, // 1 hour caching for book text
     retry: (failureCount, error) => {
-      // Never retry on HTTP 451 legal restrictions
+      // Never retry on HTTP 451 legal restrictions or when device is offline
       if (error instanceof LegalRestrictionError) return false;
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
       return failureCount < 2;
     },
   });

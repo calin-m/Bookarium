@@ -16,6 +16,7 @@ import {
   Shield,
   Users,
   Handshake,
+  WifiOff,
 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +24,8 @@ import { PrivateProfileNotice } from '@/components/profile/PrivateProfileNotice'
 import { PinnedAccoladesShelf, type PinnedBookplateItem } from '@/components/profile/PinnedAccoladesShelf';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 
 const SymposiumInviteModal = dynamic(
   () => import('@/components/symposium/SymposiumInviteModal').then((mod) => mod.SymposiumInviteModal),
@@ -85,6 +88,8 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   const user = useAuthStore((s) => s.user);
   const circles = useFellowshipStore((s) => s.circles);
   const inviteFellowByUsername = useFellowshipStore((s) => s.inviteFellowByUsername);
+  const { isOffline } = useNetworkStatus();
+  const { isBookOffline } = useOfflineBooks();
 
   // Strict Opt-In Protection: If not public, render classical Private Sanctuary
   if (!profile.is_public) {
@@ -99,7 +104,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   );
 
   const handleInviteCircle = async () => {
-    if (!profile.username) return;
+    if (!profile.username || isOffline) return;
     const res = await inviteFellowByUsername(profile.username);
     if (!res.error) {
       setCircleSent(true);
@@ -202,6 +207,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                   <Button
                     variant="primary"
                     size="sm"
+                    disabled={isOffline}
                     onClick={() => setIsSymposiumModalOpen(true)}
                     data-testid="public-profile-start-symposium-btn"
                     className="font-mono text-xs uppercase flex items-center gap-1.5"
@@ -224,6 +230,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                   <Button
                     variant="primary"
                     size="sm"
+                    disabled={isOffline}
                     onClick={handleInviteCircle}
                     data-testid="public-profile-invite-circle-btn"
                     className="font-mono text-xs uppercase flex items-center gap-1.5"
@@ -408,29 +415,60 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
 
                   {shelf.items.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-2">
-                      {shelf.items.map((item) => (
-                        <div
-                          key={`item-${shelf.id}-${item.book_id}`}
-                          className="group border border-border rounded-xl p-4 bg-muted/20 hover:bg-card hover:shadow-booksaw-hover transition-all flex flex-col justify-between space-y-3"
-                        >
-                          <div className="space-y-1 min-w-0">
-                            <h4 className="font-serif font-bold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                              {item.book_title}
-                            </h4>
-                            <p className="text-xs font-sans text-muted-foreground truncate">
-                              {item.book_authors.length > 0 ? item.book_authors.join(', ') : 'Anonymous'}
-                            </p>
-                          </div>
+                      {shelf.items.map((item) => {
+                        const isBookCached = isBookOffline(item.book_id);
+                        const isUnavailableOffline = isOffline && !isBookCached;
 
-                          <Link
-                            href={ROUTES.READ(item.book_id)}
-                            className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg text-xs font-mono bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors"
+                        return (
+                          <div
+                            key={`item-${shelf.id}-${item.book_id}`}
+                            className={`group border border-border rounded-xl p-4 bg-muted/20 hover:bg-card hover:shadow-booksaw-hover transition-all flex flex-col justify-between space-y-3 ${
+                              isUnavailableOffline ? 'opacity-75 border-dashed' : ''
+                            }`}
                           >
-                            <BookOpen className="w-3.5 h-3.5" />
-                            <span>Read Work</span>
-                          </Link>
-                        </div>
-                      ))}
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-start justify-between gap-1.5">
+                                <h4 className="font-serif font-bold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                                  {item.book_title}
+                                </h4>
+                                {isUnavailableOffline && (
+                                  <span
+                                    data-testid={`public-shelf-offline-badge-${item.book_id}`}
+                                    className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold shrink-0"
+                                  >
+                                    <WifiOff className="w-2.5 h-2.5" />
+                                    <span>Not Downloaded</span>
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-sans text-muted-foreground truncate">
+                                {item.book_authors.length > 0 ? item.book_authors.join(', ') : 'Anonymous'}
+                              </p>
+                            </div>
+
+                            {isUnavailableOffline ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled
+                                data-testid={`public-shelf-read-disabled-${item.book_id}`}
+                                className="w-full text-xs font-mono opacity-50 cursor-not-allowed justify-center"
+                              >
+                                Unavailable Offline
+                              </Button>
+                            ) : (
+                              <Link
+                                href={ROUTES.READ(item.book_id)}
+                                className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-lg text-xs font-mono bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors"
+                              >
+                                <BookOpen className="w-3.5 h-3.5" />
+                                <span>Read Work</span>
+                              </Link>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-xs font-serif italic text-muted-foreground pt-2">

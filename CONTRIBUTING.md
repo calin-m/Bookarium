@@ -5,7 +5,7 @@ Thank you for your interest in contributing to **Bookarium**! We welcome bug rep
 Bookarium is built on three immutable engineering tenets:
 1. **Public Domain Integrity**: 100% legal, open public domain literature (CC0 / Zero-Copyright / Project Gutenberg). All API queries strictly enforce `copyright=false`.
 2. **Zero Paid Keys Requirement**: The complete user experience operates without third-party paid keys, credit cards, or mandatory account creation.
-3. **Rigorous Quality Engine**: Zero regressions, 100% co-located testing with $\ge 80\%$ test coverage, and automated AST-driven documentation synchronization.
+3. **Rigorous Quality Engine**: Zero regressions, 100% co-located testing with $\ge 85\%$ test coverage, and automated AST-driven documentation synchronization.
 
 ---
 
@@ -94,9 +94,9 @@ npm run verify
 ```
 This runs all automated quality gateways:
 1. **Pass 0.5**: Secret Prevention Scanner
-2. **Pass 0.75**: Pre-Commit SAST & OWASP Security Suite (Dependency CVEs, SSRF, XSS, Open Redirects, License)
+2. **Pass 0.75**: 7-Pillar Pre-Commit SAST & OWASP Security Suite (Dependency CVEs, Rate Limiting & Mirror SSRF, DOM XSS, Open Redirects, License, PostgreSQL RLS & `search_path`, OWASP HTTP Headers)
 3. **Pass 1**: TypeScript Strict Typecheck (`tsc --noEmit`)
-4. **Pass 2 & 3**: Vitest MSW & UI Test Suites ($\ge 80\%$ coverage floor)
+4. **Pass 2 & 3**: Vitest MSW & UI Test Suites ($\ge 85\%$ coverage floor across 189 suites)
 5. **Pass 4**: Living Documentation AST Re-Compilation
 6. **Pass 5**: ADR Decision Ledger Validation
 7. **Pass 6**: ESLint & Knip Quality Audit
@@ -130,7 +130,7 @@ Target all pull requests to the **`master`** branch.
 
 1. Ensure every new or modified component (`*.tsx`), hook (`*.ts`), or store (`*.ts`) includes an adjacent, co-located test (`*.test.tsx` or `*.test.ts`).
 2. Adhere to the **Anti-Tautology Protocol**: assert genuine DOM interactions and user flows; never write synthetic tests solely to inflate coverage.
-3. Keep test coverage above **80%** (target: $\ge 85\%$).
+3. Keep test coverage at or above **85%** across lines, statements, functions, and branches.
 4. Run `npm run verify` locally before opening your PR.
 5. Fill out the [Pull Request Template](.github/pull_request_template.md) completely.
 

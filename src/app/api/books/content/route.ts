@@ -137,11 +137,12 @@ export async function GET(request: NextRequest) {
   // ==========================================================================
   const safeId = encodeURIComponent(String(Math.trunc(bookId)));
   const targetUrls: string[] = [
+    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://aleph.gutenberg.org').toString(),
+    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.pglaf.org').toString(),
+    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.readingroo.ms').toString(),
     new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://www.gutenberg.org').toString(),
     new URL(`/files/${safeId}/${safeId}-0.txt`, 'https://www.gutenberg.org').toString(),
     new URL(`/files/${safeId}/${safeId}.txt`, 'https://www.gutenberg.org').toString(),
-    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://aleph.gutenberg.org').toString(),
-    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.readingroo.ms').toString(),
   ];
 
   let textContent = '';
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest) {
         signal: controller.signal,
         redirect: 'manual',
         headers: {
-          'User-Agent': `Bookarium-PublicDomain-Reader/1.0 (${SITE_CONFIG.GITHUB_REPO})`,
+          'User-Agent': SITE_CONFIG.USER_AGENT,
           Accept: 'text/plain, text/html, */*',
           'Accept-Encoding': 'gzip, deflate, br',
           Connection: 'keep-alive',
@@ -166,12 +167,13 @@ export async function GET(request: NextRequest) {
       // Follow redirects only if the target location is verified safe (anti-SSRF)
       if ((response.status === 301 || response.status === 302) && response.headers?.get('location')) {
         const redirectLocation = response.headers.get('location')!;
-        if (isSafeUpstreamUrl(redirectLocation)) {
-          response = await fetch(redirectLocation, {
+        if (isSafeUpstreamUrl(redirectLocation, targetUrl)) {
+          const resolvedRedirectUrl = new URL(redirectLocation, targetUrl).toString();
+          response = await fetch(resolvedRedirectUrl, {
             signal: controller.signal,
             redirect: 'manual',
             headers: {
-              'User-Agent': `Bookarium-PublicDomain-Reader/1.0 (${SITE_CONFIG.GITHUB_REPO})`,
+              'User-Agent': SITE_CONFIG.USER_AGENT,
               Accept: 'text/plain, text/html, */*',
               'Accept-Encoding': 'gzip, deflate, br',
               Connection: 'keep-alive',

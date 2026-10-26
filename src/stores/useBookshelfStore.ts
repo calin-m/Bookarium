@@ -10,6 +10,7 @@ import { useAuthStore } from './useAuthStore';
 import { useReaderStore } from './useReaderStore';
 import { toCloudBookInsert } from '@/lib/adapters/book.adapter';
 import { removeOfflineBook } from '@/lib/offline-storage';
+import { isPlaceholderAuthor } from '@/lib/book-metadata';
 
 function notifyOfflineUpdated(): void {
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
@@ -130,7 +131,8 @@ export const useBookshelfStore = create<BookshelfState>()(
         const { savedBooks, cloudBookshelves, activeBookshelfId, cloudBookshelfItems, deletedBookIds = {} } = get();
         const exists = savedBooks.some((b) => b.id === book.id);
         const nextSaved = exists ? savedBooks.filter((b) => b.id !== book.id) : [book, ...savedBooks];
-        const targetShelfId = activeBookshelfId || cloudBookshelves.find((s) => s.is_default)?.id || cloudBookshelves[0]?.id;
+        const effectiveActiveId = activeBookshelfId === '__downloaded__' ? null : activeBookshelfId;
+        const targetShelfId = effectiveActiveId || cloudBookshelves.find((s) => s.is_default)?.id || cloudBookshelves[0]?.id;
 
         const nextDeleted = { ...deletedBookIds };
         if (exists) {
@@ -287,7 +289,10 @@ export const useBookshelfStore = create<BookshelfState>()(
 
           const itemHasLifespans = Boolean(item.authors?.some((a) => a.birth_year != null || a.death_year != null));
           const freshHasLifespans = Boolean(fresh.authors?.some((a) => a.birth_year != null || a.death_year != null));
+          const itemHasAuthors = Boolean(item.authors?.some((a) => a.name && !isPlaceholderAuthor(a.name)));
+          const freshHasAuthors = Boolean(fresh.authors?.some((a) => a.name && !isPlaceholderAuthor(a.name)));
           const hasNewLifespans = freshHasLifespans && !itemHasLifespans;
+          const hasNewAuthors = !itemHasAuthors && freshHasAuthors;
           const hasNewFormats = Boolean(fresh.formats) && Object.keys(fresh.formats).some((key) => !item.formats?.[key]);
           const hasNewTranslators = Boolean(
             fresh.translators &&
@@ -295,11 +300,11 @@ export const useBookshelfStore = create<BookshelfState>()(
               (!item.translators || item.translators.length === 0)
           );
 
-          if (hasNewLifespans || hasNewFormats || hasNewTranslators) {
+          if (hasNewLifespans || hasNewAuthors || hasNewFormats || hasNewTranslators) {
             markChanged();
             return {
               ...item,
-              authors: hasNewLifespans && fresh.authors ? fresh.authors : item.authors,
+              authors: (hasNewLifespans || hasNewAuthors) && fresh.authors ? fresh.authors : item.authors,
               translators: hasNewTranslators && fresh.translators ? fresh.translators : item.translators,
               formats: { ...item.formats, ...fresh.formats },
             };

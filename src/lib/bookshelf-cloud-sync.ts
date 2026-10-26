@@ -53,6 +53,23 @@ export type OutboxActionInput =
   | {
       type: 'DELETE_CURATION';
       payload: { user_id: string; book_id: number };
+    }
+  | {
+      type: 'MOVE_BOOK';
+      payload: {
+        user_id: string;
+        book_id: number;
+        bookshelf_id: string;
+      };
+    }
+  | {
+      type: 'UPDATE_SHELF';
+      payload: {
+        shelf_id: string;
+        user_id: string;
+        name?: string;
+        is_public?: boolean;
+      };
     };
 
 export type OutboxAction = OutboxActionInput & {
@@ -76,6 +93,7 @@ export interface BookshelfSyncSlice {
   activeBookshelfId: string | null;
   isSyncing: boolean;
   outbox: OutboxAction[];
+  queueOutboxAction?: (action: OutboxActionInput) => void;
   flushOutbox: (userId: string) => Promise<void>;
 }
 
@@ -124,6 +142,22 @@ const OUTBOX_DISPATCHERS: Record<OutboxAction['type'], OutboxDispatcher> = {
       .delete()
       .eq('user_id', String(p.user_id))
       .eq('book_id', Number(p.book_id)),
+  MOVE_BOOK: (sb, p) =>
+    sb
+      .from('bookshelf_items')
+      .update({ bookshelf_id: String(p.bookshelf_id) })
+      .eq('book_id', Number(p.book_id))
+      .eq('user_id', String(p.user_id)),
+  UPDATE_SHELF: (sb, p) => {
+    const updateFields: { name?: string; is_public?: boolean } = {};
+    if (typeof p.name === 'string') updateFields.name = p.name;
+    if (typeof p.is_public === 'boolean') updateFields.is_public = p.is_public;
+    return sb
+      .from('bookshelves')
+      .update(updateFields)
+      .eq('id', String(p.shelf_id))
+      .eq('user_id', String(p.user_id));
+  },
 };
 
 /**
@@ -180,6 +214,7 @@ export async function executeBookshelfCloudSync(
   set: BookshelfSetState
 ): Promise<void> {
   if (!userId) return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
   set({ isSyncing: true });
 
   // Flush any pending offline mutations first
@@ -189,7 +224,7 @@ export async function executeBookshelfCloudSync(
     const supabase = createClient();
 
     // 1. Fetch user shelves
-    const { data: shelves } = await supabase
+    const { data: shelves, error: shelvesError } = await supabase
       .from('bookshelves')
       .select('*')
       .eq('user_id', userId)
@@ -207,7 +242,13 @@ export async function executeBookshelfCloudSync(
       const dedupedShelves = Array.from(uniqueMap.values());
       set({ cloudBookshelves: dedupedShelves });
       currentDefaultShelf = dedupedShelves.find((s) => s.is_default) || dedupedShelves[0];
-      set({ activeBookshelfId: currentDefaultShelf.id });
+      const currentActive = get().activeBookshelfId;
+      const shouldPreserveActive =
+        currentActive === '__downloaded__' ||
+        Boolean(currentActive && dedupedShelves.some((s) => s.id === currentActive));
+      set({
+        activeBookshelfId: shouldPreserveActive ? currentActive : currentDefaultShelf.id,
+      });
 
       // 2. Fetch items for shelves
       const itemsQuery = supabase
@@ -284,7 +325,7 @@ export async function executeBookshelfCloudSync(
           lastBookshelfSyncAt: new Date().toISOString(),
         });
       }
-    } else {
+    } else if (!shelvesError) {
       // Create default 'General' shelf for user
       const { data: newDefault } = await supabase
         .from('bookshelves')
@@ -580,6 +621,26 @@ export async function executeUpdateCloudBookshelf(
 ): Promise<boolean> {
   if (!shelfId || !name.trim() || !userId) return false;
 
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    set({
+      cloudBookshelves: get().cloudBookshelves.map((s) =>
+        s.id === shelfId
+          ? { ...s, name: name.trim(), ...(isPublic !== undefined ? { is_public: isPublic } : {}) }
+          : s
+      ),
+    });
+    get().queueOutboxAction?.({
+      type: 'UPDATE_SHELF',
+      payload: {
+        shelf_id: shelfId,
+        user_id: userId,
+        name: name.trim(),
+        ...(isPublic !== undefined ? { is_public: isPublic } : {}),
+      },
+    });
+    return true;
+  }
+
   try {
     const supabase = createClient();
     const payload: { name: string; is_public?: boolean } = { name: name.trim() };
@@ -603,7 +664,23 @@ export async function executeUpdateCloudBookshelf(
       return true;
     }
   } catch {
-    // Non-blocking fallback
+    set({
+      cloudBookshelves: get().cloudBookshelves.map((s) =>
+        s.id === shelfId
+          ? { ...s, name: name.trim(), ...(isPublic !== undefined ? { is_public: isPublic } : {}) }
+          : s
+      ),
+    });
+    get().queueOutboxAction?.({
+      type: 'UPDATE_SHELF',
+      payload: {
+        shelf_id: shelfId,
+        user_id: userId,
+        name: name.trim(),
+        ...(isPublic !== undefined ? { is_public: isPublic } : {}),
+      },
+    });
+    return true;
   }
   return false;
 }
@@ -619,6 +696,23 @@ export async function executeUpdateBookshelfPrivacy(
   set: BookshelfSetState
 ): Promise<boolean> {
   if (!shelfId || !userId) return false;
+
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    set({
+      cloudBookshelves: get().cloudBookshelves.map((s) =>
+        s.id === shelfId ? { ...s, is_public: isPublic } : s
+      ),
+    });
+    get().queueOutboxAction?.({
+      type: 'UPDATE_SHELF',
+      payload: {
+        shelf_id: shelfId,
+        user_id: userId,
+        is_public: isPublic,
+      },
+    });
+    return true;
+  }
 
   try {
     const supabase = createClient();
@@ -637,7 +731,20 @@ export async function executeUpdateBookshelfPrivacy(
       return true;
     }
   } catch {
-    // Non-blocking fallback
+    set({
+      cloudBookshelves: get().cloudBookshelves.map((s) =>
+        s.id === shelfId ? { ...s, is_public: isPublic } : s
+      ),
+    });
+    get().queueOutboxAction?.({
+      type: 'UPDATE_SHELF',
+      payload: {
+        shelf_id: shelfId,
+        user_id: userId,
+        is_public: isPublic,
+      },
+    });
+    return true;
   }
   return false;
 }
@@ -748,6 +855,17 @@ export async function executeMoveBookToShelf(
   set({ cloudBookshelfItems: nextItems });
 
   if (userId) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      get().queueOutboxAction?.({
+        type: 'MOVE_BOOK',
+        payload: {
+          user_id: userId,
+          book_id: bookId,
+          bookshelf_id: targetShelfId,
+        },
+      });
+      return true;
+    }
     try {
       const supabase = createClient();
       const { error } = await supabase
@@ -761,7 +879,14 @@ export async function executeMoveBookToShelf(
         await supabase.from('bookshelf_items').insert(insertPayload);
       }
     } catch {
-      // Non-blocking fallback
+      get().queueOutboxAction?.({
+        type: 'MOVE_BOOK',
+        payload: {
+          user_id: userId,
+          book_id: bookId,
+          bookshelf_id: targetShelfId,
+        },
+      });
     }
   }
   return true;

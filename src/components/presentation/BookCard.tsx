@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Library, Heart, Sparkles, Trash2, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, Trash2, AlertTriangle, X, CheckCircle2, WifiOff } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount } from '@/lib/utils';
 import { resolveBookTags } from '@/lib/book-tags';
@@ -18,11 +18,13 @@ import { StarRating } from '@/components/ui/StarRating';
 import { ROUTES } from '@/config/routes';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 
 export interface BookCardProps {
   book: GutendexBook;
   isOffline?: boolean;
+  hideOfflineBadge?: boolean;
   onDownloadClick?: (book: GutendexBook) => void;
   onRemoveOfflineClick?: (book: GutendexBook) => void;
   onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
@@ -34,6 +36,7 @@ export interface BookCardProps {
 export const BookCard: React.FC<BookCardProps> = ({
   book,
   isOffline = false,
+  hideOfflineBadge = false,
   onDownloadClick,
   onRemoveOfflineClick,
   onPreviewClick,
@@ -47,6 +50,8 @@ export const BookCard: React.FC<BookCardProps> = ({
   const [isConfirmingRemoval, setIsConfirmingRemoval] = React.useState(false);
   const [isRemoveOfflineModalOpen, setIsRemoveOfflineModalOpen] = React.useState(false);
   const { removeBook } = useOfflineBooks();
+  const { isOffline: isNetworkOffline } = useNetworkStatus();
+  const isUnavailableOffline = isNetworkOffline && !isOffline;
   const confirmTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const clearConfirmTimer = React.useCallback(() => {
@@ -152,6 +157,7 @@ export const BookCard: React.FC<BookCardProps> = ({
       return;
     }
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      if (isUnavailableOffline) return;
       useReaderStore.getState().openReader(book);
       router.push(ROUTES.READ(book.id));
       return;
@@ -204,7 +210,7 @@ export const BookCard: React.FC<BookCardProps> = ({
               src={formats.coverImage}
               alt={`Cover of ${book.title}`}
               className={`max-w-full max-h-full w-auto h-auto object-contain rounded-sm shadow-md transition-opacity duration-300 ${
-                isRestricted ? 'opacity-65 grayscale-[35%]' : ''
+                isRestricted || isUnavailableOffline ? 'opacity-65 grayscale-[35%]' : ''
               }`}
               loading="lazy"
               onError={() => setImageError(true)}
@@ -217,6 +223,10 @@ export const BookCard: React.FC<BookCardProps> = ({
                 {isRestricted ? (
                   <span className="text-amber-400 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> Protected ({country})
+                  </span>
+                ) : isUnavailableOffline ? (
+                  <span className="text-amber-400 flex items-center gap-1">
+                    <WifiOff className="w-3 h-3" /> Not Downloaded
                   </span>
                 ) : (
                   <span className="text-primary-400 flex items-center gap-1">
@@ -247,7 +257,7 @@ export const BookCard: React.FC<BookCardProps> = ({
         )}
 
         {/* Interactive Downloaded Availability Indicator (Top-Left) */}
-        {isOffline && (
+        {isOffline && !hideOfflineBadge && (
           <button
             type="button"
             onClick={(e) => {
@@ -513,6 +523,14 @@ export const BookCard: React.FC<BookCardProps> = ({
               >
                 Protected ({country})
               </span>
+            ) : isUnavailableOffline ? (
+              <span
+                className="text-[9px] sm:text-[10px] font-mono font-medium tracking-wider text-amber-600 dark:text-amber-400 uppercase shrink-0 whitespace-nowrap"
+                title="Not downloaded for offline reading"
+                data-testid={`book-card-unavailable-offline-${book.id}`}
+              >
+                Not Downloaded
+              </span>
             ) : status ? (
               <span className="text-[9px] sm:text-[10px] font-mono font-bold uppercase text-primary shrink-0 whitespace-nowrap">
                 {status === 'currently_reading' ? '📖 Reading' : status === 'finished' ? '✓ Finished' : '🔖 Want to Read'}
@@ -538,6 +556,18 @@ export const BookCard: React.FC<BookCardProps> = ({
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>Restricted</span>
               </Button>
+            ) : isUnavailableOffline ? (
+              <Button
+                variant="outline"
+                size="chip"
+                disabled
+                className="w-full opacity-60 cursor-not-allowed text-xs"
+                aria-label={`Read ${book.title} (Unavailable offline)`}
+                title="Not downloaded for offline reading"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Offline</span>
+              </Button>
             ) : (
               <Button
                 as={Link}
@@ -556,17 +586,21 @@ export const BookCard: React.FC<BookCardProps> = ({
             <Button
               variant="outline"
               size="chip"
-              disabled={isRestricted}
+              disabled={isRestricted || isUnavailableOffline}
               onClick={() => onDownloadClick?.(book)}
-              className={`w-full ${isRestricted ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`w-full ${isRestricted || isUnavailableOffline ? 'opacity-60 cursor-not-allowed' : ''}`}
               aria-label={
                 isRestricted
                   ? `Download unavailable for ${book.title} in ${country}`
+                  : isUnavailableOffline
+                  ? `Download unavailable for ${book.title} (Offline)`
                   : `Download options for ${book.title}`
               }
               title={
                 isRestricted
                   ? evaluation.reason || `Download unavailable in ${country}`
+                  : isUnavailableOffline
+                  ? 'Connect to the internet to download this volume'
                   : undefined
               }
             >

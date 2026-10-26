@@ -1824,6 +1824,45 @@ describe('NotebookView component', () => {
       const chronoGrid = container.querySelector('.grid.grid-cols-1.lg\\:grid-cols-2');
       expect(chronoGrid).toBeInTheDocument();
     });
+
+    it('renders Not Downloaded badge on volume header and disables Read Passage when offline and book is not downloaded', async () => {
+      const networkModule = await import('@/hooks/useNetworkStatus');
+      const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+        isOnline: false,
+        isOffline: true,
+      });
+
+      mockNotebookOfflineIds = [];
+      const ann = await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Offline undownloaded passage',
+        color: 'yellow',
+      });
+
+      const { unmount } = render(<NotebookView />);
+
+      expect(screen.getByTestId('notebook-volume-offline-badge-1342')).toHaveTextContent('Not Downloaded');
+      const jumpBtn = screen.getByTestId(`jump-reader-btn-${ann.id}`);
+      expect(jumpBtn).toBeDisabled();
+      expect(jumpBtn).toHaveTextContent('Unavailable Offline');
+
+      // Clicking volume header h2 while offline and undownloaded does not navigate
+      fireEvent.click(screen.getByRole('heading', { name: 'Pride and Prejudice' }));
+      expect(mockPush).not.toHaveBeenCalled();
+
+      // When book is downloaded offline (mockNotebookOfflineIds = [1342]), Read Passage is enabled
+      unmount();
+      mockNotebookOfflineIds = [1342];
+      render(<NotebookView />);
+      expect(screen.queryByTestId('notebook-volume-offline-badge-1342')).not.toBeInTheDocument();
+      expect(screen.getByTestId(`jump-reader-btn-${ann.id}`)).not.toBeDisabled();
+
+      networkSpy.mockRestore();
+    });
   });
 });
 

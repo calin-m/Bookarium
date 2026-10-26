@@ -19,6 +19,7 @@ export const MAX_PINNED_ACCOLADES = 3;
 export interface AccoladesState {
   unlockedAccolades: Record<AccoladeId, UnlockedAccolade>;
   pinnedAccoladeIds: AccoladeId[];
+  pendingPinUpdates: Record<string, boolean>;
   pendingCelebrations: AccoladeDefinition[];
   activeCelebration: AccoladeDefinition | null;
   isSyncing: boolean;
@@ -45,6 +46,7 @@ export const useAccoladesStore = create<AccoladesState>()(
     (set, get) => ({
       unlockedAccolades: {} as Record<AccoladeId, UnlockedAccolade>,
       pinnedAccoladeIds: [],
+      pendingPinUpdates: {},
       pendingCelebrations: [],
       activeCelebration: null,
       isSyncing: false,
@@ -131,12 +133,29 @@ export const useAccoladesStore = create<AccoladesState>()(
           });
 
           if (userId) {
-            const supabase = createClient();
-            await supabase
-              .from('user_accolades')
-              .update({ is_pinned: false, updated_at: new Date().toISOString() })
-              .eq('user_id', userId)
-              .eq('accolade_id', id);
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+              set((s) => ({
+                pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: false },
+              }));
+              return true;
+            }
+            try {
+              const supabase = createClient();
+              const { error } = await supabase
+                .from('user_accolades')
+                .update({ is_pinned: false, updated_at: new Date().toISOString() })
+                .eq('user_id', userId)
+                .eq('accolade_id', id);
+              if (error) {
+                set((s) => ({
+                  pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: false },
+                }));
+              }
+            } catch {
+              set((s) => ({
+                pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: false },
+              }));
+            }
           }
 
           return true;
@@ -159,12 +178,29 @@ export const useAccoladesStore = create<AccoladesState>()(
           });
 
           if (userId) {
-            const supabase = createClient();
-            await supabase
-              .from('user_accolades')
-              .update({ is_pinned: true, updated_at: new Date().toISOString() })
-              .eq('user_id', userId)
-              .eq('accolade_id', id);
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+              set((s) => ({
+                pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: true },
+              }));
+              return true;
+            }
+            try {
+              const supabase = createClient();
+              const { error } = await supabase
+                .from('user_accolades')
+                .update({ is_pinned: true, updated_at: new Date().toISOString() })
+                .eq('user_id', userId)
+                .eq('accolade_id', id);
+              if (error) {
+                set((s) => ({
+                  pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: true },
+                }));
+              }
+            } catch {
+              set((s) => ({
+                pendingPinUpdates: { ...(s.pendingPinUpdates || {}), [id]: true },
+              }));
+            }
           }
 
           return true;
@@ -173,10 +209,25 @@ export const useAccoladesStore = create<AccoladesState>()(
 
       syncWithCloud: async (userId: string) => {
         if (!userId) return;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
         set({ isSyncing: true });
         try {
           const supabase = createClient();
+
+          const pendingPins = { ...(get().pendingPinUpdates || {}) };
+          const pendingEntries = Object.entries(pendingPins);
+          if (pendingEntries.length > 0) {
+            for (const [accId, isPinnedVal] of pendingEntries) {
+              await supabase
+                .from('user_accolades')
+                .update({ is_pinned: isPinnedVal, updated_at: new Date().toISOString() })
+                .eq('user_id', userId)
+                .eq('accolade_id', accId);
+            }
+            set({ pendingPinUpdates: {} });
+          }
+
           const { data, error } = await supabase
             .from('user_accolades')
             .select('*')
@@ -218,10 +269,11 @@ export const useAccoladesStore = create<AccoladesState>()(
           const mergedUnlocked: Record<AccoladeId, UnlockedAccolade> = { ...currentUnlocked };
           for (const row of remoteRows) {
             const accId = row.accolade_id as AccoladeId;
+            const hasPendingPin = Object.prototype.hasOwnProperty.call(pendingPins, accId);
             mergedUnlocked[accId] = {
               id: accId,
               unlockedAt: row.unlocked_at,
-              isPinned: row.is_pinned ?? false,
+              isPinned: hasPendingPin ? pendingPins[accId] : (row.is_pinned ?? false),
               metadata: (row.metadata as Record<string, unknown>) || undefined,
             };
           }
@@ -248,6 +300,7 @@ export const useAccoladesStore = create<AccoladesState>()(
         set({
           unlockedAccolades: {} as Record<AccoladeId, UnlockedAccolade>,
           pinnedAccoladeIds: [],
+          pendingPinUpdates: {},
           pendingCelebrations: [],
           activeCelebration: null,
           isSyncing: false,
@@ -272,6 +325,7 @@ export const useAccoladesStore = create<AccoladesState>()(
       partialize: (state) => ({
         unlockedAccolades: state.unlockedAccolades,
         pinnedAccoladeIds: state.pinnedAccoladeIds,
+        pendingPinUpdates: state.pendingPinUpdates,
         lastSyncAt: state.lastSyncAt,
       }),
     }

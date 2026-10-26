@@ -353,6 +353,16 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
         startPageNumber: 1,
         pageCount: 1,
       });
+      if (postBody.trim().length > 0) {
+        sections.push({
+          id: 1,
+          title: 'Project Gutenberg License & Colophon',
+          displayTitle: 'Colophon & License',
+          content: reflowGutenbergParagraphs(postBody.trim()),
+          startPageNumber: 1,
+          pageCount: 1,
+        });
+      }
     }
     return sections;
   }

@@ -6,6 +6,7 @@ import type {
 import { CatalogProviderError } from '@/types/catalog.types';
 import type { GutendexBook, GutendexResponse } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { SITE_CONFIG } from '@/config/site-config';
 import {
   isBookPublicDomainInJurisdiction,
   getJurisdictionRule,
@@ -79,7 +80,7 @@ export class GutendexCatalogProvider implements ICatalogProvider {
           Accept: 'application/json',
           'Accept-Encoding': 'gzip, deflate, br',
           Connection: 'keep-alive',
-          'User-Agent': 'Bookarium/1.0 (Public Domain Library Reader)',
+          'User-Agent': SITE_CONFIG.USER_AGENT,
         },
         signal: controller.signal,
         next: { revalidate: 3600 },

@@ -67,5 +67,21 @@ describe('NotablePassagesSpread component', () => {
     expect(screen.queryByText('CC0 / Free')).not.toBeInTheDocument();
     expect(screen.getByTestId('notable-passages-restricted-badge')).toHaveTextContent('Protected (RO)');
   });
+
+  it('renders Not Downloaded header badge when isUnavailableOffline is true and not restricted', () => {
+    render(
+      <NotablePassagesSpread
+        passage={{
+          quoteExcerpt: 'Offline quote excerpt',
+        }}
+        isRestricted={false}
+        isUnavailableOffline={true}
+      />
+    );
+
+    expect(screen.getByText('Notable Passages')).toBeInTheDocument();
+    expect(screen.queryByText('CC0 / Free')).not.toBeInTheDocument();
+    expect(screen.getByTestId('notable-passages-offline-unavailable-badge')).toHaveTextContent('Not Downloaded');
+  });
 });
 

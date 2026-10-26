@@ -204,5 +204,36 @@ describe('useAccoladesStore', () => {
 
     warnSpy.mockRestore();
   });
+
+  it('queues pendingPinUpdates when togglePin is called offline and flushes them on syncWithCloud', async () => {
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+    useAccoladesStore.getState().evaluateAndUnlock({ currentStreak: 7 });
+
+    await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
+    expect(useAccoladesStore.getState().isPinned('seven-day-sage')).toBe(true);
+    expect(useAccoladesStore.getState().pendingPinUpdates).toEqual({
+      'seven-day-sage': true,
+    });
+
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+    mockEq.mockReturnValueOnce({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    mockEq.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'row-1',
+          user_id: 'user-123',
+          accolade_id: 'seven-day-sage',
+          unlocked_at: '2026-10-20T00:00:00.000Z',
+          is_pinned: false,
+          metadata: {},
+        },
+      ],
+      error: null,
+    });
+
+    await useAccoladesStore.getState().syncWithCloud('user-123');
+    expect(useAccoladesStore.getState().pendingPinUpdates).toEqual({});
+    expect(useAccoladesStore.getState().isPinned('seven-day-sage')).toBe(true);
+  });
 });
 

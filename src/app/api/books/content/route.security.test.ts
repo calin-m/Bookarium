@@ -137,7 +137,7 @@ describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
       expect(res.status).toBe(200);
       expect(fetchSpy).toHaveBeenCalled();
       const calledUrl = fetchSpy.mock.calls[0][0] as string;
-      expect(calledUrl).toBe('https://www.gutenberg.org/cache/epub/1342/pg1342.txt');
+      expect(calledUrl).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
     }, 15000);
   });
 
@@ -180,6 +180,32 @@ describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
       );
 
       expect(res.status).toBe(502);
+    });
+
+    it('blocks untrusted cross-origin redirect on primary mirror and advances cleanly to the next approved mirror', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 302,
+          headers: new Headers({
+            Location: 'https://evil-mirror.example.com/cache/epub/1342/pg1342.txt',
+          }),
+          text: async () => '',
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' }),
+          text: async () => sampleBookText,
+        } as any);
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy.mock.calls[0][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
+      expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt');
     });
 
     it('strips all upstream server headers and sets explicit sanitized response headers', async () => {

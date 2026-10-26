@@ -222,7 +222,7 @@ function fetchJson(url) {
         url,
         {
           headers: {
-            'User-Agent': 'Bookarium-Catalog-Seeder/1.0',
+            'User-Agent': 'Bookarium/2.8.1 (+https://github.com/calin-m/Bookarium)',
             Accept: 'application/json',
           },
         },
@@ -248,11 +248,12 @@ function fetchJson(url) {
 // Helper: fetch plain text from Gutenberg mirrors with redirect following
 function fetchBookText(bookId) {
   const mirrors = [
+    `https://aleph.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`,
+    `https://gutenberg.pglaf.org/cache/epub/${bookId}/pg${bookId}.txt`,
+    `https://gutenberg.readingroo.ms/cache/epub/${bookId}/pg${bookId}.txt`,
     `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`,
     `https://www.gutenberg.org/files/${bookId}/${bookId}-0.txt`,
     `https://www.gutenberg.org/files/${bookId}/${bookId}.txt`,
-    `https://aleph.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`,
-    `https://gutenberg.readingroo.ms/cache/epub/${bookId}/pg${bookId}.txt`,
   ];
 
   function tryFetch(url, redirectCount = 0) {
@@ -263,7 +264,7 @@ function fetchBookText(bookId) {
           url,
           {
             headers: {
-              'User-Agent': 'Bookarium-Catalog-Seeder/1.0',
+              'User-Agent': 'Bookarium/2.8.1 (+https://github.com/calin-m/Bookarium)',
               Accept: 'text/plain; charset=utf-8',
             },
           },

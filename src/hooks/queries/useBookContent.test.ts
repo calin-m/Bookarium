@@ -425,6 +425,23 @@ describe('useBookContent hook', () => {
     fetchSpy.mockRestore();
     useJurisdictionStore.setState({ country: 'US' });
   });
+
+  it('executes queryFn via networkMode always and resolves IndexedDB content even when navigator.onLine is false', async () => {
+    const { getOfflineBook } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBook).mockResolvedValueOnce('Offline book text via networkMode always');
+
+    const originalOnline = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+
+    const { result } = renderHook(() => useBookContent(undefined, 1342), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBe('Offline book text via networkMode always');
+
+    Object.defineProperty(navigator, 'onLine', { value: originalOnline, configurable: true });
+  });
 });
 
 

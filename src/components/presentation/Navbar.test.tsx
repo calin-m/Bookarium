@@ -317,6 +317,51 @@ describe('Navbar component', () => {
     useFellowshipStore.getState().clearFellowshipState();
   });
 
+  it('renders red offline Account button and offline dot when authenticated user is offline', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const networkModule = await import('@/hooks/useNetworkStatus');
+    const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+      isOnline: false,
+      isOffline: true,
+    });
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { display_name: 'Test Reader' } as any,
+    });
+
+    render(<Navbar activeView="catalog" />);
+    const userLink = screen.getByLabelText('User Account');
+    expect(userLink).toHaveClass('border-destructive/50', 'bg-destructive/10', 'text-destructive');
+    expect(userLink).toHaveAttribute('title', 'User Account (Offline Mode)');
+    expect(screen.getByTestId('navbar-offline-dot')).toBeInTheDocument();
+
+    networkSpy.mockRestore();
+  });
+
+  it('renders red offline Sign In button for guests when offline and routes to /account on click', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const networkModule = await import('@/hooks/useNetworkStatus');
+    const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+      isOnline: false,
+      isOffline: true,
+    });
+    useAuthStore.setState({
+      user: null,
+      profile: null,
+    });
+    mockPush.mockClear();
+
+    render(<Navbar activeView="catalog" />);
+    const signInBtn = screen.getByRole('button', { name: /Sign In/i });
+    expect(signInBtn).toHaveClass('border-destructive/50', 'bg-destructive/10', 'text-destructive');
+    expect(screen.getByTestId('navbar-offline-dot')).toBeInTheDocument();
+
+    fireEvent.click(signInBtn);
+    expect(mockPush).toHaveBeenCalledWith('/account');
+
+    networkSpy.mockRestore();
+  });
+
   describe('Tier-Adaptive Gliding Active Underline Bar', () => {
     let originalOffsetWidth: PropertyDescriptor | undefined;
     let originalOffsetLeft: PropertyDescriptor | undefined;

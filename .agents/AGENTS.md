@@ -30,7 +30,7 @@ Never manually craft static component matrices, route catalogs, or architectural
 - **Zero Synthetic / Fake Tests (Anti-Tautology Protocol):** Tests must assert genuine user journeys, accessible roles (`getByRole`), state mutations, or router actions. Strictly prohibit tautological tests (e.g. `expect(true).toBe(true)`), shallow snapshot-only tests, or meaningless assertions designed solely to inflate coverage numbers.
 - **No False Positives (Strict Verification):** Never loosen assertions (e.g. replacing a precise element check with an overly generic query or catch-all wildcard) just to force a failing test to pass. Tests must fail if the feature, label, accessibility contract, or state handler is broken.
 - **No False Negatives (Deterministic Isolation):** Ensure component tests use MSW network isolation and `@testing-library/react` without flaky timing or unhandled side-effects.
-- **Coverage Floor:** Test coverage must never drop below 80% on lines, functions, statements, or branches (target: >= 85%). Co-location is strictly enforced for every component, hook, store, and route handler.
+- **Coverage Floor:** Test coverage must never drop below 85% on lines, functions, statements, or branches (target: >= 85%). Co-location is strictly enforced for every component, hook, store, and route handler.
 
 ### Rule 4: Zero API Key Requirement & Public Domain Integrity
 - All book metadata and content fetching must strictly enforce `copyright=false` or verify public domain status (Zero-Copyright / CC0 / Gutenberg Public Domain).
@@ -57,7 +57,7 @@ Never manually craft static component matrices, route catalogs, or architectural
   ```bash
   npm run verify
   ```
-- **Blocking Guard:** Any failure in passes 0.5 through 7 immediately blocks workflow progression and halts the pre-commit hook.
+- **Blocking Guard:** Any failure in passes 0.5, 0.75 through 7 immediately blocks workflow progression and halts the pre-commit hook.
 
 ### Rule 7: Approval-First Architectural Governance (ADRs)
 Major architectural modifications, dependency introductions, schema shifts, or design alterations must be proposed via an Architecture Decision Record (ADR) before execution:

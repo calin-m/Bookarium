@@ -1594,4 +1594,87 @@
   - Fellow scholars' highlights and reflections synchronize globally across all devices without needing to open the reader for each book first.
   - Paired quotes seamlessly surface shared reading activity in the Literary Notebook and Reader Drawer with unified color filtering, deep search, and chronological recency.
 
+---
+
+## ADR-069: Offline-First PWA Resilience, Adaptive Offline Catalog, Bi-Directional Offline Store Sync & Project Gutenberg Policy Compliance
+
+- **Date**: 2026-10-26
+- **Status**: Accepted
+- **Context**:
+  1. **Offline Indicator & Catalog Offline Experience**: When a reader disconnected from Wi-Fi or cellular data, the navbar Account icon gave no visual indication of offline state, and the Catalog continued attempting network queries or rendered empty/error states. Furthermore, guests clicking Sign In offline were blocked by an authentication modal instead of accessing their local offline preferences, habits, accolades, and library backups.
+  2. **Mobile/Tablet PWA & Reader Offline Launch Failures**: Launching the PWA offline or opening a cached book offline on mobile/tablet could fail with `"A Disturbance in the Library"` due to four compounding edge cases:
+     - `ServiceWorkerRegister.tsx` attached `window.addEventListener('load', ...)` inside `useEffect`, missing the `'load'` event if the document had already reached `readyState === 'complete'` before hydration.
+     - `public/sw.js` only pre-cached HTML documents and static icons without warming active `/_next/static/` JS/CSS bundles or lazy `next/dynamic` Reader/Modal chunks, and mistakenly returned cached `text/html` App Shell documents for Next.js App Router `_rsc` Flight requests.
+     - `useBookContent.ts` used TanStack Query v5's default `networkMode: 'online'`, which paused `queryFn` execution when `navigator.onLine === false` before `getOfflineBook` could read from IndexedDB whenever the in-memory query cache had expired or been garbage-collected.
+     - Background metadata/translation queries in `read/[id]/page.tsx` and `useCollectionAutoHeal.ts` fired while offline.
+  3. **Offline Store Mutations & Cloud Sync Gaps**:
+     - `useAuthStore.ts` was in-memory only and wiped `user` and `profile` to `null` when `supabase.auth.getSession()` failed offline; display name and privacy updates failed offline instead of queuing.
+     - `useReaderStore.ts` `syncWithCloud` pulled remote `reading_progress` rows without pushing newer local `readingPositions` or tracking deleted bookmark tombstones (`deletedPositionBookIds`).
+     - `useAccoladesStore.ts` `togglePinAccolade` fired a fire-and-forget Supabase update without queuing offline pin mutations (`pendingPinUpdates`).
+     - `useBookshelfStore.ts` (`bookshelf-cloud-sync.ts`) lacked `MOVE_BOOK` and `UPDATE_SHELF` outbox actions, did not short-circuit cloud sync when offline, and overwrote `activeBookshelfId` when set to the virtual `'__downloaded__'` smart shelf or an existing custom shelf.
+     - `useFellowshipStore.ts` `syncSymposiumProgress` dropped chapter progress updates made offline instead of queuing them (`pendingSymposiumProgress`).
+  4. **Project Gutenberg Policy Compliance & Anti-Scraping**:
+     - The batch `"Download Shelf Offline"` (`downloadAll`) action allowed users to trigger automated sequential bulk downloads from Project Gutenberg, conflicting with Project Gutenberg's anti-scraping rules.
+     - Tier 2 text streaming in `/api/books/content/route.ts` queried `www.gutenberg.org` before mirror servers, `url-validator.ts` lacked `gutenberg.pglaf.org` and relative `Location` redirect resolution, `segmentation.ts` omitted the `Colophon & License` section on single-section books with explicit `*** END OF THE PROJECT GUTENBERG EBOOK ... ***` markers, and outbound server fetches used inconsistent `User-Agent` strings.
+- **Decision**:
+  1. **Unified Reactive Network Hook & Red Offline Account Indicator (`src/hooks/useNetworkStatus.ts`, `src/components/presentation/Navbar.tsx`)**:
+     - Created `useNetworkStatus` using `useSyncExternalStore` to provide tear-free `isOnline` / `isOffline` reactivity across the application.
+     - Styled the `Navbar` Account link and Guest Sign-In button in red (`border-destructive/50 bg-destructive/10 text-destructive`) with a red status dot (`data-testid="navbar-offline-dot"`) when offline, and routed offline guests to `/account` so they can manage local preferences, streaks, accolades, and JSON/CSV backups without network access.
+  2. **Adaptive Offline Catalog, Offline Download Controls & Undownloaded Volume Restriction Parity (`src/app/page.tsx`, `src/components/presentation/CatalogOfflineView.tsx`, `src/components/presentation/DownloadDrawer.tsx`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/BookPreviewModal.tsx`, `src/components/presentation/NotablePassagesSpread.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/presentation/NotebookQuoteCard.tsx`)**:
+     - When `activeView === 'catalog'` and `isOffline`:
+       - If the user has downloaded books in IndexedDB (`resolvedOfflineBooks.length > 0`), the Catalog automatically serves those downloaded volumes as its dataset (powering `<HeroSearch />` featured book, search, topic/language/era filters, sorting, and `<BookGrid />`) with an `"Offline Mode — Browsing your N downloaded volumes"` notice banner (`data-testid="catalog-offline-downloaded-banner"`).
+       - If the user has `0` downloaded books, the Catalog renders `<CatalogOfflineView />` with 1-click navigation to Bookshelf, Bookmarks, Favorites, and Notebook.
+     - In `DownloadDrawer.tsx`, added an Offline Mode Notice Banner (`data-testid="download-drawer-offline-mode-banner"`), disabled external format download links (`.epub`, `.mobi`, `.txt`, `.html`) and uncached `"Save Offline"` when offline, and kept `"Remove"` active for cached volumes.
+     - Unified undownloaded offline volumes (`isUnavailableOffline = isNetworkOffline && !isOffline`) with copyright-restricted volumes (`isRestricted`) across all viewports (Option 1A + Option 2A): applied `opacity-65 grayscale-[35%]` cover/spine dimming, `Not Downloaded` status badges, `Unavailable Offline` notice banners, and disabled `"Read"` / `"Resume"`, `"Save Offline"`, `"Get"` / `<Download />` format drawer triggers, and Notebook `"Read Passage"` / volume header navigation when offline and not cached.
+  3. **Mobile/Tablet PWA, Reader & Collection Offline Hardening (`src/components/pwa/ServiceWorkerRegister.tsx`, `public/sw.js`, `src/hooks/useOfflineBooks.ts`, `src/hooks/queries/useBookContent.ts`, `src/app/read/[id]/page.tsx`, `src/hooks/useCollectionAutoHeal.ts`, `src/hooks/queries/useBookTranslations.ts`, `src/hooks/reader/useContinueReadingLedger.ts`, `src/components/presentation/NotebookView.tsx`)**:
+     - Updated `ServiceWorkerRegister.tsx` to invoke registration immediately when `document.readyState === 'complete'`, warm active `/_next/static/` script/style URLs via `CACHE_URLS`, and preload lazy `next/dynamic` Reader and Modal chunks.
+     - Updated `public/sw.js` (`bookarium-app-shell-v3`) to never return cached HTML documents for Next.js `_rsc` Flight requests and allowed caching `/account`.
+     - Added `networkMode: 'always'` to `useBookContent.ts` so TanStack Query v5 always executes `fetchBookContent` (reading from IndexedDB) even when `navigator.onLine === false`.
+     - Gated background network queries (`useBooks`, `useBookPassageShuffle`, fellowship/annotation cloud sync, translations, and collection auto-heal) across `read/[id]/page.tsx`, `BookPreviewModal.tsx`, `NotebookView.tsx`, `useContinueReadingLedger.ts`, `useBookTranslations.ts`, and `useCollectionAutoHeal.ts` when `isOffline`, while enriching local metadata resolution with `offlineBooks`.
+  4. **Offline-First Account Hub & Bi-Directional Store Synchronization (`src/stores/useAuthStore.ts`, `src/stores/useReaderStore.ts`, `src/stores/useAccoladesStore.ts`, `src/stores/useBookshelfStore.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useFellowshipStore.ts`, `src/lib/sync-utils.ts`, `src/app/account/page.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `src/components/account/AccountSecuritySection.tsx`)**:
+     - Persisted `user`, `profile`, and `pendingProfileUpdates` in `useAuthStore` (`bookarium-auth-profile`), preserving cached auth state when launching offline and flushing optimistic `display_name` / `is_public` edits via `useAuthStore.syncWithCloud(userId)`.
+     - Added `deletedPositionBookIds` tombstones and local-to-cloud `reading_progress` upsert in `useReaderStore.syncWithCloud`.
+     - Added `pendingPinUpdates` outbox queue in `useAccoladesStore` flushed before pulling remote rows.
+     - Added `MOVE_BOOK` and `UPDATE_SHELF` outbox actions in `bookshelf-cloud-sync.ts`, guarded `executeBookshelfCloudSync` against offline/error responses, and preserved `activeBookshelfId` when set to `'__downloaded__'` or an existing custom shelf.
+     - Added `pendingSymposiumProgress` outbox queue and `syncWithCloud` in `useFellowshipStore`.
+     - Enabled `/account` offline for both authenticated users (with an Offline Mode banner) and guests (exposing local Preferences, Habits, Accolades, and Backups), while disabling live-only `@username`, password, account deletion, and fellow invite actions when offline.
+  5. **Project Gutenberg Policy Compliance & Mirror Prioritization (`src/components/presentation/BookshelfRack.tsx`, `src/hooks/useOfflineBooks.ts`, `src/config/site-config.ts`, `src/app/api/books/content/route.ts`, `src/app/api/books/content/url-validator.ts`, `src/app/api/books/content/metadata-cache.ts`, `src/lib/catalog/gutendex-provider.ts`, `src/lib/gutenberg/segmentation.ts`)**:
+     - Removed batch `"Download Shelf Offline"` (`downloadAll`) from `BookshelfRack.tsx` and `useOfflineBooks.ts`, enforcing individual-only book downloads.
+     - Prioritized official Gutenberg mirrors (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`) ahead of `www.gutenberg.org` in `/api/books/content/route.ts`, added `gutenberg.pglaf.org` and relative `Location` redirect resolution to `url-validator.ts`, and standardized `SITE_CONFIG.USER_AGENT` across all server-side outbound requests.
+     - Updated `segmentation.ts` to append `Colophon & License` at `index: 1` on single-section books when an explicit `*** END OF THE PROJECT GUTENBERG EBOOK ... ***` marker is present.
+- **Consequences**:
+  - Readers receive immediate visual feedback when offline via the red Account button and adaptive Catalog view (serving downloaded books when available or `<CatalogOfflineView />` when empty).
+  - Downloaded volumes open reliably on mobile, tablet, and desktop PWAs both when launched offline and when transitioning offline mid-session.
+  - All offline reading progress, bookmark deletions, shelf moves/renames, accolade pins, profile display/privacy changes, and symposium chapter progress automatically synchronize with Supabase upon reconnection.
+  - Bookarium strictly adheres to Project Gutenberg's anti-scraping, mirror-first, User-Agent, and license preservation guidelines.
+
+## ADR-070: Reading Ledger Offline Author Preservation, Merge Guardrails & IndexedDB Self-Healing
+
+- **Date**: 2026-10-26
+- **Status**: Accepted
+- **Context**:
+  1. On the Reading Ledger / Bookmarks page (`/bookmarks`), books saved for offline reading could display `"Anonymous"` as author after a hard page refresh (F5), even though they had previously shown the authentic author name during active catalog navigation and reader sessions. The issue did not affect the Favorites page.
+  2. Root cause investigation revealed a 4-part architectural failure:
+     - `missingIds` in `useContinueReadingLedger.ts` marked any book with `pos?.bookTitle` or present in `offlineBooks` as "known", suppressing background metadata fetches from `/api/books?ids=...` even when `pos.bookAuthors` was completely missing or placeholder (`['Anonymous']`).
+     - `setOrMergeBook` in `useContinueReadingLedger.ts` iterated `offlineBooks` after `savedBooks` and `recentBooks`, allowing candidate books with fallback `'Anonymous'` authors to overwrite authentic authors whenever neither record had numeric birth/death lifespans, and spreading `...candidate.authors` even when `authorDetails` was preserved.
+     - `getAllOfflineBookMetas()` in `src/lib/offline-storage.ts` immediately defaulted to `[{ name: 'Anonymous', birth_year: null, death_year: null }]` if `rec.authors` was absent in IndexedDB, instead of checking local stores.
+     - `enrichReadingPositions` in `useReaderStore.ts` and `enrichSavedBooks` in `useBookshelfStore.ts` strictly required `(!itemHasLifespans && freshHasLifespans)`, refusing to enrich placeholder `'Anonymous'` authors when incoming fresh books provided authentic names without explicit numeric birth/death years.
+- **Decision**:
+  1. **Reading Ledger Merge Guardrails & Re-fetch Gate (`src/hooks/reader/useContinueReadingLedger.ts`)**:
+     - Updated `missingIds` to verify `hasAuthenticAuthor(authors)` using `isPlaceholderAuthor`: books with missing or placeholder authors are included in `missingIds` so `useBooks` fetches authentic metadata.
+     - Updated `setOrMergeBook` to prevent candidate volumes with placeholder authors from overwriting authentic domain authors, and ensured authentic candidates overwrite placeholder stubs.
+     - In the active volumes loop, healed books with placeholder authors in `bookDictionary` using authentic `posDisplayAuthors` from `readingPositions`.
+  2. **IndexedDB Author Self-Healing & Download Normalization (`src/lib/offline-storage.ts`, `src/hooks/useOfflineBooks.ts`)**:
+     - In `getAllOfflineBookMetas()`, when `rec.authors` is absent or placeholder in IndexedDB, recovered authentic authors from `useBookshelfStore` (`savedBooks`, `favoriteBooks`, `recentBooks`), `useReaderStore` (`readingPositions`), or `FEATURED_HERO_BOOKS`, and asynchronously back-filled the IndexedDB record via `patchOfflineBookAuthors`.
+     - In `useOfflineBooks.ts`, updated `normalizeOfflineAuthors(book)` to synchronously query `useBookshelfStore.getState()` (`savedBooks`, `favoriteBooks`, `recentBooks`) and `FEATURED_HERO_BOOKS` via a top-level import before `saveOfflineBook`, and updated `updateOfflineBooksState` to compare composite `(id, authors)` signatures so healed authors propagate immediately.
+  3. **Store Enrichment Auto-Healing (`src/stores/useReaderStore.ts`, `src/stores/useBookshelfStore.ts`)**:
+     - Added `needsAuthorEnrichment` to `useReaderStore.enrichReadingPositions` and `saveReadingPosition` to heal `bookAuthors` when incoming or existing records contain authentic authors without lifespans.
+     - Added `hasNewAuthors` to `useBookshelfStore.enrichSavedBooks` to heal `savedBooks` and `favoriteBooks` when incoming fresh books provide authentic names without numeric lifespans.
+- **Consequences**:
+  - Offline-downloaded books on `/bookmarks` permanently preserve and display their authentic author names across page refreshes, offline state transitions, and browser re-launches.
+  - Incomplete or legacy offline records automatically self-heal on load and persist their authentic metadata back into IndexedDB.
+  - Zero regressions across existing book sorting, filtering, shelf synchronization, and reading position tracking.
+
+
+
 

@@ -11,6 +11,7 @@ import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { usePerformanceTier } from '@/hooks/usePerformanceTier';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
@@ -46,6 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
   const user = useAuthStore((s) => s.user);
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
+  const { isOffline } = useNetworkStatus();
 
   const { tier, allowHeavyMotion } = usePerformanceTier();
   const navRef = useRef<HTMLElement | null>(null);
@@ -284,34 +286,67 @@ export const Navbar: React.FC<NavbarProps> = ({
           ) : user ? (
             <Link
               href={ROUTES.ACCOUNT}
-              title="User Account"
+              title={isOffline ? 'User Account (Offline Mode)' : 'User Account'}
               className={`relative h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
-                activeView === 'account'
-                  ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
-                  : 'border-border bg-card hover:border-primary text-foreground'
+                isOffline
+                  ? 'border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/15 font-bold shadow-xs'
+                  : activeView === 'account'
+                    ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
+                    : 'border-border bg-card hover:border-primary text-foreground'
               }`}
               aria-label="User Account"
             >
-              <UserIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+              <UserIcon
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  isOffline ? 'text-destructive' : 'text-primary'
+                }`}
+              />
               <span className="hidden lg:inline font-mono">Account</span>
-              {useFellowshipStore.getState().getPendingInviteCount(user.id) > 0 && (
+              {isOffline ? (
                 <span
-                  data-testid="navbar-fellowship-dot"
-                  className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary"
-                  aria-label="Pending Reader Circle or Symposium invitations"
+                  data-testid="navbar-offline-dot"
+                  className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0 animate-pulse"
+                  aria-label="Offline Mode"
                 />
+              ) : (
+                useFellowshipStore.getState().getPendingInviteCount(user.id) > 0 && (
+                  <span
+                    data-testid="navbar-fellowship-dot"
+                    className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary"
+                    aria-label="Pending Reader Circle or Symposium invitations"
+                  />
+                )
               )}
             </Link>
           ) : (
             <Button
-              variant={activeView === 'account' ? 'primary' : 'outline'}
-              onClick={() => openAuthModal('sign_in')}
-              title="Sign In"
-              aria-label="Sign In"
-              className="h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 font-mono text-xs font-bold animate-in fade-in duration-150"
+              variant={!isOffline && activeView === 'account' ? 'primary' : 'outline'}
+              onClick={() => (isOffline ? router.push(ROUTES.ACCOUNT) : openAuthModal('sign_in'))}
+              title={isOffline ? 'Offline Account & Local Settings' : 'Sign In'}
+              aria-label={isOffline ? 'Sign In (Offline Mode)' : 'Sign In'}
+              className={`h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 font-mono text-xs font-bold animate-in fade-in duration-150 ${
+                isOffline
+                  ? 'border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/15'
+                  : ''
+              }`}
             >
-              <UserIcon className={`w-3.5 h-3.5 shrink-0 ${activeView === 'account' ? 'text-primary-foreground' : 'text-primary'}`} />
+              <UserIcon
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  isOffline
+                    ? 'text-destructive'
+                    : activeView === 'account'
+                      ? 'text-primary-foreground'
+                      : 'text-primary'
+                }`}
+              />
               <span className="hidden lg:inline">Sign In</span>
+              {isOffline && (
+                <span
+                  data-testid="navbar-offline-dot"
+                  className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0 animate-pulse"
+                  aria-label="Offline Mode"
+                />
+              )}
             </Button>
           )}
 

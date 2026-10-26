@@ -118,7 +118,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'IndexedDB Offline Book Storage',
-        description: 'Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading telemetry, interactive `Downloaded` status badges, Bookshelf `Downloaded (N)` smart shelf pill (`DOWNLOADED_SHELF_ID`) with active-shelf-aware clearing (`Clear Downloaded Shelf`), unified `Downloaded` collection search filter, removal confirmation modals (`RemoveOfflineBookModal.tsx`), and cross-device controls, enabling unabridged reading on airplanes or offline.',
+        description: 'Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), Adaptive Offline Catalog (`CatalogOfflineView.tsx` & downloaded catalog fallback), Red Offline Account Indicator (`useNetworkStatus.ts`), offline-first outbox reconciliation across all personal stores, restriction-parity dimming/badges on undownloaded offline volumes, Bookshelf `Downloaded (N)` smart shelf pill (`DOWNLOADED_SHELF_ID`) with active-shelf-aware clearing (`Clear Downloaded Shelf`), unified `Downloaded` collection search filter, and removal confirmation modals (`RemoveOfflineBookModal.tsx`), enabling unabridged reading on airplanes or offline.',
         check: () => fileContains('src/hooks/queries/useBookContent.ts', 'idb') || fileExists('src/lib/offline-storage.ts'),
       },
       {

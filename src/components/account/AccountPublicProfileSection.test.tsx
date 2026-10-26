@@ -320,5 +320,25 @@ describe('AccountPublicProfileSection', () => {
       await screen.findByText('Failed to update public profile. Please try again.')
     ).toBeInTheDocument();
   });
+
+  it('disables @username input and shows offline hint when offline while keeping bio and privacy editable', () => {
+    const originalOnLine = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+
+    try {
+      render(<AccountPublicProfileSection user={mockUser} profile={mockProfile} />);
+
+      const usernameInput = screen.getByLabelText(/scholar handle/i);
+      expect(usernameInput).toBeDisabled();
+      expect(screen.getByTestId('username-offline-hint')).toHaveTextContent(
+        /Username changes require an internet connection/i
+      );
+
+      const bioInput = screen.getByLabelText(/scholar bio & literary motto/i);
+      expect(bioInput).not.toBeDisabled();
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
+    }
+  });
 });
 

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 25 Oct 2026 18:53:52 GMT  
+**Last Generated**: Mon, 26 Oct 2026 10:37:10 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 187 passed  
-**Total Verified Tests**: 1927 passed  
+**Total Test Suites**: 189 passed  
+**Total Verified Tests**: 1988 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (1927 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (1988 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 68 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 70 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **95.46%** (9694/10154) — *Target: $ge$ 85%*
-- **Statements**: **94.18%** (10553/11204) — *Target: $ge$ 85%*
-- **Functions**: **92.58%** (2260/2441) — *Target: $ge$ 85%*
-- **Branches**: **85.09%** (9634/11321) — *Target: $ge$ 85%*
+- **Lines**: **95.28%** (10024/10520) — *Target: $ge$ 85%*
+- **Statements**: **93.82%** (10915/11633) — *Target: $ge$ 85%*
+- **Functions**: **92.21%** (2335/2532) — *Target: $ge$ 85%*
+- **Branches**: **85.04%** (10276/12083) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (187 Suites / 1927 Tests)
+## 🧪 Comprehensive Test Suite Catalog (189 Suites / 1988 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 248 Tests)
+### 🚀 App Routes & Pages (26 Suites · 260 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -46,7 +46,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (20 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top`
 - ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
@@ -67,6 +67,7 @@
 - ✔ `enforces overflow-x-clip on root and main layout containers and solid border-primary on active Tier-2 Habits sub-tabs`
 - ✔ `covers guest modal trigger, Navbar navigation, and preview mode (?preview=true)`
 - ✔ `covers sign out, completedBooksCount, and error/catch recovery across profile, password, and deletion actions`
+- ✔ `renders offline banner and guest local workspace when offline as a guest, and authenticated offline banner when signed in`
 
 </details>
 
@@ -86,7 +87,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `blocks AWS and GCP cloud metadata IP endpoints`
 - ✔ `blocks loopback and private RFC 1918 IPv4/IPv6 addresses`
@@ -97,6 +98,7 @@
 - ✔ `strictly confines legitimate outgoing requests to approved Gutenberg CDN endpoints`
 - ✔ `protects backend from request flooding by enforcing 429 response`
 - ✔ `enforces redirect: manual and rejects 301/302 redirects to private link-local endpoints`
+- ✔ `blocks untrusted cross-origin redirect on primary mirror and advances cleanly to the next approved mirror`
 - ✔ `strips all upstream server headers and sets explicit sanitized response headers`
 - ✔ `rejects oversized Content-Length headers exceeding 15MB threshold`
 - ✔ `aborts upstream stream if payload chunks exceed 15MB limit`
@@ -104,7 +106,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -122,6 +124,13 @@
 - ✔ `falls back to secondary mirror when primary mirror returns 404`
 - ✔ `streams content directly from Supabase (Tier 1) without external network fetch`
 - ✔ `safely follows redirects to trusted Gutenberg mirrors`
+- ✔ `Tier 1: serves directly from aleph.gutenberg.org when available`
+- ✔ `Tier 2: falls back to gutenberg.pglaf.org when aleph.gutenberg.org returns 503`
+- ✔ `Tier 3: falls back to gutenberg.readingroo.ms when aleph and pglaf mirrors fail`
+- ✔ `Tier 4: falls back to www.gutenberg.org/cache/epub when all 3 harvest mirrors fail`
+- ✔ `Tier 5: falls back to www.gutenberg.org/files/{id}/{id}-0.txt when all /cache/epub endpoints return 404`
+- ✔ `Tier 6: falls back to legacy www.gutenberg.org/files/{id}/{id}.txt when all 5 prior tiers fail`
+- ✔ `resolves relative Location redirect paths against the active mirror origin`
 
 </details>
 
@@ -254,7 +263,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (44 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (46 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -300,6 +309,8 @@
 - ✔ `resets catalog page and filters when clicking Bookarium brand logo in navbar`
 - ✔ `resets page to 1 and scrolls to top when clicking the already-active Catalog tab`
 - ✔ `applies responsive padding classes to catalog-section to eliminate mobile pagination gap`
+- ✔ `renders CatalogOfflineView when offline and 0 books are downloaded, allowing navigation to Bookshelf`
+- ✔ `serves downloaded books locally in Catalog with an Offline Mode banner when offline and downloaded books exist`
 
 </details>
 
@@ -428,7 +439,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/u/[username]/page.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/app/u/[username]/page.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders public scholar profile with habits, accolades, and bookshelves`
 - ✔ `renders PrivateProfileNotice when profile does not exist in Supabase`
@@ -438,10 +449,11 @@
 - ✔ `handles empty username parameter and Navbar view navigation cleanly`
 - ✔ `resolves array username parameter, computes streak fallbacks from active_dates, and uses local store shelf fallbacks when viewing own profile`
 - ✔ `falls back to savedBooks General shelf when viewing own profile with no cloud shelves and handles Supabase query exceptions cleanly`
+- ✔ `falls back to local auth, accolades, habits, and bookshelf stores when offline query throws or errors`
 
 </details>
 
-### 🎨 Catalog & Presentation (27 Suites · 403 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 420 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -471,7 +483,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (25 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -498,6 +510,7 @@
 - ✔ `preserves neutral editorial card border, shadow-booksaw elevation, and clean topic badges without orange hover borders`
 - ✔ `covers rating & reading status badges, direct primary tag clicks, restricted cover clicks, and all favorite/bookshelf tooltip states`
 - ✔ `renders interactive Downloaded badge on cover when isOffline is true and handles click`
+- ✔ `dims cover, shows Not Downloaded status, and disables Read and Get buttons when network is offline and book is not cached, while keeping them active when cached`
 
 </details>
 
@@ -519,7 +532,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (20 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -541,11 +554,12 @@
 - ✔ `renders authentic notched bookmark ribbon marker matching reading status and hover interaction`
 - ✔ `triggers onActivate on click, and onDeactivate on mouseLeave on desktop and on blur`
 - ✔ `displays exact bookmarked line coordinate when bookmarkRow is greater than 0`
+- ✔ `disables Resume, Save for offline reading, and Symposium Invite when network is offline and book is not cached, but enables Resume and Remove when cached`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (21 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (24 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates filter tabs`
@@ -568,11 +582,14 @@
 - ✔ `filters active volumes to only offline books when Downloaded sort option is selected`
 - ✔ `renders No downloaded volumes empty state and resets to recent when clicking View All Volumes`
 - ✔ `activates card on click and deactivates on mouseLeave on desktop viewports`
+- ✔ `renders authentic author name for offline-saved volume on page refresh without reverting to Anonymous`
+- ✔ `handles offline download toggle, removal confirmation modal, and resume navigation`
+- ✔ `paginates volumes when count exceeds page size of 12 and handles mobile scroll focus`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (18 tests)</summary>
+<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false or book is null`
 - ✔ `renders book preview modal and triggers cover open animation`
@@ -592,6 +609,7 @@
 - ✔ `renders content advisory banner when previewed book contains mature subjects`
 - ✔ `renders clean literary spread without cluttering tag clouds on the inside pages`
 - ✔ `does not render offline toggle button or downloaded tag inside the open book spread`
+- ✔ `disables Read button in spread footer when network is offline and book is not cached`
 
 </details>
 
@@ -606,7 +624,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `returns null when selectedMobileBook is null`
 - ✔ `renders modal with formatted author names and triggers actions`
@@ -617,11 +635,12 @@
 - ✔ `shows personal curation section when activeView is favorites`
 - ✔ `renders regional copyright notice banner and disables read and offline actions for restricted books`
 - ✔ `disables offline toggle and shows loading state when isDownloadingOffline is true`
+- ✔ `disables Read Volume and Save for offline reading when network is offline and book is not cached, but keeps them enabled when cached`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders spine title, author, and handles keyboard interaction`
 - ✔ `triggers quick actions from desktop hover card`
@@ -630,6 +649,7 @@
 - ✔ `renders muted spine, restriction badge, banner, and disabled buttons for copyright-protected books`
 - ✔ `renders embossed 5-star spine stamp, multi-shelf Move to Shelf selector, full tooltip matrix, and router fallback`
 - ✔ `renders loading spinner and disables offline toggle when isDownloadingOffline is true`
+- ✔ `disables Read and Save for offline reading on hover card when network is offline and book is not cached`
 
 </details>
 
@@ -666,10 +686,10 @@
 - ✔ `triggers download callback from mobile action sheet`
 - ✔ `toggles bookmark and favorite status from mobile action sheet`
 - ✔ `handles moving a book to another shelf and default read routing from mobile action sheet`
-- ✔ `renders offline download button and triggers download all`
+- ✔ `omits batch Download Shelf Offline button in compliance with Project Gutenberg anti-scraping rules`
 - ✔ `renders individual offline download button on book spine and triggers toggle`
 - ✔ `does not render duplicate lower Clear Offline button when all books are offline, preserving single top header clear pattern`
-- ✔ `renders Edit and Delete buttons to the left of Download Shelf Offline button on custom shelves`
+- ✔ `renders Edit and Delete buttons on custom shelves without batch Download Shelf Offline button`
 - ✔ `skips restricted books when clicking Download Shelf Offline and renders Clear Offline Shelf when all available are cached`
 - ✔ `renders All Restricted status notice when all books on shelf are protected in visitor jurisdiction`
 - ✔ `does not render syncing indicator when isSyncing is false`
@@ -684,7 +704,7 @@
 - ✔ `renders shelf content with tactile animate-page-turn container and updates on shelf change`
 - ✔ `calculates deterministic shelf capacity capped to max-w-7xl (1280px) on wide viewports`
 - ✔ `calculates proportional capacity on tablet and mobile viewports`
-- ✔ `displays Download Shelf Offline for remaining books without duplicate lower Clear Offline button when shelf is partially cached offline`
+- ✔ `does not display batch Download Shelf Offline or duplicate lower Clear Offline button when shelf is partially cached offline`
 - ✔ `renders Downloaded shelf pill next to General when downloaded books exist and handles shelf switching`
 - ✔ `renders Downloaded shelf pill in guest mode when books are downloaded`
 - ✔ `does not render Downloaded shelf pill when no books are downloaded`
@@ -692,6 +712,14 @@
 - ✔ `automatically falls back from Downloaded shelf to null when downloaded books become empty (guest mode)`
 - ✔ `filters effective shelf books to offline books and shows Downloaded empty state in standalone Downloaded mode`
 - ✔ `resets active bookshelf to null when clicking General pill in guest mode while viewing Downloaded shelf`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CatalogOfflineView.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders offline notice and collection counts accurately`
+- ✔ `invokes onNavigateView when clicking personal collection cards`
 
 </details>
 
@@ -749,7 +777,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `should render download formats when opened with a public domain book in US`
 - ✔ `should return null when book is null`
@@ -757,6 +785,8 @@
 - ✔ `should provide canonical Gutenberg download links even if book.formats is empty`
 - ✔ `should render content advisory banner when book contains mature subjects`
 - ✔ `renders Browser Offline Cache card and allows saving and removing book for offline reading`
+- ✔ `displays Offline Mode Notice Banner, disables external format links and Save Offline when offline and book is not cached`
+- ✔ `keeps Remove button active when offline and book is already downloaded`
 
 </details>
 
@@ -857,7 +887,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (32 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (34 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -882,6 +912,8 @@
 - ✔ `renders dynamic active view masthead subtitle with section theme color and responsive classes`
 - ✔ `applies hidden and lg:inline responsive classes to navigation and action text labels`
 - ✔ `renders 0px-width fellowship notification dot on Account link when pending invitations exist`
+- ✔ `renders red offline Account button and offline dot when authenticated user is offline`
+- ✔ `renders red offline Sign In button for guests when offline and routes to /account on click`
 - ✔ `falls back to button border when dimensions are 0 (e.g. unmeasured or SSR)`
 - ✔ `renders gliding indicator with position, width, and theme bottom border when measurable`
 - ✔ `updates indicator styling for different views`
@@ -895,17 +927,18 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders primary quote with CC0 header badge`
 - ✔ `renders secondary and tertiary quotes when provided`
 - ✔ `adjusts padding and line clamp when there are 2 quotes`
 - ✔ `renders Protected (RO) header badge when isRestricted is true`
+- ✔ `renders Not Downloaded header badge when isUnavailableOffline is true and not restricted`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders book metadata, quote excerpt, and note`
 - ✔ `renders Protected badge when isRestricted is true`
@@ -922,11 +955,12 @@
 - ✔ `renders fellow box with fallback attribution line when pairedFellowAnnotation has no written note`
 - ✔ `renders Save to My Notes button on standalone fellow note and calls onSaveFellowAsOwn`
 - ✔ `renders In My Notes badge and Edit My Note when matching personal annotation exists`
+- ✔ `renders Not Downloaded badge and disables Read Passage button when isUnavailableOffline is true`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (47 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (48 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -975,6 +1009,7 @@
 - ✔ `allows saving fellow note to own notebook using onSaveFellowAsOwn`
 - ✔ `resolves metadata for shared fellowAnnotations lacking title/author and primes useReaderStore on Jump to Context`
 - ✔ `renders quote cards in a single-column grid on tablet and two-column grid on desktop (lg:grid-cols-2)`
+- ✔ `renders Not Downloaded badge on volume header and disables Read Passage when offline and book is not downloaded`
 
 </details>
 
@@ -1008,7 +1043,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 164 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 165 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1141,13 +1176,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `does not render content when isOpen is false`
 - ✔ `renders archival editions with language badges and current indicator`
 - ✔ `does not trigger onSelectTranslation when clicking current active edition`
 - ✔ `displays empty state when no translations exist`
 - ✔ `renders with sepia and dark themes correctly`
+- ✔ `enforces offline parity: disables uncached editions and allows cached editions when offline`
 
 </details>
 
@@ -1315,10 +1351,10 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 182 Tests)
+### ⚡ Zustand State Stores (10 Suites · 191 Tests)
 
 <details>
-<summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `initializes with clean default state`
 - ✔ `evaluates and unlocks accolades when context meets criteria`
@@ -1329,6 +1365,7 @@
 - ✔ `retrieves pinned accolade definitions via selector`
 - ✔ `syncs with cloud by merging remote accolades and pushing local ones`
 - ✔ `covers authenticated evaluateAndUnlock, authenticated togglePin, dismissCelebration empty guard, syncWithCloud errors, and useHydratedAccolades`
+- ✔ `queues pendingPinUpdates when togglePin is called offline and flushes them on syncWithCloud`
 
 </details>
 
@@ -1371,7 +1408,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (27 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (29 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1400,11 +1437,13 @@
 - ✔ `normalizes username to lowercase and updates public profile preferences`
 - ✔ `normalizes empty string username to null`
 - ✔ `signs out from Supabase, clears user profile, flushes outbox, and cleanses local bookshelf and fellowship state`
+- ✔ `preserves persisted user and profile when initializeAuth runs offline`
+- ✔ `updates profile optimistically offline and flushes pendingProfileUpdates on syncWithCloud when online`
 
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (46 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (49 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -1429,6 +1468,8 @@
 - ✔ `handles moveBookToShelf properly`
 - ✔ `creates a new bookshelf item if book is not in cloudBookshelfItems yet`
 - ✔ `queues offline actions to outbox when Supabase network rejects and flushes them on syncWithCloud`
+- ✔ `queues MOVE_BOOK and UPDATE_SHELF to outbox when offline and flushes them on reconnect`
+- ✔ `preserves activeBookshelfId when set to __downloaded__ during syncWithCloud`
 - ✔ `returns saved books count via useSavedBooksCount`
 - ✔ `returns isSaved status via useIsBookSaved`
 - ✔ `returns book rating via useBookRating`
@@ -1452,11 +1493,12 @@
 - ✔ `chains created_at DESC and book_id ASC when order function is available on query builder`
 - ✔ `gracefully handles single-order mocks where first order returns a Promise or non-chainable object`
 - ✔ `returns original query if query has no order function`
+- ✔ `enriches savedBooks and favoriteBooks with authentic authors when incoming fresh books have authentic authors without lifespans`
 
 </details>
 
 <details>
-<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `invites a Fellow Scholar by @username via RPC lookup and accepts invitation`
 - ✔ `validates empty and self @username invitations and handles missing handles`
@@ -1466,6 +1508,7 @@
 - ✔ `covers unauthenticated guards, profile lookup fallback, duplicate symposiums, decline symposium, and error recovery`
 - ✔ `heals companion placeholder identities during fetchFellowshipData and covers companion progress and fellow removal`
 - ✔ `resolves stale placeholder recipient identities via profiles lookup in inviteFellowByProfile and createSymposiumInvite`
+- ✔ `queues pendingSymposiumProgress when offline and flushes to Supabase on syncWithCloud`
 - ✔ `correctly identifies placeholder usernames`
 - ✔ `formats fellow scholar labels cleanly avoiding (@scholar)`
 
@@ -1517,7 +1560,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (25 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (27 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1544,6 +1587,8 @@
 - ✔ `preserves verified author lifespans across openReader, saveReadingPosition, enrichReadingPositions, and cloud sync`
 - ✔ `encodes and decodes bookmarkRow via fractional scroll_offset in cloud sync and preserves Page-1 bookmarked rows`
 - ✔ `syncWithCloud decodes bookmarkRow from remote row and populates readingPositions`
+- ✔ `records deletedPositionBookIds tombstones when clearing a position offline and flushes deletions + local-only positions on syncWithCloud`
+- ✔ `enriches Anonymous or missing authors in readingPositions when fresh book arrives with authentic authors without lifespans`
 
 </details>
 
@@ -1559,7 +1604,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (36 Suites · 425 Tests)
+### 📚 Gutenberg Parsers & Metadata (36 Suites · 427 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (12 tests)</summary>
@@ -1865,10 +1910,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `returns empty array on null or undefined input`
 - ✔ `falls back cleanly to Complete Volume for unformatted single-block text`
+- ✔ `appends Colophon & License at index 1 on single-section books with an explicit Gutenberg end marker`
 - ✔ `parses structured Project Gutenberg eBook into preamble, chapters, and license colophon`
 - ✔ `suppresses front-matter Table of Contents cluster lines from becoming empty duplicate chapters`
 - ✔ `parses short story anthologies with front-matter CONTENTS lists into individual story sections`
@@ -1937,7 +1983,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/offline-storage.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/lib/offline-storage.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `saves book text to offline storage`
 - ✔ `retrieves offline book text correctly`
@@ -1945,7 +1991,7 @@
 - ✔ `checks if a book is offline`
 - ✔ `removes offline book`
 - ✔ `fetches all offline book IDs`
-- ✔ `retrieves all offline books metadata without returning full text payloads`
+- ✔ `retrieves all offline books metadata without returning full text payloads and self-heals authors`
 - ✔ `clears all offline books`
 - ✔ `returns storage quota metrics from navigator.storage.estimate`
 - ✔ `evicts oldest downloaded books first to free requested space`
@@ -1956,6 +2002,7 @@
 - ✔ `throws error when QuotaExceededError cannot free sufficient space`
 - ✔ `returns empty array from getOfflineBookIds when store error occurs`
 - ✔ `covers database upgrade, transaction/request error handlers, and missing IndexedDB fallbacks`
+- ✔ `updates offline book authors when stored record has missing or placeholder authors`
 
 </details>
 
@@ -2120,7 +2167,7 @@
 <details>
 <summary><b><code>src/lib/sync-utils.test.ts</code></b> (3 tests)</summary>
 
-- ✔ `triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, Habits, and Accolades stores, plus Fellowship hydration`
+- ✔ `triggers syncWithCloud concurrently on Auth, Bookshelf, Annotation, Reader, Habits, and Accolades stores, plus Fellowship hydration`
 - ✔ `safely exits without calling stores if userId is empty`
 - ✔ `gracefully settles and does not throw if one store encounters a network rejection`
 
@@ -2202,10 +2249,10 @@
 
 </details>
 
-### 🔄 Hooks & React Query (22 Suites · 243 Tests)
+### 🔄 Hooks & React Query (23 Suites · 258 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
@@ -2223,6 +2270,7 @@
 - ✔ `recovers verified lifespans from authorDetails, favoriteBooks, recentBooks, readingPositions, FEATURED_HERO_BOOKS, or network proxy when offline record has null dates`
 - ✔ `enforces LegalRestrictionError in network catch block when offline book is restricted in jurisdiction`
 - ✔ `returns offline text when network fails and offline record has no local author metadata`
+- ✔ `executes queryFn via networkMode always and resolves IndexedDB content even when navigator.onLine is false`
 
 </details>
 
@@ -2286,7 +2334,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (29 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -2311,6 +2359,12 @@
 - ✔ `extracts authorDetails lifespans and normalizes display names from embedded dates in readingPosition.bookAuthors`
 - ✔ `preserves verified authorDetails lifespans from favoriteBooks/savedBooks when currentBook is a partial book`
 - ✔ `filters volumes to only downloaded books when sortBy is "downloaded"`
+- ✔ `resolves volume metadata directly from offlineBooks when book is not in savedBooks or favoriteBooks`
+- ✔ `never overwrites authentic authors with Anonymous from offlineBooks in setOrMergeBook`
+- ✔ `heals Anonymous authors when readingPosition has authentic bookAuthors`
+- ✔ `handles setOrMergeBook lifespan preservation, translator merging, and currentBook in missingIds`
+- ✔ `heals authorDetails from readingPositions with embedded lifespans when book has empty authors`
+- ✔ `preserves existing authors and translators when candidate from offline has anonymous author and empty translators`
 
 </details>
 
@@ -2454,7 +2508,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `stays dormant with 0 query params when all collections are healthy`
 - ✔ `detects missing favorite IDs and queries /api/books`
@@ -2467,6 +2521,7 @@
 - ✔ `suppresses redundant network queries for book IDs already attempted in sessionStorage`
 - ✔ `detects and heals incomplete favoriteBooks and readingPositions lacking author lifespans`
 - ✔ `detects and heals incomplete fellowAnnotations and active symposiums lacking author lifespans`
+- ✔ `disables upstream network query when device is offline`
 
 </details>
 
@@ -2511,18 +2566,31 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/hooks/useNetworkStatus.test.ts</code></b> (3 tests)</summary>
 
-- ✔ `initializes and fetches offline book IDs on mount`
+- ✔ `returns online status when navigator.onLine is true`
+- ✔ `returns offline status when navigator.onLine is false`
+- ✔ `reactively updates when window offline and online events fire`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (14 tests)</summary>
+
+- ✔ `initializes and fetches offline book IDs and metadata on mount`
 - ✔ `downloads a single book and updates offline status`
 - ✔ `handles download failure gracefully`
 - ✔ `removes an offline book and refreshes ids`
-- ✔ `downloads all missing books in batch with progress updates`
-- ✔ `skips restricted books with HTTP 451 during batch download and saves remaining books`
 - ✔ `removes all books in batch`
 - ✔ `normalizes authorDetails and embedded lifespan strings when saving a book offline`
+- ✔ `normalizes author from favoriteBooks and recentBooks when authors is Anonymous or missing`
+- ✔ `handles canonical Book object conversion and empty text failure`
+- ✔ `handles removeAll with empty array and handles custom events`
 - ✔ `synchronizes offlineBookIds across multiple mounted hook instances via window event broadcast`
-- ✔ `warms reader route on successful book download`
+- ✔ `handles getOfflineBookIds rejection on mount`
+- ✔ `handles getAllOfflineBookMetas and getStorageQuota rejection on mount and offline-updated event`
+- ✔ `updates storage quota state across quota change transitions`
+- ✔ `handles edge cases in normalizeOfflineAuthors and downloading events`
 
 </details>
 
@@ -2579,7 +2647,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (47 Suites · 237 Tests)
+### 🧩 UI Primitives & Motion (47 Suites · 242 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2688,7 +2756,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `renders public scholar profile section with profile data`
 - ✔ `toggles master public profile switch and updates badge`
@@ -2701,6 +2769,7 @@
 - ✔ `switches between Identity & Bio and Sanctuary & Privacy sub-tabs`
 - ✔ `uses solid border-border on header icon box and Public Sanctuary badge without fractional borders`
 - ✔ `syncs reactive state when profile prop updates, toggles all privacy checkboxes, and recovers from thrown errors`
+- ✔ `disables @username input and shows offline hint when offline while keeping bio and privacy editable`
 
 </details>
 
@@ -2716,14 +2785,15 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `renders password fields, strength meter, and buttons`
+- ✔ `disables Update Password and Delete Account buttons when offline`
 
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountSymposiumSection.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/account/AccountSymposiumSection.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `switches between Active Symposiums, Reader Circle, and Invitations sub-tabs`
 - ✔ `renders empty states when there are zero symposiums, circle fellows, or invitations`
@@ -2731,6 +2801,7 @@
 - ✔ `allows declining an incoming circle invitation`
 - ✔ `renders completed companion symposium cards, opens New Symposium Pact modal, and handles leaving a symposium`
 - ✔ `supports Reader Circle fellow Symposium launch, fellow removal, and all pending invitation actions`
+- ✔ `disables live invitation controls and enforces offline parity for uncached symposiums when offline`
 
 </details>
 
@@ -2779,7 +2850,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `renders public scholar view with profile info, telemetry, and bookshelves`
 - ✔ `renders PrivateProfileNotice when is_public is false`
@@ -2792,14 +2863,16 @@
 - ✔ `renders Start Symposium button when visitor is already an accepted Fellow Scholar and closes modal`
 - ✔ `renders empty bookshelves message, empty shelf items, and anonymous author fallback`
 - ✔ `uses solid border-border across header, telemetry tiles, and bookshelf items without fractional border-border/* or hover:border-primary/40`
+- ✔ `enforces offline parity: disables fellowship actions and uncached bookshelf items when offline`
 
 </details>
 
 <details>
-<summary><b><code>src/components/pwa/ServiceWorkerRegister.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/pwa/ServiceWorkerRegister.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders null without throwing`
-- ✔ `attempts registration in production when serviceWorker is available`
+- ✔ `attempts registration immediately in production when document.readyState is complete and posts CACHE_URLS`
+- ✔ `registers on window load event when document.readyState is loading`
 - ✔ `does not attempt registration in development mode`
 
 </details>

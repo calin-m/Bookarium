@@ -4,12 +4,13 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import { CursorTooltip } from '@/components/ui/CursorTooltip';
-import { BookOpen, Download, Library, Heart, Sparkles, HardDriveDownload, Star, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
+import { BookOpen, Download, Library, Heart, Sparkles, HardDriveDownload, Star, AlertTriangle, Loader2, Trash2, WifiOff } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookRating } from '@/stores/useBookshelfStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { StarRating } from '@/components/ui/StarRating';
 import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
@@ -73,6 +74,8 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   const palette = SPINE_PALETTES[book.id % SPINE_PALETTES.length];
 
   const { country, evaluation, isRestricted, ruleDescription } = useBookCopyright(book);
+  const { isOffline: isNetworkOffline } = useNetworkStatus();
+  const isUnavailableOffline = isNetworkOffline && !isOffline;
 
   // Deterministic height and thickness variation based on book id
   const heightVariance = 235 + ((book.id * 17) % 45); // 235px to 280px
@@ -97,7 +100,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       case 'read':
         return {
           icon: <BookOpen className="w-3 h-3 text-primary shrink-0" />,
-          text: isRestricted ? `Restricted in ${country}` : 'Open Reader',
+          text: isRestricted ? `Restricted in ${country}` : isUnavailableOffline ? 'Unavailable Offline' : 'Open Reader',
         };
       case 'offline':
         return {
@@ -110,6 +113,8 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           ),
           text: isRestricted
             ? `Protected in ${country}`
+            : isUnavailableOffline
+            ? 'Unavailable Offline'
             : isDownloadingOffline
             ? 'Saving for Offline...'
             : isOffline
@@ -119,7 +124,11 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       case 'download':
         return {
           icon: <Download className="w-3 h-3 text-primary shrink-0" />,
-          text: 'Download Formats (EPUB, TXT)',
+          text: isRestricted
+            ? `Protected in ${country}`
+            : isUnavailableOffline
+            ? 'Unavailable Offline'
+            : 'Download Formats (EPUB, TXT)',
         };
       case 'bookshelf':
         return {
@@ -134,7 +143,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       default:
         return null;
     }
-  }, [hoveredAction, isOffline, isDownloadingOffline, isSaved, isFavorite, country, isRestricted]);
+  }, [hoveredAction, isOffline, isDownloadingOffline, isSaved, isFavorite, country, isRestricted, isUnavailableOffline]);
 
   return (
     <div
@@ -156,7 +165,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       {/* Classic Hardcover Spine */}
       <div
         className={`relative w-full h-full rounded-t-sm bg-gradient-to-r ${palette.bg} shadow-md origin-bottom group-hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] group-hover:scale-105 transition-all duration-300 ease-out flex flex-col justify-between p-2 sm:p-2.5 border-t border-white/25 overflow-hidden ${
-          isRestricted
+          isRestricted || isUnavailableOffline
             ? 'opacity-65 grayscale-[35%] group-hover:opacity-90 group-hover:grayscale-0 border-amber-500/40'
             : ''
         }`}
@@ -167,7 +176,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         {/* Headcap Gilded Rule & Regional Restriction Indicator */}
         <div className="w-full flex flex-col items-center gap-0.5 mb-1 shrink-0 z-20">
           <div className="w-full h-0.5 border-t border-b border-white/20" />
-          {isRestricted && (
+          {isRestricted ? (
             <div
               className="flex items-center justify-center gap-0.5 px-1 py-0.2 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[8px] font-mono mt-0.5"
               title={`Protected by copyright in ${country}`}
@@ -176,7 +185,16 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               <AlertTriangle className="w-2 h-2 text-amber-400 shrink-0" />
               <span className="truncate">{country}</span>
             </div>
-          )}
+          ) : isUnavailableOffline ? (
+            <div
+              className="flex items-center justify-center gap-0.5 px-1 py-0.2 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[8px] font-mono mt-0.5"
+              title="Not downloaded for offline reading"
+              data-testid={`spine-offline-unavailable-badge-${book.id}`}
+            >
+              <WifiOff className="w-2 h-2 text-amber-400 shrink-0" />
+              <span className="truncate">OFF</span>
+            </div>
+          ) : null}
         </div>
 
         {/* Embossed Gold Rating Stamp on Leather Spine */}
@@ -222,6 +240,14 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             >
               <AlertTriangle className="w-2.5 h-2.5 shrink-0" /> Protected ({country})
             </span>
+          ) : isUnavailableOffline ? (
+            <span
+              className="text-[10px] uppercase font-mono tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1 font-semibold"
+              title="Not downloaded for offline reading"
+              data-testid={`spine-card-offline-unavailable-${book.id}`}
+            >
+              <WifiOff className="w-2.5 h-2.5 shrink-0" /> Not Downloaded
+            </span>
           ) : (
             <span className="text-[10px] uppercase font-mono tracking-wider text-primary flex items-center gap-1">
               <Sparkles className="w-2.5 h-2.5" /> Public Domain
@@ -249,7 +275,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           </div>
         )}
 
-        {isRestricted && (
+        {isRestricted ? (
           <div
             className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-[10px] mb-2 space-y-0.5"
             data-testid={`spine-restricted-banner-${book.id}`}
@@ -262,7 +288,20 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               {evaluation.reason || ruleDescription}
             </p>
           </div>
-        )}
+        ) : isUnavailableOffline ? (
+          <div
+            className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-[10px] mb-2 space-y-0.5"
+            data-testid={`spine-offline-unavailable-banner-${book.id}`}
+          >
+            <div className="font-semibold flex items-center gap-1 text-amber-800 dark:text-amber-300">
+              <WifiOff className="w-2.5 h-2.5 shrink-0" />
+              <span>Unavailable Offline</span>
+            </div>
+            <p className="line-clamp-2 text-muted-foreground font-sans">
+              Connect to the internet to read or download this volume.
+            </p>
+          </div>
+        ) : null}
 
         {/* Quick Action Buttons */}
         <div className="flex items-center gap-1.5 pt-2 border-t border-border">
@@ -276,6 +315,17 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             >
               <BookOpen className="w-3 h-3" />
               <span>Restricted</span>
+            </button>
+          ) : isUnavailableOffline ? (
+            <button
+              type="button"
+              disabled
+              className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg border border-border bg-muted/50 text-muted-foreground text-[11px] font-medium opacity-60 cursor-not-allowed"
+              title="Not downloaded for offline reading"
+              aria-label={`Open reader for ${book.title} (Unavailable offline)`}
+            >
+              <BookOpen className="w-3 h-3" />
+              <span>Offline</span>
             </button>
           ) : (
             <button
@@ -315,7 +365,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           ) : (
             <button
               type="button"
-              disabled={isDownloadingOffline}
+              disabled={isDownloadingOffline || isUnavailableOffline}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleOffline?.(book);
@@ -331,6 +381,8 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               className={`p-1 rounded-lg border transition-colors flex items-center justify-center ${
                 isDownloadingOffline
                   ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
+                  : isUnavailableOffline
+                  ? 'border-border text-muted-foreground/50 opacity-50 cursor-not-allowed'
                   : isOffline
                   ? 'group/offline-btn border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive cursor-pointer'
                   : 'border-border text-muted-foreground hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer'
@@ -358,6 +410,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
 
           <button
             type="button"
+            disabled={isRestricted || isUnavailableOffline}
             onClick={(e) => {
               e.stopPropagation();
               if (onDownloadClick) onDownloadClick(book);
@@ -370,7 +423,18 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
               setShowTooltip(false);
               setHoveredAction(null);
             }}
-            className="p-1 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
+            className={`p-1 rounded-lg border border-border transition-colors flex items-center justify-center ${
+              isRestricted || isUnavailableOffline
+                ? 'text-muted-foreground/50 opacity-50 cursor-not-allowed'
+                : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+            title={
+              isRestricted
+                ? `Download unavailable in ${country}`
+                : isUnavailableOffline
+                ? 'Connect to the internet to download formats'
+                : 'Download Formats (EPUB, TXT)'
+            }
             aria-label={`Download formats for ${book.title}`}
           >
             <Download className="w-3 h-3" />

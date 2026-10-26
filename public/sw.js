@@ -4,10 +4,11 @@
  * and seamless fallback for saved IndexedDB book reading in offline mode.
  */
 
-const CACHE_NAME = 'bookarium-app-shell-v2';
+const CACHE_NAME = 'bookarium-app-shell-v3';
 
 const STATIC_PRECACHE = [
   '/',
+  '/account',
   '/manifest.webmanifest',
   '/favicon.ico',
   '/icon.svg',
@@ -41,6 +42,34 @@ self.addEventListener('activate', (event) => {
         )
       )
       .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || data.type !== 'CACHE_URLS' || !Array.isArray(data.urls)) {
+    return;
+  }
+
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then(async (cache) => {
+        for (const rawUrl of data.urls) {
+          try {
+            const existing = await cache.match(rawUrl);
+            if (!existing) {
+              const response = await fetch(rawUrl, { credentials: 'same-origin' });
+              if (response && response.status === 200) {
+                await cache.put(rawUrl, response);
+              }
+            }
+          } catch {
+            // Ignore individual asset warm failures
+          }
+        }
+      })
+      .catch(() => {})
   );
 });
 
@@ -80,10 +109,7 @@ self.addEventListener('fetch', (event) => {
 
   // 2. Navigation requests: Network-first, fallback to cached document or App Shell ('/')
   if (request.mode === 'navigate') {
-    const isPrivateAuthRoute =
-      url.pathname === '/account' ||
-      url.pathname.startsWith('/account/') ||
-      url.pathname.startsWith('/auth/');
+    const isPrivateAuthRoute = url.pathname.startsWith('/auth/');
 
     event.respondWith(
       fetch(request)
@@ -99,9 +125,15 @@ self.addEventListener('fetch', (event) => {
             const cached = await caches.match(request);
             if (cached) return cached;
             const cachedWithoutSearch = await caches.match(url.pathname, { ignoreSearch: true });
-            if (cachedWithoutSearch) return cachedWithoutSearch;
+            if (cachedWithoutSearch) {
+              const contentType = cachedWithoutSearch.headers.get('content-type') || '';
+              if (contentType.includes('text/html')) {
+                return cachedWithoutSearch;
+              }
+            }
           }
-          return caches.match('/');
+          const shell = await caches.match('/');
+          return shell || Response.error();
         })
     );
     return;
@@ -119,33 +151,38 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        });
+        return fetch(request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              const copy = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          })
+          .catch(() => Response.error());
       })
     );
     return;
   }
 
-  // 4. Default: Stale-While-Revalidate with RSC cache fallback for reader routes
+  // 4. Default (including Next.js RSC Flight requests): Network-first with exact cache match fallback
+  // Never substitute text/html documents for RSC Flight requests (_rsc / RSC: 1)
+  const isRscRequest = url.searchParams.has('_rsc') || request.headers.get('RSC') === '1';
+
   event.respondWith(
     caches.match(request).then(async (cached) => {
-      if (cached) return cached;
-
-      // If offline and requesting an RSC payload for /read/[id], try matching with ignoreSearch
-      if (
-        url.pathname.startsWith('/read/') &&
-        (url.searchParams.has('_rsc') || request.headers.get('RSC') === '1')
-      ) {
-        const cachedRsc = await caches.match(url.pathname, { ignoreSearch: true });
-        if (cachedRsc) return cachedRsc;
+      if (cached) {
+        if (isRscRequest) {
+          const ct = cached.headers.get('content-type') || '';
+          if (!ct.includes('text/html')) {
+            return cached;
+          }
+        } else {
+          return cached;
+        }
       }
 
-      const fetchPromise = fetch(request)
+      return fetch(request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const copy = networkResponse.clone();
@@ -153,9 +190,10 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => cached);
-      return cached || fetchPromise;
+        .catch(() => {
+          if (cached && !isRscRequest) return cached;
+          return Response.error();
+        });
     })
   );
 });
-

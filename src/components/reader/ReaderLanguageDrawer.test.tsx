@@ -1,8 +1,16 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ReaderLanguageDrawer } from './ReaderLanguageDrawer';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
+
+let mockLanguageOfflineIds: number[] = [];
+vi.mock('@/hooks/useOfflineBooks', () => ({
+  useOfflineBooks: () => ({
+    offlineBookIds: mockLanguageOfflineIds,
+    isBookOffline: (id: number) => mockLanguageOfflineIds.includes(id),
+  }),
+}));
 
 const mockTranslations: BookTranslationOption[] = [
   {
@@ -29,6 +37,10 @@ const mockTranslations: BookTranslationOption[] = [
 ];
 
 describe('ReaderLanguageDrawer Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockLanguageOfflineIds = [];
+  });
   it('does not render content when isOpen is false', () => {
     render(
       <ReaderLanguageDrawer
@@ -121,5 +133,55 @@ describe('ReaderLanguageDrawer Component', () => {
     );
 
     expect(screen.getByRole('dialog', { name: 'Language Editions & Translations' })).toBeInTheDocument();
+  });
+
+  it('enforces offline parity: disables uncached editions and allows cached editions when offline', () => {
+    const originalOnLine = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+
+    // French (25946) is cached, German (35000) is NOT cached
+    mockLanguageOfflineIds = [25946];
+
+    const onClose = vi.fn();
+    const onSelectTranslation = vi.fn();
+
+    try {
+      render(
+        <ReaderLanguageDrawer
+          isOpen={true}
+          onClose={onClose}
+          translations={mockTranslations}
+          onSelectTranslation={onSelectTranslation}
+        />
+      );
+
+      // Uncached German edition shows Not Downloaded badge
+      const offlineBadge = screen.getByTestId('translation-offline-badge-35000');
+      expect(offlineBadge).toHaveTextContent('Not Downloaded');
+
+      // Uncached German edition button is disabled
+      const germanButton = screen.getByText('German (Deutsch)').closest('button');
+      expect(germanButton).toBeDisabled();
+
+      // Clicking disabled German button does nothing
+      if (germanButton) fireEvent.click(germanButton);
+      expect(onClose).not.toHaveBeenCalled();
+      expect(onSelectTranslation).not.toHaveBeenCalled();
+
+      // Cached French edition shows Downloaded badge
+      const downloadedBadge = screen.getByTestId('translation-downloaded-badge-25946');
+      expect(downloadedBadge).toHaveTextContent('Downloaded');
+
+      // Cached French edition button is enabled
+      const frenchButton = screen.getByText('French (Français)').closest('button');
+      expect(frenchButton).not.toBeDisabled();
+
+      // Clicking cached French button activates it
+      if (frenchButton) fireEvent.click(frenchButton);
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(onSelectTranslation).toHaveBeenCalledWith(25946);
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
+    }
   });
 });

@@ -2,13 +2,14 @@ const ALLOWED_HOSTS = new Set([
   'www.gutenberg.org',
   'gutenberg.org',
   'aleph.gutenberg.org',
+  'gutenberg.pglaf.org',
   'gutenberg.readingroo.ms',
 ]);
 
-export function isSafeUpstreamUrl(rawUrl: string): boolean {
+export function isSafeUpstreamUrl(rawUrl: string, baseUrl?: string): boolean {
   try {
-    if (rawUrl.includes('..') || rawUrl.includes('@')) return false;
-    const parsed = new URL(rawUrl);
+    if (!rawUrl || rawUrl.includes('..') || rawUrl.includes('@')) return false;
+    const parsed = baseUrl ? new URL(rawUrl, baseUrl) : new URL(rawUrl);
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
     if (parsed.username || parsed.password || parsed.port) return false;
     const hostname = parsed.hostname.toLowerCase();

@@ -3,12 +3,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Sparkles, Plus, Edit2, Trash2, HardDriveDownload, Lock, AlertTriangle } from 'lucide-react';
+import { BookOpen, Sparkles, Plus, Edit2, Trash2, Lock, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { isBookPublicDomainInJurisdiction, partitionBooksByJurisdiction } from '@/lib/copyright-engine';
 import { Button } from '@/components/ui/Button';
@@ -79,15 +80,14 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const {
     isBookOffline,
+    offlineBooks,
     isLoaded: isOfflineLoaded,
     downloadBook,
     removeBook,
-    downloadAll,
     removeAll,
-    isDownloading: isDownloadingOffline,
     downloadingBookId,
-    downloadAllProgress: offlineProgress,
   } = useOfflineBooks();
+  const { isOffline: isNetworkOffline } = useNetworkStatus();
 
   const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | null>(null);
 
@@ -144,7 +144,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
   const handleSpineClick = (book: GutendexBook) => {
     const isRestricted = !isBookPublicDomainInJurisdiction(book, country).isAllowed;
-    if ((typeof window !== 'undefined' && window.innerWidth < 1024) || isRestricted) {
+    const isUnavailableOffline = isNetworkOffline && !isBookOffline(book.id);
+    if ((typeof window !== 'undefined' && window.innerWidth < 1024) || isRestricted || isUnavailableOffline) {
       setSelectedMobileBook(book);
     } else {
       if (onBookClick) onBookClick(book);
@@ -197,10 +198,20 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     }
   };
 
-  const downloadedSavedBooks = useMemo(
-    () => savedBooks.filter((b) => isBookOffline(b.id)),
-    [savedBooks, isBookOffline]
-  );
+  const downloadedSavedBooks = useMemo(() => {
+    const map = new Map<number, GutendexBook>();
+    for (const b of savedBooks) {
+      if (isBookOffline(b.id)) {
+        map.set(b.id, b);
+      }
+    }
+    for (const b of offlineBooks) {
+      if (isBookOffline(b.id) && !map.has(b.id)) {
+        map.set(b.id, b);
+      }
+    }
+    return Array.from(map.values());
+  }, [savedBooks, offlineBooks, isBookOffline]);
 
   const defaultShelf = cloudBookshelves.find((s) => s.is_default) || cloudBookshelves[0];
   const currentActiveShelfId = activeBookshelfId || defaultShelf?.id;
@@ -237,16 +248,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const { downloadableBooks, restrictedBooks } = useMemo(() => {
     return partitionBooksByJurisdiction(effectiveShelfBooks, country);
   }, [effectiveShelfBooks, country]);
-
-  const offlineShelfBooks = useMemo(
-    () => effectiveShelfBooks.filter((b) => isBookOffline(b.id)),
-    [effectiveShelfBooks, isBookOffline]
-  );
-
-  const remainingDownloadableBooks = useMemo(
-    () => downloadableBooks.filter((b) => !isBookOffline(b.id)),
-    [downloadableBooks, isBookOffline]
-  );
 
   // Chunk books into shelves:
   // - On Bookshelf page (showShelfControls = true): uniform max 12 books per shelf row on desktop
@@ -465,65 +466,20 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               </div>
             )}
 
-            {/* Offline Download All / Clear Shelf Button */}
-            {effectiveShelfBooks.length > 0 && (
+            {/* Jurisdiction Restriction Notice */}
+            {effectiveShelfBooks.length > 0 && downloadableBooks.length === 0 && restrictedBooks.length > 0 && (
               <div className="flex items-center gap-1.5">
-                {isDownloadingOffline ? (
-                  <Button
-                    variant="outline"
-                    size="chip"
-                    disabled
-                    className="text-xs font-mono gap-1.5"
-                    title="Downloading shelf offline"
-                    aria-label="Downloading shelf offline"
-                  >
-                    <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
-                    <span>
-                      {offlineProgress
-                        ? `Saving ${offlineProgress.current}/${offlineProgress.total}`
-                        : 'Downloading...'}
-                    </span>
-                  </Button>
-                ) : downloadableBooks.length === 0 && restrictedBooks.length > 0 ? (
-                  <div
-                    role="status"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 select-none cursor-default"
-                    title={`All titles on this shelf are protected by copyright in ${country}`}
-                    aria-label={`All Restricted in ${country}`}
-                    data-testid="all-restricted-offline-notice"
-                  >
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span className="hidden sm:inline font-medium">All Restricted in {country}</span>
-                    <span className="sm:hidden font-medium">Restricted ({country})</span>
-                  </div>
-                ) : remainingDownloadableBooks.length > 0 ? (
-                  <Button
-                    variant="outline"
-                    size="chip"
-                    onClick={() => downloadAll(downloadableBooks)}
-                    className="text-xs font-mono gap-1.5"
-                    title={
-                      restrictedBooks.length > 0
-                        ? `Download ${remainingDownloadableBooks.length} available public domain books for offline reading (${restrictedBooks.length} restricted in ${country} will be skipped)`
-                        : offlineShelfBooks.length > 0
-                        ? `Download remaining ${remainingDownloadableBooks.length} books on this shelf for offline reading`
-                        : 'Download all books on this shelf for offline reading'
-                    }
-                    aria-label="Download all books on this shelf for offline reading"
-                  >
-                    <HardDriveDownload className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="hidden sm:inline">
-                      {offlineShelfBooks.length > 0
-                        ? `Download Shelf Offline (${remainingDownloadableBooks.length})`
-                        : 'Download Shelf Offline'}
-                    </span>
-                    <span className="sm:hidden">
-                      {offlineShelfBooks.length > 0
-                        ? `Download (${remainingDownloadableBooks.length})`
-                        : 'Download All'}
-                    </span>
-                  </Button>
-                ) : null}
+                <div
+                  role="status"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 select-none cursor-default"
+                  title={`All titles on this shelf are protected by copyright in ${country}`}
+                  aria-label={`All Restricted in ${country}`}
+                  data-testid="all-restricted-offline-notice"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span className="hidden sm:inline font-medium">All Restricted in {country}</span>
+                  <span className="sm:hidden font-medium">Restricted ({country})</span>
+                </div>
               </div>
             )}
           </div>

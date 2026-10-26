@@ -13,8 +13,11 @@ import {
   ArrowUpRight,
   Sparkles,
   Trash2,
+  WifiOff,
 } from 'lucide-react';
 import { useHydratedFellowship, formatFellowScholarLabel } from '@/stores/useFellowshipStore';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ROUTES } from '@/config/routes';
@@ -45,6 +48,8 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
   } = useHydratedFellowship();
 
   const [activeSubTab, setActiveSubTab] = useState<SymposiumSubTabId>('symposiums');
+  const { isOffline } = useNetworkStatus();
+  const { isBookOffline } = useOfflineBooks();
   const [inviteHandle, setInviteHandle] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
@@ -55,10 +60,10 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
   >(undefined);
 
   useEffect(() => {
-    if (userId) {
+    if (userId && !isOffline) {
       fetchFellowshipData(userId);
     }
-  }, [userId, fetchFellowshipData]);
+  }, [userId, isOffline, fetchFellowshipData]);
 
   const acceptedFellows = getAcceptedFellows(userId);
   const pendingCount = getPendingInviteCount(userId);
@@ -208,6 +213,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
               type="button"
               variant="primary"
               size="sm"
+              disabled={isOffline}
               onClick={() => {
                 setModalPreselectedFellow(undefined);
                 setIsSymposiumModalOpen(true);
@@ -241,17 +247,32 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                 const fellowName = isHost
                   ? session.fellow_display_name
                   : session.host_display_name;
+                const isBookCached = isBookOffline(session.book_id);
+                const isUnavailableOffline = isOffline && !isBookCached;
 
                 return (
                   <div
                     key={session.id}
-                    className="p-4 rounded-xl border border-border bg-muted/20 space-y-3 flex flex-col justify-between"
+                    className={`p-4 rounded-xl border border-border bg-muted/20 space-y-3 flex flex-col justify-between ${
+                      isUnavailableOffline ? 'opacity-75' : ''
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
-                          {session.status === 'completed' ? 'Completed Pact' : 'Active Symposium'}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                            {session.status === 'completed' ? 'Completed Pact' : 'Active Symposium'}
+                          </span>
+                          {isUnavailableOffline && (
+                            <span
+                              data-testid={`symposium-offline-badge-${session.book_id}`}
+                              className="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30"
+                            >
+                              <WifiOff className="w-2.5 h-2.5" />
+                              <span>Not Downloaded</span>
+                            </span>
+                          )}
+                        </div>
                         <h4 className="text-base font-serif font-bold text-foreground mt-1 truncate">
                           {session.book_title || `Volume #${session.book_id}`}
                         </h4>
@@ -260,13 +281,26 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                         </p>
                       </div>
 
-                      <Link
-                        href={ROUTES.READ(session.book_id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs font-mono font-bold text-primary shrink-0"
-                      >
-                        <span>Read</span>
-                        <ArrowUpRight className="w-3.5 h-3.5" />
-                      </Link>
+                      {isUnavailableOffline ? (
+                        <button
+                          type="button"
+                          disabled
+                          data-testid={`symposium-read-disabled-${session.book_id}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-muted/40 text-xs font-mono font-medium text-muted-foreground opacity-60 cursor-not-allowed shrink-0"
+                          title="Book must be downloaded to read offline"
+                        >
+                          <WifiOff className="w-3.5 h-3.5" />
+                          <span>Unavailable Offline</span>
+                        </button>
+                      ) : (
+                        <Link
+                          href={ROUTES.READ(session.book_id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs font-mono font-bold text-primary shrink-0"
+                        >
+                          <span>Read</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
                     </div>
 
                     <div className="space-y-1.5 pt-1 text-[11px] font-mono">
@@ -298,8 +332,13 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                     <div className="flex items-center justify-end pt-2 border-t border-border">
                       <button
                         type="button"
+                        disabled={isOffline}
                         onClick={() => leaveSymposium(session.id)}
-                        className="text-[11px] font-mono text-muted-foreground hover:text-destructive inline-flex items-center gap-1 cursor-pointer"
+                        className={`text-[11px] font-mono text-muted-foreground inline-flex items-center gap-1 ${
+                          isOffline
+                            ? 'opacity-40 cursor-not-allowed'
+                            : 'hover:text-destructive cursor-pointer'
+                        }`}
                       >
                         <Trash2 className="w-3 h-3" />
                         <span>Leave Symposium</span>
@@ -333,6 +372,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                   type="text"
                   value={inviteHandle}
                   onChange={(e) => setInviteHandle(e.target.value)}
+                  disabled={isOffline}
                   placeholder="e.g. @charlotte_bronte"
                   className="text-xs font-mono"
                 />
@@ -341,13 +381,21 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                 type="submit"
                 variant="primary"
                 size="sm"
-                disabled={isInviting || !inviteHandle.trim()}
+                disabled={isOffline || isInviting || !inviteHandle.trim()}
                 className="font-mono text-xs shrink-0"
               >
                 <UserPlus className="w-3.5 h-3.5 mr-1.5" />
                 <span>Send Circle Invitation</span>
               </Button>
             </div>
+            {isOffline && (
+              <p
+                data-testid="circle-invite-offline-hint"
+                className="text-xs font-mono text-muted-foreground"
+              >
+                Inviting Fellow Scholars requires an internet connection.
+              </p>
+            )}
             <p className="text-[11px] text-muted-foreground font-sans">
               Works even if your or your companion&apos;s sanctuary is set to Private Sanctuary.
             </p>
@@ -391,6 +439,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                       type="button"
                       variant="outline"
                       size="sm"
+                      disabled={isOffline}
                       onClick={() => {
                         setModalPreselectedFellow({
                           fellowId: fellow.fellowId,
@@ -406,9 +455,10 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                     </Button>
                     <button
                       type="button"
+                      disabled={isOffline}
                       onClick={() => removeFellow(fellow.circleId)}
                       aria-label={`Remove @${fellow.username} from Reader Circle`}
-                      className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                      className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -459,6 +509,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                             type="button"
                             variant="primary"
                             size="sm"
+                            disabled={isOffline}
                             onClick={() => respondToCircleInvite(circle.id, 'accept')}
                             className="font-mono text-xs"
                           >
@@ -469,6 +520,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                             type="button"
                             variant="outline"
                             size="sm"
+                            disabled={isOffline}
                             onClick={() => respondToCircleInvite(circle.id, 'decline')}
                             className="font-mono text-xs"
                           >
@@ -481,6 +533,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                           type="button"
                           variant="outline"
                           size="sm"
+                          disabled={isOffline}
                           onClick={() => removeFellow(circle.id)}
                           className="font-mono text-xs"
                         >
@@ -521,6 +574,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                             type="button"
                             variant="primary"
                             size="sm"
+                            disabled={isOffline}
                             onClick={() => respondToSymposiumInvite(sym.id, 'accept')}
                             className="font-mono text-xs"
                           >
@@ -531,6 +585,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                             type="button"
                             variant="outline"
                             size="sm"
+                            disabled={isOffline}
                             onClick={() => respondToSymposiumInvite(sym.id, 'decline')}
                             className="font-mono text-xs"
                           >
@@ -543,6 +598,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                           type="button"
                           variant="outline"
                           size="sm"
+                          disabled={isOffline}
                           onClick={() => leaveSymposium(sym.id)}
                           className="font-mono text-xs"
                         >

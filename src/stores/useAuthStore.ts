@@ -33,6 +33,7 @@ export function validateUsername(username: string): UsernameValidationResult {
 export interface AuthState {
   user: User | null;
   profile: Profile | null;
+  pendingProfileUpdates: Partial<Profile> | null;
   isLoading: boolean;
   isAuthModalOpen: boolean;
   authModalView: AuthModalView;
@@ -58,6 +59,7 @@ export interface AuthState {
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   fetchProfile: () => Promise<void>;
+  syncWithCloud: (userId?: string) => Promise<void>;
   updateProfile: (updates: {
     display_name?: string;
     preferred_theme?: string;
@@ -82,6 +84,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       profile: null,
+      pendingProfileUpdates: null,
       isLoading: true,
       isAuthModalOpen: false,
       authModalView: 'sign_in',
@@ -91,20 +94,42 @@ export const useAuthStore = create<AuthState>()(
   initializeAuth: () => {
     const supabase = createClient();
 
+    if (typeof navigator !== 'undefined' && navigator.onLine === false && get().user) {
+      set({ isLoading: false });
+    }
+
     // Check active session on initialization
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      set({ user, isLoading: false });
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if ((error || !user) && typeof navigator !== 'undefined' && navigator.onLine === false && get().user) {
+        set({ isLoading: false });
+        return;
+      }
+      set({ user: user ?? null, isLoading: false });
       if (user) {
         get().fetchProfile();
       }
     }).catch(() => {
-      set({ user: null, profile: null, isLoading: false });
+      if (get().user) {
+        set({ isLoading: false });
+      } else {
+        set({ user: null, profile: null, isLoading: false });
+      }
     });
 
     // Subscribe to auth state transitions
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        event !== 'SIGNED_OUT' &&
+        !session &&
+        typeof navigator !== 'undefined' &&
+        navigator.onLine === false &&
+        get().user
+      ) {
+        set({ isLoading: false });
+        return;
+      }
       const user = session?.user ?? null;
       set({ user, isLoading: false });
       if (user) {
@@ -250,7 +275,14 @@ export const useAuthStore = create<AuthState>()(
 
     const supabase = createClient();
     await supabase.auth.signOut();
-    set({ user: null, profile: null, isAuthModalOpen: false, error: null, statusMessage: null });
+    set({
+      user: null,
+      profile: null,
+      pendingProfileUpdates: null,
+      isAuthModalOpen: false,
+      error: null,
+      statusMessage: null,
+    });
 
     try {
       const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
@@ -268,11 +300,23 @@ export const useAuthStore = create<AuthState>()(
   },
 
   fetchProfile: async () => {
-    const { user } = get();
+    const { user, pendingProfileUpdates } = get();
     if (!user) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
     try {
       const supabase = createClient();
+
+      if (pendingProfileUpdates && Object.keys(pendingProfileUpdates).length > 0) {
+        const { error: flushErr } = await supabase
+          .from('profiles')
+          .update(pendingProfileUpdates)
+          .eq('id', user.id);
+        if (!flushErr) {
+          set({ pendingProfileUpdates: null });
+        }
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -282,6 +326,29 @@ export const useAuthStore = create<AuthState>()(
       if (!error && data) {
         set({ profile: data as Profile });
       }
+    } catch {
+      // Non-blocking fallback
+    }
+  },
+
+  syncWithCloud: async (userId?: string) => {
+    const targetUserId = userId || get().user?.id;
+    if (!targetUserId) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+    try {
+      const pending = get().pendingProfileUpdates;
+      if (pending && Object.keys(pending).length > 0) {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from('profiles')
+          .update(pending)
+          .eq('id', targetUserId);
+        if (!error) {
+          set({ pendingProfileUpdates: null });
+        }
+      }
+      await get().fetchProfile();
     } catch {
       // Non-blocking fallback
     }
@@ -311,6 +378,20 @@ export const useAuthStore = create<AuthState>()(
       updated_at: new Date().toISOString(),
     };
 
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      set((state) => ({
+        profile: state.profile
+          ? ({ ...state.profile, ...payload } as Profile)
+          : ({ id: user.id, ...payload } as Profile),
+        pendingProfileUpdates: {
+          ...(state.pendingProfileUpdates || {}),
+          ...payload,
+        },
+        error: null,
+      }));
+      return { error: null };
+    }
+
     try {
       const supabase = createClient();
       const { error } = await supabase
@@ -324,7 +405,9 @@ export const useAuthStore = create<AuthState>()(
       }
 
       set((state) => ({
-        profile: state.profile ? ({ ...state.profile, ...payload } as Profile) : null,
+        profile: state.profile
+          ? ({ ...state.profile, ...payload } as Profile)
+          : ({ id: user.id, ...payload } as Profile),
       }));
 
       if (updates.username !== undefined || updates.display_name !== undefined) {
@@ -425,7 +508,14 @@ export const useAuthStore = create<AuthState>()(
       }
       // 4. Terminate auth session and clear all local persisted user stores
       await supabase.auth.signOut();
-      set({ user: null, profile: null, isAuthModalOpen: false, error: null, statusMessage: null });
+      set({
+        user: null,
+        profile: null,
+        pendingProfileUpdates: null,
+        isAuthModalOpen: false,
+        error: null,
+        statusMessage: null,
+      });
 
       const localCleanupTasks: Array<() => Promise<unknown>> = [
         async () => {
@@ -465,7 +555,9 @@ export const useAuthStore = create<AuthState>()(
       name: 'bookarium-auth-profile',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
+        user: state.user,
         profile: state.profile,
+        pendingProfileUpdates: state.pendingProfileUpdates,
       }),
     }
   )

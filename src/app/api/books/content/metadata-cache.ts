@@ -128,7 +128,7 @@ export async function resolveBookMetadata(bookId: number): Promise<GenericBookIn
     const res = await fetch(`${API_ENDPOINTS.GUTENDEX_BASE_URL}/${bookId}/`, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': `Bookarium-Gatekeeper/1.0 (${SITE_CONFIG.GITHUB_REPO})`,
+        'User-Agent': SITE_CONFIG.USER_AGENT,
       },
       signal: controller.signal,
     });

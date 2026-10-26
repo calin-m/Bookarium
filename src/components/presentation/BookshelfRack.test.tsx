@@ -18,6 +18,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/offline-storage', () => ({
   getOfflineBookIds: vi.fn().mockResolvedValue([]),
+  getAllOfflineBookMetas: vi.fn().mockResolvedValue([]),
   saveOfflineBook: vi.fn().mockResolvedValue(undefined),
   removeOfflineBook: vi.fn().mockResolvedValue(undefined),
   getStorageQuota: vi.fn().mockResolvedValue(null),
@@ -632,26 +633,12 @@ describe('BookshelfRack Component', () => {
     window.innerWidth = 1024;
   });
 
-  it('renders offline download button and triggers download all', async () => {
-    const { saveOfflineBook } = await import('@/lib/offline-storage');
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
-      Promise.resolve(new Response('Book text offline', { status: 200 }))
-    );
-
+  it('omits batch Download Shelf Offline button in compliance with Project Gutenberg anti-scraping rules', () => {
     render(<BookshelfRack books={mockBooks.slice(0, 1)} />);
 
-    const downloadAllBtn = screen.getByRole('button', { name: /Download all books on this shelf for offline reading/i });
-    expect(downloadAllBtn).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(downloadAllBtn);
-    });
-
-    await waitFor(() => {
-      expect(saveOfflineBook).toHaveBeenCalled();
-    });
-
-    fetchSpy.mockRestore();
+    expect(
+      screen.queryByRole('button', { name: /Download all books on this shelf for offline reading/i })
+    ).not.toBeInTheDocument();
   });
 
   it('renders individual offline download button on book spine and triggers toggle', async () => {
@@ -683,12 +670,14 @@ describe('BookshelfRack Component', () => {
 
     render(<BookshelfRack books={mockBooks.slice(0, 1)} />);
 
+    await screen.findByRole('button', { name: `Remove offline copy of ${mockBooks[0].title}` });
+
     // Verify redundant status pill and duplicate lower clear button are not rendered
     expect(screen.queryByTestId('all-saved-offline-notice')).toBeNull();
     expect(screen.queryByRole('button', { name: /Clear Offline Shelf/i })).toBeNull();
   });
 
-  it('renders Edit and Delete buttons to the left of Download Shelf Offline button on custom shelves', () => {
+  it('renders Edit and Delete buttons on custom shelves without batch Download Shelf Offline button', () => {
     useAuthStore.setState({ user: { id: 'user-1', email: 'scholar@example.com' } as any });
     useBookshelfStore.setState({
       cloudBookshelves: [
@@ -717,18 +706,13 @@ describe('BookshelfRack Component', () => {
 
     const editBtn = within(actionContainer).getByRole('button', { name: 'Rename Philosophy' });
     const deleteBtn = within(actionContainer).getByRole('button', { name: 'Delete Philosophy' });
-    const downloadShelfBtn = within(actionContainer).getByRole('button', {
-      name: 'Download all books on this shelf for offline reading',
-    });
 
     expect(editBtn).toBeInTheDocument();
     expect(deleteBtn).toBeInTheDocument();
-    expect(downloadShelfBtn).toBeInTheDocument();
 
     const buttons = within(actionContainer).getAllByRole('button');
     expect(buttons[0]).toBe(editBtn);
     expect(buttons[1]).toBe(deleteBtn);
-    expect(buttons[2]).toBe(downloadShelfBtn);
   });
 
   it('skips restricted books when clicking Download Shelf Offline and renders Clear Offline Shelf when all available are cached', async () => {
@@ -755,6 +739,8 @@ describe('BookshelfRack Component', () => {
     vi.mocked(getOfflineBookIds).mockResolvedValue([1342]);
 
     render(<BookshelfRack books={[publicDomainBook, restrictedBook]} />);
+
+    await screen.findByRole('button', { name: `Remove offline copy of ${publicDomainBook.title}` });
 
     // Redundant status pill is removed
     expect(screen.queryByTestId('all-saved-offline-notice')).toBeNull();
@@ -983,17 +969,16 @@ describe('BookshelfRack Component', () => {
     });
   });
 
-  it('displays Download Shelf Offline for remaining books without duplicate lower Clear Offline button when shelf is partially cached offline', async () => {
+  it('does not display batch Download Shelf Offline or duplicate lower Clear Offline button when shelf is partially cached offline', async () => {
     const { getOfflineBookIds } = await import('@/lib/offline-storage');
     vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
 
     render(<BookshelfRack books={[mockBooks[0], mockBooks[1]]} />);
 
-    // Verify duplicate lower Clear Offline button is not present
-    expect(screen.queryByRole('button', { name: 'Clear Offline Shelf' })).toBeNull();
+    await screen.findByRole('button', { name: `Remove offline copy of ${mockBooks[0].title}` });
 
-    const downloadBtn = await screen.findByText(/Download Shelf Offline \(1\)/i);
-    expect(downloadBtn).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Clear Offline Shelf' })).toBeNull();
+    expect(screen.queryByText(/Download Shelf Offline/i)).toBeNull();
   });
 
   it('renders Downloaded shelf pill next to General when downloaded books exist and handles shelf switching', async () => {

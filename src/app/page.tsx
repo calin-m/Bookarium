@@ -29,6 +29,7 @@ const BookReaderPage = dynamic(
 );
 import { NotebookView } from '@/components/presentation/NotebookView';
 import { BookmarksView } from '@/components/presentation/BookmarksView';
+import { CatalogOfflineView } from '@/components/presentation/CatalogOfflineView';
 import { DOWNLOADED_SHELF_ID } from '@/components/presentation/BookshelfRack';
 import { Modal } from '@/components/ui/Modal';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
@@ -44,10 +45,11 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useCollectionAutoHeal } from '@/hooks/useCollectionAutoHeal';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/types/book.types';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { CollectionToolbar } from '@/components/presentation/CollectionToolbar';
 import { Pagination } from '@/components/ui/Pagination';
@@ -78,7 +80,8 @@ function HomeContent() {
   const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'favorites' | null>(null);
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
 
-  const { isBookOffline, downloadBook, removeBook, removeAll, downloadingBookId, offlineBookIds } = useOfflineBooks();
+  const { isOffline } = useNetworkStatus();
+  const { isBookOffline, downloadBook, removeBook, removeAll, downloadingBookId, offlineBookIds, offlineBooks = [] } = useOfflineBooks();
   const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | null>(null);
   const handleToggleOffline = async (book: GutendexBook) => {
     if (isBookOffline(book.id)) {
@@ -227,9 +230,19 @@ function HomeContent() {
     [cloudBookshelves, currentActiveShelfId, defaultShelf]
   );
 
+  const resolvedOfflineBooks = useMemo(() => {
+    const savedOffline = savedBooks.filter((b) => isBookOffline(b.id));
+    const savedOfflineIds = new Set(savedOffline.map((b) => b.id));
+    const extraOffline = (offlineBooks || []).filter(
+      (b) => isBookOffline(b.id) && !savedOfflineIds.has(b.id)
+    );
+    return [...savedOffline, ...extraOffline];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedBooks, offlineBooks, isBookOffline, isViewingDownloaded, isOffline]);
+
   const currentShelfBooks = useMemo(() => {
     if (isViewingDownloaded) {
-      return savedBooks.filter((b) => isBookOffline(b.id));
+      return resolvedOfflineBooks;
     }
     if (cloudBookshelves.length <= 1 || isViewingGeneral) {
       return savedBooks;
@@ -241,7 +254,7 @@ function HomeContent() {
         .map((item) => item.book_id)
     );
     return savedBooks.filter((b) => currentShelfBookIds.has(b.id));
-  }, [isViewingDownloaded, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, savedBooks, isBookOffline]);
+  }, [isViewingDownloaded, resolvedOfflineBooks, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, savedBooks]);
 
   // Reset collection search query when switching views
   const [prevActiveView, setPrevActiveView] = useState(activeView);
@@ -277,15 +290,53 @@ function HomeContent() {
     isError,
     isFetching,
     refetch,
-  } = useBooks(queryParams);
+  } = useBooks(queryParams, { enabled: !isOffline });
+
+  // Local offline catalog filtering & sorting when device is offline and downloaded books exist
+  const filteredOfflineCatalogBooks = useMemo(() => {
+    if (!isOffline) return [];
+    let list = filterBooksSmart(resolvedOfflineBooks, search);
+    if (topic.trim()) {
+      const t = topic.trim().toLowerCase();
+      list = list.filter((b) =>
+        [...(b.subjects || []), ...(b.bookshelves || [])].some((s) => s.toLowerCase().includes(t))
+      );
+    }
+    if (language.trim()) {
+      const lang = language.trim().toLowerCase();
+      list = list.filter((b) => (b.languages || []).some((l) => l.toLowerCase() === lang));
+    }
+    if (queryParams.authorYearStart !== undefined || queryParams.authorYearEnd !== undefined) {
+      list = list.filter((b) => {
+        const author = b.authors?.[0];
+        if (!author) return false;
+        const year = author.birth_year ?? author.death_year;
+        if (year === null || year === undefined) return false;
+        if (queryParams.authorYearStart !== undefined && year < queryParams.authorYearStart) return false;
+        if (queryParams.authorYearEnd !== undefined && year > queryParams.authorYearEnd) return false;
+        return true;
+      });
+    }
+    if (sort === 'ascending') {
+      return [...list].sort((a, b) => a.id - b.id);
+    }
+    if (sort === 'descending') {
+      return [...list].sort((a, b) => b.id - a.id);
+    }
+    return [...list].sort((a, b) => (b.download_count || 0) - (a.download_count || 0));
+  }, [isOffline, resolvedOfflineBooks, search, topic, language, queryParams.authorYearStart, queryParams.authorYearEnd, sort]);
 
   // Windowed Chunk Sub-Pagination Calculations
   const subPagesPerBatch = Math.max(1, Math.floor(32 / pageSize));
   const subIndex = (page - 1) % subPagesPerBatch;
   const sliceStart = subIndex * pageSize;
   const sliceEnd = sliceStart + pageSize;
+  const offlineSliceStart = (page - 1) * pageSize;
+  const offlineSliceEnd = offlineSliceStart + pageSize;
   const hasNextSubPage = Boolean(booksData?.results && sliceEnd < booksData.results.length);
-  const hasNextPage = hasNextSubPage || Boolean(booksData?.next);
+  const hasNextPage = isOffline
+    ? offlineSliceEnd < filteredOfflineCatalogBooks.length
+    : hasNextSubPage || Boolean(booksData?.next);
 
   // Predictive Next-Page Prefetching (triggers when approaching next upstream 32-batch)
   // - At pageSize=8 (4 sub-pages/batch): triggers on subIndex 2 (subPage 3) & 3 (subPage 4), giving ~15-25s lead time on mobile.
@@ -293,7 +344,7 @@ function HomeContent() {
   const isApproachingBatchEnd = subIndex >= Math.max(1, subPagesPerBatch - 2);
   const prefetchNextPage = usePrefetchNextPage(
     queryParams,
-    isApproachingBatchEnd && Boolean(booksData?.next)
+    !isOffline && isApproachingBatchEnd && Boolean(booksData?.next)
   );
 
   const pendingPageScrollRef = React.useRef<number | null>(null);
@@ -388,12 +439,13 @@ function HomeContent() {
   const uniqueKnownFavoriteBooks = useMemo(() => {
     const allKnown = [
       ...(favoriteBooks || []),
+      ...(offlineBooks || []),
       ...(booksData?.results || []),
       ...savedBooks,
     ];
     const uniqueKnown = Array.from(new Map(allKnown.map((b) => [b.id, b])).values());
     return uniqueKnown.filter((b) => favoriteBookIds.includes(b.id));
-  }, [favoriteBooks, booksData?.results, savedBooks, favoriteBookIds]);
+  }, [favoriteBooks, offlineBooks, booksData?.results, savedBooks, favoriteBookIds]);
 
   const baseFavoriteBooks = useMemo(() => {
     if (favoritesSortBy === 'downloaded') {
@@ -424,9 +476,13 @@ function HomeContent() {
   }, [sortedFavoriteBooks, safeFavoritesPage, collectionPageSize]);
 
   // Derive displayed books with windowed sub-page slicing based on active view
-  let displayedBooks = booksData?.results ? booksData.results.slice(sliceStart, sliceEnd) : [];
-  let isDisplayLoading = isLoading || isFetching;
-  let isDisplayError = isError;
+  let displayedBooks = isOffline
+    ? filteredOfflineCatalogBooks.slice(offlineSliceStart, offlineSliceEnd)
+    : booksData?.results
+    ? booksData.results.slice(sliceStart, sliceEnd)
+    : [];
+  let isDisplayLoading = isOffline ? false : isLoading || isFetching;
+  let isDisplayError = isOffline ? false : isError;
 
   if (activeView === 'bookshelf') {
     displayedBooks = paginatedSavedBooks;
@@ -504,7 +560,7 @@ function HomeContent() {
       <main
         className={`flex-1 transition-all duration-300 touch-pan-y overflow-x-clip ${isFilterDrawerOpen ? 'xl:pl-96' : 'xl:pl-0'}`}
       >
-        {activeView === 'catalog' && (
+        {activeView === 'catalog' && (!isOffline || resolvedOfflineBooks.length > 0) && (
           <HeroSearch
             search={search}
             onSearchChange={handleSearchChange}
@@ -512,6 +568,7 @@ function HomeContent() {
             onTopicChange={handleTopicChange}
             selectedLanguage={language}
             onLanguageChange={handleLanguageChange}
+            featuredBook={isOffline && resolvedOfflineBooks.length > 0 ? resolvedOfflineBooks[0] : undefined}
             onReadFeaturedBook={(featured) => {
               if (featured) {
                 const authorName =
@@ -558,7 +615,7 @@ function HomeContent() {
         )}
 
         {/* Sticky Sub-Header Toolbar for Catalog View */}
-        {activeView === 'catalog' && (
+        {activeView === 'catalog' && (!isOffline || resolvedOfflineBooks.length > 0) && (
           <StickyCatalogToolbar
             page={page}
             onPageChange={handlePageChange}
@@ -570,10 +627,10 @@ function HomeContent() {
             activeFilterCount={toolbarChips.length}
             activeFilterChips={toolbarChips}
             onClearAllFilters={handleResetAllFiltersWithScroll}
-            isFetching={isFetching}
+            isFetching={isOffline ? false : isFetching}
             onPrefetchNext={prefetchNextPage}
             latencyMs={booksData?.latencyMs}
-            isError={isError}
+            isError={isDisplayError}
             pageSize={pageSize}
             onPageSizeChange={handlePageSizeChange}
             isHeaderVisible={isHeaderVisible}
@@ -617,8 +674,28 @@ function HomeContent() {
                 setActiveView('catalog');
               }}
             />
+          ) : activeView === 'catalog' && isOffline && resolvedOfflineBooks.length === 0 ? (
+            <CatalogOfflineView
+              onNavigateView={(view) => {
+                setSwipeDirection(null);
+                setActiveView(view);
+              }}
+            />
           ) : (
             <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-12 pb-8 sm:pb-12 scroll-mt-16 sm:scroll-mt-20">
+              {activeView === 'catalog' && isOffline && (
+                <div
+                  data-testid="catalog-offline-downloaded-banner"
+                  className="mb-6 flex items-center justify-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs sm:text-sm font-medium text-amber-600 dark:text-amber-400"
+                >
+                  <WifiOff className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>
+                    Offline Mode — Browsing your {resolvedOfflineBooks.length} downloaded{' '}
+                    {resolvedOfflineBooks.length === 1 ? 'volume' : 'volumes'}
+                  </span>
+                </div>
+              )}
+
               {/* Booksaw Centered Section Header */}
               <SectionHeader
                 eyebrow={viewConfig.eyebrow}
@@ -628,7 +705,15 @@ function HomeContent() {
                     ? `You have ${collectionCount} titles preserved on your personal shelf (verifying public domain clearance...)`
                     : viewConfig.getSubtitle({
                         count: collectionCount,
-                        booksData,
+                        booksData:
+                          activeView === 'catalog' && isOffline
+                            ? {
+                                count: filteredOfflineCatalogBooks.length,
+                                next: null,
+                                previous: null,
+                                results: filteredOfflineCatalogBooks,
+                              }
+                            : booksData,
                         displayedCount: displayedBooks.length,
                       })
                 }
@@ -707,7 +792,7 @@ function HomeContent() {
                 page={page}
                 pageSize={pageSize}
                 onPageChange={activeView === 'catalog' ? handlePageChange : undefined}
-                hasNextPage={Boolean(booksData?.next)}
+                hasNextPage={hasNextPage}
                 onDownloadClick={(book) => setSelectedDownloadBook(book)}
                 onPreviewClick={(book, rect) => {
                   setSelectedPreviewBook(book);
@@ -782,10 +867,10 @@ function HomeContent() {
         </div>
 
         {/* Booksaw Editorial Classic of the Day Section */}
-        {activeView === 'catalog' && <EditorialQuoteSection />}
+        {activeView === 'catalog' && !isOffline && <EditorialQuoteSection />}
 
         {/* Booksaw 3-Column Literary Quotes & Passages */}
-        {activeView === 'catalog' && <LiteraryQuotes />}
+        {activeView === 'catalog' && !isOffline && <LiteraryQuotes />}
       </main>
 
       {/* Desktop 3D Open Book Preview Spread Modal (>= 1024px) */}

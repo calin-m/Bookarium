@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { GutendexBook, Book, Author } from '@/types/book.types';
 import {
   getOfflineBookIds,
+  getAllOfflineBookMetas,
   saveOfflineBook,
   removeOfflineBook,
   getStorageQuota,
@@ -11,6 +12,9 @@ import {
 } from '@/lib/offline-storage';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
+import { isPlaceholderAuthor } from '@/lib/book-metadata';
+import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
 
 export const OFFLINE_BOOKS_UPDATED_EVENT = 'bookarium:offline-updated';
 export const OFFLINE_DOWNLOADING_EVENT = 'bookarium:offline-downloading';
@@ -28,10 +32,42 @@ function broadcastDownloadingBookId(bookId: number | null): void {
 }
 
 function normalizeOfflineAuthors(book: GutendexBook | Book): Author[] {
-  const rawList: (Author | string)[] =
+  let rawList: (Author | string)[] =
     'authorDetails' in book && Array.isArray(book.authorDetails) && book.authorDetails.length > 0
       ? book.authorDetails
       : book.authors || [];
+
+  const hasAuthentic = rawList.some((a) => {
+    const name = typeof a === 'string' ? a : a?.name;
+    return Boolean(name && !isPlaceholderAuthor(name));
+  });
+
+  if (!hasAuthentic && typeof window !== 'undefined') {
+    try {
+      const shelfState = useBookshelfStore.getState();
+      const match =
+        shelfState.savedBooks?.find((b) => b.id === book.id) ||
+        shelfState.favoriteBooks?.find((b) => b.id === book.id) ||
+        shelfState.recentBooks?.find((b) => b.id === book.id);
+      if (match?.authors && match.authors.length > 0) {
+        const matchAuthentic = match.authors.some((a) => a.name && !isPlaceholderAuthor(a.name));
+        if (matchAuthentic) rawList = match.authors;
+      }
+    } catch {}
+  }
+
+  if (!hasAuthentic && (!rawList.length || rawList.every((a) => isPlaceholderAuthor(typeof a === 'string' ? a : a?.name)))) {
+    const hero = FEATURED_HERO_BOOKS.find((h) => h.id === book.id);
+    if (hero && hero.author && !isPlaceholderAuthor(hero.author)) {
+      rawList = [
+        {
+          name: hero.author,
+          birth_year: hero.authorBirthYear ?? null,
+          death_year: hero.authorDeathYear ?? null,
+        },
+      ];
+    }
+  }
 
   return rawList.map((a) => {
     if (typeof a === 'string') {
@@ -54,11 +90,6 @@ function normalizeOfflineAuthors(book: GutendexBook | Book): Author[] {
   });
 }
 
-export interface OfflineProgress {
-  current: number;
-  total: number;
-}
-
 function areIdArraysEqual(a: number[], b: number[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
@@ -69,19 +100,28 @@ function areIdArraysEqual(a: number[], b: number[]): boolean {
 
 export function useOfflineBooks() {
   const [offlineBookIds, setOfflineBookIds] = useState<number[]>([]);
+  const [offlineBooks, setOfflineBooks] = useState<GutendexBook[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [storageQuota, setStorageQuota] = useState<StorageQuotaInfo | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [downloadingBookId, setDownloadingBookId] = useState<number | null>(null);
-  const [downloadAllProgress, setDownloadAllProgress] = useState<OfflineProgress | null>(null);
 
   const offlineIdsRef = useRef<number[]>([]);
+  const offlineBooksRef = useRef<GutendexBook[]>([]);
   const storageQuotaRef = useRef<StorageQuotaInfo | null>(null);
 
   const updateOfflineIdsState = useCallback((ids: number[]) => {
     if (!areIdArraysEqual(offlineIdsRef.current, ids)) {
       offlineIdsRef.current = ids;
       setOfflineBookIds(ids);
+    }
+  }, []);
+
+  const updateOfflineBooksState = useCallback((metas: GutendexBook[]) => {
+    const formatMetaSig = (list: GutendexBook[]) =>
+      list.map((b) => `${b.id}:${b.authors.map((a) => a.name).join('|')}`).join(',');
+    if (formatMetaSig(offlineBooksRef.current) !== formatMetaSig(metas)) {
+      offlineBooksRef.current = metas;
+      setOfflineBooks(metas);
     }
   }, []);
 
@@ -108,15 +148,29 @@ export function useOfflineBooks() {
     }
   }, [updateStorageQuotaState]);
 
+  const refreshOfflineMetas = useCallback(async () => {
+    try {
+      if (typeof getAllOfflineBookMetas === 'function') {
+        const metas = await getAllOfflineBookMetas();
+        if (Array.isArray(metas)) {
+          updateOfflineBooksState(metas);
+        }
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  }, [updateOfflineBooksState]);
+
   const refreshOfflineIds = useCallback(async () => {
     try {
       const ids = await getOfflineBookIds();
       updateOfflineIdsState(ids);
+      await refreshOfflineMetas();
       await refreshStorageQuota();
     } catch {
       // Non-blocking fallback
     }
-  }, [refreshStorageQuota, updateOfflineIdsState]);
+  }, [refreshOfflineMetas, refreshStorageQuota, updateOfflineIdsState]);
 
   useEffect(() => {
     let isMounted = true;
@@ -135,6 +189,16 @@ export function useOfflineBooks() {
         }
       });
 
+    if (typeof getAllOfflineBookMetas === 'function') {
+      getAllOfflineBookMetas()
+        .then((metas) => {
+          if (isMounted && Array.isArray(metas) && metas.length > 0) {
+            updateOfflineBooksState(metas);
+          }
+        })
+        .catch(() => {});
+    }
+
     getStorageQuota()
       .then((quota) => {
         if (isMounted && quota !== null) {
@@ -152,6 +216,15 @@ export function useOfflineBooks() {
           }
         })
         .catch(() => {});
+      if (typeof getAllOfflineBookMetas === 'function') {
+        getAllOfflineBookMetas()
+          .then((metas) => {
+            if (isMounted && Array.isArray(metas)) {
+              updateOfflineBooksState(metas);
+            }
+          })
+          .catch(() => {});
+      }
       getStorageQuota()
         .then((quota) => {
           if (isMounted) {
@@ -181,7 +254,7 @@ export function useOfflineBooks() {
         window.removeEventListener(OFFLINE_DOWNLOADING_EVENT, handleDownloadingEvent);
       }
     };
-  }, [updateOfflineIdsState, updateStorageQuotaState]);
+  }, [updateOfflineIdsState, updateOfflineBooksState, updateStorageQuotaState]);
 
   const downloadBook = useCallback(
     async (book: GutendexBook | Book): Promise<boolean> => {
@@ -198,7 +271,6 @@ export function useOfflineBooks() {
         broadcastOfflineUpdated();
 
         try {
-          const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
           const store = useBookshelfStore.getState();
           if (!store.isBookSaved(book.id)) {
             const gutendexPayload: GutendexBook =
@@ -228,10 +300,11 @@ export function useOfflineBooks() {
           // Non-blocking fallback
         }
 
-        // Pre-warm the Reader route and JS bundle into the Service Worker cache
+        // Pre-warm lazy-loaded Reader & Modal JS bundles so offline opening never hits ChunkLoadError
         if (typeof window !== 'undefined') {
           void import('@/app/read/[id]/page').catch(() => {});
-          void fetch(`/read/${book.id}`, { credentials: 'same-origin' }).catch(() => {});
+          void import('@/components/presentation/BookPreviewModal').catch(() => {});
+          void import('@/components/presentation/DownloadDrawer').catch(() => {});
         }
 
         return true;
@@ -254,46 +327,6 @@ export function useOfflineBooks() {
     [refreshOfflineIds]
   );
 
-  const downloadAll = useCallback(
-    async (books: GutendexBook[]): Promise<void> => {
-      if (isDownloading || books.length === 0) return;
-      setIsDownloading(true);
-      const missing = books.filter((b) => !offlineBookIds.includes(b.id));
-      if (missing.length === 0) {
-        setIsDownloading(false);
-        return;
-      }
-
-      if (typeof window !== 'undefined') {
-        void import('@/app/read/[id]/page').catch(() => {});
-      }
-
-      setDownloadAllProgress({ current: 0, total: missing.length });
-
-      for (let i = 0; i < missing.length; i++) {
-        const book = missing[i];
-        try {
-          const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${book.id}`);
-          if (res.ok) {
-            const text = await res.text();
-            if (text && text.trim().length > 0) {
-              await saveOfflineBook(book.id, book.title, text, normalizeOfflineAuthors(book));
-            }
-          }
-        } catch {
-          // Continue with next book
-        }
-        setDownloadAllProgress({ current: i + 1, total: missing.length });
-      }
-
-      await refreshOfflineIds();
-      broadcastOfflineUpdated();
-      setIsDownloading(false);
-      setDownloadAllProgress(null);
-    },
-    [isDownloading, offlineBookIds, refreshOfflineIds]
-  );
-
   const removeAll = useCallback(
     async (books: GutendexBook[]): Promise<void> => {
       if (books.length === 0) return;
@@ -313,15 +346,13 @@ export function useOfflineBooks() {
 
   return {
     offlineBookIds,
+    offlineBooks,
     isLoaded,
     isBookOffline,
     downloadBook,
     removeBook,
-    downloadAll,
     removeAll,
-    isDownloading,
     downloadingBookId,
-    downloadAllProgress,
     storageQuota,
     refreshStorageQuota,
     refreshOfflineIds,

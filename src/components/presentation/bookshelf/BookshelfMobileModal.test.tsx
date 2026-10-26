@@ -234,6 +234,57 @@ describe('BookshelfMobileModal Component', () => {
     const downloadingBtn = screen.getByRole('button', { name: 'Downloading for offline reading' });
     expect(downloadingBtn).toBeDisabled();
   });
+
+  it('disables Read Volume and Save for offline reading when network is offline and book is not cached, but keeps them enabled when cached', async () => {
+    const networkModule = await import('@/hooks/useNetworkStatus');
+    const networkSpy = vi.spyOn(networkModule, 'useNetworkStatus').mockReturnValue({
+      isOnline: false,
+      isOffline: true,
+    });
+
+    const { rerender } = render(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        onClose={vi.fn()}
+        isOffline={false}
+        onToggleOffline={vi.fn()}
+      />
+    );
+
+    const offlineReadBtn = screen.getByRole('button', { name: `Read ${mockBook.title} (Unavailable offline)` });
+    expect(offlineReadBtn).toBeDisabled();
+    expect(offlineReadBtn).toHaveTextContent('Offline');
+
+    const saveOfflineBtn = screen.getByRole('button', { name: 'Save for offline reading' });
+    expect(saveOfflineBtn).toBeDisabled();
+
+    const downloadBtn = screen.getByRole('button', { name: `Download ${mockBook.title}` });
+    expect(downloadBtn).toBeDisabled();
+
+    expect(screen.getByTestId(`mobile-offline-unavailable-badge-${mockBook.id}`)).toHaveTextContent('Not Downloaded');
+    expect(screen.getByTestId('mobile-offline-unavailable-notice')).toHaveTextContent('Unavailable Offline');
+
+    rerender(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        onClose={vi.fn()}
+        isOffline={true}
+        onToggleOffline={vi.fn()}
+      />
+    );
+
+    const activeReadBtn = screen.getByRole('button', { name: `Read ${mockBook.title}` });
+    expect(activeReadBtn).not.toBeDisabled();
+
+    const removeOfflineBtn = screen.getByRole('button', { name: 'Remove offline copy' });
+    expect(removeOfflineBtn).not.toBeDisabled();
+
+    const activeDownloadBtn = screen.getByRole('button', { name: `Download ${mockBook.title}` });
+    expect(activeDownloadBtn).not.toBeDisabled();
+    expect(screen.queryByTestId('mobile-offline-unavailable-notice')).not.toBeInTheDocument();
+
+    networkSpy.mockRestore();
+  });
 });
 
 

@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useAccoladesStore } from '@/stores/useAccoladesStore';
+import { useHabitsStore } from '@/stores/useHabitsStore';
 import { ROUTES } from '@/config/routes';
 import { ACCOLADES_CATALOG } from '@/config/accolades-config';
 import { calculateStreak } from '@/lib/reading-analytics';
@@ -48,7 +50,7 @@ export default function PublicScholarProfilePage() {
         const supabase = createClient();
 
         // 1. Fetch public scholar profile
-        const { data: profileRow, error: profileErr } = await supabase
+        const { data: profileRow, error: _profileErr } = await supabase
           .from('profiles')
           .select('id, display_name, username, bio, is_public, show_streak, show_challenge, show_bookshelves, show_saved_books, show_custom_shelves, created_at')
           .ilike('username', normalizedUsername)
@@ -58,7 +60,7 @@ export default function PublicScholarProfilePage() {
         let resolvedProfile: PublicScholarProfile | null = profileRow as PublicScholarProfile | null;
 
         // Offline / Session fallback: Check if logged-in user matches this profile
-        if (!resolvedProfile && !profileErr) {
+        if (!resolvedProfile) {
           const authProfile = useAuthStore.getState().profile;
           if (
             authProfile &&
@@ -100,6 +102,8 @@ export default function PublicScholarProfilePage() {
           document.title = `${titleName} (@${resolvedProfile.username}) • Bookarium Scholar`;
         }
 
+        const authUser = useAuthStore.getState().user;
+
         // 2. Fetch pinned accolades if profile is found
         const { data: accoladesData } = await supabase
           .from('user_accolades')
@@ -107,7 +111,7 @@ export default function PublicScholarProfilePage() {
           .eq('user_id', resolvedProfile.id)
           .eq('is_pinned', true);
 
-        if (!isCancelled && accoladesData) {
+        if (!isCancelled && accoladesData && accoladesData.length > 0) {
           const pinned: PinnedBookplateItem[] = [];
           for (const row of accoladesData) {
             const def = ACCOLADES_CATALOG.find((d) => d.id === row.accolade_id);
@@ -127,6 +131,29 @@ export default function PublicScholarProfilePage() {
             }
           }
 
+          setPinnedAccolades(pinned.slice(0, 3));
+        } else if (!isCancelled && authUser?.id === resolvedProfile.id) {
+          // Local offline fallback for authenticated user's own pinned accolades
+          const localAccolades = useAccoladesStore.getState();
+          const pinned: PinnedBookplateItem[] = [];
+          for (const accId of localAccolades.pinnedAccoladeIds || []) {
+            const def = ACCOLADES_CATALOG.find((d) => d.id === accId);
+            if (def) {
+              const unlocked = localAccolades.unlockedAccolades?.[accId];
+              pinned.push({
+                definition: def,
+                progress: {
+                  id: def.id,
+                  isUnlocked: !!unlocked,
+                  unlockedAt: unlocked?.unlockedAt,
+                  isPinned: true,
+                  current: def.target,
+                  target: def.target,
+                  percent: 100,
+                },
+              });
+            }
+          }
           setPinnedAccolades(pinned.slice(0, 3));
         }
 
@@ -152,6 +179,18 @@ export default function PublicScholarProfilePage() {
               active_days: activeDates.length,
               annual_goal: habitRow.annual_goal || 0,
               completed_books_count: typeof rawHabits.completed_books_count === 'number' ? rawHabits.completed_books_count : 0,
+            });
+          } else if (!isCancelled && authUser?.id === resolvedProfile.id) {
+            // Local offline fallback for authenticated user's own reading habits
+            const localHabits = useHabitsStore.getState();
+            const streakStats = localHabits.getStreakStats();
+            const completedCount = useBookshelfStore.getState().cloudBookshelfItems?.filter((i) => i.bookshelf_id === 'completed').length || 0;
+            setHabits({
+              current_streak: streakStats.currentStreak,
+              longest_streak: streakStats.longestStreak,
+              active_days: localHabits.activeDates?.length || 0,
+              annual_goal: localHabits.annualGoal || 0,
+              completed_books_count: completedCount,
             });
           }
         }

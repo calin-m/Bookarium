@@ -442,5 +442,27 @@ describe('useCollectionAutoHeal', () => {
       expect(fellowAnn.bookAuthor).toBe('Robert W. Chambers');
     });
   });
+
+  it('disables upstream network query when device is offline', () => {
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+    useBookshelfStore.setState({
+      favoriteBookIds: [161],
+      favoriteBooks: [],
+      savedBooks: [],
+    });
+
+    try {
+      renderHook(() => useCollectionAutoHeal(), {
+        wrapper: createWrapper(),
+      });
+
+      expect(mockUseBooks).toHaveBeenCalledWith(
+        { ids: '161', includeRestrictedMetadata: true },
+        { enabled: false }
+      );
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+    }
+  });
 });
 

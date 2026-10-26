@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, RotateCw, Quote, BookOpen, AlertTriangle } from 'lucide-react';
+import { Sparkles, RotateCw, Quote, BookOpen, AlertTriangle, WifiOff } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisoryBanner';
 import { evaluateContentAdvisory } from '@/lib/content-advisory';
 import { BookCard } from './BookCard';
@@ -40,6 +41,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   originRect,
   isOpen,
   activeView,
+  isOffline = false,
   onWillClose,
   onClose,
   onReadBook,
@@ -48,6 +50,8 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const [isCoverOpen, setIsCoverOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const { isOffline: isNetworkOffline } = useNetworkStatus();
+  const isUnavailableOffline = isNetworkOffline && !isOffline;
 
   const { bookRatings, bookStatuses, setBookRating, setReadingStatus } = useHydratedBookshelf();
   const rating = book?.id ? bookRatings[book.id] ?? null : null;
@@ -74,7 +78,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
     title: book?.title ?? '',
     authors: book?.authors ?? [],
     subjects: book?.subjects ?? [],
-    enabled: isOpen,
+    enabled: isOpen && !isUnavailableOffline,
   });
 
   // FLIP Origin Rect calculation with 1:1 Pixel-Perfect Dimensions & Continuous 450ms Fluid Landing Curve
@@ -267,7 +271,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               isCoverOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}>
               <div key={`right-page-base-${book.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
-                <NotablePassagesSpread passage={currentPassage} isRestricted={isRestricted} country={country} />
+                <NotablePassagesSpread passage={currentPassage} isRestricted={isRestricted} isUnavailableOffline={isUnavailableOffline} country={country} />
 
                 {/* Right Page Footer Actions */}
                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2 mt-2 shrink-0">
@@ -299,6 +303,18 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                           <BookOpen className="w-3.5 h-3.5" />
                           <span>Restricted</span>
                         </Button>
+                      ) : isUnavailableOffline ? (
+                        <Button
+                          variant="outline"
+                          size="chip"
+                          disabled
+                          className="opacity-60 cursor-not-allowed"
+                          aria-label={`Read ${book.title} (Unavailable offline)`}
+                          title="Not downloaded for offline reading"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Offline</span>
+                        </Button>
                       ) : (
                         <Button
                           variant="primary"
@@ -329,7 +345,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               >
                 {/* Front Face of Turning Leaf: Outgoing Right Page quotes lifting away */}
                 <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
-                  <NotablePassagesSpread passage={prevPassage} isRestricted={isRestricted} country={country} />
+                  <NotablePassagesSpread passage={prevPassage} isRestricted={isRestricted} isUnavailableOffline={isUnavailableOffline} country={country} />
 
                   <div className="pt-2 flex items-center justify-end text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
                     <span className="opacity-60">p. 2</span>
@@ -355,6 +371,14 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                               >
                                 <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
                                 <span>Protected ({country})</span>
+                              </span>
+                            ) : isUnavailableOffline ? (
+                              <span
+                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
+                                data-testid={`preview-offline-unavailable-badge-${book.id}`}
+                              >
+                                <WifiOff className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span>Not Downloaded</span>
                               </span>
                             ) : (
                               <span className="flex items-center gap-1">
@@ -455,7 +479,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                 title="Click to flip open or close volume"
               >
                 <div className="w-full h-full pointer-events-none">
-                  <BookCard book={book} isOffline={false} />
+                  <BookCard book={book} isOffline={isOffline} hideOfflineBadge />
                 </div>
 
                 {/* 3D Spine & Page Edge Accents: Dissolve smoothly into flat card as it docks into grid */}
@@ -491,6 +515,14 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                               >
                                 <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
                                 <span>Protected ({country})</span>
+                              </span>
+                            ) : isUnavailableOffline ? (
+                              <span
+                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
+                                data-testid={`preview-offline-unavailable-badge-left-${book.id}`}
+                              >
+                                <WifiOff className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span>Not Downloaded</span>
                               </span>
                             ) : (
                               <span className="flex items-center gap-1">

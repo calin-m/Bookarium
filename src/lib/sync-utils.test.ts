@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { syncAllStoresWithCloud } from './sync-utils';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -12,7 +13,8 @@ describe('syncAllStoresWithCloud', () => {
     vi.clearAllMocks();
   });
 
-  it('triggers syncWithCloud concurrently on Bookshelf, Annotation, Reader, Habits, and Accolades stores, plus Fellowship hydration', async () => {
+  it('triggers syncWithCloud concurrently on Auth, Bookshelf, Annotation, Reader, Habits, and Accolades stores, plus Fellowship hydration', async () => {
+    const authMock = vi.fn().mockResolvedValue(undefined);
     const bookshelfMock = vi.fn().mockResolvedValue(undefined);
     const annotationMock = vi.fn().mockResolvedValue(undefined);
     const readerMock = vi.fn().mockResolvedValue(undefined);
@@ -20,6 +22,7 @@ describe('syncAllStoresWithCloud', () => {
     const accoladesMock = vi.fn().mockResolvedValue(undefined);
     const fellowshipMock = vi.fn().mockResolvedValue(undefined);
 
+    useAuthStore.setState({ syncWithCloud: authMock });
     useBookshelfStore.setState({ syncWithCloud: bookshelfMock });
     useAnnotationStore.setState({ syncWithCloud: annotationMock });
     useReaderStore.setState({ syncWithCloud: readerMock });
@@ -29,6 +32,7 @@ describe('syncAllStoresWithCloud', () => {
 
     await syncAllStoresWithCloud('user-456');
 
+    expect(authMock).toHaveBeenCalledWith('user-456');
     expect(bookshelfMock).toHaveBeenCalledWith('user-456');
     expect(annotationMock).toHaveBeenCalledWith('user-456');
     expect(readerMock).toHaveBeenCalledWith('user-456');
