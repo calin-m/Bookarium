@@ -36,6 +36,7 @@ export const viewport: Viewport = {
   ],
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {
@@ -188,7 +189,7 @@ export default async function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className="min-h-screen flex flex-col bg-background text-foreground antialiased font-sans"
+        className="min-h-dvh flex flex-col bg-background text-foreground antialiased font-sans"
       >
         <Providers initialCountry={initialCountry}>
           {children}

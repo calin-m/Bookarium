@@ -304,4 +304,51 @@ describe('useScrollDirection hook', () => {
     expect(result.current.isHeaderVisible).toBe(true);
     expect(result.current.isToolbarVisible).toBe(true);
   });
+
+  it('clamps bottom rubber-band overscroll so bounce-back does not falsely trigger upward reveal', () => {
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      value: 2000,
+      configurable: true,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      value: 800,
+      configurable: true,
+    });
+
+    try {
+      const { result } = renderHook(() =>
+        useScrollDirection({ threshold: 10, gestureEndTimeoutMs: 150, topOffset: 100, heroDockSelector: '' })
+      );
+
+      // Scroll to maxScrollY = 1200 in two steps so header hides
+      act(() => {
+        Object.defineProperty(window, 'scrollY', { value: 600, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+        vi.advanceTimersByTime(180);
+
+        Object.defineProperty(window, 'scrollY', { value: 1200, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+        vi.advanceTimersByTime(180);
+      });
+
+      expect(result.current.isHeaderVisible).toBe(false);
+      expect(result.current.isToolbarVisible).toBe(true);
+
+      // Simulate rubber-band overscroll past bottom (1250px -> 1200px bounce back)
+      act(() => {
+        Object.defineProperty(window, 'scrollY', { value: 1250, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+        Object.defineProperty(window, 'scrollY', { value: 1200, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+      });
+
+      // Clamped to 1200 so diff is 0: header stays hidden without jitter
+      expect(result.current.isHeaderVisible).toBe(false);
+    } finally {
+      Object.defineProperty(document.documentElement, 'scrollHeight', {
+        value: 0,
+        configurable: true,
+      });
+    }
+  });
 });

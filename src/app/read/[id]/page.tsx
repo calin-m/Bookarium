@@ -741,8 +741,15 @@ function BookReaderContent() {
     setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
   }, [selectionPopover.activeAnnotation]);
 
+  // Reset any residual outer window scroll when entering the full-viewport reader
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function' && window.scrollY > 0) {
+      window.scrollTo(0, 0);
+    }
+  }, []);
+
   return (
-    <div className={`h-[100dvh] flex flex-col overflow-hidden transition-colors duration-theme ${activeTheme.surface}`}>
+    <div className={`fixed inset-0 h-[100dvh] w-full flex flex-col overflow-hidden overscroll-none transition-colors duration-theme ${activeTheme.surface}`}>
       
       {/* Top Navigation & Toolbar */}
       <ReaderHeader
@@ -827,6 +834,7 @@ function BookReaderContent() {
         onPreviousPage={handlePrevPage}
         onNextPage={handleNextPage}
         onFontSizeChange={setFontSize}
+        isSpeechOpen={isSpeechOpen}
         highlightedSentence={isSpeechOpen && speech.isPlaying && speechHighlightEnabled ? speech.currentSentence : undefined}
         annotations={[...activeChapterAnnotations, ...activeChapterFellowAnnotations]}
         targetAnnotationId={targetAnnotationId}
@@ -1071,7 +1079,13 @@ function BookReaderContent() {
 
 export default function BookReaderPage() {
   return (
-    <React.Suspense fallback={<ReaderLoadingView activeTheme={getReaderTheme('light')} />}>
+    <React.Suspense
+      fallback={
+        <div className="fixed inset-0 h-[100dvh] w-full flex flex-col overflow-hidden overscroll-none">
+          <ReaderLoadingView activeTheme={getReaderTheme('light')} />
+        </div>
+      }
+    >
       <BookReaderContent />
     </React.Suspense>
   );

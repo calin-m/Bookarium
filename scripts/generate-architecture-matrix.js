@@ -436,9 +436,9 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
     {
       name: 'vitest.config.mts',
       file: 'vitest.config.mts',
-      layer: 'Vitest Runner & >= 85% V8 Coverage Gate',
+      layer: 'Vitest Runner & Tiered V8 Coverage Gate (95/95/92/85)',
       responsibility:
-        'Configures JSDOM test environment, `src/test/setup.ts` bootstrap, `maxWorkers: 4`, and hard `85%` coverage thresholds across lines, functions, branches, and statements.',
+        'Configures JSDOM test environment, `src/test/setup.ts` bootstrap, `maxWorkers: 4`, and hard V8 coverage thresholds (`lines: 95%`, `statements: 95%`, `functions: 92%`, `branches: 85%`).',
     },
     {
       name: '.husky/pre-commit',
@@ -452,7 +452,7 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
       file: '.agents/AGENTS.md',
       layer: 'Enterprise Multi-Agent Governance Protocol',
       responsibility:
-        'Canonical specification of Rules 0–9 (Approval-First Execution, Living AST Docs Co-Evolution, Zero-Bloat AST Truth, >=85% Co-Located Testing, Public Domain Integrity, Conventional Commits, 7-Gateway Engine, ADRs, Secret Prevention, and Idempotent RLS Schema Co-Evolution).',
+        'Canonical specification of Rules 0–9 (Approval-First Execution, Living AST Docs Co-Evolution, Zero-Bloat AST Truth, 95/95/92/85 Co-Located Testing, Public Domain Integrity, Conventional Commits, 7-Gateway Engine, ADRs, Secret Prevention, and Idempotent RLS Schema Co-Evolution).',
     },
     {
       name: '.agents/hooks.json',

@@ -1506,6 +1506,28 @@ describe('Home page integration', () => {
       Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
     }
   });
+
+  it('preserves direct GutendexBook author metadata when reading the offline Hero spotlight book', () => {
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+    mockOfflineBooks = [pageMockBooks[0]];
+    mockIsBookOffline.mockImplementation((id: number) => id === pageMockBooks[0].id);
+
+    try {
+      renderHome();
+      expect(screen.getByTestId('catalog-offline-downloaded-banner')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('read-featured-btn'));
+
+      expect(useReaderStore.getState().currentBook?.authors?.[0]).toEqual(
+        pageMockBooks[0].authors[0]
+      );
+      expect(mockPush).toHaveBeenCalledWith(ROUTES.READ(pageMockBooks[0].id));
+    } finally {
+      mockOfflineBooks = [];
+      mockIsBookOffline.mockReturnValue(false);
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+    }
+  });
 });
 
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import RootLayout, { metadata } from './layout';
+import RootLayout, { metadata, viewport } from './layout';
 
 const mockGetCookie = vi.fn();
 
@@ -37,6 +37,8 @@ describe('RootLayout', () => {
       { url: '/icon.svg', type: 'image/svg+xml' },
       { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
     ]);
+    expect(viewport.viewportFit).toBe('cover');
+    expect(viewport.width).toBe('device-width');
   });
 
   it('should render children within html structure alongside analytics and performance telemetry', async () => {

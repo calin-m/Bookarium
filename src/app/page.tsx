@@ -585,7 +585,7 @@ function HomeContent() {
 
   if (offlineReaderBookId) {
     return (
-      <React.Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <React.Suspense fallback={<div className="min-h-dvh bg-background" />}>
         <BookReaderPage />
       </React.Suspense>
     );
@@ -593,7 +593,7 @@ function HomeContent() {
 
   return (
     <div
-      className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme touch-pan-y overflow-x-clip"
+      className="min-h-dvh flex flex-col justify-between bg-background text-foreground transition-colors duration-theme touch-pan-y overflow-x-clip"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
@@ -643,30 +643,35 @@ function HomeContent() {
               if (featured) {
                 const featuredMeta = featured as {
                   rawBook?: GutendexBook;
+                  authors?: GutendexBook['authors'];
                   author?: string;
                   authorBirthYear?: number;
                   authorDeathYear?: number;
                   primarySubject?: string;
                 };
-                const bookPayload: GutendexBook = featuredMeta.rawBook || {
-                  id: featured.id,
-                  title: featured.title,
-                  authors: [
-                    {
-                      name: featuredMeta.author || 'Classic Masterwork',
-                      birth_year: featuredMeta.authorBirthYear ?? null,
-                      death_year: featuredMeta.authorDeathYear ?? null,
-                    },
-                  ],
-                  translators: [],
-                  subjects: [featuredMeta.primarySubject || 'Classic Literature'],
-                  bookshelves: [],
-                  languages: ['en'],
-                  copyright: false,
-                  media_type: 'Text',
-                  formats: {},
-                  download_count: 50000,
-                };
+                const isDirectGutendexBook =
+                  Array.isArray(featuredMeta.authors) && !featuredMeta.rawBook;
+                const bookPayload: GutendexBook = isDirectGutendexBook
+                  ? (featured as GutendexBook)
+                  : featuredMeta.rawBook || {
+                      id: featured.id,
+                      title: featured.title,
+                      authors: [
+                        {
+                          name: featuredMeta.author || 'Classic Masterwork',
+                          birth_year: featuredMeta.authorBirthYear ?? null,
+                          death_year: featuredMeta.authorDeathYear ?? null,
+                        },
+                      ],
+                      translators: [],
+                      subjects: [featuredMeta.primarySubject || 'Classic Literature'],
+                      bookshelves: [],
+                      languages: ['en'],
+                      copyright: false,
+                      media_type: 'Text',
+                      formats: {},
+                      download_count: 50000,
+                    };
                 useReaderStore.getState().openReader(bookPayload);
                 router.push(ROUTES.READ(featured.id));
                 return;
@@ -1068,7 +1073,7 @@ function HomeContent() {
 
 export default function Home() {
   return (
-    <React.Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <React.Suspense fallback={<div className="min-h-dvh bg-background" />}>
       <HomeContent />
     </React.Suspense>
   );

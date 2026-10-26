@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 26 Oct 2026 13:44:11 GMT  
+**Last Generated**: Mon, 26 Oct 2026 14:43:22 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 189 passed  
-**Total Verified Tests**: 2006 passed  
+**Total Verified Tests**: 2010 passed  
 
 ---
 
@@ -15,8 +15,8 @@
 | **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (2006 total tests) |
-| **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (2010 total tests) |
+| **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $ge$ 95%, Statements $ge$ 95%, Functions $ge$ 92%, Branches $ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 70 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.67%** (9960/10303) — *Target: $ge$ 85%*
-- **Statements**: **95.4%** (10831/11353) — *Target: $ge$ 85%*
-- **Functions**: **93.91%** (2361/2514) — *Target: $ge$ 85%*
-- **Branches**: **88.77%** (9910/11163) — *Target: $ge$ 85%*
+- **Lines**: **96.68%** (9968/10310) — *Target: $ge$ 95%*
+- **Statements**: **95.46%** (10845/11360) — *Target: $ge$ 95%*
+- **Functions**: **93.91%** (2362/2515) — *Target: $ge$ 92%*
+- **Branches**: **88.67%** (9917/11183) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (189 Suites / 2006 Tests)
+## 🧪 Comprehensive Test Suite Catalog (189 Suites / 2010 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 263 Tests)
+### 🚀 App Routes & Pages (26 Suites · 265 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -263,7 +263,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (47 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (48 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -312,6 +312,7 @@
 - ✔ `renders CatalogOfflineView when offline and 0 books are downloaded, allowing navigation to Bookshelf`
 - ✔ `serves downloaded books locally in Catalog with an Offline Mode banner when offline and downloaded books exist`
 - ✔ `filters offline catalog by topic, language, era, and sort order, and supports clearing Downloaded and Custom shelves`
+- ✔ `preserves direct GutendexBook author metadata when reading the offline Hero spotlight book`
 
 </details>
 
@@ -360,7 +361,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (39 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (40 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -401,6 +402,7 @@
 - ✔ `resolves bookId from window.location.pathname when useParams() is empty (App Shell fallback)`
 - ✔ `hydrates recentBooks and reader store from extracted Gutenberg header metadata when upstream booksData is unavailable (offline fallback)`
 - ✔ `handles symposium companion derivation as non-host fellow, syncs theme from global store, and re-fetches fellow annotations when opening drawer`
+- ✔ `resets residual outer window scrollY to 0 on mount and anchors the viewport container`
 
 </details>
 
@@ -1050,7 +1052,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 165 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 166 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1252,7 +1254,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (28 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (29 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -1282,6 +1284,7 @@
 - ✔ `correctly partitions partially overlapping highlights into sub-spans with single trailing fellow badge`
 - ✔ `does not clobber active drag text selection when clicking inside fellow annotation mark`
 - ✔ `renders interactive in-page row-snapping bookmark and supports rail click, drag, keyboard arrows, and double-click reset`
+- ✔ `applies overscroll-y-contain and bottom clearance padding when isSpeechOpen is true even while paused`
 
 </details>
 
@@ -2263,7 +2266,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (23 Suites · 261 Tests)
+### 🔄 Hooks & React Query (23 Suites · 262 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (17 tests)</summary>
@@ -2635,7 +2638,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useScrollDirection.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/hooks/useScrollDirection.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `initializes with BOTH header and toolbar visible at top of page`
 - ✔ `preserves BOTH_VISIBLE while scrolling down within Hero section (scrollY <= dockOffset)`
@@ -2647,6 +2650,7 @@
 - ✔ `measures dynamic element offset from DOM when heroDockSelector is provided`
 - ✔ `correctly calculates document Y by traversing nested offsetParent hierarchies`
 - ✔ `keeps both header and toolbar unconditionally visible when enabled is false`
+- ✔ `clamps bottom rubber-band overscroll so bounce-back does not falsely trigger upward reveal`
 
 </details>
 

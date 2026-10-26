@@ -177,7 +177,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header
-      className={`sticky top-0 z-30 w-full bg-background border-b border-border shadow-md transition-transform duration-300 ease-in-out ${
+      className={`sticky top-0 z-30 w-full pt-[env(safe-area-inset-top,0px)] bg-background border-b border-border shadow-md transition-transform duration-300 ease-in-out ${
         isVisible ? 'translate-y-0' : '-translate-y-full pointer-events-none'
       }`}
     >

@@ -36,6 +36,7 @@ export interface ReaderSurfaceProps {
   onPreviousPage?: () => void;
   onNextPage?: () => void;
   onFontSizeChange?: (size: number) => void;
+  isSpeechOpen?: boolean;
   highlightedSentence?: string;
   annotations?: AnyAnnotation[];
   targetAnnotationId?: string | null;
@@ -70,6 +71,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   onPreviousPage,
   onNextPage,
   onFontSizeChange,
+  isSpeechOpen = false,
   highlightedSentence,
   annotations = [],
   targetAnnotationId,
@@ -302,7 +304,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   return (
     <main
       ref={mainRef}
-      className={`relative flex-1 overflow-y-scroll transition-colors duration-theme select-text ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
+      className={`relative flex-1 overflow-y-scroll overscroll-y-contain transition-colors duration-theme select-text ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
       role="main"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -335,7 +337,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
         key={readingMode === 'paginated' ? `p-${activeChapterIndex}-${chapterPage ?? (contentToDisplay?.slice(0, 30) || '0')}` : `s-${activeChapterIndex}`}
         onMouseUp={handleSelection}
         className={`mx-auto pl-12 pr-5 sm:px-14 md:px-16 pt-10 sm:pt-16 ${
-          highlightedSentence ? 'pb-32 sm:pb-36' : 'pb-10 sm:pb-16'
+          isSpeechOpen || highlightedSentence ? 'pb-36 sm:pb-40' : 'pb-10 sm:pb-16'
         } select-text ${widthClass} ${fontClass} animate-page-turn`}
         style={{
           fontSize: `${fontSize}px`,

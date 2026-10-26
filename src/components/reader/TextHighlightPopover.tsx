@@ -184,7 +184,9 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                 zIndex: 60,
               }
         }
-        className={`rounded-xl border p-1.5 flex flex-col gap-1.5 text-xs font-sans select-none backdrop-blur-md ${themeBg}`}
+        className={`rounded-xl border p-1.5 flex flex-col gap-1.5 text-xs font-sans select-none backdrop-blur-md ${
+          isTouchDevice ? 'mb-[env(safe-area-inset-bottom,0px)]' : ''
+        } ${themeBg}`}
       >
         {/* 2-Pill Overlap Switcher when both user and Fellow Scholar highlighted the same passage */}
         {fellowAnnotation && (

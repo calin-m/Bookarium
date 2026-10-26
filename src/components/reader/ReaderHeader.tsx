@@ -225,7 +225,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   return (
     <>
       <header
-        className={`sticky top-0 z-[10000] shrink-0 border-b transition-colors duration-theme ${activeTheme.header}`}
+        className={`sticky top-0 z-[10000] shrink-0 pt-[env(safe-area-inset-top,0px)] border-b transition-colors duration-theme ${activeTheme.header}`}
       >
         {/* Main Header Bar: Title, Author, Navigation & Global Controls */}
         <div className="w-full px-4 sm:px-6 md:px-8 py-2.5 min-h-[3.5rem] flex items-center justify-between gap-3 sm:gap-4 relative">

@@ -188,8 +188,9 @@ describe('TextHighlightPopover', () => {
     );
 
     const popover = screen.getByTestId('text-highlight-popover');
-    // On touch devices, popover docks at bottom: 5.25rem and horizontally centered at 50%
+    // On touch devices, popover docks at bottom: 5.25rem with safe-area bottom margin and horizontally centered at 50%
     expect(popover.style.bottom).toBe('5.25rem');
+    expect(popover).toHaveClass('mb-[env(safe-area-inset-bottom,0px)]');
     expect(popover.style.left).toBe('50%');
 
     window.matchMedia = originalMatchMedia;

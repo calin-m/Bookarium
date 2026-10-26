@@ -198,8 +198,8 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
         className={cn(
           'fixed left-0 right-0 mx-auto z-[10001] w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] max-w-xl pointer-events-auto touch-pan-y',
           isDrawerOpen
-            ? 'top-[calc(3.75rem+env(safe-area-inset-top,0px))] sm:top-[4.25rem]'
-            : 'bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] landscape:bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'
+            ? 'top-[calc(3.75rem+env(safe-area-inset-top,0px))] sm:top-[calc(4.25rem+env(safe-area-inset-top,0px))]'
+            : 'bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:landscape:bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'
         )}
         aria-label="Read Aloud Narration Controls"
         data-testid="reader-speech-bar"

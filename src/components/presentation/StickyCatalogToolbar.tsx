@@ -448,7 +448,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
       {/* Mobile Floating Bottom Capsule Dock */}
       <aside
-        className={`fixed bottom-6 inset-x-0 mx-auto w-fit max-w-[92vw] z-40 sm:hidden transition-all focus-within:opacity-100 focus-within:pointer-events-auto ${
+        className={`fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] inset-x-0 mx-auto w-fit max-w-[92vw] z-40 sm:hidden transition-all focus-within:opacity-100 focus-within:pointer-events-auto ${
           !effectiveMobileDockVisible
             ? 'translate-y-24 opacity-0 pointer-events-none duration-300 ease-in-out'
             : isDockDimmed

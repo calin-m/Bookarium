@@ -321,7 +321,7 @@ let mdContent = `# Quality Audit & Test Suite Catalog Report
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (\`tsc --noEmit\`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
 | **Pass 3** | Vitest Test Suite | ✅ Passed | **${totalSuitesCount}/${totalSuitesCount} test suites passed** (${totalTestCount} total tests) |
-| **Pass 3.5** | Coverage Threshold | ✅ Passed | Minimum 85% coverage threshold met across all metrics |
+| **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | \`docs/ARCHITECTURE.md\`, \`CHANGELOG.md\`, & \`docs/QUALITY_AUDIT_REPORT.md\` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | ${adrCount} Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ${isQualityClean ? '✅ Passed' : '❌ Failed'} | ${eslintErrors} lint errors, ${eslintWarnings} lint warnings, ${knipIssues.length} unused exports / dead files |
@@ -331,9 +331,9 @@ let mdContent = `# Quality Audit & Test Suite Catalog Report
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **${coverage.lines.pct}%** (${coverage.lines.covered || 0}/${coverage.lines.total || 0}) — *Target: $\ge$ 85%*
-- **Statements**: **${coverage.statements.pct}%** (${coverage.statements.covered || 0}/${coverage.statements.total || 0}) — *Target: $\ge$ 85%*
-- **Functions**: **${coverage.functions.pct}%** (${coverage.functions.covered || 0}/${coverage.functions.total || 0}) — *Target: $\ge$ 85%*
+- **Lines**: **${coverage.lines.pct}%** (${coverage.lines.covered || 0}/${coverage.lines.total || 0}) — *Target: $\ge$ 95%*
+- **Statements**: **${coverage.statements.pct}%** (${coverage.statements.covered || 0}/${coverage.statements.total || 0}) — *Target: $\ge$ 95%*
+- **Functions**: **${coverage.functions.pct}%** (${coverage.functions.covered || 0}/${coverage.functions.total || 0}) — *Target: $\ge$ 92%*
 - **Branches**: **${coverage.branches.pct}%** (${coverage.branches.covered || 0}/${coverage.branches.total || 0}) — *Target: $\ge$ 85%*
 
 ---

@@ -81,7 +81,17 @@ export function useScrollDirection({
 
     const updateScrollDir = () => {
       ticking = false;
-      const scrollY = window.scrollY || window.pageYOffset || 0;
+      const rawScrollY = window.scrollY || window.pageYOffset || 0;
+      const docScrollHeight =
+        typeof document !== 'undefined' && document.documentElement
+          ? document.documentElement.scrollHeight
+          : 0;
+      const viewportHeight = typeof window.innerHeight === 'number' ? window.innerHeight : 0;
+      const maxScrollY =
+        docScrollHeight > viewportHeight && viewportHeight > 0
+          ? docScrollHeight - viewportHeight
+          : Infinity;
+      const scrollY = Math.max(0, Math.min(rawScrollY, maxScrollY));
 
       // Find the hero dock point (e.g. top of catalog section minus header + toolbar height)
       let dockOffset = topOffset;

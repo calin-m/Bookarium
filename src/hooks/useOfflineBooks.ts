@@ -180,9 +180,7 @@ export function useOfflineBooks() {
       getOfflineBookIds()
         .then((ids) => {
           if (!isMounted) return;
-          if (!markLoaded || ids.length > 0) {
-            updateOfflineIdsState(ids);
-          }
+          updateOfflineIdsState(ids);
           if (
             markLoaded &&
             (ids.length > 0 || useBookshelfStore.getState().activeBookshelfId === '__downloaded__')

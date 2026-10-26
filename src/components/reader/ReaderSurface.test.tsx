@@ -952,4 +952,15 @@ describe('ReaderSurface', () => {
     expect(onBookmarkRowChange).toHaveBeenCalledWith(2);
     fireEvent.mouseUp(window);
   });
+
+  it('applies overscroll-y-contain and bottom clearance padding when isSpeechOpen is true even while paused', () => {
+    const { rerender } = render(<ReaderSurface {...defaultProps} isSpeechOpen={false} />);
+    const mainEl = screen.getByRole('main');
+    const articleEl = screen.getByRole('article');
+    expect(mainEl).toHaveClass('overscroll-y-contain');
+    expect(articleEl).toHaveClass('pb-10', 'sm:pb-16');
+
+    rerender(<ReaderSurface {...defaultProps} isSpeechOpen={true} />);
+    expect(screen.getByRole('article')).toHaveClass('pb-36', 'sm:pb-40');
+  });
 });

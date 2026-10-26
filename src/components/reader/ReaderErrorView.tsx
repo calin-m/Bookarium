@@ -32,7 +32,7 @@ export const ReaderErrorView: React.FC<ReaderErrorViewProps> = ({
   if (isLegalRestriction) {
     return (
       <main
-        className={`flex-1 flex flex-col items-center justify-center p-8 text-center ${activeTheme.surface}`}
+        className={`flex-1 flex flex-col items-center justify-center p-8 text-center overflow-y-auto overscroll-y-contain ${activeTheme.surface}`}
         role="main"
         data-testid="reader-legal-restriction-view"
       >
@@ -96,7 +96,7 @@ export const ReaderErrorView: React.FC<ReaderErrorViewProps> = ({
 
   return (
     <main
-      className={`flex-1 flex flex-col items-center justify-center p-8 text-center ${activeTheme.surface}`}
+      className={`flex-1 flex flex-col items-center justify-center p-8 text-center overflow-y-auto overscroll-y-contain ${activeTheme.surface}`}
       role="main"
       data-testid="reader-error-view"
     >

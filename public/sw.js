@@ -73,7 +73,13 @@ self.addEventListener('install', (event) => {
     caches
       .open(CACHE_NAME)
       .then(async (cache) => {
-        await cache.addAll(STATIC_PRECACHE);
+        try {
+          await cache.addAll(STATIC_PRECACHE);
+        } catch {
+          await Promise.allSettled(
+            STATIC_PRECACHE.map((url) => cache.add(url))
+          );
+        }
         for (const htmlRoute of ['/', '/account', '/read/1342']) {
           const cachedHtml = await cache.match(htmlRoute, { ignoreSearch: true });
           if (cachedHtml) {
@@ -244,30 +250,27 @@ self.addEventListener('fetch', (event) => {
   const isRscRequest = url.searchParams.has('_rsc') || request.headers.get('RSC') === '1';
 
   event.respondWith(
-    caches.match(request).then(async (cached) => {
-      if (cached) {
-        if (isRscRequest) {
-          const ct = cached.headers.get('content-type') || '';
-          if (!ct.includes('text/html')) {
-            return cached;
+    fetch(request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return networkResponse;
+      })
+      .catch(async () => {
+        const cached = await caches.match(request);
+        if (cached) {
+          if (isRscRequest) {
+            const ct = cached.headers.get('content-type') || '';
+            if (!ct.includes('text/html')) {
+              return cached;
+            }
+            return Response.error();
           }
-        } else {
           return cached;
         }
-      }
-
-      return fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          if (cached && !isRscRequest) return cached;
-          return Response.error();
-        });
-    })
+        return Response.error();
+      })
   );
 });

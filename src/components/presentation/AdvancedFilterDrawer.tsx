@@ -269,7 +269,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
         data-testid="filter-backdrop"
       />
 
-      <div className="relative w-full max-h-[88vh] xl:max-h-none xl:w-96 h-auto xl:h-[calc(100vh-4rem)] rounded-t-2xl xl:rounded-none bg-background text-foreground flex flex-col justify-between shadow-2xl border-t xl:border-t-0 xl:border-r border-border animate-in slide-in-from-bottom xl:slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
+      <div className="relative w-full max-h-[88dvh] xl:max-h-none xl:w-96 h-auto xl:h-[calc(100dvh-4rem)] rounded-t-2xl xl:rounded-none bg-background text-foreground flex flex-col justify-between shadow-2xl border-t xl:border-t-0 xl:border-r border-border animate-in slide-in-from-bottom xl:slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
         
         {/* Mobile Grab Handle Bar */}
         <div className="w-12 h-1 rounded-full bg-muted-foreground/30 mx-auto mt-2.5 mb-1 shrink-0 xl:hidden" aria-hidden="true" />
@@ -500,7 +500,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
         </div>
 
         {/* Drawer Bottom Actions (Sticky Footer) */}
-        <div className="p-4 sm:p-5 border-t border-border bg-card/95 backdrop-blur-xs flex items-center justify-between gap-3 shrink-0 sticky bottom-0 z-20">
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-5 border-t border-border bg-card/95 backdrop-blur-xs flex items-center justify-between gap-3 shrink-0 sticky bottom-0 z-20">
           <Button
             variant="ghost"
             size="sm"

@@ -1107,6 +1107,18 @@ describe('Dedicated Reader Page (/read/[id])', () => {
       useAnnotationStore.setState({ fellowAnnotations: [], annotations: [] });
     });
   });
+
+  it('resets residual outer window scrollY to 0 on mount and anchors the viewport container', () => {
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    Object.defineProperty(window, 'scrollY', { configurable: true, writable: true, value: 84 });
+
+    const { container } = render(<BookReaderPage />);
+    expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
+    expect(container.firstElementChild).toHaveClass('fixed', 'inset-0', 'h-[100dvh]', 'overscroll-none');
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, writable: true, value: 0 });
+    scrollToSpy.mockRestore();
+  });
 });
 
 
