@@ -219,7 +219,7 @@ describe('StickyCatalogToolbar component', () => {
     );
 
     const toolbar = screen.getByTestId('sticky-catalog-toolbar');
-    expect(toolbar).toHaveClass('top-16');
+    expect(toolbar).toHaveClass('top-[calc(4rem+env(safe-area-inset-top,0px))]');
     expect(toolbar).toHaveClass('translate-y-0');
 
     rerender(
@@ -235,11 +235,11 @@ describe('StickyCatalogToolbar component', () => {
       />
     );
 
-    expect(toolbar).toHaveClass('top-16');
+    expect(toolbar).toHaveClass('top-[calc(4rem+env(safe-area-inset-top,0px))]');
     expect(toolbar).toHaveClass('-translate-y-16');
   });
 
-  it('applies -translate-y-[calc(100%+4rem)] and pointer-events-none when isVisible is false', () => {
+  it('applies -translate-y-[calc(100%+4rem+env(safe-area-inset-top,0px))] and pointer-events-none when isVisible is false', () => {
     render(
       <StickyCatalogToolbar
         page={1}
@@ -254,7 +254,7 @@ describe('StickyCatalogToolbar component', () => {
     );
 
     const toolbar = screen.getByTestId('sticky-catalog-toolbar');
-    expect(toolbar).toHaveClass('-translate-y-[calc(100%+4rem)]');
+    expect(toolbar).toHaveClass('-translate-y-[calc(100%+4rem+env(safe-area-inset-top,0px))]');
     expect(toolbar).toHaveClass('pointer-events-none');
   });
 

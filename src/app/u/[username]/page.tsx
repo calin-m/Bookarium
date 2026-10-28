@@ -1,15 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 import { useAccoladesStore } from '@/stores/useAccoladesStore';
 import { useHabitsStore } from '@/stores/useHabitsStore';
 import { ROUTES } from '@/config/routes';
 import { ACCOLADES_CATALOG } from '@/config/accolades-config';
-import { calculateStreak } from '@/lib/reading-analytics';
+import {
+  calculateCompletedBooksCount,
+  resolvePublicReadingHabits,
+  type HabitTelemetryRow,
+} from '@/lib/reading-analytics';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
@@ -34,7 +39,14 @@ export default function PublicScholarProfilePage() {
   const [profile, setProfile] = useState<PublicScholarProfile | null>(null);
   const [pinnedAccolades, setPinnedAccolades] = useState<PinnedBookplateItem[]>([]);
   const [habits, setHabits] = useState<PublicReadingHabits | null>(null);
+  const [habitRowState, setHabitRowState] = useState<HabitTelemetryRow | null>(null);
   const [bookshelves, setBookshelves] = useState<PublicBookshelfWithItems[]>([]);
+
+  const authUserId = useAuthStore((s) => s.user?.id);
+  const bookStatuses = useBookshelfStore((s) => s.bookStatuses);
+  const readingProgress = useReaderStore((s) => s.readingProgress);
+  const localActiveDates = useHabitsStore((s) => s.activeDates);
+  const localAnnualGoal = useHabitsStore((s) => s.annualGoal);
 
   useEffect(() => {
     let isCancelled = false;
@@ -150,39 +162,41 @@ export default function PublicScholarProfilePage() {
 
         // 3. Fetch reading habits if enabled by privacy settings
         if (resolvedProfile.show_streak || resolvedProfile.show_challenge) {
+          if (authUser?.id === resolvedProfile.id) {
+            useBookshelfStore.getState().syncWithCloud(authUser.id).catch(() => {});
+            useReaderStore.getState().syncWithCloud(authUser.id).catch(() => {});
+          }
+
           const { data: habitRow } = await supabase
             .from('user_reading_habits')
             .select('*')
             .eq('user_id', resolvedProfile.id)
             .maybeSingle();
 
-          if (!isCancelled && habitRow) {
-            const rawDates = habitRow.active_dates;
-            const activeDates = Array.isArray(rawDates)
-              ? rawDates.filter((d): d is string => typeof d === 'string')
-              : [];
-            const streakStats = calculateStreak(activeDates);
-            const rawHabits = habitRow as unknown as Record<string, unknown>;
-
-            setHabits({
-              current_streak: typeof rawHabits.current_streak === 'number' ? rawHabits.current_streak : streakStats.currentStreak,
-              longest_streak: typeof rawHabits.longest_streak === 'number' ? rawHabits.longest_streak : streakStats.longestStreak,
-              active_days: activeDates.length,
-              annual_goal: habitRow.annual_goal || 0,
-              completed_books_count: typeof rawHabits.completed_books_count === 'number' ? rawHabits.completed_books_count : 0,
-            });
-          } else if (!isCancelled && authUser?.id === resolvedProfile.id) {
-            // Local offline fallback for authenticated user's own reading habits
+          if (!isCancelled) {
+            const isOwnProfile = authUser?.id === resolvedProfile.id;
+            const localCompleted = isOwnProfile
+              ? calculateCompletedBooksCount(
+                  useBookshelfStore.getState().bookStatuses,
+                  useReaderStore.getState().readingProgress
+                )
+              : undefined;
             const localHabits = useHabitsStore.getState();
-            const streakStats = localHabits.getStreakStats();
-            const completedCount = useBookshelfStore.getState().cloudBookshelfItems.filter((i) => i.bookshelf_id === 'completed').length;
-            setHabits({
-              current_streak: streakStats.currentStreak,
-              longest_streak: streakStats.longestStreak,
-              active_days: localHabits.activeDates.length,
-              annual_goal: localHabits.annualGoal,
-              completed_books_count: completedCount,
-            });
+            const typedHabitRow = (habitRow as HabitTelemetryRow | null) ?? null;
+
+            setHabitRowState(typedHabitRow);
+            setHabits(
+              resolvePublicReadingHabits(
+                typedHabitRow,
+                isOwnProfile
+                  ? {
+                      activeDates: localHabits.activeDates,
+                      annualGoal: localHabits.annualGoal,
+                      localCompletedBooksCount: localCompleted,
+                    }
+                  : undefined
+              )
+            );
           }
         }
 
@@ -296,8 +310,34 @@ export default function PublicScholarProfilePage() {
     };
   }, [normalizedUsername]);
 
+  const effectiveHabits = useMemo<PublicReadingHabits | null>(() => {
+    if (!profile || (!profile.show_streak && !profile.show_challenge)) {
+      return habits;
+    }
+    if (authUserId && authUserId === profile.id) {
+      const localCompleted = calculateCompletedBooksCount(bookStatuses, readingProgress);
+      return (
+        resolvePublicReadingHabits(habitRowState, {
+          activeDates: localActiveDates,
+          annualGoal: localAnnualGoal,
+          localCompletedBooksCount: localCompleted,
+        }) ?? habits
+      );
+    }
+    return habits;
+  }, [
+    profile,
+    habits,
+    authUserId,
+    habitRowState,
+    bookStatuses,
+    readingProgress,
+    localActiveDates,
+    localAnnualGoal,
+  ]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-200">
+    <div className="min-h-dvh flex flex-col bg-background text-foreground transition-colors duration-theme">
       <Navbar
         isVisible={true}
         onViewChange={(view) => {
@@ -321,7 +361,7 @@ export default function PublicScholarProfilePage() {
           <PublicProfileView
             profile={profile}
             pinnedAccolades={pinnedAccolades}
-            habits={habits}
+            habits={effectiveHabits}
             bookshelves={bookshelves}
           />
         ) : (

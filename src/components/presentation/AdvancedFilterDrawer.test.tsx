@@ -27,6 +27,9 @@ describe('AdvancedFilterDrawer component', () => {
     expect(screen.getByText('Advanced Archive Filters')).toBeInTheDocument();
     expect(screen.getByText('3 active filters')).toBeInTheDocument();
     expect(screen.getByText(/19th Century Victorian & Romantic/i)).toBeInTheDocument();
+    const drawer = screen.getByTestId('advanced-filter-drawer');
+    expect(drawer).toHaveClass('xl:top-[calc(4rem+env(safe-area-inset-top,0px))]');
+    expect(drawer).toHaveClass('xl:bottom-0');
   });
 
   it('should stage era selection and commit on Show Results click', () => {

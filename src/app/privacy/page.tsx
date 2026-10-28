@@ -20,7 +20,7 @@ import { SITE_CONFIG } from '@/config/site-config';
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
+    <div className="min-h-dvh flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
       <Navbar />
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-10">

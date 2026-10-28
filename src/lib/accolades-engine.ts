@@ -12,6 +12,7 @@ import {
   UnlockedAccolade,
 } from '@/types/accolades.types';
 import { ACCOLADES_CATALOG } from '@/config/accolades-config';
+import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
 import type { GutendexBook, ReadingStatus } from '@/types/book.types';
 import type { Annotation } from '@/stores/useAnnotationStore';
 import type { HabitsState } from '@/stores/useHabitsStore';
@@ -74,6 +75,7 @@ export interface BuildAccoladeContextParams {
   };
   savedBooks?: GutendexBook[];
   bookStatuses?: Record<number, ReadingStatus>;
+  readingProgress?: Record<number, number>;
   annotations?: Annotation[];
   completedSymposiumsCount?: number;
   existingUnlockedIds?: string[];
@@ -87,13 +89,20 @@ export function buildAccoladeContext(params: BuildAccoladeContextParams): Accola
     habits,
     savedBooks = [],
     bookStatuses = {},
+    readingProgress = {},
     annotations = [],
     completedSymposiumsCount = 0,
     existingUnlockedIds = [],
   } = params;
 
   // Identify completed books
-  const completedBooks = savedBooks.filter((book) => bookStatuses[book.id] === 'finished');
+  const completedBooks = savedBooks.filter(
+    (book) => bookStatuses[book.id] === 'finished' || (readingProgress[book.id] ?? 0) >= 100
+  );
+  const completedBooksCount = Math.max(
+    completedBooks.length,
+    calculateCompletedBooksCount(bookStatuses, readingProgress)
+  );
 
   // Compute unique historical eras explored in completed books
   const erasSet = new Set<string>();
@@ -115,7 +124,7 @@ export function buildAccoladeContext(params: BuildAccoladeContextParams): Accola
     totalListeningSeconds: habits?.totalListeningSeconds ?? 0,
     activeDates: habits?.activeDates ?? [],
     annualGoalPercent: habits?.annualGoalPercent ?? 0,
-    completedBooksCount: completedBooks.length,
+    completedBooksCount,
     historicalErasExplored: Array.from(erasSet),
     hasCompletedAncientBook: hasAncient,
     totalAnnotationsCount: annotations.length,

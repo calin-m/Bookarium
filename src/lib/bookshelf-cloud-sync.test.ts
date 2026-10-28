@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   applyDeterministicItemOrdering,
+  mergeCloudBookWithLocal,
   executeFlushOutbox,
   executeBookshelfCloudSync,
   executeCreateCloudBookshelf,
@@ -64,6 +65,12 @@ describe('bookshelf-cloud-sync', () => {
   });
 
   it('flushes outbox actions and retains only actions that fail', async () => {
+    const queuedDuringFlush = {
+      id: '3',
+      timestamp: '',
+      type: 'DELETE_FAVORITE' as const,
+      payload: { user_id: 'u1', book_id: 1342 },
+    };
     state.outbox = [
       {
         id: '1',
@@ -78,13 +85,20 @@ describe('bookshelf-cloud-sync', () => {
         payload: { user_id: 'u1', book_id: 84 },
       },
     ];
+    state.queueOutboxAction = (action) => {
+      state.outbox = [...state.outbox, { ...action, id: queuedDuringFlush.id, timestamp: queuedDuringFlush.timestamp }];
+    };
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'bookshelf_items') {
         return {
           delete: () => ({
             eq: () => ({
-              eq: () => Promise.resolve({ error: null }),
+              eq: () =>
+                Promise.resolve().then(() => {
+                  state.queueOutboxAction?.(queuedDuringFlush);
+                  return { error: null };
+                }),
             }),
           }),
         };
@@ -99,8 +113,17 @@ describe('bookshelf-cloud-sync', () => {
     });
 
     await executeFlushOutbox('u1', get, set);
-    expect(state.outbox).toHaveLength(1);
-    expect(state.outbox[0].id).toBe('2');
+    expect(state.outbox.map((action) => action.id)).toEqual(['2', '3']);
+  });
+
+  it('resets syncing state when flushing the outbox rejects', async () => {
+    const onLineSpy = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    state.flushOutbox = vi.fn().mockRejectedValue(new Error('Outbox flush failed'));
+
+    await executeBookshelfCloudSync('u1', get, set);
+
+    expect(state.isSyncing).toBe(false);
+    onLineSpy.mockRestore();
   });
 
   it('executes custom shelf creation, rename, privacy toggle, move, migration, and deletion', async () => {
@@ -660,5 +683,99 @@ describe('bookshelf-cloud-sync', () => {
 
     consoleErrorSpy.mockRestore();
   });
-});
 
+  it('preserves rich local metadata in mergeCloudBookWithLocal, deduplicates multi-shelf books, and coalesces concurrent syncs', async () => {
+    const cloudBook = {
+      id: 1342,
+      title: 'Pride and Prejudice',
+      authors: [{ name: 'Jane Austen', birth_year: null, death_year: null }],
+      translators: [],
+      subjects: [],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: { 'image/jpeg': 'https://cloud.example/cover.jpg' },
+      download_count: 0,
+    };
+    const localBook = {
+      id: 1342,
+      title: 'Pride and Prejudice',
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+      translators: [{ name: 'Translator', birth_year: 1800, death_year: 1870 }],
+      subjects: ['Domestic fiction', 'Courtship -- Fiction'],
+      bookshelves: ['Best Books Ever Listings'],
+      languages: ['en', 'fr'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {
+        'text/plain; charset=utf-8': 'https://www.gutenberg.org/ebooks/1342.txt.utf-8',
+        'image/jpeg': 'https://local.example/cover.jpg',
+      },
+      download_count: 54210,
+    };
+
+    expect(mergeCloudBookWithLocal(cloudBook, undefined)).toBe(cloudBook);
+    const merged = mergeCloudBookWithLocal(cloudBook, localBook);
+    expect(merged.authors[0].birth_year).toBe(1775);
+    expect(merged.subjects).toEqual(['Domestic fiction', 'Courtship -- Fiction']);
+    expect(merged.bookshelves).toEqual(['Best Books Ever Listings']);
+    expect(merged.translators).toHaveLength(1);
+    expect(merged.languages).toEqual(['en', 'fr']);
+    expect(merged.download_count).toBe(54210);
+    expect(merged.formats['text/plain; charset=utf-8']).toBe('https://www.gutenberg.org/ebooks/1342.txt.utf-8');
+    expect(merged.formats['image/jpeg']).toBe('https://cloud.example/cover.jpg');
+
+    state.savedBooks = [localBook];
+    state.lastBookshelfSyncAt = '2026-10-01T00:00:00Z';
+
+    let selectCount = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'bookshelves') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => {
+                selectCount++;
+                return Promise.resolve({
+                  data: [
+                    { id: 's-def', user_id: 'u1', name: 'General', is_default: true },
+                    { id: 's-custom', user_id: 'u1', name: 'Classics', is_default: false },
+                  ],
+                  error: null,
+                });
+              },
+            }),
+          }),
+        };
+      }
+      if (table === 'bookshelf_items') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [
+                    { id: 'bi-1', bookshelf_id: 's-def', user_id: 'u1', book_id: 1342, book_title: 'Pride and Prejudice', book_authors: ['Jane Austen'] },
+                    { id: 'bi-2', bookshelf_id: 's-custom', user_id: 'u1', book_id: 1342, book_title: 'Pride and Prejudice', book_authors: ['Jane Austen'] },
+                  ],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+
+    await Promise.all([
+      executeBookshelfCloudSync('u1', get, set),
+      executeBookshelfCloudSync('u1', get, set),
+    ]);
+
+    expect(selectCount).toBe(1);
+    expect(state.savedBooks).toHaveLength(1);
+    expect(state.savedBooks[0].subjects).toEqual(['Domestic fiction', 'Courtship -- Fiction']);
+    expect(state.savedBooks[0].authors[0].birth_year).toBe(1775);
+  });
+});

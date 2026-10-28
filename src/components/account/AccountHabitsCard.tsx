@@ -71,12 +71,12 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
     isHydrated,
   } = useHydratedHabits();
 
-  // Pull latest cloud habits on mount when authenticated user is present
+  // Pull latest cloud habits on mount and whenever completedBooksCount updates
   useEffect(() => {
     if (userId) {
       useHabitsStore.getState().syncWithCloud(userId).catch(() => {});
     }
-  }, [userId]);
+  }, [userId, completedBooksCount]);
 
   const streakStats = getStreakStats();
   const streakProgress = getStreakProgress();

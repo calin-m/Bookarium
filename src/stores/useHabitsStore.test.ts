@@ -291,5 +291,57 @@ describe('useHabitsStore', () => {
       vi.useRealTimers();
     }
   });
-});
 
+  it('preserves the greater completed_books_count and retries only for missing schema columns', async () => {
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    const { useReaderStore } = await import('@/stores/useReaderStore');
+
+    useBookshelfStore.setState({ bookStatuses: { 1342: 'finished' } });
+    useReaderStore.setState({ readingProgress: { 84: 100 } });
+
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        user_id: 'user-completed',
+        annual_goal: 12,
+        annual_goal_year: 2026,
+        active_dates: [],
+        completed_books_count: 5,
+      },
+      error: null,
+    });
+
+    // Simulate PGRST204 schema error on first upsert attempt, succeeding on fallback retry
+    mockUpsert
+      .mockResolvedValueOnce({ data: null, error: { code: 'PGRST204', message: 'Column missing' } })
+      .mockResolvedValueOnce({ data: null, error: null });
+
+    await useHabitsStore.getState().syncWithCloud('user-completed');
+
+    expect(mockUpsert).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        user_id: 'user-completed',
+          completed_books_count: 5,
+      }),
+      { onConflict: 'user_id' }
+    );
+    expect(mockUpsert).toHaveBeenNthCalledWith(
+      2,
+      expect.not.objectContaining({
+        completed_books_count: expect.anything(),
+      }),
+      { onConflict: 'user_id' }
+    );
+
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    mockUpsert.mockReset();
+    mockUpsert.mockResolvedValue({ data: null, error: { code: '500', message: 'Server error' } });
+
+    await useHabitsStore.getState().syncWithCloud('user-upsert-error');
+
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
+
+    useBookshelfStore.setState({ bookStatuses: {} });
+    useReaderStore.setState({ readingProgress: {} });
+  });
+});

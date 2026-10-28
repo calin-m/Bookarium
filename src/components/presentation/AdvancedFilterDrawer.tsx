@@ -254,7 +254,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
 
   return (
     <div
-      className="fixed inset-0 xl:top-16 xl:inset-y-0 xl:left-0 z-50 xl:z-30 flex flex-col justify-end xl:justify-start pointer-events-none animate-in fade-in duration-200"
+      className="fixed inset-0 xl:top-[calc(4rem+env(safe-area-inset-top,0px))] xl:bottom-0 xl:left-0 z-50 xl:z-30 flex flex-col justify-end xl:justify-start pointer-events-none animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="advanced-filter-title"
@@ -269,7 +269,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
         data-testid="filter-backdrop"
       />
 
-      <div className="relative w-full max-h-[88dvh] xl:max-h-none xl:w-96 h-auto xl:h-[calc(100dvh-4rem)] rounded-t-2xl xl:rounded-none bg-background text-foreground flex flex-col justify-between shadow-2xl border-t xl:border-t-0 xl:border-r border-border animate-in slide-in-from-bottom xl:slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
+      <div className="relative w-full max-h-[88dvh] xl:max-h-none xl:w-96 h-auto xl:h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))] rounded-t-2xl xl:rounded-none bg-background text-foreground flex flex-col justify-between shadow-2xl border-t xl:border-t-0 xl:border-r border-border animate-in slide-in-from-bottom xl:slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
         
         {/* Mobile Grab Handle Bar */}
         <div className="w-12 h-1 rounded-full bg-muted-foreground/30 mx-auto mt-2.5 mb-1 shrink-0 xl:hidden" aria-hidden="true" />

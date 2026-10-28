@@ -6,11 +6,14 @@ import { useHasMounted } from '@/hooks/useHasMounted';
 import {
   calculateStreak,
   calculateAnnualGoalProgress,
+  calculateCompletedBooksCount,
   formatReadingDuration,
   formatLocalDate,
   type StreakStats,
   type AnnualGoalProgress,
 } from '@/lib/reading-analytics';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 
 export const MIN_STREAK_DURATION_SECONDS = 300; // 5 minutes of active immersion required for daily streak credit
 
@@ -207,19 +210,37 @@ export const useHabitsStore = create<HabitsState>()(
             goalUpdatedAt: mergedGoalUpdatedAt,
           });
 
-          // Upsert merged state back to Supabase
-          await supabase.from('user_reading_habits').upsert(
+          const bookStatuses = useBookshelfStore.getState().bookStatuses;
+          const readingProgress = useReaderStore.getState().readingProgress;
+          const localCompletedCount = calculateCompletedBooksCount(bookStatuses, readingProgress);
+          const remoteCompletedCount =
+            data && typeof data.completed_books_count === 'number'
+              ? Math.max(0, data.completed_books_count)
+              : 0;
+          const mergedCompletedBooksCount = Math.max(localCompletedCount, remoteCompletedCount);
+
+          const basePayload = {
+            user_id: userId,
+            annual_goal: mergedGoal,
+            annual_goal_year: mergedYear,
+            active_dates: mergedDates,
+            total_reading_seconds: mergedReadingSeconds,
+            total_listening_seconds: mergedListeningSeconds,
+            updated_at: mergedGoalUpdatedAt || new Date().toISOString(),
+          };
+
+          // Upsert merged state back to Supabase (with schema-cache fallback if column is pre-migration)
+          const upsertRes = await supabase.from('user_reading_habits').upsert(
             {
-              user_id: userId,
-              annual_goal: mergedGoal,
-              annual_goal_year: mergedYear,
-              active_dates: mergedDates,
-              total_reading_seconds: mergedReadingSeconds,
-              total_listening_seconds: mergedListeningSeconds,
-              updated_at: mergedGoalUpdatedAt || new Date().toISOString(),
+              ...basePayload,
+              completed_books_count: mergedCompletedBooksCount,
             },
             { onConflict: 'user_id' }
           );
+
+          if (upsertRes?.error?.code === 'PGRST204' || upsertRes?.error?.code === '42703') {
+            await supabase.from('user_reading_habits').upsert(basePayload, { onConflict: 'user_id' });
+          }
         } catch {
           // Graceful fallback for offline mode
         } finally {

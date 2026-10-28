@@ -43,6 +43,7 @@ import {
   generateStrongPassword as generatePasswordUtil,
   evaluatePasswordStrength,
 } from '@/lib/password';
+import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
 import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
 import type { NavViewId } from '@/config/views.config';
 import { ROUTES } from '@/config/routes';
@@ -168,20 +169,14 @@ function AccountDashboardContent() {
   const { getPendingInviteCount } = useHydratedFellowship();
   const annotationCount = annotations.length;
   const bookmarksCount = useReaderStore(getActiveReadingCount);
+  const readingProgress = useReaderStore((s) => s.readingProgress);
   const readingStreak = getStreakStats().currentStreak;
   const pendingInvitesCount = getPendingInviteCount(user?.id);
 
-  const completedBooksCount = useMemo(() => {
-    const finishedFromStatus = Object.entries(bookStatuses || {})
-      .filter(([_, status]) => status === 'finished')
-      .map(([id]) => Number(id));
-    const finishedFromProgress = Object.entries(
-      useReaderStore.getState().readingProgress || {}
-    )
-      .filter(([_, p]) => p >= 100)
-      .map(([id]) => Number(id));
-    return new Set([...finishedFromStatus, ...finishedFromProgress]).size;
-  }, [bookStatuses]);
+  const completedBooksCount = useMemo(
+    () => calculateCompletedBooksCount(bookStatuses, readingProgress),
+    [bookStatuses, readingProgress]
+  );
 
   const customShelvesCount = useMemo(
     () => cloudBookshelves.filter((s) => !s.is_default).length,

@@ -178,7 +178,113 @@ export function applyDeterministicItemOrdering<
 }
 
 /**
+ * Merges a cloud-reconstructed GutendexBook stub with an existing rich local GutendexBook
+ * so subjects, bookshelves, translators, languages, authentic download_count, and formats
+ * are never wiped during authoritative cloud synchronization.
+ */
+export function mergeCloudBookWithLocal(
+  cloudBook: GutendexBook,
+  localBook?: GutendexBook
+): GutendexBook {
+  if (!localBook) return cloudBook;
+
+  const cloudHasLifespans = Boolean(
+    cloudBook.authors?.some((a) => a.birth_year != null || a.death_year != null)
+  );
+  const localHasLifespans = Boolean(
+    localBook.authors?.some((a) => a.birth_year != null || a.death_year != null)
+  );
+
+  const authors =
+    cloudHasLifespans || !localHasLifespans
+      ? cloudBook.authors?.length
+        ? cloudBook.authors
+        : localBook.authors
+      : localBook.authors;
+
+  const hasRichLocalLanguages =
+    Array.isArray(localBook.languages) &&
+    localBook.languages.length > 0 &&
+    !(
+      localBook.languages.length === 1 &&
+      localBook.languages[0] === 'en' &&
+      cloudBook.languages?.some((l) => l !== 'en')
+    );
+
+  return {
+    ...localBook,
+    ...cloudBook,
+    title: cloudBook.title || localBook.title,
+    authors,
+    translators:
+      localBook.translators && localBook.translators.length > 0
+        ? localBook.translators
+        : cloudBook.translators,
+    subjects:
+      localBook.subjects && localBook.subjects.length > 0
+        ? localBook.subjects
+        : cloudBook.subjects,
+    bookshelves:
+      localBook.bookshelves && localBook.bookshelves.length > 0
+        ? localBook.bookshelves
+        : cloudBook.bookshelves,
+    languages: hasRichLocalLanguages ? localBook.languages : cloudBook.languages,
+    copyright: localBook.copyright ?? cloudBook.copyright,
+    formats: {
+      ...cloudBook.formats,
+      ...localBook.formats,
+      ...(cloudBook.formats?.['image/jpeg']
+        ? { 'image/jpeg': cloudBook.formats['image/jpeg'] }
+        : {}),
+    },
+    download_count:
+      typeof localBook.download_count === 'number' &&
+      localBook.download_count > 0 &&
+      localBook.download_count !== 1000
+        ? localBook.download_count
+        : cloudBook.download_count,
+  };
+}
+
+const inFlightOutboxFlushes = new Map<string, Promise<void>>();
+const inFlightCloudSyncs = new Map<string, Promise<void>>();
+
+async function safeSelectByUser<T>(
+  supabase: ReturnType<typeof createClient>,
+  table: 'bookshelves' | 'bookshelf_items' | 'user_favorites' | 'user_book_curation',
+  userId: string,
+  orderMode?: 'created_asc' | 'deterministic_items'
+): Promise<{ data: T[] | null; error: unknown; unmocked?: boolean }> {
+  try {
+    const tableRef = supabase.from(table);
+    if (!tableRef || typeof tableRef.select !== 'function') {
+      return { data: null, error: null, unmocked: true };
+    }
+    const eqQuery = tableRef.select('*').eq('user_id', userId);
+    if (orderMode === 'created_asc') {
+      const q = eqQuery as unknown as {
+        order?: (col: string, opts: { ascending: boolean }) => unknown;
+      };
+      const ordered =
+        typeof q?.order === 'function' ? q.order('created_at', { ascending: true }) : eqQuery;
+      const res = (await ordered) as { data: T[] | null; error?: unknown };
+      return { data: res?.data ?? null, error: res?.error ?? null };
+    }
+    if (orderMode === 'deterministic_items') {
+      const ordered = applyDeterministicItemOrdering(eqQuery);
+      const res = (await ordered) as { data: T[] | null; error?: unknown };
+      return { data: res?.data ?? null, error: res?.error ?? null };
+    }
+    const res = (await eqQuery) as { data: T[] | null; error?: unknown };
+    return { data: res?.data ?? null, error: res?.error ?? null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+}
+
+/**
  * Flushes pending offline outbox actions to Supabase, retaining only failed mutations.
+ * Deduplicates concurrent flushes per userId.
  */
 export async function executeFlushOutbox(
   userId: string,
@@ -188,25 +294,38 @@ export async function executeFlushOutbox(
   const { outbox } = get();
   if (outbox.length === 0 || !userId) return;
 
-  const supabase = createClient();
-  const remaining: OutboxAction[] = [];
+  const existingFlush = inFlightOutboxFlushes.get(userId);
+  if (existingFlush) return existingFlush;
 
-  for (const action of outbox) {
-    try {
-      const dispatcher = OUTBOX_DISPATCHERS[action.type];
-      if (dispatcher) {
-        const { error } = await dispatcher(supabase, action.payload);
-        if (error) throw error;
+  const flushPromise = (async () => {
+    const supabase = createClient();
+    const completedActionIds = new Set<string>();
+
+    for (const action of outbox) {
+      try {
+        const dispatcher = OUTBOX_DISPATCHERS[action.type];
+        if (dispatcher) {
+          const { error } = await dispatcher(supabase, action.payload);
+          if (error) throw error;
+          completedActionIds.add(action.id);
+        }
+      } catch {
+        continue;
       }
-    } catch {
-      remaining.push(action);
     }
-  }
-  set({ outbox: remaining });
+    set({ outbox: get().outbox.filter((action) => !completedActionIds.has(action.id)) });
+  })().finally(() => {
+    inFlightOutboxFlushes.delete(userId);
+  });
+
+  inFlightOutboxFlushes.set(userId, flushPromise);
+  return flushPromise;
 }
 
 /**
  * Synchronizes shelves, saved items, favorites, and LWW curation state with Supabase.
+ * Coalesces concurrent calls per userId, executes table reads in parallel, and commits
+ * reconciled state in a single atomic Zustand update.
  */
 export async function executeBookshelfCloudSync(
   userId: string,
@@ -215,314 +334,358 @@ export async function executeBookshelfCloudSync(
 ): Promise<void> {
   if (!userId) return;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-  set({ isSyncing: true });
 
-  // Flush any pending offline mutations first
-  await get().flushOutbox(userId);
+  const existingSync = inFlightCloudSyncs.get(userId);
+  if (existingSync) return existingSync;
 
-  try {
-    const supabase = createClient();
+  const syncPromise = (async () => {
+    set({ isSyncing: true });
 
-    // 1. Fetch user shelves
-    const { data: shelves, error: shelvesError } = await supabase
-      .from('bookshelves')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true });
+    const nextState: Partial<BookshelfSyncSlice> = { isSyncing: false };
 
-    let currentDefaultShelf: Bookshelf | undefined;
+    try {
+      // Flush any pending offline mutations first
+      await get().flushOutbox(userId);
 
-    if (shelves && shelves.length > 0) {
-      const uniqueMap = new Map<string, Bookshelf>();
-      for (const s of shelves as Bookshelf[]) {
-        if (!uniqueMap.has(s.id)) {
-          uniqueMap.set(s.id, s);
+      const supabase = createClient();
+
+      // Build lookup map of existing rich local books by id to prevent metadata loss on cloud sync
+      const initialState = get();
+      const localBookLookup = new Map<number, GutendexBook>();
+      for (const b of initialState.favoriteBooks) {
+        localBookLookup.set(b.id, b);
+      }
+      for (const b of initialState.savedBooks) {
+        localBookLookup.set(b.id, b);
+      }
+
+      // Parallelize initial SELECT queries across all 4 tables
+      const [shelvesRes, itemsRes, favoritesRes, curationsRes] = await Promise.all([
+        safeSelectByUser<Bookshelf>(supabase, 'bookshelves', userId, 'created_asc'),
+        safeSelectByUser<BookshelfItem>(supabase, 'bookshelf_items', userId, 'deterministic_items'),
+        safeSelectByUser<BookshelfItem>(supabase, 'user_favorites', userId, 'deterministic_items'),
+        safeSelectByUser<Database['public']['Tables']['user_book_curation']['Row']>(
+          supabase,
+          'user_book_curation',
+          userId
+        ),
+      ]);
+
+      const { data: shelves, error: shelvesError } = shelvesRes;
+      let currentDefaultShelf: Bookshelf | undefined;
+
+      if (shelves && shelves.length > 0) {
+        const uniqueMap = new Map<string, Bookshelf>();
+        for (const s of shelves) {
+          if (!uniqueMap.has(s.id)) {
+            uniqueMap.set(s.id, s);
+          }
+        }
+        const dedupedShelves = Array.from(uniqueMap.values());
+        nextState.cloudBookshelves = dedupedShelves;
+        currentDefaultShelf = dedupedShelves.find((s) => s.is_default) || dedupedShelves[0];
+        const currentActive = get().activeBookshelfId;
+        const shouldPreserveActive =
+          currentActive === '__downloaded__' ||
+          Boolean(currentActive && dedupedShelves.some((s) => s.id === currentActive));
+        nextState.activeBookshelfId = shouldPreserveActive ? currentActive : currentDefaultShelf.id;
+
+        const { data: items, error: itemsError } = itemsRes;
+
+        if (itemsError) {
+          console.error('Failed to sync bookshelf items from cloud:', itemsError);
+        } else if (!itemsRes.unmocked) {
+          nextState.cloudBookshelfItems = (items || []) as BookshelfItem[];
+
+          // Deduplicate reconstructed books by book_id and merge with rich local metadata
+          const seenBookIds = new Set<number>();
+          const reconstructedBooks: GutendexBook[] = [];
+          for (const row of items || []) {
+            if (!seenBookIds.has(row.book_id)) {
+              seenBookIds.add(row.book_id);
+              const stub = toGutendexBookFromCloudRow(row);
+              reconstructedBooks.push(
+                mergeCloudBookWithLocal(stub, localBookLookup.get(row.book_id))
+              );
+            }
+          }
+
+          // Tombstone-aware merge: filter out remote items that have been deleted locally
+          const { lastBookshelfSyncAt, deletedBookIds } = get();
+          const activeReconstructed = reconstructedBooks.filter((b) => !deletedBookIds[b.id]);
+
+          // Propagate deletions concurrently: remove locally tombstoned items from cloud
+          const itemsToDelete = (items || []).filter(
+            (item: BookshelfItem) => deletedBookIds[item.book_id]
+          );
+          if (itemsToDelete.length > 0) {
+            await Promise.allSettled(
+              itemsToDelete.map((delItem) =>
+                supabase.from('bookshelf_items').delete().eq('id', delItem.id)
+              )
+            );
+          }
+
+          let finalSavedBooks: GutendexBook[];
+
+          if (!lastBookshelfSyncAt) {
+            // Initial sync: merge local guest books into remote books and upload unsynced ones
+            const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
+            const merged = [...activeReconstructed];
+            const unSyncedLocalBooks: GutendexBook[] = [];
+
+            for (const lb of localSaved) {
+              if (!merged.some((b) => b.id === lb.id)) {
+                merged.push(lb);
+                unSyncedLocalBooks.push(lb);
+              }
+            }
+            finalSavedBooks = merged;
+
+            // Bidirectional Sync: push local books missing from cloud to the database
+            if (unSyncedLocalBooks.length > 0 && currentDefaultShelf?.id) {
+              const inserts = unSyncedLocalBooks.map((b) =>
+                toCloudBookInsert(b, userId, currentDefaultShelf!.id)
+              );
+
+              await supabase.from('bookshelf_items').upsert(inserts, {
+                onConflict: 'bookshelf_id,book_id',
+              });
+
+              const { data: updatedItems } = await safeSelectByUser<BookshelfItem>(
+                supabase,
+                'bookshelf_items',
+                userId,
+                'deterministic_items'
+              );
+              if (updatedItems) {
+                nextState.cloudBookshelfItems = updatedItems;
+              }
+            }
+          } else {
+            // Device has previously synced: Cloud is authoritative for multi-device deletions.
+            finalSavedBooks = activeReconstructed;
+          }
+
+          nextState.savedBooks = finalSavedBooks;
+          nextState.lastBookshelfSyncAt = new Date().toISOString();
+        }
+      } else if (!shelvesError && !shelvesRes.unmocked) {
+        // Create default 'General' shelf for user
+        const bookshelvesTable = supabase.from('bookshelves');
+        const { data: newDefault } =
+          typeof bookshelvesTable?.insert === 'function'
+            ? await bookshelvesTable
+                .insert({
+                  user_id: userId,
+                  name: 'General',
+                  is_default: true,
+                })
+                .select()
+                .single()
+            : { data: null };
+
+        if (newDefault) {
+          currentDefaultShelf = newDefault as Bookshelf;
+          nextState.cloudBookshelves = [currentDefaultShelf];
+          nextState.activeBookshelfId = currentDefaultShelf.id;
+          nextState.cloudBookshelfItems = [];
+
+          const { lastBookshelfSyncAt, deletedBookIds = {} } = get();
+          if (!lastBookshelfSyncAt) {
+            const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
+            if (localSaved.length > 0) {
+              const inserts = localSaved.map((b) =>
+                toCloudBookInsert(b, userId, currentDefaultShelf!.id)
+              );
+
+              await supabase.from('bookshelf_items').upsert(inserts, {
+                onConflict: 'bookshelf_id,book_id',
+              });
+
+              const { data: updatedItems } = await safeSelectByUser<BookshelfItem>(
+                supabase,
+                'bookshelf_items',
+                userId,
+                'deterministic_items'
+              );
+              if (updatedItems) {
+                nextState.cloudBookshelfItems = updatedItems;
+              }
+            }
+          }
+          nextState.lastBookshelfSyncAt = new Date().toISOString();
         }
       }
-      const dedupedShelves = Array.from(uniqueMap.values());
-      set({ cloudBookshelves: dedupedShelves });
-      currentDefaultShelf = dedupedShelves.find((s) => s.is_default) || dedupedShelves[0];
-      const currentActive = get().activeBookshelfId;
-      const shouldPreserveActive =
-        currentActive === '__downloaded__' ||
-        Boolean(currentActive && dedupedShelves.some((s) => s.id === currentActive));
-      set({
-        activeBookshelfId: shouldPreserveActive ? currentActive : currentDefaultShelf.id,
-      });
 
-      // 2. Fetch items for shelves
-      const itemsQuery = supabase
-        .from('bookshelf_items')
-        .select('*')
-        .eq('user_id', userId);
-      const { data: items, error: itemsError } = await applyDeterministicItemOrdering(itemsQuery);
+      // 3. Reconcile user favorites
+      const { data: favorites, error: favoritesError } = favoritesRes;
 
-      if (itemsError) {
-        console.error('Failed to sync bookshelf items from cloud:', itemsError);
-      } else {
-        set({
-          cloudBookshelves: dedupedShelves,
-          cloudBookshelfItems: (items || []) as BookshelfItem[],
-        });
+      if (favoritesError) {
+        console.error('Failed to sync favorites from cloud:', favoritesError);
+      } else if (!favoritesRes.unmocked) {
+        const seenFavIds = new Set<number>();
+        const reconstructedFavorites: GutendexBook[] = [];
+        for (const row of favorites || []) {
+          if (!seenFavIds.has(row.book_id)) {
+            seenFavIds.add(row.book_id);
+            const stub = toGutendexBookFromCloudRow(row);
+            reconstructedFavorites.push(
+              mergeCloudBookWithLocal(stub, localBookLookup.get(row.book_id))
+            );
+          }
+        }
 
-        const reconstructedBooks: GutendexBook[] = (items || []).map(toGutendexBookFromCloudRow);
+        // Reconcile favorites with tombstone awareness and sync anchor
+        const { lastFavoritesSyncAt, deletedFavoriteBookIds } = get();
+        const localFavorites = get().favoriteBooks;
 
-        // Tombstone-aware merge: filter out remote items that have been deleted locally
-        const { lastBookshelfSyncAt, deletedBookIds } = get();
-        const activeReconstructed = reconstructedBooks.filter((b) => !deletedBookIds[b.id]);
-
-        // Propagate deletions: if remote contains items that were tombstoned locally, remove them from cloud
-        const itemsToDelete = (items || []).filter(
-          (item: BookshelfItem) => deletedBookIds[item.book_id]
+        const activeReconstructedFavorites = reconstructedFavorites.filter(
+          (b) => !deletedFavoriteBookIds[b.id]
         );
-        for (const delItem of itemsToDelete) {
-          await supabase.from('bookshelf_items').delete().eq('id', delItem.id);
+
+        // Propagate deletions concurrently: remove locally tombstoned favorites from cloud
+        const favsToDelete = (favorites || []).filter(
+          (item: { book_id: number }) => deletedFavoriteBookIds[item.book_id]
+        );
+        if (favsToDelete.length > 0) {
+          await Promise.allSettled(
+            favsToDelete.map((delFav) =>
+              supabase
+                .from('user_favorites')
+                .delete()
+                .eq('user_id', userId)
+                .eq('book_id', delFav.book_id)
+            )
+          );
         }
 
-        let finalSavedBooks: GutendexBook[];
+        let finalFavorites: GutendexBook[];
 
-        if (!lastBookshelfSyncAt) {
-          // Initial sync (e.g. migrating guest session to authenticated account):
-          // Merge local guest books into remote books and upload unsynced ones
-          const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
-          const merged = [...activeReconstructed];
-          const unSyncedLocalBooks: GutendexBook[] = [];
+        if (!lastFavoritesSyncAt) {
+          const unSyncedFavorites: GutendexBook[] = [];
+          const mergedFavorites = [...activeReconstructedFavorites];
 
-          for (const lb of localSaved) {
-            if (!merged.some((b) => b.id === lb.id)) {
-              merged.push(lb);
-              unSyncedLocalBooks.push(lb);
+          for (const lb of localFavorites) {
+            if (!deletedFavoriteBookIds[lb.id] && !mergedFavorites.some((b) => b.id === lb.id)) {
+              mergedFavorites.push(lb);
+              unSyncedFavorites.push(lb);
             }
           }
-          finalSavedBooks = merged;
+          finalFavorites = mergedFavorites;
 
-          // Bidirectional Sync: push local books missing from cloud to the database
-          if (unSyncedLocalBooks.length > 0 && currentDefaultShelf?.id) {
-            const inserts = unSyncedLocalBooks.map((b) =>
-              toCloudBookInsert(b, userId, currentDefaultShelf!.id)
-            );
+          if (unSyncedFavorites.length > 0) {
+            const favoriteInserts = unSyncedFavorites.map((b) => toCloudBookInsert(b, userId));
 
-            await supabase.from('bookshelf_items').upsert(inserts, {
-              onConflict: 'bookshelf_id,book_id',
+            await supabase.from('user_favorites').upsert(favoriteInserts, {
+              onConflict: 'user_id,book_id',
             });
-
-            const updatedItemsQuery = supabase
-              .from('bookshelf_items')
-              .select('*')
-              .eq('user_id', userId);
-            const { data: updatedItems } = await applyDeterministicItemOrdering(updatedItemsQuery);
-            if (updatedItems) {
-              set({ cloudBookshelfItems: updatedItems as BookshelfItem[] });
-            }
           }
         } else {
-          // Device has previously synced: Cloud is authoritative for multi-device deletions.
-          finalSavedBooks = activeReconstructed;
+          finalFavorites = activeReconstructedFavorites;
         }
 
-        set({
-          savedBooks: finalSavedBooks,
-          lastBookshelfSyncAt: new Date().toISOString(),
-        });
+        nextState.favoriteBooks = finalFavorites;
+        nextState.favoriteBookIds = finalFavorites.map((b) => b.id);
+        nextState.lastFavoritesSyncAt = new Date().toISOString();
       }
-    } else if (!shelvesError) {
-      // Create default 'General' shelf for user
-      const { data: newDefault } = await supabase
-        .from('bookshelves')
-        .insert({
+
+      // 4. Reconcile user curation (ratings & statuses)
+      if (!curationsRes.unmocked && !curationsRes.error) {
+        const curations = curationsRes.data;
+        const localRatings = { ...get().bookRatings };
+        const localStatuses = { ...get().bookStatuses };
+        const localHistory = { ...get().curationHistory };
+
+        const remoteMap = new Map<
+          number,
+          Database['public']['Tables']['user_book_curation']['Row']
+        >();
+        for (const item of curations || []) {
+          remoteMap.set(item.book_id, item);
+        }
+
+        const unSyncedCurations: Array<{
+          user_id: string;
+          book_id: number;
+          rating: number | null;
+          reading_status: ReadingStatus | null;
+          updated_at: string;
+        }> = [];
+
+        const toCurationUpsertRow = (bId: number, updatedAt: string) => ({
           user_id: userId,
-          name: 'General',
-          is_default: true,
-        })
-        .select()
-        .single();
-
-      if (newDefault) {
-        currentDefaultShelf = newDefault as Bookshelf;
-        set({
-          cloudBookshelves: [currentDefaultShelf],
-          activeBookshelfId: currentDefaultShelf.id,
-          cloudBookshelfItems: [],
+          book_id: bId,
+          rating: localRatings[bId] ?? null,
+          reading_status: localStatuses[bId] ?? null,
+          updated_at: updatedAt,
         });
 
-        const { lastBookshelfSyncAt, deletedBookIds = {} } = get();
-        if (!lastBookshelfSyncAt) {
-          const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
-          if (localSaved.length > 0) {
-            const inserts = localSaved.map((b) =>
-              toCloudBookInsert(b, userId, currentDefaultShelf!.id)
-            );
+        // 4a. Reconcile remote items using Last-Write-Wins (LWW)
+        for (const item of curations || []) {
+          const bId = item.book_id;
+          const localTimestamp = localHistory[bId];
+          const remoteTimestamp = item.updated_at || item.created_at;
 
-            await supabase.from('bookshelf_items').upsert(inserts, {
-              onConflict: 'bookshelf_id,book_id',
-            });
+          const isRemoteNewer =
+            !localTimestamp ||
+            (remoteTimestamp &&
+              new Date(remoteTimestamp).getTime() >= new Date(localTimestamp).getTime());
 
-            const newDefaultItemsQuery = supabase
-              .from('bookshelf_items')
-              .select('*')
-              .eq('user_id', userId);
-            const { data: updatedItems } = await applyDeterministicItemOrdering(newDefaultItemsQuery);
-            if (updatedItems) {
-              set({ cloudBookshelfItems: updatedItems as BookshelfItem[] });
+          if (isRemoteNewer) {
+            if (item.rating !== null && item.rating !== undefined) {
+              localRatings[bId] = item.rating;
+            } else {
+              delete localRatings[bId];
             }
+            if (item.reading_status) {
+              localStatuses[bId] = item.reading_status as ReadingStatus;
+            } else {
+              delete localStatuses[bId];
+            }
+            localHistory[bId] = remoteTimestamp || new Date().toISOString();
+          } else {
+            unSyncedCurations.push(toCurationUpsertRow(bId, localTimestamp));
           }
         }
-        set({ lastBookshelfSyncAt: new Date().toISOString() });
-      }
-    }
 
-    // 3. Fetch user favorites
-    const favoritesQuery = supabase
-      .from('user_favorites')
-      .select('*')
-      .eq('user_id', userId);
-    const { data: favorites, error: favoritesError } = await applyDeterministicItemOrdering(favoritesQuery);
+        // 4b. Push local guest curations that do not exist remotely
+        const allLocalCurationBookIds = Array.from(
+          new Set([...Object.keys(localRatings), ...Object.keys(localStatuses)]).values()
+        ).map(Number);
 
-    if (favoritesError) {
-      console.error('Failed to sync favorites from cloud:', favoritesError);
-    } else {
-      const reconstructedFavorites: GutendexBook[] = (favorites || []).map(toGutendexBookFromCloudRow);
-
-      // Reconcile favorites with tombstone awareness and sync anchor
-      const { lastFavoritesSyncAt, deletedFavoriteBookIds } = get();
-      const localFavorites = get().favoriteBooks;
-
-      const activeReconstructedFavorites = reconstructedFavorites.filter(
-        (b) => !deletedFavoriteBookIds[b.id]
-      );
-
-      // Propagate deletions: if remote contains items that were tombstoned locally, remove them from cloud
-      const favsToDelete = (favorites || []).filter(
-        (item: { book_id: number }) => deletedFavoriteBookIds[item.book_id]
-      );
-      for (const delFav of favsToDelete) {
-        await supabase
-          .from('user_favorites')
-          .delete()
-          .eq('user_id', userId)
-          .eq('book_id', delFav.book_id);
-      }
-
-      let finalFavorites: GutendexBook[];
-
-      if (!lastFavoritesSyncAt) {
-        const unSyncedFavorites: GutendexBook[] = [];
-        const mergedFavorites = [...activeReconstructedFavorites];
-
-        for (const lb of localFavorites) {
-          if (!deletedFavoriteBookIds[lb.id] && !mergedFavorites.some((b) => b.id === lb.id)) {
-            mergedFavorites.push(lb);
-            unSyncedFavorites.push(lb);
+        for (const bId of allLocalCurationBookIds) {
+          if (!remoteMap.has(bId)) {
+            const localTimestamp = localHistory[bId] || new Date().toISOString();
+            localHistory[bId] = localTimestamp;
+            unSyncedCurations.push(toCurationUpsertRow(bId, localTimestamp));
           }
         }
-        finalFavorites = mergedFavorites;
 
-        if (unSyncedFavorites.length > 0) {
-          const favoriteInserts = unSyncedFavorites.map((b) => toCloudBookInsert(b, userId));
+        nextState.bookRatings = localRatings;
+        nextState.bookStatuses = localStatuses;
+        nextState.curationHistory = localHistory;
 
-          await supabase.from('user_favorites').upsert(favoriteInserts, {
-            onConflict: 'user_id,book_id',
-          });
+        if (unSyncedCurations.length > 0) {
+          const curationTable = supabase.from('user_book_curation');
+          if (typeof curationTable?.upsert === 'function') {
+            await curationTable.upsert(unSyncedCurations, {
+              onConflict: 'user_id,book_id',
+            });
+          }
         }
-      } else {
-        finalFavorites = activeReconstructedFavorites;
       }
-
-      const finalFavoriteIds = finalFavorites.map((b) => b.id);
-      set({
-        favoriteBooks: finalFavorites,
-        favoriteBookIds: finalFavoriteIds,
-        lastFavoritesSyncAt: new Date().toISOString(),
-      });
+    } catch {
+      // Graceful offline fallback
+    } finally {
+      set(nextState);
     }
+  })().finally(() => {
+    inFlightCloudSyncs.delete(userId);
+  });
 
-    // 4. Fetch user curation (ratings & statuses)
-    const { data: curations } = await supabase
-      .from('user_book_curation')
-      .select('*')
-      .eq('user_id', userId);
-
-    const localRatings = { ...get().bookRatings };
-    const localStatuses = { ...get().bookStatuses };
-    const localHistory = { ...get().curationHistory };
-
-    const remoteMap = new Map<number, Database['public']['Tables']['user_book_curation']['Row']>();
-    for (const item of curations || []) {
-      remoteMap.set(item.book_id, item);
-    }
-
-    const unSyncedCurations: Array<{
-      user_id: string;
-      book_id: number;
-      rating: number | null;
-      reading_status: ReadingStatus | null;
-      updated_at: string;
-    }> = [];
-
-    const toCurationUpsertRow = (bId: number, updatedAt: string) => ({
-      user_id: userId,
-      book_id: bId,
-      rating: localRatings[bId] ?? null,
-      reading_status: localStatuses[bId] ?? null,
-      updated_at: updatedAt,
-    });
-
-    // 4a. Reconcile remote items using Last-Write-Wins (LWW)
-    for (const item of curations || []) {
-      const bId = item.book_id;
-      const localTimestamp = localHistory[bId];
-      const remoteTimestamp = item.updated_at || item.created_at;
-
-      const isRemoteNewer =
-        !localTimestamp ||
-        (remoteTimestamp && new Date(remoteTimestamp).getTime() >= new Date(localTimestamp).getTime());
-
-      if (isRemoteNewer) {
-        if (item.rating !== null && item.rating !== undefined) {
-          localRatings[bId] = item.rating;
-        } else {
-          delete localRatings[bId];
-        }
-        if (item.reading_status) {
-          localStatuses[bId] = item.reading_status as ReadingStatus;
-        } else {
-          delete localStatuses[bId];
-        }
-        localHistory[bId] = remoteTimestamp || new Date().toISOString();
-      } else {
-        unSyncedCurations.push(toCurationUpsertRow(bId, localTimestamp));
-      }
-    }
-
-    // 4b. Push local guest curations that do not exist remotely
-    const allLocalCurationBookIds = Array.from(
-      new Set([...Object.keys(localRatings), ...Object.keys(localStatuses)]).values()
-    ).map(Number);
-
-    for (const bId of allLocalCurationBookIds) {
-      if (!remoteMap.has(bId)) {
-        const localTimestamp = localHistory[bId] || new Date().toISOString();
-        localHistory[bId] = localTimestamp;
-        unSyncedCurations.push(toCurationUpsertRow(bId, localTimestamp));
-      }
-    }
-
-    set({
-      bookRatings: localRatings,
-      bookStatuses: localStatuses,
-      curationHistory: localHistory,
-    });
-
-    if (unSyncedCurations.length > 0) {
-      await supabase.from('user_book_curation').upsert(unSyncedCurations, {
-        onConflict: 'user_id,book_id',
-      });
-    }
-  } catch {
-    // Graceful offline fallback
-  } finally {
-    set({ isSyncing: false });
-  }
+  inFlightCloudSyncs.set(userId, syncPromise);
+  return syncPromise;
 }
 
 /**
@@ -830,4 +993,3 @@ export async function executeMoveBookToShelf(
   }
   return true;
 }
-

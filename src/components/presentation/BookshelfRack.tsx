@@ -489,7 +489,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
       {/* Empty State vs Hardwood Shelf Rails with tactile page turn */}
       <div
-        key={`shelf-content-${currentActiveShelfId || 'general'}`}
+        key={`shelf-content-${isViewingGeneral ? 'general' : (currentActiveShelfId || 'general')}`}
         className="animate-page-turn w-full"
         data-testid="shelf-content-container"
       >

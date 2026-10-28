@@ -283,10 +283,11 @@ function HomeContent() {
   }
 
   // Reset shelf page when view, search, sort, or active shelf changes
+  const effectiveShelfKeyId = isViewingGeneral ? 'general' : (currentActiveShelfId || 'general');
   const [prevShelfKey, setPrevShelfKey] = useState(
-    `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${currentActiveShelfId}`
+    `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${effectiveShelfKeyId}`
   );
-  const currentShelfKey = `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${currentActiveShelfId}`;
+  const currentShelfKey = `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${effectiveShelfKeyId}`;
   if (currentShelfKey !== prevShelfKey) {
     setPrevShelfKey(currentShelfKey);
     setShelfPage(1);
@@ -309,7 +310,9 @@ function HomeContent() {
     isError,
     isFetching,
     refetch,
-  } = useBooks(queryParams, { enabled: !isOffline });
+  } = useBooks(queryParams, {
+    enabled: !isOffline && (activeView === 'catalog' || activeView === 'favorites'),
+  });
 
   // Local offline catalog filtering & sorting when device is offline and downloaded books exist
   const filteredOfflineCatalogBooks = useMemo(() => {
@@ -363,7 +366,7 @@ function HomeContent() {
   const isApproachingBatchEnd = subIndex >= Math.max(1, subPagesPerBatch - 2);
   const prefetchNextPage = usePrefetchNextPage(
     queryParams,
-    !isOffline && isApproachingBatchEnd && Boolean(booksData?.next)
+    !isOffline && activeView === 'catalog' && isApproachingBatchEnd && Boolean(booksData?.next)
   );
 
   const pendingPageScrollRef = React.useRef<number | null>(null);

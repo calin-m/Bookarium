@@ -270,6 +270,7 @@ export interface Database {
           active_dates: Json;
           total_reading_seconds: number;
           total_listening_seconds: number;
+          completed_books_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -281,6 +282,7 @@ export interface Database {
           active_dates?: Json;
           total_reading_seconds?: number;
           total_listening_seconds?: number;
+          completed_books_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -292,6 +294,7 @@ export interface Database {
           active_dates?: Json;
           total_reading_seconds?: number;
           total_listening_seconds?: number;
+          completed_books_count?: number;
           created_at?: string;
           updated_at?: string;
         };

@@ -192,6 +192,15 @@ describe('accolades-engine', () => {
       expect(ctx.historicalErasExplored).toContain('renaissance');
       expect(ctx.totalAnnotationsCount).toBe(2);
       expect(ctx.highlightColorsUsed).toEqual(['yellow', 'rose']);
+
+      // Also counts volumes completed via readingProgress >= 100
+      const progressCtx = buildAccoladeContext({
+        savedBooks: [sampleAncientBook],
+        bookStatuses: {},
+        readingProgress: { 100: 100, 999: 100 },
+      });
+      expect(progressCtx.completedBooksCount).toBe(2);
+      expect(progressCtx.hasCompletedAncientBook).toBe(true);
     });
   });
 

@@ -224,3 +224,117 @@ export function calculateAnnualGoalProgress(
     isCompleted: safeCompleted >= safeTarget,
   };
 }
+
+export interface HabitTelemetryRow {
+  active_dates?: unknown;
+  annual_goal?: number | null;
+  current_streak?: number | null;
+  longest_streak?: number | null;
+  completed_books_count?: number | null;
+}
+
+/**
+ * Computes the deduplicated count of completed volumes across explicit
+ * 'finished' reading statuses and 100% reading progress entries.
+ */
+export function calculateCompletedBooksCount(
+  bookStatuses?: Record<number, string> | null,
+  readingProgress?: Record<number, number> | null
+): number {
+  const completedIds = new Set<number>();
+
+  if (bookStatuses) {
+    for (const [id, status] of Object.entries(bookStatuses)) {
+      const numericId = Number(id);
+      if (status === 'finished' && Number.isFinite(numericId)) {
+        completedIds.add(numericId);
+      }
+    }
+  }
+
+  if (readingProgress) {
+    for (const [id, progress] of Object.entries(readingProgress)) {
+      const numericId = Number(id);
+      if (typeof progress === 'number' && progress >= 100 && Number.isFinite(numericId)) {
+        completedIds.add(numericId);
+      }
+    }
+  }
+
+  return completedIds.size;
+}
+
+/**
+ * Resolves public scholar reading habits and annual challenge telemetry
+ * from a remote Supabase row or local offline store fallback.
+ */
+export function resolvePublicReadingHabits(
+  habitRow: HabitTelemetryRow | null | undefined,
+  fallback?: {
+    activeDates?: string[];
+    annualGoal?: number;
+    localCompletedBooksCount?: number;
+    referenceDate?: Date;
+  }
+): {
+  current_streak: number;
+  longest_streak: number;
+  active_days: number;
+  annual_goal: number;
+  completed_books_count: number;
+} | null {
+  const localCompleted = Math.max(0, fallback?.localCompletedBooksCount ?? 0);
+
+  if (habitRow) {
+    const activeDates = Array.isArray(habitRow.active_dates)
+      ? habitRow.active_dates.filter((d): d is string => typeof d === 'string')
+      : [];
+    const computedStreak = calculateStreak(activeDates, fallback?.referenceDate);
+    const remoteCompleted =
+      typeof habitRow.completed_books_count === 'number'
+        ? Math.max(0, habitRow.completed_books_count)
+        : 0;
+
+    return {
+      current_streak:
+        typeof habitRow.current_streak === 'number'
+          ? habitRow.current_streak
+          : computedStreak.currentStreak,
+      longest_streak:
+        typeof habitRow.longest_streak === 'number'
+          ? habitRow.longest_streak
+          : computedStreak.longestStreak,
+      active_days: activeDates.length,
+      annual_goal:
+        typeof habitRow.annual_goal === 'number' && habitRow.annual_goal > 0
+          ? habitRow.annual_goal
+          : 0,
+      completed_books_count:
+        fallback?.localCompletedBooksCount !== undefined
+          ? Math.max(remoteCompleted, localCompleted)
+          : remoteCompleted,
+    };
+  }
+
+  if (
+    fallback &&
+    (fallback.activeDates !== undefined ||
+      fallback.annualGoal !== undefined ||
+      fallback.localCompletedBooksCount !== undefined)
+  ) {
+    const validDates = Array.isArray(fallback.activeDates) ? fallback.activeDates : [];
+    const computedStreak = calculateStreak(validDates, fallback.referenceDate);
+    return {
+      current_streak: computedStreak.currentStreak,
+      longest_streak: computedStreak.longestStreak,
+      active_days: validDates.length,
+      annual_goal:
+        typeof fallback.annualGoal === 'number' && fallback.annualGoal > 0
+          ? fallback.annualGoal
+          : 0,
+      completed_books_count: localCompleted,
+    };
+  }
+
+  return null;
+}

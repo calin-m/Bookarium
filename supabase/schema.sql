@@ -528,6 +528,7 @@ CREATE TABLE IF NOT EXISTS public.user_reading_habits (
   active_dates JSONB NOT NULL DEFAULT '[]'::jsonb,
   total_reading_seconds BIGINT NOT NULL DEFAULT 0,
   total_listening_seconds BIGINT NOT NULL DEFAULT 0,
+  completed_books_count INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   UNIQUE(user_id)
@@ -535,6 +536,9 @@ CREATE TABLE IF NOT EXISTS public.user_reading_habits (
 
 ALTER TABLE public.user_reading_habits
   ADD COLUMN IF NOT EXISTS total_listening_seconds BIGINT NOT NULL DEFAULT 0;
+
+ALTER TABLE public.user_reading_habits
+  ADD COLUMN IF NOT EXISTS completed_books_count INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE public.user_reading_habits ENABLE ROW LEVEL SECURITY;
 

@@ -153,9 +153,9 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
     <>
       {/* Desktop / Tablet Sticky Sub-Header Toolbar */}
       <div
-        className={`hidden sm:block sticky top-16 z-30 w-full bg-background border-y border-border shadow-md transition-transform duration-300 ease-in-out py-2.5 px-4 sm:px-6 lg:px-8 ${
+        className={`hidden sm:block sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-30 w-full bg-background border-y border-border shadow-md transition-transform duration-300 ease-in-out py-2.5 px-4 sm:px-6 lg:px-8 ${
           !isVisible
-            ? '-translate-y-[calc(100%+4rem)] pointer-events-none'
+            ? '-translate-y-[calc(100%+4rem+env(safe-area-inset-top,0px))] pointer-events-none'
             : isHeaderVisible
               ? 'translate-y-0'
               : '-translate-y-16'

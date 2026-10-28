@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook, ReadingStatus } from '@/types/book.types';
@@ -299,13 +298,26 @@ export const useBookshelfStore = create<BookshelfState>()(
               fresh.translators.length > 0 &&
               (!item.translators || item.translators.length === 0)
           );
+          const hasNewSubjects =
+            (!item.subjects || item.subjects.length === 0) &&
+            Boolean(fresh.subjects && fresh.subjects.length > 0);
 
-          if (hasNewLifespans || hasNewAuthors || hasNewFormats || hasNewTranslators) {
+          if (hasNewLifespans || hasNewAuthors || hasNewFormats || hasNewTranslators || hasNewSubjects) {
             markChanged();
             return {
               ...item,
               authors: (hasNewLifespans || hasNewAuthors) && fresh.authors ? fresh.authors : item.authors,
               translators: hasNewTranslators && fresh.translators ? fresh.translators : item.translators,
+              subjects: hasNewSubjects && fresh.subjects ? fresh.subjects : item.subjects,
+              bookshelves:
+                (!item.bookshelves || item.bookshelves.length === 0) && fresh.bookshelves
+                  ? fresh.bookshelves
+                  : item.bookshelves,
+              languages:
+                (!item.languages || item.languages.length === 0) && fresh.languages
+                  ? fresh.languages
+                  : item.languages,
+              download_count: item.download_count || fresh.download_count || 0,
               formats: { ...item.formats, ...fresh.formats },
             };
           }
@@ -335,40 +347,47 @@ export const useBookshelfStore = create<BookshelfState>()(
 
         if (!hasSavedChanges && !hasRecentChanges && !hasFavoriteChanges) return;
 
+        const changedCloudItems: BookshelfItem[] = [];
         const nextItems = cloudBookshelfItems.map((item) => {
           const fresh = freshMap.get(item.book_id);
           if (!fresh) return item;
           const payload = toCloudBookInsert(fresh, item.user_id, item.bookshelf_id);
-          return {
+          const nextCoverUrl = payload.cover_url || item.cover_url;
+          const authorsChanged = JSON.stringify(item.book_authors) !== JSON.stringify(payload.book_authors);
+          const coverChanged = item.cover_url !== nextCoverUrl;
+          if (!authorsChanged && !coverChanged) {
+            return item;
+          }
+          const updatedItem: BookshelfItem = {
             ...item,
             book_authors: payload.book_authors,
-            cover_url: payload.cover_url || item.cover_url,
+            cover_url: nextCoverUrl,
           };
+          changedCloudItems.push(updatedItem);
+          return updatedItem;
         });
 
         set({
           ...(hasSavedChanges ? { savedBooks: nextSaved } : {}),
           ...(hasRecentChanges ? { recentBooks: nextRecent } : {}),
           ...(hasFavoriteChanges ? { favoriteBooks: nextFavorites } : {}),
-          ...(hasSavedChanges ? { cloudBookshelfItems: nextItems } : {}),
+          ...(changedCloudItems.length > 0 ? { cloudBookshelfItems: nextItems } : {}),
         });
 
         const userId = useAuthStore.getState().user?.id;
-        if (userId) {
+        if (userId && changedCloudItems.length > 0) {
           try {
             const supabase = createClient();
-            const updates = nextItems
-              .filter((item) => freshMap.has(item.book_id))
-              .map((item) =>
-                supabase
-                  .from('bookshelf_items')
-                  .update({
-                    book_authors: item.book_authors,
-                    cover_url: item.cover_url,
-                  })
-                  .eq('id', item.id)
-                  .eq('user_id', userId)
-              );
+            const updates = changedCloudItems.map((item) =>
+              supabase
+                .from('bookshelf_items')
+                .update({
+                  book_authors: item.book_authors,
+                  cover_url: item.cover_url,
+                })
+                .eq('id', item.id)
+                .eq('user_id', userId)
+            );
             await Promise.allSettled(updates);
           } catch {
             // Non-blocking background persistence
@@ -726,13 +745,6 @@ export function useHydratedBookshelf() {
   const deleteCloudBookshelf = useBookshelfStore((s) => s.deleteCloudBookshelf);
   const moveBookToShelf = useBookshelfStore((s) => s.moveBookToShelf);
   const setActiveBookshelfId = useBookshelfStore((s) => s.setActiveBookshelfId);
-  const user = useAuthStore((s) => s.user);
-
-  useEffect(() => {
-    if (hasMounted && user?.id) {
-      syncWithCloud(user.id).catch(() => {});
-    }
-  }, [hasMounted, user?.id, syncWithCloud]);
 
   const hydratedState = hasMounted
     ? {
@@ -811,8 +823,35 @@ export function useSavedBooksCount(): number {
  */
 export function useIsBookSaved(bookId: number): boolean {
   const hasMounted = useHasMounted();
-  const isSaved = useBookshelfStore((s) => s.isBookSaved(bookId));
+  const isSaved = useBookshelfStore((s) => s.savedBooks.some((b) => b.id === bookId));
   return hasMounted ? isSaved : false;
+}
+
+/**
+ * Atomic selector hook checking if a specific book is in the user's favorites.
+ */
+export function useIsBookFavorite(bookId: number): boolean {
+  const hasMounted = useHasMounted();
+  const isFavorite = useBookshelfStore((s) => s.favoriteBookIds.includes(bookId));
+  return hasMounted ? isFavorite : false;
+}
+
+/**
+ * Atomic selector hook returning SSR-safe saved and favorite counts without subscribing to full arrays.
+ */
+export function useHydratedBookshelfCounts(): {
+  hasMounted: boolean;
+  savedCount: number;
+  favoriteCount: number;
+} {
+  const hasMounted = useHasMounted();
+  const savedCount = useBookshelfStore((s) => s.savedBooks.length);
+  const favoriteCount = useBookshelfStore((s) => s.favoriteBookIds.length);
+  return {
+    hasMounted,
+    savedCount: hasMounted ? savedCount : 0,
+    favoriteCount: hasMounted ? favoriteCount : 0,
+  };
 }
 
 /**

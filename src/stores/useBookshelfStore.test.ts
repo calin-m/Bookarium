@@ -3,8 +3,10 @@ import { renderHook, act } from '@testing-library/react';
 import {
   useBookshelfStore,
   useHydratedBookshelf,
+  useHydratedBookshelfCounts,
   useSavedBooksCount,
   useIsBookSaved,
+  useIsBookFavorite,
   useBookRating,
   useReadingStatus,
   useBookCuration,
@@ -1975,6 +1977,22 @@ describe('useBookshelfStore', () => {
       });
       await useBookshelfStore.getState().toggleSaveBook(freshBooks[0], 'user-enrich-1');
       expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'DELETE_BOOK')).toBe(true);
+
+      // Verify atomic hooks useIsBookFavorite and useHydratedBookshelfCounts
+      useBookshelfStore.setState({
+        savedBooks: [freshBooks[0]],
+        favoriteBookIds: [700],
+      });
+      const { result: favHook } = renderHook(() => useIsBookFavorite(700));
+      expect(favHook.current).toBe(true);
+      const { result: nonFavHook } = renderHook(() => useIsBookFavorite(999));
+      expect(nonFavHook.current).toBe(false);
+      const { result: countsHook } = renderHook(() => useHydratedBookshelfCounts());
+      expect(countsHook.current).toEqual({
+        hasMounted: true,
+        savedCount: 1,
+        favoriteCount: 1,
+      });
 
       useAuthStore.setState({ user: null });
     });

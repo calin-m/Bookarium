@@ -3,6 +3,8 @@ import {
   calculateStreak,
   formatReadingDuration,
   calculateAnnualGoalProgress,
+  calculateCompletedBooksCount,
+  resolvePublicReadingHabits,
   formatLocalDate,
 } from './reading-analytics';
 
@@ -169,6 +171,91 @@ describe('reading-analytics', () => {
       expect(progress.percent).toBe(100);
       expect(progress.remainingBooks).toBe(0);
       expect(progress.isCompleted).toBe(true);
+    });
+  });
+
+  describe('calculateCompletedBooksCount', () => {
+    it('returns 0 when both maps are undefined or empty', () => {
+      expect(calculateCompletedBooksCount()).toBe(0);
+      expect(calculateCompletedBooksCount(null, null)).toBe(0);
+      expect(calculateCompletedBooksCount({}, {})).toBe(0);
+    });
+
+    it('deduplicates finished statuses and >= 100% progress entries', () => {
+      const statuses = {
+        10: 'finished',
+        20: 'currently_reading',
+        30: 'finished',
+      };
+      const progress = {
+        10: 100, // duplicate with status 'finished'
+        20: 100, // completed via progress
+        40: 85,
+      };
+      expect(calculateCompletedBooksCount(statuses, progress)).toBe(3);
+    });
+  });
+
+  describe('resolvePublicReadingHabits', () => {
+    it('returns null when neither habitRow nor fallback is provided', () => {
+      expect(resolvePublicReadingHabits(null)).toBeNull();
+      expect(resolvePublicReadingHabits(undefined, {})).toBeNull();
+    });
+
+    it('resolves online habitRow and merges localCompletedBooksCount when provided', () => {
+      const refDate = new Date(2026, 8, 6);
+      const res = resolvePublicReadingHabits(
+        {
+          active_dates: ['2026-09-05', '2026-09-06'],
+          annual_goal: 18,
+          completed_books_count: 3,
+        },
+        { localCompletedBooksCount: 6, referenceDate: refDate }
+      );
+
+      expect(res).toEqual({
+        current_streak: 2,
+        longest_streak: 2,
+        active_days: 2,
+        annual_goal: 18,
+        completed_books_count: 6,
+      });
+    });
+
+    it('preserves explicit current_streak, longest_streak, and remote completed_books_count for visitor views', () => {
+      const res = resolvePublicReadingHabits({
+        current_streak: 9,
+        longest_streak: 14,
+        active_dates: 'invalid',
+        annual_goal: 0,
+        completed_books_count: 5,
+      });
+
+      expect(res).toEqual({
+        current_streak: 9,
+        longest_streak: 14,
+        active_days: 0,
+        annual_goal: 0,
+        completed_books_count: 5,
+      });
+    });
+
+    it('resolves offline local fallback when habitRow is null', () => {
+      const refDate = new Date(2026, 8, 6);
+      const res = resolvePublicReadingHabits(null, {
+        activeDates: ['2026-09-06'],
+        annualGoal: 24,
+        localCompletedBooksCount: 4,
+        referenceDate: refDate,
+      });
+
+      expect(res).toEqual({
+        current_streak: 1,
+        longest_streak: 1,
+        active_days: 1,
+        annual_goal: 24,
+        completed_books_count: 4,
+      });
     });
   });
 });

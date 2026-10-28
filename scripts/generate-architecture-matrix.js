@@ -62,7 +62,7 @@ function extractDatabaseCatalog(rootDirPath) {
     reading_progress: 'Chapter index, progress %, in-page row bookmark offsets, and cached volume metadata.',
     user_annotations: 'Passage text highlights (4 pastel palettes), scholarly notes, and cross-volume Symposium Fellow marginalia.',
     user_book_curation: 'Personal 1–5 star ratings and reading status classification.',
-    user_reading_habits: 'Reading streaks (5-min threshold), daily activity dates, annual challenge goals, and dual immersion telemetry.',
+    user_reading_habits: 'Reading streaks (5-min threshold), daily activity dates, annual challenge goals, completed books count, and dual immersion telemetry.',
     user_accolades: 'Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata.',
     books: 'Self-hosted public domain catalog with GIN full-text search vector, pre-computed author lifespan bounds, and optional plain-text caching.',
     book_translations: 'Relational FRBR literary work clusters mapping Project Gutenberg editions across languages with zero false positives.',
@@ -467,6 +467,14 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
 }
 
 function extractRepositoryTopologyAndDocsCatalog(rootDirPath) {
+  let adrCount = 71;
+  const adrFilePath = path.join(rootDirPath, 'docs', 'DECISIONS.md');
+  if (fs.existsSync(adrFilePath)) {
+    const adrMatches = fs.readFileSync(adrFilePath, 'utf8').match(/## ADR-\d+:/g);
+    if (adrMatches) adrCount = adrMatches.length;
+  }
+  const adrRangeEnd = `ADR-${String(adrCount).padStart(3, '0')}`;
+
   const directories = [
     { path: 'src/app/', role: 'Next.js 16 App Router pages, SSR layouts, metadata routes (`manifest.ts`, `robots.ts`, `sitemap.ts`), global providers (`providers.tsx`), and serverless API route handlers (`/api/books/**`, `/auth/callback`).' },
     { path: 'src/components/', role: '76 production React 19 UI components organized across `account/`, `accolades/`, `auth/`, `layout/`, `motion/`, `presentation/` (including `bookshelf/`), `profile/`, `pwa/`, `reader/`, `symposium/`, and `ui/`, each paired with co-located `*.test.tsx` suites.' },
@@ -480,7 +488,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath) {
     { path: 'public/', role: 'Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`).' },
     { path: 'supabase/', role: 'Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 22 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`).' },
     { path: 'scripts/', role: '14 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites.' },
-    { path: 'docs/', role: 'Living architectural reference (`ARCHITECTURE.md`), 70 Architecture Decision Records (`DECISIONS.md`), AST-compiled parser specification (`GUTENBERG_PARSER.md`), CI/CD runbook (`PIPELINE_GUIDE.md`), and live 7-Gateway quality telemetry (`QUALITY_AUDIT_REPORT.md`, `quality-audit-results.json`).' },
+    { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser specification (\`GUTENBERG_PARSER.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
     { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD (`ci.yml`) and weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), plus Husky pre-commit quality gates.' },
   ];
 
@@ -503,7 +511,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath) {
   const livingDocs = [
     { file: 'README.md', mode: 'Hybrid (Curated + Script-Synced)', generator: '`scripts/generate-changelog.js` & `scripts/generate-quality-report.js`', role: 'Primary project overview, system architecture diagrams, Supabase setup guide, and live test/coverage/release blocks.' },
     { file: 'docs/ARCHITECTURE.md', mode: '100% AST-Generated', generator: '`scripts/generate-architecture-matrix.js`', role: 'Complete full-repository C4 architecture map, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology.' },
-    { file: 'docs/DECISIONS.md', mode: 'Append-Only Governance Ledger', generator: '`scripts/new-adr.js` (Validated in Pass 5)', role: 'Sequential Architectural Decision Records (ADR-001 through ADR-070) documenting context, trade-offs, and consequences.' },
+    { file: 'docs/DECISIONS.md', mode: 'Append-Only Governance Ledger', generator: '`scripts/new-adr.js` (Validated in Pass 5)', role: `Sequential Architectural Decision Records (ADR-001 through ${adrRangeEnd}) documenting context, trade-offs, and consequences.` },
     { file: 'docs/GUTENBERG_PARSER.md', mode: '100% AST-Generated', generator: '`scripts/generate-parser-docs.js`', role: 'Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine.' },
     { file: 'docs/QUALITY_AUDIT_REPORT.md', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: `Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all ${auditTotals.suites} test suites and ${auditTotals.tests} tests.` },
     { file: 'docs/quality-audit-results.json', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: 'Machine-readable JSON telemetry of all 7 gateway passes, coverage percentages, ESLint/Knip counts, and suite totals.' },
@@ -971,11 +979,11 @@ function generateMarkdown() {
     useAuthStore:
       'Supabase session authentication, offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), guest status, password generation, and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
-      'Personal library collections, reading queue, reading history, custom named shelves, active-shelf-aware book clearing (`clearSavedBooks`, `clearCustomShelfBooks`), placeholder-to-authentic author self-healing (`enrichSavedBooks`), deletion tombstones, ratings, and cloud outbox reconciliation (`ADD_BOOK`, `REMOVE_BOOK`, `MOVE_BOOK`, `UPDATE_SHELF`, `ADD_FAVORITE`, `REMOVE_FAVORITE`) via `bookshelf-cloud-sync.ts`.',
+      'Personal library collections, reading queue, reading history, custom named shelves, active-shelf-aware book clearing (`clearSavedBooks`, `clearCustomShelfBooks`), placeholder-to-authentic author & subject/format self-healing (`enrichSavedBooks`), atomic selector hooks (`useIsBookSaved`, `useIsBookFavorite`, `useHydratedBookshelfCounts`, `useBookRating`, `useReadingStatus`), deletion tombstones, ratings, and cloud outbox reconciliation (`DELETE_BOOK`, `INSERT_BOOK`, `DELETE_FAVORITE`, `UPSERT_FAVORITE`, `UPSERT_CURATION`, `DELETE_CURATION`, `MOVE_BOOK`, `UPDATE_SHELF`) via `bookshelf-cloud-sync.ts`.',
     useFellowshipStore:
       'Opt-in 1-on-1 Reader Circle fellowships, per-volume Literary Symposium sessions, companion progress coordinates, offline symposium progress outbox (`pendingSymposiumProgress`), scholar handle formatting (`formatFellowScholarLabel`, `isPlaceholderUsername`), pending invitation badges, and bi-directional Supabase cloud synchronization.',
     useHabitsStore:
-      'Reading streaks with 5-minute active immersion threshold, daily calendar activity dates, annual volume challenge goals, dual immersion telemetry (reading vs listening), and multi-device Supabase cloud synchronization.',
+      'Reading streaks with 5-minute active immersion threshold, daily calendar activity dates, annual volume challenge goals, deduplicated completed books count (`completed_books_count`), dual immersion telemetry (reading vs listening), and multi-device Supabase cloud synchronization.',
     useJurisdictionStore:
       'Client-side geographic jurisdiction state, cookie synchronization (bookarium-geo-country), developer country overrides, and synchronous regional capability resolution.',
     usePreferencesStore:
@@ -1113,7 +1121,7 @@ function generateMarkdown() {
 
   const utilityDescriptions = {
     'accolades-engine':
-      'Historical literary accolades evaluation engine, criteria matching, milestone progress calculation, and era determination.',
+      'Historical literary accolades evaluation engine, criteria matching, milestone progress calculation, summary aggregation (`computeAccoladesSummary`), and era determination.',
     'book.adapter':
       'Bidirectional domain transformation between Gutendex API schemas, canonical Book models, and Supabase cloud persistence payloads.',
     'api-utils':
@@ -1121,7 +1129,7 @@ function generateMarkdown() {
     'backup-validator':
       'Strict JSON schema validator and defensive sanitizer for Bookarium library backups (v1.0–v2.2), validating bookshelves, favorite books, reading positions, annotations, session logs, and preferences.',
     'bookshelf-cloud-sync':
-      'Bidirectional cloud reconciliation engine for bookshelves, shelf items, and favorite books, managing outbox mutation replay, tombstone filtering, and deterministic ordering.',
+      'Bidirectional cloud reconciliation engine for bookshelves, shelf items, and favorite books, featuring non-regressive local metadata preservation (`mergeCloudBookWithLocal`), per-user in-flight mutex coalescing, concurrent `Promise.all` table fetching, multi-shelf `book_id` deduplication, outbox mutation replay, tombstone filtering, single-commit atomic state reconciliation, and deterministic ordering.',
     'book-metadata':
       'Author and title cleaning, placeholder author heuristics, and defensive editorial metadata normalization.',
     'content-advisory':
@@ -1163,7 +1171,7 @@ function generateMarkdown() {
     'reader-annotator':
       'Scholarly marginalia interval partitioning, non-destructive HTML text-node highlighter, overlapping annotation pairing (`pairOverlappingAnnotations`), and shared quote span segmentation (`computeSharedQuoteSegments`).',
     'reading-analytics':
-      'Streak calculation, 5-minute immersion thresholds, reading speed metrics, and annual reading goal progress.',
+      'Streak calculation, 5-minute immersion thresholds, reading speed metrics, annual reading goal progress, deduplicated completed volume counting (`calculateCompletedBooksCount`), and public scholar habit telemetry resolution (`resolvePublicReadingHabits`).',
     'redirect-sanitizer':
       'Open-redirect prevention and canonical authentication origin resolver (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`, `buildAuthRedirectUrl`).',
     'smart-search':

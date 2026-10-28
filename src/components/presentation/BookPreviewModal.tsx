@@ -8,7 +8,7 @@ import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
-import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
+import { useBookshelfStore, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisoryBanner';
@@ -53,9 +53,10 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   const { isOffline: isNetworkOffline } = useNetworkStatus();
   const isUnavailableOffline = isNetworkOffline && !isOffline;
 
-  const { bookRatings, bookStatuses, setBookRating, setReadingStatus } = useHydratedBookshelf();
-  const rating = book?.id ? bookRatings[book.id] ?? null : null;
-  const status = book?.id ? bookStatuses[book.id] ?? null : null;
+  const rating = useBookRating(book?.id ?? 0);
+  const status = useReadingStatus(book?.id ?? 0);
+  const setBookRating = useBookshelfStore((s) => s.setBookRating);
+  const setReadingStatus = useBookshelfStore((s) => s.setReadingStatus);
 
   const { country, evaluation, isRestricted } = useBookCopyright(book);
   const contentAdvisory = evaluateContentAdvisory(book?.subjects, book?.bookshelves);

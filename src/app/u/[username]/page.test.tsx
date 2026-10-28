@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PublicScholarProfilePage from './page';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 import { useAccoladesStore } from '@/stores/useAccoladesStore';
 import { useHabitsStore } from '@/stores/useHabitsStore';
 
@@ -33,6 +35,17 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     vi.clearAllMocks();
     mockParams = { username: 'jane_austen' };
     useAuthStore.setState({ user: null, profile: null });
+    useBookshelfStore.setState({
+      bookStatuses: {},
+      cloudBookshelves: [],
+      cloudBookshelfItems: [],
+      savedBooks: [],
+      syncWithCloud: vi.fn().mockResolvedValue(undefined),
+    });
+    useReaderStore.setState({
+      readingProgress: {},
+      syncWithCloud: vi.fn().mockResolvedValue(undefined),
+    });
   });
 
   it('renders public scholar profile with habits, accolades, and bookshelves', async () => {
@@ -570,6 +583,12 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
       annualGoal: 20,
       activeDates: ['2025-02-01', '2025-02-02'],
     });
+    useBookshelfStore.setState({
+      bookStatuses: { 1342: 'finished', 84: 'currently_reading' },
+    });
+    useReaderStore.setState({
+      readingProgress: { 84: 100, 2701: 100 },
+    });
 
     // Remote query returns network error (offline)
     mockFrom.mockImplementation((table: string) => {
@@ -604,6 +623,9 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
       expect(screen.getByText('Jane Austen Local')).toBeInTheDocument();
       expect(screen.getByText(/Local offline sanctuary/i)).toBeInTheDocument();
     });
+
+    expect(screen.getByText('3 / 20')).toBeInTheDocument();
+    expect(screen.getByText('15%')).toBeInTheDocument();
   });
 });
 

@@ -29,6 +29,8 @@ describe('BackToTop Component', () => {
     const btn = screen.getByTestId('back-to-top-btn');
     expect(btn).toBeInTheDocument();
     expect(btn).toHaveAttribute('aria-label', 'Back to top');
+    expect(btn).toHaveClass('bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]');
+    expect(btn).toHaveClass('sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))]');
   });
 
   it('scrolls smoothly to top when clicked', () => {

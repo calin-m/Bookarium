@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 26 Oct 2026 14:43:22 GMT  
+**Last Generated**: Wed, 28 Oct 2026 13:35:42 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 189 passed  
-**Total Verified Tests**: 2010 passed  
+**Total Verified Tests**: 2019 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (2010 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (2019 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $ge$ 95%, Statements $ge$ 95%, Functions $ge$ 92%, Branches $ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 70 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 71 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.68%** (9968/10310) — *Target: $ge$ 95%*
-- **Statements**: **95.46%** (10845/11360) — *Target: $ge$ 95%*
-- **Functions**: **93.91%** (2362/2515) — *Target: $ge$ 92%*
-- **Branches**: **88.67%** (9917/11183) — *Target: $ge$ 85%*
+- **Lines**: **96.69%** (10094/10439) — *Target: $ge$ 95%*
+- **Statements**: **95.48%** (10986/11505) — *Target: $ge$ 95%*
+- **Functions**: **93.9%** (2387/2542) — *Target: $ge$ 92%*
+- **Branches**: **88.61%** (10072/11366) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (189 Suites / 2010 Tests)
+## 🧪 Comprehensive Test Suite Catalog (189 Suites / 2019 Tests)
 
 ### 🚀 App Routes & Pages (26 Suites · 265 Tests)
 
@@ -1035,7 +1035,7 @@
 - ✔ `formats second latencies at or above 1000ms with up to 3 decimals without trailing zeros`
 - ✔ `renders formatted second latency in StickyCatalogToolbar when latencyMs >= 1000`
 - ✔ `applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false`
-- ✔ `applies -translate-y-[calc(100%+4rem)] and pointer-events-none when isVisible is false`
+- ✔ `applies -translate-y-[calc(100%+4rem+env(safe-area-inset-top,0px))] and pointer-events-none when isVisible is false`
 - ✔ `renders archive fetching badge when isFetching is true`
 - ✔ `renders direct page jump input without redundant Pg label`
 - ✔ `renders mobile dock with filter trigger, view mode switch, and scroll-to-top buttons`
@@ -1361,7 +1361,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 193 Tests)
+### ⚡ Zustand State Stores (10 Suites · 194 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1527,7 +1527,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `initializes with default values`
 - ✔ `records daily activity without duplicates`
@@ -1542,6 +1542,7 @@
 - ✔ `computes partial streak progress correctly when under 5 minutes`
 - ✔ `synchronizes and merges total_listening_seconds with Supabase cloud`
 - ✔ `covers authenticated debounced sync on duration/goal/activity, error handling, getTodayImmersionSeconds, and useHydratedHabits`
+- ✔ `preserves the greater completed_books_count and retries only for missing schema columns`
 
 </details>
 
@@ -1616,7 +1617,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (36 Suites · 432 Tests)
+### 📚 Gutenberg Parsers & Metadata (36 Suites · 440 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1737,16 +1738,18 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `applies deterministic item ordering when order method is single-level or chainable`
 - ✔ `flushes outbox actions and retains only actions that fail`
+- ✔ `resets syncing state when flushing the outbox rejects`
 - ✔ `executes custom shelf creation, rename, privacy toggle, move, migration, and deletion`
 - ✔ `dispatches all 6 outbox action types and handles empty outbox`
 - ✔ `synchronizes shelves, tombstones, favorites, and LWW curation in executeBookshelfCloudSync`
 - ✔ `covers shelf deletion reassignment to defaultShelf, moveBookToShelf existing item & error fallback, and validation guards`
 - ✔ `dispatches MOVE_BOOK and UPDATE_SHELF outbox actions and handles offline / error outbox queuing`
 - ✔ `handles subsequent cloud sync (authoritative mode), __downloaded__ active shelf preservation, and query error branches`
+- ✔ `preserves rich local metadata in mergeCloudBookWithLocal, deduplicates multi-shelf books, and coalesces concurrent syncs`
 
 </details>
 
@@ -2078,7 +2081,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reading-analytics.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/lib/reading-analytics.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `formats a date to YYYY-MM-DD`
 - ✔ `pads single-digit month and day with zeros`
@@ -2099,6 +2102,12 @@
 - ✔ `clamps target to at least 1`
 - ✔ `calculates accurate percentages and remaining counts`
 - ✔ `marks isCompleted as true and caps percent at 100 when target is met or exceeded`
+- ✔ `returns 0 when both maps are undefined or empty`
+- ✔ `deduplicates finished statuses and >= 100% progress entries`
+- ✔ `returns null when neither habitRow nor fallback is provided`
+- ✔ `resolves online habitRow and merges localCompletedBooksCount when provided`
+- ✔ `preserves explicit current_streak, longest_streak, and remote completed_books_count for visitor views`
+- ✔ `resolves offline local fallback when habitRow is null`
 
 </details>
 

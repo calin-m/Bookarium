@@ -21,9 +21,11 @@ import {
 } from '@/stores/useAccoladesStore';
 import { useHydratedHabits } from '@/stores/useHabitsStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
 import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { buildAccoladeContext, evaluateAccolades } from '@/lib/accolades-engine';
+import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
 import { ExLibrisBookplate } from '@/components/accolades/ExLibrisBookplate';
 
 const AccoladeCelebrationModal = dynamic(
@@ -50,8 +52,14 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
 
   const habits = useHydratedHabits();
   const bookshelf = useHydratedBookshelf();
+  const readingProgress = useReaderStore((s) => s.readingProgress);
   const { annotations } = useHydratedAnnotations();
   const { symposiums } = useHydratedFellowship();
+
+  const completedBooksCount = useMemo(
+    () => calculateCompletedBooksCount(bookshelf.bookStatuses, readingProgress),
+    [bookshelf.bookStatuses, readingProgress]
+  );
 
   const completedSymposiumsCount = useMemo(
     () =>
@@ -66,7 +74,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
     if (!isHydrated) return;
 
     const streakStats = habits.getStreakStats();
-    const annualProgress = habits.getAnnualProgress(bookshelf.savedBooks.length);
+    const annualProgress = habits.getAnnualProgress(completedBooksCount);
 
     const context = buildAccoladeContext({
       habits: {
@@ -79,6 +87,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
       },
       savedBooks: bookshelf.savedBooks,
       bookStatuses: bookshelf.bookStatuses,
+      readingProgress,
       annotations,
       completedSymposiumsCount,
       existingUnlockedIds: Object.keys(unlockedAccolades),
@@ -93,6 +102,8 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
     habits.activeDates,
     bookshelf.savedBooks,
     bookshelf.bookStatuses,
+    readingProgress,
+    completedBooksCount,
     annotations,
     completedSymposiumsCount,
     evaluateAndUnlock,
@@ -110,7 +121,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
   // Compute live progress map for all catalog items
   const progressMap = useMemo(() => {
     const streakStats = habits.getStreakStats();
-    const annualProgress = habits.getAnnualProgress(bookshelf.savedBooks.length);
+    const annualProgress = habits.getAnnualProgress(completedBooksCount);
 
     const context = buildAccoladeContext({
       habits: {
@@ -123,13 +134,14 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
       },
       savedBooks: bookshelf.savedBooks,
       bookStatuses: bookshelf.bookStatuses,
+      readingProgress,
       annotations,
       completedSymposiumsCount,
       existingUnlockedIds: Object.keys(unlockedAccolades),
     });
 
     return evaluateAccolades(context, ACCOLADES_CATALOG, unlockedAccolades).progressMap;
-  }, [habits, bookshelf, annotations, completedSymposiumsCount, unlockedAccolades]);
+  }, [habits, bookshelf, readingProgress, completedBooksCount, annotations, completedSymposiumsCount, unlockedAccolades]);
 
   // Pinned definitions for the showcase
   const pinnedDefinitions = useMemo(() => {

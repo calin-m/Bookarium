@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Trash2, ArrowLeft, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
@@ -12,7 +13,13 @@ import { ROUTES } from '@/config/routes';
 
 export default function ConfirmDeletionPage() {
   const router = useRouter();
-  const { user, isLoading, deleteAccount } = useAuthStore();
+  const { user, isLoading, deleteAccount } = useAuthStore(
+    useShallow((s) => ({
+      user: s.user,
+      isLoading: s.isLoading,
+      deleteAccount: s.deleteAccount,
+    }))
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -37,7 +44,7 @@ export default function ConfirmDeletionPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
+    <div className="min-h-dvh flex flex-col justify-between bg-background text-foreground transition-colors duration-theme">
       <Navbar
         onViewChange={(view) => {
           router.push(ROUTES.VIEW(view));

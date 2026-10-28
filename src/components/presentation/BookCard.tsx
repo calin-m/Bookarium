@@ -9,7 +9,13 @@ import { BookOpen, Download, Library, Heart, Sparkles, Trash2, AlertTriangle, X,
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount } from '@/lib/utils';
 import { resolveBookTags } from '@/lib/book-tags';
-import { useHydratedBookshelf, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
+import {
+  useBookshelfStore,
+  useIsBookSaved,
+  useIsBookFavorite,
+  useBookRating,
+  useReadingStatus,
+} from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -67,9 +73,10 @@ export const BookCard: React.FC<BookCardProps> = ({
     };
   }, [clearConfirmTimer]);
 
-  const { isSaved: checkIsSaved, isFavorite: checkIsFavorite, toggleSaveBook: toggleSave, toggleFavoriteBook: toggleFavorite } = useHydratedBookshelf();
-  const isSaved = checkIsSaved(book.id);
-  const isFavorite = checkIsFavorite(book.id);
+  const isSaved = useIsBookSaved(book.id);
+  const isFavorite = useIsBookFavorite(book.id);
+  const toggleSave = useBookshelfStore((s) => s.toggleSaveBook);
+  const toggleFavorite = useBookshelfStore((s) => s.toggleFavoriteBook);
   const rating = useBookRating(book.id);
   const status = useReadingStatus(book.id);
 
