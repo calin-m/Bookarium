@@ -544,12 +544,21 @@ describe('useAuthStore', () => {
   });
 
   describe('signOut', () => {
-    it('signs out from Supabase, clears user profile, flushes outbox, and cleanses local bookshelf and fellowship state', async () => {
+    it('signs out from Supabase, clears user profile, flushes outboxes, and resets all 6 local user stores', async () => {
       const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+      const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+      const { useHabitsStore } = await import('@/stores/useHabitsStore');
+      const { useAccoladesStore } = await import('@/stores/useAccoladesStore');
       const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+      const { useReaderStore } = await import('@/stores/useReaderStore');
       const flushOutboxSpy = vi.spyOn(useBookshelfStore.getState(), 'flushOutbox').mockResolvedValue(undefined);
+      const flushAnnotationOutboxSpy = vi.spyOn(useAnnotationStore.getState(), 'flushOutbox').mockResolvedValue(undefined);
       const clearBookshelfSpy = vi.spyOn(useBookshelfStore.getState(), 'clearBookshelf');
+      const clearAnnotationsSpy = vi.spyOn(useAnnotationStore.getState(), 'clearAllAnnotations');
+      const resetHabitsSpy = vi.spyOn(useHabitsStore.getState(), 'resetHabits');
+      const resetAccoladesSpy = vi.spyOn(useAccoladesStore.getState(), 'resetAccolades');
       const clearFellowshipStateSpy = vi.spyOn(useFellowshipStore.getState(), 'clearFellowshipState');
+      const resetReaderSessionSpy = vi.spyOn(useReaderStore.getState(), 'resetReaderSession');
 
       useAuthStore.setState({
         user: { id: 'user-to-logout' } as any,
@@ -560,8 +569,13 @@ describe('useAuthStore', () => {
 
       expect(mockSignOut).toHaveBeenCalled();
       expect(flushOutboxSpy).toHaveBeenCalledWith('user-to-logout');
+      expect(flushAnnotationOutboxSpy).toHaveBeenCalledWith('user-to-logout');
       expect(clearBookshelfSpy).toHaveBeenCalled();
+      expect(clearAnnotationsSpy).toHaveBeenCalled();
+      expect(resetHabitsSpy).toHaveBeenCalled();
+      expect(resetAccoladesSpy).toHaveBeenCalled();
       expect(clearFellowshipStateSpy).toHaveBeenCalled();
+      expect(resetReaderSessionSpy).toHaveBeenCalled();
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().profile).toBeNull();
     });

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Users, BookOpen, Check, Sparkles, UserPlus, ChevronDown } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -31,7 +32,14 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
   preselectedFellow,
 }) => {
   const { getAcceptedFellows, createSymposiumInvite, inviteFellowByUsername } =
-    useFellowshipStore();
+    useFellowshipStore(
+      useShallow((s) => ({
+        circles: s.circles,
+        getAcceptedFellows: s.getAcceptedFellows,
+        createSymposiumInvite: s.createSymposiumInvite,
+        inviteFellowByUsername: s.inviteFellowByUsername,
+      }))
+    );
   const savedBooks = useBookshelfStore((s) => s.savedBooks);
 
   const acceptedFellows: AcceptedFellowSummary[] = getAcceptedFellows();

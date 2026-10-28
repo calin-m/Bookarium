@@ -180,13 +180,20 @@ CREATE TABLE IF NOT EXISTS public.bookshelf_items (
   book_title TEXT NOT NULL,
   book_authors JSONB NOT NULL DEFAULT '[]'::jsonb,
   book_formats JSONB NOT NULL DEFAULT '{}'::jsonb,
+  cover_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(bookshelf_id, book_id)
 );
 
 -- Idempotent column additions for existing installations
 ALTER TABLE public.bookshelf_items
+  ADD COLUMN IF NOT EXISTS cover_url TEXT,
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+UPDATE public.bookshelf_items
+SET cover_url = book_formats->>'image/jpeg'
+WHERE cover_url IS NULL
+  AND book_formats ? 'image/jpeg';
 
 CREATE INDEX IF NOT EXISTS idx_bookshelf_items_user_id
   ON public.bookshelf_items(user_id);
@@ -790,7 +797,10 @@ CREATE POLICY "Participants can update their reader circle status"
   ON public.reader_circles FOR UPDATE
   TO authenticated
   USING (auth.uid() = requester_id OR auth.uid() = recipient_id)
-  WITH CHECK (auth.uid() = requester_id OR auth.uid() = recipient_id);
+  WITH CHECK (
+    (auth.uid() = recipient_id)
+    OR (auth.uid() = requester_id AND status = 'pending')
+  );
 
 DROP POLICY IF EXISTS "Participants can remove reader circle connections" ON public.reader_circles;
 CREATE POLICY "Participants can remove reader circle connections"

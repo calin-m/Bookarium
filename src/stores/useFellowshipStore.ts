@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
@@ -173,7 +174,7 @@ export const useFellowshipStore = create<FellowshipState>()(
         // Flush any queued offline symposium progress updates before pulling remote rows
         const pendingEntries = Object.entries(get().pendingSymposiumProgress);
         if (pendingEntries.length > 0) {
-          const remainingPending = { ...get().pendingSymposiumProgress };
+          const flushedUpdatedAtMap = new Map<string, string>();
           for (const [sessionId, pending] of pendingEntries) {
             try {
               const { error: flushErr } = await supabase
@@ -195,13 +196,23 @@ export const useFellowshipStore = create<FellowshipState>()(
                 )
                 .eq('id', sessionId);
               if (!flushErr) {
-                delete remainingPending[sessionId];
+                flushedUpdatedAtMap.set(sessionId, pending.updatedAt);
               }
             } catch {
               // Keep in pendingSymposiumProgress for next retry
             }
           }
-          set({ pendingSymposiumProgress: remainingPending });
+          if (flushedUpdatedAtMap.size > 0) {
+            set((state) => {
+              const nextPending = { ...state.pendingSymposiumProgress };
+              flushedUpdatedAtMap.forEach((flushedAt, sessionId) => {
+                if (nextPending[sessionId]?.updatedAt === flushedAt) {
+                  delete nextPending[sessionId];
+                }
+              });
+              return { pendingSymposiumProgress: nextPending };
+            });
+          }
         }
 
         set({ isLoading: true, error: null });
@@ -826,7 +837,28 @@ export const useFellowshipStore = create<FellowshipState>()(
 );
 
 export function useHydratedFellowship() {
-  const store = useFellowshipStore();
+  const store = useFellowshipStore(
+    useShallow((s) => ({
+      circles: s.circles,
+      symposiums: s.symposiums,
+      isLoading: s.isLoading,
+      error: s.error,
+      fetchFellowshipData: s.fetchFellowshipData,
+      syncWithCloud: s.syncWithCloud,
+      inviteFellowByUsername: s.inviteFellowByUsername,
+      inviteFellowByProfile: s.inviteFellowByProfile,
+      respondToCircleInvite: s.respondToCircleInvite,
+      removeFellow: s.removeFellow,
+      createSymposiumInvite: s.createSymposiumInvite,
+      respondToSymposiumInvite: s.respondToSymposiumInvite,
+      leaveSymposium: s.leaveSymposium,
+      syncSymposiumProgress: s.syncSymposiumProgress,
+      getAcceptedFellows: s.getAcceptedFellows,
+      getPendingInviteCount: s.getPendingInviteCount,
+      getActiveSymposiumForBook: s.getActiveSymposiumForBook,
+      clearFellowshipState: s.clearFellowshipState,
+    }))
+  );
   const isHydrated = useHasMounted();
   const hydratedData = isHydrated
     ? { circles: store.circles, symposiums: store.symposiums }

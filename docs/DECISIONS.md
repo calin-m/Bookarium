@@ -1713,3 +1713,32 @@
   - Public scholar sanctuaries (`/u/[username]`) accurately report completed volume counts regardless of bookshelf visibility settings.
   - Enforced tiered V8 coverage thresholds (`lines: 95%`, `statements: 95%`, `functions: 92%`, `branches: 85%`) in `vitest.config.mts` with 100% test pass rate across all 189 suites.
 
+## ADR-072: Full-Stack Schema Parity, Outbox Snapshot Concurrency Guards, Complete Session Teardown & Backup Tombstone Reconciliation
+
+- **Date**: 2026-10-28
+- **Status**: Accepted
+- **Context**:
+  1. **Schema Drift & RLS Status Update Tightening (`supabase/schema.sql`)**:
+     - `public.bookshelf_items` in `supabase/schema.sql` omitted the `cover_url TEXT` column even though `src/types/database.types.ts` and `toCloudBookInsert()` in `src/lib/adapters/book.adapter.ts` include `cover_url` on every shelf insert and upsert (`PGRST204` risk on fresh schema installations).
+     - The `UPDATE` RLS policy on `public.reader_circles` (`"Participants can update their reader circle status"`) used `WITH CHECK (auth.uid() = requester_id OR auth.uid() = recipient_id)`, which did not prevent a requester from self-accepting (`status = 'accepted'`) their own outgoing invitation at the PostgreSQL layer.
+  2. **Multi-Account Session Teardown & Async Outbox Concurrency (`src/stores/`)**:
+     - `useAuthStore.signOut()` only flushed and cleared `useBookshelfStore` and `useFellowshipStore`, leaving personal `annotations`, `readingPositions`, `habits`, and `accolades` in `localStorage` after sign-out. Furthermore, calling `useReaderStore.clearAllVolumes(userId)` during sign-out would delete the user's cloud `reading_progress` rows if `user` were still populated, and `useHabitsStore.resetHabits()` did not cancel `syncDebounceTimer`.
+     - `useAccoladesStore`, `useAnnotationStore`, `useReaderStore`, `useFellowshipStore`, and `useAuthStore` captured local state or outbox queues before `await supabase...` calls and overwrote them with non-functional `set({ ... })` calls afterward, risking loss of mutations triggered while network I/O was in flight or overwriting newer local annotation edits with stale remote rows.
+  3. **Library Backup Cloud Restore & Zustand Selector Ergonomics (`src/lib/library-backup.ts`, `src/stores/`, `src/hooks/queries/useBooks.ts`)**:
+     - `restoreLibraryBackup` in `src/lib/library-backup.ts` wrote restored items via `setState` without resetting `lastBookshelfSyncAt` / `lastFavoritesSyncAt` or computing tombstone deltas (`deletedBookIds`, `deletedFavoriteBookIds`, `deletedPositionBookIds`) for `'replace'` vs `'merge'`, and omitted `readerStore.syncWithCloud(userId)`.
+     - `useHydratedAccolades`, `useHydratedHabits`, `useHydratedFellowship`, `SymposiumInviteModal`, and `Navbar` (`useHydratedAnnotations`) subscribed to full store states (including transient sync/outbox flags), and `usePrefetchNextPage` in `useBooks.ts` depended on the raw `params` object reference.
+- **Decision**:
+  1. **Idempotent `bookshelf_items.cover_url` Column & `reader_circles` RLS Hardening (`supabase/schema.sql`)**:
+     - Added `cover_url TEXT` to `CREATE TABLE IF NOT EXISTS public.bookshelf_items`, added `ALTER TABLE public.bookshelf_items ADD COLUMN IF NOT EXISTS cover_url TEXT;`, and added an idempotent backfill from `book_formats->>'image/jpeg'` where `cover_url IS NULL`.
+     - Tightened `"Participants can update their reader circle status"` on `public.reader_circles` with `WITH CHECK ((auth.uid() = recipient_id) OR (auth.uid() = requester_id AND status = 'pending'))`.
+  2. **Complete 6-Store Local Session Teardown & Snapshot-Guarded Outbox Flushing (`src/stores/useAuthStore.ts`, `src/stores/useReaderStore.ts`, `src/stores/useHabitsStore.ts`, `src/stores/useAccoladesStore.ts`, `src/stores/useAnnotationStore.ts`, `src/stores/useFellowshipStore.ts`)**:
+     - Added local-only `resetReaderSession()` on `useReaderStore` (clearing `progressDebounceTimers` and local positions/progress without deleting cloud rows), cleared `syncDebounceTimer` inside `useHabitsStore.resetHabits()`, and updated `useAuthStore.signOut()` to flush both `useBookshelfStore` and `useAnnotationStore` outboxes before `supabase.auth.signOut()` and reset all 6 local user stores.
+     - Updated `useAccoladesStore`, `useAnnotationStore`, `useReaderStore`, `useFellowshipStore`, and `useAuthStore` to verify `{ error }` responses before pruning outbox/tombstone entries, filter outbox/pending state functionally against flushed snapshots, and apply Last-Write-Wins (`updatedAt`) when merging local and remote annotations in `useAnnotationStore.syncWithCloud`.
+  3. **Tombstone-Aware Backup Restore, `useShallow` Selectors & Stable Query Prefetching (`src/lib/library-backup.ts`, `src/components/presentation/Navbar.tsx`, `src/components/symposium/SymposiumInviteModal.tsx`, `src/hooks/queries/useBooks.ts`, `src/components/presentation/HeroSearch.tsx`)**:
+     - Updated `restoreLibraryBackup` to record removed book/favorite/position IDs as tombstones on `'replace'`, clear tombstones for restored IDs on both `'replace'` and `'merge'`, reset `lastBookshelfSyncAt: null` and `lastFavoritesSyncAt: null`, and invoke `readerStore.syncWithCloud(userId)`.
+     - Refactored `useHydratedAccolades`, `useHydratedHabits`, `useHydratedFellowship`, and `SymposiumInviteModal` to use `useShallow` selectors excluding transient sync/outbox flags, exported `useHydratedAnnotationCount()` for `Navbar.tsx`, stabilized `usePrefetchNextPage` via `useMemo` over primitive `params` fields, and upgraded `HeroSearch.tsx` to `100dvh`.
+- **Consequences**:
+  - Zero schema/adapter column mismatches across `bookshelf_items` and `user_favorites`, and strict database-level enforcement that only recipients can accept Reader Circle invitations.
+  - Zero cross-account local state bleed on `signOut()`, zero lost concurrent mutations during cloud sync, and accurate `'replace'` vs `'merge'` cloud synchronization when restoring library backups.
+
+

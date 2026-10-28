@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { createClient } from '@/lib/supabase/client';
 import { useHasMounted } from '@/hooks/useHasMounted';
@@ -249,6 +250,10 @@ export const useHabitsStore = create<HabitsState>()(
       },
 
       resetHabits: () => {
+        if (syncDebounceTimer) {
+          clearTimeout(syncDebounceTimer);
+          syncDebounceTimer = null;
+        }
         set({
           annualGoal: 12,
           annualGoalYear: new Date().getFullYear(),
@@ -338,7 +343,29 @@ export const useHabitsStore = create<HabitsState>()(
  */
 export function useHydratedHabits() {
   const hasMounted = useHasMounted();
-  const store = useHabitsStore();
+  const store = useHabitsStore(
+    useShallow((s) => ({
+      annualGoal: s.annualGoal,
+      annualGoalYear: s.annualGoalYear,
+      activeDates: s.activeDates,
+      totalReadingSeconds: s.totalReadingSeconds,
+      totalListeningSeconds: s.totalListeningSeconds,
+      dailyActivitySeconds: s.dailyActivitySeconds,
+      recordDailyActivity: s.recordDailyActivity,
+      addReadingDuration: s.addReadingDuration,
+      addListeningDuration: s.addListeningDuration,
+      setAnnualGoal: s.setAnnualGoal,
+      syncWithCloud: s.syncWithCloud,
+      resetHabits: s.resetHabits,
+      getStreakStats: s.getStreakStats,
+      getAnnualProgress: s.getAnnualProgress,
+      getFormattedDuration: s.getFormattedDuration,
+      getTotalImmersionSeconds: s.getTotalImmersionSeconds,
+      getTodayImmersionSeconds: s.getTodayImmersionSeconds,
+      getStreakProgress: s.getStreakProgress,
+      getFormattedDurationBreakdown: s.getFormattedDurationBreakdown,
+    }))
+  );
 
   return {
     ...store,

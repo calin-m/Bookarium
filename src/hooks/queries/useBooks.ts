@@ -214,14 +214,51 @@ export function useBooks(params: UseBooksParams = {}, options: UseBooksOptions =
 export function usePrefetchNextPage(params: UseBooksParams = {}, hasNextPage = true) {
   const queryClient = useQueryClient();
   const currentPage = params.page || 1;
+  const {
+    ids,
+    search,
+    topic,
+    languages,
+    copyright,
+    authorYearStart,
+    authorYearEnd,
+    sort,
+    mimeType,
+    includeRestrictedMetadata,
+  } = params;
+
+  const nextParams = React.useMemo<UseBooksParams>(() => {
+    const base: UseBooksParams = {};
+    if (ids !== undefined) base.ids = ids;
+    if (search !== undefined) base.search = search;
+    if (topic !== undefined) base.topic = topic;
+    if (languages !== undefined) base.languages = languages;
+    if (copyright !== undefined) base.copyright = copyright;
+    if (authorYearStart !== undefined) base.authorYearStart = authorYearStart;
+    if (authorYearEnd !== undefined) base.authorYearEnd = authorYearEnd;
+    if (sort !== undefined) base.sort = sort;
+    if (mimeType !== undefined) base.mimeType = mimeType;
+    if (includeRestrictedMetadata !== undefined) {
+      base.includeRestrictedMetadata = includeRestrictedMetadata;
+    }
+    base.page = currentPage + 1;
+    return base;
+  }, [
+    ids,
+    search,
+    topic,
+    languages,
+    copyright,
+    authorYearStart,
+    authorYearEnd,
+    sort,
+    mimeType,
+    includeRestrictedMetadata,
+    currentPage,
+  ]);
 
   useEffect(() => {
     if (!hasNextPage || typeof window === 'undefined') return;
-
-    const nextParams: UseBooksParams = {
-      ...params,
-      page: currentPage + 1,
-    };
 
     // Use requestIdleCallback if available, or fallback to setTimeout
     const prefetch = () => {
@@ -244,19 +281,15 @@ export function usePrefetchNextPage(params: UseBooksParams = {}, hasNextPage = t
       const timer = setTimeout(prefetch, 400);
       return () => clearTimeout(timer);
     }
-  }, [queryClient, params, currentPage, hasNextPage]);
+  }, [queryClient, nextParams, hasNextPage]);
 
   // Return manual prefetch trigger (e.g. for onMouseEnter on Next button)
   return React.useCallback(() => {
     if (!hasNextPage) return;
-    const nextParams: UseBooksParams = {
-      ...params,
-      page: currentPage + 1,
-    };
     queryClient.prefetchQuery({
       queryKey: ['books', nextParams],
       queryFn: () => fetchBooks(nextParams),
       staleTime: 5 * 60 * 1000,
     });
-  }, [queryClient, params, currentPage, hasNextPage]);
+  }, [queryClient, nextParams, hasNextPage]);
 }

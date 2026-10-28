@@ -398,6 +398,46 @@ export async function restoreLibraryBackup(
     }
   }
 
+  // Compute tombstone deltas so cloud sync respects both 'replace' removals and restored items
+  const restoredBookIdSet = new Set(finalBooks.map((b) => b.id));
+  const restoredFavoriteIdSet = new Set(finalFavoriteIds);
+  const restoredPositionIdSet = new Set(Object.keys(finalPositions).map(Number));
+  const nowIso = new Date().toISOString();
+
+  const nextDeletedBookIds: Record<number, string> = { ...bookshelfStore.deletedBookIds };
+  for (const id of restoredBookIdSet) {
+    delete nextDeletedBookIds[id];
+  }
+  const nextDeletedFavoriteBookIds: Record<number, string> = {
+    ...bookshelfStore.deletedFavoriteBookIds,
+  };
+  for (const id of restoredFavoriteIdSet) {
+    delete nextDeletedFavoriteBookIds[id];
+  }
+  const nextDeletedPositionIds = new Set<number>(readerStore.deletedPositionBookIds);
+  for (const id of restoredPositionIdSet) {
+    nextDeletedPositionIds.delete(id);
+  }
+
+  if (strategy === 'replace') {
+    for (const prevBook of bookshelfStore.savedBooks) {
+      if (!restoredBookIdSet.has(prevBook.id)) {
+        nextDeletedBookIds[prevBook.id] = nowIso;
+      }
+    }
+    for (const prevFavId of bookshelfStore.favoriteBookIds) {
+      if (!restoredFavoriteIdSet.has(prevFavId)) {
+        nextDeletedFavoriteBookIds[prevFavId] = nowIso;
+      }
+    }
+    for (const prevPosIdStr of Object.keys(readerStore.readingPositions)) {
+      const prevPosId = Number(prevPosIdStr);
+      if (!restoredPositionIdSet.has(prevPosId)) {
+        nextDeletedPositionIds.add(prevPosId);
+      }
+    }
+  }
+
   // Update store states
   useBookshelfStore.setState({
     savedBooks: finalBooks,
@@ -408,6 +448,10 @@ export async function restoreLibraryBackup(
     cloudBookshelfItems: finalShelfItems,
     bookRatings: finalRatings,
     bookStatuses: finalStatuses,
+    deletedBookIds: nextDeletedBookIds,
+    deletedFavoriteBookIds: nextDeletedFavoriteBookIds,
+    lastBookshelfSyncAt: null,
+    lastFavoritesSyncAt: null,
     ...(strategy === 'replace'
       ? { activeBookshelfId: finalShelves.find((s) => s.is_default)?.id || finalShelves[0]?.id || null }
       : {}),
@@ -416,6 +460,7 @@ export async function restoreLibraryBackup(
   useReaderStore.setState({
     readingPositions: finalPositions,
     readingProgress: finalProgress,
+    deletedPositionBookIds: Array.from(nextDeletedPositionIds),
   });
 
   useAnnotationStore.setState({
@@ -464,6 +509,7 @@ export async function restoreLibraryBackup(
     try {
       await bookshelfStore.syncWithCloud(userId);
       await annotationStore.syncWithCloud(userId);
+      await readerStore.syncWithCloud(userId);
     } catch {
       // Offline fallback: outbox will dispatch on reconnect
     }

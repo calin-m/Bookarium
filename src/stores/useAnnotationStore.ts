@@ -549,25 +549,30 @@ export const useAnnotationStore = create<AnnotationState>()(
       },
 
       flushOutbox: async (userId: string) => {
-        const { outbox } = get();
-        if (outbox.length === 0 || !userId) return;
+        const snapshot = [...get().outbox];
+        if (snapshot.length === 0 || !userId) return;
 
         const supabase = createClient();
-        const remaining: AnnotationOutboxAction[] = [];
+        const completedActionIds = new Set<string>();
 
-        for (const action of outbox) {
+        for (const action of snapshot) {
           try {
             const dispatcher = ANNOTATION_OUTBOX_DISPATCHERS[action.type];
             if (dispatcher) {
               const { error } = await dispatcher(supabase, userId, action.payload);
               if (error) throw error;
             }
+            completedActionIds.add(action.id);
           } catch {
-            remaining.push(action);
+            // Keep failed action in outbox for retry
           }
         }
 
-        set({ outbox: remaining });
+        if (completedActionIds.size > 0) {
+          set((state) => ({
+            outbox: state.outbox.filter((item) => !completedActionIds.has(item.id)),
+          }));
+        }
       },
 
       addAnnotation: async (data, userId) => {
@@ -801,7 +806,6 @@ export const useAnnotationStore = create<AnnotationState>()(
 
         try {
           const supabase = createClient();
-          const currentTombstones = get().tombstones;
 
           // Fetch cloud annotations
           const { data, error } = await supabase
@@ -812,6 +816,7 @@ export const useAnnotationStore = create<AnnotationState>()(
 
           if (error) throw error;
 
+          const currentTombstones = get().tombstones;
           const localAnnotations = get().annotations.filter((la) => !currentTombstones.includes(la.id));
           const localMetaMap = new Map<string, { bookTitle?: string; bookAuthor?: string; language?: string }>();
           for (const la of localAnnotations) {
@@ -844,14 +849,23 @@ export const useAnnotationStore = create<AnnotationState>()(
             })
             .filter((r) => !currentTombstones.includes(r.id));
 
-          // Merge: Preserve any local guest annotations that don't exist remotely and are not tombstoned
+          // Merge: Preserve any local guest annotations that don't exist remotely and apply LWW when local is newer
           const merged = [...remoteAnnotations];
           const unSyncedGuestAnnotations: Annotation[] = [];
 
           for (const la of localAnnotations) {
-            if (!merged.some((r) => r.id === la.id)) {
+            const remoteIdx = merged.findIndex((r) => r.id === la.id);
+            if (remoteIdx === -1) {
               merged.push(la);
               unSyncedGuestAnnotations.push(la);
+            } else {
+              const remoteItem = merged[remoteIdx];
+              const localTime = new Date(la.updatedAt).getTime();
+              const remoteTime = new Date(remoteItem.updatedAt).getTime();
+              if (localTime > remoteTime) {
+                merged[remoteIdx] = la;
+                unSyncedGuestAnnotations.push(la);
+              }
             }
           }
 
@@ -950,5 +964,17 @@ export function useHydratedAnnotations() {
     syncWithCloud,
     updateBookMetadata,
     clearAllAnnotations,
+  };
+}
+
+/**
+ * Lightweight primitive selector hook for the personal annotation count in navigation badges.
+ */
+export function useHydratedAnnotationCount(): { annotationCount: number; hasMounted: boolean } {
+  const hasMounted = useHasMounted();
+  const count = useAnnotationStore((s) => s.annotations.length);
+  return {
+    annotationCount: hasMounted ? count : 0,
+    hasMounted,
   };
 }

@@ -266,8 +266,14 @@ export const useAuthStore = create<AuthState>()(
     const { user } = get();
     if (user?.id) {
       try {
-        const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
-        await useBookshelfStore.getState().flushOutbox(user.id);
+        const [{ useBookshelfStore }, { useAnnotationStore }] = await Promise.all([
+          import('@/stores/useBookshelfStore'),
+          import('@/stores/useAnnotationStore'),
+        ]);
+        await Promise.all([
+          useBookshelfStore.getState().flushOutbox(user.id),
+          useAnnotationStore.getState().flushOutbox(user.id),
+        ]);
       } catch {
         // Non-blocking fallback
       }
@@ -285,15 +291,27 @@ export const useAuthStore = create<AuthState>()(
     });
 
     try {
-      const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+      const [
+        { useBookshelfStore },
+        { useAnnotationStore },
+        { useHabitsStore },
+        { useAccoladesStore },
+        { useFellowshipStore },
+        { useReaderStore },
+      ] = await Promise.all([
+        import('@/stores/useBookshelfStore'),
+        import('@/stores/useAnnotationStore'),
+        import('@/stores/useHabitsStore'),
+        import('@/stores/useAccoladesStore'),
+        import('@/stores/useFellowshipStore'),
+        import('@/stores/useReaderStore'),
+      ]);
       useBookshelfStore.getState().clearBookshelf();
-    } catch {
-      // Non-blocking fallback
-    }
-
-    try {
-      const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+      useAnnotationStore.getState().clearAllAnnotations();
+      useHabitsStore.getState().resetHabits();
+      useAccoladesStore.getState().resetAccolades();
       useFellowshipStore.getState().clearFellowshipState();
+      useReaderStore.getState().resetReaderSession();
     } catch {
       // Non-blocking fallback
     }
@@ -313,7 +331,11 @@ export const useAuthStore = create<AuthState>()(
           .update(pendingProfileUpdates)
           .eq('id', user.id);
         if (!flushErr) {
-          set({ pendingProfileUpdates: null });
+          set((s) =>
+            s.pendingProfileUpdates === pendingProfileUpdates
+              ? { pendingProfileUpdates: null }
+              : {}
+          );
         }
       }
 
@@ -345,7 +367,9 @@ export const useAuthStore = create<AuthState>()(
           .update(pending)
           .eq('id', targetUserId);
         if (!error) {
-          set({ pendingProfileUpdates: null });
+          set((s) =>
+            s.pendingProfileUpdates === pending ? { pendingProfileUpdates: null } : {}
+          );
         }
       }
       await get().fetchProfile();

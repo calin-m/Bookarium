@@ -1101,7 +1101,7 @@ describe('useReaderStore', () => {
       const React = await import('react');
       const { renderToString } = await import('react-dom/server');
       const { useHydratedBookshelf, useSavedBooksCount, useIsBookSaved, useBookCuration } = await import('./useBookshelfStore');
-      const { useHydratedAnnotations } = await import('./useAnnotationStore');
+      const { useHydratedAnnotations, useHydratedAnnotationCount } = await import('./useAnnotationStore');
       const { useHydratedFellowship } = await import('./useFellowshipStore');
 
       function SsrProbe() {
@@ -1111,15 +1111,16 @@ describe('useReaderStore', () => {
         const isSaved = useIsBookSaved(1342);
         const curation = useBookCuration(1342);
         const anns = useHydratedAnnotations();
+        const annCount = useHydratedAnnotationCount();
         const fellowship = useHydratedFellowship();
         return React.createElement(
           'div',
           null,
-          `${reader.hasMounted}-${shelf.isSaved(1342)}-${shelf.isFavorite(1342)}-${savedCount}-${isSaved}-${curation.rating}-${anns.annotations.length}-${fellowship.circles.length}`
+          `${reader.hasMounted}-${shelf.isSaved(1342)}-${shelf.isFavorite(1342)}-${savedCount}-${isSaved}-${curation.rating}-${anns.annotations.length}-${annCount.annotationCount}-${fellowship.circles.length}`
         );
       }
       const html = renderToString(React.createElement(SsrProbe));
-      expect(html).toContain('false-false-false-0-false-null-0-0');
+      expect(html).toContain('false-false-false-0-false-null-0-0-0');
     });
   });
 });

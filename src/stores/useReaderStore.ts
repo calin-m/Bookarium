@@ -59,6 +59,7 @@ export interface ReaderState {
   getReadingPosition: (bookId: number) => BookReadingPosition | null;
   clearReadingPosition: (bookId: number, userId?: string) => Promise<void>;
   clearAllVolumes: (userId?: string) => Promise<void>;
+  resetReaderSession: () => void;
   syncReadingPositionToCloud: (bookId: number, position: BookReadingPosition, userId: string) => Promise<void>;
   restoreReadingPositionFromCloud: (bookId: number, userId: string) => Promise<BookReadingPosition | null>;
   syncWithCloud: (userId: string) => Promise<void>;
@@ -506,14 +507,24 @@ export const useReaderStore = create<ReaderState>()(
 
           const pendingDeletes = [...get().deletedPositionBookIds];
           if (pendingDeletes.length > 0) {
+            const flushedDeleteIds = new Set<number>();
             for (const delBookId of pendingDeletes) {
-              await supabase
+              const delResult = await supabase
                 .from('reading_progress')
                 .delete()
                 .eq('user_id', userId)
                 .eq('book_id', delBookId);
+              if (!delResult?.error) {
+                flushedDeleteIds.add(delBookId);
+              }
             }
-            set({ deletedPositionBookIds: [] });
+            if (flushedDeleteIds.size > 0) {
+              set((state) => ({
+                deletedPositionBookIds: state.deletedPositionBookIds.filter(
+                  (id) => !flushedDeleteIds.has(id)
+                ),
+              }));
+            }
           }
 
           // Cloud sanitization: purge legacy 0% Page-1 orphaned records
@@ -550,10 +561,13 @@ export const useReaderStore = create<ReaderState>()(
               }
             });
 
+            const currentTombstones = new Set(state.deletedPositionBookIds);
+
             data.forEach((row) => {
               if (isGhostCloudRow(row)) return;
 
               const bookId = row.book_id;
+              if (currentTombstones.has(bookId)) return;
               remoteBookIds.add(bookId);
               const localPos = nextPositions[bookId];
               const remoteTime = new Date(row.last_read_at).getTime();
@@ -641,7 +655,7 @@ export const useReaderStore = create<ReaderState>()(
         }
       },
 
-      clearAllVolumes: async (userId) => {
+      resetReaderSession: () => {
         progressDebounceTimers.forEach((timer) => clearTimeout(timer));
         progressDebounceTimers.clear();
 
@@ -651,6 +665,10 @@ export const useReaderStore = create<ReaderState>()(
           deletedPositionBookIds: [],
           currentBook: null,
         });
+      },
+
+      clearAllVolumes: async (userId) => {
+        get().resetReaderSession();
 
         const currentUserId = userId || useAuthStore.getState().user?.id;
         if (currentUserId) {

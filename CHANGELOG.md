@@ -798,3 +798,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-069: Offline-First PWA Resilience, Adaptive Offline Catalog, Bi-Directional Offline Store Sync & Project Gutenberg Policy Compliance**
 - **ADR-070: Reading Ledger Offline Author Preservation, Merge Guardrails & IndexedDB Self-Healing**
 - **ADR-071: Bookshelf Cloud-Sync Metadata Preservation, Atomic Store Selectors, Cross-Layer Habit Telemetry & Viewport Ergonomics**
+- **ADR-072: Full-Stack Schema Parity, Outbox Snapshot Concurrency Guards, Complete Session Teardown & Backup Tombstone Reconciliation**

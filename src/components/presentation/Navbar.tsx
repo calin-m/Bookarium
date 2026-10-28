@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Sun, Moon, Coffee, User as UserIcon } from 'lucide-react';
 import { useHydratedBookshelfCounts } from '@/stores/useBookshelfStore';
-import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
+import { useHydratedAnnotationCount } from '@/stores/useAnnotationStore';
 import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -34,8 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const router = useRouter();
   const activeConfig = NAVBAR_VIEW_CONFIG[activeView] || NAVBAR_VIEW_CONFIG.catalog;
   const { savedCount, favoriteCount, hasMounted } = useHydratedBookshelfCounts();
-  const { annotations } = useHydratedAnnotations();
-  const annotationCount = annotations.length;
+  const { annotationCount } = useHydratedAnnotationCount();
   const activeReadingCount = useReaderStore(getActiveReadingCount);
   const theme = useThemeStore((s) => s.theme);
   const cycleTheme = useThemeStore((s) => s.cycleTheme);

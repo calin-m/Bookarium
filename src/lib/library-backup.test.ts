@@ -419,8 +419,24 @@ describe('library-backup domain engine', () => {
 
     it('overwrites state completely when replace strategy is selected', async () => {
       // Set an initial book that is NOT in incomingBackup
+      useBookshelfStore.setState({
+        deletedBookIds: { 84: '2026-01-01T00:00:00Z' },
+        deletedFavoriteBookIds: { 84: '2026-01-01T00:00:00Z' },
+        lastBookshelfSyncAt: '2026-05-01T00:00:00Z',
+        lastFavoritesSyncAt: '2026-05-01T00:00:00Z',
+      });
       useReaderStore.setState({
+        readingPositions: {
+          ...useReaderStore.getState().readingPositions,
+          999: {
+            chapterIndex: 0,
+            chapterPage: 2,
+            globalPage: 10,
+            lastReadAt: '2026-08-01T00:00:00Z',
+          },
+        },
         readingProgress: { 999: 80 },
+        deletedPositionBookIds: [84],
       });
 
       const summary = await restoreLibraryBackup(incomingBackup, 'replace');
@@ -429,12 +445,18 @@ describe('library-backup domain engine', () => {
       const readerState = useReaderStore.getState();
       const annotationState = useAnnotationStore.getState();
 
-      // Books should only contain 84 (1342 wiped)
+      // Books should only contain 84 (1342 wiped and tombstoned; 84 untombstoned)
       expect(bookshelfState.savedBooks).toHaveLength(1);
       expect(bookshelfState.savedBooks[0].id).toBe(84);
+      expect(bookshelfState.deletedBookIds[1342]).toBeDefined();
+      expect(bookshelfState.deletedBookIds[84]).toBeUndefined();
+      expect(bookshelfState.lastBookshelfSyncAt).toBeNull();
+      expect(bookshelfState.lastFavoritesSyncAt).toBeNull();
 
-      // Favorites should only contain 84
+      // Favorites should only contain 84 (1342 tombstoned; 84 untombstoned)
       expect(bookshelfState.favoriteBookIds).toEqual([84]);
+      expect(bookshelfState.deletedFavoriteBookIds[1342]).toBeDefined();
+      expect(bookshelfState.deletedFavoriteBookIds[84]).toBeUndefined();
 
       // Ratings & reading statuses should only contain incoming backup
       expect(bookshelfState.bookRatings).toEqual({ 84: 4 });
@@ -444,21 +466,28 @@ describe('library-backup domain engine', () => {
       expect(annotationState.annotations).toHaveLength(1);
       expect(annotationState.annotations[0].id).toBe('ann-2');
 
-      // Progress should only contain what was in incomingBackup
+      // Progress should only contain what was in incomingBackup, and 999 position should be tombstoned
       expect(readerState.readingProgress[84]).toBe(20);
       expect(readerState.readingProgress[999]).toBeUndefined();
+      expect(readerState.deletedPositionBookIds).toContain(999);
+      expect(readerState.deletedPositionBookIds).not.toContain(84);
 
       expect(summary.booksRestored).toBe(1);
     });
 
     it('triggers cloud sync if userId is provided', async () => {
-      const syncWithCloudMock = vi.fn().mockResolvedValue(undefined);
-      useBookshelfStore.setState({ syncWithCloud: syncWithCloudMock });
-      useAnnotationStore.setState({ syncWithCloud: syncWithCloudMock });
+      const bookshelfSyncMock = vi.fn().mockResolvedValue(undefined);
+      const annotationSyncMock = vi.fn().mockResolvedValue(undefined);
+      const readerSyncMock = vi.fn().mockResolvedValue(undefined);
+      useBookshelfStore.setState({ syncWithCloud: bookshelfSyncMock });
+      useAnnotationStore.setState({ syncWithCloud: annotationSyncMock });
+      useReaderStore.setState({ syncWithCloud: readerSyncMock });
 
       await restoreLibraryBackup(incomingBackup, 'merge', 'auth-user-999');
 
-      expect(syncWithCloudMock).toHaveBeenCalledWith('auth-user-999');
+      expect(bookshelfSyncMock).toHaveBeenCalledWith('auth-user-999');
+      expect(annotationSyncMock).toHaveBeenCalledWith('auth-user-999');
+      expect(readerSyncMock).toHaveBeenCalledWith('auth-user-999');
     });
 
     it('restores readingQueue correctly in replace mode', async () => {

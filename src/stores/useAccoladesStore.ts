@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { createClient } from '@/lib/supabase/client';
 import { useHasMounted } from '@/hooks/useHasMounted';
@@ -218,14 +219,28 @@ export const useAccoladesStore = create<AccoladesState>()(
           const pendingPins = { ...get().pendingPinUpdates };
           const pendingEntries = Object.entries(pendingPins);
           if (pendingEntries.length > 0) {
+            const flushedPins = new Map<string, boolean>();
             for (const [accId, isPinnedVal] of pendingEntries) {
-              await supabase
+              const res = await supabase
                 .from('user_accolades')
                 .update({ is_pinned: isPinnedVal, updated_at: new Date().toISOString() })
                 .eq('user_id', userId)
                 .eq('accolade_id', accId);
+              if (!res?.error) {
+                flushedPins.set(accId, isPinnedVal);
+              }
             }
-            set({ pendingPinUpdates: {} });
+            if (flushedPins.size > 0) {
+              set((state) => {
+                const nextPending = { ...state.pendingPinUpdates };
+                flushedPins.forEach((val, accId) => {
+                  if (nextPending[accId] === val) {
+                    delete nextPending[accId];
+                  }
+                });
+                return { pendingPinUpdates: nextPending };
+              });
+            }
           }
 
           const { data, error } = await supabase
@@ -265,30 +280,38 @@ export const useAccoladesStore = create<AccoladesState>()(
               .upsert(inserts, { onConflict: 'user_id,accolade_id' });
           }
 
-          // 2. Merge remote records into local state
-          const mergedUnlocked: Record<AccoladeId, UnlockedAccolade> = { ...currentUnlocked };
-          for (const row of remoteRows) {
-            const accId = row.accolade_id as AccoladeId;
-            const hasPendingPin = Object.prototype.hasOwnProperty.call(pendingPins, accId);
-            mergedUnlocked[accId] = {
-              id: accId,
-              unlockedAt: row.unlocked_at,
-              isPinned: hasPendingPin ? pendingPins[accId] : (row.is_pinned ?? false),
-              metadata: (row.metadata as Record<string, unknown>) || undefined,
+          // 2. Merge remote records into local state functionally so concurrent unlocks/pins are preserved
+          set((state) => {
+            const mergedUnlocked: Record<AccoladeId, UnlockedAccolade> = {
+              ...state.unlockedAccolades,
             };
-          }
+            const latestPendingPins = {
+              ...pendingPins,
+              ...state.pendingPinUpdates,
+            };
+            for (const row of remoteRows) {
+              const accId = row.accolade_id as AccoladeId;
+              const hasPendingPin = Object.prototype.hasOwnProperty.call(latestPendingPins, accId);
+              mergedUnlocked[accId] = {
+                id: accId,
+                unlockedAt: row.unlocked_at,
+                isPinned: hasPendingPin ? latestPendingPins[accId] : (row.is_pinned ?? false),
+                metadata: (row.metadata as Record<string, unknown>) || undefined,
+              };
+            }
 
-          // 3. Derive pinned accolade IDs from merged record
-          const derivedPinned = Object.values(mergedUnlocked)
-            .filter((acc) => acc.isPinned)
-            .map((acc) => acc.id)
-            .slice(0, MAX_PINNED_ACCOLADES);
+            // 3. Derive pinned accolade IDs from merged record
+            const derivedPinned = Object.values(mergedUnlocked)
+              .filter((acc) => acc.isPinned)
+              .map((acc) => acc.id)
+              .slice(0, MAX_PINNED_ACCOLADES);
 
-          set({
-            unlockedAccolades: mergedUnlocked,
-            pinnedAccoladeIds: derivedPinned,
-            isSyncing: false,
-            lastSyncAt: new Date().toISOString(),
+            return {
+              unlockedAccolades: mergedUnlocked,
+              pinnedAccoladeIds: derivedPinned,
+              isSyncing: false,
+              lastSyncAt: new Date().toISOString(),
+            };
           });
         } catch (err) {
           console.warn('[AccoladesStore] Unexpected error during sync:', err);
@@ -337,7 +360,22 @@ export const useAccoladesStore = create<AccoladesState>()(
  */
 export function useHydratedAccolades() {
   const hasMounted = useHasMounted();
-  const store = useAccoladesStore();
+  const store = useAccoladesStore(
+    useShallow((s) => ({
+      unlockedAccolades: s.unlockedAccolades,
+      pinnedAccoladeIds: s.pinnedAccoladeIds,
+      pendingCelebrations: s.pendingCelebrations,
+      activeCelebration: s.activeCelebration,
+      evaluateAndUnlock: s.evaluateAndUnlock,
+      dismissCelebration: s.dismissCelebration,
+      togglePin: s.togglePin,
+      syncWithCloud: s.syncWithCloud,
+      resetAccolades: s.resetAccolades,
+      isPinned: s.isPinned,
+      isUnlocked: s.isUnlocked,
+      getPinnedAccolades: s.getPinnedAccolades,
+    }))
+  );
 
   return {
     ...store,

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 28 Oct 2026 13:35:42 GMT  
+**Last Generated**: Wed, 28 Oct 2026 14:42:26 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 189 passed  
-**Total Verified Tests**: 2019 passed  
+**Total Verified Tests**: 2020 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (2019 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (2020 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $ge$ 95%, Statements $ge$ 95%, Functions $ge$ 92%, Branches $ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 71 Architectural Decision Records validated |
+| **Pass 5** | ADR Decision Ledger | ✅ Passed | 72 Architectural Decision Records validated |
 | **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.69%** (10094/10439) — *Target: $ge$ 95%*
-- **Statements**: **95.48%** (10986/11505) — *Target: $ge$ 95%*
-- **Functions**: **93.9%** (2387/2542) — *Target: $ge$ 92%*
-- **Branches**: **88.61%** (10072/11366) — *Target: $ge$ 85%*
+- **Lines**: **96.68%** (10176/10525) — *Target: $ge$ 95%*
+- **Statements**: **95.37%** (11068/11605) — *Target: $ge$ 95%*
+- **Functions**: **93.91%** (2406/2562) — *Target: $ge$ 92%*
+- **Branches**: **88.52%** (10111/11422) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (189 Suites / 2019 Tests)
+## 🧪 Comprehensive Test Suite Catalog (189 Suites / 2020 Tests)
 
 ### 🚀 App Routes & Pages (26 Suites · 265 Tests)
 
@@ -1361,7 +1361,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 194 Tests)
+### ⚡ Zustand State Stores (10 Suites · 195 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1380,7 +1380,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (33 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (34 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1415,6 +1415,7 @@
 - ✔ `addAnnotation persists expanded selected_text to supabase when new highlight covers a wider range`
 - ✔ `addAnnotation enforces chapterIndex isolation for identical text phrases in different chapters`
 - ✔ `covers setOrUpdateFellowMapEntry placeholder upgrade, enrichFellowAnnotations host matching, cached fellow bookMeta, and addAnnotation expand outbox fallback`
+- ✔ `preserves newer local annotation edits via LWW during syncWithCloud and provides useHydratedAnnotationCount`
 
 </details>
 
@@ -1447,7 +1448,7 @@
 - ✔ `rejects update when username is invalid`
 - ✔ `normalizes username to lowercase and updates public profile preferences`
 - ✔ `normalizes empty string username to null`
-- ✔ `signs out from Supabase, clears user profile, flushes outbox, and cleanses local bookshelf and fellowship state`
+- ✔ `signs out from Supabase, clears user profile, flushes outboxes, and resets all 6 local user stores`
 - ✔ `preserves persisted user and profile when initializeAuth runs offline`
 - ✔ `updates profile optimistically offline and flushes pendingProfileUpdates on syncWithCloud when online`
 

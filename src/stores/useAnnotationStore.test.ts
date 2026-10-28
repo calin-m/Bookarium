@@ -1339,6 +1339,63 @@ describe('useAnnotationStore', () => {
     );
     expect(useAnnotationStore.getState().outbox.some((o) => o.type === 'UPSERT_ANNOTATION')).toBe(true);
   });
+
+  it('preserves newer local annotation edits via LWW during syncWithCloud and provides useHydratedAnnotationCount', async () => {
+    const { renderHook } = await import('@testing-library/react');
+    const { useHydratedAnnotationCount } = await import('./useAnnotationStore');
+    useAnnotationStore.setState({
+      annotations: [
+        {
+          id: 'ann-lww-1',
+          userId: 'user-lww',
+          bookId: 1342,
+          bookTitle: 'Pride and Prejudice',
+          bookAuthor: 'Jane Austen',
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Universally acknowledged',
+          color: 'mint',
+          note: 'Newer local note edited during sync',
+          createdAt: '2026-10-20T10:00:00Z',
+          updatedAt: '2026-10-28T12:00:00Z',
+        },
+      ],
+      outbox: [],
+      tombstones: [],
+    });
+
+    mockSelect.mockReturnValueOnce({
+      eq: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValueOnce({
+          data: [
+            {
+              id: 'ann-lww-1',
+              user_id: 'user-lww',
+              book_id: 1342,
+              chapter_index: 0,
+              chapter_page: 1,
+              selected_text: 'Universally acknowledged',
+              color: 'yellow',
+              note: 'Stale cloud note',
+              created_at: '2026-10-20T10:00:00Z',
+              updated_at: '2026-10-21T10:00:00Z',
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+
+    await useAnnotationStore.getState().syncWithCloud('user-lww');
+    const synced = useAnnotationStore.getState().annotations.find((a) => a.id === 'ann-lww-1');
+    expect(synced?.color).toBe('mint');
+    expect(synced?.note).toBe('Newer local note edited during sync');
+    expect(mockUpsert).toHaveBeenCalled();
+
+    const { result } = renderHook(() => useHydratedAnnotationCount());
+    expect(result.current.hasMounted).toBe(true);
+    expect(result.current.annotationCount).toBe(1);
+  });
 });
 
 
