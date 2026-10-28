@@ -179,7 +179,6 @@ CREATE TABLE IF NOT EXISTS public.bookshelf_items (
   book_id INTEGER NOT NULL,
   book_title TEXT NOT NULL,
   book_authors JSONB NOT NULL DEFAULT '[]'::jsonb,
-  book_formats JSONB NOT NULL DEFAULT '{}'::jsonb,
   cover_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(bookshelf_id, book_id)
@@ -189,11 +188,6 @@ CREATE TABLE IF NOT EXISTS public.bookshelf_items (
 ALTER TABLE public.bookshelf_items
   ADD COLUMN IF NOT EXISTS cover_url TEXT,
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-
-UPDATE public.bookshelf_items
-SET cover_url = book_formats->>'image/jpeg'
-WHERE cover_url IS NULL
-  AND book_formats ? 'image/jpeg';
 
 CREATE INDEX IF NOT EXISTS idx_bookshelf_items_user_id
   ON public.bookshelf_items(user_id);

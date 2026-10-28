@@ -715,7 +715,7 @@ Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements
 
 | Artifact File | Classification | File Size | Architectural Responsibility |
 | :--- | :--- | :--- | :--- |
-| [`supabase/schema.sql`](supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `40.7 KB` | Single source of truth defining all 14 database tables, 38 granular RLS policies, 6 stored functions/triggers, and 22 explicit search/uniqueness indexes. |
+| [`supabase/schema.sql`](supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `40.5 KB` | Single source of truth defining all 14 database tables, 38 granular RLS policies, 6 stored functions/triggers, and 22 explicit search/uniqueness indexes. |
 | [`supabase/seed_books.sql`](supabase/seed_books.sql) | Curated Public Domain Catalog Seed | `11.4 KB` | Idempotent starter SQL seed (`ON CONFLICT (id) DO UPDATE`) provisioning curated Project Gutenberg masterworks for zero-network local development. |
 | [`supabase/seed_translations.sql`](supabase/seed_translations.sql) | Relational FRBR Translations Seed | `12.1 KB` | Idempotent SQL seed (`ON CONFLICT (work_id, book_id) DO UPDATE`) linking multilingual Project Gutenberg editions into canonical literary works. |
 | [`scripts/data/wikidata-translations-cache.json`](scripts/data/wikidata-translations-cache.json) | Offline Wikidata Authority Snapshot | `2.0 KB` | Verified CC0 Wikidata SPARQL authority cache (`P2034` Gutenberg IDs + `P407` language tags) enabling deterministic offline translation clustering when Wikidata is unreachable. |
