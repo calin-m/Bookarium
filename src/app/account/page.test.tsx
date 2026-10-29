@@ -807,7 +807,7 @@ describe('AccountPage', () => {
 
         const { unmount } = render(<AccountPage />);
         expect(screen.getByTestId('account-offline-banner')).toHaveTextContent(
-          /Offline Mode — Manage your local reading preferences, streaks, accolades, and library backups offline/i
+          /Offline Mode — Manage your local reading preferences, streaks, and accolades offline/i
         );
         expect(screen.getByRole('button', { name: /Sign In \/ Sign Up/i })).toBeDisabled();
         const guestWorkspace = screen.getByTestId('guest-offline-workspace');

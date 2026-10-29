@@ -26,6 +26,7 @@ import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
+import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/components/ui/RemoveCollectionBookModal';
 
 export interface BookCardProps {
   book: GutendexBook;
@@ -53,25 +54,11 @@ export const BookCard: React.FC<BookCardProps> = ({
   const router = useRouter();
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = React.useState(false);
-  const [isConfirmingRemoval, setIsConfirmingRemoval] = React.useState(false);
+  const [pendingRemoval, setPendingRemoval] = React.useState<CollectionRemovalType | null>(null);
   const [isRemoveOfflineModalOpen, setIsRemoveOfflineModalOpen] = React.useState(false);
   const { removeBook } = useOfflineBooks();
   const { isOffline: isNetworkOffline } = useNetworkStatus();
   const isUnavailableOffline = isNetworkOffline && !isOffline;
-  const confirmTimerRef = React.useRef<NodeJS.Timeout | null>(null);
-
-  const clearConfirmTimer = React.useCallback(() => {
-    if (confirmTimerRef.current) {
-      clearTimeout(confirmTimerRef.current);
-      confirmTimerRef.current = null;
-    }
-  }, []);
-
-  React.useEffect(() => {
-    return () => {
-      clearConfirmTimer();
-    };
-  }, [clearConfirmTimer]);
 
   const isSaved = useIsBookSaved(book.id);
   const isFavorite = useIsBookFavorite(book.id);
@@ -115,12 +102,6 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   const tooltipContent = React.useMemo(() => {
     if (hoveredAction === 'favorite') {
-      if (isConfirmingRemoval) {
-        return {
-          icon: <Trash2 className="w-3 h-3 text-destructive shrink-0" />,
-          text: 'Click again to remove',
-        };
-      }
       return {
         icon: <Heart className={`w-3 h-3 text-destructive shrink-0 ${isFavorite ? 'fill-current' : ''}`} />,
         text: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
@@ -136,7 +117,7 @@ export const BookCard: React.FC<BookCardProps> = ({
       icon: <BookOpen className="w-3 h-3 text-primary shrink-0" />,
       text: 'Click to preview quotes',
     };
-  }, [hoveredAction, isConfirmingRemoval, isFavorite, isSaved]);
+  }, [hoveredAction, isFavorite, isSaved]);
 
   const handleCoverClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     if (isRestricted) {
@@ -193,17 +174,7 @@ export const BookCard: React.FC<BookCardProps> = ({
         }}
         onMouseEnter={onPreviewClick ? handleMouseEnter : undefined}
         onMouseMove={onPreviewClick ? handleMouseMove : undefined}
-        onMouseLeave={
-          onPreviewClick
-            ? () => {
-                handleMouseLeave();
-                if (isConfirmingRemoval) {
-                  clearConfirmTimer();
-                  setIsConfirmingRemoval(false);
-                }
-              }
-            : undefined
-        }
+        onMouseLeave={onPreviewClick ? handleMouseLeave : undefined}
         tabIndex={onPreviewClick ? 0 : undefined}
         role={onPreviewClick ? 'button' : undefined}
         aria-label={onPreviewClick ? `Click to preview quotes for ${book.title}` : undefined}
@@ -296,66 +267,36 @@ export const BookCard: React.FC<BookCardProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (activeView === 'favorites' && isFavorite) {
-                if (!isConfirmingRemoval) {
-                  setIsConfirmingRemoval(true);
-                  clearConfirmTimer();
-                  confirmTimerRef.current = setTimeout(() => {
-                    setIsConfirmingRemoval(false);
-                  }, 3500);
-                  return;
-                }
-                clearConfirmTimer();
-                setIsConfirmingRemoval(false);
+              if (isFavorite) {
+                setPendingRemoval('favorite');
+              } else {
                 toggleFavorite(book);
-                return;
               }
-              toggleFavorite(book);
             }}
             onMouseEnter={() => {
               setHoveredAction('favorite');
               setShowTooltip(true);
             }}
-            onMouseLeave={() => {
-              setHoveredAction('preview');
-              if (isConfirmingRemoval) {
-                clearConfirmTimer();
-                setIsConfirmingRemoval(false);
-              }
-            }}
-            onBlur={() => {
-              if (isConfirmingRemoval) {
-                clearConfirmTimer();
-                setIsConfirmingRemoval(false);
-              }
-            }}
+            onMouseLeave={() => setHoveredAction('preview')}
             className={`relative touch-manipulation p-2 rounded-full border transition-all shadow-xs after:absolute after:-inset-1.5 after:content-[''] ${
-              isConfirmingRemoval
-                ? 'bg-destructive border-destructive text-destructive-foreground scale-110 ring-2 ring-destructive/40 animate-pulse'
-                : isFavorite
+              isFavorite
                 ? 'bg-destructive border-destructive text-destructive-foreground scale-105'
                 : 'bg-card border-border text-muted-foreground hover:text-destructive'
             }`}
-            aria-label={
-              isConfirmingRemoval
-                ? 'Click again to confirm removal from favorites'
-                : isFavorite
-                ? 'Remove from favorites'
-                : 'Add to favorites'
-            }
+            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           >
-            {isConfirmingRemoval ? (
-              <Trash2 className="w-3.5 h-3.5" />
-            ) : (
-              <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`} />
-            )}
+            <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`} />
           </button>
 
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              toggleSave(book);
+              if (isSaved) {
+                setPendingRemoval('bookshelf');
+              } else {
+                toggleSave(book);
+              }
             }}
             onMouseEnter={() => {
               setHoveredAction('bookshelf');
@@ -626,6 +567,21 @@ export const BookCard: React.FC<BookCardProps> = ({
       onConfirm={async () => {
         await removeBook(book.id);
         setIsRemoveOfflineModalOpen(false);
+      }}
+    />
+
+    <RemoveCollectionBookModal
+      isOpen={pendingRemoval !== null}
+      collectionType={pendingRemoval}
+      bookTitle={book.title}
+      onClose={() => setPendingRemoval(null)}
+      onConfirm={() => {
+        if (pendingRemoval === 'favorite') {
+          toggleFavorite(book);
+        } else if (pendingRemoval === 'bookshelf') {
+          toggleSave(book);
+        }
+        setPendingRemoval(null);
       }}
     />
   </Card>

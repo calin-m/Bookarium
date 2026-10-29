@@ -1,7 +1,7 @@
 ## 📌 Pull Request Overview
 
 ### [PHASE]
-<!-- e.g. Milestone 2: Scholar Annotations & Data Portability -->
+<!-- e.g. Milestone 2: Scholar Annotations & Offline Persistence -->
 
 ### [WHY]
 <!-- What problem does this change solve? Why is this modification necessary? -->

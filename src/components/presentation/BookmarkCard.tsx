@@ -3,11 +3,14 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff } from 'lucide-react';
+import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff, Heart, Library } from 'lucide-react';
 import type { ActiveReadingVolume, LedgerItemStatus, GutendexBook, Book } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
+import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/components/ui/RemoveCollectionBookModal';
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
+import { useBookshelfStore, useIsBookSaved, useIsBookFavorite } from '@/stores/useBookshelfStore';
+import { toGutendexBook } from '@/lib/adapters/book.adapter';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { formatAuthorNames, formatRelativeTime } from '@/lib/utils';
@@ -45,12 +48,17 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
   const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState<CollectionRemovalType | null>(null);
   const { book, progressPercent, chapterIndex, globalPage, bookmarkRow, lastReadAt, status } = volume;
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
   const { country, evaluation, isRestricted } = useBookCopyright(book);
   const { isOffline: isNetworkOffline } = useNetworkStatus();
   const isUnavailableOffline = isNetworkOffline && !isOffline;
+  const isSaved = useIsBookSaved(book.id);
+  const isFavorite = useIsBookFavorite(book.id);
+  const toggleSaveBook = useBookshelfStore((s) => s.toggleSaveBook);
+  const toggleFavoriteBook = useBookshelfStore((s) => s.toggleFavoriteBook);
 
   const handleResume = () => {
     if (isRestricted || isUnavailableOffline) return;
@@ -108,7 +116,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
       <svg
         data-testid="bookmark-card-ribbon"
         viewBox="0 0 16 28"
-        className={`absolute top-0 right-6 w-4 h-7 drop-shadow-2xs origin-top transition-transform duration-300 group-hover:scale-y-110 pointer-events-none ${
+        className={`absolute top-0 right-7 w-4 h-7 drop-shadow-2xs origin-top transition-transform duration-300 group-hover:scale-y-110 pointer-events-none ${
           status === 'completed'
             ? 'text-emerald-500'
             : status === 'on_hold'
@@ -173,37 +181,89 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             ) : null}
           </div>
 
-          <div className="flex-1 min-w-0 pr-4">
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono uppercase tracking-wider font-semibold border ${currentBadge.className}`}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 mb-1.5 pr-10">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono uppercase tracking-wider font-semibold border ${currentBadge.className}`}
+                >
+                  {currentBadge.icon}
+                  <span>{currentBadge.label}</span>
+                </span>
+                {isRestricted ? (
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30"
+                    title={evaluation.reason || `Protected by copyright in ${country}`}
+                    aria-label={`Protected in ${country}`}
+                  >
+                    <Lock className="w-2.5 h-2.5 shrink-0" />
+                    <span>Protected ({country})</span>
+                  </span>
+                ) : isUnavailableOffline ? (
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30"
+                    title="Not downloaded for offline reading"
+                    aria-label="Not downloaded for offline reading"
+                    data-testid={`bookmark-card-unavailable-offline-badge-${book.id}`}
+                  >
+                    <WifiOff className="w-2.5 h-2.5 shrink-0" />
+                    <span>Not Downloaded</span>
+                  </span>
+                ) : null}
+              </div>
+
+              <div
+                className="flex items-center gap-2 shrink-0"
+                onClick={(e) => e.stopPropagation()}
               >
-                {currentBadge.icon}
-                <span>{currentBadge.label}</span>
-              </span>
-              {isRestricted ? (
-                <span
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30"
-                  title={evaluation.reason || `Protected by copyright in ${country}`}
-                  aria-label={`Protected in ${country}`}
-                >
-                  <Lock className="w-2.5 h-2.5 shrink-0" />
-                  <span>Protected ({country})</span>
-                </span>
-              ) : isUnavailableOffline ? (
-                <span
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30"
-                  title="Not downloaded for offline reading"
-                  aria-label="Not downloaded for offline reading"
-                  data-testid={`bookmark-card-unavailable-offline-badge-${book.id}`}
-                >
-                  <WifiOff className="w-2.5 h-2.5 shrink-0" />
-                  <span>Not Downloaded</span>
-                </span>
-              ) : null}
+                <div className="w-8 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isFavorite) {
+                        setPendingRemoval('favorite');
+                      } else {
+                        toggleFavoriteBook(toGutendexBook(book));
+                      }
+                    }}
+                    aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    data-testid="bookmark-card-favorite-btn"
+                    className={`relative h-6 w-6 rounded-full border flex items-center justify-center transition-all duration-200 cursor-pointer touch-manipulation after:absolute after:-inset-1 after:content-[''] ${
+                      isFavorite
+                        ? 'bg-destructive border-destructive text-destructive-foreground shadow-2xs'
+                        : 'bg-background border-border text-muted-foreground hover:text-destructive hover:border-destructive/40'
+                    }`}
+                  >
+                    <Heart className={`w-3 h-3 ${isFavorite ? 'fill-current' : ''}`} />
+                  </button>
+                </div>
+                <div className="w-8 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isSaved) {
+                        setPendingRemoval('bookshelf');
+                      } else {
+                        toggleSaveBook(toGutendexBook(book));
+                      }
+                    }}
+                    aria-label={isSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
+                    title={isSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
+                    data-testid="bookmark-card-bookshelf-btn"
+                    className={`relative h-6 w-6 rounded-full border flex items-center justify-center transition-all duration-200 cursor-pointer touch-manipulation after:absolute after:-inset-1 after:content-[''] ${
+                      isSaved
+                        ? 'bg-primary border-primary text-primary-foreground shadow-2xs'
+                        : 'bg-background border-border text-muted-foreground hover:text-primary hover:border-primary/40'
+                    }`}
+                  >
+                    <Library className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <h3 className="font-serif font-bold text-base text-foreground leading-snug line-clamp-2 transition-colors">
+            <h3 className="font-serif font-bold text-base text-foreground leading-snug line-clamp-2 transition-colors pr-4">
               {isRestricted || isUnavailableOffline ? (
                 <span
                   className="cursor-not-allowed opacity-85"
@@ -224,7 +284,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               )}
             </h3>
 
-            <p className="font-sans text-xs text-muted-foreground truncate mt-1">
+            <p className="font-sans text-xs text-muted-foreground truncate mt-1 pr-4">
               {formatAuthorNames(book.authors) || 'Anonymous'}
             </p>
           </div>
@@ -417,6 +477,21 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           bookTitle={book.title}
         />
       )}
+
+      <RemoveCollectionBookModal
+        isOpen={pendingRemoval !== null}
+        collectionType={pendingRemoval}
+        bookTitle={book.title}
+        onClose={() => setPendingRemoval(null)}
+        onConfirm={() => {
+          if (pendingRemoval === 'favorite') {
+            toggleFavoriteBook(toGutendexBook(book));
+          } else if (pendingRemoval === 'bookshelf') {
+            toggleSaveBook(toGutendexBook(book));
+          }
+          setPendingRemoval(null);
+        }}
+      />
     </article>
   );
 };

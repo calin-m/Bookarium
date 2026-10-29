@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { AccountPreferencesSection, exportLibraryData } from './AccountPreferencesSection';
+import { AccountPreferencesSection } from './AccountPreferencesSection';
 
 describe('AccountPreferencesSection', () => {
   const defaultProps = {
@@ -236,83 +236,37 @@ describe('AccountPreferencesSection', () => {
     expect(screen.getByRole('button', { name: 'Test voice' })).toBeInTheDocument();
   });
 
-  describe('Library Portability & Backups', () => {
-    it('renders the portability section with JSON, CSV, and Import buttons', () => {
-      render(<AccountPreferencesSection {...defaultProps} />);
+  it('switches between Appearance & Scroll and Read-Aloud Studio sub-tabs and enables Smart Auto-Hide', () => {
+    const handleStickyScrollChange = vi.fn();
+    render(
+      <AccountPreferencesSection
+        {...defaultProps}
+        stickyScrollEnabled={false}
+        onStickyScrollChange={handleStickyScrollChange}
+      />
+    );
 
-      expect(screen.getByTestId('library-portability-section')).toBeInTheDocument();
-      expect(screen.getByText('Library Portability & Backups')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Export library backup in JSON/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Export reading catalog in CSV/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Import library backup/i })).toBeInTheDocument();
-    });
+    const appearanceTab = screen.getByRole('tab', { name: /Appearance & Scroll/i });
+    const narrationTab = screen.getByRole('tab', { name: /Read-Aloud Studio/i });
 
-    it('handles JSON and CSV export clicks', () => {
-      render(<AccountPreferencesSection {...defaultProps} />);
+    expect(appearanceTab).toHaveAttribute('aria-selected', 'true');
+    expect(document.getElementById('preferences-subpanel-appearance')).not.toHaveClass('hidden');
 
-      const jsonBtn = screen.getByRole('button', { name: /Export library backup in JSON/i });
-      fireEvent.click(jsonBtn);
+    const smartAutoHideBtn = screen.getByRole('button', { name: /Smart Auto-Hide/i });
+    fireEvent.click(smartAutoHideBtn);
+    expect(handleStickyScrollChange).toHaveBeenCalledWith(true);
 
-      const csvBtn = screen.getByRole('button', { name: /Export reading catalog in CSV/i });
-      fireEvent.click(csvBtn);
-    });
+    fireEvent.click(narrationTab);
+    expect(narrationTab).toHaveAttribute('aria-selected', 'true');
+    expect(document.getElementById('preferences-subpanel-narration')).not.toHaveClass('hidden');
 
-    it('handles file input change and shows error on corrupted file', async () => {
-      render(<AccountPreferencesSection {...defaultProps} />);
+    fireEvent.click(appearanceTab);
+    expect(appearanceTab).toHaveAttribute('aria-selected', 'true');
+    expect(document.getElementById('preferences-subpanel-appearance')).not.toHaveClass('hidden');
+  });
 
-      const fileInput = screen.getByTestId('library-backup-file-input');
-      const corruptedFile = new File(['not valid json'], 'corrupted.json', { type: 'application/json' });
-
-      fireEvent.change(fileInput, { target: { files: [corruptedFile] } });
-
-      expect(await screen.findByRole('alert')).toHaveTextContent(/Failed to parse JSON file/i);
-    });
-
-    it('shows error when backup file exceeds 10MB limit', async () => {
-      render(<AccountPreferencesSection {...defaultProps} />);
-
-      const fileInput = screen.getByTestId('library-backup-file-input');
-      const oversizedFile = new File([''], 'huge.json', { type: 'application/json' });
-      Object.defineProperty(oversizedFile, 'size', { value: 11 * 1024 * 1024 });
-
-      fireEvent.change(fileInput, { target: { files: [oversizedFile] } });
-
-      expect(await screen.findByRole('alert')).toHaveTextContent(/exceeds the 10MB limit/i);
-    });
-
-    it('handles exportLibraryData utility directly', () => {
-      const csvResult = exportLibraryData('csv');
-      expect(typeof csvResult).toBe('string');
-      expect(csvResult).toContain('Book ID');
-
-      const jsonResult = exportLibraryData('json');
-      expect(jsonResult).toBeUndefined();
-    });
-
-    it('switches between Appearance & Scroll, Read-Aloud Studio, and Backup & Restore sub-tabs', () => {
-      render(<AccountPreferencesSection {...defaultProps} />);
-
-      const appearanceTab = screen.getByRole('tab', { name: /Appearance & Scroll/i });
-      const narrationTab = screen.getByRole('tab', { name: /Read-Aloud Studio/i });
-      const backupTab = screen.getByRole('tab', { name: /Backup & Restore/i });
-
-      expect(appearanceTab).toHaveAttribute('aria-selected', 'true');
-      expect(document.getElementById('preferences-subpanel-appearance')).not.toHaveClass('hidden');
-
-      fireEvent.click(narrationTab);
-      expect(narrationTab).toHaveAttribute('aria-selected', 'true');
-      expect(document.getElementById('preferences-subpanel-narration')).not.toHaveClass('hidden');
-
-      fireEvent.click(backupTab);
-      expect(backupTab).toHaveAttribute('aria-selected', 'true');
-      expect(document.getElementById('preferences-subpanel-portability')).not.toHaveClass('hidden');
-    });
-
-    it('uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60', () => {
-      const { container } = render(<AccountPreferencesSection {...defaultProps} />);
-      expect(container.innerHTML).not.toContain('border-border/60');
-    });
+  it('uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60', () => {
+    const { container } = render(<AccountPreferencesSection {...defaultProps} />);
+    expect(container.innerHTML).not.toContain('border-border/60');
   });
 });
-
-

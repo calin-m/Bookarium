@@ -110,6 +110,7 @@ const VOLUME_SORT_OPTIONS: SortOption[] = [
 
 const CHRONO_PAGE_SIZE = 12;
 const VOLUME_PAGE_SIZE = 6;
+const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
 
 export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
@@ -132,16 +133,19 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const recentBooks = useBookshelfStore((s) => s.recentBooks);
   const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
   const { country } = useJurisdiction();
-  const { isBookOffline, offlineBooks = [] } = useOfflineBooks();
+  const { isBookOffline, offlineBooks = EMPTY_OFFLINE_BOOKS } = useOfflineBooks();
   const { isOnline, isOffline } = useNetworkStatus();
+  const [attemptedMetadataIds, setAttemptedMetadataIds] = useState<Set<number>>(() => new Set());
+  const [resolvedRemoteBooks, setResolvedRemoteBooks] = useState<Map<number, GutendexBook>>(() => new Map());
 
   // Identify book IDs across own and fellow annotations that lack resolved titles/authors
   // (or lack author lifespans in non-US jurisdictions) and are not in local stores or static fixtures
   const missingMetadataBookIds = useMemo(() => {
     const ids = new Set<number>();
     const allAnnotations = [...annotations, ...fellowAnnotations];
+    const cachedRemotePool = Array.from(resolvedRemoteBooks.values());
     for (const ann of allAnnotations) {
-      if (!ann.bookId || ann.bookId <= 0) continue;
+      if (!ann.bookId || ann.bookId <= 0 || attemptedMetadataIds.has(ann.bookId)) continue;
       const cleanTitle = cleanBookTitle(ann.bookTitle);
       const hasValidTitle = Boolean(cleanTitle && !isPlaceholderTitle(cleanTitle));
       const hasValidAuthor = Boolean(ann.bookAuthor && !isPlaceholderAuthor(ann.bookAuthor));
@@ -163,7 +167,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         );
       };
 
-      const inLocalPools = [savedBooks, favoriteBooks, recentBooks, offlineBooks].some((pool) =>
+      const inLocalPools = [savedBooks, favoriteBooks, recentBooks, offlineBooks, cachedRemotePool].some((pool) =>
         pool.some((b) => b.id === ann.bookId && hasVerifiedStoreAuthors(b))
       );
       const inFeatured = FEATURED_HERO_BOOKS.some((b) => b.id === ann.bookId);
@@ -173,13 +177,52 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       }
     }
     return Array.from(ids).sort((a, b) => a - b);
-  }, [annotations, fellowAnnotations, savedBooks, favoriteBooks, recentBooks, offlineBooks, country]);
+  }, [
+    annotations,
+    fellowAnnotations,
+    savedBooks,
+    favoriteBooks,
+    recentBooks,
+    offlineBooks,
+    country,
+    attemptedMetadataIds,
+    resolvedRemoteBooks,
+  ]);
 
   // Query Gutendex remote API / cache for any unindexed annotated books
   const { data: remoteBooksData } = useBooks(
     { ids: missingMetadataBookIds.join(','), page: 1, copyright: false, includeRestrictedMetadata: true },
     { enabled: isOnline && missingMetadataBookIds.length > 0 }
   );
+
+  const [prevRemoteResults, setPrevRemoteResults] = useState<unknown>(null);
+  if (remoteBooksData?.results && remoteBooksData.results !== prevRemoteResults) {
+    setPrevRemoteResults(remoteBooksData.results);
+    if (remoteBooksData.results.length > 0) {
+      let nextMap: Map<number, GutendexBook> | null = null;
+      for (const book of remoteBooksData.results) {
+        if (resolvedRemoteBooks.get(book.id) !== book) {
+          if (!nextMap) nextMap = new Map(resolvedRemoteBooks);
+          nextMap.set(book.id, book);
+        }
+      }
+      if (nextMap) {
+        setResolvedRemoteBooks(nextMap);
+      }
+    }
+    if (missingMetadataBookIds.length > 0) {
+      let nextSet: Set<number> | null = null;
+      for (const id of missingMetadataBookIds) {
+        if (!attemptedMetadataIds.has(id)) {
+          if (!nextSet) nextSet = new Set(attemptedMetadataIds);
+          nextSet.add(id);
+        }
+      }
+      if (nextSet) {
+        setAttemptedMetadataIds(nextSet);
+      }
+    }
+  }
 
   // Auto-heal missing metadata in local annotations, bookshelf, and reading positions when remote books resolve
   useEffect(() => {
@@ -222,11 +265,11 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const [reflectionToDelete, setReflectionToDelete] = useState<Annotation | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
 
-  // Reset page to 1 when filters, search query, mode, or sorting change
+  // Reset page to 1 when filters, search query, mode, sorting, or marginalia source change
   const [prevFilterKey, setPrevFilterKey] = useState(
-    `${searchQuery}-${selectedColor}-${groupMode}-${chronoSort}-${volumeSort}`
+    `${searchQuery}-${selectedColor}-${groupMode}-${chronoSort}-${volumeSort}-${marginaliaSourceFilter}`
   );
-  const filterKey = `${searchQuery}-${selectedColor}-${groupMode}-${chronoSort}-${volumeSort}`;
+  const filterKey = `${searchQuery}-${selectedColor}-${groupMode}-${chronoSort}-${volumeSort}-${marginaliaSourceFilter}`;
   if (filterKey !== prevFilterKey) {
     setPrevFilterKey(filterKey);
     setCurrentPage(1);
@@ -248,6 +291,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         ...favoriteBooks,
         ...recentBooks,
         ...offlineBooks,
+        ...Array.from(resolvedRemoteBooks.values()),
         ...(remoteBooksData?.results || []),
       ].filter((b) => b.id === ann.bookId);
       const fromPool = matchingPoolBooks[0];
@@ -380,7 +424,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         country,
       };
     },
-    [savedBooks, favoriteBooks, recentBooks, offlineBooks, remoteBooksData, country]
+    [savedBooks, favoriteBooks, recentBooks, offlineBooks, resolvedRemoteBooks, remoteBooksData, country]
   );
 
   const pairedAllAnnotations = useMemo(() => {
@@ -563,18 +607,20 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   // Pagination slicing
   const chronoTotalPages = Math.ceil(sortedAnnotations.length / CHRONO_PAGE_SIZE);
-  const paginatedAnnotations = useMemo(() => {
-    const start = (currentPage - 1) * CHRONO_PAGE_SIZE;
-    return sortedAnnotations.slice(start, start + CHRONO_PAGE_SIZE);
-  }, [sortedAnnotations, currentPage]);
-
   const volumeTotalPages = Math.ceil(sortedGroupedByVolume.length / VOLUME_PAGE_SIZE);
-  const paginatedGroupedByVolume = useMemo(() => {
-    const start = (currentPage - 1) * VOLUME_PAGE_SIZE;
-    return sortedGroupedByVolume.slice(start, start + VOLUME_PAGE_SIZE);
-  }, [sortedGroupedByVolume, currentPage]);
-
   const totalPages = groupMode === 'volume' ? volumeTotalPages : chronoTotalPages;
+  const safeCurrentPage = Math.min(currentPage, Math.max(1, totalPages));
+
+  const paginatedAnnotations = useMemo(() => {
+    const start = (safeCurrentPage - 1) * CHRONO_PAGE_SIZE;
+    return sortedAnnotations.slice(start, start + CHRONO_PAGE_SIZE);
+  }, [sortedAnnotations, safeCurrentPage]);
+
+  const paginatedGroupedByVolume = useMemo(() => {
+    const start = (safeCurrentPage - 1) * VOLUME_PAGE_SIZE;
+    return sortedGroupedByVolume.slice(start, start + VOLUME_PAGE_SIZE);
+  }, [sortedGroupedByVolume, safeCurrentPage]);
+
   const totalItems = groupMode === 'volume' ? sortedGroupedByVolume.length : sortedAnnotations.length;
   const pageSize = groupMode === 'volume' ? VOLUME_PAGE_SIZE : CHRONO_PAGE_SIZE;
 
@@ -630,18 +676,18 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     setReflectionToDelete(null);
   };
 
-  const handleJumpToReader = (ann: Annotation) => {
-    if (isOffline && !isBookOffline(ann.bookId)) return;
+  const primeReaderForBook = (bookId: number) => {
     const matchedBook =
-      remoteBooksData?.results?.find((b) => b.id === ann.bookId) ||
-      savedBooks.find((b) => b.id === ann.bookId) ||
-      favoriteBooks.find((b) => b.id === ann.bookId) ||
-      recentBooks.find((b) => b.id === ann.bookId) ||
-      offlineBooks.find((b) => b.id === ann.bookId);
+      resolvedRemoteBooks.get(bookId) ||
+      remoteBooksData?.results?.find((b) => b.id === bookId) ||
+      savedBooks.find((b) => b.id === bookId) ||
+      favoriteBooks.find((b) => b.id === bookId) ||
+      recentBooks.find((b) => b.id === bookId) ||
+      offlineBooks.find((b) => b.id === bookId);
     if (matchedBook) {
       useReaderStore.getState().openReader(matchedBook);
     } else {
-      const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === ann.bookId);
+      const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === bookId);
       if (fromFeatured) {
         useReaderStore.getState().openReader({
           id: fromFeatured.id,
@@ -666,6 +712,11 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         });
       }
     }
+  };
+
+  const handleJumpToReader = (ann: Annotation) => {
+    if (isOffline && !isBookOffline(ann.bookId)) return;
+    primeReaderForBook(ann.bookId);
     router.push(`/read/${ann.bookId}?chapter=${ann.chapterIndex}&page=${ann.chapterPage}&annotationId=${ann.id}`);
   };
 
@@ -740,7 +791,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             }}
             sortOptions={groupMode === 'volume' ? VOLUME_SORT_OPTIONS : CHRONO_SORT_OPTIONS}
             sortAriaLabel={groupMode === 'volume' ? 'Sort book groups' : 'Sort quotes chronologically'}
-            currentPage={currentPage}
+            currentPage={safeCurrentPage}
             totalPages={totalPages}
             onPageChange={handlePageChange}
             paginationAriaLabel="Top notebook pagination"
@@ -902,7 +953,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           {/* Main Notebook Content with Anchor and tactile page turn */}
           <div
             id="notebook-content-anchor"
-            key={`notebook-content-${groupMode}-${selectedColor}-${currentPage}`}
+            key={`notebook-content-${groupMode}-${selectedColor}-${safeCurrentPage}`}
             className="space-y-6 animate-page-turn"
           >
             {/* Grouped by Volume Display */}
@@ -925,6 +976,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                                 }`}
                                 onClick={() => {
                                   if (group.isRestricted || isGroupUnavailableOffline) return;
+                                  primeReaderForBook(group.bookId);
                                   router.push(`/read/${group.bookId}`);
                                 }}
                               >
@@ -975,7 +1027,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
           {/* Pagination Controls */}
           <Pagination
-            currentPage={currentPage}
+            currentPage={safeCurrentPage}
             totalPages={totalPages}
             onPageChange={handlePageChange}
             totalItems={totalItems}

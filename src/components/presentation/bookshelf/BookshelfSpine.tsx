@@ -12,6 +12,7 @@ import { useBookRating } from '@/stores/useBookshelfStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { StarRating } from '@/components/ui/StarRating';
+import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/components/ui/RemoveCollectionBookModal';
 import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
 
@@ -76,6 +77,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   const { country, evaluation, isRestricted, ruleDescription } = useBookCopyright(book);
   const { isOffline: isNetworkOffline } = useNetworkStatus();
   const isUnavailableOffline = isNetworkOffline && !isOffline;
+  const [pendingRemoval, setPendingRemoval] = React.useState<CollectionRemovalType | null>(null);
 
   // Deterministic height and thickness variation based on book id
   const heightVariance = 235 + ((book.id * 17) % 45); // 235px to 280px
@@ -444,7 +446,11 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onToggleSave(book);
+              if (isSaved) {
+                setPendingRemoval('bookshelf');
+              } else {
+                onToggleSave(book);
+              }
             }}
             onMouseEnter={() => {
               setHoveredAction('bookshelf');
@@ -468,7 +474,11 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onToggleFavorite(book);
+              if (isFavorite) {
+                setPendingRemoval('favorite');
+              } else {
+                onToggleFavorite(book);
+              }
             }}
             onMouseEnter={() => {
               setHoveredAction('favorite');
@@ -529,6 +539,21 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         {tooltipContent?.icon}
         <span>{tooltipContent?.text}</span>
       </CursorTooltip>
+
+      <RemoveCollectionBookModal
+        isOpen={pendingRemoval !== null}
+        collectionType={pendingRemoval}
+        bookTitle={book.title}
+        onClose={() => setPendingRemoval(null)}
+        onConfirm={() => {
+          if (pendingRemoval === 'favorite') {
+            onToggleFavorite(book);
+          } else if (pendingRemoval === 'bookshelf') {
+            onToggleSave(book);
+          }
+          setPendingRemoval(null);
+        }}
+      />
     </div>
   );
 };

@@ -83,7 +83,7 @@ const ACCOUNT_TABS: readonly AccountTabConfig[] = [
     id: 'preferences',
     label: 'Preferences',
     icon: Sliders,
-    description: 'Atmosphere themes, speech narration & backups',
+    description: 'Atmosphere themes, sticky scroll & speech narration',
   },
   {
     id: 'security',
@@ -516,7 +516,7 @@ function AccountDashboardContent() {
             <span>
               {user
                 ? 'Offline Mode — Changes to your preferences, habits, and profile are saved locally and will sync automatically when you reconnect.'
-                : 'Offline Mode — Manage your local reading preferences, streaks, accolades, and library backups offline. Sign in will be available once your connection is restored.'}
+                : 'Offline Mode — Manage your local reading preferences, streaks, and accolades offline. Sign in will be available once your connection is restored.'}
             </span>
           </div>
         )}
@@ -806,7 +806,6 @@ function AccountDashboardContent() {
                 speechHighlightEnabled={speechHighlightEnabled}
                 onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
                 onResetSpeechPreferences={resetSpeechPreferences}
-                userId={user.id}
               />
             </section>
 

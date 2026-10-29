@@ -4,14 +4,14 @@
 
 [![Current Release](https://img.shields.io/badge/Current%20Release-v2.8.1-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-88%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-29_of_33-blue?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-28_of_32-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[██████████████████░░]` **29/33 (88%)**
+`[██████████████████░░]` **28/32 (88%)**
 
 ---
 
@@ -51,10 +51,10 @@
 
 ---
 
-### Milestone 2: Scholar Annotations & Data Portability (`v1.9.0 (Completed)`)
-`[████████████████████]` **4/4 (100%)**
+### Milestone 2: Scholar Annotations & Offline Persistence (`v1.9.0 (Completed)`)
+`[████████████████████]` **3/3 (100%)**
 
-> Transform Bookarium into a tactile literary notebook with colored quote highlights, personal annotations, and full library export/import.
+> Transform Bookarium into a tactile literary notebook with colored quote highlights, personal annotations, and zero-dependency IndexedDB offline book storage.
 
 - [x] **Text Highlighting & Annotations Drawer** `✅ VERIFIED`
   Interactive text selection popover in `ReaderSurface.tsx` supporting 4 editorial pastel colors (Yellow, Amber, Mint, Rose) and personal notes stored in `useAnnotationStore.ts`.
@@ -62,8 +62,6 @@
   Dedicated commonplace journal (`/?view=notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, tablet-optimized icon mode toggles, academic citation generation, and deletion protection.
 - [x] **IndexedDB Offline Book Storage** `✅ VERIFIED`
   Zero-dependency local caching of downloaded and saved book texts using native IndexedDB (`BookariumOfflineDB`), cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), Adaptive Offline Catalog (`CatalogOfflineView.tsx` & downloaded catalog fallback), Red Offline Account Indicator (`useNetworkStatus.ts`), offline-first outbox reconciliation across all personal stores, restriction-parity dimming/badges on undownloaded offline volumes, Bookshelf `Downloaded (N)` smart shelf pill (`DOWNLOADED_SHELF_ID`) with active-shelf-aware clearing (`Clear Downloaded Shelf`), unified `Downloaded` collection search filter, and removal confirmation modals (`RemoveOfflineBookModal.tsx`), enabling unabridged reading on airplanes or offline.
-- [x] **Library Portability: Export & Import** `✅ VERIFIED`
-  Single-click JSON/CSV library backup and restore in Account Settings, giving users 100% portable ownership of their personal shelves, bookmarks, and reading history.
 
 ---
 
@@ -161,6 +159,7 @@
 |---|---|---|
 | **Ephemeral Raw API JSON Cache** | 🚫 **Excluded (Architectural Decision ADR-038)** | Storing raw third-party JSON blobs in Postgres was rejected in favor of an authoritative, structured `public.books` PostgreSQL catalog with GIN indexing, precomputed author lifespans, and streaming bulk ingestion, backed by Vercel Edge caching (`s-maxage=120, stale-while-revalidate=600`). |
 | **Proprietary Third-Party TTS** | 🚫 **Excluded (Keyless Policy)** | Paid cloud TTS APIs (ElevenLabs, Google Cloud TTS) violate **Rule 4 (Zero API Key Requirement)**. We strictly use native browser `window.speechSynthesis` for zero-cost, privacy-first read-aloud functionality. |
+| **Client-Side JSON/CSV Backup & File Import** | 🚫 **Retired (Architectural Decision ADR-072)** | Retired client-side file backup and JSON import to eliminate untrusted client-side payload ingestion, Last-Write-Wins (`updatedAt`) timestamp poisoning, semantic metadata spoofing on public scholar profiles, and offline restore ambiguity in favor of zero-trust Supabase PostgreSQL RLS synchronization and IndexedDB offline caching. |
 
 ---
 

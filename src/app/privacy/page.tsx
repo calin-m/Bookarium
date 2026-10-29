@@ -191,7 +191,7 @@ export default function PrivacyPage() {
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans pt-1">
               You maintain total dominion over your personal data. Under GDPR and global privacy standards, you have the
-              right to access, rectify, export, and completely delete your account at any moment.
+              right to access, rectify, and completely delete your account at any moment.
             </p>
             <div className="pt-2">
               <Link

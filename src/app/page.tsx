@@ -63,6 +63,8 @@ import {
 import { ROUTES } from '@/config/routes';
 import { VIEW_CONTENT_CONFIG } from '@/config/views.config';
 
+const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
+
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -79,7 +81,15 @@ function HomeContent() {
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
 
   const { isOffline } = useNetworkStatus();
-  const { isBookOffline, downloadBook, removeBook, removeAll, downloadingBookId, offlineBookIds, offlineBooks = [] } = useOfflineBooks();
+  const {
+    isBookOffline,
+    downloadBook,
+    removeBook,
+    removeAll,
+    downloadingBookId,
+    offlineBookIds,
+    offlineBooks = EMPTY_OFFLINE_BOOKS,
+  } = useOfflineBooks();
   const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | null>(null);
   const handleToggleOffline = async (book: GutendexBook) => {
     if (isBookOffline(book.id)) {
@@ -198,7 +208,8 @@ function HomeContent() {
     isFilterDrawerOpen ||
     selectedDownloadBook ||
     selectedPreviewBook ||
-    confirmClearType
+    confirmClearType ||
+    bookToRemoveOffline
   );
 
   const [swipeDirection, setSwipeDirection] = useState<'forward' | 'backward' | null>(initialSwipeDir);

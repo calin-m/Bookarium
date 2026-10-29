@@ -47,6 +47,8 @@ export function calculateShelfCapacity(viewportWidth: number): number {
   return Math.max(6, Math.floor(availableWidth / 62));
 }
 
+const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
+
 export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   books,
   onBookClick,
@@ -80,7 +82,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const {
     isBookOffline,
-    offlineBooks,
+    offlineBooks = EMPTY_OFFLINE_BOOKS,
     isLoaded: isOfflineLoaded,
     downloadBook,
     removeBook,

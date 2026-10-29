@@ -13,10 +13,14 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import type {
   ActiveReadingVolume,
   Author,
+  Book,
+  GutendexBook,
   LedgerFilter,
   LedgerItemStatus,
   ReadingStatus,
 } from '@/types/book.types';
+
+const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
 
 export type BookmarksSortOption =
   | 'recent'
@@ -44,6 +48,10 @@ export interface UseContinueReadingLedgerReturn {
     on_hold: number;
   };
   isLoading: boolean;
+  isBookOffline: (bookId: number) => boolean;
+  downloadBook: (book: GutendexBook | Book) => Promise<boolean>;
+  removeBook: (bookId: number) => Promise<void>;
+  downloadingBookId: number | null;
   updateVolumeStatus: (bookId: number, status: LedgerItemStatus) => Promise<void>;
   clearVolumeProgress: (bookId: number) => void;
   clearAllVolumes: () => void;
@@ -58,7 +66,17 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   const [activeFilter, setActiveFilter] = useState<LedgerFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<BookmarksSortOption>('recent');
-  const { isBookOffline, offlineBooks = [] } = useOfflineBooks();
+  const [attemptedMissingIds, setAttemptedMissingIds] = useState<Set<number>>(() => new Set());
+  const [resolvedMissingBooks, setResolvedMissingBooks] = useState<Map<number, GutendexBook>>(
+    () => new Map()
+  );
+  const {
+    isBookOffline,
+    offlineBooks = EMPTY_OFFLINE_BOOKS,
+    downloadBook,
+    removeBook,
+    downloadingBookId = null,
+  } = useOfflineBooks();
   const { isOnline } = useNetworkStatus();
 
   const readingProgress = useReaderStore((s) => s.readingProgress);
@@ -123,14 +141,50 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       }
     });
 
+    attemptedMissingIds.forEach((id) => known.add(id));
+
     return allActiveIds.filter((id) => !known.has(id));
-  }, [allActiveIds, savedBooks, favoriteBooks, recentBooks, offlineBooks, readingPositions]);
+  }, [
+    allActiveIds,
+    savedBooks,
+    favoriteBooks,
+    recentBooks,
+    offlineBooks,
+    readingPositions,
+    attemptedMissingIds,
+  ]);
 
   const idsParam = useMemo(() => missingIds.join(','), [missingIds]);
   const { data: missingBooksData, isLoading: isMissingBooksLoading } = useBooks(
     { ids: idsParam, copyright: false, includeRestrictedMetadata: true },
     { enabled: isOnline && missingIds.length > 0 }
   );
+
+  const [prevMissingResults, setPrevMissingResults] = useState<unknown>(null);
+  if (missingBooksData?.results && missingBooksData.results !== prevMissingResults) {
+    setPrevMissingResults(missingBooksData.results);
+    if (missingBooksData.results.length > 0) {
+      let changed = false;
+      const nextMap = new Map(resolvedMissingBooks);
+      for (const book of missingBooksData.results) {
+        if (book && typeof book.id === 'number' && !nextMap.has(book.id)) {
+          nextMap.set(book.id, book);
+          changed = true;
+        }
+      }
+      if (changed) {
+        setResolvedMissingBooks(nextMap);
+      }
+    }
+    if (missingIds.length > 0) {
+      const unrecorded = missingIds.filter((id) => !attemptedMissingIds.has(id));
+      if (unrecorded.length > 0) {
+        const nextSet = new Set(attemptedMissingIds);
+        for (const id of unrecorded) nextSet.add(id);
+        setAttemptedMissingIds(nextSet);
+      }
+    }
+  }
 
   useEffect(() => {
     if (missingBooksData?.results && missingBooksData.results.length > 0) {
@@ -216,6 +270,10 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     if (currentBook && typeof currentBook.id === 'number') {
       setOrMergeBook(toCanonicalBook(currentBook));
     }
+
+    resolvedMissingBooks.forEach((b) => {
+      setOrMergeBook(toCanonicalBook(b));
+    });
 
     if (missingBooksData?.results) {
       missingBooksData.results.forEach((b) => {
@@ -374,6 +432,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     savedBooks,
     favoriteBooks,
     bookStatuses,
+    resolvedMissingBooks,
     missingBooksData,
     offlineBooks,
   ]);
@@ -501,6 +560,10 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     sortBy,
     setSortBy,
     isLoading: !hasMounted || (missingIds.length > 0 && isMissingBooksLoading),
+    isBookOffline,
+    downloadBook,
+    removeBook,
+    downloadingBookId,
     updateVolumeStatus,
     clearVolumeProgress,
     clearAllVolumes,

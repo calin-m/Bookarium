@@ -15,6 +15,7 @@ import { CopyrightNoticeBanner } from '@/components/presentation/CopyrightNotice
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { Button } from '@/components/ui/Button';
+import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/components/ui/RemoveCollectionBookModal';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
@@ -101,10 +102,19 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
   const isCuratable = activeView === undefined || activeView === 'bookshelf' || activeView === 'favorites';
 
   const { country, evaluation, isRestricted, ruleDescription, reason, publicDomainYear } = useBookCopyright(selectedMobileBook);
+  const [pendingRemoval, setPendingRemoval] = React.useState<CollectionRemovalType | null>(null);
+  const [previousMobileBookId, setPreviousMobileBookId] = React.useState<number | null>(
+    selectedMobileBook?.id ?? null
+  );
+  const selectedMobileBookId = selectedMobileBook?.id ?? null;
+  if (selectedMobileBookId !== previousMobileBookId) {
+    setPreviousMobileBookId(selectedMobileBookId);
+    setPendingRemoval(null);
+  }
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedMobileBook) {
+      if (e.key === 'Escape' && selectedMobileBook && !pendingRemoval) {
         onClose();
       }
     };
@@ -114,7 +124,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedMobileBook, onClose]);
+  }, [selectedMobileBook, onClose, pendingRemoval]);
 
   if (!hasMounted) return null;
 
@@ -365,7 +375,13 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => handleToggleSave(selectedMobileBook)}
+                  onClick={() => {
+                    if (effectiveIsSaved) {
+                      setPendingRemoval('bookshelf');
+                    } else {
+                      handleToggleSave(selectedMobileBook);
+                    }
+                  }}
                   className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
                     effectiveIsSaved
                       ? 'border-primary bg-primary/10 text-primary'
@@ -378,7 +394,13 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => handleToggleFavorite(selectedMobileBook)}
+                  onClick={() => {
+                    if (effectiveIsFavorite) {
+                      setPendingRemoval('favorite');
+                    } else {
+                      handleToggleFavorite(selectedMobileBook);
+                    }
+                  }}
                   className={`p-2.5 rounded-xl border transition-colors shrink-0 cursor-pointer ${
                     effectiveIsFavorite
                       ? 'border-destructive bg-destructive/10 text-destructive'
@@ -445,6 +467,21 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                   </select>
                 </div>
               )}
+
+              <RemoveCollectionBookModal
+                isOpen={pendingRemoval !== null}
+                collectionType={pendingRemoval}
+                bookTitle={selectedMobileBook.title}
+                onClose={() => setPendingRemoval(null)}
+                onConfirm={() => {
+                  if (pendingRemoval === 'favorite') {
+                    handleToggleFavorite(selectedMobileBook);
+                  } else if (pendingRemoval === 'bookshelf') {
+                    handleToggleSave(selectedMobileBook);
+                  }
+                  setPendingRemoval(null);
+                }}
+              />
             </motion.div>
           </div>
         </>

@@ -7,23 +7,10 @@ import {
   Moon,
   Check,
   Headphones,
-  Database,
   Sliders,
 } from 'lucide-react';
 import type { AppTheme } from '@/stores/useThemeStore';
-import {
-  downloadLibraryBackupJSON,
-  exportLibraryToCSV,
-} from '@/lib/library-backup';
 import { AccountNarrationSubPanel } from './AccountNarrationSubPanel';
-import { AccountPortabilitySubPanel } from './AccountPortabilitySubPanel';
-
-export const exportLibraryData = (type: 'json' | 'csv' = 'json'): string | void => {
-  if (type === 'csv') {
-    return exportLibraryToCSV();
-  }
-  return downloadLibraryBackupJSON();
-};
 
 export interface AccountPreferencesSectionProps {
   theme: AppTheme;
@@ -41,10 +28,9 @@ export interface AccountPreferencesSectionProps {
   speechHighlightEnabled: boolean;
   onSpeechHighlightEnabledChange: (enabled: boolean) => void;
   onResetSpeechPreferences?: () => void;
-  userId?: string;
 }
 
-type PreferencesSubTabId = 'appearance' | 'narration' | 'portability';
+type PreferencesSubTabId = 'appearance' | 'narration';
 
 export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps> = ({
   theme,
@@ -60,7 +46,6 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
   speechHighlightEnabled,
   onSpeechHighlightEnabledChange,
   onResetSpeechPreferences,
-  userId,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<PreferencesSubTabId>('appearance');
 
@@ -106,23 +91,6 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
           >
             <Headphones className="w-3.5 h-3.5 shrink-0" />
             <span className={activeSubTab === 'narration' ? 'inline' : 'hidden md:inline'}>Read-Aloud Studio</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeSubTab === 'portability'}
-            aria-label="Backup & Restore"
-            title="Backup & Restore"
-            onClick={() => setActiveSubTab('portability')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
-              activeSubTab === 'portability'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5 shrink-0" />
-            <span className={activeSubTab === 'portability' ? 'inline' : 'hidden md:inline'}>Backup & Restore</span>
           </button>
         </nav>
       </div>
@@ -253,12 +221,6 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
         speechHighlightEnabled={speechHighlightEnabled}
         onSpeechHighlightEnabledChange={onSpeechHighlightEnabledChange}
         onResetSpeechPreferences={onResetSpeechPreferences}
-      />
-
-      {/* Sub-Tab 3: Library Portability & Backups */}
-      <AccountPortabilitySubPanel
-        isActive={activeSubTab === 'portability'}
-        userId={userId}
       />
       </div>
     </div>

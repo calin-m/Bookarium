@@ -423,7 +423,7 @@ describe('BookshelfRack Component', () => {
     expect(handleDownload).toHaveBeenCalledWith(mockBooks[0]);
   });
 
-  it('toggles saved bookmark state when Save button is clicked on hover card', () => {
+  it('toggles saved bookmark state when Save button is clicked on hover card and confirmed', () => {
     useBookshelfStore.setState({
       savedBooks: mockBooks,
       favoriteBooks: mockBooks,
@@ -437,10 +437,13 @@ describe('BookshelfRack Component', () => {
 
     const saveBtns = screen.getAllByLabelText('Remove from bookshelf');
     fireEvent.click(saveBtns[0]);
+    expect(useBookshelfStore.getState().savedBooks).toHaveLength(mockBooks.length);
+
+    fireEvent.click(screen.getByRole('button', { name: /Remove from Shelf/i }));
     expect(useBookshelfStore.getState().savedBooks).toHaveLength(mockBooks.length - 1);
   });
 
-  it('toggles favorite state when Favorite button is clicked on hover card', () => {
+  it('toggles favorite state when Favorite button is clicked on hover card and confirmed', () => {
     useBookshelfStore.setState({
       savedBooks: mockBooks,
       favoriteBooks: mockBooks,
@@ -454,6 +457,9 @@ describe('BookshelfRack Component', () => {
 
     const unlikeBtns = screen.getAllByLabelText('Remove from favorites');
     fireEvent.click(unlikeBtns[0]);
+    expect(useBookshelfStore.getState().favoriteBookIds).toContain(mockBooks[0].id);
+
+    fireEvent.click(screen.getByRole('button', { name: /Remove Favorite/i }));
     expect(useBookshelfStore.getState().favoriteBookIds).not.toContain(mockBooks[0].id);
   });
 
@@ -569,12 +575,14 @@ describe('BookshelfRack Component', () => {
 
     const sheet = screen.getByTestId('mobile-book-action-sheet');
 
-    // Remove from bookshelf
+    // Remove from bookshelf (opens confirmation modal)
     const removeBtn = within(sheet).getByRole('button', { name: 'Remove from bookshelf' });
     fireEvent.click(removeBtn);
+    expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Remove from Shelf/i }));
     expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(false);
 
-    // Favorite book
+    // Favorite book (immediate add)
     const likeBtn = within(sheet).getByRole('button', { name: 'Add to favorites' });
     fireEvent.click(likeBtn);
     expect(useBookshelfStore.getState().isBookFavorite(mockBooks[0].id)).toBe(true);

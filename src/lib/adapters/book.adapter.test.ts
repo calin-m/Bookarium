@@ -4,6 +4,7 @@ import {
   extractFormatUrl,
   isCanonicalBook,
   toCanonicalBook,
+  toGutendexBook,
   toGutendexBookFromCloudRow,
   toCloudBookInsert,
   formatAuthorWithLifespan,
@@ -411,6 +412,108 @@ describe('book.adapter', () => {
       expect(canonicalUnparsedDetails.authorDetails).toEqual([
         { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
       ]);
+    });
+  });
+
+  describe('toGutendexBook', () => {
+    it('returns an existing GutendexBook unchanged', () => {
+      const raw: GutendexBook = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        subjects: ['Love stories'],
+        bookshelves: ['Best Books Ever'],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: { 'image/jpeg': 'https://example.com/1342.jpg' },
+        download_count: 50000,
+      };
+      expect(toGutendexBook(raw)).toBe(raw);
+    });
+
+    it('converts a canonical Book with authorDetails, translators, and explicit URLs to a GutendexBook', () => {
+      const canonical: Book = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: ['Jane Austen'],
+        authorDetails: [
+          { name: 'Austen, Jane', birth_year: 1775, death_year: 1817 },
+          { name: 'Carroll, Lewis, 1832-1898', birth_year: null, death_year: null },
+        ],
+        translators: [{ name: 'Garnett, Constance', birth_year: 1861, death_year: 1946 }],
+        subjects: ['Classic Literature'],
+        languages: ['en', 'fr'],
+        copyright: false,
+        coverUrl: 'https://example.com/cover.jpg',
+        epubUrl: 'https://example.com/book.epub',
+        htmlUrl: 'https://example.com/book.html',
+        txtUrl: 'https://example.com/book.txt',
+        downloadCount: 42000,
+      };
+
+      const result = toGutendexBook(canonical);
+      expect(result.id).toBe(1342);
+      expect(result.title).toBe('Pride and Prejudice');
+      expect(result.authors).toEqual([
+        { name: 'Austen, Jane', birth_year: 1775, death_year: 1817 },
+        { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
+      ]);
+      expect(result.translators).toEqual([
+        { name: 'Garnett, Constance', birth_year: 1861, death_year: 1946 },
+      ]);
+      expect(result.subjects).toEqual(['Classic Literature']);
+      expect(result.languages).toEqual(['en', 'fr']);
+      expect(result.copyright).toBe(false);
+      expect(result.formats['image/jpeg']).toBe('https://example.com/cover.jpg');
+      expect(result.formats['application/epub+zip']).toBe('https://example.com/book.epub');
+      expect(result.formats['text/html']).toBe('https://example.com/book.html');
+      expect(result.formats['text/plain; charset=utf-8']).toBe('https://example.com/book.txt');
+      expect(result.download_count).toBe(42000);
+    });
+
+    it('falls back to parsing author string lifespans and standard Gutenberg format URLs when authorDetails or URLs are absent', () => {
+      const canonicalWithoutDetails: Book = {
+        id: 84,
+        title: 'Frankenstein',
+        authors: ['Mary Shelley (1797-1851)'],
+        subjects: [],
+        languages: [],
+        coverUrl: null,
+        epubUrl: null,
+        htmlUrl: null,
+        txtUrl: null,
+        downloadCount: 0,
+      };
+
+      const result = toGutendexBook(canonicalWithoutDetails);
+      expect(result.authors).toEqual([
+        { name: 'Mary Shelley (1797-1851)', birth_year: 1797, death_year: 1851 },
+      ]);
+      expect(result.languages).toEqual(['en']);
+      expect(result.formats['image/jpeg']).toBeUndefined();
+      expect(result.formats['application/epub+zip']).toBe('https://www.gutenberg.org/ebooks/84.epub3.images');
+      expect(result.formats['text/html']).toBe('https://www.gutenberg.org/ebooks/84.html.images');
+      expect(result.formats['text/plain; charset=utf-8']).toBe('https://www.gutenberg.org/ebooks/84.txt.utf-8');
+    });
+
+    it('handles empty authors array gracefully', () => {
+      const emptyAuthorsBook: Book = {
+        id: 99,
+        title: 'Anonymous Work',
+        authors: [],
+        subjects: [],
+        languages: ['en'],
+        coverUrl: null,
+        epubUrl: null,
+        htmlUrl: null,
+        txtUrl: null,
+        downloadCount: Number.NaN as unknown as number,
+      };
+      const result = toGutendexBook(emptyAuthorsBook);
+      expect(result.authors).toEqual([]);
+      expect(result.download_count).toBe(0);
     });
   });
 });

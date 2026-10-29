@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 28 Oct 2026 14:53:05 GMT  
+**Last Generated**: Thu, 29 Oct 2026 13:53:16 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 189 passed  
-**Total Verified Tests**: 2020 passed  
+**Total Test Suites**: 186 passed  
+**Total Verified Tests**: 1992 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **189/189 test suites passed** (2020 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **186/186 test suites passed** (1992 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $ge$ 95%, Statements $ge$ 95%, Functions $ge$ 92%, Branches $ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 72 Architectural Decision Records validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.7%** (10178/10525) — *Target: $ge$ 95%*
-- **Statements**: **95.42%** (11074/11605) — *Target: $ge$ 95%*
-- **Functions**: **93.87%** (2405/2562) — *Target: $ge$ 92%*
-- **Branches**: **88.43%** (10101/11422) — *Target: $ge$ 85%*
+- **Lines**: **96.65%** (9912/10255) — *Target: $ge$ 95%*
+- **Statements**: **95.42%** (10802/11320) — *Target: $ge$ 95%*
+- **Functions**: **94.01%** (2388/2540) — *Target: $ge$ 92%*
+- **Branches**: **88.38%** (9871/11168) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (189 Suites / 2020 Tests)
+## 🧪 Comprehensive Test Suite Catalog (186 Suites / 1992 Tests)
 
 ### 🚀 App Routes & Pages (26 Suites · 265 Tests)
 
@@ -458,7 +458,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 424 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 429 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -505,9 +505,9 @@
 - ✔ `renders fallback cover when image error occurs`
 - ✔ `triggers preview on Enter or Space key press on cover`
 - ✔ `updates cursor tooltip to Add to Favorites and Add to Bookshelf when hovering action buttons`
-- ✔ `requires two clicks on favorite button to remove from favorites when activeView="favorites"`
-- ✔ `auto-disarms favorite removal confirmation after timeout when activeView="favorites"`
-- ✔ `disarms favorite removal confirmation on mouse leave or blur when activeView="favorites"`
+- ✔ `opens confirmation modal when removing from favorites and removes only when confirmed`
+- ✔ `cancels favorite removal when Cancel is clicked in confirmation modal`
+- ✔ `opens confirmation modal when removing from bookshelf and supports cancel or confirm`
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is protected in UK`
 - ✔ `applies opacity and grayscale to cover image when book is restricted`
 - ✔ `opens unconstrained popover when clicking +N tag and invokes onTopicClick`
@@ -537,7 +537,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (21 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (22 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -560,6 +560,7 @@
 - ✔ `triggers onActivate on click, and onDeactivate on mouseLeave on desktop and on blur`
 - ✔ `displays exact bookmarked line coordinate when bookmarkRow is greater than 0`
 - ✔ `disables Resume, Save for offline reading, and Symposium Invite when network is offline and book is not cached, but enables Resume and Remove when cached`
+- ✔ `toggles Favorite and Bookshelf state via header action buttons with full metadata preservation and without triggering card activation`
 
 </details>
 
@@ -631,7 +632,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfMobileModal.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `returns null when selectedMobileBook is null`
 - ✔ `renders modal with formatted author names and triggers actions`
@@ -643,6 +644,8 @@
 - ✔ `renders regional copyright notice banner and disables read and offline actions for restricted books`
 - ✔ `disables offline toggle and shows loading state when isDownloadingOffline is true`
 - ✔ `disables Read Volume and Save for offline reading when network is offline and book is not cached, but keeps them enabled when cached`
+- ✔ `opens confirmation modals when removing from bookshelf or favorites and supports cancel and confirm`
+- ✔ `clears pending removal when switching to a different selected book ID`
 
 </details>
 
@@ -651,7 +654,7 @@
 
 - ✔ `renders spine title, author, and handles keyboard interaction`
 - ✔ `triggers quick actions from desktop hover card`
-- ✔ `renders offline indicator and fires onToggleOffline when clicked`
+- ✔ `renders offline indicator and fires onToggleOffline, onToggleSave, and onToggleFavorite when not saved/favorited`
 - ✔ `renders cursor-following portal tooltip on hover card button hover`
 - ✔ `renders muted spine, restriction badge, banner, and disabled buttons for copyright-protected books`
 - ✔ `renders embossed 5-star spine stamp, multi-shelf Move to Shelf selector, full tooltip matrix, and router fallback`
@@ -684,8 +687,8 @@
 - ✔ `allows moving a book between shelves when user has multiple shelves`
 - ✔ `triggers onBookClick when Read button is clicked on hover card`
 - ✔ `triggers onDownloadClick when Download button is clicked on hover card`
-- ✔ `toggles saved bookmark state when Save button is clicked on hover card`
-- ✔ `toggles favorite state when Favorite button is clicked on hover card`
+- ✔ `toggles saved bookmark state when Save button is clicked on hover card and confirmed`
+- ✔ `toggles favorite state when Favorite button is clicked on hover card and confirmed`
 - ✔ `opens quick-action bottom sheet on mobile spine tap without immediate navigation`
 - ✔ `triggers onBookClick and closes sheet when clicking Read in mobile action sheet`
 - ✔ `dismisses mobile action sheet when clicking backdrop`
@@ -968,7 +971,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (49 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (51 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -1019,6 +1022,8 @@
 - ✔ `renders quote cards in a single-column grid on tablet and two-column grid on desktop (lg:grid-cols-2)`
 - ✔ `renders Not Downloaded badge on volume header and disables Read Passage when offline and book is not downloaded`
 - ✔ `covers paired fellow search/color matching and chronological & volume sort options including downloaded filter reset`
+- ✔ `clamps pagination when deleting the last item on the final page and resets page when switching marginalia source filter`
+- ✔ `primes useReaderStore when clicking a volume heading in By-Book mode`
 
 </details>
 
@@ -1618,7 +1623,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (36 Suites · 440 Tests)
+### 📚 Gutenberg Parsers & Metadata (34 Suites · 415 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1641,7 +1646,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (24 tests)</summary>
 
 - ✔ `normalizes "LastName, FirstName" to "FirstName LastName"`
 - ✔ `returns single word or standard formatted names unchanged`
@@ -1663,6 +1668,10 @@
 - ✔ `formats Author objects with birth/death years, single bounds, and avoids duplicating existing lifespans`
 - ✔ `extracts authorDetails lifespans when toCanonicalBook receives string authors with embedded dates`
 - ✔ `covers string author input, birth-only lifespan, Author objects in cloud row, and partial hybrid books`
+- ✔ `returns an existing GutendexBook unchanged`
+- ✔ `converts a canonical Book with authorDetails, translators, and explicit URLs to a GutendexBook`
+- ✔ `falls back to parsing author string lifespans and standard Gutenberg format URLs when authorDetails or URLs are absent`
+- ✔ `handles empty authors array gracefully`
 
 </details>
 
@@ -1676,17 +1685,6 @@
 - ✔ `falls back to 127.0.0.1 when no IP headers are present`
 - ✔ `returns a 429 response with default message and standard headers`
 - ✔ `merges custom message and additional body properties`
-
-</details>
-
-<details>
-<summary><b><code>src/lib/backup-validator.test.ts</code></b> (5 tests)</summary>
-
-- ✔ `rejects non-object inputs and arrays`
-- ✔ `rejects payloads containing prototype pollution keys at root or nested levels`
-- ✔ `rejects unrecognized application names and missing library sections`
-- ✔ `validates individual book items, custom shelves, readingQueue, annotations, and favorite lists`
-- ✔ `normalizes valid backup payloads, sanitizes ratings/statuses, and falls back to likedBookIds`
 
 </details>
 
@@ -1975,35 +1973,6 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/library-backup.test.ts</code></b> (23 tests)</summary>
-
-- ✔ `generates a complete, structured backup payload from active stores`
-- ✔ `creates a download blob and triggers click in DOM`
-- ✔ `generates a valid CSV string with proper escaping and headers`
-- ✔ `escapes cells containing commas, quotes, and newlines`
-- ✔ `neutralizes spreadsheet formula prefixes (CWE-1236) in exported CSV cells`
-- ✔ `accepts a valid backup payload`
-- ✔ `rejects non-object raw inputs`
-- ✔ `rejects payloads from foreign applications`
-- ✔ `rejects missing library section`
-- ✔ `rejects invalid savedBooks structure`
-- ✔ `rejects corrupted book items inside savedBooks`
-- ✔ `rejects non-array annotations, favoriteBookIds, or likedBookIds if provided`
-- ✔ `merges incoming backup non-destructively by default`
-- ✔ `overwrites state completely when replace strategy is selected`
-- ✔ `triggers cloud sync if userId is provided`
-- ✔ `restores readingQueue correctly in replace mode`
-- ✔ `restores light theme, readerDisplay typography settings, and custom shelf isPublic flags`
-- ✔ `rejects payloads containing prototype pollution keys`
-- ✔ `validates all items in large savedBooks arrays beyond index 50`
-- ✔ `rejects malformed customShelves missing bookIds array`
-- ✔ `filters out-of-bounds ratings and non-standard statuses`
-- ✔ `covers CSV status variants (want_to_read, currently_reading, Unassigned), Unknown Author, and replace/merge edge cases`
-- ✔ `handles partial backup payloads, custom filenames, older merge positions, duplicate queue/annotations, and empty replace shelves`
-
-</details>
-
-<details>
 <summary><b><code>src/lib/offline-storage.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `saves book text to offline storage`
@@ -2201,7 +2170,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/utils.test.ts</code></b> (26 tests)</summary>
+<summary><b><code>src/lib/utils.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `should merge class names correctly`
 - ✔ `resolves Tailwind v4 shadow-xs/2xs and custom design-token shadows without duplicate shadow classes`
@@ -2228,7 +2197,6 @@
 - ✔ `returns days ago for timestamps under 7 days`
 - ✔ `formats date string for timestamps older than 7 days`
 - ✔ `falls back gracefully to "Recently" for invalid dates or epoch zero`
-- ✔ `creates an anchor, appends to body, clicks, removes anchor, and revokes object URL`
 
 </details>
 
@@ -2678,7 +2646,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (47 Suites · 243 Tests)
+### 🧩 UI Primitives & Motion (46 Suites · 235 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2761,14 +2729,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPortabilitySubPanel.test.tsx</code></b> (1 tests)</summary>
-
-- ✔ `renders export and import buttons, triggers file picker, and validates valid/invalid backup files`
-
-</details>
-
-<details>
-<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
 - ✔ `renders read-aloud section and handles speed selection`
@@ -2776,12 +2737,7 @@
 - ✔ `handles voice preview audio playback and toggle`
 - ✔ `triggers onThemeChange when clicking Light and Dark theme buttons`
 - ✔ `handles speech synthesis voice preview completion and error callbacks`
-- ✔ `renders the portability section with JSON, CSV, and Import buttons`
-- ✔ `handles JSON and CSV export clicks`
-- ✔ `handles file input change and shows error on corrupted file`
-- ✔ `shows error when backup file exceeds 10MB limit`
-- ✔ `handles exportLibraryData utility directly`
-- ✔ `switches between Appearance & Scroll, Read-Aloud Studio, and Backup & Restore sub-tabs`
+- ✔ `switches between Appearance & Scroll and Read-Aloud Studio sub-tabs and enables Smart Auto-Hide`
 - ✔ `uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60`
 
 </details>
@@ -2801,17 +2757,6 @@
 - ✔ `uses solid border-border on header icon box and Public Sanctuary badge without fractional borders`
 - ✔ `syncs reactive state when profile prop updates, toggles all privacy checkboxes, and recovers from thrown errors`
 - ✔ `disables @username input and shows offline hint when offline while keeping bio and privacy editable`
-
-</details>
-
-<details>
-<summary><b><code>src/components/account/AccountRestoreModal.test.tsx</code></b> (5 tests)</summary>
-
-- ✔ `renders nothing when closed or no backupData and no success`
-- ✔ `renders backup metadata counts and allows strategy switching`
-- ✔ `displays loading state while restoring`
-- ✔ `displays error message if restore failed`
-- ✔ `displays success state when restore succeeds`
 
 </details>
 
@@ -3007,6 +2952,15 @@
 - ✔ `renders nothing when strength is empty or score is 0 without label`
 - ✔ `renders score segments and label for Moderate password`
 - ✔ `renders all 3 segments filled for Strong password`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/RemoveCollectionBookModal.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders Remove from Favorites modal with book title and triggers onConfirm / onClose`
+- ✔ `renders Remove from Bookshelf modal with generic fallback when bookTitle is omitted`
+- ✔ `does not render when isOpen is false or collectionType is null`
 
 </details>
 

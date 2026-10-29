@@ -12,7 +12,6 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useContinueReadingLedger, type BookmarksSortOption } from '@/hooks/reader/useContinueReadingLedger';
-import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { BookmarkCard } from './BookmarkCard';
 import { CollectionToolbar, type SortOption } from './CollectionToolbar';
@@ -50,15 +49,6 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
   const [volumeToDelete, setVolumeToDelete] = useState<ActiveReadingVolume | null>(null);
   const [volumeToFinish, setVolumeToFinish] = useState<ActiveReadingVolume | null>(null);
   const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | Book | null>(null);
-  const { isBookOffline, downloadBook, removeBook, downloadingBookId } = useOfflineBooks();
-
-  const handleToggleOffline = async (book: GutendexBook | Book) => {
-    if (isBookOffline(book.id)) {
-      setBookToRemoveOffline(book);
-    } else {
-      await downloadBook(book);
-    }
-  };
 
   const {
     filteredVolumes,
@@ -69,10 +59,22 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
     sortBy,
     setSortBy,
     counts,
+    isBookOffline,
+    downloadBook,
+    removeBook,
+    downloadingBookId,
     updateVolumeStatus,
     clearVolumeProgress,
     clearAllVolumes,
   } = useContinueReadingLedger();
+
+  const handleToggleOffline = async (book: GutendexBook | Book) => {
+    if (isBookOffline(book.id)) {
+      setBookToRemoveOffline(book);
+    } else {
+      await downloadBook(book);
+    }
+  };
 
   // Reset page to 1 when filters, search query, or sorting change
   const [prevFilterKey, setPrevFilterKey] = useState(`${activeFilter}-${searchQuery}-${sortBy}`);
@@ -83,10 +85,11 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
   }
 
   const totalPages = Math.ceil(filteredVolumes.length / BOOKMARKS_PAGE_SIZE);
+  const safeCurrentPage = Math.min(currentPage, Math.max(1, totalPages));
   const paginatedVolumes = useMemo(() => {
-    const start = (currentPage - 1) * BOOKMARKS_PAGE_SIZE;
+    const start = (safeCurrentPage - 1) * BOOKMARKS_PAGE_SIZE;
     return filteredVolumes.slice(start, start + BOOKMARKS_PAGE_SIZE);
-  }, [filteredVolumes, currentPage]);
+  }, [filteredVolumes, safeCurrentPage]);
 
   // Single-column mobile scroll focus zone (< 768px) and tactile dismissal
   useEffect(() => {
@@ -253,7 +256,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           onSortChange={(newSort) => setSortBy(newSort as BookmarksSortOption)}
           sortOptions={BOOKMARK_SORT_OPTIONS}
           sortAriaLabel="Sort bookmarks"
-          currentPage={currentPage}
+          currentPage={safeCurrentPage}
           totalPages={totalPages}
           onPageChange={handlePageChange}
           paginationAriaLabel="Top bookmarks pagination"
@@ -388,7 +391,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
 
             {/* Pagination Controls (shown when > 12 items) */}
             <Pagination
-              currentPage={currentPage}
+              currentPage={safeCurrentPage}
               totalPages={totalPages}
               onPageChange={handlePageChange}
               totalItems={filteredVolumes.length}

@@ -206,6 +206,62 @@ export function toCanonicalBook(
   };
 }
 
+/**
+ * Converts a canonical Book or raw GutendexBook into a standard GutendexBook entity,
+ * preserving author lifespans (`authorDetails` or parsed date strings) and format URLs.
+ */
+export function toGutendexBook(input: Book | GutendexBook): GutendexBook {
+  if (!isCanonicalBook(input)) {
+    return input;
+  }
+
+  let authors: Author[] = [];
+  if (Array.isArray(input.authorDetails) && input.authorDetails.length > 0) {
+    authors = input.authorDetails.map((detail) => {
+      const parsed =
+        detail.birth_year == null && detail.death_year == null && detail.name
+          ? parseLifespansFromName(detail.name)
+          : { birthYear: detail.birth_year ?? null, deathYear: detail.death_year ?? null };
+      return {
+        ...detail,
+        name: detail.name,
+        birth_year: parsed.birthYear,
+        death_year: parsed.deathYear,
+      };
+    });
+  } else if (Array.isArray(input.authors) && input.authors.length > 0) {
+    authors = input.authors.map((name) => {
+      const parsed = parseLifespansFromName(name);
+      return {
+        name,
+        birth_year: parsed.birthYear,
+        death_year: parsed.deathYear,
+      };
+    });
+  }
+
+  const id = input.id;
+  return {
+    id,
+    title: input.title,
+    authors,
+    translators: Array.isArray(input.translators) ? [...input.translators] : [],
+    subjects: Array.isArray(input.subjects) ? [...input.subjects] : [],
+    bookshelves: [],
+    languages: Array.isArray(input.languages) && input.languages.length > 0 ? [...input.languages] : ['en'],
+    copyright: input.copyright ?? false,
+    media_type: 'Text',
+    formats: {
+      ...(input.coverUrl ? { 'image/jpeg': input.coverUrl } : {}),
+      'application/epub+zip': input.epubUrl || `https://www.gutenberg.org/ebooks/${id}.epub3.images`,
+      'text/html': input.htmlUrl || `https://www.gutenberg.org/ebooks/${id}.html.images`,
+      'text/plain; charset=utf-8': input.txtUrl || `https://www.gutenberg.org/ebooks/${id}.txt.utf-8`,
+      'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${id}.kindle.images`,
+    },
+    download_count: Number.isFinite(input.downloadCount) ? input.downloadCount : 0,
+  };
+}
+
 export interface CloudBookRow {
   book_id: number;
   book_title: string;

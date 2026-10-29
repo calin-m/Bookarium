@@ -1950,6 +1950,109 @@ describe('NotebookView component', () => {
       fireEvent.click(screen.getByRole('button', { name: /Reset Filters/i }));
       expect(screen.getByText(/Own reflection/i)).toBeInTheDocument();
     });
+
+    it('clamps pagination when deleting the last item on the final page and resets page when switching marginalia source filter', async () => {
+      // Seed 13 own annotations and 1 fellow annotation (14 total in All mode -> 2 pages in Chronological mode)
+      useAnnotationStore.setState({
+        annotations: Array.from({ length: 13 }, (_, idx) => {
+          const i = idx + 1;
+          return {
+            id: `clamp-ann-${i}`,
+            bookId: 1342,
+            bookTitle: 'Pride and Prejudice',
+            bookAuthor: 'Jane Austen',
+            chapterIndex: 0,
+            chapterPage: i,
+            selectedText: `Clamp test quote #${String(i).padStart(2, '0')}`,
+            color: 'yellow' as const,
+            createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+            updatedAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+          };
+        }),
+        fellowAnnotations: [
+          {
+            id: 'clamp-fellow-1',
+            bookId: 84,
+            bookTitle: 'Frankenstein',
+            bookAuthor: 'Mary Shelley',
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'Fellow passage for source filter reset',
+            color: 'mint',
+            createdAt: '2026-01-02T10:00:00Z',
+            updatedAt: '2026-01-02T10:00:00Z',
+            isFellow: true,
+            fellowUsername: 'mary_s',
+            fellowDisplayName: 'Mary Shelley',
+          },
+        ],
+        marginaliaSourceFilter: 'all',
+      });
+
+      render(<NotebookView />);
+      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+
+      const getPaginationNav = () => screen.getByRole('navigation', { name: /Pagination navigation/i });
+      fireEvent.click(within(getPaginationNav()).getByRole('button', { name: 'Go to page 2' }));
+      expect(within(getPaginationNav()).getByRole('button', { name: 'Go to page 2' })).toHaveAttribute('aria-current', 'page');
+
+      // Switch marginaliaSourceFilter to 'fellows' -> resets to page 1 and shows the fellow quote
+      fireEvent.click(screen.getByTestId('notebook-source-fellows'));
+      expect(screen.getByText(/Fellow passage for source filter reset/i)).toBeInTheDocument();
+
+      // Switch to 'mine' (13 items -> 2 pages), go to page 2 (1 item: clamp-ann-1), and delete that last item on page 2
+      fireEvent.click(screen.getByTestId('notebook-source-mine'));
+      fireEvent.click(within(getPaginationNav()).getByRole('button', { name: 'Go to page 2' }));
+      expect(screen.getAllByTestId(/^notebook-quote-card-/)).toHaveLength(1);
+
+      act(() => {
+        useAnnotationStore.setState((s) => ({
+          annotations: s.annotations.slice(1), // 12 items remaining -> 1 page
+        }));
+      });
+
+      // Clamped to page 1 automatically, showing all 12 remaining items instead of an empty grid
+      expect(screen.getAllByTestId(/^notebook-quote-card-/)).toHaveLength(12);
+    });
+
+    it('primes useReaderStore when clicking a volume heading in By-Book mode', async () => {
+      const { useReaderStore } = await import('@/stores/useReaderStore');
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            id: 1342,
+            title: 'Pride and Prejudice',
+            authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+            translators: [],
+            subjects: ['Fiction'],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 1000,
+          },
+        ],
+      });
+
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'It is a truth universally acknowledged.',
+        color: 'yellow',
+      });
+
+      render(<NotebookView />);
+
+      const volumeHeading = screen.getByRole('heading', { name: 'Pride and Prejudice' });
+      fireEvent.click(volumeHeading);
+
+      expect(useReaderStore.getState().currentBook?.id).toBe(1342);
+      expect(mockPush).toHaveBeenCalledWith('/read/1342');
+    });
   });
 });
 

@@ -96,7 +96,7 @@ This runs all automated quality gateways:
 1. **Pass 0.5**: Secret Prevention Scanner
 2. **Pass 0.75**: 7-Pillar Pre-Commit SAST & OWASP Security Suite (Dependency CVEs, Rate Limiting & Mirror SSRF, DOM XSS, Open Redirects, License, PostgreSQL RLS & `search_path`, OWASP HTTP Headers)
 3. **Pass 1**: TypeScript Strict Typecheck (`tsc --noEmit`)
-4. **Pass 2 & 3**: Vitest MSW & UI Test Suites ($\ge 85\%$ coverage floor across 189 suites)
+4. **Pass 2 & 3**: Vitest MSW & UI Test Suites ($\ge 85\%$ coverage floor across 185 suites)
 5. **Pass 4**: Living Documentation AST Re-Compilation
 6. **Pass 5**: ADR Decision Ledger Validation
 7. **Pass 6**: ESLint & Knip Quality Audit

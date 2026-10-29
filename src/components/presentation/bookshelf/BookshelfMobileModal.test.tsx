@@ -285,6 +285,80 @@ describe('BookshelfMobileModal Component', () => {
 
     networkSpy.mockRestore();
   });
-});
 
+  it('opens confirmation modals when removing from bookshelf or favorites and supports cancel and confirm', () => {
+    const handleToggleSave = vi.fn();
+    const handleToggleFavorite = vi.fn();
+    const handleClose = vi.fn();
+
+    render(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        onClose={handleClose}
+        isSaved={true}
+        isFavorite={true}
+        onToggleSave={handleToggleSave}
+        onToggleFavorite={handleToggleFavorite}
+      />
+    );
+
+    const removeShelfBtn = screen.getByRole('button', { name: 'Remove from bookshelf' });
+    fireEvent.click(removeShelfBtn);
+    expect(handleToggleSave).not.toHaveBeenCalled();
+    expect(screen.getByTestId('remove-bookshelf-dialog')).toBeInTheDocument();
+
+    // Cancel keeps modal closed and does not call handleToggleSave
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+    expect(handleToggleSave).not.toHaveBeenCalled();
+
+    // Reopen and confirm bookshelf removal
+    fireEvent.click(removeShelfBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Remove from Shelf/i }));
+    expect(handleToggleSave).toHaveBeenCalledWith(mockBook);
+
+    // Favorite removal confirmation
+    const removeFavBtn = screen.getByRole('button', { name: 'Remove from favorites' });
+    fireEvent.click(removeFavBtn);
+    expect(handleToggleFavorite).not.toHaveBeenCalled();
+    expect(screen.getByTestId('remove-favorite-dialog')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Remove Favorite/i }));
+    expect(handleToggleFavorite).toHaveBeenCalledWith(mockBook);
+  });
+
+  it('clears pending removal when switching to a different selected book ID', () => {
+    const secondBook: GutendexBook = { ...mockBook, id: 1343, title: 'Emma' };
+    const { rerender } = render(
+      <BookshelfMobileModal
+        selectedMobileBook={mockBook}
+        onClose={vi.fn()}
+        isSaved={true}
+        onToggleSave={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from bookshelf' }));
+    expect(screen.getByTestId('remove-bookshelf-dialog')).toBeInTheDocument();
+
+    rerender(
+      <BookshelfMobileModal
+        selectedMobileBook={{ ...mockBook }}
+        onClose={vi.fn()}
+        isSaved={true}
+        onToggleSave={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('remove-bookshelf-dialog')).toBeInTheDocument();
+
+    rerender(
+      <BookshelfMobileModal
+        selectedMobileBook={secondBook}
+        onClose={vi.fn()}
+        isSaved={true}
+        onToggleSave={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId('remove-bookshelf-dialog')).not.toBeInTheDocument();
+  });
+});
 

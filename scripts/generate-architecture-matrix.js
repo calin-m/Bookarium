@@ -212,7 +212,7 @@ function extractNodeEcosystemCatalog(rootDirPath) {
     postcss: 'CSS transformer tool for Tailwind CSS v4 processing.',
     tailwindcss: 'Utility-first CSS framework v4 with Oxide compiler engine.',
     typescript: 'Static type system verifying strict compile-time safety (zero any).',
-    vitest: 'Fast Vite-native test runner executing all 189 unit and integration suites.',
+    vitest: 'Fast Vite-native test runner executing all 186 unit and integration suites.',
 
     // Overrides
     'fast-glob': 'Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities.',
@@ -466,7 +466,7 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
   return candidates.filter((c) => fs.existsSync(path.join(rootDirPath, c.file)));
 }
 
-function extractRepositoryTopologyAndDocsCatalog(rootDirPath) {
+function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
   let adrCount = 71;
   const adrFilePath = path.join(rootDirPath, 'docs', 'DECISIONS.md');
   if (fs.existsSync(adrFilePath)) {
@@ -477,12 +477,12 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath) {
 
   const directories = [
     { path: 'src/app/', role: 'Next.js 16 App Router pages, SSR layouts, metadata routes (`manifest.ts`, `robots.ts`, `sitemap.ts`), global providers (`providers.tsx`), and serverless API route handlers (`/api/books/**`, `/auth/callback`).' },
-    { path: 'src/components/', role: '76 production React 19 UI components organized across `account/`, `accolades/`, `auth/`, `layout/`, `motion/`, `presentation/` (including `bookshelf/`), `profile/`, `pwa/`, `reader/`, `symposium/`, and `ui/`, each paired with co-located `*.test.tsx` suites.' },
-    { path: 'src/stores/', role: '10 Zustand client-side state stores (`useBookshelfStore`, `useReaderStore`, `useAuthStore`, `useFellowshipStore`, `useAnnotationStore`, `useAccoladesStore`, `useHabitsStore`, `useJurisdictionStore`, `usePreferencesStore`, `useThemeStore`) with `localStorage` persistence and bi-directional Supabase cloud outbox synchronization.' },
-    { path: 'src/hooks/', role: '22 custom React hooks organized into `queries/` (TanStack Query v5 data fetching), `reader/` (Web Speech TTS, session coordinates, gestures, worker AST, reading ledger), and root UI/network/copyright hooks (`useNetworkStatus`, `useOfflineBooks`, `useBookCopyright`, `useCatalogFilters`, `useCollectionAutoHeal`).' },
-    { path: 'src/lib/', role: '40 pure domain computational engines and adapters covering Gutenberg AST segmentation/pagination/reflow (`gutenberg/`), dual-provider catalog resolution (`catalog/`), Supabase SSR/browser clients (`supabase/`), multi-jurisdictional copyright (`copyright-engine.ts`), IndexedDB storage (`offline-storage.ts`), interval annotation partitioning (`reader-annotator.ts`), cloud bookshelf sync (`bookshelf-cloud-sync.ts`), and portable backups (`library-backup.ts`, `backup-validator.ts`).' },
-    { path: 'src/config/', role: '13 centralized design token, routing, theme, language, era, literary quote, and 27-masterwork curated anthology configuration modules.' },
-    { path: 'src/types/', role: '4 canonical TypeScript type contract modules (`book.types.ts`, `database.types.ts`, `catalog.types.ts`, `accolades.types.ts`) defining zero-any domain and PostgreSQL row schemas.' },
+    { path: 'src/components/', role: `${counts.componentCount || 73} production React 19 UI components organized across \`account/\`, \`accolades/\`, \`auth/\`, \`bookshelf/\`, \`motion/\`, \`presentation/\` (including \`bookshelf/\`), \`profile/\`, \`pwa/\`, \`reader/\`, \`symposium/\`, and \`ui/\`, each paired with co-located \`*.test.tsx\` suites.` },
+    { path: 'src/stores/', role: `${counts.storeCount || 10} Zustand client-side state stores (\`useBookshelfStore\`, \`useReaderStore\`, \`useAuthStore\`, \`useFellowshipStore\`, \`useAnnotationStore\`, \`useAccoladesStore\`, \`useHabitsStore\`, \`useJurisdictionStore\`, \`usePreferencesStore\`, \`useThemeStore\`) with \`localStorage\` persistence and bi-directional Supabase cloud outbox synchronization.` },
+    { path: 'src/hooks/', role: `${counts.hookCount || 22} custom React hooks organized into \`queries/\` (TanStack Query v5 data fetching), \`reader/\` (Web Speech TTS, session coordinates, gestures, worker AST, reading ledger), and root UI/network/copyright hooks (\`useNetworkStatus\`, \`useOfflineBooks\`, \`useBookCopyright\`, \`useCatalogFilters\`, \`useCollectionAutoHeal\`).` },
+    { path: 'src/lib/', role: `${counts.utilityCount || 36} pure domain computational engines and adapters covering Gutenberg AST segmentation/pagination/reflow (\`gutenberg/\`), dual-provider catalog resolution (\`catalog/\`), Supabase SSR/browser clients (\`supabase/\`), multi-jurisdictional copyright (\`copyright-engine.ts\`), IndexedDB storage (\`offline-storage.ts\`), interval annotation partitioning (\`reader-annotator.ts\`), and cloud bookshelf sync (\`bookshelf-cloud-sync.ts\`).` },
+    { path: 'src/config/', role: `${counts.configCount || 13} centralized design token, routing, theme, language, era, literary quote, and 27-masterwork curated anthology configuration modules.` },
+    { path: 'src/types/', role: `${counts.typeCount || 4} canonical TypeScript type contract modules (\`book.types.ts\`, \`database.types.ts\`, \`catalog.types.ts\`, \`accolades.types.ts\`) defining zero-any domain and PostgreSQL row schemas.` },
     { path: 'src/workers/', role: 'Dedicated off-thread Web Worker (`gutenberg.worker.ts`) executing Gutenberg plain-text segmentation and virtual page layout calculations.' },
     { path: 'src/mocks/ & src/test/', role: 'Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`) and JSDOM test environment bootstrap (`setup.ts`).' },
     { path: 'public/', role: 'Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`).' },
@@ -492,7 +492,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath) {
     { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD (`ci.yml`) and weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), plus Husky pre-commit quality gates.' },
   ];
 
-  let auditTotals = { suites: 189, tests: '2,006' };
+  let auditTotals = { suites: 186, tests: '2,024' };
   const auditJsonPath = path.join(rootDirPath, 'docs', 'quality-audit-results.json');
   if (fs.existsSync(auditJsonPath)) {
     try {
@@ -543,7 +543,14 @@ function generateMarkdown() {
   const testHarness = extractTestHarnessCatalog(srcDir, rootDir);
   const publicAssets = extractPublicAssetsCatalog(rootDir);
   const workspaceConfigs = extractWorkspaceConfigAndGovernanceCatalog(rootDir);
-  const repoTopology = extractRepositoryTopologyAndDocsCatalog(rootDir);
+  const repoTopology = extractRepositoryTopologyAndDocsCatalog(rootDir, {
+    componentCount: components.length,
+    storeCount: stores.length,
+    hookCount: hooks.length,
+    utilityCount: utilities.length,
+    configCount: configs.length,
+    typeCount: typeDefs.length,
+  });
 
   const timestamp = new Date().toISOString().split('T')[0];
 
@@ -589,7 +596,7 @@ function generateMarkdown() {
     '        BookPreviewModalNode["BookPreviewModal.tsx\\n(Desktop 3D Open-Book Preview Spread)"]',
     '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(3D Hardwood Shelf, Custom Shelves & <1024px Touch Modal Trigger)"]',
     '        BookshelfMobileModalNode["BookshelfMobileModal.tsx\\n(Mobile & Tablet <1024px Action & Curation Sheet)"]',
-    '        RemoveOfflineModalNode["RemoveOfflineBookModal.tsx\\n(Offline Cache Eviction Confirmation)"]',
+    '        RemoveOfflineModalNode["RemoveOfflineBookModal.tsx • RemoveCollectionBookModal.tsx\\n(Offline Cache & Collection Eviction Confirmations)"]',
     '        CatalogOfflineNode["CatalogOfflineView.tsx\\n(Offline Catalog Notice & Collection Quick-Links)"]',
     '        SymposiumInviteModalNode["SymposiumInviteModal.tsx\\n(1-on-1 Literary Symposium Companion Picker)"]',
     '        AccoladesEngine["accolades-engine.ts • ExLibrisBookplate.tsx • AccoladeCelebrationModal.tsx"]',
@@ -601,13 +608,13 @@ function generateMarkdown() {
     '            FavView["Favorites View (/favorites)\\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]',
     '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger, Row-Level Line Badges, Dedicated Resume CTA & 4-State Offline Controls)"]',
     '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections, Tags, Single-Column Tablet Grid & Tablet Icon Mode Switcher)"]',
-    '            AccView["Account Hub (/account)\\n(Library Stats, Cloud Sync & JSON Backup)"]',
+    '            AccView["Account Hub (/account)\\n(Library Stats, Cloud Sync & Preferences)"]',
     '            PrivacyView["Privacy Architecture (/privacy)\\n(Zero-Tracker Manifesto, COPPA/GDPR Art. 8 & Functional Geo-Cookies)"]',
     '            CopyrightView["Copyright Governance (/copyright)\\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]',
     '            HabitsCard["AccountHabitsCard.tsx\\n(Reading Streaks, Daily Progress, Annual Challenge)"]',
     '            AccoladesCard["AccountAccoladesCard.tsx\\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]',
     '            SymposiumCard["AccountSymposiumSection.tsx\\n(Reader Circles & Literary Symposiums)"]',
-    '            PrefsCard["AccountPreferencesSection.tsx\\n(AccountNarrationSubPanel • AccountPortabilitySubPanel)"]',
+    '            PrefsCard["AccountPreferencesSection.tsx\\n(Appearance & Scroll • AccountNarrationSubPanel)"]',
     '            ProfilePage["Public Scholar Sanctuary (/u/[username])\\n(Public Profile, Pinned Accolades & Fellowship CTA)"]',
     '            ReaderPage["Focus Reader Page (/read/[id])\\n(Continuous Pagination, Subtitles, AST)"]',
     '        end',
@@ -633,7 +640,6 @@ function generateMarkdown() {
     '            StoreFellowship[("🤝 useFellowshipStore\\n(reader circles, symposiums, companion progress, cloud)")]',
     '            SyncCoordinator["🔄 sync-utils.ts\\n(Unified 6-Store Cloud Sync Coordinator)"]',
     '            BookshelfSyncEngine["🔄 bookshelf-cloud-sync.ts\\n(Outbox Replay, Tombstone Filtering & Cloud Sync)"]',
-    '            BackupEngine["📦 library-backup.ts & backup-validator.ts\\n(Schema v1.0–v2.2 JSON Backup & RFC 4180 CSV)"]',
     '            StoreJurisdiction[("🌐 useJurisdictionStore\\n(country, rule, dev override, cookie sync)")]',
     '            StoreOffline[("📦 IndexedDB Engine\\n(unabridged offline volume cache)")]',
     '        end',
@@ -733,7 +739,6 @@ function generateMarkdown() {
     '    AccoladesCard --> AccoladesEngine',
     '    AccView --> SymposiumCard',
     '    AccView --> PrefsCard',
-    '    PrefsCard --> BackupEngine',
     '    SymposiumCard --> StoreFellowship',
     '    ProfilePage --> PublicSanctuaryNodes',
     '    PublicSanctuaryNodes --> StoreFellowship',
@@ -912,7 +917,7 @@ function generateMarkdown() {
     '        Header["SectionHeader (\'Continue Reading & Bookmarks\')\\n• Eyebrow, Flank lines, Clear Bookmarks modal"]',
     '        Search["CollectionToolbar\\n(Search, Sort & Downloaded Filter, Pagination)"]',
     '        Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]',
-    '        Cards["BookmarkCard.tsx\\n• Top-anchored silk ribbon (origin-top scale-y-110)\\n• Card tap focuses/activates card (all viewports)\\n• Cleaned title & normalized author\\n• Reading coordinates & Line X badge\\n• 4-state square offline button & modal\\n• Status dropdown selector\\n• Desktop cursor-exit focus release (onDeactivate)"]',
+    '        Cards["BookmarkCard.tsx\\n• Top-anchored silk ribbon (origin-top scale-y-110)\\n• Card tap focuses/activates card (all viewports)\\n• Cleaned title & normalized author\\n• Reading coordinates & Line X badge\\n• Favorite/Bookshelf curation & RemoveCollectionBookModal\\n• 4-state square offline button & modal\\n• Status dropdown selector\\n• Desktop cursor-exit focus release (onDeactivate)"]',
     '        ResumeAction["Dedicated 1-Click Resume / Read Again CTA\\n• Seed useReaderStore.openReader(book) [Warm Cache]\\n• router.push(\'/read/\' + id)"]',
     '    end',
     '',
@@ -975,7 +980,7 @@ function generateMarkdown() {
     useAccoladesStore:
       'Deterministic literary accolades evaluation, celebration queues, personal showcase pinning (max 3 bookplates), offline pin mutation queue (`pendingPinUpdates`), and bi-directional Supabase cloud synchronization.',
     useAnnotationStore:
-      'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), reflections, and commonplace book exports.',
+      'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), and scholarly reflections.',
     useAuthStore:
       'Supabase session authentication, offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), guest status, password generation, and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
@@ -1044,7 +1049,7 @@ function generateMarkdown() {
     'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic OpenGraph, Twitter Card, and Schema.org Book JSON-LD metadata (`React.cache`).',
     'src/app/read/[id]/page.tsx': 'Dedicated distraction-free Focus Reader with continuous pagination, Web Worker AST segmentation, TTS narration, and Symposium marginalia.',
     'src/app/account/layout.tsx': 'Server layout defining canonical metadata and robots noindex directives for the Scholar Account Hub.',
-    'src/app/account/page.tsx': 'Scholar Account Hub for Reading Habits, Literary Accolades, Reader Circles & Symposiums, Cloud Sync, and JSON/CSV library backups.',
+    'src/app/account/page.tsx': 'Scholar Account Hub for Reading Habits, Literary Accolades, Reader Circles & Symposiums, Cloud Sync, and Preferences.',
     'src/app/u/[username]/page.tsx': 'Public Scholar Sanctuary displaying pinned Ex-Libris bookplates, public profile stats, and 1-on-1 Literary Fellowship invitation actions.',
     'src/app/privacy/layout.tsx': 'Server layout defining canonical SEO and OpenGraph metadata for the Privacy Architecture manifesto.',
     'src/app/privacy/page.tsx': 'Zero-Tracker Privacy Architecture manifesto, functional geo-cookie disclosure, and COPPA / GDPR Art. 8 governance.',
@@ -1126,8 +1131,6 @@ function generateMarkdown() {
       'Bidirectional domain transformation between Gutendex API schemas, canonical Book models, and Supabase cloud persistence payloads.',
     'api-utils':
       'Server-side API route helpers, IP address extraction, and standardized rate limit error response generation.',
-    'backup-validator':
-      'Strict JSON schema validator and defensive sanitizer for Bookarium library backups (v1.0–v2.2), validating bookshelves, favorite books, reading positions, annotations, session logs, and preferences.',
     'bookshelf-cloud-sync':
       'Bidirectional cloud reconciliation engine for bookshelves, shelf items, and favorite books, featuring non-regressive local metadata preservation (`mergeCloudBookWithLocal`), per-user in-flight mutex coalescing, concurrent `Promise.all` table fetching, multi-shelf `book_id` deduplication, outbox mutation replay, tombstone filtering, single-commit atomic state reconciliation, and deterministic ordering.',
     'book-metadata':
@@ -1158,8 +1161,6 @@ function generateMarkdown() {
       'Canonical TypeScript interfaces and configurations for the Project Gutenberg parsing engine and AST nodes.',
     'in-book-search':
       'Full-text in-volume search algorithm with context snippet generation and matched coordinate navigation.',
-    'library-backup':
-      'Complete library export and import engine handling JSON backup schemas, CSV export, validation, and merge restoration.',
     'offline-storage':
       'IndexedDB storage abstraction providing offline book content caching, local store author resolution and asynchronous IndexedDB author back-fill (`patchOfflineBookAuthors`), storage change notifications (`notifyOfflineStorageChanged`), quota calculation, and LRU eviction.',
     password:
@@ -1195,7 +1196,7 @@ function generateMarkdown() {
     'scroll-utils':
       'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, header avoidance, and horizontal pointer click-and-drag + wheel scrolling (`attachHorizontalDragAndWheelScroll`).',
     utils:
-      'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, format badges, and blob downloads.',
+      'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, and format badges.',
     'metadata-cache':
       '3-tier in-memory LRU author lifespan cache (24h TTL, 1,000 entries) resolving contributor birth/death years via Supabase `public.books`, upstream Gutendex API, and `FEATURED_HERO_BOOKS` fallback.',
     'url-validator':

@@ -4,6 +4,7 @@ import { BookmarkCard } from './BookmarkCard';
 import type { ActiveReadingVolume } from '@/types/book.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -39,6 +40,11 @@ describe('BookmarkCard', () => {
     vi.clearAllMocks();
     useReaderStore.setState({ currentBook: null });
     useJurisdictionStore.setState({ country: 'US', overrideCountry: null });
+    useBookshelfStore.setState({
+      savedBooks: [],
+      favoriteBooks: [],
+      favoriteBookIds: [],
+    });
   });
 
   it('renders book metadata, formatted author names, progress bar, and reading coordinates', () => {
@@ -418,6 +424,71 @@ describe('BookmarkCard', () => {
     expect(screen.queryByTestId(`bookmark-card-unavailable-offline-badge-${mockVolume.book.id}`)).not.toBeInTheDocument();
 
     networkSpy.mockRestore();
+  });
+
+  it('toggles Favorite and Bookshelf state via header action buttons with full metadata preservation and without triggering card activation', () => {
+    const handleActivate = vi.fn();
+    const volumeWithLifespans: ActiveReadingVolume = {
+      ...mockVolume,
+      book: {
+        ...mockVolume.book,
+        authorDetails: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+      },
+    };
+
+    render(<BookmarkCard volume={volumeWithLifespans} onActivate={handleActivate} />);
+
+    const favBtn = screen.getByTestId('bookmark-card-favorite-btn');
+    const shelfBtn = screen.getByTestId('bookmark-card-bookshelf-btn');
+
+    expect(favBtn).toHaveAttribute('aria-label', 'Add to favorites');
+    expect(shelfBtn).toHaveAttribute('aria-label', 'Save to bookshelf');
+
+    // Toggle Favorite on
+    fireEvent.click(favBtn);
+    expect(handleActivate).not.toHaveBeenCalled();
+    expect(useBookshelfStore.getState().isBookFavorite(1342)).toBe(true);
+    expect(favBtn).toHaveAttribute('aria-label', 'Remove from favorites');
+    expect(favBtn).toHaveClass('bg-destructive');
+
+    // Toggle Bookshelf on and verify lifespan + cover preservation in savedBooks
+    fireEvent.click(shelfBtn);
+    expect(handleActivate).not.toHaveBeenCalled();
+    expect(useBookshelfStore.getState().isBookSaved(1342)).toBe(true);
+    expect(shelfBtn).toHaveAttribute('aria-label', 'Remove from bookshelf');
+    expect(shelfBtn).toHaveClass('bg-primary');
+
+    const savedBook = useBookshelfStore.getState().savedBooks.find((b) => b.id === 1342);
+    expect(savedBook?.authors).toEqual([{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }]);
+    expect(savedBook?.formats['image/jpeg']).toBe('https://example.com/cover.jpg');
+
+    // Clicking Favorite when already active opens confirmation modal
+    fireEvent.click(favBtn);
+    expect(useBookshelfStore.getState().isBookFavorite(1342)).toBe(true);
+    const favDialog = screen.getByTestId('remove-favorite-dialog');
+    expect(favDialog).toBeInTheDocument();
+
+    // Cancel keeps favorite active
+    fireEvent.click(within(favDialog).getByRole('button', { name: /Cancel/i }));
+    expect(useBookshelfStore.getState().isBookFavorite(1342)).toBe(true);
+
+    // Re-open and confirm favorite removal
+    fireEvent.click(favBtn);
+    fireEvent.click(within(screen.getByTestId('remove-favorite-dialog')).getByRole('button', { name: /Remove Favorite/i }));
+    expect(useBookshelfStore.getState().isBookFavorite(1342)).toBe(false);
+    expect(favBtn).toHaveAttribute('aria-label', 'Add to favorites');
+
+    // Clicking Bookshelf when already active opens confirmation modal
+    fireEvent.click(shelfBtn);
+    expect(useBookshelfStore.getState().isBookSaved(1342)).toBe(true);
+    const shelfDialog = screen.getByTestId('remove-bookshelf-dialog');
+    expect(shelfDialog).toBeInTheDocument();
+
+    // Confirm bookshelf removal
+    fireEvent.click(within(shelfDialog).getByRole('button', { name: /Remove from Shelf/i }));
+    expect(useBookshelfStore.getState().isBookSaved(1342)).toBe(false);
+    expect(shelfBtn).toHaveAttribute('aria-label', 'Save to bookshelf');
+    expect(handleActivate).not.toHaveBeenCalled();
   });
 });
 

@@ -807,6 +807,13 @@ describe('BookmarksView', () => {
     // Tap outside cards
     fireEvent.pointerDown(document.body);
 
+    // Removing the sole item on Page 2 automatically clamps back to Page 1
+    fireEvent.click(screen.getByLabelText(/^Remove Volume 13 from reading ledger$/i));
+    fireEvent.click(screen.getByRole('button', { name: /^Remove Bookmark$/i }));
+    expect(screen.queryByText('Volume 13')).not.toBeInTheDocument();
+    expect(screen.getByText('Volume 1')).toBeInTheDocument();
+    expect(screen.getByText('Volume 12')).toBeInTheDocument();
+
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalWidth });
   });
 

@@ -85,24 +85,36 @@ describe('BookshelfSpine Component', () => {
 
     const saveBtn = screen.getByLabelText('Remove from bookshelf');
     fireEvent.click(saveBtn);
+    expect(handleToggleSave).not.toHaveBeenCalled();
+    expect(screen.getByTestId('remove-bookshelf-dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+    expect(handleToggleSave).not.toHaveBeenCalled();
+
+    fireEvent.click(saveBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Remove from Shelf/i }));
     expect(handleToggleSave).toHaveBeenCalledWith(mockBook);
 
     const likeBtn = screen.getByLabelText('Remove from favorites');
     fireEvent.click(likeBtn);
+    expect(handleToggleFavorite).not.toHaveBeenCalled();
+    expect(screen.getByTestId('remove-favorite-dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Remove Favorite/i }));
     expect(handleToggleFavorite).toHaveBeenCalledWith(mockBook);
   });
 
-  it('renders offline indicator and fires onToggleOffline when clicked', () => {
+  it('renders offline indicator and fires onToggleOffline, onToggleSave, and onToggleFavorite when not saved/favorited', () => {
     const handleToggleOffline = vi.fn();
+    const handleToggleSave = vi.fn();
+    const handleToggleFavorite = vi.fn();
     render(
       <BookshelfSpine
         book={mockBook}
         bookIndex={0}
-        isSaved={true}
+        isSaved={false}
         isFavorite={false}
         isOffline={true}
-        onToggleSave={vi.fn()}
-        onToggleFavorite={vi.fn()}
+        onToggleSave={handleToggleSave}
+        onToggleFavorite={handleToggleFavorite}
         onToggleOffline={handleToggleOffline}
         onSpineClick={vi.fn()}
       />
@@ -115,6 +127,13 @@ describe('BookshelfSpine Component', () => {
     expect(offlineBtn).toHaveClass('flex', 'items-center', 'justify-center');
     fireEvent.click(offlineBtn);
     expect(handleToggleOffline).toHaveBeenCalledWith(mockBook);
+
+    // Immediate add when not saved / not favorite
+    fireEvent.click(screen.getByLabelText('Save to bookshelf'));
+    expect(handleToggleSave).toHaveBeenCalledWith(mockBook);
+
+    fireEvent.click(screen.getByLabelText('Add to favorites'));
+    expect(handleToggleFavorite).toHaveBeenCalledWith(mockBook);
   });
 
   it('renders cursor-following portal tooltip on hover card button hover', () => {
