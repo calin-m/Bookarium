@@ -1,10 +1,17 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ReadingStatusSelector } from './ReadingStatusSelector';
+import { useReaderStore } from '@/stores/useReaderStore';
 
 describe('ReadingStatusSelector', () => {
+  beforeEach(() => {
+    useReaderStore.setState({
+      readingProgress: {},
+      readingPositions: {},
+    });
+  });
   it('renders all three reading status options', () => {
     render(<ReadingStatusSelector status={null} onChange={vi.fn()} />);
 
@@ -85,6 +92,71 @@ describe('ReadingStatusSelector', () => {
     const clearBtn = screen.getByRole('button', { name: /clear reading status/i });
     expect(clearBtn).toHaveClass('border-border');
     expect(clearBtn.className).not.toContain('border-border/40');
+  });
+
+  it('opens confirmation modal with bookmark reset notice when marking Finished on a book with an active bookmark', async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+
+    useReaderStore.setState({
+      readingProgress: { 1342: 55 },
+      readingPositions: {
+        1342: {
+          chapterIndex: 2,
+          chapterPage: 3,
+          globalPage: 18,
+          bookmarkRow: 6,
+          bookmarkText: 'It is a truth universally acknowledged',
+          lastReadAt: '2026-09-01T00:00:00Z',
+        },
+      },
+    });
+
+    render(
+      <ReadingStatusSelector
+        status="currently_reading"
+        onChange={handleChange}
+        bookId={1342}
+        bookTitle="Pride and Prejudice"
+      />
+    );
+
+    await user.click(screen.getByRole('radio', { name: /finished/i }));
+
+    expect(handleChange).not.toHaveBeenCalled();
+    const dialog = screen.getByTestId('finish-status-bookmark-dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByTestId('finish-status-bookmark-reset-notice')).toHaveTextContent(
+      'Your placed bookmark on Line 7 (Page 18) will also be reset.'
+    );
+
+    // Cancel closes modal without calling onChange
+    await user.click(screen.getByRole('button', { name: /Cancel/i }));
+    expect(screen.queryByTestId('finish-status-bookmark-dialog')).not.toBeInTheDocument();
+    expect(handleChange).not.toHaveBeenCalled();
+
+    // Click Finished again and confirm (also test fallback title & text-only bookmark)
+    useReaderStore.setState({
+      readingProgress: { 1342: 55 },
+      readingPositions: {
+        1342: {
+          chapterIndex: 2,
+          chapterPage: 3,
+          globalPage: 0,
+          bookmarkText: 'It is a truth universally acknowledged',
+          lastReadAt: '2026-09-01T00:00:00Z',
+        },
+      },
+    });
+
+    await user.click(screen.getByRole('radio', { name: /finished/i }));
+    expect(screen.getByTestId('finish-status-bookmark-reset-notice')).toHaveTextContent(
+      'Your placed bookmark will also be reset.'
+    );
+
+    await user.click(screen.getByRole('button', { name: /^Mark as Finished$/i }));
+    expect(handleChange).toHaveBeenCalledWith('finished');
+    expect(screen.queryByTestId('finish-status-bookmark-dialog')).not.toBeInTheDocument();
   });
 });
 

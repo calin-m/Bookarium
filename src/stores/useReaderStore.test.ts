@@ -129,6 +129,19 @@ describe('useReaderStore', () => {
     expect(useReaderStore.getState().isMobileTrayOpen).toBe(true);
   });
 
+  it('should set and clamp page brightness between 30 and 100', () => {
+    expect(useReaderStore.getState().brightness).toBe(100);
+
+    useReaderStore.getState().setBrightness(75);
+    expect(useReaderStore.getState().brightness).toBe(75);
+
+    useReaderStore.getState().setBrightness(10);
+    expect(useReaderStore.getState().brightness).toBe(30);
+
+    useReaderStore.getState().setBrightness(150);
+    expect(useReaderStore.getState().brightness).toBe(100);
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -879,6 +892,7 @@ describe('useReaderStore', () => {
         chapterPage: 1,
         globalPage: 1,
         bookmarkRow: 12,
+        bookmarkText: 'It is a truth universally acknowledged, that a single man in possession',
         lastReadAt: '2026-10-25T12:00:00.000Z',
       };
 
@@ -887,15 +901,45 @@ describe('useReaderStore', () => {
         expect.objectContaining({
           book_id: 1342,
           scroll_offset: 1.012,
+          bookmark_text: 'It is a truth universally acknowledged, that a single man in possession',
         }),
         { onConflict: 'user_id,book_id' }
       );
+
+      mockMaybeSingle.mockResolvedValueOnce({
+        data: {
+          current_chapter_index: 0,
+          progress_percent: 0,
+          scroll_offset: 1.012,
+          bookmark_text: 'It is a truth universally acknowledged, that a single man in possession',
+          last_read_at: '2026-10-25T12:00:00.000Z',
+          book_title: 'Pride and Prejudice',
+          book_authors: ['Austen, Jane, 1775-1817'],
+          cover_url: null,
+        },
+        error: null,
+      });
 
       const restored = await useReaderStore
         .getState()
         .restoreReadingPositionFromCloud(1342, 'user-row-1');
       expect(restored?.chapterPage).toBe(1);
       expect(restored?.bookmarkRow).toBe(12);
+      expect(restored?.bookmarkText).toBe(
+        'It is a truth universally acknowledged, that a single man in possession'
+      );
+
+      // Verify pre-migration fallback if bookmark_text column does not exist yet
+      mockUpsert.mockClear();
+      mockUpsert
+        .mockResolvedValueOnce({
+          error: { message: 'column "bookmark_text" of relation "reading_progress" does not exist' },
+        })
+        .mockResolvedValueOnce({ error: null });
+
+      await useReaderStore.getState().syncReadingPositionToCloud(1342, posWithRow, 'user-row-1');
+      expect(mockUpsert).toHaveBeenCalledTimes(2);
+      expect(mockUpsert.mock.calls[1][0]).not.toHaveProperty('bookmark_text');
     });
 
     it('syncWithCloud decodes bookmarkRow from remote row and populates readingPositions', async () => {

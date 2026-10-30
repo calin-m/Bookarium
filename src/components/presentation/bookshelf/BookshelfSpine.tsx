@@ -3,12 +3,16 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
-import { CursorTooltip } from '@/components/ui/CursorTooltip';
+import {
+  CursorTooltip,
+  CopyBookLinkIndicator,
+  handleCopyBookLinkClick,
+} from '@/components/ui/CursorTooltip';
 import { BookOpen, Download, Library, Heart, Sparkles, HardDriveDownload, Star, AlertTriangle, Loader2, Trash2, WifiOff } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
-import { useBookRating } from '@/stores/useBookshelfStore';
+import { useBookRating, useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { StarRating } from '@/components/ui/StarRating';
@@ -72,6 +76,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
 }) => {
   const router = useRouter();
   const rating = useBookRating(book.id);
+  const setBookRating = useBookshelfStore((s) => s.setBookRating);
   const palette = SPINE_PALETTES[book.id % SPINE_PALETTES.length];
 
   const { country, evaluation, isRestricted, ruleDescription } = useBookCopyright(book);
@@ -146,6 +151,8 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         return null;
     }
   }, [hoveredAction, isOffline, isDownloadingOffline, isSaved, isFavorite, country, isRestricted, isUnavailableOffline]);
+
+  const fullAuthorName = formatAuthorNames(book.authors) || authorName;
 
   return (
     <div
@@ -229,7 +236,10 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
 
       {/* Hover Floating Card Preview / Quick Actions (Desktop Hover) */}
       <div
-        className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden lg:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10 after:content-[''] after:absolute after:inset-x-0 after:top-full after:h-6"
+        data-testid={`spine-hover-card-${book.id}`}
+        className="absolute left-1/2 bottom-full mb-3 -translate-x-1/2 hidden lg:group-hover:flex flex-col w-56 p-3 bg-card rounded-xl shadow-2xl border border-border z-50 text-left pointer-events-auto cursor-default transition-all animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/10 after:content-[''] after:absolute after:inset-x-0 after:top-full after:h-6"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
@@ -264,24 +274,34 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           </div>
         </div>
 
-        <h4
-          className="font-serif font-bold text-foreground text-xs line-clamp-2 leading-tight mb-1"
-          title={book.title}
+        <div
+          data-testid={`spine-copy-meta-${book.id}`}
+          data-copy-book-id={book.id}
+          data-tooltip={`${book.title} — by ${fullAuthorName}`}
+          onClick={(e) => handleCopyBookLinkClick(e, book.id)}
+          onKeyDown={(e) => handleCopyBookLinkClick(e, book.id)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Copy link to ${book.title} by ${fullAuthorName}`}
+          className="group/copy cursor-pointer rounded-md -mx-1 px-1 py-0.5 mb-1.5 hover:bg-muted/60 transition-colors"
         >
-          {book.title}
-        </h4>
-        <p
-          className="text-[11px] text-muted-foreground mb-1.5 truncate"
-          title={formatAuthorNames(book.authors) || authorName}
-        >
-          {formatAuthorNames(book.authors) || authorName}
-        </p>
+          <h4 className="font-serif font-bold text-foreground group-hover/copy:text-primary transition-colors text-xs line-clamp-2 leading-tight mb-0.5">
+            {book.title}
+          </h4>
+          <p className="text-[11px] text-muted-foreground flex items-center min-w-0">
+            <span className="truncate">{fullAuthorName}</span>
+            <CopyBookLinkIndicator bookId={book.id} />
+          </p>
+        </div>
 
-        {rating && (
-          <div className="mb-2">
-            <StarRating value={rating} readOnly size="sm" showLabel />
-          </div>
-        )}
+        <div className="mb-2" onClick={(e) => e.stopPropagation()}>
+          <StarRating
+            value={rating}
+            onChange={(newRating) => setBookRating(book.id, newRating)}
+            size="sm"
+            showLabel
+          />
+        </div>
 
         {isRestricted ? (
           <div

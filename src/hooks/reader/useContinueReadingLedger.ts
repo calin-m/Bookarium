@@ -404,8 +404,11 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
         chapterIndex: position?.chapterIndex ?? 0,
         chapterPage: position?.chapterPage ?? 1,
         globalPage: position?.globalPage ?? 1,
-        ...(position?.bookmarkRow && position.bookmarkRow > 0
+        ...(status !== 'completed' && position?.bookmarkRow && position.bookmarkRow > 0
           ? { bookmarkRow: position.bookmarkRow }
+          : {}),
+        ...(status !== 'completed' && position?.bookmarkText
+          ? { bookmarkText: position.bookmarkText }
           : {}),
         status,
         bookmarksCount: position ? 1 : 0,

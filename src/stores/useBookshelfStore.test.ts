@@ -1735,10 +1735,33 @@ describe('useBookshelfStore', () => {
       await useBookshelfStore.getState().setBookRating(1342, null, 'user-1');
       expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'DELETE_CURATION')).toBe(true);
 
-      // 5. setReadingStatus(bookId, 'reading') & setReadingStatus(bookId, null) when delete/upsert fails
+      // 5. setReadingStatus(bookId, 'reading'), setReadingStatus(bookId, 'finished') bookmark reset, & setReadingStatus(bookId, null) when delete/upsert fails
+      const { useReaderStore } = await import('./useReaderStore');
+      useReaderStore.setState({
+        readingProgress: { 1342: 45 },
+        readingPositions: {
+          1342: {
+            chapterIndex: 2,
+            chapterPage: 3,
+            globalPage: 15,
+            bookmarkRow: 5,
+            bookmarkText: 'It is a truth universally acknowledged',
+            lastReadAt: '2026-09-01T00:00:00Z',
+            bookTitle: 'Pride and Prejudice',
+            bookAuthors: ['Austen, Jane (1775-1817)'],
+            coverUrl: 'https://example.com/1342.jpg',
+          },
+        },
+      });
       useBookshelfStore.setState({ bookRatings: {}, bookStatuses: {}, outbox: [] });
       await useBookshelfStore.getState().setReadingStatus(1342, 'currently_reading', 'user-1');
       expect(useBookshelfStore.getState().outbox.some((a) => a.type === 'UPSERT_CURATION')).toBe(true);
+
+      await useBookshelfStore.getState().setReadingStatus(1342, 'finished', 'user-1');
+      expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
+      expect(useReaderStore.getState().readingPositions[1342].bookmarkRow).toBeUndefined();
+      expect(useReaderStore.getState().readingPositions[1342].bookmarkText).toBeUndefined();
+      expect(useReaderStore.getState().readingPositions[1342].bookTitle).toBe('Pride and Prejudice');
 
       useBookshelfStore.setState({ bookRatings: {}, bookStatuses: { 1342: 'currently_reading' }, outbox: [] });
       await useBookshelfStore.getState().setReadingStatus(1342, null, 'user-1');

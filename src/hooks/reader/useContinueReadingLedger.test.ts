@@ -234,14 +234,29 @@ describe('useContinueReadingLedger', () => {
     expect(useReaderStore.getState().readingProgress[1342]).toBe(0);
     expect(useReaderStore.getState().readingPositions[1342].chapterPage).toBe(1);
 
-    // Update to completed when progress is < 100% (sets progress to 100)
+    // Update to completed when progress is < 100% (sets progress to 100 and resets bookmarkRow/bookmarkText)
     act(() => {
       useReaderStore.getState().setProgress(1342, 50);
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 2,
+        chapterPage: 3,
+        globalPage: 20,
+        bookmarkRow: 4,
+        bookmarkText: 'It is a truth universally acknowledged',
+        lastReadAt: new Date().toISOString(),
+      });
     });
+    expect(result.current.volumes[0].bookmarkRow).toBe(4);
+    expect(result.current.volumes[0].bookmarkText).toBe('It is a truth universally acknowledged');
+
     await act(async () => {
       await result.current.updateVolumeStatus(1342, 'completed');
     });
     expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
+    expect(useReaderStore.getState().readingPositions[1342].bookmarkRow).toBeUndefined();
+    expect(useReaderStore.getState().readingPositions[1342].bookmarkText).toBeUndefined();
+    expect(result.current.volumes[0].bookmarkRow).toBeUndefined();
+    expect(result.current.volumes[0].bookmarkText).toBeUndefined();
   });
 
   it('infers completed status when progress is 100% on uncurated volume', () => {

@@ -107,6 +107,42 @@ describe('ReaderControls', () => {
     expect(onLineHeightChange).toHaveBeenCalledWith(1.4);
   });
 
+  it('handles page brightness slider and preset buttons (50%, 75%, 100%)', () => {
+    const onBrightnessChange = vi.fn();
+    render(
+      <ReaderControls
+        {...defaultProps}
+        brightness={85}
+        onBrightnessChange={onBrightnessChange}
+      />
+    );
+
+    expect(screen.getByTestId('reader-brightness-value')).toHaveTextContent('85%');
+
+    const brightnessSlider = screen.getByLabelText('Page brightness percentage');
+    fireEvent.change(brightnessSlider, { target: { value: '60' } });
+    expect(onBrightnessChange).toHaveBeenCalledWith(60);
+
+    fireEvent.click(screen.getByRole('button', { name: '50%' }));
+    expect(onBrightnessChange).toHaveBeenCalledWith(50);
+
+    fireEvent.click(screen.getByRole('button', { name: '75%' }));
+    expect(onBrightnessChange).toHaveBeenCalledWith(75);
+
+    fireEvent.click(screen.getByRole('button', { name: '100%' }));
+    expect(onBrightnessChange).toHaveBeenCalledWith(100);
+  });
+
+  it('renders default 100% brightness and handles slider changes when onBrightnessChange is omitted', () => {
+    render(<ReaderControls {...defaultProps} />);
+    expect(screen.getByTestId('reader-brightness-value')).toHaveTextContent('100%');
+
+    const brightnessSlider = screen.getByLabelText('Page brightness percentage');
+    expect(() => {
+      fireEvent.change(brightnessSlider, { target: { value: '70' } });
+    }).not.toThrow();
+  });
+
   it('closes controls on Escape key press', () => {
     const onClose = vi.fn();
     render(<ReaderControls {...defaultProps} onClose={onClose} />);

@@ -59,7 +59,7 @@ function extractDatabaseCatalog(rootDirPath) {
     bookshelves: 'Default master "General" shelf and custom user-created named shelves.',
     bookshelf_items: 'Books filed in specific shelves with user-scoped uniqueness constraints.',
     user_favorites: 'Cross-device synchronized favorited titles.',
-    reading_progress: 'Chapter index, progress %, in-page row bookmark offsets, and cached volume metadata.',
+    reading_progress: 'Chapter index, progress %, in-page row bookmark offsets, highlighted bookmark line text (`bookmark_text`), and cached volume metadata.',
     user_annotations: 'Passage text highlights (4 pastel palettes), scholarly notes, and cross-volume Symposium Fellow marginalia.',
     user_book_curation: 'Personal 1–5 star ratings and reading status classification.',
     user_reading_habits: 'Reading streaks (5-min threshold), daily activity dates, annual challenge goals, completed books count, and dual immersion telemetry.',
@@ -595,7 +595,7 @@ function generateMarkdown() {
     '        CollectionToolbarNode["CollectionToolbar.tsx\\n(Responsive Workbench: Integrated Search, Sort, Downloaded Filter, Tablet Icon Mode Toggles & Top-Pagination)"]',
     '        PaginationNode["Pagination.tsx\\n(Accessible Numeric Page Navigation)"]',
     '        BookPreviewModalNode["BookPreviewModal.tsx\\n(Tablet & Desktop 3D Open-Book Preview Spread & Docked Curation Bar)"]',
-    '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(3D Hardwood Shelf, Custom Shelves & <1024px Touch Modal Trigger)"]',
+    '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(3D Hardwood Shelf, Custom Shelves, <1024px Touch Modal & >=1024px Direct Spine Click / Hover Modal)"]',
     '        BookshelfMobileModalNode["BookshelfMobileModal.tsx\\n(Mobile & Tablet <1024px Action & Curation Sheet)"]',
     '        RemoveOfflineModalNode["RemoveOfflineBookModal.tsx • RemoveCollectionBookModal.tsx\\n(Offline Cache & Collection Eviction Confirmations)"]',
     '        CatalogOfflineNode["CatalogOfflineView.tsx\\n(Offline Catalog Notice & Collection Quick-Links)"]',
@@ -646,7 +646,7 @@ function generateMarkdown() {
     '        end',
     '        ',
     '        subgraph ReaderEngine ["Reader Runtime & Web Speech Subsystem"]',
-    '            SessionHook["📖 useReaderSession\\n(Position Memory, Deep Links & Reflow Healing)"]',
+    '            SessionHook["📖 useReaderSession\\n(Position Memory, Deep Links & Cross-Display bookmarkText Reflow Healing)"]',
     '            SpeechHook["🔊 useReaderSpeech\\n(SpeechSynthesis, Boundary Sync, Auto-Flip)"]',
     '            TimerHook["⏱️ useReadingTimer\\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]',
     '            WorkerHook["⚙️ useGutenbergParserWorker\\n(Persistent Worker Chapter AST)"]',
@@ -822,11 +822,12 @@ function generateMarkdown() {
     '        FontSize["Font Size: 12px - 36px"]',
     '        FontFamily["Font Family: Serif | Sans | Mono"]',
     '        LineHeight["Line Height: 1.2 - 2.6"]',
+    '        Brightness["Page Brightness: 30% - 100%"]',
     '        ColumnWidth["Column Width: Narrow (576px) | Normal (768px) | Wide (1024px)"]',
     '        ReadingMode["Reading Mode: Paginated | Scroll"]',
     '        Theme["Theme: Light | Dark | Sepia"]',
     '        Progress["Global Page & Book Progress %"]',
-    '        Positions["Reading Positions Map\\n(exact chapter, page & row-snapped bookmarkRow)"]',
+    '        Positions["Reading Positions Map\\n(exact chapter, page, row-snapped bookmarkRow & reflow-resilient bookmarkText)"]',
     '        FellowState["Active Symposium & Companion Coordinates\\n(useFellowshipStore)"]',
     '    end',
     '',
@@ -846,16 +847,16 @@ function generateMarkdown() {
     '    end',
     '',
     '    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]',
-    '        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader)"]',
+    '        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Tactile Single-Tap Immersive Slide)"]',
     '        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]',
-    '        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap, Interactive Row-Snapping Page Bookmark & Amber Sentence Highlight)"]',
+    '        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap, Multi-Row Bookmark Span startRow->endRow, Page Brightness Filter & Amber Sentence Highlight)"]',
     '        ProgressBar["Top Reading Progress Indicator"]',
     '        ResumeToast["Exact-Page Auto-Resume Toast"]',
-    '        FooterBar["Sticky Bottom Pagination & Page Jump"]',
+    '        FooterBar["Sticky Bottom Pagination & Page Jump (ReaderFooter • Tactile Single-Tap Immersive Slide)"]',
     '        TOC["Table of Contents Drawer (ReaderTocDrawer)"]',
     '        SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]',
     '        LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]',
-    '        Controls["Appearance & Typography Popover (ReaderControls)"]',
+    '        Controls["Appearance & Typography Popover (ReaderControls • Font, Line Height, Brightness 30%-100%, Theme)"]',
     '        AudioBar["Speech Narration Bar (ReaderSpeechBar)\\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]',
     '        HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]',
     '        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\\n(4 Pastel Highlighters • Symposium Marginalia • Spoiler Shield)"]',
@@ -863,10 +864,10 @@ function generateMarkdown() {
     '    end',
     '',
     '    subgraph Persistence ["Browser LocalStorage, IndexedDB & Supabase Cloud"]',
-    '        LSPrefs[("bookarium-reader-preferences\\n(theme, font, spacing, readingProgress, readingPositions)")]',
+    '        LSPrefs[("bookarium-reader-preferences\\n(theme, font, spacing, brightness, readingProgress, readingPositions)")]',
     '        LSAnnot[("bookarium-annotations-storage\\n(useAnnotationStore highlights & reflections)")]',
     '        IDBStorage[("IndexedDB (useOfflineBooks)\\n(unabridged offline volumes)")]',
-    '        CloudProgress[("⚡ Supabase Cloud\\npublic.reading_progress\\n(2s Debounced Sync & Restore)")]',
+    '        CloudProgress[("⚡ Supabase Cloud\\npublic.reading_progress\\n(2s Debounced Sync & Restore • scroll_offset & bookmark_text)")]',
     '        CloudSymposium[("⚡ Supabase Cloud\\npublic.symposium_sessions & user_annotations\\n(Companion Progress & Fellow Marginalia)")]',
     '    end',
     '',
@@ -899,8 +900,8 @@ function generateMarkdown() {
     '```mermaid',
     'flowchart TD',
     '    subgraph Storage ["Persistent State Stores"]',
-    '        RS["📖 useReaderStore\\n• readingPositions (exact coordinates & timestamp)\\n• readingProgress (0-100%)\\n• openReader(book) [warm cache]"]',
-    '        BS["⚡ useBookshelfStore\\n• savedBooks []\\n• recentBooks [] (cached identity)\\n• bookStatuses {} (\'currently_reading\', etc.)"]',
+    '        RS["📖 useReaderStore\\n• readingPositions (chapter, page, bookmarkRow & bookmarkText — cleared on finished)\\n• readingProgress (0-100%)\\n• openReader(book) [warm cache]"]',
+    '        BS["⚡ useBookshelfStore\\n• savedBooks []\\n• recentBooks [] (cached identity)\\n• bookStatuses {} (\'currently_reading\', \'finished\' resets bookmark)"]',
     '        IDB["📦 IndexedDB (useOfflineBooks)\\n• offlineBookIds & offlineBooks (unabridged cache)"]',
     '    end',
     '',
@@ -910,15 +911,15 @@ function generateMarkdown() {
     '        QueryMissing["🔄 useBooks(ids: missingIds)\\n(TanStack Query - Catalog Seam)"]',
     '        EnrichDict["Enriched Book Dictionary (setOrMergeBook)\\n(savedBooks + recentBooks + offlineBooks + queryResults • Author Merge Guardrails)"]',
     '        Parser["Canonical Utilities (@/lib/utils)\\n• formatAuthorNames (reverse \'Last, First\' & strip dates)\\n• cleanBookTitle (strip Gutenberg prefixes)\\n• formatRelativeTime (\'Recently\', \'2h ago\')"]',
-    '        Assembly["Assemble ActiveReadingVolume[]\\n• progress, chapter, coordinates, lastReadAt\\n• status (in_progress / completed / on_hold)\\n• isOffline / Not Downloaded badge • Line X coordinates"]',
+    '        Assembly["Assemble ActiveReadingVolume[]\\n• progress, chapter, coordinates, lastReadAt\\n• status (in_progress / completed / on_hold)\\n• isOffline / Not Downloaded badge • Line X & bookmarkText"]',
     '        FilterSort["Client Search & Status Filter\\n• \'all\' | \'in_progress\' | \'completed\' | \'on_hold\'\\n• CollectionSearchBar token matching\\n• Multi-mode sort (\'recent\' | \'progress\' | \'title\' | \'author\' | \'downloaded\')"]',
     '    end',
     '',
     '    subgraph UI ["Presentation Layer (BookmarksView.tsx)"]',
-    '        Header["SectionHeader (\'Continue Reading & Bookmarks\')\\n• Eyebrow, Flank lines, Clear Bookmarks modal"]',
+    '        Header["SectionHeader (\'Continue Reading & Bookmarks\')\\n• Eyebrow, Flank lines, Clear Bookmarks modal\\n• Mark as Finished modal (conditional bookmark-reset notice)"]',
     '        Search["CollectionToolbar\\n(Search, Sort & Downloaded Filter, Pagination)"]',
     '        Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]',
-    '        Cards["BookmarkCard.tsx\\n• Top-anchored silk ribbon (origin-top scale-y-110)\\n• Card tap focuses/activates card (all viewports)\\n• Cleaned title & normalized author\\n• Reading coordinates & Line X badge\\n• Favorite/Bookshelf curation & RemoveCollectionBookModal\\n• 4-state square offline button & modal\\n• Status dropdown selector\\n• Desktop cursor-exit focus release (onDeactivate)"]',
+    '        Cards["BookmarkCard.tsx\\n• Top-anchored silk ribbon (origin-top scale-y-110)\\n• Card tap focuses/activates card (all viewports)\\n• Unified Title/Author Link Copy (300ms Tooltip & Copied! Pill)\\n• Reading coordinates & Line X badge\\n• Favorite/Bookshelf curation & RemoveCollectionBookModal\\n• 4-state square offline button & modal\\n• Status dropdown selector (conditional bookmark-reset modal on Finished)\\n• Desktop cursor-exit focus release (onDeactivate)"]',
     '        ResumeAction["Dedicated 1-Click Resume / Read Again CTA\\n• Seed useReaderStore.openReader(book) [Warm Cache]\\n• router.push(\'/read/\' + id)"]',
     '    end',
     '',
@@ -995,7 +996,7 @@ function generateMarkdown() {
     usePreferencesStore:
       'Reader display choices, sticky header auto-hide preferences, and navigation behaviors.',
     useReaderStore:
-      'Active book payload with verified lifespan preservation, typography settings (size, family, line height), reading mode (paginated vs scroll), chapter/page/row coordinates (`bookmarkRow`), bookmark deletion tombstones (`deletedPositionBookIds`), placeholder-to-authentic author & lifespan self-healing (`enrichReadingPositions`, `saveReadingPosition`), and bidirectional Supabase `reading_progress` sync.',
+      'Active book payload with verified lifespan preservation, typography settings (size, family, line height), page brightness (`30%–100%`), reading mode (paginated vs scroll), chapter/page/row coordinates (`bookmarkRow`) and cross-display/font-reflow resilient passage anchor (`bookmarkText`, cleared on finished status), bookmark deletion tombstones (`deletedPositionBookIds`), placeholder-to-authentic author & lifespan self-healing (`enrichReadingPositions`, `saveReadingPosition`), and bidirectional Supabase `reading_progress` sync.',
     useThemeStore:
       'Global application theme state (Day Paper, Sepia Parchment, Obsidian Dark) with immediate document class application.',
   };
@@ -1088,10 +1089,10 @@ function generateMarkdown() {
     useBookContent: 'TanStack Query (`networkMode: "always"`) fetching book plain text with IndexedDB offline-first check, multi-store lifespan verification (`resolveAuthoritativeLocalAuthors`), and online server-gatekeeper deferral.',
     useBookTranslations: 'TanStack Query aggregating international language translations and editions (gated when offline).',
     useReaderSpeech: 'Browser-native Web Speech synthesis with boundary word highlighting and auto-flip.',
-    useReaderSession: 'Reading coordinates restoration, resume ribbons, and cloud session synchronization.',
+    useReaderSession: 'Reading coordinates restoration, cross-page `bookmarkText` reflow self-healing on font-size re-pagination, resume ribbons, and cloud session synchronization.',
     useContinueReadingLedger: 'Headless continue reading ledger with authentic telemetry enrollment, placeholder-author detection (`hasAuthenticAuthor`), non-regressive author merge guardrails (`setOrMergeBook`), `readingPositions` author healing, query hydration, multi-attribute sorting, and offline volume filtering (`useOfflineBooks`).',
     useReaderDrawers: 'Mutual exclusivity coordination for in-reader tool drawers and modals.',
-    useReaderGestures: 'Touch swipe detection, keyboard shortcuts, and selection gesture conflict guards.',
+    useReaderGestures: 'Touch swipe detection, tactile single-finger tap detection (`onTapSurface`) for immersive bar toggling, keyboard shortcuts, and selection gesture conflict guards.',
     useGutenbergParserWorker: 'Persistent Web Worker chapter segmentation and layout pagination calculations.',
     useCatalogFilters: 'Catalog filter state URL binding, default Recently Added (descending) sort, atomic filter staging, multi-era bounding calculation, and multi-filter query synchronization.',
     useScrollDirection: 'Stepped directional scroll detection with user auto-hide preference persistence.',
@@ -1176,7 +1177,7 @@ function generateMarkdown() {
     'reading-analytics':
       'Streak calculation, 5-minute immersion thresholds, reading speed metrics, annual reading goal progress, deduplicated completed volume counting (`calculateCompletedBooksCount`), and public scholar habit telemetry resolution (`resolvePublicReadingHabits`).',
     'redirect-sanitizer':
-      'Open-redirect prevention and canonical authentication origin resolver (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`, `buildAuthRedirectUrl`).',
+      'Open-redirect prevention, canonical authentication origin resolver, and origin-validated book share URL builder (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`, `buildAuthRedirectUrl`, `buildShareUrl`).',
     'smart-search':
       'Fuzzy multi-token search engine querying titles, authors, and subjects with punctuation normalization.',
     'speech-utils':
@@ -1406,11 +1407,11 @@ function generateMarkdown() {
     '        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\\n• MSW v2 setupServer(...handlers) lifecycle\\n• GET /api/books, /api/books/content, /api/books/translations\\n• HTTPS Gutendex & 4 Allowlisted Gutenberg Mirrors\\n• mockBooks & sampleBookText fixtures (0 external network calls)"]',
     '    end',
     '',
-    '    subgraph TestTiers ["4-Tier Co-Located Test Suites (187 Suites)"]',
+    `    subgraph TestTiers ["4-Tier Co-Located Test Suites (${testHarness.totalSuites} Suites)"]`,
     '        Tier1["Tier 1: Pure Domain, Security & AST Suites\\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]',
     '        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• useBooks, useBookContent, useBookTranslations\\n• supabase-provider, gutendex-provider"]',
     '        Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\\n• bookshelf-cloud-sync, sync-utils, offline-storage"]',
-    '        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• 64 UI Components + App Router Pages/Layouts + Web Worker\\n• CLI Pipelines (sync-gutenberg-catalog.test.ts, ingest-translations.test.ts)"]',
+    `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI Pipelines (sync-gutenberg-catalog.test.ts, ingest-translations.test.ts)"]`,
     '    end',
     '',
     '    subgraph CoverageGate ["Tiered V8 Coverage Gate & Telemetry Output"]',
@@ -1692,7 +1693,54 @@ function generateMarkdown() {
   return lines.join('\n');
 }
 
+function syncReadmeArchitectureDiagrams(architectureMarkdown) {
+  const readmePath = path.join(rootDir, 'README.md');
+  if (!fs.existsSync(readmePath)) return;
+
+  const startMarker1to3 = '### 1. End-to-End System Context & Data Flow';
+  const endMarker1to3 = '\n---\n\n## 🧩 Component Catalog & Props Interface Matrix';
+  const idxStart1to3 = architectureMarkdown.indexOf(startMarker1to3);
+  const idxEnd1to3 = architectureMarkdown.indexOf(endMarker1to3);
+
+  const startMarker4 = '### 1. Hermetic Testing, MSW v2 Interception, SAST/OWASP & V8 Coverage Pipeline\n\n';
+  const endMarker4 = '\n\n### 2. Test Harness & Interception Primitives Matrix';
+  const idxStart4 = architectureMarkdown.indexOf(startMarker4);
+  const idxEnd4 = architectureMarkdown.indexOf(endMarker4);
+
+  if (idxStart1to3 === -1 || idxEnd1to3 === -1 || idxStart4 === -1 || idxEnd4 === -1) {
+    return;
+  }
+
+  const diagrams1to3 = architectureMarkdown.slice(idxStart1to3, idxEnd1to3).trim();
+  const diagram4Mermaid = architectureMarkdown.slice(idxStart4 + startMarker4.length, idxEnd4).trim();
+
+  const replacementBlock = [
+    '<!-- BEGIN:architecture-diagrams -->',
+    '## 🏛️ System Architecture Diagrams',
+    '',
+    diagrams1to3,
+    '',
+    '---',
+    '',
+    '### 4. Hermetic Testing, MSW v2 Interception, SAST/OWASP & V8 Coverage Pipeline',
+    '',
+    diagram4Mermaid,
+    '<!-- END:architecture-diagrams -->',
+  ].join('\n');
+
+  const readmeContent = fs.readFileSync(readmePath, 'utf-8');
+  const updatedReadme = readmeContent.replace(
+    /<!-- BEGIN:architecture-diagrams -->[\s\S]*?<!-- END:architecture-diagrams -->/,
+    replacementBlock
+  );
+
+  if (updatedReadme !== readmeContent) {
+    fs.writeFileSync(readmePath, updatedReadme, 'utf-8');
+  }
+}
+
 const outputPath = path.join(rootDir, 'docs', 'ARCHITECTURE.md');
 const content = generateMarkdown();
 fs.writeFileSync(outputPath, content, 'utf-8');
+syncReadmeArchitectureDiagrams(content);
 console.log('✔ [SUCCESS] Comprehensive AST-driven docs/ARCHITECTURE.md generated successfully.');

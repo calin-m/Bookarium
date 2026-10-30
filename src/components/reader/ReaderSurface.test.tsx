@@ -953,6 +953,94 @@ describe('ReaderSurface', () => {
     fireEvent.mouseUp(window);
   });
 
+  it('extracts bookmarkText from the rendered row and spans startRow to endRow when bookmarkText wraps across multiple rows', () => {
+    const onBookmarkRowChange = vi.fn();
+    const pageText =
+      'Line zero opening words. First target row starts here and continues to the end of the line. Trailing sentence on the next row.';
+
+    // Mock Range.prototype.getBoundingClientRect so characters map to visual rows (lineStepPx = 40px)
+    const origCreateRange = document.createRange;
+    const origRaf = window.requestAnimationFrame;
+    window.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      cb(0);
+      return 1;
+    }) as typeof window.requestAnimationFrame;
+
+    let charsPerVisualRow = 50;
+    document.createRange = () => {
+      let startOffset = 0;
+      return {
+        setStart: (_node: Node, offset: number) => {
+          startOffset = offset;
+        },
+        setEnd: () => {},
+        getBoundingClientRect: () => {
+          const rowIdx = Math.floor(startOffset / charsPerVisualRow);
+          const top = rowIdx * 40 + 20;
+          return {
+            top,
+            bottom: top + 20,
+            left: 0,
+            right: 100,
+            width: 10,
+            height: 20,
+            x: 0,
+            y: top,
+            toJSON: () => ({}),
+          } as DOMRect;
+        },
+      } as unknown as Range;
+    };
+
+    try {
+      const { rerender } = render(
+        <ReaderSurface
+          {...defaultProps}
+          currentPageText={pageText}
+          fontSize={20}
+          lineHeight={2}
+          bookmarkRow={0}
+          onBookmarkRowChange={onBookmarkRowChange}
+        />
+      );
+
+      // Clicking the rail at clientY = 60 (row 1) extracts the exact text on row 1 (chars 50..99)
+      const rail = screen.getByTestId('reader-bookmark-rail');
+      fireEvent.click(rail, { clientY: 60 });
+      const expectedRow1Text = pageText.slice(50, 100).trim();
+      expect(onBookmarkRowChange).toHaveBeenCalledWith(1, expectedRow1Text);
+
+      // Now simulate opening on a narrower display (or larger font) where charsPerVisualRow = 25,
+      // so expectedRow1Text (chars 50..99) now starts on row 2 (50/25 = 2) and ends on row 3 (99/25 = 3)!
+      charsPerVisualRow = 25;
+      onBookmarkRowChange.mockClear();
+
+      rerender(
+        <ReaderSurface
+          {...defaultProps}
+          currentPageText={pageText}
+          fontSize={20}
+          lineHeight={2}
+          columnWidth="narrow"
+          bookmarkRow={1}
+          bookmarkText={expectedRow1Text}
+          onBookmarkRowChange={onBookmarkRowChange}
+        />
+      );
+
+      const bookmarkSlider = screen.getByTestId('reader-page-bookmark');
+      expect(bookmarkSlider).toHaveAttribute('data-bookmark-row', '2');
+      expect(bookmarkSlider).toHaveAttribute('data-bookmark-end-row', '3');
+      // Starts at row 2 (2 * 40 = 80px) and spans 2 rows (2 * 40 = 80px)
+      expect(bookmarkSlider).toHaveStyle({ top: '80px', height: '80px' });
+      expect(screen.getByTestId('reader-bookmark-line-badge')).toHaveTextContent('L3–4');
+      expect(onBookmarkRowChange).toHaveBeenCalledWith(2);
+    } finally {
+      document.createRange = origCreateRange;
+      window.requestAnimationFrame = origRaf;
+    }
+  });
+
   it('applies overscroll-y-contain and bottom clearance padding when isSpeechOpen is true even while paused', () => {
     const { rerender } = render(<ReaderSurface {...defaultProps} isSpeechOpen={false} />);
     const mainEl = screen.getByRole('main');
@@ -962,5 +1050,10 @@ describe('ReaderSurface', () => {
 
     rerender(<ReaderSurface {...defaultProps} isSpeechOpen={true} />);
     expect(screen.getByRole('article')).toHaveClass('pb-36', 'sm:pb-40');
+
+    // Verify brightness filter application when brightness < 100
+    rerender(<ReaderSurface {...defaultProps} brightness={75} />);
+    expect(screen.getByRole('main')).toHaveAttribute('data-brightness', '75');
+    expect(screen.getByRole('main').style.filter).toBe('brightness(0.75)');
   });
 });

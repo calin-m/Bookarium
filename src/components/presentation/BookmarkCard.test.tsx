@@ -47,16 +47,29 @@ describe('BookmarkCard', () => {
     });
   });
 
-  it('renders book metadata, formatted author names, progress bar, and reading coordinates', () => {
+  it('renders book metadata, formatted author names, unified copy tooltip, progress bar, and reading coordinates', () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
     render(<BookmarkCard volume={mockVolume} />);
 
     const titleEl = screen.getByText('Pride and Prejudice');
     expect(titleEl).toBeInTheDocument();
-    expect(titleEl).toHaveAttribute('title', 'Pride and Prejudice');
     // 'Austen, Jane' is formatted to 'Jane Austen' via formatAuthorNames
     const authorEl = screen.getByText('Jane Austen');
     expect(authorEl).toBeInTheDocument();
-    expect(authorEl).toHaveAttribute('title', 'Jane Austen');
+
+    const copyMeta = screen.getByTestId('bookmark-card-copy-meta-1342');
+    expect(copyMeta).toHaveAttribute('data-copy-book-id', '1342');
+    expect(copyMeta).toHaveAttribute('data-tooltip', 'Pride and Prejudice — by Jane Austen');
+
+    fireEvent.click(copyMeta);
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+    expect(screen.getByTestId('copy-book-link-indicator-1342')).toHaveTextContent('Copied!');
+
     expect(screen.getByText('45%')).toBeInTheDocument();
     expect(screen.getByText(/Chapter 3 • Page 48/i)).toBeInTheDocument();
 

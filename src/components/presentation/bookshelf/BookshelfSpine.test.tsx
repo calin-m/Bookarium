@@ -399,4 +399,49 @@ describe('BookshelfSpine Component', () => {
 
     networkSpy.mockRestore();
   });
+
+  it('copies book share link when clicking unified Title + Author block without triggering spine or book navigation, and supports interactive star rating', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    const onSpineClick = vi.fn();
+    const onBookClick = vi.fn();
+
+    render(
+      <BookshelfSpine
+        book={mockBook}
+        bookIndex={0}
+        isSaved={true}
+        isFavorite={false}
+        onToggleSave={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onSpineClick={onSpineClick}
+        onBookClick={onBookClick}
+      />
+    );
+
+    const copyBlock = screen.getByTestId(`spine-copy-meta-${mockBook.id}`);
+    expect(copyBlock).toHaveAttribute(
+      'data-tooltip',
+      'Pride and Prejudice — by Jane Austen'
+    );
+
+    fireEvent.click(copyBlock);
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+    expect(screen.getByTestId(`copy-book-link-indicator-${mockBook.id}`)).toHaveTextContent(
+      'Copied!'
+    );
+    expect(onSpineClick).not.toHaveBeenCalled();
+    expect(onBookClick).not.toHaveBeenCalled();
+
+    // Interactive rating inside hover card updates bookshelf store without bubbling
+    const star4 = screen.getByRole('radio', { name: 'Rate 4 of 5 stars' });
+    fireEvent.click(star4);
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    expect(useBookshelfStore.getState().bookRatings[1342]).toBe(4);
+    expect(onSpineClick).not.toHaveBeenCalled();
+  });
 });

@@ -58,12 +58,12 @@ describe('BookshelfMobileModal Component', () => {
     );
 
     const titleEl = screen.getByRole('heading', { name: 'Pride and Prejudice' });
-    expect(titleEl).toHaveAttribute('title', 'Pride and Prejudice');
     expect(titleEl).toHaveClass('line-clamp-4');
     const authorEl = screen.getByText('Jane Austen');
     expect(authorEl).toBeInTheDocument();
-    expect(authorEl).toHaveAttribute('title', 'Jane Austen');
     expect(authorEl).toHaveClass('line-clamp-2');
+    const copyMeta = screen.getByTestId(`mobile-modal-copy-meta-${mockBook.id}`);
+    expect(copyMeta).toHaveAttribute('data-tooltip', 'Pride and Prejudice — by Jane Austen');
     expect(screen.getByText(/25% read/i)).toBeInTheDocument();
 
     const readBtn = screen.getByRole('button', { name: `Read ${mockBook.title}` });
@@ -365,6 +365,23 @@ describe('BookshelfMobileModal Component', () => {
       />
     );
     expect(screen.queryByTestId('remove-bookshelf-dialog')).not.toBeInTheDocument();
+
+    // Clicking the unified Title + Author block copies the book link without closing the modal
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    const copyBlock = screen.getByTestId(`mobile-modal-copy-meta-${secondBook.id}`);
+    expect(copyBlock).toHaveAttribute('data-copy-book-id', String(secondBook.id));
+    fireEvent.click(copyBlock);
+    expect(writeTextMock).toHaveBeenCalledWith(
+      expect.stringMatching(new RegExp(`/read/${secondBook.id}$`))
+    );
+    expect(screen.getByTestId(`copy-book-link-indicator-${secondBook.id}`)).toHaveTextContent(
+      'Copied!'
+    );
   });
 });
 

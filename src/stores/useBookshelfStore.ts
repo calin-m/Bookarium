@@ -624,7 +624,27 @@ export const useBookshelfStore = create<BookshelfState>()(
         set({ bookStatuses: nextStatuses, curationHistory: nextHistory });
 
         if (status === 'finished') {
-          useReaderStore.getState().setProgress(bookId, 100);
+          const readerState = useReaderStore.getState();
+          readerState.setProgress(bookId, 100);
+          const currentPos = readerState.readingPositions[bookId];
+          if (
+            currentPos &&
+            (currentPos.bookmarkRow !== undefined || Boolean(currentPos.bookmarkText))
+          ) {
+            readerState.saveReadingPosition(
+              bookId,
+              {
+                chapterIndex: currentPos.chapterIndex,
+                chapterPage: currentPos.chapterPage,
+                globalPage: currentPos.globalPage,
+                lastReadAt: now,
+                bookTitle: currentPos.bookTitle,
+                bookAuthors: currentPos.bookAuthors,
+                coverUrl: currentPos.coverUrl,
+              },
+              currentUserId
+            );
+          }
         }
 
         if (currentUserId) {

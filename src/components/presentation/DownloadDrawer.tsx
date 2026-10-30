@@ -7,6 +7,10 @@ import { extractBookFormats, formatAuthorNames } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import {
+  CopyBookLinkIndicator,
+  handleCopyBookLinkClick,
+} from '@/components/ui/CursorTooltip';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -94,18 +98,25 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
             )}
             <span className="font-mono text-[10px] sm:text-[11px] text-muted-foreground">ID #{book.id}</span>
           </div>
-          <h3
-            className="font-serif font-bold text-sm sm:text-base text-foreground line-clamp-2 leading-snug"
-            title={book.title}
+          <div
+            data-testid={`download-drawer-copy-meta-${book.id}`}
+            data-copy-book-id={book.id}
+            data-tooltip={`${book.title} — by ${formatAuthorNames(book.authors) || 'Anonymous'}`}
+            onClick={(e) => handleCopyBookLinkClick(e, book.id)}
+            onKeyDown={(e) => handleCopyBookLinkClick(e, book.id)}
+            role="button"
+            tabIndex={0}
+            aria-label={`Copy link to ${book.title} by ${formatAuthorNames(book.authors) || 'Anonymous'}`}
+            className="group/copy cursor-pointer rounded-md -mx-1 px-1 py-0.5 hover:bg-muted/60 transition-colors"
           >
-            {book.title}
-          </h3>
-          <p
-            className="text-[11px] sm:text-xs text-muted-foreground font-serif italic line-clamp-1"
-            title={`By ${formatAuthorNames(book.authors) || 'Anonymous'}`}
-          >
-            By {formatAuthorNames(book.authors) || 'Anonymous'}
-          </p>
+            <h3 className="font-serif font-bold text-sm sm:text-base text-foreground group-hover/copy:text-primary transition-colors line-clamp-2 leading-snug">
+              {book.title}
+            </h3>
+            <p className="text-[11px] sm:text-xs text-muted-foreground font-serif italic flex items-center min-w-0 mt-0.5">
+              <span className="truncate">By {formatAuthorNames(book.authors) || 'Anonymous'}</span>
+              <CopyBookLinkIndicator bookId={book.id} />
+            </p>
+          </div>
         </div>
 
         {contentAdvisory.isMature && (

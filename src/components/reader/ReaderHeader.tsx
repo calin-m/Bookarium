@@ -35,6 +35,10 @@ import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
 import { GutenbergInfoModal } from './GutenbergInfoModal';
 import {
+  CopyBookLinkIndicator,
+  handleCopyBookLinkClick,
+} from '@/components/ui/CursorTooltip';
+import {
   ReaderSubHeaderRibbon,
   type SymposiumCompanionProgress,
   type SymposiumMilestoneNoticeData,
@@ -78,6 +82,7 @@ export interface ReaderHeaderProps {
   symposiumCompanion?: SymposiumCompanionProgress | null;
   symposiumMilestoneNotice?: SymposiumMilestoneNoticeData | null;
   onDismissSymposiumMilestone?: () => void;
+  isHidden?: boolean;
 }
 
 export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
@@ -112,6 +117,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   symposiumCompanion,
   symposiumMilestoneNotice,
   onDismissSymposiumMilestone,
+  isHidden = false,
 }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
@@ -225,7 +231,11 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   return (
     <>
       <header
-        className={`sticky top-0 z-[10000] shrink-0 pt-[env(safe-area-inset-top,0px)] border-b transition-colors duration-theme ${activeTheme.header}`}
+        data-bars-hidden={isHidden ? 'true' : 'false'}
+        aria-hidden={isHidden || undefined}
+        className={`sticky top-0 z-[10000] shrink-0 pt-[env(safe-area-inset-top,0px)] border-b transition-[transform,opacity,background-color,border-color,color] duration-300 ease-in-out ${activeTheme.header} ${
+          isHidden ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+        }`}
       >
         {/* Main Header Bar: Title, Author, Navigation & Global Controls */}
         <div className="w-full px-4 sm:px-6 md:px-8 py-2.5 min-h-[3.5rem] flex items-center justify-between gap-3 sm:gap-4 relative">
@@ -241,18 +251,30 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <div className="relative min-w-0 flex-1 flex flex-col justify-center overflow-hidden select-text pr-2">
-              <h1
-                className="text-sm font-serif font-bold truncate text-foreground leading-tight select-text"
-                title={displayTitle}
-              >
+            <div
+              data-testid={`reader-header-copy-meta-${bookId}`}
+              data-copy-book-id={bookId}
+              data-tooltip={
+                displayAuthor ? `${displayTitle} — by ${displayAuthor}` : displayTitle
+              }
+              onClick={(e) => handleCopyBookLinkClick(e, bookId)}
+              onKeyDown={(e) => handleCopyBookLinkClick(e, bookId)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Copy link to ${displayTitle}${displayAuthor ? ` by ${displayAuthor}` : ''}`}
+              className="group/copy relative min-w-0 flex-1 flex flex-col justify-center overflow-hidden select-text pr-2 cursor-pointer rounded-md -mx-1 px-1 py-0.5 hover:bg-muted/40 transition-colors"
+            >
+              <h1 className="text-sm font-serif font-bold truncate text-foreground group-hover/copy:text-primary transition-colors leading-tight select-text">
                 {displayTitle}
               </h1>
-              {displayAuthor && (
-                <span className={`text-xs font-mono truncate select-text ${activeTheme.textMuted}`} title={displayAuthor}>
-                  by {displayAuthor}
-                </span>
-              )}
+              <div className="flex items-center min-w-0">
+                {displayAuthor && (
+                  <span className={`text-xs font-mono truncate select-text ${activeTheme.textMuted}`}>
+                    by {displayAuthor}
+                  </span>
+                )}
+                <CopyBookLinkIndicator bookId={bookId} />
+              </div>
             </div>
           </div>
 

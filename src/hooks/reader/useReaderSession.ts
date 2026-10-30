@@ -35,7 +35,8 @@ export interface UseReaderSessionReturn {
   currentChapterPage: number;
   setCurrentChapterPage: React.Dispatch<React.SetStateAction<number>>;
   bookmarkRow: number;
-  setBookmarkRow: (row: number) => void;
+  bookmarkText?: string;
+  setBookmarkRow: (row: number, bookmarkText?: string) => void;
   activeChapter: ChapterSection | undefined;
   activeChapterPageCount: number;
   currentPageText: string;
@@ -76,11 +77,19 @@ export function useReaderSession({
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [currentChapterPage, setCurrentChapterPage] = useState(1);
   const [bookmarkRow, setBookmarkRowState] = useState(0);
+  const [bookmarkText, setBookmarkTextState] = useState<string | undefined>(undefined);
   const [resumeNotice, setResumeNotice] = useState<ResumeNotice | null>(null);
   const hasRestoredPositionRef = useRef(false);
 
-  const setBookmarkRow = useCallback((row: number) => {
-    setBookmarkRowState(Math.max(0, Math.round(row)));
+  const setBookmarkRow = useCallback((row: number, nextBookmarkText?: string) => {
+    const clampedRow = Math.max(0, Math.round(row));
+    setBookmarkRowState(clampedRow);
+    if (clampedRow === 0) {
+      setBookmarkTextState(undefined);
+    } else if (nextBookmarkText !== undefined) {
+      const trimmed = nextBookmarkText.trim();
+      setBookmarkTextState(trimmed.length > 0 ? trimmed : undefined);
+    }
   }, []);
 
   // Auto-Resume Position from Store or Cloud
@@ -100,20 +109,35 @@ export function useReaderSession({
       chapterPage: number;
       globalPage?: number;
       bookmarkRow?: number;
+      bookmarkText?: string;
     }) => {
       const clampedChap = Math.min(
         Math.max(0, pos.chapterIndex),
         chaptersWithPagination.length - 1
       );
       const targetChap = chaptersWithPagination[clampedChap];
-      const clampedPage = Math.min(Math.max(1, pos.chapterPage), targetChap.pageCount);
-      const savedRow = Math.max(0, pos.bookmarkRow ?? 0);
-      const savedGlobalPage = pos.globalPage || targetChap.startPageNumber + (clampedPage - 1);
+      const savedText = pos.bookmarkText?.trim() || undefined;
+      let clampedPage = Math.min(Math.max(1, pos.chapterPage), targetChap.pageCount);
+      if (savedText && Array.isArray(targetChap.pages) && targetChap.pages.length > 0) {
+        const candidateSlice = targetChap.pages[clampedPage - 1] || '';
+        if (!candidateSlice.includes(savedText)) {
+          const foundIdx = targetChap.pages.findIndex((p) => p.includes(savedText));
+          if (foundIdx !== -1) {
+            clampedPage = foundIdx + 1;
+          }
+        }
+      }
+      const savedRow = Math.max(0, pos.bookmarkRow ?? (savedText ? 1 : 0));
+      const savedGlobalPage =
+        clampedPage !== pos.chapterPage
+          ? targetChap.startPageNumber + (clampedPage - 1)
+          : pos.globalPage || targetChap.startPageNumber + (clampedPage - 1);
 
       queueMicrotask(() => {
         setActiveChapterIndex(clampedChap);
         setCurrentChapterPage(clampedPage);
         setBookmarkRowState(savedRow);
+        setBookmarkTextState(savedRow > 0 ? savedText : undefined);
         setResumeNotice({
           chapterTitle:
             targetChap.displayTitle ||
@@ -141,6 +165,7 @@ export function useReaderSession({
         setActiveChapterIndex(0);
         setCurrentChapterPage(1);
         setBookmarkRowState(0);
+        setBookmarkTextState(undefined);
         setResumeNotice({
           chapterTitle: 'Completed Volume (100%)',
           page: 1,
@@ -158,7 +183,8 @@ export function useReaderSession({
         savedPos &&
         (savedPos.chapterIndex > 0 ||
           savedPos.chapterPage > 1 ||
-          (savedPos.bookmarkRow ?? 0) > 0)
+          (savedPos.bookmarkRow ?? 0) > 0 ||
+          Boolean(savedPos.bookmarkText))
       ) {
         return restoreToPosition(savedPos);
       }
@@ -195,6 +221,30 @@ export function useReaderSession({
       paginateChapterContent(activeChapter.content, getCharsPerPage(fontSize));
     return pages[currentChapterPage - 1] || pages[0] || '';
   }, [activeChapter, currentChapterPage, fontSize, readingMode]);
+
+  // Follow bookmarkText across page boundaries when fontSize re-paginates the active chapter
+  useEffect(() => {
+    if (
+      readingMode !== 'paginated' ||
+      bookmarkRow <= 0 ||
+      !bookmarkText ||
+      !activeChapter?.content
+    ) {
+      return;
+    }
+    const pages =
+      activeChapter.pages ||
+      paginateChapterContent(activeChapter.content, getCharsPerPage(fontSize));
+    const currentSlice = pages[currentChapterPage - 1] || '';
+    if (!currentSlice.includes(bookmarkText)) {
+      const matchingPageIdx = pages.findIndex((p) => p.includes(bookmarkText));
+      if (matchingPageIdx !== -1 && matchingPageIdx + 1 !== currentChapterPage) {
+        queueMicrotask(() => {
+          setCurrentChapterPage(matchingPageIdx + 1);
+        });
+      }
+    }
+  }, [readingMode, bookmarkRow, bookmarkText, activeChapter, fontSize, currentChapterPage]);
 
   // Global Page & Progress Calculations
   const currentGlobalPage = (activeChapter?.startPageNumber || 1) + (currentChapterPage - 1);
@@ -234,6 +284,7 @@ export function useReaderSession({
               chapterPage: currentChapterPage,
               globalPage: currentGlobalPage,
               ...(bookmarkRow > 0 ? { bookmarkRow } : {}),
+              ...(bookmarkRow > 0 && bookmarkText ? { bookmarkText } : {}),
               lastReadAt: new Date().toISOString(),
             },
             currentUserId
@@ -250,6 +301,7 @@ export function useReaderSession({
     currentChapterPage,
     currentGlobalPage,
     bookmarkRow,
+    bookmarkText,
     setProgress,
     saveReadingPosition,
     getReadingPosition,
@@ -260,12 +312,14 @@ export function useReaderSession({
     if (currentChapterPage > 1) {
       setCurrentChapterPage((p) => p - 1);
       setBookmarkRowState(0);
+      setBookmarkTextState(undefined);
     } else if (activeChapterIndex > 0) {
       const prevChapterIndex = activeChapterIndex - 1;
       const prevChapter = chaptersWithPagination[prevChapterIndex];
       setActiveChapterIndex(prevChapterIndex);
       setCurrentChapterPage(prevChapter ? prevChapter.pageCount : 1);
       setBookmarkRowState(0);
+      setBookmarkTextState(undefined);
     }
   }, [currentChapterPage, activeChapterIndex, chaptersWithPagination]);
 
@@ -273,10 +327,12 @@ export function useReaderSession({
     if (currentChapterPage < activeChapterPageCount) {
       setCurrentChapterPage((p) => p + 1);
       setBookmarkRowState(0);
+      setBookmarkTextState(undefined);
     } else if (activeChapterIndex < chaptersWithPagination.length - 1) {
       setActiveChapterIndex((idx) => idx + 1);
       setCurrentChapterPage(1);
       setBookmarkRowState(0);
+      setBookmarkTextState(undefined);
     }
   }, [currentChapterPage, activeChapterPageCount, activeChapterIndex, chaptersWithPagination.length]);
 
@@ -284,12 +340,14 @@ export function useReaderSession({
     setActiveChapterIndex(index);
     setCurrentChapterPage(1);
     setBookmarkRowState(0);
+    setBookmarkTextState(undefined);
   }, []);
 
   const handleRestart = useCallback(() => {
     setActiveChapterIndex(0);
     setCurrentChapterPage(1);
     setBookmarkRowState(0);
+    setBookmarkTextState(undefined);
     setResumeNotice(null);
     if (numericId > 0) {
       const currentUserId = useAuthStore.getState().user?.id;
@@ -318,6 +376,7 @@ export function useReaderSession({
         setActiveChapterIndex(i);
         setCurrentChapterPage(Math.max(1, targetPage - accumulatedPages));
         setBookmarkRowState(0);
+        setBookmarkTextState(undefined);
         return;
       }
       accumulatedPages += chap.pageCount;
@@ -332,6 +391,7 @@ export function useReaderSession({
     setActiveChapterIndex(chapterIndex);
     setCurrentChapterPage(page);
     setBookmarkRowState(0);
+    setBookmarkTextState(undefined);
   }, []);
 
   return {
@@ -340,6 +400,7 @@ export function useReaderSession({
     currentChapterPage,
     setCurrentChapterPage,
     bookmarkRow,
+    bookmarkText,
     setBookmarkRow,
     activeChapter,
     activeChapterPageCount,

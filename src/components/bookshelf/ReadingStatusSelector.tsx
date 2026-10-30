@@ -1,12 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Bookmark, BookOpen, CheckCircle2, X } from 'lucide-react';
 import type { ReadingStatus } from '@/types/book.types';
+import { useReaderStore } from '@/stores/useReaderStore';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 
 export interface ReadingStatusSelectorProps {
   status: ReadingStatus | null;
   onChange: (status: ReadingStatus | null) => void;
+  bookId?: number;
+  bookTitle?: string;
   size?: 'sm' | 'md';
   showClear?: boolean;
   className?: string;
@@ -43,15 +48,26 @@ const STATUS_OPTIONS: StatusOption[] = [
 export const ReadingStatusSelector: React.FC<ReadingStatusSelectorProps> = ({
   status,
   onChange,
+  bookId,
+  bookTitle,
   size = 'md',
   showClear = true,
   className = '',
 }) => {
   const isSm = size === 'sm';
+  const [isFinishConfirmOpen, setIsFinishConfirmOpen] = useState(false);
+
+  const activePosition = bookId ? useReaderStore.getState().readingPositions[bookId] : undefined;
+  const activeProgress = bookId ? (useReaderStore.getState().readingProgress[bookId] ?? 0) : 0;
+  const hasPlacedBookmark =
+    Boolean(activePosition?.bookmarkRow && activePosition.bookmarkRow > 0) ||
+    Boolean(activePosition?.bookmarkText);
 
   const handleToggleStatus = (targetStatus: ReadingStatus) => {
     if (status === targetStatus) {
       onChange(null); // Click active status to clear
+    } else if (targetStatus === 'finished' && bookId && hasPlacedBookmark) {
+      setIsFinishConfirmOpen(true);
     } else {
       onChange(targetStatus);
     }
@@ -103,6 +119,67 @@ export const ReadingStatusSelector: React.FC<ReadingStatusSelectorProps> = ({
           </React.Fragment>
         );
       })}
+
+      <Modal
+        isOpen={isFinishConfirmOpen}
+        onClose={() => setIsFinishConfirmOpen(false)}
+        title="Mark as Finished"
+        maxWidth="sm"
+        backdropClassName="bg-transparent backdrop-blur-none"
+      >
+        <div className="p-6 space-y-4" data-testid="finish-status-bookmark-dialog">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-semibold text-foreground text-sm">
+                Mark {bookTitle ? `“${bookTitle}”` : 'this volume'} as finished?
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                This will advance your recorded reading progress from{' '}
+                <strong className="font-semibold text-foreground">
+                  {Math.round(activeProgress)}%
+                </strong>{' '}
+                to <strong className="font-semibold text-foreground">100%</strong> and mark the volume as completed.
+              </p>
+              <div
+                data-testid="finish-status-bookmark-reset-notice"
+                className="mt-2 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300 sepia:text-amber-400"
+              >
+                <Bookmark className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>
+                  Your placed bookmark
+                  {activePosition?.bookmarkRow && activePosition.bookmarkRow > 0
+                    ? ` on Line ${activePosition.bookmarkRow + 1} (Page ${activePosition.globalPage || 1})`
+                    : ''}{' '}
+                  will also be reset.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <Button
+              variant="outline"
+              size="chip"
+              onClick={() => setIsFinishConfirmOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="chip"
+              onClick={() => {
+                setIsFinishConfirmOpen(false);
+                onChange('finished');
+              }}
+            >
+              Mark as Finished
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

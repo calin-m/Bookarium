@@ -10,6 +10,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useTouchDevice } from '@/hooks/useTouchDevice';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { isBookPublicDomainInJurisdiction, partitionBooksByJurisdiction } from '@/lib/copyright-engine';
 import {
@@ -91,10 +92,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     isLoaded: isOfflineLoaded,
     downloadBook,
     removeBook,
-    removeAll,
     downloadingBookId,
   } = useOfflineBooks();
   const { isOffline: isNetworkOffline } = useNetworkStatus();
+  const isTouchDevice = useTouchDevice();
 
   const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | null>(null);
 
@@ -113,7 +114,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const [editingShelfName, setEditingShelfName] = useState('');
   const [editingShelfIsPublic, setEditingShelfIsPublic] = useState(true);
   const [deletingShelfId, setDeletingShelfId] = useState<string | null>(null);
-  const [isClearingOfflineShelf, setIsClearingOfflineShelf] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMobileBook, setSelectedMobileBook] = useState<GutendexBook | null>(null);
 
@@ -152,7 +152,17 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const handleSpineClick = (book: GutendexBook) => {
     const isRestricted = !isBookPublicDomainInJurisdiction(book, country).isAllowed;
     const isUnavailableOffline = isNetworkOffline && !isBookOffline(book.id);
-    if ((typeof window !== 'undefined' && window.innerWidth < 1024) || isRestricted || isUnavailableOffline) {
+    const hasTouchTabletViewport =
+      typeof window !== 'undefined' &&
+      typeof navigator !== 'undefined' &&
+      (navigator.maxTouchPoints || 0) > 0 &&
+      window.innerWidth <= 1366;
+    const isTouchOrCompact =
+      isTouchDevice ||
+      hasTouchTabletViewport ||
+      (typeof window !== 'undefined' && window.innerWidth < 1024);
+
+    if (isTouchOrCompact || isRestricted || isUnavailableOffline) {
       setSelectedMobileBook(book);
     } else {
       if (onBookClick) onBookClick(book);
@@ -278,16 +288,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const activeShelfDisplayName = isViewingDownloaded
     ? 'Downloaded'
     : (activeShelf?.is_default ? 'General' : (activeShelf?.name || 'General'));
-
-  const handleConfirmClearOfflineShelf = async () => {
-    try {
-      setIsSubmitting(true);
-      await removeAll(effectiveShelfBooks);
-      setIsClearingOfflineShelf(false);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <div className="relative w-full py-6" data-testid="bookshelf-rack" ref={containerRef}>
@@ -645,9 +645,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
           deletingShelfId={deletingShelfId}
           onCloseDeleteShelf={() => setDeletingShelfId(null)}
           onDeleteShelf={handleDeleteShelf}
-          isClearingOfflineShelf={isClearingOfflineShelf}
-          onCloseClearOfflineShelf={() => setIsClearingOfflineShelf(false)}
-          onConfirmClearOfflineShelf={handleConfirmClearOfflineShelf}
           isSubmitting={isSubmitting}
         />
       )}

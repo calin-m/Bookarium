@@ -6,6 +6,10 @@ import { useRouter } from 'next/navigation';
 import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff, Heart, Library } from 'lucide-react';
 import type { ActiveReadingVolume, LedgerItemStatus, GutendexBook, Book } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
+import {
+  CopyBookLinkIndicator,
+  handleCopyBookLinkClick,
+} from '@/components/ui/CursorTooltip';
 import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/components/ui/RemoveCollectionBookModal';
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -263,34 +267,40 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               </div>
             </div>
 
-            <h3 className="font-serif font-bold text-base text-foreground leading-snug line-clamp-2 transition-colors pr-4">
-              {isRestricted || isUnavailableOffline ? (
-                <span
-                  className="cursor-not-allowed opacity-85"
-                  title={`${book.title} — ${
-                    isRestricted
-                      ? evaluation.reason || `Protected by copyright in ${country}`
-                      : 'Not downloaded for offline reading'
-                  }`}
-                >
-                  {book.title}
-                </span>
-              ) : (
-                <span
-                  className={isActive ? 'text-primary' : 'group-hover:text-primary'}
-                  title={book.title}
-                >
-                  {book.title}
-                </span>
-              )}
-            </h3>
-
-            <p
-              className="font-sans text-xs text-muted-foreground truncate mt-1 pr-4"
-              title={formatAuthorNames(book.authors) || 'Anonymous'}
+            <div
+              data-testid={`bookmark-card-copy-meta-${book.id}`}
+              data-copy-book-id={book.id}
+              data-tooltip={`${book.title} — by ${formatAuthorNames(book.authors) || 'Anonymous'}`}
+              onClick={(e) => handleCopyBookLinkClick(e, book.id)}
+              onKeyDown={(e) => handleCopyBookLinkClick(e, book.id)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Copy link to ${book.title} by ${formatAuthorNames(book.authors) || 'Anonymous'}`}
+              className="group/copy cursor-pointer rounded-md -mx-1 px-1 py-0.5 pr-4 hover:bg-muted/50 transition-colors"
             >
-              {formatAuthorNames(book.authors) || 'Anonymous'}
-            </p>
+              <h3 className="font-serif font-bold text-base text-foreground leading-snug line-clamp-2 transition-colors">
+                {isRestricted || isUnavailableOffline ? (
+                  <span className="opacity-85 group-hover/copy:text-primary transition-colors">
+                    {book.title}
+                  </span>
+                ) : (
+                  <span
+                    className={
+                      isActive
+                        ? 'text-primary'
+                        : 'group-hover:text-primary group-hover/copy:text-primary transition-colors'
+                    }
+                  >
+                    {book.title}
+                  </span>
+                )}
+              </h3>
+
+              <p className="font-sans text-xs text-muted-foreground flex items-center min-w-0 mt-1">
+                <span className="truncate">{formatAuthorNames(book.authors) || 'Anonymous'}</span>
+                <CopyBookLinkIndicator bookId={book.id} />
+              </p>
+            </div>
           </div>
         </div>
 

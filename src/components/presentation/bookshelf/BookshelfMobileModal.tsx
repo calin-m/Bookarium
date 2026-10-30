@@ -15,6 +15,10 @@ import { CopyrightNoticeBanner } from '@/components/presentation/CopyrightNotice
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { Button } from '@/components/ui/Button';
+import {
+  CopyBookLinkIndicator,
+  handleCopyBookLinkClick,
+} from '@/components/ui/CursorTooltip';
 import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/components/ui/RemoveCollectionBookModal';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { formatAuthorNames } from '@/lib/utils';
@@ -208,18 +212,27 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                       </span>
                     )}
                   </div>
-                  <h3
-                    className="font-serif font-bold text-base text-foreground line-clamp-4 leading-snug"
-                    title={selectedMobileBook.title}
+                  <div
+                    data-testid={`mobile-modal-copy-meta-${selectedMobileBook.id}`}
+                    data-copy-book-id={selectedMobileBook.id}
+                    data-tooltip={`${selectedMobileBook.title} — by ${formatAuthorNames(selectedMobileBook.authors) || 'Anonymous'}`}
+                    onClick={(e) => handleCopyBookLinkClick(e, selectedMobileBook.id)}
+                    onKeyDown={(e) => handleCopyBookLinkClick(e, selectedMobileBook.id)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Copy link to ${selectedMobileBook.title} by ${formatAuthorNames(selectedMobileBook.authors) || 'Anonymous'}`}
+                    className="group/copy cursor-pointer rounded-md -mx-1 px-1 py-0.5 hover:bg-muted/60 transition-colors"
                   >
-                    {selectedMobileBook.title}
-                  </h3>
-                  <p
-                    className="text-xs text-muted-foreground font-sans line-clamp-2 leading-snug"
-                    title={formatAuthorNames(selectedMobileBook.authors) || 'Anonymous'}
-                  >
-                    {formatAuthorNames(selectedMobileBook.authors) || 'Anonymous'}
-                  </p>
+                    <h3 className="font-serif font-bold text-base text-foreground group-hover/copy:text-primary transition-colors line-clamp-4 leading-snug">
+                      {selectedMobileBook.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground font-sans flex items-center flex-wrap leading-snug mt-0.5">
+                      <span className="line-clamp-2">
+                        {formatAuthorNames(selectedMobileBook.authors) || 'Anonymous'}
+                      </span>
+                      <CopyBookLinkIndicator bookId={selectedMobileBook.id} />
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -439,6 +452,8 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                     <ReadingStatusSelector
                       status={currentStatus}
                       onChange={(newStatus) => setReadingStatus(selectedMobileBook.id, newStatus)}
+                      bookId={selectedMobileBook.id}
+                      bookTitle={selectedMobileBook.title}
                       size="sm"
                     />
                   </div>

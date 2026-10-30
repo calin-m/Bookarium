@@ -77,10 +77,12 @@ function BookReaderContent() {
     lineHeight,
     fontFamily,
     theme,
+    brightness,
     setFontSize,
     setLineHeight,
     setFontFamily,
     setTheme,
+    setBrightness,
   } = useHydratedReader();
 
   // Persistent User Preferences
@@ -194,14 +196,22 @@ function BookReaderContent() {
     isFellowOnly: false,
   });
 
+  const [isImmersiveBarsHidden, setIsImmersiveBarsHidden] = useState(false);
+
   // Dismiss floating text selection popover whenever a reader drawer is toggled
   const handleToggleDrawer = useCallback(
     (drawer: Parameters<typeof toggleDrawer>[0]) => {
+      setIsImmersiveBarsHidden(false);
       setSelectionPopover((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev));
       toggleDrawer(drawer);
     },
     [toggleDrawer]
   );
+
+  const handleTapReaderSurface = useCallback(() => {
+    if (activeDrawer || selectionPopover.isOpen) return;
+    setIsImmersiveBarsHidden((prev) => !prev);
+  }, [activeDrawer, selectionPopover.isOpen]);
 
   const bookAnnotations = useMemo(() => {
     return annotations.filter((a) => a.bookId === numericId);
@@ -409,6 +419,7 @@ function BookReaderContent() {
     activeChapterIndex,
     currentChapterPage,
     bookmarkRow,
+    bookmarkText,
     setBookmarkRow,
     activeChapter,
     activeChapterPageCount,
@@ -571,6 +582,8 @@ function BookReaderContent() {
   const activeTheme = getReaderTheme(theme);
 
   const [isSpeechOpen, setIsSpeechOpen] = useState(false);
+  const areBarsHidden =
+    isImmersiveBarsHidden && !activeDrawer && !isSpeechOpen && !selectionPopover.isOpen;
 
   // Active reading content
   const rawPageText = readingMode === 'paginated' ? currentPageText : (activeChapter?.content || '');
@@ -805,11 +818,13 @@ function BookReaderContent() {
         symposiumCompanion={symposiumCompanion}
         symposiumMilestoneNotice={symposiumMilestoneNotice}
         onDismissSymposiumMilestone={() => setIsMilestoneDismissed(true)}
+        isHidden={areBarsHidden}
       />
 
       {/* Main Editorial Reading Canvas */}
       <ReaderSurface
         theme={theme}
+        brightness={brightness}
         fontFamily={fontFamily}
         fontSize={fontSize}
         lineHeight={lineHeight}
@@ -819,6 +834,7 @@ function BookReaderContent() {
         currentPageText={currentPageText}
         chapterPage={currentChapterPage}
         bookmarkRow={bookmarkRow}
+        bookmarkText={bookmarkText}
         onBookmarkRowChange={setBookmarkRow}
         activeChapterIndex={activeChapterIndex}
         totalChapters={chaptersWithPagination.length || 1}
@@ -831,6 +847,7 @@ function BookReaderContent() {
         onPreviousPage={handlePrevPage}
         onNextPage={handleNextPage}
         onFontSizeChange={setFontSize}
+        onTapSurface={handleTapReaderSurface}
         isSpeechOpen={isSpeechOpen}
         highlightedSentence={isSpeechOpen && speech.isPlaying && speechHighlightEnabled ? speech.currentSentence : undefined}
         annotations={[...activeChapterAnnotations, ...activeChapterFellowAnnotations]}
@@ -856,12 +873,15 @@ function BookReaderContent() {
         currentChapterIndex={activeChapterIndex}
         totalChapters={chaptersWithPagination.length || 1}
         onSelectChapter={handleSelectChapter}
-        onToggleToc={() => toggleDrawer('toc')}
-        onToggleControls={() => toggleDrawer('controls')}
-        onToggleSearch={() => toggleDrawer('search')}
-        onToggleSpeech={() => setIsSpeechOpen((prev) => !prev)}
-        onToggleAnnotations={() => toggleDrawer('annotations')}
-        onToggleTranslations={() => toggleDrawer('translations')}
+        onToggleToc={() => handleToggleDrawer('toc')}
+        onToggleControls={() => handleToggleDrawer('controls')}
+        onToggleSearch={() => handleToggleDrawer('search')}
+        onToggleSpeech={() => {
+          setIsImmersiveBarsHidden(false);
+          setIsSpeechOpen((prev) => !prev);
+        }}
+        onToggleAnnotations={() => handleToggleDrawer('annotations')}
+        onToggleTranslations={() => handleToggleDrawer('translations')}
         onThemeChange={setTheme}
         isTocOpen={isTocOpen}
         isControlsOpen={isControlsOpen}
@@ -869,6 +889,7 @@ function BookReaderContent() {
         isSpeechOpen={isSpeechOpen}
         isAnnotationsOpen={isAnnotationsOpen}
         isTranslationsOpen={isTranslationsOpen}
+        isHidden={areBarsHidden}
       />
 
       {/* Floating Appearance & Typography Controls Popover */}
@@ -883,6 +904,8 @@ function BookReaderContent() {
         onFontFamilyChange={setFontFamily}
         theme={theme}
         onThemeChange={setTheme}
+        brightness={brightness}
+        onBrightnessChange={setBrightness}
         readingMode={readingMode}
         onReadingModeChange={setReadingMode}
         columnWidth={columnWidth}

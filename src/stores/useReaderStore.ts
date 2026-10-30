@@ -19,6 +19,7 @@ export interface BookReadingPosition {
   chapterPage: number;
   globalPage: number;
   bookmarkRow?: number;
+  bookmarkText?: string;
   lastReadAt: string;
   bookTitle?: string;
   bookAuthors?: string[];
@@ -32,6 +33,7 @@ export interface ReaderState {
   lineHeight: number;
   fontFamily: ReaderFontFamily;
   theme: ReaderTheme;
+  brightness: number;
   readingProgress: Record<number, number>;
   readingPositions: Record<number, BookReadingPosition>;
   deletedPositionBookIds: number[];
@@ -50,6 +52,7 @@ export interface ReaderState {
   setLineHeight: (height: number) => void;
   setFontFamily: (family: ReaderFontFamily) => void;
   setTheme: (theme: ReaderTheme) => void;
+  setBrightness: (brightness: number) => void;
   setMobileTrayOpen: (open: boolean) => void;
   toggleMobileTray: () => void;
   setProgress: (bookId: number, progress: number) => void;
@@ -77,7 +80,8 @@ function isGhostReadingPosition(pos: BookReadingPosition, progress: number): boo
     pos.chapterIndex === 0 &&
     pos.chapterPage <= 1 &&
     pos.globalPage <= 1 &&
-    (pos.bookmarkRow ?? 0) <= 0
+    (pos.bookmarkRow ?? 0) <= 0 &&
+    !pos.bookmarkText
   );
 }
 
@@ -85,7 +89,8 @@ function isGhostCloudRow(row: Record<string, unknown>): boolean {
   return (
     Number(row.progress_percent) === 0 &&
     Number(row.current_chapter_index) === 0 &&
-    Number(row.scroll_offset) <= 1
+    Number(row.scroll_offset) <= 1 &&
+    !row.bookmark_text
   );
 }
 
@@ -99,11 +104,28 @@ function decodeRemoteReadingPosition(
   const rawOffset = Math.max(1, Number(row.scroll_offset));
   const decodedPage = Math.max(1, Math.floor(rawOffset));
   const decodedRow = Math.round((rawOffset - decodedPage) * 1000);
+  const remoteBookmarkText =
+    typeof row.bookmark_text === 'string' && row.bookmark_text.trim().length > 0
+      ? row.bookmark_text.trim()
+      : undefined;
+  const fallbackBookmarkText =
+    !remoteBookmarkText &&
+    decodedRow > 0 &&
+    localPos?.chapterIndex === Number(row.current_chapter_index) &&
+    localPos?.chapterPage === decodedPage &&
+    localPos?.bookmarkRow === decodedRow
+      ? localPos?.bookmarkText
+      : undefined;
+  const resolvedBookmarkText =
+    decodedRow > 0 || remoteBookmarkText
+      ? remoteBookmarkText || fallbackBookmarkText
+      : undefined;
   const position: BookReadingPosition = {
     chapterIndex: Number(row.current_chapter_index),
     chapterPage: decodedPage,
     globalPage: decodedPage,
     ...(decodedRow > 0 ? { bookmarkRow: decodedRow } : {}),
+    ...(resolvedBookmarkText ? { bookmarkText: resolvedBookmarkText } : {}),
     lastReadAt: String(row.last_read_at),
     bookTitle: (row.book_title as string | null) || localPos?.bookTitle,
     bookAuthors: (shouldKeepLocalAuthors ? localPos?.bookAuthors : remoteAuthors) || localPos?.bookAuthors,
@@ -174,6 +196,7 @@ export const useReaderStore = create<ReaderState>()(
       lineHeight: READER_FONT_CONFIG.DEFAULT_LINE_HEIGHT,
       fontFamily: 'serif',
       theme: 'light',
+      brightness: READER_FONT_CONFIG.DEFAULT_BRIGHTNESS,
       readingProgress: {},
       readingPositions: {},
       deletedPositionBookIds: [],
@@ -253,6 +276,14 @@ export const useReaderStore = create<ReaderState>()(
         set({ theme });
         useThemeStore.getState().setTheme(theme);
         applyThemeToDocument(theme);
+      },
+
+      setBrightness: (brightness) => {
+        const clamped = Math.min(
+          Math.max(Math.round(brightness), READER_FONT_CONFIG.MIN_BRIGHTNESS),
+          READER_FONT_CONFIG.MAX_BRIGHTNESS
+        );
+        set({ brightness: clamped });
       },
 
       setProgress: (bookId, progress) => {
@@ -439,20 +470,33 @@ export const useReaderStore = create<ReaderState>()(
 
         try {
           const supabase = createClient();
-          await supabase.from('reading_progress').upsert(
+          const basePayload = {
+            user_id: userId,
+            book_id: bookId,
+            book_title: position.bookTitle || null,
+            book_authors: position.bookAuthors || [],
+            cover_url: position.coverUrl || null,
+            current_chapter_index: position.chapterIndex,
+            progress_percent: progress,
+            scroll_offset: encodedScrollOffset,
+            last_read_at: position.lastReadAt,
+          };
+          const resolvedBookmarkText =
+            position.bookmarkRow && position.bookmarkRow > 0 && position.bookmarkText?.trim()
+              ? position.bookmarkText.trim()
+              : null;
+          const upsertResult = await supabase.from('reading_progress').upsert(
             {
-              user_id: userId,
-              book_id: bookId,
-              book_title: position.bookTitle || null,
-              book_authors: position.bookAuthors || [],
-              cover_url: position.coverUrl || null,
-              current_chapter_index: position.chapterIndex,
-              progress_percent: progress,
-              scroll_offset: encodedScrollOffset,
-              last_read_at: position.lastReadAt,
+              ...basePayload,
+              bookmark_text: resolvedBookmarkText,
             },
             { onConflict: 'user_id,book_id' }
           );
+          if (upsertResult?.error && /bookmark_text/i.test(String(upsertResult.error.message || ''))) {
+            await supabase.from('reading_progress').upsert(basePayload, {
+              onConflict: 'user_id,book_id',
+            });
+          }
         } catch {
           // Silent non-blocking fallback for offline/network loss
         }
@@ -717,6 +761,7 @@ export function useHydratedReader() {
   const lineHeight = useReaderStore((s) => s.lineHeight);
   const fontFamily = useReaderStore((s) => s.fontFamily);
   const theme = useReaderStore((s) => s.theme);
+  const brightness = useReaderStore((s) => s.brightness);
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const readingPositions = useReaderStore((s) => s.readingPositions);
   const isMobileTrayOpen = useReaderStore((s) => s.isMobileTrayOpen);
@@ -727,6 +772,7 @@ export function useHydratedReader() {
   const setLineHeight = useReaderStore((s) => s.setLineHeight);
   const setFontFamily = useReaderStore((s) => s.setFontFamily);
   const setTheme = useReaderStore((s) => s.setTheme);
+  const setBrightness = useReaderStore((s) => s.setBrightness);
   const setMobileTrayOpen = useReaderStore((s) => s.setMobileTrayOpen);
   const toggleMobileTray = useReaderStore((s) => s.toggleMobileTray);
   const setProgress = useReaderStore((s) => s.setProgress);
@@ -745,6 +791,7 @@ export function useHydratedReader() {
         lineHeight,
         fontFamily,
         theme,
+        brightness,
         readingProgress,
         readingPositions,
         isMobileTrayOpen,
@@ -757,6 +804,7 @@ export function useHydratedReader() {
         lineHeight: 1.75,
         fontFamily: 'serif' as ReaderFontFamily,
         theme: 'light' as ReaderTheme,
+        brightness: READER_FONT_CONFIG.DEFAULT_BRIGHTNESS,
         readingProgress: {} as Record<number, number>,
         readingPositions: {} as Record<number, BookReadingPosition>,
         isMobileTrayOpen: false,
@@ -773,6 +821,7 @@ export function useHydratedReader() {
     setLineHeight,
     setFontFamily,
     setTheme,
+    setBrightness,
     setMobileTrayOpen,
     toggleMobileTray,
     setProgress,

@@ -323,6 +323,8 @@ describe('BookmarksView', () => {
     expect(within(dialog).getByText(/Mark “Pride and Prejudice” as finished\?/i)).toBeInTheDocument();
     expect(within(dialog).getByText(/advance your recorded reading progress from/i)).toBeInTheDocument();
     expect(within(dialog).getByText('60%')).toBeInTheDocument();
+    // No bookmark was placed, so bookmark reset notice is not rendered
+    expect(screen.queryByTestId('finish-bookmark-reset-notice')).not.toBeInTheDocument();
 
     // Click Cancel
     const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
@@ -331,19 +333,37 @@ describe('BookmarksView', () => {
     expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('currently_reading');
     expect(useReaderStore.getState().readingProgress[1342]).toBe(60);
 
-    // Select 'completed' again and Confirm
+    // Place a line bookmark on the volume and select 'completed' again
+    act(() => {
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 3,
+        chapterPage: 4,
+        globalPage: 45,
+        bookmarkRow: 4,
+        bookmarkText: 'It is a truth universally acknowledged',
+        lastReadAt: new Date().toISOString(),
+      });
+    });
+
     await act(async () => {
       fireEvent.change(statusSelect, { target: { value: 'completed' } });
     });
+
+    const dialogWithBookmark = screen.getByTestId('finish-bookmark-dialog');
+    const resetNotice = within(dialogWithBookmark).getByTestId('finish-bookmark-reset-notice');
+    expect(resetNotice).toHaveTextContent('Your placed bookmark on Line 5 (Page 45) will also be reset.');
+
     const confirmBtn = screen.getByRole('button', { name: /^Mark as Finished$/i });
     await act(async () => {
       fireEvent.click(confirmBtn);
     });
 
-    // Modal closes, progress is 100%, and status is finished
+    // Modal closes, progress is 100%, status is finished, and bookmark is reset
     expect(screen.queryByTestId('finish-bookmark-dialog')).not.toBeInTheDocument();
     expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('finished');
     expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
+    expect(useReaderStore.getState().readingPositions[1342].bookmarkRow).toBeUndefined();
+    expect(useReaderStore.getState().readingPositions[1342].bookmarkText).toBeUndefined();
   });
 
   it('updates status to Finished immediately without modal when volume is already at 100% progress', async () => {

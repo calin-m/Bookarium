@@ -620,6 +620,31 @@ describe('BookCard component', () => {
 
     networkSpy.mockRestore();
   });
+
+  it('copies book share link when clicking unified Title + Author block without triggering card navigation', () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    const book = mockBooks[0];
+    render(<BookCard book={book} />);
+
+    const copyBlock = screen.getByTestId(`book-card-copy-meta-${book.id}`);
+    expect(copyBlock).toHaveAttribute('data-copy-book-id', String(book.id));
+    expect(copyBlock).toHaveAttribute(
+      'data-tooltip',
+      'Pride and Prejudice — by Jane Austen'
+    );
+
+    fireEvent.click(copyBlock);
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+    expect(screen.getByTestId(`copy-book-link-indicator-${book.id}`)).toHaveTextContent(
+      'Copied!'
+    );
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });
 
 

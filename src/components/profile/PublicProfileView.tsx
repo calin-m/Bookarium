@@ -20,6 +20,10 @@ import {
 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { Button } from '@/components/ui/Button';
+import {
+  CopyBookLinkIndicator,
+  handleCopyBookLinkClick,
+} from '@/components/ui/CursorTooltip';
 import { PrivateProfileNotice } from '@/components/profile/PrivateProfileNotice';
 import { PinnedAccoladesShelf, type PinnedBookplateItem } from '@/components/profile/PinnedAccoladesShelf';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -429,12 +433,19 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                               isUnavailableOffline ? 'opacity-75 border-dashed' : ''
                             }`}
                           >
-                            <div className="space-y-1 min-w-0">
+                            <div
+                              data-testid={`public-shelf-copy-meta-${item.book_id}`}
+                              data-copy-book-id={item.book_id}
+                              data-tooltip={`${item.book_title} — by ${item.book_authors.length > 0 ? item.book_authors.join(', ') : 'Anonymous'}`}
+                              onClick={(e) => handleCopyBookLinkClick(e, item.book_id)}
+                              onKeyDown={(e) => handleCopyBookLinkClick(e, item.book_id)}
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`Copy link to ${item.book_title} by ${item.book_authors.length > 0 ? item.book_authors.join(', ') : 'Anonymous'}`}
+                              className="group/copy space-y-1 min-w-0 cursor-pointer rounded-md -mx-1 px-1 py-0.5 hover:bg-muted/50 transition-colors"
+                            >
                               <div className="flex items-start justify-between gap-1.5">
-                                <h4
-                                  className="font-serif font-bold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2"
-                                  title={item.book_title}
-                                >
+                                <h4 className="font-serif font-bold text-sm text-foreground group-hover:text-primary group-hover/copy:text-primary transition-colors line-clamp-2">
                                   {item.book_title}
                                 </h4>
                                 {isUnavailableOffline && (
@@ -447,11 +458,11 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <p
-                                className="text-xs font-sans text-muted-foreground truncate"
-                                title={item.book_authors.length > 0 ? item.book_authors.join(', ') : 'Anonymous'}
-                              >
-                                {item.book_authors.length > 0 ? item.book_authors.join(', ') : 'Anonymous'}
+                              <p className="text-xs font-sans text-muted-foreground flex items-center min-w-0">
+                                <span className="truncate">
+                                  {item.book_authors.length > 0 ? item.book_authors.join(', ') : 'Anonymous'}
+                                </span>
+                                <CopyBookLinkIndicator bookId={item.book_id} />
                               </p>
                             </div>
 

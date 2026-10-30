@@ -18,6 +18,8 @@ export interface ReaderControlsProps {
   onFontFamilyChange: (family: ReaderFontFamily) => void;
   theme: ReaderTheme;
   onThemeChange: (theme: ReaderTheme) => void;
+  brightness?: number;
+  onBrightnessChange?: (brightness: number) => void;
   readingMode: 'paginated' | 'scroll';
   onReadingModeChange: (mode: 'paginated' | 'scroll') => void;
   columnWidth: 'narrow' | 'normal' | 'wide';
@@ -35,6 +37,8 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
   onFontFamilyChange,
   theme,
   onThemeChange,
+  brightness = READER_FONT_CONFIG.DEFAULT_BRIGHTNESS,
+  onBrightnessChange,
   readingMode,
   onReadingModeChange,
   columnWidth,
@@ -101,6 +105,60 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
             >
               <Moon className="w-3.5 h-3.5 text-indigo-400" /> Dark
             </button>
+          </div>
+        </div>
+
+        {/* Page Brightness (Google Play Books Style) */}
+        <div>
+          <div className="flex justify-between items-center mb-1.5">
+            <label
+              htmlFor="reader-brightness-slider"
+              className={`flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider ${activeTheme.textMuted}`}
+            >
+              <Sun className="w-3 h-3 text-amber-500" />
+              Page Brightness
+            </label>
+            <span
+              data-testid="reader-brightness-value"
+              className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${activeTheme.border} ${activeTheme.pill}`}
+            >
+              {brightness}%
+            </span>
+          </div>
+          <input
+            id="reader-brightness-slider"
+            type="range"
+            min={READER_FONT_CONFIG.MIN_BRIGHTNESS}
+            max={READER_FONT_CONFIG.MAX_BRIGHTNESS}
+            step="5"
+            value={brightness}
+            onChange={(e) => onBrightnessChange?.(Number(e.target.value))}
+            aria-label="Page brightness percentage"
+            aria-valuemin={READER_FONT_CONFIG.MIN_BRIGHTNESS}
+            aria-valuemax={READER_FONT_CONFIG.MAX_BRIGHTNESS}
+            aria-valuenow={brightness}
+            className={`w-full cursor-pointer h-1.5 rounded-lg ${
+              theme === 'sepia'
+                ? 'accent-amber-500 bg-[#462e22]'
+                : 'accent-primary-600 bg-stone-200 dark:bg-stone-700'
+            }`}
+          />
+          <div className="grid grid-cols-3 gap-1 mt-1.5">
+            {READER_FONT_CONFIG.PRESET_BRIGHTNESS.map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => onBrightnessChange?.(b)}
+                aria-pressed={brightness === b}
+                className={`py-0.5 rounded text-[9px] font-mono border transition-colors ${
+                  brightness === b
+                    ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'} font-bold`
+                    : `${activeTheme.pill} ${activeTheme.inactivePill}`
+                }`}
+              >
+                {b}%
+              </button>
+            ))}
           </div>
         </div>
 

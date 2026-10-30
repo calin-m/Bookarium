@@ -38,8 +38,9 @@ describe('DownloadDrawer component', () => {
     expect(screen.getByText('Download Hub')).toBeInTheDocument();
     const titleEl = screen.getByText('Pride and Prejudice');
     expect(titleEl).toBeInTheDocument();
-    expect(titleEl).toHaveAttribute('title', 'Pride and Prejudice');
     expect(titleEl).toHaveClass('line-clamp-2');
+    const copyMeta = screen.getByTestId(`download-drawer-copy-meta-${mockBooks[0].id}`);
+    expect(copyMeta).toHaveAttribute('data-tooltip', 'Pride and Prejudice — by Jane Austen');
     expect(screen.getByText('EPUB E-Reader')).toBeInTheDocument();
     expect(screen.getByText('Clean Plain Text')).toBeInTheDocument();
     expect(screen.getAllByText('Download').length).toBeGreaterThan(0);
@@ -257,5 +258,33 @@ describe('DownloadDrawer component', () => {
 
     expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
     networkSpy.mockRestore();
+  });
+
+  it('copies book share link when clicking unified Title + Author block in DownloadDrawer', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    render(
+      <DownloadDrawer
+        book={mockBooks[0]}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    const copyBlock = await screen.findByTestId(`download-drawer-copy-meta-${mockBooks[0].id}`);
+    expect(copyBlock).toHaveAttribute('data-copy-book-id', String(mockBooks[0].id));
+    expect(copyBlock).toHaveAttribute(
+      'data-tooltip',
+      'Pride and Prejudice — by Jane Austen'
+    );
+    fireEvent.click(copyBlock);
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+    expect(screen.getByTestId(`copy-book-link-indicator-${mockBooks[0].id}`)).toHaveTextContent(
+      'Copied!'
+    );
   });
 });

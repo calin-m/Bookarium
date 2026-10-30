@@ -385,6 +385,19 @@ describe('NotebookQuoteCard', () => {
 
     fireEvent.click(jumpBtn);
     expect(defaultProps.onJumpToReader).not.toHaveBeenCalled();
+
+    // Clicking the unified Title + Author topline block copies the book link
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    const copyBlock = screen.getByTestId('notebook-card-copy-meta-ann-1');
+    expect(copyBlock).toHaveAttribute('data-copy-book-id', '1342');
+    fireEvent.click(copyBlock);
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+    expect(screen.getByTestId('copy-book-link-indicator-1342')).toHaveTextContent('Copied!');
   });
 });
 

@@ -467,6 +467,31 @@ describe('ReaderHeader', () => {
     );
 
     expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent('Clara Vance: Sec. 15 (75%)');
+
+    // Clicking the unified Title + Author block in ReaderHeader copies the book share link
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    const copyBlock = screen.getByTestId('reader-header-copy-meta-1342');
+    expect(copyBlock).toHaveAttribute('data-copy-book-id', '1342');
+    expect(copyBlock).toHaveAttribute('data-tooltip', 'Pride and Prejudice — by Jane Austen');
+    fireEvent.click(copyBlock);
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+    expect(screen.getByTestId('copy-book-link-indicator-1342')).toHaveTextContent('Copied!');
+  });
+
+  it('slides header up out of view when isHidden is true', () => {
+    const { container, rerender } = render(<ReaderHeader {...defaultProps} isHidden={false} />);
+    const headerEl = container.querySelector('header');
+    expect(headerEl).toHaveAttribute('data-bars-hidden', 'false');
+    expect(headerEl).toHaveClass('translate-y-0');
+
+    rerender(<ReaderHeader {...defaultProps} isHidden={true} />);
+    expect(headerEl).toHaveAttribute('data-bars-hidden', 'true');
+    expect(headerEl).toHaveClass('-translate-y-full', 'opacity-0', 'pointer-events-none');
   });
 });
 

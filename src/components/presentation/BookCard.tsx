@@ -4,7 +4,11 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
-import { CursorTooltip } from '@/components/ui/CursorTooltip';
+import {
+  CursorTooltip,
+  CopyBookLinkIndicator,
+  handleCopyBookLinkClick,
+} from '@/components/ui/CursorTooltip';
 import { BookOpen, Download, Library, Heart, Sparkles, Trash2, AlertTriangle, X, CheckCircle2, WifiOff } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount } from '@/lib/utils';
@@ -325,18 +329,23 @@ export const BookCard: React.FC<BookCardProps> = ({
       {/* Book Metadata Content */}
       <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between gap-2 sm:gap-3 min-w-0">
         {/* Top Header: Title & Author */}
-        <div>
-          <h3
-            className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors text-balance"
-            title={book.title}
-          >
+        <div
+          data-testid={`book-card-copy-meta-${book.id}`}
+          data-copy-book-id={book.id}
+          data-tooltip={`${book.title} — by ${authorNames}`}
+          onClick={(e) => handleCopyBookLinkClick(e, book.id)}
+          onKeyDown={(e) => handleCopyBookLinkClick(e, book.id)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Copy link to ${book.title} by ${authorNames}`}
+          className="group/copy cursor-pointer rounded-md -mx-1 px-1 py-0.5 hover:bg-muted/50 transition-colors"
+        >
+          <h3 className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 group-hover:text-primary group-hover/copy:text-primary transition-colors text-balance">
             {book.title}
           </h3>
-          <p
-            className="text-[11px] sm:text-xs text-muted-foreground font-sans line-clamp-1 mt-0.5"
-            title={authorNames}
-          >
-            {authorNames}
+          <p className="text-[11px] sm:text-xs text-muted-foreground font-sans flex items-center min-w-0 mt-0.5">
+            <span className="truncate">{authorNames}</span>
+            <CopyBookLinkIndicator bookId={book.id} />
           </p>
         </div>
 

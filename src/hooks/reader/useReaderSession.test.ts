@@ -415,20 +415,102 @@ describe('useReaderSession', () => {
       })
     );
 
-    // Move bookmark to row 11
+    // Move bookmark to row 11 with captured line text
     act(() => {
-      result.current.setBookmarkRow(11);
+      result.current.setBookmarkRow(11, 'A specific bookmarked line on page one');
     });
     expect(result.current.bookmarkRow).toBe(11);
+    expect(result.current.bookmarkText).toBe('A specific bookmarked line on page one');
     expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkRow).toBe(11);
+    expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkText).toBe(
+      'A specific bookmarked line on page one'
+    );
 
-    // Turning to next page resets bookmarkRow to 0
+    // Layout reflow adjustment (calling setBookmarkRow without 2nd arg) updates row while preserving bookmarkText
+    act(() => {
+      result.current.setBookmarkRow(14);
+    });
+    expect(result.current.bookmarkRow).toBe(14);
+    expect(result.current.bookmarkText).toBe('A specific bookmarked line on page one');
+
+    // Turning to next page resets bookmarkRow to 0 and clears bookmarkText
     act(() => {
       result.current.handleNextPage();
     });
     expect(result.current.currentChapterPage).toBe(2);
     expect(result.current.bookmarkRow).toBe(0);
+    expect(result.current.bookmarkText).toBeUndefined();
     expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkRow).toBeUndefined();
+    expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkText).toBeUndefined();
+  });
+
+  it('self-heals chapterPage when bookmarkText shifts to an adjacent page after fontSize re-pagination', async () => {
+    const reflowChapters: ChapterSection[] = [
+      {
+        id: 1,
+        title: 'Chapter 1',
+        displayTitle: 'Chapter 1',
+        content: 'Page one content. Target bookmarked sentence on page two.',
+        pages: ['Page one content.', 'Target bookmarked sentence on page two.'],
+        pageCount: 2,
+        startPageNumber: 1,
+      },
+    ];
+
+    useReaderStore.setState({
+      readingPositions: {
+        405: {
+          chapterIndex: 0,
+          chapterPage: 1,
+          globalPage: 1,
+          bookmarkRow: 5,
+          bookmarkText: 'Target bookmarked sentence on page two.',
+          lastReadAt: '2026-10-25T10:00:00.000Z',
+        },
+      },
+      readingProgress: {},
+    });
+
+    const { result, rerender } = renderHook(
+      ({ chapters, fontSize }) =>
+        useReaderSession({
+          numericId: 405,
+          hasMounted: true,
+          chaptersWithPagination: chapters,
+          totalVolumePages: 2,
+          fontSize,
+          readingMode: 'paginated',
+        }),
+      {
+        initialProps: {
+          chapters: reflowChapters,
+          fontSize: 18,
+        },
+      }
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Automatically resolved to Page 2 where bookmarkText actually lives
+    expect(result.current.currentChapterPage).toBe(2);
+    expect(result.current.bookmarkText).toBe('Target bookmarked sentence on page two.');
+
+    // Now simulate a dynamic fontSize change that moves bookmarkText back to Page 1
+    const shrunkChapters: ChapterSection[] = [
+      {
+        ...reflowChapters[0],
+        pages: ['Page one content. Target bookmarked sentence on page two.', 'Trailing text.'],
+      },
+    ];
+
+    rerender({ chapters: shrunkChapters, fontSize: 14 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.currentChapterPage).toBe(1);
   });
 
   it('supports initialPosition override, scroll mode content, dynamic pagination fallback, within-chapter prevPage, and dismissResumeNotice', async () => {

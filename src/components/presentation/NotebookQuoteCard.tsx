@@ -20,6 +20,10 @@ import {
 } from '@/lib/reader-annotator';
 import { Button } from '@/components/ui/Button';
 import {
+  CopyBookLinkIndicator,
+  handleCopyBookLinkClick,
+} from '@/components/ui/CursorTooltip';
+import {
   ANNOTATION_COLOR_CONFIG,
   ANNOTATION_COLOR_LIST,
 } from '@/config/annotation-tokens';
@@ -189,18 +193,25 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
       <div className="space-y-3">
         {/* Metadata Topline */}
         <div className="flex items-center justify-between gap-2 text-[11px] font-mono text-muted-foreground">
-          <div className="flex items-center gap-1.5 truncate">
+          <div className="flex items-center gap-1.5 min-w-0 truncate">
             <span
-              className="font-semibold text-foreground truncate"
-              title={`${bookTitle} by ${bookAuthor}`}
+              data-testid={`notebook-card-copy-meta-${ann.id}`}
+              data-copy-book-id={ann.bookId}
+              data-tooltip={`${bookTitle} — by ${bookAuthor}`}
+              onClick={(e) => handleCopyBookLinkClick(e, ann.bookId)}
+              onKeyDown={(e) => handleCopyBookLinkClick(e, ann.bookId)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Copy link to ${bookTitle} by ${bookAuthor}`}
+              className="group/copy inline-flex items-center gap-1.5 min-w-0 truncate cursor-pointer rounded px-1 -mx-1 py-0.5 hover:bg-muted/60 transition-colors"
             >
-              {bookTitle}
-            </span>
-            <span
-              className="text-muted-foreground inline truncate"
-              title={`by ${bookAuthor}`}
-            >
-              by {bookAuthor}
+              <span className="font-semibold text-foreground group-hover/copy:text-primary transition-colors truncate">
+                {bookTitle}
+              </span>
+              <span className="text-muted-foreground inline truncate">
+                by {bookAuthor}
+              </span>
+              <CopyBookLinkIndicator bookId={ann.bookId} />
             </span>
             {isRestricted && (
               <span

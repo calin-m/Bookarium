@@ -78,6 +78,7 @@ export interface ActiveReadingVolume {
   chapterPage: number;
   globalPage: number;
   bookmarkRow?: number;
+  bookmarkText?: string;
   status: LedgerItemStatus;
   bookmarksCount: number;
   lastPassageSnippet?: string;

@@ -137,6 +137,7 @@ export interface Database {
           current_chapter_index: number;
           progress_percent: number;
           scroll_offset: number;
+          bookmark_text: string | null;
           last_read_at: string;
         };
         Insert: {
@@ -149,6 +150,7 @@ export interface Database {
           current_chapter_index?: number;
           progress_percent?: number;
           scroll_offset?: number;
+          bookmark_text?: string | null;
           last_read_at?: string;
         };
         Update: {
@@ -161,6 +163,7 @@ export interface Database {
           current_chapter_index?: number;
           progress_percent?: number;
           scroll_offset?: number;
+          bookmark_text?: string | null;
           last_read_at?: string;
         };
         Relationships: [];

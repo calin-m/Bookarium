@@ -3,6 +3,8 @@ import {
   sanitizeRedirectPath,
   resolveCanonicalAuthOrigin,
   buildAuthRedirectUrl,
+  resolveCanonicalShareOrigin,
+  buildBookShareUrl,
 } from './redirect-sanitizer';
 
 describe('sanitizeRedirectPath', () => {
@@ -86,5 +88,47 @@ describe('buildAuthRedirectUrl', () => {
     ).toBe('https://bookarium.vercel.app/');
   });
 });
+
+describe('resolveCanonicalShareOrigin and buildBookShareUrl', () => {
+  it('dynamically preserves production https origins and localhost origins', () => {
+    expect(
+      resolveCanonicalShareOrigin('https://bookarium.vercel.app', 'https://bookarium.vercel.app')
+    ).toBe('https://bookarium.vercel.app');
+    expect(
+      resolveCanonicalShareOrigin('https://books.example.org', 'https://bookarium.vercel.app')
+    ).toBe('https://books.example.org');
+    expect(
+      resolveCanonicalShareOrigin('http://localhost:3000', 'https://bookarium.vercel.app')
+    ).toBe('http://localhost:3000');
+  });
+
+  it('normalizes ephemeral Vercel preview URLs and rejects untrusted protocols', () => {
+    expect(
+      resolveCanonicalShareOrigin(
+        'https://bookarium-git-feat-calins-projects.vercel.app',
+        'https://bookarium.vercel.app'
+      )
+    ).toBe('https://bookarium.vercel.app');
+    expect(
+      resolveCanonicalShareOrigin('javascript:alert(1)', 'https://bookarium.vercel.app')
+    ).toBe('https://bookarium.vercel.app');
+    expect(
+      resolveCanonicalShareOrigin('http://insecure.example.com', 'https://bookarium.vercel.app')
+    ).toBe('https://bookarium.vercel.app');
+  });
+
+  it('builds a valid book share URL and falls back to root on invalid book IDs', () => {
+    expect(
+      buildBookShareUrl(1342, 'https://bookarium.vercel.app', 'https://bookarium.vercel.app')
+    ).toBe('https://bookarium.vercel.app/read/1342');
+    expect(
+      buildBookShareUrl('84', 'http://localhost:3000', 'https://bookarium.vercel.app')
+    ).toBe('http://localhost:3000/read/84');
+    expect(
+      buildBookShareUrl('invalid-id', 'https://bookarium.vercel.app', 'https://bookarium.vercel.app')
+    ).toBe('https://bookarium.vercel.app/');
+  });
+});
+
 
 

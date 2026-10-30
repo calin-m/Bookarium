@@ -51,7 +51,7 @@ describe('BookshelfRack Component', () => {
     expect(screen.getByText(/no books found on "General"/i)).toBeInTheDocument();
   });
 
-  it('triggers onBookClick or openReader when book spine is clicked', () => {
+  it('triggers onBookClick or openReader when book spine is clicked on desktop', () => {
     const handleBookClick = vi.fn();
     render(<BookshelfRack books={mockBooks} onBookClick={handleBookClick} />);
 
@@ -79,8 +79,9 @@ describe('BookshelfRack Component', () => {
     expect(pushMock).toHaveBeenCalledWith(`/read/${mockBooks[0].id}`);
   });
 
-  it('opens mobile/tablet modal when book spine is clicked on mobile or tablet screen (<1024px)', () => {
+  it('opens mobile/tablet modal when book spine is clicked on mobile, portrait tablet (<1024px), or landscape tablet (touch >=1024px)', () => {
     const originalInnerWidth = window.innerWidth;
+    const originalMaxTouchPoints = navigator.maxTouchPoints;
 
     try {
       // Test 1: Mobile phone (480px)
@@ -105,9 +106,9 @@ describe('BookshelfRack Component', () => {
       expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
       unmount();
 
-      // Test 2: Tablet (768px iPad)
+      // Test 2: Portrait Tablet (768px iPad)
       window.innerWidth = 768;
-      render(<BookshelfRack books={mockBooks} />);
+      const { unmount: unmountPortraitTablet } = render(<BookshelfRack books={mockBooks} />);
       const tabletBookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
       act(() => {
         fireEvent.click(tabletBookElem);
@@ -117,8 +118,30 @@ describe('BookshelfRack Component', () => {
       expect(actionSheet).toBeInTheDocument();
       expect(within(actionSheet).getByText(mockBooks[0].title)).toBeInTheDocument();
       expect(pushMock).not.toHaveBeenCalled();
+      unmountPortraitTablet();
+
+      // Test 3: Horizontal / Landscape Tablet (1180px iPad Air/Pro with touch capability)
+      window.innerWidth = 1180;
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        configurable: true,
+        value: 5,
+      });
+      render(<BookshelfRack books={mockBooks} />);
+      const landscapeTabletBookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
+      act(() => {
+        fireEvent.click(landscapeTabletBookElem);
+      });
+
+      actionSheet = screen.getByTestId('mobile-book-action-sheet');
+      expect(actionSheet).toBeInTheDocument();
+      expect(within(actionSheet).getByText(mockBooks[0].title)).toBeInTheDocument();
+      expect(pushMock).not.toHaveBeenCalled();
     } finally {
       window.innerWidth = originalInnerWidth;
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        configurable: true,
+        value: originalMaxTouchPoints ?? 0,
+      });
     }
   });
 
@@ -1124,6 +1147,62 @@ describe('BookshelfRack Component', () => {
     fireEvent.click(generalBtn);
 
     expect(useBookshelfStore.getState().activeBookshelfId).toBeNull();
+  });
+
+  it('opens and confirms RemoveOfflineBookModal when toggling offline for a downloaded book', async () => {
+    useAuthStore.setState({ user: null });
+    const { getOfflineBookIds, removeOfflineBook } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id]);
+
+    render(<BookshelfRack books={[mockBooks[0]]} />);
+
+    const offlineBtn = await screen.findByLabelText(`Remove offline copy of ${mockBooks[0].title}`);
+    fireEvent.click(offlineBtn);
+
+    expect(screen.getByTestId('remove-offline-book-dialog')).toBeInTheDocument();
+
+    // Cancel closes the dialog
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+    expect(screen.queryByTestId('remove-offline-book-dialog')).toBeNull();
+
+    // Reopen and confirm removal
+    fireEvent.click(offlineBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Remove Download/i }));
+    await waitFor(() => {
+      expect(removeOfflineBook).toHaveBeenCalledWith(mockBooks[0].id);
+    });
+  });
+
+  it('downloads book when toggling offline on a non-downloaded book', async () => {
+    const { getOfflineBookIds, saveOfflineBook } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds).mockResolvedValue([]);
+
+    render(<BookshelfRack books={[mockBooks[0]]} />);
+
+    const offlineBtn = await screen.findByLabelText(`Download ${mockBooks[0].title} for offline reading`);
+    fireEvent.click(offlineBtn);
+
+    await waitFor(() => {
+      expect(saveOfflineBook).toHaveBeenCalled();
+    });
+  });
+
+  it('resets form state when closing Create New Bookshelf modal', () => {
+    useAuthStore.setState({ user: { id: 'user-1', email: 'test@example.com' } as any });
+    useBookshelfStore.setState({
+      cloudBookshelves: [{ id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' }],
+      activeBookshelfId: 'shelf-1',
+    });
+
+    render(<BookshelfRack books={mockBooks} />);
+
+    const newShelfBtn = screen.getByRole('button', { name: 'Create New Shelf' });
+    fireEvent.click(newShelfBtn);
+    expect(screen.getByText('Create New Bookshelf')).toBeInTheDocument();
+
+    const cancelBtn = screen.getByRole('button', { name: 'Close' });
+    fireEvent.click(cancelBtn);
+    expect(screen.queryByText('Create New Bookshelf')).not.toBeInTheDocument();
   });
 });
 

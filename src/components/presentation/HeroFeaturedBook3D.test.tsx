@@ -77,6 +77,17 @@ describe('HeroFeaturedBook3D', () => {
     expect(screen.queryByLabelText(/Click to close volume|Click to pin open volume/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Featured Classic/i)).toBeInTheDocument();
     expect(screen.getByTestId('hero-book-read-btn')).toBeInTheDocument();
+
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+    const copyBlock2D = screen.getByTestId('hero-2d-copy-meta-1342');
+    expect(copyBlock2D).toHaveAttribute('data-tooltip', 'Pride and Prejudice — by Jane Austen');
+    fireEvent.click(copyBlock2D);
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+    expect(screen.getByTestId('copy-book-link-indicator-1342')).toHaveTextContent('Copied!');
   });
 
   it('triggers read callback from 2D presentation mode', () => {

@@ -191,7 +191,11 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
     const targetVolume = filteredVolumes.find((v) => v.book.id === bookId);
     if (!targetVolume) return;
 
-    if (newStatus === 'completed' && targetVolume.progressPercent < 100) {
+    const hasPlacedBookmark =
+      (targetVolume.bookmarkRow !== undefined && targetVolume.bookmarkRow > 0) ||
+      Boolean(targetVolume.bookmarkText);
+
+    if (newStatus === 'completed' && (targetVolume.progressPercent < 100 || hasPlacedBookmark)) {
       setVolumeToFinish(targetVolume);
       return;
     }
@@ -513,7 +517,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
             <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 shrink-0">
               <CheckCircle2 className="w-5 h-5" />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <p className="font-semibold text-foreground text-sm">
                 Mark &ldquo;{volumeToFinish?.book.title}&rdquo; as finished?
               </p>
@@ -524,6 +528,22 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
                 </strong>{' '}
                 to <strong className="font-semibold text-foreground">100%</strong> and mark the volume as completed.
               </p>
+              {((volumeToFinish?.bookmarkRow !== undefined && volumeToFinish.bookmarkRow > 0) ||
+                Boolean(volumeToFinish?.bookmarkText)) && (
+                <div
+                  data-testid="finish-bookmark-reset-notice"
+                  className="mt-2 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300 sepia:text-amber-400"
+                >
+                  <Bookmark className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    Your placed bookmark
+                    {volumeToFinish?.bookmarkRow && volumeToFinish.bookmarkRow > 0
+                      ? ` on Line ${volumeToFinish.bookmarkRow + 1} (Page ${volumeToFinish.globalPage || 1})`
+                      : ''}{' '}
+                    will also be reset.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-187%20Suites%20%7C%202007%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.64%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-187%20Suites%20%7C%202027%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.43%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -44,7 +44,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2007 tests across 187 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2027 tests across 187 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -86,9 +86,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v2.8.1)
 
+- **Cross-Display Reflow-Resilient Reader Bookmark (`bookmark_text`), Conditional Bookmark Reset on `Finished`, Page Brightness (`30%`–`100%`), Tactile Single-Tap Immersive Mode & Unified 9-Surface Title/Author Link Copy (`supabase/schema.sql`, `src/types/database.types.ts`, `src/stores/useReaderStore.ts`, `src/hooks/reader/useReaderSession.ts`, `src/components/reader/ReaderSurface.tsx`, `src/stores/useBookshelfStore.ts`, `src/hooks/reader/useContinueReadingLedger.ts`, `src/components/presentation/BookmarksView.tsx`, `src/components/bookshelf/ReadingStatusSelector.tsx`, `src/config/reader-config.ts`, `src/components/reader/ReaderControls.tsx`, `src/hooks/reader/useReaderGestures.ts`, `src/components/reader/ReaderHeader.tsx`, `src/components/reader/ReaderFooter.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.tsx`, `src/lib/redirect-sanitizer.ts`, `src/mocks/handlers.ts`, `scripts/generate-architecture-matrix.js`, `ADR-072`)**: Added `bookmark_text TEXT` to `public.reading_progress`, DOM `Range` text extraction and multi-row (`startRow` -> `endRow`) highlight spans in `ReaderSurface.tsx`, and cross-page `bookmarkText` self-healing on font-size re-pagination in `useReaderSession.ts`; updated `useBookshelfStore.setReadingStatus` and `useContinueReadingLedger.ts` to reset `bookmarkRow` and `bookmarkText` when marking a volume `Finished`, with conditional bookmark-reset confirmation notices in `BookmarksView.tsx` and `ReadingStatusSelector.tsx`; added `brightness` (`30%`–`100%`, `50% / 75% / 100%` presets) in `ReaderControls.tsx` and `ReaderSurface.tsx`, plus tactile single-finger tap (`onTapSurface`) zero-jump immersive sliding on `ReaderHeader.tsx` and `ReaderFooter.tsx`; unified `<1024px` tablet modal + `>=1024px` direct spine click and `300ms` tooltip + `Copied!` link/author copying across 9 book surfaces; and added MSW v2 handler parity (`src/mocks/handlers.ts`) and 4-diagram auto-sync into `README.md`.
 - **Unified 300ms Global Stylized Tooltip Engine, Destructive Action Confirmation Modals, Tablet Open-Book Preview Spread & PWA Vector Icons (`src/hooks/useCursorTooltip.ts`, `src/components/ui/CursorTooltip.tsx`, `src/app/providers.tsx`, `src/components/account/AccountSymposiumSection.tsx`, `src/components/reader/ReaderSubHeaderRibbon.tsx`, `src/components/account/AccountNarrationSubPanel.tsx`, `src/components/account/AccountSecuritySection.tsx`, `src/components/presentation/BookPreviewModal.tsx`, `src/components/presentation/Navbar.tsx`, `scripts/generate-pwa-icons.js`, `src/app/loading.tsx`, `src/lib/book-metadata.ts`, `src/lib/book-sorting.ts`, `src/lib/reader-annotator.ts`, `ADR-072`)**: Standardized `DEFAULT_TOOLTIP_DELAY_MS = 300` in `useCursorTooltip.ts` with viewport boundary clamping and multi-line wrapping, mounted `GlobalTitleTooltip` in `src/app/providers.tsx` to convert native `[title]` attributes app-wide into stylized cursor-anchored tooltips while preserving `0ms` instant feedback on Favorite/Bookshelf action buttons, and applied hybrid text clamping + hover tooltips across 14 components; added confirmation modals (`Modal.tsx`) for Reader Circle fellow removal, incoming/outgoing circle & symposium invitation cancellation/declining, active Symposium ending (`AccountSymposiumSection.tsx` & `ReaderSubHeaderRibbon.tsx`), and Read-Aloud Studio voice preference reset (`AccountNarrationSubPanel.tsx`); hardened `AccountSecuritySection.tsx` with OWASP `Current Password` re-authentication and inline email recovery mode; expanded the 2-page 3D Open-Book Preview spread in `BookPreviewModal.tsx` to tablet viewports (`md:flex`) with a docked bottom curation bar; simplified `Navbar.tsx` to a single-phase gliding active underline; added analytical vector SDF PWA icons (`scripts/generate-pwa-icons.js`) and `src/app/loading.tsx`; and consolidated shared DRY domain primitives (`resolvePrimaryAuthorName`, `hasVerifiedLifespans`, `enrichAuthorMap`, `filterBooksByOfflineState`, `areAnnotationsOverlapping`).
 - **BookmarkCard 3-Column Curation Controls, Unified Collection Removal Confirmation Modals & Collection View Hardening (`src/components/ui/RemoveCollectionBookModal.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/components/presentation/BookmarksView.tsx`, `src/hooks/reader/useContinueReadingLedger.ts`, `src/components/presentation/NotebookView.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/bookshelf/BookshelfMobileModal.tsx`, `src/app/page.tsx`, `src/lib/adapters/book.adapter.ts`, `ADR-072`)**: Added compact `h-6 w-6` Favorite (`Heart`) and Bookshelf (`Library`) toggle buttons (`w-3 h-3` icons, expanded touch hit area) to `BookmarkCard`, vertically aligned with the bottom `Offline Read` (`HardDriveDownload`), `Symposium` (`Handshake`), and `Remove from Ledger` (`Trash2`) buttons alongside the `right-7` silk bookmark ribbon; added an idempotent `toGutendexBook` adapter in `book.adapter.ts` preserving author lifespans (`authorDetails`), cover art (`formats['image/jpeg']`), and Gutenberg format URLs; created a reusable `RemoveCollectionBookModal` (`Remove from Favorites` & `Remove from Bookshelf`) wired across `BookmarkCard`, `BookCard`, `BookshelfSpine`, and `BookshelfMobileModal` so adding is 1-click instant and removing always requires confirmation; and hardened `useContinueReadingLedger`, `BookmarksView`, `NotebookView`, `BookshelfRack`, and `src/app/page.tsx` with single-shot missing metadata resolution (`attemptedIds` / `resolvedMissingBooks` / `resolvedRemoteBooks`), safe pagination clamping (`safeCurrentPage`), referentially stable `EMPTY_OFFLINE_BOOKS` defaults, volume-header `useReaderStore` priming, and mobile modal swipe locks (`bookToRemoveOffline`).
-- **Bookshelf Cloud-Sync Metadata Preservation, Per-User Sync Coalescing, Atomic Store Selectors & Cross-Layer Habit Telemetry (`src/lib/bookshelf-cloud-sync.ts`, `src/stores/useBookshelfStore.ts`, `src/components/presentation/Navbar.tsx`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/BookPreviewModal.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/app/page.tsx`, `supabase/schema.sql`, `src/types/database.types.ts`, `src/lib/reading-analytics.ts`, `src/stores/useHabitsStore.ts`, `src/lib/accolades-engine.ts`, `ADR-071`)**: Added `mergeCloudBookWithLocal` to preserve local `subjects`, `bookshelves`, `translators`, `languages`, `download_count`, and `formats` during cloud sync; added per-user in-flight mutex coalescing (`inFlightOutboxFlushes`, `inFlightCloudSyncs`), parallel `Promise.all` table fetching (`safeSelectByUser`), multi-shelf `book_id` deduplication, and single-commit `set(nextState)` in `bookshelf-cloud-sync.ts`; removed the redundant mount-time `syncWithCloud` effect from `useHydratedBookshelf()`; exported atomic selector hooks `useIsBookFavorite` and `useHydratedBookshelfCounts` for `Navbar`, `BookCard`, and `BookPreviewModal`; stabilized the `BookshelfRack` General shelf key and scoped `useBooks` / `usePrefetchNextPage` in `src/app/page.tsx`; and added idempotent `completed_books_count` persistence to `public.user_reading_habits` along with `calculateCompletedBooksCount`, `resolvePublicReadingHabits`, and `computeAccoladesSummary`.
 - **Reading Ledger Offline Author Preservation, Merge Guardrails & IndexedDB Self-Healing (`src/hooks/reader/useContinueReadingLedger.ts`, `src/lib/offline-storage.ts`, `src/hooks/useOfflineBooks.ts`, `src/stores/useReaderStore.ts`, `src/stores/useBookshelfStore.ts`, `ADR-070`)**: Resolved the issue where books saved for offline reading reverted to "Anonymous" on page refresh on `/bookmarks` by verifying authentic non-placeholder authors in `missingIds` to trigger background metadata fetching, preventing candidate books with placeholder authors from overwriting authentic domain authors in `setOrMergeBook`, healing placeholder authors in `bookDictionary` using `readingPositions`, resolving authentic authors from local shelf and reader stores before defaulting to "Anonymous" in `getAllOfflineBookMetas()` with asynchronous IndexedDB back-fill (`patchOfflineBookAuthors`), and updating `useReaderStore.enrichReadingPositions`, `saveReadingPosition`, and `useBookshelfStore.enrichSavedBooks` to heal placeholder authors when incoming fresh books provide authentic names without numeric lifespans.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -135,8 +135,9 @@ Bookarium is structured around five core engineering pillars:
 ### 2. 📖 Dedicated Focus Reader & Typography Engine
 * **Unabridged Reading Canvas (`/read/[id]`)**: Full-screen, distraction-free reading with exact chapter and page coordinate auto-resume toasts and 1-click restart option.
 * **Gutenberg Paragraph Reflow Engine**: Normalizes legacy 70-character hard linebreaks into fluid prose across Narrow (`576px`), Normal (`768px`), and Wide (`1024px`) layouts while preserving double-spaced paragraphs, dialogue, and indented poetry.
-* **Granular Typography Popover (`Aa`)**: Real-time font sizing (12px–36px) and dynamic line height (1.2–2.6) with 1-click presets (`14px / 18px / 24px` and `1.4 / 1.8 / 2.2`), font family selection (Serif, Sans, Mono), and reading mode toggling (Paginated / Scroll).
-* **Mobile Pinch-to-Zoom Scaling**: Two-finger pinch gestures adjust font sizing with a transient HUD size badge.
+* **Granular Typography & Page Brightness Popover (`Aa`)**: Real-time font sizing (12px–36px), dynamic line height (1.2–2.6), and **Page Brightness (`30%`–`100%`)** with 1-click presets (`14px / 18px / 24px`, `1.4 / 1.8 / 2.2`, and `50% / 75% / 100%`), font family selection (Serif, Sans, Mono), and reading mode toggling (Paginated / Scroll).
+* **Cross-Display & Font-Reflow Resilient Silk Bookmark (`bookmarkText` / `bookmark_text`)**: Draggable row-snapping silk bookmark tab along the left margin that extracts and persists the exact text passage (`bookmarkText`) locally and in Supabase (`public.reading_progress.bookmark_text`), highlights multi-row spans (`startRow` $\rightarrow$ `endRow`) when narrower screens or larger fonts wrap a bookmarked line across multiple rows, and automatically self-heals page and row coordinates across virtual page boundaries on font-size re-pagination.
+* **Tactile Single-Tap Immersive Mode & Mobile Pinch-to-Zoom**: Single-finger tap on touch devices smoothly slides the top editorial header (`-translate-y-full`) and bottom pagination bar (`translate-y-full`) off-screen with zero layout jump, while two-finger pinch gestures adjust font sizing with a transient HUD size badge.
 * **Global Sentence-Snapped Virtual Pagination**: Virtual page engine with a 500-entry memory LRU cache for instant sub-millisecond virtual page turns without redundant calculation.
 * **Integrated Reading Drawers**:
   * **Table of Contents (`ReaderTocDrawer`)**: Instant chapter navigation with live start-page badges, read-time estimates, and front-matter anthology story detection.
@@ -155,7 +156,7 @@ Bookarium is structured around five core engineering pillars:
 * **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: Dedicated reading ledger tracking active volumes with tactile bookmark cards, top-anchored silk ribbon markers (`origin-top scale-y-110`), live progress percentages, last-read coordinates, multi-attribute sorting and filtering (Recent, Progress, Title, Author, Downloaded), status filters (All, In Progress, Completed, On Hold), and 1-click chapter resume.
   * **Authentic Reading Telemetry**: Strictly enrolls volumes with active coordinates or progress, eliminating unopened placeholder clutter.
   * **Two-Way Dynamic Hydration & Offline Author Guardrails**: Resolves un-shelved book identities and placeholder (`"Anonymous"`) authors via TanStack React Query, protects enriched `bookDictionary` entries against placeholder-author regression (`setOrMergeBook`), back-fills IndexedDB offline volume metadata (`patchOfflineBookAuthors`), and automatically pre-seeds warm reader state for instant 0ms transitions.
-  * **Completed Reading Progress Latch & "Read Again" Flow**: Resuming a finished volume safely locks 100% progress and the "Completed" badge without regressions. Completed bookmark cards feature a dedicated "Read Again" action allowing readers to restart reading from Page 1 without destroying historical ledger completion achievements.
+  * **Completed Reading Progress Latch, Conditional Bookmark Reset & "Read Again" Flow**: Marking a volume as `Finished` locks 100% progress, resets any placed in-page bookmark (`bookmarkRow` & `bookmarkText`) locally and in Supabase (`public.reading_progress`), and conditionally displays a bookmark-reset confirmation notice in the modal when a bookmark is present. Completed bookmark cards feature a dedicated "Read Again" action allowing readers to restart reading from Page 1 without destroying historical ledger completion achievements.
   * **Tactile Active Zone & 4-State Offline Controls**: Single-column mobile focus tracking (`< 768px`) dynamically activating bookmark cards in the viewport focus band, multi-column tap-to-activate with outside-click dismissal and desktop cursor-exit / blur focus release (`onDeactivate`), top-anchored ribbon stretch on card hover, and a dedicated 4-state square offline button preserving the neutral `<HardDriveDownload />` icon until downloaded (emerald) and transitioning to `<Trash2 />` (destructive red) on hover with removal confirmation modal.
 * **In-Reader Highlighting & Literary Commonplace Notebook (`/notebook`)**:
   * **4 Editorial Pastel Highlighters** (Warm Canary, Antique Amber, Sage Mint, Dusty Rose) with palette-harmonized `overlapRingClass` borders across Light, Sepia, and Dark themes, coarse-pointer touch dismissal, and a chapter-scoped annotation drawer (`ReaderAnnotationsDrawer.tsx`).
@@ -201,6 +202,7 @@ Bookarium is structured around five core engineering pillars:
 
 ---
 
+<!-- BEGIN:architecture-diagrams -->
 ## 🏛️ System Architecture Diagrams
 
 ### 1. End-to-End System Context & Data Flow
@@ -225,7 +227,7 @@ flowchart TD
         CollectionToolbarNode["CollectionToolbar.tsx\n(Responsive Workbench: Integrated Search, Sort, Downloaded Filter, Tablet Icon Mode Toggles & Top-Pagination)"]
         PaginationNode["Pagination.tsx\n(Accessible Numeric Page Navigation)"]
         BookPreviewModalNode["BookPreviewModal.tsx\n(Tablet & Desktop 3D Open-Book Preview Spread & Docked Curation Bar)"]
-        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\n(3D Hardwood Shelf, Custom Shelves & <1024px Touch Modal Trigger)"]
+        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\n(3D Hardwood Shelf, Custom Shelves, <1024px Touch Modal & >=1024px Direct Spine Click / Hover Modal)"]
         BookshelfMobileModalNode["BookshelfMobileModal.tsx\n(Mobile & Tablet <1024px Action & Curation Sheet)"]
         RemoveOfflineModalNode["RemoveOfflineBookModal.tsx • RemoveCollectionBookModal.tsx\n(Offline Cache & Collection Eviction Confirmations)"]
         CatalogOfflineNode["CatalogOfflineView.tsx\n(Offline Catalog Notice & Collection Quick-Links)"]
@@ -276,7 +278,7 @@ flowchart TD
         end
         
         subgraph ReaderEngine ["Reader Runtime & Web Speech Subsystem"]
-            SessionHook["📖 useReaderSession\n(Position Memory, Deep Links & Reflow Healing)"]
+            SessionHook["📖 useReaderSession\n(Position Memory, Deep Links & Cross-Display bookmarkText Reflow Healing)"]
             SpeechHook["🔊 useReaderSpeech\n(SpeechSynthesis, Boundary Sync, Auto-Flip)"]
             TimerHook["⏱️ useReadingTimer\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]
             WorkerHook["⚙️ useGutenbergParserWorker\n(Persistent Worker Chapter AST)"]
@@ -452,11 +454,12 @@ flowchart LR
         FontSize["Font Size: 12px - 36px"]
         FontFamily["Font Family: Serif | Sans | Mono"]
         LineHeight["Line Height: 1.2 - 2.6"]
+        Brightness["Page Brightness: 30% - 100%"]
         ColumnWidth["Column Width: Narrow (576px) | Normal (768px) | Wide (1024px)"]
         ReadingMode["Reading Mode: Paginated | Scroll"]
         Theme["Theme: Light | Dark | Sepia"]
         Progress["Global Page & Book Progress %"]
-        Positions["Reading Positions Map\n(exact chapter, page & row-snapped bookmarkRow)"]
+        Positions["Reading Positions Map\n(exact chapter, page, row-snapped bookmarkRow & reflow-resilient bookmarkText)"]
         FellowState["Active Symposium & Companion Coordinates\n(useFellowshipStore)"]
     end
 
@@ -476,16 +479,16 @@ flowchart LR
     end
 
     subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx)"]
-        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader)"]
+        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Tactile Single-Tap Immersive Slide)"]
         SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]
-        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap, Interactive Row-Snapping Page Bookmark & Amber Sentence Highlight)"]
+        ContentArea["Book Page Rendering Area (Fluid Paragraph Wrap, Multi-Row Bookmark Span startRow->endRow, Page Brightness Filter & Amber Sentence Highlight)"]
         ProgressBar["Top Reading Progress Indicator"]
         ResumeToast["Exact-Page Auto-Resume Toast"]
-        FooterBar["Sticky Bottom Pagination & Page Jump"]
+        FooterBar["Sticky Bottom Pagination & Page Jump (ReaderFooter • Tactile Single-Tap Immersive Slide)"]
         TOC["Table of Contents Drawer (ReaderTocDrawer)"]
         SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]
         LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]
-        Controls["Appearance & Typography Popover (ReaderControls)"]
+        Controls["Appearance & Typography Popover (ReaderControls • Font, Line Height, Brightness 30%-100%, Theme)"]
         AudioBar["Speech Narration Bar (ReaderSpeechBar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]
         HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]
         AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(4 Pastel Highlighters • Symposium Marginalia • Spoiler Shield)"]
@@ -493,10 +496,10 @@ flowchart LR
     end
 
     subgraph Persistence ["Browser LocalStorage, IndexedDB & Supabase Cloud"]
-        LSPrefs[("bookarium-reader-preferences\n(theme, font, spacing, readingProgress, readingPositions)")]
+        LSPrefs[("bookarium-reader-preferences\n(theme, font, spacing, brightness, readingProgress, readingPositions)")]
         LSAnnot[("bookarium-annotations-storage\n(useAnnotationStore highlights & reflections)")]
         IDBStorage[("IndexedDB (useOfflineBooks)\n(unabridged offline volumes)")]
-        CloudProgress[("⚡ Supabase Cloud\npublic.reading_progress\n(2s Debounced Sync & Restore)")]
+        CloudProgress[("⚡ Supabase Cloud\npublic.reading_progress\n(2s Debounced Sync & Restore • scroll_offset & bookmark_text)")]
         CloudSymposium[("⚡ Supabase Cloud\npublic.symposium_sessions & user_annotations\n(Companion Progress & Fellow Marginalia)")]
     end
 
@@ -529,8 +532,8 @@ flowchart LR
 ```mermaid
 flowchart TD
     subgraph Storage ["Persistent State Stores"]
-        RS["📖 useReaderStore\n• readingPositions (exact coordinates & timestamp)\n• readingProgress (0-100%)\n• openReader(book) [warm cache]"]
-        BS["⚡ useBookshelfStore\n• savedBooks []\n• recentBooks [] (cached identity)\n• bookStatuses {} ('currently_reading', etc.)"]
+        RS["📖 useReaderStore\n• readingPositions (chapter, page, bookmarkRow & bookmarkText — cleared on finished)\n• readingProgress (0-100%)\n• openReader(book) [warm cache]"]
+        BS["⚡ useBookshelfStore\n• savedBooks []\n• recentBooks [] (cached identity)\n• bookStatuses {} ('currently_reading', 'finished' resets bookmark)"]
         IDB["📦 IndexedDB (useOfflineBooks)\n• offlineBookIds & offlineBooks (unabridged cache)"]
     end
 
@@ -540,15 +543,15 @@ flowchart TD
         QueryMissing["🔄 useBooks(ids: missingIds)\n(TanStack Query - Catalog Seam)"]
         EnrichDict["Enriched Book Dictionary (setOrMergeBook)\n(savedBooks + recentBooks + offlineBooks + queryResults • Author Merge Guardrails)"]
         Parser["Canonical Utilities (@/lib/utils)\n• formatAuthorNames (reverse 'Last, First' & strip dates)\n• cleanBookTitle (strip Gutenberg prefixes)\n• formatRelativeTime ('Recently', '2h ago')"]
-        Assembly["Assemble ActiveReadingVolume[]\n• progress, chapter, coordinates, lastReadAt\n• status (in_progress / completed / on_hold)\n• isOffline / Not Downloaded badge • Line X coordinates"]
+        Assembly["Assemble ActiveReadingVolume[]\n• progress, chapter, coordinates, lastReadAt\n• status (in_progress / completed / on_hold)\n• isOffline / Not Downloaded badge • Line X & bookmarkText"]
         FilterSort["Client Search & Status Filter\n• 'all' | 'in_progress' | 'completed' | 'on_hold'\n• CollectionSearchBar token matching\n• Multi-mode sort ('recent' | 'progress' | 'title' | 'author' | 'downloaded')"]
     end
 
     subgraph UI ["Presentation Layer (BookmarksView.tsx)"]
-        Header["SectionHeader ('Continue Reading & Bookmarks')\n• Eyebrow, Flank lines, Clear Bookmarks modal"]
+        Header["SectionHeader ('Continue Reading & Bookmarks')\n• Eyebrow, Flank lines, Clear Bookmarks modal\n• Mark as Finished modal (conditional bookmark-reset notice)"]
         Search["CollectionToolbar\n(Search, Sort & Downloaded Filter, Pagination)"]
         Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]
-        Cards["BookmarkCard.tsx\n• Top-anchored silk ribbon (origin-top scale-y-110)\n• Card tap focuses/activates card (all viewports)\n• Cleaned title & normalized author\n• Reading coordinates & Line X badge\n• Favorite/Bookshelf curation & RemoveCollectionBookModal\n• 4-state square offline button & modal\n• Status dropdown selector\n• Desktop cursor-exit focus release (onDeactivate)"]
+        Cards["BookmarkCard.tsx\n• Top-anchored silk ribbon (origin-top scale-y-110)\n• Card tap focuses/activates card (all viewports)\n• Unified Title/Author Link Copy (300ms Tooltip & Copied! Pill)\n• Reading coordinates & Line X badge\n• Favorite/Bookshelf curation & RemoveCollectionBookModal\n• 4-state square offline button & modal\n• Status dropdown selector (conditional bookmark-reset modal on Finished)\n• Desktop cursor-exit focus release (onDeactivate)"]
         ResumeAction["Dedicated 1-Click Resume / Read Again CTA\n• Seed useReaderStore.openReader(book) [Warm Cache]\n• router.push('/read/' + id)"]
     end
 
@@ -573,6 +576,51 @@ flowchart TD
     Cards --> ResumeAction
     ResumeAction -->|"Warm Reader Transition (0 CLS)"| RS
 ```
+
+---
+
+### 4. Hermetic Testing, MSW v2 Interception, SAST/OWASP & V8 Coverage Pipeline
+
+```mermaid
+flowchart TD
+    subgraph SecurityGates ["Static Security & Boundary Gates (scripts/verify-build.js)"]
+        Pass05["🔒 Pass 0.5: Secret & Boundary Scanner\n• Zero live tokens / private keys\n• Zero client SUPABASE_SERVICE_ROLE_KEY"]
+        Pass075["🛡️ Pass 0.75: 7-Pillar SAST & OWASP Suite\n• 0 High/Crit CVEs • SSRF & RateLimiter.check()\n• DOM XSS Sinks • Redirect Sanitizer\n• MIT / copyright=false • 14-Table RLS & search_path\n• 7 OWASP HTTP Security Headers"]
+    end
+
+    subgraph TestRunner ["Vitest 4 Runner & JSDOM Bootstrap"]
+        VitestCfg["⚙️ vitest.config.mts\n• jsdom environment • maxWorkers: 4\n• @/* path alias • V8 Coverage Provider"]
+        TestSetup["🧰 src/test/setup.ts\n• @testing-library/jest-dom/vitest\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\n• framer-motion synchronous forwardRef mock\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver)\n• Per-test localStorage.clear() & vi.clearAllMocks()"]
+        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\n• MSW v2 setupServer(...handlers) lifecycle\n• GET /api/books, /api/books/content, /api/books/translations\n• HTTPS Gutendex & 4 Allowlisted Gutenberg Mirrors\n• mockBooks & sampleBookText fixtures (0 external network calls)"]
+    end
+
+    subgraph TestTiers ["4-Tier Co-Located Test Suites (187 Suites)"]
+        Tier1["Tier 1: Pure Domain, Security & AST Suites\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]
+        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\n• useBooks, useBookContent, useBookTranslations\n• supabase-provider, gutendex-provider"]
+        Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\n• bookshelf-cloud-sync, sync-utils, offline-storage"]
+        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\n• 80 UI Components + App Router Pages/Layouts + Web Worker\n• CLI Pipelines (sync-gutenberg-catalog.test.ts, ingest-translations.test.ts)"]
+    end
+
+    subgraph CoverageGate ["Tiered V8 Coverage Gate & Telemetry Output"]
+        V8Thresholds["📊 Tiered V8 Coverage Floor\n• Lines >= 95% • Statements >= 95%\n• Functions >= 92% • Branches >= 85%"]
+        QualityReport["📋 scripts/generate-quality-report.js\n• docs/QUALITY_AUDIT_REPORT.md\n• docs/quality-audit-results.json\n• README.md live badges"]
+    end
+
+    Pass05 --> Pass075
+    Pass075 --> VitestCfg
+    VitestCfg --> TestSetup
+    TestSetup --> MSWServer
+    TestSetup --> Tier1
+    MSWServer -->|"Hermetic HTTP Interception"| Tier2
+    TestSetup --> Tier3
+    MSWServer -->|"Global Zero-Network Safety Net"| Tier4
+    Tier1 --> V8Thresholds
+    Tier2 --> V8Thresholds
+    Tier3 --> V8Thresholds
+    Tier4 --> V8Thresholds
+    V8Thresholds --> QualityReport
+```
+<!-- END:architecture-diagrams -->
 
 ---
 
@@ -632,7 +680,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 | `public.bookshelves` | Table (RLS) | Master default 'General' shelf and custom user-created collection shelves with granular public/private privacy enforcement (`is_public = true`) and authenticated-only mutations with `WITH CHECK` integrity. |
 | `public.bookshelf_items` | Table (RLS) | Volumes filed in specific bookshelves with uniqueness constraints, parent bookshelf ownership verification on insert/update/delete, public shelf isolation, and cascade-optimized foreign key index on `user_id`. |
 | `public.user_favorites` | Table (RLS) | Cross-device synchronized favorited titles with authenticated-only user isolation. |
-| `public.reading_progress` | Table (RLS) | Chapter coordinates, progress %, in-page row bookmark offset, and cached volume metadata with authenticated-only `WITH CHECK` integrity. |
+| `public.reading_progress` | Table (RLS) | Chapter coordinates, progress %, in-page row bookmark offset, highlighted bookmark line text (`bookmark_text`), and cached volume metadata with authenticated-only `WITH CHECK` integrity. |
 | `public.user_annotations` | Table (RLS) | Passage highlights (yellow, amber, mint, rose), personal scholarly notes, and cross-volume Symposium Fellow marginalia. |
 | `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status classification. |
 | `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, completed books count (`completed_books_count`), and dual immersion duration (reading & listening). |

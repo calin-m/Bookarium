@@ -1,7 +1,14 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { CursorTooltip, GlobalTitleTooltip } from './CursorTooltip';
+import {
+  CursorTooltip,
+  GlobalTitleTooltip,
+  CopyBookLinkIndicator,
+  copyBookLinkToClipboard,
+  handleCopyBookLinkClick,
+  COPY_FEEDBACK_DURATION_MS,
+} from './CursorTooltip';
 
 describe('CursorTooltip', () => {
   beforeEach(() => {
@@ -161,6 +168,108 @@ describe('GlobalTitleTooltip', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('global-cursor-tooltip')).not.toBeInTheDocument();
     expect(btn).toHaveAttribute('title', 'Quick Action');
+  });
+
+  it('copies book link on clicking a data-copy-book-id block, morphs tooltip in-place to "Copied link to book!", and reverts after 1800ms', () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    render(
+      <div>
+        <GlobalTitleTooltip />
+        <div
+          data-testid="copyable-book-meta"
+          data-copy-book-id="84"
+          data-tooltip="Frankenstein — by Shelley, Mary"
+          onClick={(e) => handleCopyBookLinkClick(e, 84)}
+          onKeyDown={(e) => handleCopyBookLinkClick(e, 84)}
+          role="button"
+          tabIndex={0}
+        >
+          <h4>Frankenstein</h4>
+          <p>
+            Shelley, Mary
+            <CopyBookLinkIndicator bookId={84} />
+          </p>
+        </div>
+      </div>
+    );
+
+    const metaBlock = screen.getByTestId('copyable-book-meta');
+    const indicator = screen.getByTestId('copy-book-link-indicator-84');
+    expect(indicator).not.toHaveTextContent('Copied!');
+
+    fireEvent.mouseOver(metaBlock, { clientX: 300, clientY: 220 });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    const tooltip = screen.getByTestId('global-cursor-tooltip');
+    expect(tooltip).toHaveTextContent('Frankenstein — by Shelley, Mary');
+
+    // Mousedown and click on the copyable block must NOT dismiss the tooltip; instead it morphs to "Copied link to book!"
+    fireEvent.mouseDown(metaBlock);
+    fireEvent.click(metaBlock);
+
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/84$/));
+    expect(screen.getByTestId('global-cursor-tooltip')).toHaveTextContent(
+      'Copied link to book!'
+    );
+    expect(indicator).toHaveTextContent('Copied!');
+
+    // Advance 1800ms to verify both tooltip and tactile indicator revert cleanly while still hovered
+    act(() => {
+      vi.advanceTimersByTime(COPY_FEEDBACK_DURATION_MS);
+    });
+
+    expect(screen.getByTestId('global-cursor-tooltip')).toHaveTextContent(
+      'Frankenstein — by Shelley, Mary'
+    );
+    expect(indicator).not.toHaveTextContent('Copied!');
+  });
+
+  it('supports keyboard Enter/Space activation on handleCopyBookLinkClick and direct document click fallback', () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    render(
+      <div>
+        <GlobalTitleTooltip />
+        <div
+          data-testid="keyboard-copy-meta"
+          data-copy-book-id="1342"
+          data-tooltip="Pride and Prejudice — by Austen, Jane"
+          onKeyDown={(e) => handleCopyBookLinkClick(e, 1342)}
+          tabIndex={0}
+        >
+          Pride and Prejudice
+        </div>
+      </div>
+    );
+
+    const el = screen.getByTestId('keyboard-copy-meta');
+    // Unhandled key is ignored
+    fireEvent.keyDown(el, { key: 'Tab' });
+    expect(writeTextMock).not.toHaveBeenCalled();
+
+    // Enter copies
+    fireEvent.keyDown(el, { key: 'Enter' });
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+
+    // Direct click without explicit React onClick handler also copies via GlobalTitleTooltip document listener
+    writeTextMock.mockClear();
+    fireEvent.click(el);
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+
+    // Direct utility call returns the share URL
+    const url = copyBookLinkToClipboard(2701);
+    expect(url).toMatch(/\/read\/2701$/);
   });
 });
 

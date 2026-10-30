@@ -9,6 +9,7 @@ export interface UseReaderGesturesOptions {
   onFontSizeChange?: (size: number) => void;
   onNextPage?: () => void;
   onPreviousPage?: () => void;
+  onTapSurface?: () => void;
 }
 
 export interface ZoomFeedbackState {
@@ -33,6 +34,7 @@ export function useReaderGestures({
   onFontSizeChange,
   onNextPage,
   onPreviousPage,
+  onTapSurface,
 }: UseReaderGesturesOptions): UseReaderGesturesReturn {
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const pinchStartRef = useRef<{ distance: number; initialFontSize: number } | null>(null);
@@ -61,8 +63,8 @@ export function useReaderGestures({
         initialFontSize: fontSize,
       };
       setZoomFeedback({ visible: true, size: fontSize });
-    } else if (e.touches.length === 1 && readingMode === 'paginated') {
-      // 1-finger touch: Initialize page swipe
+    } else if (e.touches.length === 1) {
+      // 1-finger touch: Initialize page swipe or single-tap immersive toggle
       pinchStartRef.current = null;
       touchStartRef.current = {
         x: e.touches[0].clientX,
@@ -73,6 +75,9 @@ export function useReaderGestures({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length >= 2) {
+      touchStartRef.current = null;
+    }
     if (e.touches.length === 2 && pinchStartRef.current && onFontSizeChange) {
       const currentDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
@@ -106,9 +111,9 @@ export function useReaderGestures({
       return;
     }
 
-    if (readingMode !== 'paginated' || !touchStartRef.current) return;
+    if (!touchStartRef.current) return;
 
-    // Suppress swipe if user is actively highlighting/selecting text
+    // Suppress swipe or tap if user is actively highlighting/selecting text
     if (typeof window !== 'undefined') {
       const selection = window.getSelection();
       if (selection && !selection.isCollapsed && selection.toString().trim().length > 0) {
@@ -117,13 +122,13 @@ export function useReaderGestures({
       }
     }
 
-    // Suppress swipe if touch occurred within an interactive element or popover/dialog
+    // Suppress swipe or tap if touch occurred within an interactive element, highlight mark, or popover/dialog
     const target = e.target as HTMLElement | null;
     if (
       target &&
       typeof target.closest === 'function' &&
       target.closest(
-        '[role="dialog"], [data-popover], [data-prevent-swipe], button, input, select, textarea'
+        '[role="dialog"], [data-popover], [data-prevent-swipe], button, input, select, textarea, mark, a'
       )
     ) {
       touchStartRef.current = null;
@@ -134,9 +139,11 @@ export function useReaderGestures({
       const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
       const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
       const deltaTime = Date.now() - touchStartRef.current.time;
+      const distance = Math.hypot(deltaX, deltaY);
 
-      // Minimum swipe threshold and dominant horizontal axis
+      // Minimum swipe threshold and dominant horizontal axis in paginated mode
       if (
+        readingMode === 'paginated' &&
         deltaTime < READER_GESTURE_CONFIG.SWIPE_MAX_DURATION_MS &&
         Math.abs(deltaX) > READER_GESTURE_CONFIG.SWIPE_MIN_DISTANCE_PX &&
         Math.abs(deltaX) > Math.abs(deltaY) * READER_GESTURE_CONFIG.SWIPE_DOMINANCE_RATIO
@@ -146,6 +153,11 @@ export function useReaderGestures({
         } else {
           onPreviousPage?.();
         }
+      } else if (
+        deltaTime <= READER_GESTURE_CONFIG.TAP_MAX_DURATION_MS &&
+        distance <= READER_GESTURE_CONFIG.TAP_MAX_MOVEMENT_PX
+      ) {
+        onTapSurface?.();
       }
     }
     touchStartRef.current = null;

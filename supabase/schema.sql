@@ -309,6 +309,7 @@ CREATE TABLE IF NOT EXISTS public.reading_progress (
   current_chapter_index INTEGER NOT NULL DEFAULT 0,
   progress_percent NUMERIC NOT NULL DEFAULT 0,
   scroll_offset NUMERIC NOT NULL DEFAULT 0,
+  bookmark_text TEXT,
   last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, book_id)
 );
@@ -317,6 +318,7 @@ CREATE TABLE IF NOT EXISTS public.reading_progress (
 ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS book_title TEXT;
 ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS book_authors TEXT[] NOT NULL DEFAULT '{}';
 ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS cover_url TEXT;
+ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS bookmark_text TEXT;
 
 ALTER TABLE public.reading_progress ENABLE ROW LEVEL SECURITY;
 

@@ -47,6 +47,7 @@ export interface ReaderFooterProps {
   isSpeechOpen?: boolean;
   isAnnotationsOpen?: boolean;
   isTranslationsOpen?: boolean;
+  isHidden?: boolean;
 }
 
 export const ReaderFooter: React.FC<ReaderFooterProps> = ({
@@ -78,12 +79,17 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
   isSpeechOpen = false,
   isAnnotationsOpen = false,
   isTranslationsOpen = false,
+  isHidden = false,
 }) => {
   const activeTheme = getReaderTheme(theme);
 
   return (
     <footer
-      className={`sticky bottom-0 z-40 shrink-0 border-t pb-[env(safe-area-inset-bottom,0px)] transition-colors duration-theme ${activeTheme.footer}`}
+      data-bars-hidden={isHidden ? 'true' : 'false'}
+      aria-hidden={isHidden || undefined}
+      className={`sticky bottom-0 z-40 shrink-0 border-t pb-[env(safe-area-inset-bottom,0px)] transition-[transform,opacity,background-color,border-color,color] duration-300 ease-in-out ${activeTheme.footer} ${
+        isHidden ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+      }`}
     >
       {/* Mobile Top Tier: Slim Chapter Ribbon & Quick Tools (< md) */}
       <div className={`md:hidden w-full px-3 py-1.5 border-b ${activeTheme.border} flex items-center justify-between gap-2 text-xs font-mono transition-colors duration-theme`}>

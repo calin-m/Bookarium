@@ -5,6 +5,10 @@ import { Sparkles, Quote, RotateCw, BookOpen } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { FeaturedHeroBook } from '@/config/featured-books';
 import { Button } from '@/components/ui/Button';
+import {
+  CopyBookLinkIndicator,
+  handleCopyBookLinkClick,
+} from '@/components/ui/CursorTooltip';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { usePerformanceTier } from '@/hooks/usePerformanceTier';
 
@@ -50,7 +54,11 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
 
   const handleBookClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('a')) {
+    if (
+      target.closest('button') ||
+      target.closest('a') ||
+      target.closest('[data-copy-book-id]')
+    ) {
       return;
     }
     e.stopPropagation();
@@ -86,15 +94,25 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
           </span>
         </div>
 
-        <div className="space-y-1.5">
-          <h3
-            className="text-xl sm:text-2xl font-serif font-bold text-foreground tracking-tight line-clamp-2"
-            title={featuredBook.title}
-          >
+        <div
+          data-testid={`hero-2d-copy-meta-${featuredBook.id}`}
+          data-copy-book-id={featuredBook.id}
+          data-tooltip={`${featuredBook.title} — by ${featuredBook.author}`}
+          onClick={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
+          onKeyDown={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Copy link to ${featuredBook.title} by ${featuredBook.author}`}
+          className="group/copy space-y-1.5 cursor-pointer rounded-md -mx-1 px-1 py-0.5 hover:bg-muted/50 transition-colors"
+        >
+          <h3 className="text-xl sm:text-2xl font-serif font-bold text-foreground group-hover/copy:text-primary transition-colors tracking-tight line-clamp-2">
             {featuredBook.title}
           </h3>
-          <p className="text-xs sm:text-sm font-sans text-muted-foreground">
-            {featuredBook.author} {featuredBook.year ? `• ${featuredBook.year}` : ''}
+          <p className="text-xs sm:text-sm font-sans text-muted-foreground flex items-center min-w-0">
+            <span className="truncate">
+              {featuredBook.author} {featuredBook.year ? `• ${featuredBook.year}` : ''}
+            </span>
+            <CopyBookLinkIndicator bookId={featuredBook.id} />
           </p>
         </div>
 
@@ -141,12 +159,26 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
           <span>{passage.chapterLabel || featuredBook.volumeNumber}</span>
         </div>
 
-        <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground text-balance">
-          {featuredBook.title}
-        </h3>
-        <p className="text-xs font-mono italic text-muted-foreground mb-2">
-          by {featuredBook.author} ({featuredBook.year})
-        </p>
+        <div
+          data-copy-book-id={featuredBook.id}
+          data-tooltip={`${featuredBook.title} — by ${featuredBook.author}`}
+          onClick={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
+          onKeyDown={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Copy link to ${featuredBook.title} by ${featuredBook.author}`}
+          className="group/copy cursor-pointer rounded-md -mx-1 px-1 py-0.5 mb-2 hover:bg-muted/40 transition-colors"
+        >
+          <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground group-hover/copy:text-primary transition-colors text-balance">
+            {featuredBook.title}
+          </h3>
+          <p className="text-xs font-mono italic text-muted-foreground flex items-center min-w-0">
+            <span className="truncate">
+              by {featuredBook.author} ({featuredBook.year})
+            </span>
+            <CopyBookLinkIndicator bookId={featuredBook.id} />
+          </p>
+        </div>
 
         <div className="relative pl-3 border-l-2 border-primary/40 my-2">
           <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8 text-pretty">

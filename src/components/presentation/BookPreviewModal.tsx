@@ -608,6 +608,8 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
             <ReadingStatusSelector
               status={status}
               onChange={(newStatus) => setReadingStatus(book.id, newStatus)}
+              bookId={book.id}
+              bookTitle={book.title}
               size="sm"
             />
           </div>

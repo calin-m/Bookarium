@@ -376,6 +376,17 @@ describe('PublicProfileView', () => {
       const readLinks = screen.getAllByRole('link', { name: /Read Work/i });
       expect(readLinks).toHaveLength(1);
       expect(readLinks[0]).toHaveAttribute('href', '/read/84');
+
+      // Clicking unified Title + Author block copies the book link
+      const writeTextMock = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: writeTextMock },
+      });
+      const copyBlock = screen.getByTestId('public-shelf-copy-meta-84');
+      fireEvent.click(copyBlock);
+      expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/84$/));
+      expect(screen.getByTestId('copy-book-link-indicator-84')).toHaveTextContent('Copied!');
     } finally {
       Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
       act(() => {

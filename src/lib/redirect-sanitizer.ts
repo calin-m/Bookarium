@@ -60,4 +60,60 @@ export function buildAuthRedirectUrl(
   return `${canonicalOrigin}${safePath}`;
 }
 
+/**
+ * Resolves the active deployment origin for shareable links while blocking untrusted protocols
+ * and normalizing ephemeral Vercel preview URLs (`*-git-*.vercel.app`) to the production domain.
+ */
+export function resolveCanonicalShareOrigin(
+  currentOrigin?: string,
+  configuredSiteUrl: string = SITE_CONFIG.SITE_URL
+): string {
+  const canonicalFallback = configuredSiteUrl.replace(/\/+$/, '');
+  if (!currentOrigin) {
+    return canonicalFallback;
+  }
+
+  try {
+    const parsed = new URL(currentOrigin);
+    if (
+      (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:')
+    ) {
+      return parsed.origin;
+    }
+
+    if (parsed.protocol === 'https:') {
+      const fallbackHost = new URL(canonicalFallback).hostname;
+      if (parsed.hostname.endsWith('.vercel.app') && parsed.hostname !== fallbackHost) {
+        return canonicalFallback;
+      }
+      return parsed.origin;
+    }
+  } catch {
+    return canonicalFallback;
+  }
+
+  return canonicalFallback;
+}
+
+/**
+ * Builds a dynamic, origin-validated share URL for a specific book volume (`/read/:id`).
+ */
+export function buildBookShareUrl(
+  bookId: number | string,
+  currentOrigin?: string,
+  configuredSiteUrl: string = SITE_CONFIG.SITE_URL
+): string {
+  const origin =
+    currentOrigin ?? (typeof window !== 'undefined' ? window.location.origin : undefined);
+  const canonicalOrigin = resolveCanonicalShareOrigin(origin, configuredSiteUrl);
+  const normalizedId = String(bookId ?? '').trim();
+  if (!/^\d{1,8}$/.test(normalizedId)) {
+    return `${canonicalOrigin}/`;
+  }
+  const safePath = sanitizeRedirectPath(`/read/${normalizedId}`);
+  return `${canonicalOrigin}${safePath}`;
+}
+
+
 

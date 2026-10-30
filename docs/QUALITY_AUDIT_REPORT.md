@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 30 Oct 2026 16:57:30 GMT  
+**Last Generated**: Fri, 30 Oct 2026 19:36:56 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 187 passed  
-**Total Verified Tests**: 2007 passed  
+**Total Verified Tests**: 2027 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (2007 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (2027 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $ge$ 95%, Statements $ge$ 95%, Functions $ge$ 92%, Branches $ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 72 Architectural Decision Records validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.64%** (10048/10397) — *Target: $ge$ 95%*
-- **Statements**: **95.37%** (10936/11466) — *Target: $ge$ 95%*
-- **Functions**: **93.99%** (2409/2563) — *Target: $ge$ 92%*
-- **Branches**: **88.32%** (9976/11295) — *Target: $ge$ 85%*
+- **Lines**: **96.43%** (10374/10758) — *Target: $ge$ 95%*
+- **Statements**: **95.02%** (11269/11859) — *Target: $ge$ 95%*
+- **Functions**: **93.76%** (2465/2629) — *Target: $ge$ 92%*
+- **Branches**: **88.11%** (10311/11702) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (187 Suites / 2007 Tests)
+## 🧪 Comprehensive Test Suite Catalog (187 Suites / 2027 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 267 Tests)
 
@@ -466,7 +466,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 429 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 435 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
@@ -496,7 +496,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (26 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (27 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -524,6 +524,7 @@
 - ✔ `covers rating & reading status badges, direct primary tag clicks, restricted cover clicks, and all favorite/bookshelf tooltip states`
 - ✔ `renders interactive Downloaded badge on cover when isOffline is true and handles click`
 - ✔ `dims cover, shows Not Downloaded status, and disables Read and Get buttons when network is offline and book is not cached, while keeping them active when cached`
+- ✔ `copies book share link when clicking unified Title + Author block without triggering card navigation`
 
 </details>
 
@@ -547,7 +548,7 @@
 <details>
 <summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (22 tests)</summary>
 
-- ✔ `renders book metadata, formatted author names, progress bar, and reading coordinates`
+- ✔ `renders book metadata, formatted author names, unified copy tooltip, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
 - ✔ `does not trigger onResume on cover thumbnail or title click, preserving clicks for card activation`
 - ✔ `falls back to router.push when onResume is not provided`
@@ -658,7 +659,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfSpine.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders spine title, author, and handles keyboard interaction`
 - ✔ `triggers quick actions from desktop hover card`
@@ -668,18 +669,19 @@
 - ✔ `renders embossed 5-star spine stamp, multi-shelf Move to Shelf selector, full tooltip matrix, and router fallback`
 - ✔ `renders loading spinner and disables offline toggle when isDownloadingOffline is true`
 - ✔ `disables Read and Save for offline reading on hover card when network is offline and book is not cached`
+- ✔ `copies book share link when clicking unified Title + Author block without triggering spine or book navigation, and supports interactive star rating`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (56 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (59 tests)</summary>
 
 - ✔ `renders shelf with books`
 - ✔ `renders empty message when no books are provided`
-- ✔ `triggers onBookClick or openReader when book spine is clicked`
+- ✔ `triggers onBookClick or openReader when book spine is clicked on desktop`
 - ✔ `supports keyboard navigation via Enter and Space keys`
 - ✔ `opens reader route using default handler if onBookClick is omitted`
-- ✔ `opens mobile/tablet modal when book spine is clicked on mobile or tablet screen (<1024px)`
+- ✔ `opens mobile/tablet modal when book spine is clicked on mobile, portrait tablet (<1024px), or landscape tablet (touch >=1024px)`
 - ✔ `opens modal on desktop when a copyright-restricted book spine is clicked without navigating to reader`
 - ✔ `handles quick action download and bookmark clicks`
 - ✔ `renders guest mode sync prompt and triggers auth modal`
@@ -730,6 +732,9 @@
 - ✔ `automatically falls back from Downloaded shelf to null when downloaded books become empty (guest mode)`
 - ✔ `filters effective shelf books to offline books and shows Downloaded empty state in standalone Downloaded mode`
 - ✔ `resets active bookshelf to null when clicking General pill in guest mode while viewing Downloaded shelf`
+- ✔ `opens and confirms RemoveOfflineBookModal when toggling offline for a downloaded book`
+- ✔ `downloads book when toggling offline on a non-downloaded book`
+- ✔ `resets form state when closing Create New Bookshelf modal`
 
 </details>
 
@@ -795,7 +800,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `should render download formats when opened with a public domain book in US`
 - ✔ `should return null when book is null`
@@ -805,6 +810,7 @@
 - ✔ `renders Browser Offline Cache card and allows saving and removing book for offline reading`
 - ✔ `displays Offline Mode Notice Banner, disables external format links and Save Offline when offline and book is not cached`
 - ✔ `keeps Remove button active when offline and book is already downloaded`
+- ✔ `copies book share link when clicking unified Title + Author block in DownloadDrawer`
 
 </details>
 
@@ -1065,7 +1071,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 166 Tests)
+### 📖 In-Browser Focus Reader (17 Suites · 171 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1118,13 +1124,15 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders theme and font selection buttons`
 - ✔ `renders correctly under sepia and dark themes`
 - ✔ `triggers onThemeChange and onFontFamilyChange`
 - ✔ `triggers onReadingModeChange and onColumnWidthChange`
 - ✔ `handles font size and line height slider changes with proper aria attributes`
+- ✔ `handles page brightness slider and preset buttons (50%, 75%, 100%)`
+- ✔ `renders default 100% brightness and handles slider changes when onBrightnessChange is omitted`
 - ✔ `closes controls on Escape key press`
 - ✔ `does not render when isOpen is false`
 
@@ -1160,7 +1168,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderFooter.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/reader/ReaderFooter.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders global volume pagination and chapter title`
 - ✔ `triggers onPrevPage and onNextPage callbacks when buttons are clicked`
@@ -1169,11 +1177,12 @@
 - ✔ `renders continuous flow indicator and chapter navigation when in scroll mode`
 - ✔ `renders mobile quick tools and dispatches drawer and theme actions`
 - ✔ `renders Prev and Next buttons with visible labels and accessible touch target classes`
+- ✔ `slides footer down out of view when isHidden is true`
 
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (20 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -1194,6 +1203,7 @@
 - ✔ `renders and dispatches Annotations toggle with count badge`
 - ✔ `renders Read Aloud button and handles click toggles`
 - ✔ `forwards symposiumCompanion to the sub-header ribbon`
+- ✔ `slides header up out of view when isHidden is true`
 
 </details>
 
@@ -1267,7 +1277,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (29 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (30 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -1297,6 +1307,7 @@
 - ✔ `correctly partitions partially overlapping highlights into sub-spans with single trailing fellow badge`
 - ✔ `does not clobber active drag text selection when clicking inside fellow annotation mark`
 - ✔ `renders interactive in-page row-snapping bookmark and supports rail click, drag, keyboard arrows, and double-click reset`
+- ✔ `extracts bookmarkText from the rendered row and spans startRow to endRow when bookmarkText wraps across multiple rows`
 - ✔ `applies overscroll-y-contain and bottom clearance padding when isSpeechOpen is true even while paused`
 
 </details>
@@ -1374,7 +1385,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 196 Tests)
+### ⚡ Zustand State Stores (10 Suites · 197 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1588,7 +1599,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (27 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (28 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1598,6 +1609,7 @@
 - ✔ `should record and retrieve reading progress percentage`
 - ✔ `should save, retrieve, and clear exact reading positions`
 - ✔ `should toggle and set isMobileTrayOpen`
+- ✔ `should set and clamp page brightness between 30 and 100`
 - ✔ `does not invoke Supabase in guest mode (Zero Auth / Zero Key)`
 - ✔ `debounces cloud upsert by 2000ms when authenticated`
 - ✔ `restores reading position and progress from cloud`
@@ -1632,7 +1644,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (34 Suites · 423 Tests)
+### 📚 Gutenberg Parsers & Metadata (34 Suites · 426 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2099,7 +2111,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/redirect-sanitizer.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/lib/redirect-sanitizer.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `returns default root slash for null, undefined, or empty path`
 - ✔ `allows safe absolute paths starting with a single slash`
@@ -2109,6 +2121,9 @@
 - ✔ `returns canonical fallback when currentOrigin is undefined or malformed`
 - ✔ `builds a sanitized redirect URL using the canonical origin`
 - ✔ `sanitizes unsafe redirect paths back to root on canonical origin`
+- ✔ `dynamically preserves production https origins and localhost origins`
+- ✔ `normalizes ephemeral Vercel preview URLs and rejects untrusted protocols`
+- ✔ `builds a valid book share URL and falls back to root on invalid book IDs`
 
 </details>
 
@@ -2261,7 +2276,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (23 Suites · 262 Tests)
+### 🔄 Hooks & React Query (23 Suites · 264 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (17 tests)</summary>
@@ -2406,21 +2421,22 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `initializes with null zoom feedback`
 - ✔ `triggers onNextPage on leftward swipe with sufficient distance`
 - ✔ `triggers onPreviousPage on rightward swipe with sufficient distance`
 - ✔ `does not trigger swipe if vertical delta exceeds threshold ratio`
 - ✔ `handles 2-finger pinch scaling and clamps font size`
-- ✔ `cancels pending zoom feedback timeout upon unmounting`
+- ✔ `cancels pending zoom feedback timeout upon unmounting or repeated pinch operations`
 - ✔ `suppresses swipe navigation when text selection is active`
 - ✔ `suppresses swipe navigation when touch target is inside a dialog or popover`
+- ✔ `triggers onTapSurface on clean single-finger tap and ignores taps on marks or swipes`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -2435,6 +2451,7 @@
 - ✔ `does not save reading position or progress on initial load when remaining on Page 1`
 - ✔ `records reading position and progress immediately upon advancing to Page 2`
 - ✔ `restores saved bookmarkRow with line resumeNotice, persists setBookmarkRow on Page 1, and resets bookmarkRow on page turn`
+- ✔ `self-heals chapterPage when bookmarkText shifts to an adjacent page after fontSize re-pagination`
 - ✔ `supports initialPosition override, scroll mode content, dynamic pagination fallback, within-chapter prevPage, and dismissResumeNotice`
 
 </details>
@@ -2663,7 +2680,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (46 Suites · 239 Tests)
+### 🧩 UI Primitives & Motion (46 Suites · 242 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2800,7 +2817,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/bookshelf/ReadingStatusSelector.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/bookshelf/ReadingStatusSelector.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders all three reading status options`
 - ✔ `marks current status as checked`
@@ -2809,6 +2826,7 @@
 - ✔ `renders clear button when status is active and invokes onChange(null)`
 - ✔ `renders clear button immediately following the selected option across all status variants`
 - ✔ `applies theme-aware border and background classes to active and inactive buttons without unsupported opacity variants`
+- ✔ `opens confirmation modal with bookmark reset notice when marking Finished on a book with an active bookmark`
 
 </details>
 
@@ -2918,7 +2936,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/CursorTooltip.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/ui/CursorTooltip.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders null when not visible`
 - ✔ `renders null when mousePos is null`
@@ -2926,6 +2944,8 @@
 - ✔ `flips horizontal and vertical transform offsets near right and bottom viewport edges and supports multiline wrapping`
 - ✔ `suppresses native title on mouseover, renders stylized tooltip after 300ms, and restores title on mouseout`
 - ✔ `ignores elements inside data-cursor-tooltip-zone="true" and dismisses on scroll or keydown`
+- ✔ `copies book link on clicking a data-copy-book-id block, morphs tooltip in-place to "Copied link to book!", and reverts after 1800ms`
+- ✔ `supports keyboard Enter/Space activation on handleCopyBookLinkClick and direct document click fallback`
 
 </details>
 
