@@ -4,6 +4,7 @@ import {
   areAnnotationsOverlapping,
   computeSharedQuoteSegments,
   pairOverlappingAnnotations,
+  filterAndPairAnnotationsBySource,
   findMatchingOwnAnnotation,
 } from './reader-annotator';
 import type { Annotation, FellowAnnotation } from '@/stores/useAnnotationStore';
@@ -351,5 +352,82 @@ describe('findMatchingOwnAnnotation', () => {
     expect(findMatchingOwnAnnotation([ownAnn], differentBook)).toBeUndefined();
   });
 });
+
+describe('filterAndPairAnnotationsBySource', () => {
+  const ownAnn: Annotation = {
+    id: 'own-1',
+    bookId: 84,
+    chapterIndex: 2,
+    chapterPage: 4,
+    selectedText: 'It is a truth universally acknowledged',
+    color: 'yellow',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  };
+
+  const overlappingFellow: FellowAnnotation = {
+    id: 'fellow-1',
+    bookId: 84,
+    chapterIndex: 2,
+    chapterPage: 4,
+    selectedText: 'truth universally acknowledged',
+    color: 'amber',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    isFellow: true,
+    fellowUsername: 'hypatia',
+  };
+
+  const standaloneFellow: FellowAnnotation = {
+    id: 'fellow-2',
+    bookId: 84,
+    chapterIndex: 3,
+    chapterPage: 1,
+    selectedText: 'Distinct fellow quote',
+    color: 'amber',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    isFellow: true,
+    fellowUsername: 'plato',
+  };
+
+  it('filters "mine" and attaches pairedFellowAnnotation when overlapping', () => {
+    const res = filterAndPairAnnotationsBySource(
+      [ownAnn],
+      [overlappingFellow, standaloneFellow],
+      'mine'
+    );
+    expect(res).toHaveLength(1);
+    expect(res[0].id).toBe('own-1');
+    expect(res[0].pairedFellowAnnotation?.id).toBe('fellow-1');
+  });
+
+  it('filters "fellows" and attaches matchingOwnAnnotation when overlapping', () => {
+    const res = filterAndPairAnnotationsBySource(
+      [ownAnn],
+      [overlappingFellow, standaloneFellow],
+      'fellows'
+    );
+    expect(res).toHaveLength(2);
+    expect(res[0].id).toBe('fellow-1');
+    expect(res[0].matchingOwnAnnotation?.id).toBe('own-1');
+    expect(res[1].id).toBe('fellow-2');
+    expect(res[1].matchingOwnAnnotation).toBeUndefined();
+  });
+
+  it('pairs and deduplicates overlapping items under "all"', () => {
+    const res = filterAndPairAnnotationsBySource(
+      [ownAnn],
+      [overlappingFellow, standaloneFellow],
+      'all'
+    );
+    expect(res).toHaveLength(2);
+    expect(res[0].id).toBe('own-1');
+    expect(res[0].pairedFellowAnnotation?.id).toBe('fellow-1');
+    expect(res[1].id).toBe('fellow-2');
+    expect(res[1].matchingOwnAnnotation).toBeUndefined();
+  });
+});
+
 
 

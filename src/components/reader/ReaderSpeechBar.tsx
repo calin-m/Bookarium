@@ -248,7 +248,7 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-nowrap">
-                    <span className="text-xs font-serif font-bold truncate max-w-[100px] sm:max-w-[180px]">
+                    <span className="text-xs font-serif font-bold truncate max-w-[100px] sm:max-w-[180px]" title={bookTitle || 'Read Aloud'}>
                       {bookTitle || 'Read Aloud'}
                     </span>
                     {totalSentences > 0 && (
@@ -430,7 +430,7 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                       )}
                     </div>
                     {bookTitle && (
-                      <p className={cn('text-[10px] truncate max-w-[200px] sm:max-w-[280px]', activeTheme.textMuted)}>
+                      <p className={cn('text-[10px] truncate max-w-[200px] sm:max-w-[280px]', activeTheme.textMuted)} title={bookTitle}>
                         {bookTitle}
                       </p>
                     )}

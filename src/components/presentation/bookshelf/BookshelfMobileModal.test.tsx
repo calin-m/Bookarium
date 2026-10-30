@@ -57,7 +57,13 @@ describe('BookshelfMobileModal Component', () => {
       />
     );
 
-    expect(screen.getByText('Jane Austen')).toBeInTheDocument();
+    const titleEl = screen.getByRole('heading', { name: 'Pride and Prejudice' });
+    expect(titleEl).toHaveAttribute('title', 'Pride and Prejudice');
+    expect(titleEl).toHaveClass('line-clamp-4');
+    const authorEl = screen.getByText('Jane Austen');
+    expect(authorEl).toBeInTheDocument();
+    expect(authorEl).toHaveAttribute('title', 'Jane Austen');
+    expect(authorEl).toHaveClass('line-clamp-2');
     expect(screen.getByText(/25% read/i)).toBeInTheDocument();
 
     const readBtn = screen.getByRole('button', { name: `Read ${mockBook.title}` });

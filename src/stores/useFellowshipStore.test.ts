@@ -5,6 +5,7 @@ import {
   useHydratedFellowship,
   isPlaceholderUsername,
   formatFellowScholarLabel,
+  fetchScholarProfilesMap,
 } from './useFellowshipStore';
 import { useAuthStore } from './useAuthStore';
 
@@ -763,6 +764,20 @@ describe('useFellowshipStore', () => {
       expect(formatFellowScholarLabel('', 'scholar')).toBe('Fellow Scholar');
       expect(formatFellowScholarLabel(null, null)).toBe('Fellow Scholar');
     });
+
+    it('fetchScholarProfilesMap returns empty map for empty input or failed query', async () => {
+      const emptyRes = await fetchScholarProfilesMap({} as never, []);
+      expect(emptyRes.size).toBe(0);
+
+      const throwingSupabase = {
+        from: () => {
+          throw new Error('Offline');
+        },
+      };
+      const errorRes = await fetchScholarProfilesMap(throwingSupabase as never, ['u1']);
+      expect(errorRes.size).toBe(0);
+    });
   });
 });
+
 

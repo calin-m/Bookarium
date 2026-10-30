@@ -77,6 +77,88 @@ export function isPlaceholderTitle(title?: string | null): boolean {
 }
 
 /**
+ * Validates whether an author list contains at least one non-placeholder author name.
+ */
+export function hasAuthenticAuthors(
+  authors?: Array<Author | string | { name?: string | null } | null | undefined> | null
+): boolean {
+  if (!Array.isArray(authors) || authors.length === 0) return false;
+  return authors.some((a) => {
+    const name = typeof a === 'string' ? a : a?.name;
+    return Boolean(name && !isPlaceholderAuthor(name));
+  });
+}
+
+/**
+ * Validates whether an author list contains at least one author with known birth or death years
+ * (either via numeric `birth_year`/`death_year` fields or lifespans embedded in the author name string).
+ */
+export function hasAuthorLifespans(
+  authors?: Array<
+    | Author
+    | string
+    | { name?: string | null; birth_year?: number | null; death_year?: number | null }
+    | null
+    | undefined
+  > | null
+): boolean {
+  if (!Array.isArray(authors) || authors.length === 0) return false;
+  return authors.some((a) => {
+    if (!a) return false;
+    if (typeof a === 'string') {
+      const parsed = parseLifespansFromName(a);
+      return parsed.birthYear != null || parsed.deathYear != null;
+    }
+    if (a.birth_year != null || a.death_year != null) return true;
+    if (a.name) {
+      const parsed = parseLifespansFromName(a.name);
+      return parsed.birthYear != null || parsed.deathYear != null;
+    }
+    return false;
+  });
+}
+
+/**
+ * Converts a curated `FeaturedHeroBook` fixture (or partial hero metadata) into a canonical `GutendexBook` payload.
+ */
+export function featuredHeroToGutendexBook(
+  hero: {
+    id: number;
+    title: string;
+    author?: string;
+    authorBirthYear?: number | null;
+    authorDeathYear?: number | null;
+    primarySubject?: string;
+  },
+  options?: {
+    formats?: Record<string, string>;
+    downloadCount?: number;
+  }
+): GutendexBook {
+  return {
+    id: hero.id,
+    title: hero.title,
+    authors: [
+      {
+        name: hero.author || 'Classic Masterwork',
+        birth_year: hero.authorBirthYear ?? null,
+        death_year: hero.authorDeathYear ?? null,
+      },
+    ],
+    translators: [],
+    subjects: [hero.primarySubject || 'Classic Literature'],
+    bookshelves: [],
+    languages: ['en'],
+    copyright: false,
+    media_type: 'Text',
+    formats: options?.formats ?? {
+      'image/jpeg': `https://www.gutenberg.org/cache/epub/${hero.id}/pg${hero.id}.cover.medium.jpg`,
+    },
+    download_count: options?.downloadCount ?? 0,
+  };
+}
+
+/**
  * Canonical domain resolver: Determines the optimal title, author, subjects, and language
  * for a book across all available tiers (Client Store, Static Fixtures, API Results, and Gutenberg Raw Headers).
  */

@@ -108,3 +108,79 @@ export function sortBooks(
   }
 }
 
+/**
+ * Merges and deduplicates downloaded books across `savedBooks` and `offlineBooks`,
+ * preserving `savedBooks` order first followed by any additional offline volumes.
+ */
+export function mergeDownloadedShelfBooks(
+  savedBooks: GutendexBook[],
+  offlineBooks: GutendexBook[],
+  isBookOffline: (id: number) => boolean
+): GutendexBook[] {
+  const map = new Map<number, GutendexBook>();
+  for (const b of savedBooks) {
+    if (isBookOffline(b.id)) {
+      map.set(b.id, b);
+    }
+  }
+  for (const b of offlineBooks) {
+    if (isBookOffline(b.id) && !map.has(b.id)) {
+      map.set(b.id, b);
+    }
+  }
+  return Array.from(map.values());
+}
+
+/**
+ * Resolves the active bookshelf metadata (`defaultShelf`, `currentActiveShelfId`, `activeShelf`,
+ * `isViewingDownloaded`, `isViewingGeneral`) across General, Downloaded, and custom named shelves.
+ */
+export function resolveBookshelfViewState<TShelf extends { id: string; is_default?: boolean }>({
+  cloudBookshelves,
+  activeBookshelfId,
+  downloadedShelfId,
+}: {
+  cloudBookshelves: ReadonlyArray<TShelf>;
+  activeBookshelfId?: string | null;
+  downloadedShelfId: string;
+}): {
+  defaultShelf: TShelf | undefined;
+  currentActiveShelfId: string | undefined;
+  activeShelf: TShelf | undefined;
+  isViewingDownloaded: boolean;
+  isViewingGeneral: boolean;
+} {
+  const defaultShelf = cloudBookshelves.find((s) => s.is_default) || cloudBookshelves[0];
+  const currentActiveShelfId = activeBookshelfId || defaultShelf?.id;
+  const isViewingDownloaded = currentActiveShelfId === downloadedShelfId;
+  const isViewingGeneral =
+    !isViewingDownloaded && (defaultShelf ? currentActiveShelfId === defaultShelf.id : true);
+  const activeShelf =
+    cloudBookshelves.find((s) => s.id === currentActiveShelfId) || defaultShelf;
+
+  return {
+    defaultShelf,
+    currentActiveShelfId,
+    activeShelf,
+    isViewingDownloaded,
+    isViewingGeneral,
+  };
+}
+
+/**
+ * Filters a book collection to only the books assigned to a specific custom shelf ID.
+ */
+export function filterCustomShelfBooks(
+  books: GutendexBook[],
+  cloudBookshelfItems: ReadonlyArray<{ bookshelf_id: string; book_id: number }>,
+  currentActiveShelfId?: string | null
+): GutendexBook[] {
+  const currentShelfBookIds = new Set(
+    cloudBookshelfItems
+      .filter((item) => item.bookshelf_id === currentActiveShelfId)
+      .map((item) => item.book_id)
+  );
+  return books.filter((b) => currentShelfBookIds.has(b.id));
+}
+
+

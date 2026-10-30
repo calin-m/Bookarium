@@ -307,10 +307,11 @@ describe('BookPreviewModal component', () => {
     expect(screen.queryByRole('group', { name: /reading status selector/i })).not.toBeInTheDocument();
   });
 
-  it('renders curation toolbar with solid bg-card and text-foreground modal styling', () => {
+  it('renders curation toolbar with solid bg-card, docked negative top margin on lg/xl, and stage curatable CSS variables', () => {
     renderWithQueryClient(
       <BookPreviewModal
         book={defaultBook}
+        originRect={{ top: 100, left: 100, width: 310, height: 620 }}
         isOpen={true}
         activeView="favorites"
         onClose={vi.fn()}
@@ -321,11 +322,21 @@ describe('BookPreviewModal component', () => {
       vi.advanceTimersByTime(200);
     });
 
+    const modal = screen.getByTestId('book-preview-modal');
+    expect(modal.className).toContain('overflow-y-auto');
+
+    const bookStage = screen.getByTestId('preview-book-stage');
+    expect(bookStage).toHaveClass('is-curatable');
+    expect(bookStage.style.getPropertyValue('--preview-card-width')).toBe('310px');
+    expect(bookStage.style.getPropertyValue('--preview-card-height')).toBe('620px');
+
     const toolbar = screen.getByTestId('personal-curation-toolbar');
     expect(toolbar).toBeInTheDocument();
     expect(toolbar.className).toContain('bg-card');
     expect(toolbar.className).toContain('text-foreground');
     expect(toolbar.className).toContain('border-border');
+    expect(toolbar.className).toContain('lg:-mt-10');
+    expect(toolbar.className).toContain('xl:-mt-7');
     expect(toolbar.className).not.toContain('bg-card/95');
     expect(toolbar.className).not.toContain('backdrop-blur-md');
   });

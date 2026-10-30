@@ -48,24 +48,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
   const { isOffline } = useNetworkStatus();
 
-  const { tier, allowHeavyMotion } = usePerformanceTier();
+  const { allowHeavyMotion } = usePerformanceTier();
   const navRef = useRef<HTMLElement | null>(null);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [indicatorRect, setIndicatorRect] = useState<{ left: number; width: number } | null>(null);
-  const [isBridging, setIsBridging] = useState(false);
-  const prevRectRef = useRef<{ left: number; width: number } | null>(null);
-  const prevViewRef = useRef<ViewId>(activeView);
 
   const activeNavItem = NAV_ITEMS.find((item) => item.id === activeView);
   const activeTheme = activeNavItem ? LIBRARY_THEMES[activeNavItem.themeKey] : LIBRARY_THEMES.catalog;
 
   useEffect(() => {
     if (!allowHeavyMotion) return;
-
-    if (activeView === 'account') {
-      prevViewRef.current = 'account';
-      return;
-    }
+    if (activeView === 'account') return;
 
     const activeEl = tabRefs.current[activeView];
     if (!activeEl) return;
@@ -73,56 +66,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     const targetWidth = activeEl.offsetWidth;
     if (targetWidth === 0) return;
 
-    const targetRect = { left: targetLeft, width: targetWidth };
-    const prevRect = prevRectRef.current;
-    const prevView = prevViewRef.current;
-
-    // Check if this is an in-tab navigation transition on high tier
-    if (
-      tier === 'high' &&
-      prevRect &&
-      prevView !== 'account' &&
-      prevView !== activeView &&
-      (targetRect.left !== prevRect.left || targetRect.width !== prevRect.width)
-    ) {
-      let bridgeLeft: number;
-      let bridgeWidth: number;
-
-      if (targetRect.left > prevRect.left) {
-        // Moving right: leading (right) edge reaches forward; trailing (left) edge lags behind
-        const targetRight = targetRect.left + targetRect.width;
-        const lagDistance = Math.min(targetRect.left - prevRect.left, targetRect.width * 0.85);
-        bridgeLeft = targetRect.left - lagDistance;
-        bridgeWidth = targetRight - bridgeLeft;
-      } else {
-        // Moving left: leading (left) edge reaches forward; trailing (right) edge lags behind
-        const prevRight = prevRect.left + prevRect.width;
-        const targetRight = targetRect.left + targetRect.width;
-        const lagDistance = Math.min(prevRight - targetRight, targetRect.width * 0.85);
-        bridgeLeft = targetRect.left;
-        const bridgeRight = targetRight + lagDistance;
-        bridgeWidth = bridgeRight - bridgeLeft;
-      }
-
-      setIndicatorRect({ left: bridgeLeft, width: bridgeWidth });
-      setIsBridging(true);
-
-      const timer = setTimeout(() => {
-        setIndicatorRect(targetRect);
-        setIsBridging(false);
-      }, 110);
-
-      prevRectRef.current = targetRect;
-      prevViewRef.current = activeView;
-      return () => clearTimeout(timer);
-    }
-
-    // Medium tier or initial mount / same-tab resize: directly apply targetRect
-    setIndicatorRect(targetRect);
-    setIsBridging(false);
-    prevRectRef.current = targetRect;
-    prevViewRef.current = activeView;
-  }, [activeView, allowHeavyMotion, tier]);
+    setIndicatorRect({ left: targetLeft, width: targetWidth });
+  }, [activeView, allowHeavyMotion]);
 
   // Window resize and container ResizeObserver
   useEffect(() => {
@@ -132,10 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       if (activeView === 'account') return;
       const activeEl = tabRefs.current[activeView];
       if (activeEl && activeEl.offsetWidth > 0) {
-        const rect = { left: activeEl.offsetLeft, width: activeEl.offsetWidth };
-        setIndicatorRect(rect);
-        prevRectRef.current = rect;
-        setIsBridging(false);
+        setIndicatorRect({ left: activeEl.offsetLeft, width: activeEl.offsetWidth });
       }
     };
 
@@ -259,11 +201,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span
                 data-testid="navbar-active-indicator"
                 aria-hidden="true"
-                className={`absolute inset-y-0 left-0 h-8 pointer-events-none border-b-2 transition-[transform,width,border-color,border-radius,opacity] ${
-                  isBridging
-                    ? 'duration-150 ease-out rounded-b-lg'
-                    : 'duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] rounded'
-                } ${
+                className={`absolute inset-y-0 left-0 h-8 pointer-events-none border-b-2 rounded transition-[transform,width,border-color,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   activeView === 'account' ? 'opacity-0 scale-x-50' : 'opacity-100'
                 } ${activeTheme.navActiveBorder}`}
                 style={{

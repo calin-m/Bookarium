@@ -33,6 +33,7 @@ describe('AccountPage', () => {
     vi.clearAllMocks();
     mockSearchParams = new URLSearchParams();
     useThemeStore.setState({ theme: 'light' });
+    useAuthStore.setState({ isPasswordRecovery: false });
   });
 
   it('renders guest prompt when unauthenticated and handles scroll to top', () => {
@@ -360,14 +361,17 @@ describe('AccountPage', () => {
     expect(within(preferencesPanel).getByText('Smart Auto-Hide Active')).toBeInTheDocument();
   });
 
-  it('handles password security lifecycle: mismatch validation, strong password generation, and password update', async () => {
+  it('handles password security lifecycle: current password validation, mismatch validation, strong password generation, forgot-password reset link, and password update', async () => {
     const mockUpdatePassword = vi.fn().mockResolvedValue({ error: null });
+    const mockResetPasswordForEmail = vi.fn().mockResolvedValue({ error: null });
 
     useAuthStore.setState({
       user: { id: 'u1', email: 'austen@bookarium.test' } as any,
       profile: { id: 'u1', display_name: 'Jane' } as any,
       isLoading: false,
+      isPasswordRecovery: false,
       updatePassword: mockUpdatePassword,
+      resetPasswordForEmail: mockResetPasswordForEmail,
     });
 
     render(<AccountPage />);
@@ -376,18 +380,40 @@ describe('AccountPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Security/i }));
     const securityPanel = document.getElementById('account-tabpanel-security')!;
 
+    const currentPwdInput = within(securityPanel).getByLabelText('Current Password') as HTMLInputElement;
     const newPwdInput = within(securityPanel).getByLabelText('New Password') as HTMLInputElement;
     const confirmPwdInput = within(securityPanel).getByLabelText('Confirm New Password') as HTMLInputElement;
     const updateBtn = within(securityPanel).getByRole('button', { name: /Update Password/i });
 
-    // 1. Mismatch validation
+    // 1. Missing current password validation
+    fireEvent.change(newPwdInput, { target: { value: 'password123' } });
+    fireEvent.change(confirmPwdInput, { target: { value: 'password123' } });
+    fireEvent.click(updateBtn);
+    expect(
+      within(securityPanel).getByText(
+        'Please enter your current password, or send a reset link to your email.'
+      )
+    ).toBeInTheDocument();
+    expect(mockUpdatePassword).not.toHaveBeenCalled();
+
+    // 2. Mismatch validation
+    fireEvent.change(currentPwdInput, { target: { value: 'oldPassword123' } });
     fireEvent.change(newPwdInput, { target: { value: 'password123' } });
     fireEvent.change(confirmPwdInput, { target: { value: 'different123' } });
     fireEvent.click(updateBtn);
     expect(within(securityPanel).getByText('Passwords do not match.')).toBeInTheDocument();
     expect(mockUpdatePassword).not.toHaveBeenCalled();
 
-    // 2. Suggest Strong Password
+    // 3. Same password as current password validation
+    fireEvent.change(newPwdInput, { target: { value: 'oldPassword123' } });
+    fireEvent.change(confirmPwdInput, { target: { value: 'oldPassword123' } });
+    fireEvent.click(updateBtn);
+    expect(
+      within(securityPanel).getByText('New password must be different from your current password.')
+    ).toBeInTheDocument();
+    expect(mockUpdatePassword).not.toHaveBeenCalled();
+
+    // 4. Suggest Strong Password
     const suggestBtn = within(securityPanel).getByRole('button', { name: /Suggest Strong Password/i });
     expect(suggestBtn).toBeInTheDocument();
     fireEvent.click(suggestBtn);
@@ -395,13 +421,56 @@ describe('AccountPage', () => {
     expect(newPwdInput.value).toBe(confirmPwdInput.value);
     expect(within(securityPanel).getByText('Password strength:')).toBeInTheDocument();
 
-    // 3. Valid update submission
+    // 5. Forgot current password? Send reset link
+    const sendResetBtn = within(securityPanel).getByRole('button', {
+      name: /Forgot current password\? Send reset link/i,
+    });
+    fireEvent.click(sendResetBtn);
+    await waitFor(() => {
+      expect(mockResetPasswordForEmail).toHaveBeenCalledWith('austen@bookarium.test');
+      expect(within(securityPanel).getByTestId('password-reset-sent-banner')).toBeInTheDocument();
+    });
+
+    // 6. Valid re-authenticated update submission
+    fireEvent.change(currentPwdInput, { target: { value: 'oldPassword123' } });
     fireEvent.change(newPwdInput, { target: { value: 'password123' } });
     fireEvent.change(confirmPwdInput, { target: { value: 'password123' } });
     fireEvent.click(updateBtn);
 
     await waitFor(() => {
-      expect(mockUpdatePassword).toHaveBeenCalledWith('password123');
+      expect(mockUpdatePassword).toHaveBeenCalledWith('password123', 'oldPassword123');
+      expect(within(securityPanel).getByText('Password successfully updated')).toBeInTheDocument();
+    });
+  });
+
+  it('supports verified email recovery mode (?tab=security&recovery=true) without requiring current password', async () => {
+    mockSearchParams = new URLSearchParams('tab=security&recovery=true');
+    const mockUpdatePassword = vi.fn().mockResolvedValue({ error: null });
+
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Jane' } as any,
+      isLoading: false,
+      isPasswordRecovery: true,
+      updatePassword: mockUpdatePassword,
+    });
+
+    render(<AccountPage />);
+
+    const securityPanel = document.getElementById('account-tabpanel-security')!;
+    expect(within(securityPanel).getByTestId('password-recovery-banner')).toBeInTheDocument();
+    expect(within(securityPanel).queryByLabelText('Current Password')).not.toBeInTheDocument();
+
+    const newPwdInput = within(securityPanel).getByLabelText('New Password') as HTMLInputElement;
+    const confirmPwdInput = within(securityPanel).getByLabelText('Confirm New Password') as HTMLInputElement;
+    const updateBtn = within(securityPanel).getByRole('button', { name: /Update Password/i });
+
+    fireEvent.change(newPwdInput, { target: { value: 'recoveredPass123!' } });
+    fireEvent.change(confirmPwdInput, { target: { value: 'recoveredPass123!' } });
+    fireEvent.click(updateBtn);
+
+    await waitFor(() => {
+      expect(mockUpdatePassword).toHaveBeenCalledWith('recoveredPass123!');
       expect(within(securityPanel).getByText('Password successfully updated')).toBeInTheDocument();
     });
   });
@@ -742,11 +811,13 @@ describe('AccountPage', () => {
       fireEvent.click(screen.getByRole('tab', { name: /Security/i }));
       const securityPanel = document.getElementById('account-tabpanel-security')!;
 
+      const currentPwdInput = within(securityPanel).getByLabelText('Current Password');
       const newPwdInput = within(securityPanel).getByLabelText('New Password');
       const confirmPwdInput = within(securityPanel).getByLabelText('Confirm New Password');
       const updatePwdBtn = within(securityPanel).getByRole('button', { name: /Update Password/i });
 
       // Short password (< 6 chars) validation
+      fireEvent.change(currentPwdInput, { target: { value: 'oldpass123' } });
       fireEvent.change(newPwdInput, { target: { value: '123' } });
       fireEvent.change(confirmPwdInput, { target: { value: '123' } });
       fireEvent.click(updatePwdBtn);

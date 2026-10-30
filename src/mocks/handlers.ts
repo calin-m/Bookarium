@@ -278,7 +278,32 @@ export const handlers = [
     });
   }),
 
-  // Book content text mock
+  // Book content text mocks across allowlisted HTTPS Project Gutenberg mirrors & domains
+  http.get('https://aleph.gutenberg.org/cache/epub/:id/pg:file.txt', () => {
+    return new HttpResponse(sampleBookText, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }),
+  http.get('https://gutenberg.pglaf.org/cache/epub/:id/pg:file.txt', () => {
+    return new HttpResponse(sampleBookText, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }),
+  http.get('https://gutenberg.readingroo.ms/cache/epub/:id/pg:file.txt', () => {
+    return new HttpResponse(sampleBookText, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }),
+  http.get('https://www.gutenberg.org/cache/epub/:id/pg:file.txt', () => {
+    return new HttpResponse(sampleBookText, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }),
+  http.get('https://www.gutenberg.org/files/:id/:file.txt', () => {
+    return new HttpResponse(sampleBookText, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }),
   http.get('https://www.gutenberg.org/ebooks/:id.txt.utf-8', () => {
     return new HttpResponse(sampleBookText, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
@@ -290,6 +315,42 @@ export const handlers = [
     return new HttpResponse(sampleBookText, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
+  }),
+
+  // Book translations internal proxy handler (FRBR relational cluster mock)
+  http.get('/api/books/translations', ({ request }) => {
+    const url = new URL(request.url, 'http://localhost:3000');
+    const rawId = url.searchParams.get('id')?.trim() || '';
+    if (!/^\d{1,8}$/.test(rawId) || Number(rawId) <= 0) {
+      return HttpResponse.json(
+        { error: 'Valid positive numeric book id is required', results: [] },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    const bookId = Number(rawId);
+    if (bookId === 1342) {
+      return HttpResponse.json({
+        results: [
+          {
+            bookId: 1342,
+            title: 'Pride and Prejudice',
+            languageCode: 'en',
+            isOriginal: true,
+            isCurrent: true,
+          },
+          {
+            bookId: 43647,
+            title: 'Orgueil et Préjugé',
+            languageCode: 'fr',
+            isOriginal: false,
+            isCurrent: false,
+          },
+        ],
+      });
+    }
+
+    return HttpResponse.json({ results: [] });
   }),
 ];
 

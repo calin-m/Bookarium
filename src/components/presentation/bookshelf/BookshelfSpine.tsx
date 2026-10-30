@@ -264,10 +264,16 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
           </div>
         </div>
 
-        <h4 className="font-serif font-bold text-foreground text-xs line-clamp-2 leading-tight mb-1">
+        <h4
+          className="font-serif font-bold text-foreground text-xs line-clamp-2 leading-tight mb-1"
+          title={book.title}
+        >
           {book.title}
         </h4>
-        <p className="text-[11px] text-muted-foreground mb-1.5 truncate">
+        <p
+          className="text-[11px] text-muted-foreground mb-1.5 truncate"
+          title={formatAuthorNames(book.authors) || authorName}
+        >
           {formatAuthorNames(book.authors) || authorName}
         </p>
 

@@ -274,6 +274,7 @@ function detectOrphanedModules(graph) {
     /src\/app\/.*layout\.tsx$/,
     /src\/app\/.*route\.ts$/,
     /src\/app\/.*error\.tsx$/,
+    /src\/app\/.*loading\.tsx$/,
     /src\/app\/.*not-found\.tsx$/,
     /src\/app\/manifest\.ts$/,
     /src\/app\/robots\.ts$/,
@@ -420,6 +421,7 @@ function extractApiAndHookCatalog(srcDir) {
         entry.name === 'globals.css' ||
         entry.name === 'error.tsx' ||
         entry.name === 'global-error.tsx' ||
+        entry.name === 'loading.tsx' ||
         entry.name === 'not-found.tsx' ||
         entry.name === 'manifest.ts' ||
         entry.name === 'robots.ts' ||
@@ -442,6 +444,8 @@ function extractApiAndHookCatalog(srcDir) {
           rendering = 'PostCSS / Tailwind CSS v4 Oxide Bundle';
         } else if (entry.name === 'error.tsx' || entry.name === 'global-error.tsx') {
           kind = 'App Error Boundary';
+        } else if (entry.name === 'loading.tsx') {
+          kind = 'App Streaming & Pre-Hydration Splash Boundary';
         } else if (entry.name === 'not-found.tsx') {
           kind = 'App 404 Boundary';
         } else if (entry.name === 'manifest.ts') {
@@ -810,7 +814,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       name: 'handlers',
       file: 'src/mocks/handlers.ts',
       layer: 'MSW v2 HTTP Interception Handlers',
-      role: 'Canonical Mock Service Worker v2 HTTP request handlers and `mockBooks` public domain fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, Gutendex API, and Project Gutenberg CDN streams for zero-network deterministic testing.',
+      role: 'Canonical Mock Service Worker v2 HTTP request handlers and `mockBooks` public domain fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, Gutendex API, and allowlisted HTTPS Project Gutenberg mirror streams (`aleph`, `pglaf`, `readingroo.ms`, `www.gutenberg.org`) for zero-network deterministic testing.',
     },
     {
       name: 'server',
@@ -821,8 +825,8 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
     {
       name: 'vitest.config.mts',
       file: 'vitest.config.mts',
-      layer: 'Vitest Runner & V8 Coverage Engine',
-      role: 'Vite-native test runner configuration (`jsdom`, `maxWorkers: 4`, `@` path alias) enforcing the hard `>= 85%` V8 coverage floor across `lines`, `functions`, `branches`, and `statements` while excluding non-executable type contracts and barrels.',
+      layer: 'Vitest Runner & Tiered V8 Coverage Engine (95/95/92/85)',
+      role: 'Vite-native test runner configuration (`jsdom`, `maxWorkers: 4`, `@` path alias) enforcing the hard tiered V8 coverage floor (`lines: 95%`, `statements: 95%`, `functions: 92%`, `branches: 85%`) while excluding non-executable type contracts and barrels.',
     },
   ];
 
@@ -856,16 +860,95 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
   const srcSuiteCount = testSuites.filter((f) => f.startsWith('src/')).length;
   const scriptSuites = testSuites.filter((f) => f.startsWith('scripts/'));
 
+  const layerDefs = [
+    {
+      id: 'app',
+      layer: 'App Router Pages, Layouts & API Routes',
+      scope: '`src/app/**/*.test.{ts,tsx}`',
+      match: (f) => f.startsWith('src/app/'),
+      strategy: 'NextRequest/NextResponse edge route verification, MSW v2 upstream failover, SSR metadata, and full-page user journeys.',
+    },
+    {
+      id: 'components',
+      layer: 'React 19 UI & Presentation Components',
+      scope: '`src/components/**/*.test.tsx`',
+      match: (f) => f.startsWith('src/components/'),
+      strategy: '`@testing-library/react` + `userEvent` accessible role assertions (`getByRole`), WCAG 2.2 focus trapping, confirmation modals, and viewport interaction parity.',
+    },
+    {
+      id: 'stores',
+      layer: 'Zustand Persistent State Stores',
+      scope: '`src/stores/*.test.ts`',
+      match: (f) => f.startsWith('src/stores/'),
+      strategy: 'Local storage hydration, optimistic outbox mutations, tombstone filtering, LWW conflict resolution, and 6-store session teardown.',
+    },
+    {
+      id: 'hooks',
+      layer: 'Custom Hooks & TanStack Queries',
+      scope: '`src/hooks/**/*.test.{ts,tsx}`',
+      match: (f) => f.startsWith('src/hooks/'),
+      strategy: '`renderHook` with `QueryClientProvider` + MSW v2 network interception, IndexedDB offline-first reads, Web Speech TTS, and reading ledger hydration.',
+    },
+    {
+      id: 'lib',
+      layer: 'Domain Engines, Security Primitives & Gutenberg AST',
+      scope: '`src/lib/**/*.test.ts`',
+      match: (f) => f.startsWith('src/lib/'),
+      strategy: 'Pure computational & security verification (multi-jurisdictional copyright, SSRF/redirect sanitizers, rate limiter, Gutenberg AST segmentation/reflow/pagination, interval annotator).',
+    },
+    {
+      id: 'config',
+      layer: 'Configuration, Anthologies & Design Tokens',
+      scope: '`src/config/*.test.ts`',
+      match: (f) => f.startsWith('src/config/'),
+      strategy: 'Schema integrity, curated 27-masterwork anthology lifespan validation, and theme/accolade token invariants.',
+    },
+    {
+      id: 'worker_proxy',
+      layer: 'Background Web Worker & Edge Reverse Proxy',
+      scope: '`src/workers/*.test.ts` & `src/proxy.test.ts`',
+      match: (f) => f.startsWith('src/workers/') || f === 'src/proxy.test.ts',
+      strategy: 'Off-thread Web Worker message lifecycle (`PARSE_BOOK`) and Edge Geo-IP / cookie / Supabase session refresh proxy tests.',
+    },
+    {
+      id: 'scripts',
+      layer: 'CLI Data Ingestion Pipelines',
+      scope: '`scripts/*.test.ts`',
+      match: (f) => f.startsWith('scripts/'),
+      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, and Wikidata SPARQL FRBR translation clustering.',
+    },
+  ];
+
+  const layerBreakdown = layerDefs.map((def) => {
+    const matchedFiles = testSuites.filter(def.match);
+    let testCount = 0;
+    for (const rel of matchedFiles) {
+      const fullPath = path.join(rootDir, rel);
+      const content = fs.readFileSync(fullPath, 'utf-8');
+      const matches = [...content.matchAll(/(?:it|test)(?:\.skip|\.only)?\s*\(\s*['"`]/g)];
+      testCount += matches.length;
+    }
+    return {
+      layer: def.layer,
+      scope: def.scope,
+      suites: matchedFiles.length,
+      tests: testCount,
+      strategy: def.strategy,
+    };
+  });
+
   return {
     harnessModules,
     totalSuites: testSuites.length,
     srcSuiteCount,
     scriptSuites,
+    testSuites,
+    layerBreakdown,
   };
 }
 
 /**
- * Extracts static and PWA asset files from public/.
+ * Extracts static and PWA asset files from public/ and Next.js App Router file-based metadata icons in src/app/.
  */
 function extractPublicAssetsCatalog(rootDir) {
   const publicDir = path.join(rootDir, 'public');
@@ -881,6 +964,9 @@ function extractPublicAssetsCatalog(rootDir) {
     'public/icons/icon-512.png': 'High-DPI PWA splash screen and desktop application icon (`512×512` PNG, `purpose: "any"`).',
     'public/icons/icon-maskable-192.png': 'Android adaptive launcher maskable icon with safe-zone padding (`192×192` PNG, `purpose: "maskable"`).',
     'public/icons/icon-maskable-512.png': 'High-DPI Android adaptive launcher maskable icon (`512×512` PNG, `purpose: "maskable"`).',
+    'src/app/favicon.ico': 'Next.js App Router root `favicon.ico` metadata convention (`16×16`, `32×32`, `48×48` 32-bit RGBA `.ico`).',
+    'src/app/icon.svg': 'Next.js App Router scalable vector `icon.svg` metadata convention rendered in modern browser tabs.',
+    'src/app/apple-icon.png': 'Next.js App Router `apple-icon.png` metadata convention (`180×180` PNG) automatically linked as `apple-touch-icon`.',
   };
 
   function scanPublic(dir) {
@@ -906,6 +992,24 @@ function extractPublicAssetsCatalog(rootDir) {
   }
 
   scanPublic(publicDir);
+
+  const appIconCandidates = ['src/app/favicon.ico', 'src/app/icon.svg', 'src/app/apple-icon.png'];
+  for (const rel of appIconCandidates) {
+    const full = path.join(rootDir, rel);
+    if (fs.existsSync(full)) {
+      const stat = fs.statSync(full);
+      const sizeKb = (stat.size / 1024).toFixed(1) + ' KB';
+      const ext = path.extname(rel).replace('.', '').toUpperCase() || 'ASSET';
+      assets.push({
+        name: path.basename(rel),
+        file: rel,
+        format: ext,
+        size: sizeKb,
+        role: roleMap[rel] || 'Next.js App Router metadata icon asset.',
+      });
+    }
+  }
+
   return assets.sort((a, b) => a.file.localeCompare(b.file));
 }
 

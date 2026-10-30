@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { initializeJurisdiction } from '@/stores/useJurisdictionStore';
 import { syncAllStoresWithCloud } from '@/lib/sync-utils';
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
+import { GlobalTitleTooltip } from '@/components/ui/CursorTooltip';
 
 const AuthModal = dynamic(
   () => import('@/components/auth/AuthModal').then((mod) => mod.AuthModal),
@@ -116,6 +117,7 @@ export function Providers({ children, initialCountry }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <ServiceWorkerRegister />
+      <GlobalTitleTooltip />
       {children}
       {isAuthModalOpen && <AuthModal />}
     </QueryClientProvider>

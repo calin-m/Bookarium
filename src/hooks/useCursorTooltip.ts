@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+export const DEFAULT_TOOLTIP_DELAY_MS = 300;
+
 export interface UseCursorTooltipOptions<T = string> {
   delayMs?: number;
   initialAction?: T | null;
@@ -12,7 +14,7 @@ export interface UseCursorTooltipOptions<T = string> {
  * and active action states for cursor-tracking portal tooltips.
  */
 export function useCursorTooltip<T = string>(options: UseCursorTooltipOptions<T> = {}) {
-  const { delayMs = 400, initialAction = null } = options;
+  const { delayMs = DEFAULT_TOOLTIP_DELAY_MS, initialAction = null } = options;
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const [hoveredAction, setHoveredAction] = useState<T | null>(initialAction);

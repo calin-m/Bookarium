@@ -50,9 +50,13 @@ describe('BookmarkCard', () => {
   it('renders book metadata, formatted author names, progress bar, and reading coordinates', () => {
     render(<BookmarkCard volume={mockVolume} />);
 
-    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    const titleEl = screen.getByText('Pride and Prejudice');
+    expect(titleEl).toBeInTheDocument();
+    expect(titleEl).toHaveAttribute('title', 'Pride and Prejudice');
     // 'Austen, Jane' is formatted to 'Jane Austen' via formatAuthorNames
-    expect(screen.getByText('Jane Austen')).toBeInTheDocument();
+    const authorEl = screen.getByText('Jane Austen');
+    expect(authorEl).toBeInTheDocument();
+    expect(authorEl).toHaveAttribute('title', 'Jane Austen');
     expect(screen.getByText('45%')).toBeInTheDocument();
     expect(screen.getByText(/Chapter 3 • Page 48/i)).toBeInTheDocument();
 

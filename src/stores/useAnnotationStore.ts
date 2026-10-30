@@ -3,7 +3,11 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database.types';
-import { useFellowshipStore, isPlaceholderUsername } from '@/stores/useFellowshipStore';
+import {
+  useFellowshipStore,
+  isPlaceholderUsername,
+  fetchScholarProfilesMap,
+} from '@/stores/useFellowshipStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { cleanBookTitle, isPlaceholderTitle, isPlaceholderAuthor } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
@@ -258,27 +262,14 @@ async function resolveFellowIdentityMap(
   );
 
   if (missingIds.length > 0) {
-    try {
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, username, display_name')
-        .in('id', missingIds);
-      if (Array.isArray(profilesData)) {
-        for (const prof of profilesData as Array<{
-          id: string;
-          username: string | null;
-          display_name: string | null;
-        }>) {
-          if (prof.id && (prof.username || prof.display_name)) {
-            resolvedMap[prof.id] = {
-              username: prof.username || prof.display_name || 'fellow_scholar',
-              display_name: prof.display_name || undefined,
-            };
-          }
-        }
+    const profileMap = await fetchScholarProfilesMap(supabase, missingIds);
+    for (const [id, prof] of profileMap.entries()) {
+      if (prof.username || prof.display_name) {
+        resolvedMap[id] = {
+          username: prof.username || prof.display_name || 'fellow_scholar',
+          display_name: prof.display_name || undefined,
+        };
       }
-    } catch {
-      // Non-blocking if profiles query is unavailable or offline
     }
   }
 
@@ -417,42 +408,26 @@ export const useAnnotationStore = create<AnnotationState>()(
         const supabase = createClient();
         if (!supabase) return;
 
-        try {
-          const { data: profilesData } = await supabase
-            .from('profiles')
-            .select('id, username, display_name')
-            .in('id', missingUids);
-
-          if (Array.isArray(profilesData) && profilesData.length > 0) {
-            const profileMap = new Map<
-              string,
-              { username: string | null; display_name: string | null }
-            >();
-            for (const p of profilesData) {
-              profileMap.set(p.id, { username: p.username, display_name: p.display_name });
-            }
-
-            set((state) => {
-              let modified = false;
-              const nextFellowAnnotations = state.fellowAnnotations.map((fa) => {
-                if (fa.userId && profileMap.has(fa.userId)) {
-                  const p = profileMap.get(fa.userId)!;
-                  if (p.username && isPlaceholderUsername(fa.fellowUsername)) {
-                    modified = true;
-                    return {
-                      ...fa,
-                      fellowUsername: p.username,
-                      fellowDisplayName: p.display_name || fa.fellowDisplayName,
-                    };
-                  }
+        const profileMap = await fetchScholarProfilesMap(supabase, missingUids);
+        if (profileMap.size > 0) {
+          set((state) => {
+            let modified = false;
+            const nextFellowAnnotations = state.fellowAnnotations.map((fa) => {
+              if (fa.userId && profileMap.has(fa.userId)) {
+                const p = profileMap.get(fa.userId)!;
+                if (p.username && isPlaceholderUsername(fa.fellowUsername)) {
+                  modified = true;
+                  return {
+                    ...fa,
+                    fellowUsername: p.username,
+                    fellowDisplayName: p.display_name || fa.fellowDisplayName,
+                  };
                 }
-                return fa;
-              });
-              return modified ? { fellowAnnotations: nextFellowAnnotations } : state;
+              }
+              return fa;
             });
-          }
-        } catch {
-          // Non-blocking
+            return modified ? { fellowAnnotations: nextFellowAnnotations } : state;
+          });
         }
       },
 

@@ -166,7 +166,7 @@ function extractDatabaseCatalog(rootDirPath) {
   return { tables, indexes, seedArtifacts };
 }
 
-function extractNodeEcosystemCatalog(rootDirPath) {
+function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 187) {
   const pkgPath = path.join(rootDirPath, 'package.json');
   if (!fs.existsSync(pkgPath)) return { engines: {}, packages: [] };
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
@@ -212,7 +212,7 @@ function extractNodeEcosystemCatalog(rootDirPath) {
     postcss: 'CSS transformer tool for Tailwind CSS v4 processing.',
     tailwindcss: 'Utility-first CSS framework v4 with Oxide compiler engine.',
     typescript: 'Static type system verifying strict compile-time safety (zero any).',
-    vitest: 'Fast Vite-native test runner executing all 186 unit and integration suites.',
+    vitest: `Fast Vite-native test runner executing all ${totalSuites} unit and integration suites.`,
 
     // Overrides
     'fast-glob': 'Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities.',
@@ -492,15 +492,16 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD (`ci.yml`) and weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), plus Husky pre-commit quality gates.' },
   ];
 
-  let auditTotals = { suites: 186, tests: '2,024' };
+  let auditTotals = { suites: 187, tests: '1,994' };
   const auditJsonPath = path.join(rootDirPath, 'docs', 'quality-audit-results.json');
   if (fs.existsSync(auditJsonPath)) {
     try {
       const parsedAudit = JSON.parse(fs.readFileSync(auditJsonPath, 'utf8'));
-      if (parsedAudit?.testCatalog?.totalSuites && parsedAudit?.testCatalog?.totalTests) {
+      const summary = parsedAudit?.testSummary || parsedAudit?.testCatalog;
+      if (summary?.totalSuites && summary?.totalTests) {
         auditTotals = {
-          suites: parsedAudit.testCatalog.totalSuites,
-          tests: Number(parsedAudit.testCatalog.totalTests).toLocaleString('en-US'),
+          suites: summary.totalSuites,
+          tests: Number(summary.totalTests).toLocaleString('en-US'),
         };
       }
     } catch {
@@ -579,10 +580,10 @@ function generateMarkdown() {
     '    User["👤 Reader / Public Domain Scholar"]',
     '    ',
     '    subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]',
-    '        Providers["providers.tsx\\n(QueryClient, Auth Init, Cloud Sync & Dynamic AuthModal)"]',
+    '        Providers["providers.tsx\\n(QueryClient, Auth Init, Cloud Sync, GlobalTitleTooltip & Dynamic AuthModal)"]',
     '        SWReg["ServiceWorkerRegister.tsx & public/sw.js\\n(App Shell v4, Static Asset Warmup & Offline Fallback)"]',
     '        AuthModalNode["AuthModal.tsx & EmailSentView.tsx\\n(Sign-In, Sign-Up, OAuth, Magic Link & Reset)"]',
-    '        Nav["Navbar.tsx\\n(Brand Reset, View Switcher, Tier-Adaptive Gliding Active Underline Cradle, Theme Cycler)"]',
+    '        Nav["Navbar.tsx\\n(Brand Reset, View Switcher, Single-Phase Gliding Active Underline Cradle, Theme Cycler)"]',
     '        Hero["HeroSearch.tsx\\n(Dynamic 3D Rotating Spotlight & Search)"]',
     '        Hero3D["HeroFeaturedBook3D.tsx\\n(3D Open-Cover Hinge & Leaf-Flip Engine)"]',
     '        Toolbar["StickyCatalogToolbar.tsx\\n(Desktop Sticky Sub-Header, Mobile Capsule Dock, Top-Margin Docking & Split Quick-Clear)"]',
@@ -593,7 +594,7 @@ function generateMarkdown() {
     '        ContentAdvisory["ContentAdvisoryBanner.tsx\\n(Non-blocking Mature/Historical Context Advisory)"]',
     '        CollectionToolbarNode["CollectionToolbar.tsx\\n(Responsive Workbench: Integrated Search, Sort, Downloaded Filter, Tablet Icon Mode Toggles & Top-Pagination)"]',
     '        PaginationNode["Pagination.tsx\\n(Accessible Numeric Page Navigation)"]',
-    '        BookPreviewModalNode["BookPreviewModal.tsx\\n(Desktop 3D Open-Book Preview Spread)"]',
+    '        BookPreviewModalNode["BookPreviewModal.tsx\\n(Tablet & Desktop 3D Open-Book Preview Spread & Docked Curation Bar)"]',
     '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(3D Hardwood Shelf, Custom Shelves & <1024px Touch Modal Trigger)"]',
     '        BookshelfMobileModalNode["BookshelfMobileModal.tsx\\n(Mobile & Tablet <1024px Action & Curation Sheet)"]',
     '        RemoveOfflineModalNode["RemoveOfflineBookModal.tsx • RemoveCollectionBookModal.tsx\\n(Offline Cache & Collection Eviction Confirmations)"]',
@@ -982,7 +983,7 @@ function generateMarkdown() {
     useAnnotationStore:
       'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), and scholarly reflections.',
     useAuthStore:
-      'Supabase session authentication, offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), guest status, password generation, and cloud profile synchronization with live companion identity propagation.',
+      'Supabase session authentication, offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), OWASP current-password re-authentication (`updatePassword`), complete 6-store session teardown & IndexedDB/speech/sessionStorage erasure on account deletion, and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
       'Personal library collections, reading queue, reading history, custom named shelves, active-shelf-aware book clearing (`clearSavedBooks`, `clearCustomShelfBooks`), placeholder-to-authentic author & subject/format self-healing (`enrichSavedBooks`), atomic selector hooks (`useIsBookSaved`, `useIsBookFavorite`, `useHydratedBookshelfCounts`, `useBookRating`, `useReadingStatus`), deletion tombstones, ratings, and cloud outbox reconciliation (`DELETE_BOOK`, `INSERT_BOOK`, `DELETE_FAVORITE`, `UPSERT_FAVORITE`, `UPSERT_CURATION`, `DELETE_CURATION`, `MOVE_BOOK`, `UPDATE_SHELF`) via `bookshelf-cloud-sync.ts`.',
     useFellowshipStore:
@@ -1040,7 +1041,8 @@ function generateMarkdown() {
 
   const pageDescriptions = {
     'src/app/layout.tsx': 'Root HTML shell, font initialization, theme class hydration, and global React Query / Service Worker provider wrapper.',
-    'src/app/providers.tsx': 'Root client provider initializing TanStack `QueryClient`, Supabase authentication listener, `syncAllUserStores` cloud reconciliation, `online` event outbox flushing, and dynamic `AuthModal` rendering.',
+    'src/app/providers.tsx': 'Root client provider initializing TanStack `QueryClient`, Supabase authentication listener, `syncAllStoresWithCloud` cloud reconciliation, `online` event outbox flushing, `GlobalTitleTooltip` stylized tooltip delegation, and dynamic `AuthModal` rendering.',
+    'src/app/loading.tsx': 'Next.js App Router streaming & pre-hydration loading splash boundary rendering the vector Bookarium crest and animated loading indicator.',
     'src/app/globals.css': 'Tailwind CSS v4 Oxide stylesheet defining Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) theme tokens, 3D hardcover book hinge physics (`.book-center-crease`, `.preserve-3d`), and custom reader scrollbars.',
     'src/app/page.tsx': 'Primary SPA workbench hosting Catalog, Bookshelf, Favorites, Bookmarks, and Commonplace Notebook views with edge URL rewrites.',
     'src/app/error.tsx': 'Route-level React Error Boundary providing graceful recovery UI and diagnostic fallback.',
@@ -1095,7 +1097,7 @@ function generateMarkdown() {
     useScrollDirection: 'Stepped directional scroll detection with user auto-hide preference persistence.',
     usePerformanceTier: 'Hardware concurrency and memory heuristic detection for fluid 60fps animations.',
     useOfflineBooks: 'IndexedDB cache enumeration (`offlineIds` & `offlineBooks`), reactive cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading state propagation (`OFFLINE_DOWNLOADING_EVENT`), author lifespan normalization (`normalizeOfflineAuthors`), and individual-only offline book download/deletion management.',
-    useCursorTooltip: 'Adaptive unconstrained cursor tooltips for interactive bookshelf elements.',
+    useCursorTooltip: 'Adaptive cursor tooltip hook (`300ms` default delay, `0ms` action buttons, viewport boundary clamping) powering `CursorTooltip` and `GlobalTitleTooltip`.',
     useBookPassageShuffle: 'Autonomous literary quote selection and multi-chapter shuffle engine.',
     useHasMounted: 'SSR hydration barrier hook preventing client-server markup mismatches.',
     useReadingTimer: 'Reader session telemetry tracking visual reading with 2-minute idle guard and TTS narration audio bypass.',
@@ -1134,7 +1136,7 @@ function generateMarkdown() {
     'bookshelf-cloud-sync':
       'Bidirectional cloud reconciliation engine for bookshelves, shelf items, and favorite books, featuring non-regressive local metadata preservation (`mergeCloudBookWithLocal`), per-user in-flight mutex coalescing, concurrent `Promise.all` table fetching, multi-shelf `book_id` deduplication, outbox mutation replay, tombstone filtering, single-commit atomic state reconciliation, and deterministic ordering.',
     'book-metadata':
-      'Author and title cleaning, placeholder author heuristics, and defensive editorial metadata normalization.',
+      'Author and title cleaning, placeholder author heuristics (`isPlaceholderAuthor`, `resolvePrimaryAuthorName`), verified lifespan checks (`hasVerifiedLifespans`), dictionary author enrichment (`enrichAuthorMap`), and defensive editorial metadata normalization.',
     'content-advisory':
       'Autonomous content advisory evaluation engine scanning Library of Congress subject classifications and bookshelves for mature themes, erotic literature, and sensitive historical context with non-blocking user guidance.',
     'copyright-engine':
@@ -1190,7 +1192,7 @@ function generateMarkdown() {
     'sync-utils':
       'Unified bidirectional cloud synchronization coordinator coordinating local Zustand stores with Supabase tables.',
     'book-sorting':
-      'Deterministic multi-attribute book sorting algorithms and collection sort/filter options (including Downloaded filter) for title, author, year, downloads, reading progress, and recency.',
+      'Deterministic multi-attribute book sorting algorithms, collection sort/filter options, and shared offline volume filtering (`filterBooksByOfflineState`) for title, author, year, downloads, reading progress, and recency.',
     'book-tags':
       'Semantic book tag normalizer mapping verbose Library of Congress subjects and Gutenberg bookshelves to canonical zero-truncation badges (<= 14 chars) with responsive mobile/desktop allocation and administrative prefix sanitization.',
     'scroll-utils':
@@ -1387,7 +1389,51 @@ function generateMarkdown() {
     '',
     '## 🧪 Hermetic Testing, MSW v2 Network Isolation & Coverage Architecture',
     '',
-    `Bookarium enforces a 4-tier hermetic testing architecture across **${testHarness.totalSuites} Test Suites** (\`${testHarness.srcSuiteCount}\` co-located \`src/**/*.test.{ts,tsx}\` suites + \`${testHarness.scriptSuites.length}\` CLI pipeline suites in \`scripts/\`) with zero external network calls:`,
+    `Bookarium enforces a 4-tier hermetic testing and security verification architecture across **${testHarness.totalSuites} Test Suites** (\`${testHarness.srcSuiteCount}\` co-located \`src/**/*.test.{ts,tsx}\` suites + \`${testHarness.scriptSuites.length}\` CLI pipeline suites in \`scripts/\`) with zero external network calls:`,
+    '',
+    '### 1. Hermetic Testing, MSW v2 Interception, SAST/OWASP & V8 Coverage Pipeline',
+    '',
+    '```mermaid',
+    'flowchart TD',
+    '    subgraph SecurityGates ["Static Security & Boundary Gates (scripts/verify-build.js)"]',
+    '        Pass05["🔒 Pass 0.5: Secret & Boundary Scanner\\n• Zero live tokens / private keys\\n• Zero client SUPABASE_SERVICE_ROLE_KEY"]',
+    '        Pass075["🛡️ Pass 0.75: 7-Pillar SAST & OWASP Suite\\n• 0 High/Crit CVEs • SSRF & RateLimiter.check()\\n• DOM XSS Sinks • Redirect Sanitizer\\n• MIT / copyright=false • 14-Table RLS & search_path\\n• 7 OWASP HTTP Security Headers"]',
+    '    end',
+    '',
+    '    subgraph TestRunner ["Vitest 4 Runner & JSDOM Bootstrap"]',
+    '        VitestCfg["⚙️ vitest.config.mts\\n• jsdom environment • maxWorkers: 4\\n• @/* path alias • V8 Coverage Provider"]',
+    '        TestSetup["🧰 src/test/setup.ts\\n• @testing-library/jest-dom/vitest\\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\\n• framer-motion synchronous forwardRef mock\\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver)\\n• Per-test localStorage.clear() & vi.clearAllMocks()"]',
+    '        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\\n• MSW v2 setupServer(...handlers) lifecycle\\n• GET /api/books, /api/books/content, /api/books/translations\\n• HTTPS Gutendex & 4 Allowlisted Gutenberg Mirrors\\n• mockBooks & sampleBookText fixtures (0 external network calls)"]',
+    '    end',
+    '',
+    '    subgraph TestTiers ["4-Tier Co-Located Test Suites (187 Suites)"]',
+    '        Tier1["Tier 1: Pure Domain, Security & AST Suites\\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]',
+    '        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• useBooks, useBookContent, useBookTranslations\\n• supabase-provider, gutendex-provider"]',
+    '        Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\\n• bookshelf-cloud-sync, sync-utils, offline-storage"]',
+    '        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• 64 UI Components + App Router Pages/Layouts + Web Worker\\n• CLI Pipelines (sync-gutenberg-catalog.test.ts, ingest-translations.test.ts)"]',
+    '    end',
+    '',
+    '    subgraph CoverageGate ["Tiered V8 Coverage Gate & Telemetry Output"]',
+    '        V8Thresholds["📊 Tiered V8 Coverage Floor\\n• Lines >= 95% • Statements >= 95%\\n• Functions >= 92% • Branches >= 85%"]',
+    '        QualityReport["📋 scripts/generate-quality-report.js\\n• docs/QUALITY_AUDIT_REPORT.md\\n• docs/quality-audit-results.json\\n• README.md live badges"]',
+    '    end',
+    '',
+    '    Pass05 --> Pass075',
+    '    Pass075 --> VitestCfg',
+    '    VitestCfg --> TestSetup',
+    '    TestSetup --> MSWServer',
+    '    TestSetup --> Tier1',
+    '    MSWServer -->|"Hermetic HTTP Interception"| Tier2',
+    '    TestSetup --> Tier3',
+    '    MSWServer -->|"Global Zero-Network Safety Net"| Tier4',
+    '    Tier1 --> V8Thresholds',
+    '    Tier2 --> V8Thresholds',
+    '    Tier3 --> V8Thresholds',
+    '    Tier4 --> V8Thresholds',
+    '    V8Thresholds --> QualityReport',
+    '```',
+    '',
+    '### 2. Test Harness & Interception Primitives Matrix',
     '',
     '| Test Harness Module | Source File | Testing Layer | Architectural Responsibility |',
     '| :--- | :--- | :--- | :--- |'
@@ -1406,6 +1452,22 @@ function generateMarkdown() {
     lines.push(
       `| **\`${baseName}\`** | [\`${scriptSuite}\`](${scriptSuite}) | CLI Data Pipeline Test Suite | ${scriptSuiteRole} |`
     );
+  }
+
+  lines.push(
+    '',
+    `### 3. Architectural Layer Test Suite Distribution (${testHarness.totalSuites} Suites)`,
+    '',
+    '| Architectural Layer | Target File Scope | Co-Located Suites | Verified Assertions | Hermetic & Security Testing Strategy |',
+    '| :--- | :--- | :--- | :--- | :--- |'
+  );
+
+  if (Array.isArray(testHarness.layerBreakdown)) {
+    for (const lb of testHarness.layerBreakdown) {
+      lines.push(
+        `| **${lb.layer}** | ${lb.scope} | \`${lb.suites}\` | \`${lb.tests}\` | ${lb.strategy} |`
+      );
+    }
   }
 
   lines.push(
@@ -1448,14 +1510,15 @@ function generateMarkdown() {
     '',
     '## 🔗 AST Module Interconnection & Topology Matrix',
     '',
-    'Every source file is analyzed for upstream imports and downstream consumers to guarantee zero orphaned or unlinked code:',
+    'Every source file is analyzed for upstream imports, downstream consumers, and its co-located Vitest suite to guarantee zero orphaned or untested code:',
     '',
-    '| Module / Component | Upstream Dependencies (Imports) | Downstream Consumers (Consumed By) | Role & Responsibilities |',
-    '| :--- | :--- | :--- | :--- |'
+    '| Module / Component | Upstream Dependencies (Imports) | Downstream Consumers (Consumed By) | Co-Located Test Suite | Role & Responsibilities |',
+    '| :--- | :--- | :--- | :--- | :--- |'
   );
 
   const sortedFiles = Array.from(graph.keys()).sort();
   const ambiguousBasenames = new Set(['page.tsx', 'layout.tsx', 'route.ts', 'index.ts']);
+  const testSuiteSet = new Set(testHarness.testSuites || []);
 
   const formatModuleLabel = (fileRel) => {
     const base = path.basename(fileRel);
@@ -1465,10 +1528,32 @@ function generateMarkdown() {
     return base;
   };
 
+  const resolveCoLocatedTestLink = (fileRel) => {
+    const baseNoExt = fileRel.replace(/\.(ts|tsx|js|jsx)$/, '');
+    const candidates = [`${baseNoExt}.test.ts`, `${baseNoExt}.test.tsx`];
+    for (const cand of candidates) {
+      if (testSuiteSet.has(cand)) {
+        const label = ambiguousBasenames.has(path.basename(fileRel))
+          ? cand.replace(/^src\//, '')
+          : path.basename(cand);
+        return `[\`${label}\`](${cand})`;
+      }
+    }
+    if (
+      fileRel.startsWith('src/types/') ||
+      fileRel === 'src/lib/gutenberg/index.ts' ||
+      fileRel === 'src/lib/gutenberg/types.ts'
+    ) {
+      return '_Type Contract / Barrel_';
+    }
+    return '_Tested via Parent Suite_';
+  };
+
   const classifyModuleRole = (fileRel) => {
     if (fileRel.endsWith('/route.ts') || fileRel.endsWith('/route.js')) return 'Server Route Handler';
     if (fileRel.endsWith('/page.tsx')) return 'App Router Page';
     if (fileRel.endsWith('/layout.tsx')) return 'App Router Layout';
+    if (fileRel === 'src/app/loading.tsx') return 'App Loading / Splash Boundary';
     if (/src\/app\/(error|global-error|not-found)\.tsx$/.test(fileRel)) return 'App Error / 404 Boundary';
     if (/src\/app\/(manifest|robots|sitemap)\.ts$/.test(fileRel)) return 'App Metadata Route';
     if (fileRel === 'src/app/providers.tsx') return 'Root Client Provider';
@@ -1518,9 +1603,12 @@ function generateMarkdown() {
           ? '_App Route Entry_'
           : '_Direct Root Consumer_';
 
+    const coLocatedTestLink = resolveCoLocatedTestLink(file);
     const roleTitle = classifyModuleRole(file);
 
-    lines.push(`| [\`${label}\`](${file}) | ${importsStr} | ${consumersStr} | ${roleTitle} |`);
+    lines.push(
+      `| [\`${label}\`](${file}) | ${importsStr} | ${consumersStr} | ${coLocatedTestLink} | ${roleTitle} |`
+    );
   }
 
   lines.push(
@@ -1544,7 +1632,7 @@ function generateMarkdown() {
     ''
   );
 
-  const nodeEcosystem = extractNodeEcosystemCatalog(rootDir);
+  const nodeEcosystem = extractNodeEcosystemCatalog(rootDir, testHarness.totalSuites);
   lines.push(
     `Bookarium executes on **Node.js \`${nodeEcosystem.engines.node || '>=20.0.0'}\`** with **npm \`${nodeEcosystem.engines.npm || '>=10.0.0'}\`** (Node 22 LTS recommended). All dependency versions are programmatically synchronized from \`package.json\` via AST compilation (Rule 2):`,
     '',

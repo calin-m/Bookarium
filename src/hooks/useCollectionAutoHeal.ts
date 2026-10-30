@@ -7,7 +7,7 @@ import { useBooks } from '@/hooks/queries/useBooks';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
-import { parseLifespansFromName } from '@/lib/copyright-engine';
+import { hasAuthorLifespans, featuredHeroToGutendexBook } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
 import type { GutendexBook } from '@/types/book.types';
 
@@ -19,20 +19,11 @@ export interface CollectionAutoHealResult {
 }
 
 function isBookIncomplete(b: GutendexBook): boolean {
-  if (!b.authors || b.authors.length === 0) return true;
-  return b.authors.every((a) => {
-    if (a.birth_year != null || a.death_year != null) return false;
-    const parsed = parseLifespansFromName(a.name);
-    return parsed.birthYear == null && parsed.deathYear == null;
-  });
+  return !hasAuthorLifespans(b.authors);
 }
 
 function isPositionIncomplete(bookAuthors?: string[]): boolean {
-  if (!bookAuthors || bookAuthors.length === 0) return true;
-  return bookAuthors.every((name) => {
-    const parsed = parseLifespansFromName(name);
-    return parsed.birthYear == null && parsed.deathYear == null;
-  });
+  return !hasAuthorLifespans(bookAuthors);
 }
 
 function findFeaturedHero(bookId: number) {
@@ -125,25 +116,12 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     for (const id of candidateIds) {
       const hero = findFeaturedHero(id);
       if (hero) {
-        heroBooksToEnrich.push({
-          id: hero.id,
-          title: hero.title,
-          authors: [
-            {
-              name: hero.author,
-              birth_year: hero.authorBirthYear,
-              death_year: hero.authorDeathYear,
-            },
-          ],
-          translators: [],
-          subjects: [hero.primarySubject],
-          bookshelves: [],
-          languages: ['en'],
-          copyright: false,
-          media_type: 'Text',
-          formats: existingFormats.get(hero.id) || {},
-          download_count: existingDownloads.get(hero.id) || 0,
-        });
+        heroBooksToEnrich.push(
+          featuredHeroToGutendexBook(hero, {
+            formats: existingFormats.get(hero.id) || {},
+            downloadCount: existingDownloads.get(hero.id) || 0,
+          })
+        );
       }
     }
     if (heroBooksToEnrich.length > 0) {

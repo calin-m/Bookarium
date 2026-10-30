@@ -246,9 +246,15 @@ describe('useAuthStore', () => {
     });
 
     if (authChangeCallback) {
+      authChangeCallback('PASSWORD_RECOVERY', {
+        user: { id: 'init-user', email: 'init@bookarium.test' },
+      });
+      expect(useAuthStore.getState().isPasswordRecovery).toBe(true);
+
       authChangeCallback('SIGNED_OUT', null);
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().profile).toBeNull();
+      expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
     }
   });
 
@@ -302,13 +308,17 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().error).toBe('Database error');
   });
 
-  it('handles resetPasswordForEmail success and failure', async () => {
+  it('handles resetPasswordForEmail success and failure with PKCE callback redirect', async () => {
     mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
     const res1 = await useAuthStore.getState().resetPasswordForEmail('user@bookarium.test');
     expect(res1.error).toBeNull();
     expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
       'user@bookarium.test',
-      expect.objectContaining({ redirectTo: expect.stringContaining('/account') })
+      expect.objectContaining({
+        redirectTo: expect.stringContaining(
+          '/auth/callback?next=%2Faccount%3Ftab%3Dsecurity%26recovery%3Dtrue'
+        ),
+      })
     );
 
     mockResetPasswordForEmail.mockResolvedValueOnce({ error: { message: 'User not found' } });
@@ -317,19 +327,76 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().error).toBe('User not found');
   });
 
-  it('handles updatePassword success and failure', async () => {
+  it('handles updatePassword in recovery mode and with currentPassword re-authentication', async () => {
+    // 1. Recovery mode (no currentPassword provided)
+    useAuthStore.setState({ isPasswordRecovery: true });
     mockUpdateUser.mockResolvedValueOnce({ error: null });
     const res1 = await useAuthStore.getState().updatePassword('newPassword123');
     expect(res1.error).toBeNull();
     expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'newPassword123' });
+    expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
 
     mockUpdateUser.mockResolvedValueOnce({ error: { message: 'Password too weak' } });
     const res2 = await useAuthStore.getState().updatePassword('123');
     expect(res2.error?.message).toBe('Password too weak');
     expect(useAuthStore.getState().error).toBe('Password too weak');
+
+    // 2. Re-authentication mode: no active user email
+    useAuthStore.setState({ user: null });
+    const resNoUser = await useAuthStore.getState().updatePassword('newPass123', 'oldPass123');
+    expect(resNoUser.error?.message).toBe('No active user session found');
+
+    // 3. Re-authentication mode: identical password rejection
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'scholar@bookarium.test' } as any,
+    });
+    mockUpdateUser.mockClear();
+    mockSignInWithPassword.mockClear();
+    const resSame = await useAuthStore.getState().updatePassword('samePass123', 'samePass123');
+    expect(resSame.error?.message).toBe(
+      'New password must be different from your current password.'
+    );
+    expect(mockSignInWithPassword).not.toHaveBeenCalled();
+    expect(mockUpdateUser).not.toHaveBeenCalled();
+
+    // 4. Re-authentication mode: incorrect current password rejection
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { user: null, session: null },
+      error: { message: 'Invalid login credentials' },
+    });
+    const resWrongCurrent = await useAuthStore
+      .getState()
+      .updatePassword('newPass456', 'wrongCurrentPass');
+    expect(resWrongCurrent.error?.message).toBe('Current password is incorrect.');
+    expect(mockSignInWithPassword).toHaveBeenCalledWith({
+      email: 'scholar@bookarium.test',
+      password: 'wrongCurrentPass',
+    });
+    expect(mockUpdateUser).not.toHaveBeenCalled();
+
+    // 5. Re-authentication mode: valid current password -> updates password
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { user: { id: 'u1', email: 'scholar@bookarium.test' }, session: {} },
+      error: null,
+    });
+    mockUpdateUser.mockResolvedValueOnce({ error: null });
+    const resReauthSuccess = await useAuthStore
+      .getState()
+      .updatePassword('newPass456', 'correctCurrentPass');
+    expect(resReauthSuccess.error).toBeNull();
+    expect(mockSignInWithPassword).toHaveBeenCalledWith({
+      email: 'scholar@bookarium.test',
+      password: 'correctCurrentPass',
+    });
+    expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'newPass456' });
+
+    // 6. clearPasswordRecovery helper
+    useAuthStore.setState({ isPasswordRecovery: true });
+    useAuthStore.getState().clearPasswordRecovery();
+    expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
   });
 
-  it('handles requestAccountDeletion success and failure', async () => {
+  it('handles requestAccountDeletion success and failure with PKCE callback redirect', async () => {
     // Logged out
     useAuthStore.setState({ user: null });
     const res1 = await useAuthStore.getState().requestAccountDeletion();
@@ -344,7 +411,9 @@ describe('useAuthStore', () => {
     expect(mockSignInWithOtp).toHaveBeenCalledWith({
       email: 'delete@bookarium.test',
       options: {
-        emailRedirectTo: expect.stringContaining('/auth/confirm-deletion'),
+        emailRedirectTo: expect.stringContaining(
+          '/auth/callback?next=%2Fauth%2Fconfirm-deletion'
+        ),
       },
     });
 
@@ -355,13 +424,14 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().error).toBe('Auth rate limit');
   });
 
-  it('handles deleteAccount success, 11-table database purge, and 6-store local state reset', async () => {
+  it('handles deleteAccount success, 11-table database purge, IndexedDB offline purge, and local state reset', async () => {
     // Logged out
     useAuthStore.setState({ user: null });
     const res1 = await useAuthStore.getState().deleteAccount();
     expect(res1.error?.message).toBe('No active user session');
 
     // Logged in success
+    sessionStorage.setItem('bookarium_auto_heal_attempted', '1');
     useAuthStore.setState({ user: { id: 'user-delete' } as any, profile: { id: 'user-delete' } as any });
     const mockEq = vi.fn().mockResolvedValue({ error: null });
     const mockOr = vi.fn().mockResolvedValue({ error: null });
@@ -381,6 +451,8 @@ describe('useAuthStore', () => {
       { useAccoladesStore },
       { useFellowshipStore },
       { useReaderStore },
+      { usePreferencesStore },
+      offlineStorage,
     ] = await Promise.all([
       import('@/stores/useBookshelfStore'),
       import('@/stores/useAnnotationStore'),
@@ -388,6 +460,8 @@ describe('useAuthStore', () => {
       import('@/stores/useAccoladesStore'),
       import('@/stores/useFellowshipStore'),
       import('@/stores/useReaderStore'),
+      import('@/stores/usePreferencesStore'),
+      import('@/lib/offline-storage'),
     ]);
 
     const clearBookshelfSpy = vi.spyOn(useBookshelfStore.getState(), 'clearBookshelf');
@@ -396,6 +470,8 @@ describe('useAuthStore', () => {
     const resetAccoladesSpy = vi.spyOn(useAccoladesStore.getState(), 'resetAccolades');
     const clearFellowshipStateSpy = vi.spyOn(useFellowshipStore.getState(), 'clearFellowshipState');
     const clearAllVolumesSpy = vi.spyOn(useReaderStore.getState(), 'clearAllVolumes').mockResolvedValue(undefined);
+    const resetSpeechSpy = vi.spyOn(usePreferencesStore.getState(), 'resetSpeechPreferences');
+    const clearOfflineSpy = vi.spyOn(offlineStorage, 'clearAllOfflineBooks').mockResolvedValue(undefined);
 
     const res2 = await useAuthStore.getState().deleteAccount();
     expect(res2.error).toBeNull();
@@ -425,13 +501,16 @@ describe('useAuthStore', () => {
     expect(mockEq).toHaveBeenCalledWith('id', 'user-delete');
     expect(mockRpc).toHaveBeenCalledWith('delete_current_user');
 
-    // Verify all 6 local persistent stores were wiped
+    // Verify all local persistent stores, IndexedDB books, and session flags were wiped
     expect(clearBookshelfSpy).toHaveBeenCalled();
     expect(clearAllAnnotationsSpy).toHaveBeenCalled();
     expect(resetHabitsSpy).toHaveBeenCalled();
     expect(resetAccoladesSpy).toHaveBeenCalled();
     expect(clearFellowshipStateSpy).toHaveBeenCalled();
     expect(clearAllVolumesSpy).toHaveBeenCalled();
+    expect(resetSpeechSpy).toHaveBeenCalled();
+    expect(clearOfflineSpy).toHaveBeenCalled();
+    expect(sessionStorage.getItem('bookarium_auto_heal_attempted')).toBeNull();
   });
 
   describe('validateUsername', () => {

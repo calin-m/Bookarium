@@ -37,6 +37,7 @@ export interface AuthState {
   isLoading: boolean;
   isAuthModalOpen: boolean;
   authModalView: AuthModalView;
+  isPasswordRecovery: boolean;
   error: string | null;
   statusMessage: string | null;
 
@@ -45,6 +46,7 @@ export interface AuthState {
   openAuthModal: (view?: AuthModalView) => void;
   closeAuthModal: () => void;
   setAuthModalView: (view: AuthModalView) => void;
+  clearPasswordRecovery: () => void;
   setError: (error: string | null) => void;
   setStatusMessage: (statusMessage: string | null) => void;
   signInWithPassword: (email: string, password: string) => Promise<{ user?: User | null; error: AuthError | null }>;
@@ -74,9 +76,72 @@ export interface AuthState {
     show_custom_shelves?: boolean;
   }) => Promise<{ error: Error | null }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: AuthError | null }>;
-  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
+  updatePassword: (newPassword: string, currentPassword?: string) => Promise<{ error: AuthError | null }>;
   requestAccountDeletion: () => Promise<{ error: AuthError | null }>;
   deleteAccount: () => Promise<{ error: Error | null }>;
+}
+
+const SIGNED_OUT_AUTH_STATE = {
+  user: null,
+  profile: null,
+  pendingProfileUpdates: null,
+  isAuthModalOpen: false,
+  isPasswordRecovery: false,
+  error: null,
+  statusMessage: null,
+} as const;
+
+async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Promise<void> {
+  const localCleanupTasks: Array<() => Promise<unknown>> = [
+    async () => {
+      const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+      useBookshelfStore.getState().clearBookshelf();
+    },
+    async () => {
+      const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+      useAnnotationStore.getState().clearAllAnnotations();
+    },
+    async () => {
+      const { useHabitsStore } = await import('@/stores/useHabitsStore');
+      useHabitsStore.getState().resetHabits();
+    },
+    async () => {
+      const { useAccoladesStore } = await import('@/stores/useAccoladesStore');
+      useAccoladesStore.getState().resetAccolades();
+    },
+    async () => {
+      const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+      useFellowshipStore.getState().clearFellowshipState();
+    },
+    async () => {
+      const { useReaderStore } = await import('@/stores/useReaderStore');
+      if (options.wipeDeviceStorage) {
+        await useReaderStore.getState().clearAllVolumes();
+      } else {
+        useReaderStore.getState().resetReaderSession();
+      }
+    },
+  ];
+
+  if (options.wipeDeviceStorage) {
+    localCleanupTasks.push(
+      async () => {
+        const { clearAllOfflineBooks } = await import('@/lib/offline-storage');
+        await clearAllOfflineBooks();
+      },
+      async () => {
+        const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+        usePreferencesStore.getState().resetSpeechPreferences();
+      },
+      async () => {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('bookarium_auto_heal_attempted');
+        }
+      }
+    );
+  }
+
+  await Promise.allSettled(localCleanupTasks.map((task) => task()));
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -88,6 +153,7 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
       isAuthModalOpen: false,
       authModalView: 'sign_in',
+      isPasswordRecovery: false,
       error: null,
       statusMessage: null,
 
@@ -131,7 +197,16 @@ export const useAuthStore = create<AuthState>()(
         return;
       }
       const user = session?.user ?? null;
-      set({ user, isLoading: false });
+      set((state) => ({
+        user,
+        isLoading: false,
+        isPasswordRecovery:
+          event === 'PASSWORD_RECOVERY'
+            ? true
+            : event === 'SIGNED_OUT'
+              ? false
+              : state.isPasswordRecovery,
+      }));
       if (user) {
         get().fetchProfile();
       } else {
@@ -154,6 +229,10 @@ export const useAuthStore = create<AuthState>()(
 
   setAuthModalView: (view) => {
     set({ authModalView: view, error: null, statusMessage: null });
+  },
+
+  clearPasswordRecovery: () => {
+    set({ isPasswordRecovery: false });
   },
 
   setError: (error) => {
@@ -281,40 +360,8 @@ export const useAuthStore = create<AuthState>()(
 
     const supabase = createClient();
     await supabase.auth.signOut();
-    set({
-      user: null,
-      profile: null,
-      pendingProfileUpdates: null,
-      isAuthModalOpen: false,
-      error: null,
-      statusMessage: null,
-    });
-
-    try {
-      const [
-        { useBookshelfStore },
-        { useAnnotationStore },
-        { useHabitsStore },
-        { useAccoladesStore },
-        { useFellowshipStore },
-        { useReaderStore },
-      ] = await Promise.all([
-        import('@/stores/useBookshelfStore'),
-        import('@/stores/useAnnotationStore'),
-        import('@/stores/useHabitsStore'),
-        import('@/stores/useAccoladesStore'),
-        import('@/stores/useFellowshipStore'),
-        import('@/stores/useReaderStore'),
-      ]);
-      useBookshelfStore.getState().clearBookshelf();
-      useAnnotationStore.getState().clearAllAnnotations();
-      useHabitsStore.getState().resetHabits();
-      useAccoladesStore.getState().resetAccolades();
-      useFellowshipStore.getState().clearFellowshipState();
-      useReaderStore.getState().resetReaderSession();
-    } catch {
-      // Non-blocking fallback
-    }
+    set(SIGNED_OUT_AUTH_STATE);
+    await clearLocalUserStores({ wipeDeviceStorage: false });
   },
 
   fetchProfile: async () => {
@@ -453,7 +500,9 @@ export const useAuthStore = create<AuthState>()(
   resetPasswordForEmail: async (email) => {
     set({ error: null, statusMessage: null });
     const supabase = createClient();
-    const redirectTo = buildAuthRedirectUrl(ROUTES.ACCOUNT);
+    const redirectTo = buildAuthRedirectUrl(
+      `/auth/callback?next=${encodeURIComponent(`${ROUTES.ACCOUNT}?tab=security&recovery=true`)}`
+    );
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
     });
@@ -464,9 +513,38 @@ export const useAuthStore = create<AuthState>()(
     return { error: null };
   },
 
-  updatePassword: async (newPassword) => {
+  updatePassword: async (newPassword, currentPassword) => {
     set({ error: null });
     const supabase = createClient();
+
+    if (currentPassword !== undefined) {
+      const email = get().user?.email;
+      if (!email) {
+        const noUserError = { message: 'No active user session found' } as AuthError;
+        set({ error: noUserError.message });
+        return { error: noUserError };
+      }
+      if (currentPassword === newPassword) {
+        const samePwdError = {
+          message: 'New password must be different from your current password.',
+        } as AuthError;
+        set({ error: samePwdError.message });
+        return { error: samePwdError };
+      }
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      });
+      if (verifyError) {
+        const invalidCurrentError = {
+          ...verifyError,
+          message: 'Current password is incorrect.',
+        } as AuthError;
+        set({ error: invalidCurrentError.message });
+        return { error: invalidCurrentError };
+      }
+    }
+
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
@@ -474,6 +552,7 @@ export const useAuthStore = create<AuthState>()(
       set({ error: error.message });
       return { error };
     }
+    set({ isPasswordRecovery: false });
     return { error: null };
   },
 
@@ -483,7 +562,9 @@ export const useAuthStore = create<AuthState>()(
 
     set({ error: null });
     const supabase = createClient();
-    const redirectTo = buildAuthRedirectUrl('/auth/confirm-deletion');
+    const redirectTo = buildAuthRedirectUrl(
+      `/auth/callback?next=${encodeURIComponent('/auth/confirm-deletion')}`
+    );
     const { error } = await supabase.auth.signInWithOtp({
       email: user.email,
       options: {
@@ -531,43 +612,8 @@ export const useAuthStore = create<AuthState>()(
       }
       // 4. Terminate auth session and clear all local persisted user stores
       await supabase.auth.signOut();
-      set({
-        user: null,
-        profile: null,
-        pendingProfileUpdates: null,
-        isAuthModalOpen: false,
-        error: null,
-        statusMessage: null,
-      });
-
-      const localCleanupTasks: Array<() => Promise<unknown>> = [
-        async () => {
-          const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
-          useBookshelfStore.getState().clearBookshelf();
-        },
-        async () => {
-          const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
-          useAnnotationStore.getState().clearAllAnnotations();
-        },
-        async () => {
-          const { useHabitsStore } = await import('@/stores/useHabitsStore');
-          useHabitsStore.getState().resetHabits();
-        },
-        async () => {
-          const { useAccoladesStore } = await import('@/stores/useAccoladesStore');
-          useAccoladesStore.getState().resetAccolades();
-        },
-        async () => {
-          const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
-          useFellowshipStore.getState().clearFellowshipState();
-        },
-        async () => {
-          const { useReaderStore } = await import('@/stores/useReaderStore');
-          await useReaderStore.getState().clearAllVolumes();
-        },
-      ];
-
-      await Promise.allSettled(localCleanupTasks.map((task) => task()));
+      set(SIGNED_OUT_AUTH_STATE);
+      await clearLocalUserStores({ wipeDeviceStorage: true });
       return { error: null };
     } catch (err: unknown) {
       return { error: err instanceof Error ? err : new Error(String(err)) };

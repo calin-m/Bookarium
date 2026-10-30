@@ -4,6 +4,9 @@ import {
   isPlaceholderAuthor,
   isPlaceholderTitle,
   cleanBookTitle,
+  hasAuthenticAuthors,
+  hasAuthorLifespans,
+  featuredHeroToGutendexBook,
 } from './book-metadata';
 import type { GutendexBook, GutendexResponse } from '@/mocks/handlers';
 
@@ -331,5 +334,56 @@ describe('src/lib/book-metadata', () => {
       ]);
     });
   });
+
+  describe('hasAuthenticAuthors, hasAuthorLifespans & featuredHeroToGutendexBook', () => {
+    it('evaluates hasAuthenticAuthors across strings, Author objects, and placeholders', () => {
+      expect(hasAuthenticAuthors(null)).toBe(false);
+      expect(hasAuthenticAuthors([])).toBe(false);
+      expect(hasAuthenticAuthors(['Anonymous', 'Unknown Author'])).toBe(false);
+      expect(hasAuthenticAuthors([{ name: 'Public Domain Classic' }])).toBe(false);
+      expect(hasAuthenticAuthors(['Jane Austen'])).toBe(true);
+      expect(hasAuthenticAuthors([{ name: 'Homer', birth_year: -800, death_year: -750 }])).toBe(true);
+    });
+
+    it('evaluates hasAuthorLifespans for both numeric fields and embedded name lifespans', () => {
+      expect(hasAuthorLifespans(undefined)).toBe(false);
+      expect(hasAuthorLifespans([])).toBe(false);
+      expect(hasAuthorLifespans([null])).toBe(false);
+      expect(hasAuthorLifespans(['Jane Austen'])).toBe(false);
+      expect(hasAuthorLifespans([{ name: 'Jane Austen', birth_year: null, death_year: null }])).toBe(false);
+      expect(hasAuthorLifespans([{ name: '', birth_year: null, death_year: null }])).toBe(false);
+      expect(hasAuthorLifespans(['Austen, Jane, 1775-1817'])).toBe(true);
+      expect(hasAuthorLifespans([{ name: 'Austen, Jane, 1775-1817', birth_year: null, death_year: null }])).toBe(true);
+      expect(hasAuthorLifespans([{ name: 'Jane Austen', birth_year: 1775, death_year: 1817 }])).toBe(true);
+    });
+
+    it('converts a FeaturedHeroBook into a canonical GutendexBook with default and custom overrides', () => {
+      const defaultBook = featuredHeroToGutendexBook({
+        id: 1342,
+        title: 'Pride and Prejudice',
+        author: 'Jane Austen',
+        authorBirthYear: 1775,
+        authorDeathYear: 1817,
+        primarySubject: 'Domestic Fiction',
+      });
+      expect(defaultBook.id).toBe(1342);
+      expect(defaultBook.authors).toEqual([
+        { name: 'Jane Austen', birth_year: 1775, death_year: 1817 },
+      ]);
+      expect(defaultBook.subjects).toEqual(['Domestic Fiction']);
+      expect(defaultBook.formats['image/jpeg']).toContain('pg1342.cover.medium.jpg');
+      expect(defaultBook.download_count).toBe(0);
+
+      const fallbackBook = featuredHeroToGutendexBook(
+        { id: 99, title: 'Untitled' },
+        { formats: {}, downloadCount: 50000 }
+      );
+      expect(fallbackBook.authors[0].name).toBe('Classic Masterwork');
+      expect(fallbackBook.subjects).toEqual(['Classic Literature']);
+      expect(fallbackBook.formats).toEqual({});
+      expect(fallbackBook.download_count).toBe(50000);
+    });
+  });
 });
+
 

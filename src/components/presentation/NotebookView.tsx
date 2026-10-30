@@ -46,14 +46,15 @@ import {
   cleanBookTitle,
   isPlaceholderAuthor,
   isPlaceholderTitle,
+  hasAuthorLifespans,
+  featuredHeroToGutendexBook,
 } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
 import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
 import {
   pairOverlappingAnnotations,
-  findMatchingOwnAnnotation,
+  filterAndPairAnnotationsBySource,
   isFellowAnnotation,
-  areAnnotationsOverlapping,
 } from '@/lib/reader-annotator';
 
 export type NotebookDisplayItem = (Annotation | FellowAnnotation) & {
@@ -158,13 +159,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
       const hasVerifiedStoreAuthors = (b: GutendexBook) => {
         if (country === 'US') return true;
-        return Boolean(
-          b.authors?.some((a) => {
-            if (a.birth_year != null || a.death_year != null) return true;
-            const p = parseLifespansFromName(a.name);
-            return p.birthYear != null || p.deathYear != null;
-          })
-        );
+        return hasAuthorLifespans(b.authors);
       };
 
       const inLocalPools = [savedBooks, favoriteBooks, recentBooks, offlineBooks, cachedRemotePool].some((pool) =>
@@ -432,32 +427,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   }, [annotations, fellowAnnotations]);
 
   const sourceFilteredAnnotations: NotebookDisplayItem[] = useMemo(() => {
-    if (marginaliaSourceFilter === 'mine') {
-      return annotations.map((ann) => ({
-        ...ann,
-        pairedFellowAnnotation: fellowAnnotations.find((fa) => areAnnotationsOverlapping(ann, fa)),
-      }));
-    }
-    if (marginaliaSourceFilter === 'fellows') {
-      return fellowAnnotations.map((fa) => ({
-        ...fa,
-        matchingOwnAnnotation: findMatchingOwnAnnotation(annotations, fa),
-      }));
-    }
-    return pairedAllAnnotations.map((item) => {
-      if (item.pairedFellowAnnotation) {
-        return {
-          ...item.annotation,
-          pairedFellowAnnotation: item.pairedFellowAnnotation,
-        };
-      }
-      return {
-        ...item.annotation,
-        matchingOwnAnnotation: isFellowAnnotation(item.annotation)
-          ? findMatchingOwnAnnotation(annotations, item.annotation)
-          : undefined,
-      };
-    });
+    return filterAndPairAnnotationsBySource(
+      annotations,
+      fellowAnnotations,
+      marginaliaSourceFilter,
+      pairedAllAnnotations
+    );
   }, [annotations, fellowAnnotations, marginaliaSourceFilter, pairedAllAnnotations]);
 
   // Filtered list of annotations
@@ -689,27 +664,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     } else {
       const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === bookId);
       if (fromFeatured) {
-        useReaderStore.getState().openReader({
-          id: fromFeatured.id,
-          title: fromFeatured.title,
-          authors: [
-            {
-              name: fromFeatured.author,
-              birth_year: fromFeatured.authorBirthYear,
-              death_year: fromFeatured.authorDeathYear,
-            },
-          ],
-          translators: [],
-          subjects: [fromFeatured.primarySubject],
-          bookshelves: [],
-          languages: ['en'],
-          copyright: false,
-          media_type: 'Text',
-          formats: {
-            'image/jpeg': `https://www.gutenberg.org/cache/epub/${fromFeatured.id}/pg${fromFeatured.id}.cover.medium.jpg`,
-          },
-          download_count: 0,
-        });
+        useReaderStore.getState().openReader(featuredHeroToGutendexBook(fromFeatured));
       }
     }
   };

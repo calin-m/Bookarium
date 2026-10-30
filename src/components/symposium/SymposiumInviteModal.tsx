@@ -127,7 +127,10 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
               Symposium Volume
             </p>
             {initialBookTitle ? (
-              <p className="text-sm font-serif font-bold text-foreground truncate">
+              <p
+                className="text-sm font-serif font-bold text-foreground truncate"
+                title={initialBookTitle}
+              >
                 {initialBookTitle}
               </p>
             ) : savedBooks.length > 0 ? (
@@ -162,7 +165,10 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
                 {preselectedFellow.displayName.slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 space-y-0.5">
-                <p className="text-xs font-serif font-bold text-foreground truncate">
+                <p
+                  className="text-xs font-serif font-bold text-foreground truncate"
+                  title={preselectedFellow.displayName}
+                >
                   {preselectedFellow.displayName}
                 </p>
                 <p className="text-[11px] font-mono text-muted-foreground truncate">

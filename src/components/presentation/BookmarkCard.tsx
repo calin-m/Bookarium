@@ -267,24 +267,28 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               {isRestricted || isUnavailableOffline ? (
                 <span
                   className="cursor-not-allowed opacity-85"
-                  title={
+                  title={`${book.title} — ${
                     isRestricted
                       ? evaluation.reason || `Protected by copyright in ${country}`
                       : 'Not downloaded for offline reading'
-                  }
+                  }`}
                 >
                   {book.title}
                 </span>
               ) : (
                 <span
                   className={isActive ? 'text-primary' : 'group-hover:text-primary'}
+                  title={book.title}
                 >
                   {book.title}
                 </span>
               )}
             </h3>
 
-            <p className="font-sans text-xs text-muted-foreground truncate mt-1 pr-4">
+            <p
+              className="font-sans text-xs text-muted-foreground truncate mt-1 pr-4"
+              title={formatAuthorNames(book.authors) || 'Anonymous'}
+            >
               {formatAuthorNames(book.authors) || 'Anonymous'}
             </p>
           </div>

@@ -202,9 +202,11 @@ describe('ReaderHeader', () => {
     expect(notice).toBeInTheDocument();
     expect(screen.getByText(/Resumed at Chapter III, Page 4/i)).toBeInTheDocument();
 
-    // Click Restart
-    const restartBtn = screen.getByRole('button', { name: /Restart/i });
+    // Click Restart -> opens confirmation modal and confirms
+    const restartBtn = screen.getByRole('button', { name: /^Restart$/i });
     fireEvent.click(restartBtn);
+    expect(screen.getByTestId('restart-volume-dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-restart-volume-btn'));
     expect(onRestart).toHaveBeenCalledTimes(1);
 
     // Click Dismiss

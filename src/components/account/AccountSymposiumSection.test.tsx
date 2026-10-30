@@ -197,15 +197,30 @@ describe('AccountSymposiumSection', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
     expect(screen.getByText(/Charles Dickens \(@dickens\)/i)).toBeInTheDocument();
 
-    const declineBtn = screen.getByRole('button', { name: /Decline/i });
+    const declineBtn = screen.getByRole('button', { name: /^Decline$/i });
     fireEvent.click(declineBtn);
+
+    // Confirmation modal opens first
+    expect(screen.getByTestId('fellowship-confirm-dialog')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Decline Reader Circle invitation from Charles Dickens \(@dickens\)\?/i)
+    ).toBeInTheDocument();
+
+    // Cancel keeps invitation intact
+    fireEvent.click(screen.getByTestId('cancel-fellowship-action-btn'));
+    expect(screen.queryByTestId('fellowship-confirm-dialog')).not.toBeInTheDocument();
+    expect(useFellowshipStore.getState().circles.find((c) => c.id === 'c-decline')).toBeDefined();
+
+    // Re-open and confirm decline
+    fireEvent.click(declineBtn);
+    fireEvent.click(screen.getByTestId('confirm-fellowship-action-btn'));
 
     await waitFor(() => {
       expect(useFellowshipStore.getState().circles.find((c) => c.id === 'c-decline')).toBeUndefined();
     });
   });
 
-  it('renders completed companion symposium cards, opens New Symposium Pact modal, and handles leaving a symposium', async () => {
+  it('renders completed companion symposium cards, opens New Symposium Pact modal, and handles leaving a symposium with confirmation', async () => {
     const leaveSpy = vi.fn().mockResolvedValue({ error: null });
     useFellowshipStore.setState({
       leaveSymposium: leaveSpy,
@@ -244,12 +259,21 @@ describe('AccountSymposiumSection', () => {
     });
     fireEvent.click(closeModalBtn);
 
-    // Leave symposium
+    // Leave symposium -> opens confirmation modal, cancels, then confirms
     fireEvent.click(screen.getByRole('button', { name: /Leave Symposium/i }));
+    expect(screen.getByTestId('fellowship-confirm-dialog')).toBeInTheDocument();
+    expect(screen.getByText(/Leave the Symposium on “Volume #84”\?/i)).toBeInTheDocument();
+    expect(leaveSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('cancel-fellowship-action-btn'));
+    expect(screen.queryByTestId('fellowship-confirm-dialog')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Leave Symposium/i }));
+    fireEvent.click(screen.getByTestId('confirm-fellowship-action-btn'));
     expect(leaveSpy).toHaveBeenCalledWith('s-completed-fellow');
   });
 
-  it('supports Reader Circle fellow Symposium launch, fellow removal, and all pending invitation actions', async () => {
+  it('supports Reader Circle fellow Symposium launch, fellow removal with confirmation, and all pending invitation actions', async () => {
     const removeFellowSpy = vi.fn().mockResolvedValue({ error: null });
     const respondSymposiumSpy = vi.fn().mockResolvedValue({ error: null });
     const leaveSymposiumSpy = vi.fn().mockResolvedValue({ error: null });
@@ -332,6 +356,14 @@ describe('AccountSymposiumSection', () => {
     expect(await screen.findByTestId('symposium-invite-modal')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Remove @bronte from Reader Circle/i }));
+    expect(screen.getByTestId('fellowship-confirm-dialog')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Remove Charlotte Brontë \(@bronte\) from your Reader Circle\?/i)
+    ).toBeInTheDocument();
+    expect(removeFellowSpy).not.toHaveBeenCalled();
+
+    // Confirm fellow removal
+    fireEvent.click(screen.getByTestId('confirm-fellowship-action-btn'));
     expect(removeFellowSpy).toHaveBeenCalledWith('c-accepted-fellow');
 
     // Switch to Invitations sub-tab
@@ -341,8 +373,12 @@ describe('AccountSymposiumSection', () => {
     expect(screen.getByText('Volume #2701')).toBeInTheDocument();
     expect(screen.getByText('Sent Symposium Pact')).toBeInTheDocument();
 
-    // Cancel outgoing circle request
+    // Cancel outgoing circle request -> confirm in modal
     fireEvent.click(screen.getByRole('button', { name: /Cancel Request/i }));
+    expect(
+      screen.getByText(/Withdraw Reader Circle invitation to Herman Melville \(@melville\)\?/i)
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-fellowship-action-btn'));
     expect(removeFellowSpy).toHaveBeenCalledWith('c-outgoing');
 
     // Accept and Decline incoming symposium pact
@@ -350,10 +386,16 @@ describe('AccountSymposiumSection', () => {
     expect(respondSymposiumSpy).toHaveBeenCalledWith('sym-incoming', 'accept');
 
     fireEvent.click(screen.getByRole('button', { name: /^Decline$/i }));
+    expect(screen.getByText(/Decline Symposium pact on “Volume #2701”\?/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-fellowship-action-btn'));
     expect(respondSymposiumSpy).toHaveBeenCalledWith('sym-incoming', 'decline');
 
-    // Cancel outgoing symposium pact
+    // Cancel outgoing symposium pact -> confirm in modal
     fireEvent.click(screen.getByRole('button', { name: /Cancel Pact/i }));
+    expect(
+      screen.getByText(/Withdraw Symposium pact on “Pride and Prejudice”\?/i)
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-fellowship-action-btn'));
     expect(leaveSymposiumSpy).toHaveBeenCalledWith('sym-outgoing');
 
     // Switch back to Active Symposiums tab

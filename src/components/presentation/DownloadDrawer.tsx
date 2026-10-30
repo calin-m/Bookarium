@@ -94,10 +94,16 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
             )}
             <span className="font-mono text-[10px] sm:text-[11px] text-muted-foreground">ID #{book.id}</span>
           </div>
-          <h3 className="font-serif font-bold text-sm sm:text-base text-foreground line-clamp-1">
+          <h3
+            className="font-serif font-bold text-sm sm:text-base text-foreground line-clamp-2 leading-snug"
+            title={book.title}
+          >
             {book.title}
           </h3>
-          <p className="text-[11px] sm:text-xs text-muted-foreground font-serif italic line-clamp-1">
+          <p
+            className="text-[11px] sm:text-xs text-muted-foreground font-serif italic line-clamp-1"
+            title={`By ${formatAuthorNames(book.authors) || 'Anonymous'}`}
+          >
             By {formatAuthorNames(book.authors) || 'Anonymous'}
           </p>
         </div>
@@ -180,7 +186,7 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] sm:text-[11px] text-muted-foreground font-sans truncate">
+                    <p className="text-[10px] sm:text-[11px] text-muted-foreground font-sans whitespace-normal line-clamp-2 leading-snug">
                       {isOffline
                         ? 'Cached in browser storage for instant offline reading in Bookarium.'
                         : isNetworkOffline
@@ -267,7 +273,7 @@ export const DownloadDrawer: React.FC<DownloadDrawerProps> = ({ book, isOpen, on
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] sm:text-[11px] text-muted-foreground font-sans truncate sm:whitespace-normal sm:line-clamp-2 sm:mt-0.5 leading-snug">
+                        <p className="text-[10px] sm:text-[11px] text-muted-foreground font-sans whitespace-normal line-clamp-2 mt-0.5 leading-snug">
                           {option.description}
                         </p>
                       </div>

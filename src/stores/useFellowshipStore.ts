@@ -120,6 +120,44 @@ function healProfileIdentity(
   ];
 }
 
+/**
+ * Batch-fetches scholar identities (`id`, `username`, `display_name`) from `public.profiles`
+ * and returns a lookup map keyed by `user_id`. Gracefully returns an empty map when offline
+ * or if the query fails.
+ */
+export async function fetchScholarProfilesMap(
+  supabase: ReturnType<typeof createClient>,
+  userIds: string[]
+): Promise<Map<string, { username: string | null; display_name: string | null }>> {
+  const profileMap = new Map<string, { username: string | null; display_name: string | null }>();
+  if (!supabase || !Array.isArray(userIds) || userIds.length === 0) {
+    return profileMap;
+  }
+
+  try {
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, username, display_name')
+      .in('id', userIds);
+
+    if (Array.isArray(profilesData)) {
+      for (const p of profilesData as Array<{
+        id: string;
+        username: string | null;
+        display_name: string | null;
+      }>) {
+        if (p?.id) {
+          profileMap.set(p.id, { username: p.username, display_name: p.display_name });
+        }
+      }
+    }
+  } catch {
+    // Non-blocking fallback when profiles query is unavailable or offline
+  }
+
+  return profileMap;
+}
+
 async function resolveSelfScholarIdentity(
   currentUser: NonNullable<ReturnType<typeof useAuthStore.getState>['user']>,
   currentProfile: ReturnType<typeof useAuthStore.getState>['profile'],
@@ -249,69 +287,57 @@ export const useFellowshipStore = create<FellowshipState>()(
           let healedSymposiums = rawSymposiums;
 
           if (companionIds.size > 0) {
-            try {
-              const { data: profilesData } = await supabase
-                .from('profiles')
-                .select('id, username, display_name')
-                .in('id', Array.from(companionIds));
+            const profileMap = await fetchScholarProfilesMap(
+              supabase,
+              Array.from(companionIds)
+            );
 
-              if (Array.isArray(profilesData) && profilesData.length > 0) {
-                const profileMap = new Map<
-                  string,
-                  { username: string | null; display_name: string | null }
-                >();
-                for (const p of profilesData) {
-                  profileMap.set(p.id, { username: p.username, display_name: p.display_name });
-                }
+            if (profileMap.size > 0) {
+              healedCircles = rawCircles.map((c) => {
+                const [reqU, reqD] = healProfileIdentity(
+                  profileMap,
+                  c.requester_id,
+                  c.requester_username,
+                  c.requester_display_name
+                );
+                const [recU, recD] = healProfileIdentity(
+                  profileMap,
+                  c.recipient_id,
+                  c.recipient_username,
+                  c.recipient_display_name
+                );
 
-                healedCircles = rawCircles.map((c) => {
-                  const [reqU, reqD] = healProfileIdentity(
-                    profileMap,
-                    c.requester_id,
-                    c.requester_username,
-                    c.requester_display_name
-                  );
-                  const [recU, recD] = healProfileIdentity(
-                    profileMap,
-                    c.recipient_id,
-                    c.recipient_username,
-                    c.recipient_display_name
-                  );
+                return {
+                  ...c,
+                  requester_username: reqU,
+                  requester_display_name: reqD,
+                  recipient_username: recU,
+                  recipient_display_name: recD,
+                };
+              });
 
-                  return {
-                    ...c,
-                    requester_username: reqU,
-                    requester_display_name: reqD,
-                    recipient_username: recU,
-                    recipient_display_name: recD,
-                  };
-                });
+              healedSymposiums = rawSymposiums.map((s) => {
+                const [hostU, hostD] = healProfileIdentity(
+                  profileMap,
+                  s.host_id,
+                  s.host_username,
+                  s.host_display_name
+                );
+                const [fellowU, fellowD] = healProfileIdentity(
+                  profileMap,
+                  s.fellow_id,
+                  s.fellow_username,
+                  s.fellow_display_name
+                );
 
-                healedSymposiums = rawSymposiums.map((s) => {
-                  const [hostU, hostD] = healProfileIdentity(
-                    profileMap,
-                    s.host_id,
-                    s.host_username,
-                    s.host_display_name
-                  );
-                  const [fellowU, fellowD] = healProfileIdentity(
-                    profileMap,
-                    s.fellow_id,
-                    s.fellow_username,
-                    s.fellow_display_name
-                  );
-
-                  return {
-                    ...s,
-                    host_username: hostU,
-                    host_display_name: hostD,
-                    fellow_username: fellowU,
-                    fellow_display_name: fellowD,
-                  };
-                });
-              }
-            } catch {
-              // Non-blocking profiles overlay
+                return {
+                  ...s,
+                  host_username: hostU,
+                  host_display_name: hostD,
+                  fellow_username: fellowU,
+                  fellow_display_name: fellowD,
+                };
+              });
             }
           }
 

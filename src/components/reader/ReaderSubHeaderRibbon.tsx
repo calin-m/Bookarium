@@ -1,10 +1,12 @@
 'use client';
 
-import React from 'react';
-import { X, Info, BookOpen, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Info, BookOpen, Sparkles, RotateCcw } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { formatFellowScholarLabel, isPlaceholderUsername } from '@/stores/useFellowshipStore';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 
 export interface ResumeNoticeData {
   chapterTitle: string;
@@ -61,51 +63,108 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
   onDismissSymposiumMilestone,
 }) => {
   const activeTheme = getReaderTheme(theme);
+  const [isRestartConfirmOpen, setIsRestartConfirmOpen] = useState(false);
 
   if (resumeNotice) {
+    const resumeText = resumeNotice.chapterTitle.includes('Completed')
+      ? `${resumeNotice.chapterTitle} • Page ${resumeNotice.page}`
+      : `Resumed at ${resumeNotice.chapterTitle}, Page ${resumeNotice.page}${
+          resumeNotice.row && resumeNotice.row > 1 ? ` • Line ${resumeNotice.row}` : ''
+        }`;
+
     return (
-      <div
-        role="status"
-        aria-live="polite"
-        data-testid="resume-notice"
-        className="w-full px-4 sm:px-6 md:px-8 py-1.5 border-t border-primary-500/30 flex items-center justify-between gap-3 text-xs font-mono bg-primary-500/10 text-foreground animate-in fade-in slide-in-from-top-1 duration-200"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse shrink-0" />
-          <span className="truncate font-medium">
-            {resumeNotice.chapterTitle.includes('Completed')
-              ? `${resumeNotice.chapterTitle} • Page ${resumeNotice.page}`
-              : `Resumed at ${resumeNotice.chapterTitle}, Page ${resumeNotice.page}${
-                  resumeNotice.row && resumeNotice.row > 1 ? ` • Line ${resumeNotice.row}` : ''
-                }`}
-          </span>
+      <>
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="resume-notice"
+          className="w-full px-4 sm:px-6 md:px-8 py-1.5 border-t border-primary-500/30 flex items-center justify-between gap-3 text-xs font-mono bg-primary-500/10 text-foreground animate-in fade-in slide-in-from-top-1 duration-200"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse shrink-0" />
+            <span className="truncate font-medium" title={resumeText}>
+              {resumeText}
+            </span>
+          </div>
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {onRestart && (
+              <button
+                type="button"
+                onClick={() => setIsRestartConfirmOpen(true)}
+                className="text-primary-600 dark:text-primary-400 hover:underline font-mono text-[11px] uppercase tracking-wider font-bold cursor-pointer"
+              >
+                Restart
+              </button>
+            )}
+            {onDismissResume && (
+              <button
+                type="button"
+                onClick={onDismissResume}
+                aria-label="Dismiss resume notice"
+                className="text-muted-foreground hover:text-foreground font-bold p-1 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          {onRestart && (
-            <button
-              type="button"
-              onClick={onRestart}
-              className="text-primary-600 dark:text-primary-400 hover:underline font-mono text-[11px] uppercase tracking-wider font-bold cursor-pointer"
-            >
-              Restart
-            </button>
-          )}
-          {onDismissResume && (
-            <button
-              type="button"
-              onClick={onDismissResume}
-              aria-label="Dismiss resume notice"
-              className="text-muted-foreground hover:text-foreground font-bold p-1 cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
+
+        <Modal
+          isOpen={isRestartConfirmOpen}
+          onClose={() => setIsRestartConfirmOpen(false)}
+          title="Restart Volume"
+          maxWidth="sm"
+          backdropClassName="bg-transparent backdrop-blur-none"
+          testId="restart-volume-modal"
+        >
+          <div className="p-6 space-y-4" data-testid="restart-volume-dialog">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground text-sm">
+                  Restart this volume from Page 1?
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  This will reset your current reading position back to the beginning of the book (0%). Your saved highlights and personal notes will remain untouched.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                size="chip"
+                data-testid="cancel-restart-volume-btn"
+                onClick={() => setIsRestartConfirmOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="chip"
+                data-testid="confirm-restart-volume-btn"
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent"
+                onClick={() => {
+                  setIsRestartConfirmOpen(false);
+                  onRestart?.();
+                }}
+              >
+                Restart Book
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      </>
     );
   }
 
   if (symposiumMilestoneNotice) {
+    const milestoneText = `${symposiumMilestoneNotice.displayName || `@${symposiumMilestoneNotice.username}`} reached Section ${symposiumMilestoneNotice.chapterIndex + 1} (${Math.round(symposiumMilestoneNotice.progress)}%) in this Symposium`;
+
     return (
       <div
         role="status"
@@ -115,8 +174,8 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className="shrink-0" aria-hidden="true">📜</span>
-          <span className="truncate font-medium">
-            {symposiumMilestoneNotice.displayName || `@${symposiumMilestoneNotice.username}`} reached Section {symposiumMilestoneNotice.chapterIndex + 1} ({Math.round(symposiumMilestoneNotice.progress)}%) in this Symposium
+          <span className="truncate font-medium" title={milestoneText}>
+            {milestoneText}
           </span>
         </div>
         {onDismissSymposiumMilestone && (

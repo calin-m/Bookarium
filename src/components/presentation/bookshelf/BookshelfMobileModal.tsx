@@ -208,10 +208,16 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                       </span>
                     )}
                   </div>
-                  <h3 className="font-serif font-bold text-base text-foreground line-clamp-2 leading-snug">
+                  <h3
+                    className="font-serif font-bold text-base text-foreground line-clamp-4 leading-snug"
+                    title={selectedMobileBook.title}
+                  >
                     {selectedMobileBook.title}
                   </h3>
-                  <p className="text-xs text-muted-foreground font-sans truncate">
+                  <p
+                    className="text-xs text-muted-foreground font-sans line-clamp-2 leading-snug"
+                    title={formatAuthorNames(selectedMobileBook.authors) || 'Anonymous'}
+                  >
                     {formatAuthorNames(selectedMobileBook.authors) || 'Anonymous'}
                   </p>
                 </div>

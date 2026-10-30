@@ -20,6 +20,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { ROUTES } from '@/config/routes';
 
 const SymposiumInviteModal = dynamic(
@@ -32,6 +33,41 @@ export interface AccountSymposiumSectionProps {
 }
 
 type SymposiumSubTabId = 'symposiums' | 'circle' | 'invitations';
+
+type PendingFellowshipConfirmAction =
+  | {
+      type: 'remove-fellow';
+      circleId: string;
+      fellowLabel: string;
+    }
+  | {
+      type: 'leave-symposium';
+      sessionId: string;
+      bookTitle: string;
+      fellowLabel: string;
+    }
+  | {
+      type: 'decline-circle';
+      circleId: string;
+      fellowLabel: string;
+    }
+  | {
+      type: 'cancel-circle';
+      circleId: string;
+      fellowLabel: string;
+    }
+  | {
+      type: 'decline-symposium';
+      sessionId: string;
+      bookTitle: string;
+      fellowLabel: string;
+    }
+  | {
+      type: 'cancel-symposium';
+      sessionId: string;
+      bookTitle: string;
+      fellowLabel: string;
+    };
 
 export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = ({ userId }) => {
   const {
@@ -58,6 +94,81 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
   const [modalPreselectedFellow, setModalPreselectedFellow] = useState<
     { fellowId: string; username: string; displayName: string } | undefined
   >(undefined);
+  const [pendingConfirmAction, setPendingConfirmAction] =
+    useState<PendingFellowshipConfirmAction | null>(null);
+
+  const confirmModalCopy = React.useMemo(() => {
+    if (!pendingConfirmAction) return null;
+    switch (pendingConfirmAction.type) {
+      case 'remove-fellow':
+        return {
+          title: 'Remove from Reader Circle',
+          heading: `Remove ${pendingConfirmAction.fellowLabel} from your Reader Circle?`,
+          description:
+            'This will remove this scholar from your Reader Circle and permanently dissolve any shared Literary Symposiums with them. Your personal reading progress, bookshelves, and notes will remain untouched.',
+          confirmLabel: 'Remove Fellow',
+        };
+      case 'leave-symposium':
+        return {
+          title: 'Leave Literary Symposium',
+          heading: `Leave the Symposium on “${pendingConfirmAction.bookTitle}”?`,
+          description: `This will permanently dissolve your shared reading pact with ${pendingConfirmAction.fellowLabel} for both scholars. Your personal reading progress, bookmarks, and notes will remain untouched.`,
+          confirmLabel: 'Leave Symposium',
+        };
+      case 'decline-circle':
+        return {
+          title: 'Decline Circle Request',
+          heading: `Decline Reader Circle invitation from ${pendingConfirmAction.fellowLabel}?`,
+          description:
+            'This will decline their incoming Reader Circle invitation. They can send a new invitation in the future.',
+          confirmLabel: 'Decline Request',
+        };
+      case 'cancel-circle':
+        return {
+          title: 'Cancel Circle Request',
+          heading: `Withdraw Reader Circle invitation to ${pendingConfirmAction.fellowLabel}?`,
+          description:
+            'This will cancel your pending Reader Circle request to this scholar.',
+          confirmLabel: 'Withdraw Request',
+        };
+      case 'decline-symposium':
+        return {
+          title: 'Decline Symposium Pact',
+          heading: `Decline Symposium pact on “${pendingConfirmAction.bookTitle}”?`,
+          description: `This will decline the incoming Literary Symposium invitation from ${pendingConfirmAction.fellowLabel}.`,
+          confirmLabel: 'Decline Pact',
+        };
+      case 'cancel-symposium':
+        return {
+          title: 'Cancel Symposium Pact',
+          heading: `Withdraw Symposium pact on “${pendingConfirmAction.bookTitle}”?`,
+          description: `This will cancel your pending Literary Symposium invitation sent to ${pendingConfirmAction.fellowLabel}.`,
+          confirmLabel: 'Withdraw Pact',
+        };
+    }
+  }, [pendingConfirmAction]);
+
+  const handleConfirmPendingAction = async () => {
+    if (!pendingConfirmAction) return;
+    const action = pendingConfirmAction;
+    setPendingConfirmAction(null);
+    switch (action.type) {
+      case 'remove-fellow':
+      case 'cancel-circle':
+        await removeFellow(action.circleId);
+        break;
+      case 'leave-symposium':
+      case 'cancel-symposium':
+        await leaveSymposium(action.sessionId);
+        break;
+      case 'decline-circle':
+        await respondToCircleInvite(action.circleId, 'decline');
+        break;
+      case 'decline-symposium':
+        await respondToSymposiumInvite(action.sessionId, 'decline');
+        break;
+    }
+  };
 
   useEffect(() => {
     if (userId && !isOffline) {
@@ -273,7 +384,10 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                             </span>
                           )}
                         </div>
-                        <h4 className="text-base font-serif font-bold text-foreground mt-1 truncate">
+                        <h4
+                          className="text-base font-serif font-bold text-foreground mt-1 truncate"
+                          title={session.book_title || `Volume #${session.book_id}`}
+                        >
                           {session.book_title || `Volume #${session.book_id}`}
                         </h4>
                         <p className="text-xs font-mono text-muted-foreground">
@@ -333,7 +447,14 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                       <button
                         type="button"
                         disabled={isOffline}
-                        onClick={() => leaveSymposium(session.id)}
+                        onClick={() =>
+                          setPendingConfirmAction({
+                            type: 'leave-symposium',
+                            sessionId: session.id,
+                            bookTitle: session.book_title || `Volume #${session.book_id}`,
+                            fellowLabel: formatFellowScholarLabel(fellowName, fellowHandle),
+                          })
+                        }
                         className={`text-[11px] font-mono text-muted-foreground inline-flex items-center gap-1 ${
                           isOffline
                             ? 'opacity-40 cursor-not-allowed'
@@ -426,10 +547,14 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                     <Link
                       href={ROUTES.PUBLIC_PROFILE(fellow.username)}
                       className="text-sm font-serif font-bold text-foreground hover:text-primary truncate block"
+                      title={fellow.displayName}
                     >
                       {fellow.displayName}
                     </Link>
-                    <p className="text-xs font-mono text-muted-foreground truncate">
+                    <p
+                      className="text-xs font-mono text-muted-foreground truncate"
+                      title={`@${fellow.username}`}
+                    >
                       @{fellow.username}
                     </p>
                   </div>
@@ -456,7 +581,13 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                     <button
                       type="button"
                       disabled={isOffline}
-                      onClick={() => removeFellow(fellow.circleId)}
+                      onClick={() =>
+                        setPendingConfirmAction({
+                          type: 'remove-fellow',
+                          circleId: fellow.circleId,
+                          fellowLabel: formatFellowScholarLabel(fellow.displayName, fellow.username),
+                        })
+                      }
                       aria-label={`Remove @${fellow.username} from Reader Circle`}
                       className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
@@ -521,7 +652,13 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                             variant="outline"
                             size="sm"
                             disabled={isOffline}
-                            onClick={() => respondToCircleInvite(circle.id, 'decline')}
+                            onClick={() =>
+                              setPendingConfirmAction({
+                                type: 'decline-circle',
+                                circleId: circle.id,
+                                fellowLabel: formatFellowScholarLabel(otherName, otherHandle),
+                              })
+                            }
                             className="font-mono text-xs"
                           >
                             <X className="w-3.5 h-3.5 mr-1" />
@@ -534,7 +671,13 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                           variant="outline"
                           size="sm"
                           disabled={isOffline}
-                          onClick={() => removeFellow(circle.id)}
+                          onClick={() =>
+                            setPendingConfirmAction({
+                              type: 'cancel-circle',
+                              circleId: circle.id,
+                              fellowLabel: formatFellowScholarLabel(otherName, otherHandle),
+                            })
+                          }
                           className="font-mono text-xs"
                         >
                           Cancel Request
@@ -586,7 +729,14 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                             variant="outline"
                             size="sm"
                             disabled={isOffline}
-                            onClick={() => respondToSymposiumInvite(sym.id, 'decline')}
+                            onClick={() =>
+                              setPendingConfirmAction({
+                                type: 'decline-symposium',
+                                sessionId: sym.id,
+                                bookTitle: sym.book_title || `Volume #${sym.book_id}`,
+                                fellowLabel: formatFellowScholarLabel(otherName, otherHandle),
+                              })
+                            }
                             className="font-mono text-xs"
                           >
                             <X className="w-3.5 h-3.5 mr-1" />
@@ -599,7 +749,14 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                           variant="outline"
                           size="sm"
                           disabled={isOffline}
-                          onClick={() => leaveSymposium(sym.id)}
+                          onClick={() =>
+                            setPendingConfirmAction({
+                              type: 'cancel-symposium',
+                              sessionId: sym.id,
+                              bookTitle: sym.book_title || `Volume #${sym.book_id}`,
+                              fellowLabel: formatFellowScholarLabel(otherName, otherHandle),
+                            })
+                          }
                           className="font-mono text-xs"
                         >
                           Cancel Pact
@@ -620,6 +777,55 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
         onClose={() => setIsSymposiumModalOpen(false)}
         preselectedFellow={modalPreselectedFellow}
       />
+
+      <Modal
+        isOpen={pendingConfirmAction !== null && confirmModalCopy !== null}
+        onClose={() => setPendingConfirmAction(null)}
+        title={confirmModalCopy?.title || 'Confirm Action'}
+        maxWidth="sm"
+        backdropClassName="bg-transparent backdrop-blur-none"
+        testId="fellowship-confirm-modal"
+      >
+        {confirmModalCopy && (
+          <div className="p-6 space-y-4" data-testid="fellowship-confirm-dialog">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground text-sm">
+                  {confirmModalCopy.heading}
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {confirmModalCopy.description}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                size="chip"
+                data-testid="cancel-fellowship-action-btn"
+                onClick={() => setPendingConfirmAction(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="chip"
+                data-testid="confirm-fellowship-action-btn"
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent"
+                onClick={handleConfirmPendingAction}
+              >
+                {confirmModalCopy.confirmLabel}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

@@ -172,7 +172,10 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
 
             <div className="space-y-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground truncate">
+                <h1
+                  className="text-2xl sm:text-3xl font-serif font-bold text-foreground truncate"
+                  title={displayName}
+                >
                   {displayName}
                 </h1>
                 <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-primary/10 text-primary border border-border">
@@ -428,7 +431,10 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                           >
                             <div className="space-y-1 min-w-0">
                               <div className="flex items-start justify-between gap-1.5">
-                                <h4 className="font-serif font-bold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                                <h4
+                                  className="font-serif font-bold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2"
+                                  title={item.book_title}
+                                >
                                   {item.book_title}
                                 </h4>
                                 {isUnavailableOffline && (
@@ -441,7 +447,10 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs font-sans text-muted-foreground truncate">
+                              <p
+                                className="text-xs font-sans text-muted-foreground truncate"
+                                title={item.book_authors.length > 0 ? item.book_authors.join(', ') : 'Anonymous'}
+                              >
                                 {item.book_authors.length > 0 ? item.book_authors.join(', ') : 'Anonymous'}
                               </p>
                             </div>

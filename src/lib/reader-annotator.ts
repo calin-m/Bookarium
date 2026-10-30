@@ -21,6 +21,11 @@ export interface UnifiedAnnotationItem {
   pairedFellowAnnotation?: FellowAnnotation;
 }
 
+export type SourcePairedAnnotation = AnyAnnotation & {
+  pairedFellowAnnotation?: FellowAnnotation;
+  matchingOwnAnnotation?: Annotation;
+};
+
 export interface SharedQuoteSegments {
   isExact: boolean;
   fullQuote: string;
@@ -149,6 +154,49 @@ export function pairOverlappingAnnotations(
   }
 
   return unifiedList;
+}
+
+/**
+ * Filters and pairs personal and fellow annotations according to the active marginalia source filter
+ * ('all' | 'mine' | 'fellows'), attaching overlapping `pairedFellowAnnotation` or `matchingOwnAnnotation`
+ * metadata so cards across the Notebook and Reader Drawer render consistent unified state.
+ */
+export function filterAndPairAnnotationsBySource(
+  ownAnnotations: Annotation[],
+  fellowAnnotations: FellowAnnotation[],
+  sourceFilter: 'all' | 'mine' | 'fellows',
+  precomputedPaired?: UnifiedAnnotationItem[]
+): SourcePairedAnnotation[] {
+  if (sourceFilter === 'mine') {
+    return ownAnnotations.map((ann) => ({
+      ...ann,
+      pairedFellowAnnotation: fellowAnnotations.find((fa) =>
+        areAnnotationsOverlapping(ann, fa)
+      ),
+    }));
+  }
+  if (sourceFilter === 'fellows') {
+    return fellowAnnotations.map((fa) => ({
+      ...fa,
+      matchingOwnAnnotation: findMatchingOwnAnnotation(ownAnnotations, fa),
+    }));
+  }
+  const paired =
+    precomputedPaired ?? pairOverlappingAnnotations(ownAnnotations, fellowAnnotations);
+  return paired.map((item) => {
+    if (item.pairedFellowAnnotation) {
+      return {
+        ...item.annotation,
+        pairedFellowAnnotation: item.pairedFellowAnnotation,
+      };
+    }
+    return {
+      ...item.annotation,
+      matchingOwnAnnotation: isFellowAnnotation(item.annotation)
+        ? findMatchingOwnAnnotation(ownAnnotations, item.annotation)
+        : undefined,
+    };
+  });
 }
 
 /**

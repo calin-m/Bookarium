@@ -36,6 +36,159 @@ export interface BookPreviewModalProps {
   onReadBook?: (book: GutendexBook) => void;
 }
 
+type LeftPageSpreadParams = {
+  book: GutendexBook;
+  passage: {
+    openingLine: string;
+    secondaryQuote?: string;
+    leftPageQuote2?: string;
+  };
+  authorNames: string;
+  primarySubject: string;
+  fullPrimarySubject: string;
+  isRestricted: boolean;
+  isUnavailableOffline: boolean;
+  country: string;
+  contentAdvisory: {
+    isMature: boolean;
+    matchedSubject?: string;
+  };
+  restrictedBadgeTestId: string;
+  offlineBadgeTestId: string;
+  advisoryTestId: string;
+};
+
+const LeftPageSpread: React.FC<LeftPageSpreadParams> = ({
+  book,
+  passage,
+  authorNames,
+  primarySubject,
+  fullPrimarySubject,
+  isRestricted,
+  isUnavailableOffline,
+  country,
+  contentAdvisory,
+  restrictedBadgeTestId,
+  offlineBadgeTestId,
+  advisoryTestId,
+}) => {
+  const isVeryLongTitle = book.title.length > 55;
+  const isLongTitle = book.title.length > 36;
+  const hasSecondary = Boolean(passage.secondaryQuote);
+  const hasTertiary = Boolean(passage.leftPageQuote2) && !isLongTitle;
+
+  return (
+    <>
+      <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
+        <div className="space-y-1.5 shrink-0">
+          <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
+            {isRestricted ? (
+              <span
+                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
+                data-testid={restrictedBadgeTestId}
+              >
+                <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                <span>Protected ({country})</span>
+              </span>
+            ) : isUnavailableOffline ? (
+              <span
+                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
+                data-testid={offlineBadgeTestId}
+              >
+                <WifiOff className="w-3 h-3 text-amber-500 shrink-0" />
+                <span>Not Downloaded</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> Public Domain
+              </span>
+            )}
+            <span>ID #{book.id}</span>
+          </div>
+
+          <div>
+            <h3
+              className={`font-serif font-bold leading-snug mb-0.5 text-foreground text-balance ${
+                isVeryLongTitle
+                  ? 'text-sm sm:text-base'
+                  : isLongTitle
+                  ? 'text-base sm:text-lg'
+                  : 'text-lg sm:text-xl'
+              }`}
+            >
+              {book.title}
+            </h3>
+            <p className="text-xs font-mono italic text-muted-foreground">by {authorNames}</p>
+          </div>
+
+          {contentAdvisory.isMature && (
+            <ContentAdvisoryBanner
+              matchedSubject={contentAdvisory.matchedSubject}
+              compact={true}
+              testId={advisoryTestId}
+              className="my-1"
+            />
+          )}
+        </div>
+
+        <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5">
+          {/* Lead Opening Line */}
+          <div className="relative pl-2.5 sm:pl-3 border-l-2 border-primary/50">
+            <p
+              className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
+                !hasSecondary && !isLongTitle
+                  ? 'text-xs sm:text-sm line-clamp-6 sm:line-clamp-7'
+                  : isVeryLongTitle
+                  ? 'text-xs line-clamp-3'
+                  : isLongTitle
+                  ? 'text-xs sm:text-[13px] line-clamp-4'
+                  : 'text-xs sm:text-[13px] line-clamp-4'
+              }`}
+            >
+              &ldquo;{passage.openingLine}&rdquo;
+            </p>
+          </div>
+
+          {/* Secondary Quote Box */}
+          {passage.secondaryQuote && (
+            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
+              <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
+              <p
+                className={`font-serif italic text-foreground leading-relaxed ${
+                  !hasTertiary && !isLongTitle
+                    ? 'text-xs sm:text-[13px] line-clamp-4'
+                    : isLongTitle
+                    ? 'text-xs line-clamp-2'
+                    : 'text-xs sm:text-[13px] line-clamp-3'
+                }`}
+              >
+                {passage.secondaryQuote}
+              </p>
+            </div>
+          )}
+
+          {/* Tertiary Quote Box */}
+          {passage.leftPageQuote2 && !isLongTitle && (
+            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
+              <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
+              <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2">
+                {passage.leftPageQuote2}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
+        <span className="truncate max-w-[160px]" title={fullPrimarySubject}>
+          {primarySubject}
+        </span>
+        <span className="opacity-60">p. 1</span>
+      </div>
+    </>
+  );
+};
+
 export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   book,
   originRect,
@@ -198,6 +351,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
   const primarySubject = formatPrimarySubject(book.subjects, 24);
+  const fullPrimarySubject = formatPrimarySubject(book.subjects, 140);
 
   // Click on book stage: Close if not clicking interactive buttons
   const handleBookStageClick = (e: React.MouseEvent) => {
@@ -236,13 +390,15 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
         <div
           className={`relative cursor-pointer book-3d-stage modal-preview-3d-stage ${
             isCoverOpen ? 'book-open' : 'book-closed'
-          }`}
+          } ${isCuratable ? 'is-curatable' : ''}`}
           style={{
             width: flipData.targetWidth ? `${flipData.targetWidth}px` : undefined,
             height: flipData.targetHeight ? `${flipData.targetHeight}px` : undefined,
             transform: isGlidedIn ? flipData.targetTransform : flipData.initialTransform,
             transition: `transform ${flipData.durationMs}ms ${flipData.easing}`,
-          }}
+            '--preview-card-width': `${flipData.targetWidth || 320}px`,
+            '--preview-card-height': `${flipData.targetHeight || 480}px`,
+          } as React.CSSProperties}
           onClick={handleBookStageClick}
           data-testid="preview-book-stage"
           title="Click to flip open or close volume"
@@ -355,111 +511,20 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
                 {/* Back Face of Turning Leaf: Incoming Left Page title & quotes landing onto left side */}
                 <div className="turning-leaf-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
-                  {(() => {
-                    const isVeryLongTitle = book.title.length > 55;
-                    const isLongTitle = book.title.length > 36;
-                    const hasSecondary = Boolean(currentPassage.secondaryQuote);
-                    const hasTertiary = Boolean(currentPassage.leftPageQuote2) && !isLongTitle;
-
-                    return (
-                      <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
-                        <div className="space-y-1.5 shrink-0">
-                          <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
-                            {isRestricted ? (
-                              <span
-                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
-                                data-testid={`preview-restricted-badge-${book.id}`}
-                              >
-                                <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
-                                <span>Protected ({country})</span>
-                              </span>
-                            ) : isUnavailableOffline ? (
-                              <span
-                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
-                                data-testid={`preview-offline-unavailable-badge-${book.id}`}
-                              >
-                                <WifiOff className="w-3 h-3 text-amber-500 shrink-0" />
-                                <span>Not Downloaded</span>
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1">
-                                <Sparkles className="w-3 h-3" /> Public Domain
-                              </span>
-                            )}
-                            <span>ID #{book.id}</span>
-                          </div>
-
-                          <div>
-                            <h3 className={`font-serif font-bold leading-snug mb-0.5 text-foreground text-balance ${
-                              isVeryLongTitle ? 'text-sm sm:text-base' : isLongTitle ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
-                            }`}>
-                              {book.title}
-                            </h3>
-                            <p className="text-xs font-mono italic text-muted-foreground">
-                              by {authorNames}
-                            </p>
-                          </div>
-
-                          {contentAdvisory.isMature && (
-                            <ContentAdvisoryBanner
-                              matchedSubject={contentAdvisory.matchedSubject}
-                              compact={true}
-                              testId={`preview-advisory-base-${book.id}`}
-                              className="my-1"
-                            />
-                          )}
-                        </div>
-
-                        <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5">
-                          {/* Lead Opening Line */}
-                          <div className="relative pl-2.5 sm:pl-3 border-l-2 border-primary/50">
-                            <p className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
-                              !hasSecondary && !isLongTitle
-                                ? 'text-xs sm:text-sm line-clamp-6 sm:line-clamp-7'
-                                : isVeryLongTitle
-                                ? 'text-xs line-clamp-3'
-                                : isLongTitle
-                                ? 'text-xs sm:text-[13px] line-clamp-4'
-                                : 'text-xs sm:text-[13px] line-clamp-4'
-                            }`}>
-                              &ldquo;{currentPassage.openingLine}&rdquo;
-                            </p>
-                          </div>
-
-                          {/* Secondary Quote Box */}
-                          {currentPassage.secondaryQuote && (
-                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
-                              <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
-                              <p className={`font-serif italic text-foreground leading-relaxed ${
-                                !hasTertiary && !isLongTitle
-                                  ? 'text-xs sm:text-[13px] line-clamp-4'
-                                  : isLongTitle
-                                  ? 'text-xs line-clamp-2'
-                                  : 'text-xs sm:text-[13px] line-clamp-3'
-                              }`}>
-                                {currentPassage.secondaryQuote}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Tertiary Quote Box */}
-                          {currentPassage.leftPageQuote2 && !isLongTitle && (
-                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
-                              <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
-                              <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2">
-                                {currentPassage.leftPageQuote2}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
-                    <span className="truncate max-w-[160px]">{primarySubject}</span>
-                    <span className="opacity-60">p. 1</span>
-                  </div>
+                  <LeftPageSpread
+                    book={book}
+                    passage={currentPassage}
+                    authorNames={authorNames}
+                    primarySubject={primarySubject}
+                    fullPrimarySubject={fullPrimarySubject}
+                    isRestricted={isRestricted}
+                    isUnavailableOffline={isUnavailableOffline}
+                    country={country}
+                    contentAdvisory={contentAdvisory}
+                    restrictedBadgeTestId={`preview-restricted-badge-${book.id}`}
+                    offlineBadgeTestId={`preview-offline-unavailable-badge-${book.id}`}
+                    advisoryTestId={`preview-advisory-base-${book.id}`}
+                  />
                 </div>
               </div>
             )}
@@ -499,111 +564,20 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               {/* BACK FACE OF FRONT COVER: THE LEFT OPEN PAGE (Inside Spread) */}
               <div className="absolute inset-0 book-3d-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
                 <div key={`left-page-content-${book.id}-${isTurningLeaf ? prevPassageIndex : activePassageIndex}`} className="flex flex-col justify-between h-full relative">
-                  {(() => {
-                    const isVeryLongTitle = book.title.length > 55;
-                    const isLongTitle = book.title.length > 36;
-                    const hasSecondary = Boolean(isTurningLeaf ? prevPassage.secondaryQuote : currentPassage.secondaryQuote);
-                    const hasTertiary = Boolean(isTurningLeaf ? prevPassage.leftPageQuote2 : currentPassage.leftPageQuote2) && !isLongTitle;
-
-                    return (
-                      <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
-                        <div className="space-y-1.5 shrink-0">
-                          <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
-                            {isRestricted ? (
-                              <span
-                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
-                                data-testid={`preview-restricted-badge-left-${book.id}`}
-                              >
-                                <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
-                                <span>Protected ({country})</span>
-                              </span>
-                            ) : isUnavailableOffline ? (
-                              <span
-                                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
-                                data-testid={`preview-offline-unavailable-badge-left-${book.id}`}
-                              >
-                                <WifiOff className="w-3 h-3 text-amber-500 shrink-0" />
-                                <span>Not Downloaded</span>
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1">
-                                <Sparkles className="w-3 h-3" /> Public Domain
-                              </span>
-                            )}
-                            <span>ID #{book.id}</span>
-                          </div>
-
-                          <div>
-                            <h3 className={`font-serif font-bold leading-snug mb-0.5 text-foreground text-balance ${
-                              isVeryLongTitle ? 'text-sm sm:text-base' : isLongTitle ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
-                            }`}>
-                              {book.title}
-                            </h3>
-                            <p className="text-xs font-mono italic text-muted-foreground">
-                              by {authorNames}
-                            </p>
-                          </div>
-
-                          {contentAdvisory.isMature && (
-                            <ContentAdvisoryBanner
-                              matchedSubject={contentAdvisory.matchedSubject}
-                              compact={true}
-                              testId={`preview-advisory-${book.id}`}
-                              className="my-1"
-                            />
-                          )}
-                        </div>
-
-                        <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5">
-                          {/* Lead Opening Line */}
-                          <div className="relative pl-2.5 sm:pl-3 border-l-2 border-primary/50">
-                            <p className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
-                              !hasSecondary && !isLongTitle
-                                ? 'text-xs sm:text-sm line-clamp-6 sm:line-clamp-7'
-                                : isVeryLongTitle
-                                ? 'text-xs line-clamp-3'
-                                : isLongTitle
-                                ? 'text-xs sm:text-[13px] line-clamp-4'
-                                : 'text-xs sm:text-[13px] line-clamp-4'
-                            }`}>
-                              &ldquo;{isTurningLeaf ? prevPassage.openingLine : currentPassage.openingLine}&rdquo;
-                            </p>
-                          </div>
-
-                          {/* Secondary Quote Box */}
-                          {(isTurningLeaf ? prevPassage.secondaryQuote : currentPassage.secondaryQuote) && (
-                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
-                              <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
-                              <p className={`font-serif italic text-foreground leading-relaxed ${
-                                !hasTertiary && !isLongTitle
-                                  ? 'text-xs sm:text-[13px] line-clamp-4'
-                                  : isLongTitle
-                                  ? 'text-xs line-clamp-2'
-                                  : 'text-xs sm:text-[13px] line-clamp-3'
-                              }`}>
-                                {isTurningLeaf ? prevPassage.secondaryQuote : currentPassage.secondaryQuote}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Tertiary Quote Box */}
-                          {(isTurningLeaf ? prevPassage.leftPageQuote2 : currentPassage.leftPageQuote2) && !isLongTitle && (
-                            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
-                              <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
-                              <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2">
-                                {isTurningLeaf ? prevPassage.leftPageQuote2 : currentPassage.leftPageQuote2}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
-                    <span className="truncate max-w-[160px]">{primarySubject}</span>
-                    <span className="opacity-60">p. 1</span>
-                  </div>
+                  <LeftPageSpread
+                    book={book}
+                    passage={isTurningLeaf ? prevPassage : currentPassage}
+                    authorNames={authorNames}
+                    primarySubject={primarySubject}
+                    fullPrimarySubject={fullPrimarySubject}
+                    isRestricted={isRestricted}
+                    isUnavailableOffline={isUnavailableOffline}
+                    country={country}
+                    contentAdvisory={contentAdvisory}
+                    restrictedBadgeTestId={`preview-restricted-badge-left-${book.id}`}
+                    offlineBadgeTestId={`preview-offline-unavailable-badge-left-${book.id}`}
+                    advisoryTestId={`preview-advisory-${book.id}`}
+                  />
                 </div>
               </div>
             </div>
@@ -615,7 +589,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
           <div
             onClick={(e) => e.stopPropagation()}
             data-testid="personal-curation-toolbar"
-            className="mt-3 sm:mt-5 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 bg-card text-foreground border border-border px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300 z-30 w-full max-w-[calc(100vw-2rem)] sm:max-w-lg"
+            className="mt-2 lg:-mt-10 xl:-mt-7 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 bg-card text-foreground border border-border px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300 z-30 w-full max-w-[calc(100vw-2rem)] sm:max-w-lg"
           >
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-bold text-muted-foreground uppercase tracking-wider">

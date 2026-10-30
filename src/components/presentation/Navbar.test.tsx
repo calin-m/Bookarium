@@ -440,7 +440,7 @@ describe('Navbar component', () => {
       expect(indicator).toHaveClass('border-indigo-500');
     });
 
-    it('activates two-phase directional elastic bridge and corner-tip curl on high tier when moving right', async () => {
+    it('glides directly in a single phase without elongating width when moving right on high tier', async () => {
       const perfModule = await import('@/hooks/usePerformanceTier');
       vi.spyOn(perfModule, 'usePerformanceTier').mockReturnValue({
         tier: 'high',
@@ -449,7 +449,6 @@ describe('Navbar component', () => {
         cores: 8,
       });
 
-      vi.useFakeTimers();
       let currentLeft = 10;
       Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
         configurable: true,
@@ -474,25 +473,13 @@ describe('Navbar component', () => {
       currentLeft = 120;
       rerender(<Navbar activeView="favorites" />);
 
-      // Phase 1 (0ms): Leading edge reaches right to 200px, trailing edge lags at 52px
-      expect(indicator.style.transform).toBe('translate3d(52px, 0, 0)');
-      expect(indicator.style.width).toBe('148px');
-      expect(indicator).toHaveClass('rounded-b-lg');
-      expect(indicator).toHaveClass('border-destructive');
-
-      // Phase 2 (110ms timer advance): Trailing edge snaps into place, relaxing back to rounded
-      act(() => {
-        vi.advanceTimersByTime(115);
-      });
-
       expect(indicator.style.transform).toBe('translate3d(120px, 0, 0)');
       expect(indicator.style.width).toBe('80px');
       expect(indicator).toHaveClass('rounded');
-
-      vi.useRealTimers();
+      expect(indicator).toHaveClass('border-destructive');
     });
 
-    it('activates two-phase directional elastic bridge and corner-tip curl on high tier when moving left', async () => {
+    it('glides directly in a single phase without elongating width when moving left on high tier', async () => {
       const perfModule = await import('@/hooks/usePerformanceTier');
       vi.spyOn(perfModule, 'usePerformanceTier').mockReturnValue({
         tier: 'high',
@@ -501,7 +488,6 @@ describe('Navbar component', () => {
         cores: 8,
       });
 
-      vi.useFakeTimers();
       let currentLeft = 120;
       Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
         configurable: true,
@@ -523,21 +509,9 @@ describe('Navbar component', () => {
       currentLeft = 10;
       rerender(<Navbar activeView="catalog" />);
 
-      // Phase 1 (0ms): Leading edge reaches left to 10px, trailing edge lags at 158px
-      expect(indicator.style.transform).toBe('translate3d(10px, 0, 0)');
-      expect(indicator.style.width).toBe('148px');
-      expect(indicator).toHaveClass('rounded-b-lg');
-
-      // Phase 2 (110ms timer advance): Snaps to target
-      act(() => {
-        vi.advanceTimersByTime(115);
-      });
-
       expect(indicator.style.transform).toBe('translate3d(10px, 0, 0)');
       expect(indicator.style.width).toBe('80px');
       expect(indicator).toHaveClass('rounded');
-
-      vi.useRealTimers();
     });
 
     it('applies direct target rect without bridge phase on medium tier', async () => {

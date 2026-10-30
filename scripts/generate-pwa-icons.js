@@ -1,6 +1,7 @@
 /**
- * Zero-dependency PNG and ICO icon generator for Bookarium PWA & browser tab assets.
- * Generates valid RGBA PNG and binary ICO files using native Node.js zlib and Buffer.
+ * Zero-dependency High-DPI PNG and ICO icon generator for Bookarium PWA & browser tab assets.
+ * Generates vector-accurate, 4x4 Sub-Pixel Anti-Aliased (SSAA) PNGs and binary multi-res ICO files
+ * using the authentic Bookarium terracotta squircle (#b8731d) and open-book emblem.
  */
 
 const fs = require('fs');
@@ -13,7 +14,7 @@ if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
 
-// CRC32 table
+// CRC32 Table
 const crcTable = new Uint32Array(256);
 for (let n = 0; n < 256; n++) {
   let c = n;
@@ -44,118 +45,166 @@ function createChunk(type, data) {
   return chunk;
 }
 
+/**
+ * Checks if normalized coordinates (nx, ny) in [0, 32] space fall inside the Bookarium Open-Book emblem.
+ */
+function isInsideBookEmblem(nx, ny) {
+  // Center spine divider check
+  if (Math.abs(nx - 16) < 0.65 && ny >= 11 && ny <= 24.2) {
+    return false;
+  }
+
+  // Left Page
+  if (nx >= 7 && nx <= 18.8 && ny >= 8 && ny <= 24) {
+    // Top right outer arc (from (15, 8) to (19, 12))
+    if (nx > 15 && ny < 12) {
+      if (Math.hypot(nx - 15, ny - 12) > 4) {
+        return false;
+      }
+    }
+    // Bottom curve sweep (concave cutoff from (15.5, 21) to (19, 24))
+    if (nx > 15.5 && ny > 21) {
+      const ex = (nx - 15.5) / 3.5;
+      const ey = (24 - ny) / 3.0;
+      if (ex * ex + ey * ey < 1.0) {
+        return false;
+      }
+    } else if (nx <= 15.5 && ny > 21) {
+      return false;
+    }
+    return true;
+  }
+
+  // Right Page (Symmetrical across nx = 16)
+  const rnx = 32 - nx;
+  if (rnx >= 7 && rnx <= 18.8 && ny >= 8 && ny <= 24) {
+    if (rnx > 15 && ny < 12) {
+      if (Math.hypot(rnx - 15, ny - 12) > 4) {
+        return false;
+      }
+    }
+    if (rnx > 15.5 && ny > 21) {
+      const ex = (rnx - 15.5) / 3.5;
+      const ey = (24 - ny) / 3.0;
+      if (ex * ex + ey * ey < 1.0) {
+        return false;
+      }
+    } else if (rnx <= 15.5 && ny > 21) {
+      return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks if (nx, ny) in [0, 32] space falls inside the rounded squircle.
+ */
+function isInsideSquircle(nx, ny, rx = 7, size = 32) {
+  const half = size / 2;
+  const dx = Math.abs(nx - half);
+  const dy = Math.abs(ny - half);
+  if (dx > half || dy > half) return false;
+
+  const cornerX = Math.max(0, dx - (half - rx));
+  const cornerY = Math.max(0, dy - (half - rx));
+  return cornerX * cornerX + cornerY * cornerY <= rx * rx;
+}
+
+/**
+ * Generates an ultra-crisp, 4x4 Sub-Pixel Anti-Aliased (SSAA) PNG buffer.
+ */
 function generatePng(size, { isMaskable = false, isOpaque = false } = {}) {
   const width = size;
   const height = size;
-
-  // Uncompressed scanlines: each row starts with filter byte 0
   const rowSize = 1 + width * 4;
   const rawData = Buffer.alloc(rowSize * height);
 
-  const bgR = 14, bgG = 17, bgB = 23; // #0e1117 obsidian
-  const goldR = 226, goldG = 177, goldB = 104; // #e2b168 gold
+  // Brand Palette
+  const brandR = 184, brandG = 115, brandB = 29; // #b8731d warm terracotta
   const whiteR = 255, whiteG = 255, whiteB = 255; // #ffffff
+  const subOffsets = [0.125, 0.375, 0.625, 0.875];
+  const numSamples = subOffsets.length * subOffsets.length; // 16 samples per pixel
 
-  const cx = width / 2;
-  const cy = height / 2;
-  const radius = (width / 2) * (isMaskable ? 0.65 : 0.85);
-  const rx = Math.max(2, Math.round(width * (7 / 32)));
-
-  for (let y = 0; y < height; y++) {
-    const rowOffset = y * rowSize;
+  for (let py = 0; py < height; py++) {
+    const rowOffset = py * rowSize;
     rawData[rowOffset] = 0; // Filter: None
 
-    for (let x = 0; x < width; x++) {
-      const pxOffset = rowOffset + 1 + x * 4;
+    for (let px = 0; px < width; px++) {
+      let accR = 0;
+      let accG = 0;
+      let accB = 0;
+      let accA = 0;
 
-      // Anti-aliased rounded squircle mask for non-maskable / non-opaque icons
-      let cornerAlpha = 1.0;
-      if (!isMaskable && !isOpaque) {
-        let dx = 0;
-        let dy = 0;
-        if (x < rx) dx = rx - x;
-        else if (x >= width - rx) dx = x - (width - 1 - rx);
+      for (const ox of subOffsets) {
+        for (const oy of subOffsets) {
+          const sx = px + ox;
+          const sy = py + oy;
 
-        if (y < rx) dy = rx - y;
-        else if (y >= height - rx) dy = y - (height - 1 - rx);
+          if (isMaskable) {
+            // Maskable: Full-bleed #b8731d background, BookOpen scaled inside 80% safe zone
+            const safeScale = 0.62;
+            const normX = (sx / width - 0.5) / safeScale * 32 + 16;
+            const normY = (sy / height - 0.5) / safeScale * 32 + 16;
 
-        if (dx > 0 && dy > 0) {
-          const distCorner = Math.hypot(dx, dy);
-          if (distCorner > rx + 0.5) cornerAlpha = 0.0;
-          else if (distCorner > rx - 0.5) cornerAlpha = rx + 0.5 - distCorner;
+            if (normX >= 0 && normX <= 32 && normY >= 0 && normY <= 32 && isInsideBookEmblem(normX, normY)) {
+              accR += whiteR;
+              accG += whiteG;
+              accB += whiteB;
+            } else {
+              accR += brandR;
+              accG += brandG;
+              accB += brandB;
+            }
+            accA += 255;
+          } else {
+            // Standard / Any icon: Centered squircle on transparent canvas
+            const padRatio = 0.94; // slight 3% breathing margin for clean roundings
+            const normX = (sx / width - 0.5) / padRatio * 32 + 16;
+            const normY = (sy / height - 0.5) / padRatio * 32 + 16;
+
+            if (normX >= 0 && normX <= 32 && normY >= 0 && normY <= 32 && isInsideSquircle(normX, normY, 7, 32)) {
+              if (isInsideBookEmblem(normX, normY)) {
+                accR += whiteR;
+                accG += whiteG;
+                accB += whiteB;
+              } else {
+                accR += brandR;
+                accG += brandG;
+                accB += brandB;
+              }
+              accA += 255;
+            } else {
+              // Outside squircle: transparent
+              accA += 0;
+            }
+          }
         }
       }
 
-      if (cornerAlpha <= 0.001) {
-        rawData[pxOffset] = 0;
-        rawData[pxOffset + 1] = 0;
-        rawData[pxOffset + 2] = 0;
-        rawData[pxOffset + 3] = 0;
-        continue;
-      }
+      const finalA = Math.round(accA / numSamples);
+      const finalR = finalA > 0 ? Math.round(accR / numSamples) : 0;
+      const finalG = finalA > 0 ? Math.round(accG / numSamples) : 0;
+      const finalB = finalA > 0 ? Math.round(accB / numSamples) : 0;
 
-      const dx = x - cx;
-      const dy = y - cy;
-      const dist = Math.hypot(dx, dy);
-
-      // Background
-      let r = bgR;
-      let g = bgG;
-      let b = bgB;
-      let a = 255;
-
-      // Draw stylized Open-Book icon in center
-      // Book dimensions normalized to size
-      const scale = size / 512;
-      const bx = (x - cx) / scale;
-      const by = (y - cy) / scale;
-
-      // Outer circular emblem ring
-      if (Math.abs(dist - radius * 0.85) < 3 * scale) {
-        r = goldR; g = goldG; b = goldB;
-      }
-
-      // Left page curve (-120 to -15, -60 to 70)
-      const inLeftPage =
-        bx >= -110 && bx <= -15 &&
-        by >= -60 + Math.sin((bx + 110) / 95 * Math.PI) * -15 &&
-        by <= 70 + Math.sin((bx + 110) / 95 * Math.PI) * -15;
-
-      // Right page curve (15 to 110, -60 to 70)
-      const inRightPage =
-        bx >= 15 && bx <= 110 &&
-        by >= -60 + Math.sin((bx - 15) / 95 * Math.PI) * -15 &&
-        by <= 70 + Math.sin((bx - 15) / 95 * Math.PI) * -15;
-
-      // Spine crease in center
-      const inSpine = Math.abs(bx) < 6 && by >= -50 && by <= 80;
-
-      if (inLeftPage || inRightPage) {
-        r = whiteR; g = whiteG; b = whiteB;
-      } else if (inSpine) {
-        r = goldR; g = goldG; b = goldB;
-      }
-
-      rawData[pxOffset] = r;
-      rawData[pxOffset + 1] = g;
-      rawData[pxOffset + 2] = b;
-      rawData[pxOffset + 3] = Math.round(a * cornerAlpha);
+      const idx = rowOffset + 1 + px * 4;
+      rawData[idx] = finalR;
+      rawData[idx + 1] = finalG;
+      rawData[idx + 2] = finalB;
+      rawData[idx + 3] = finalA;
     }
   }
 
-  // Deflate compress image data
   const compressedData = zlib.deflateSync(rawData);
-
-  // PNG Signature
   const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-  // IHDR
   const ihdrData = Buffer.alloc(13);
   ihdrData.writeUInt32BE(width, 0);
   ihdrData.writeUInt32BE(height, 4);
-  ihdrData[8] = 8; // Bit depth
-  ihdrData[9] = 6; // Color type: RGBA
-  ihdrData[10] = 0; // Compression
+  ihdrData[8] = 8; // 8-bit depth
+  ihdrData[9] = 6; // RGBA
+  ihdrData[10] = 0; // Deflate
   ihdrData[11] = 0; // Filter
   ihdrData[12] = 0; // Interlace
 
@@ -167,25 +216,24 @@ function generatePng(size, { isMaskable = false, isOpaque = false } = {}) {
 }
 
 function generateIco(entries) {
-  // ICONDIR header (6 bytes)
   const header = Buffer.alloc(6);
-  header.writeUInt16LE(0, 0); // Reserved. Must always be 0.
+  header.writeUInt16LE(0, 0);
   header.writeUInt16LE(1, 2); // 1 = ICO
-  header.writeUInt16LE(entries.length, 4); // Number of images
+  header.writeUInt16LE(entries.length, 4);
 
   const dirEntries = [];
   let imageOffset = 6 + entries.length * 16;
 
   for (const entry of entries) {
     const dir = Buffer.alloc(16);
-    dir[0] = entry.size >= 256 ? 0 : entry.size; // Width
-    dir[1] = entry.size >= 256 ? 0 : entry.size; // Height
-    dir[2] = 0; // Color count (0 = no palette)
-    dir[3] = 0; // Reserved
-    dir.writeUInt16LE(1, 4); // Color planes
-    dir.writeUInt16LE(32, 6); // Bits per pixel (32-bit RGBA)
-    dir.writeUInt32LE(entry.png.length, 8); // Size of image data
-    dir.writeUInt32LE(imageOffset, 12); // Offset of image data
+    dir[0] = entry.size >= 256 ? 0 : entry.size;
+    dir[1] = entry.size >= 256 ? 0 : entry.size;
+    dir[2] = 0;
+    dir[3] = 0;
+    dir.writeUInt16LE(1, 4);
+    dir.writeUInt16LE(32, 6);
+    dir.writeUInt32LE(entry.png.length, 8);
+    dir.writeUInt32LE(imageOffset, 12);
     imageOffset += entry.png.length;
     dirEntries.push(dir);
   }
@@ -198,7 +246,7 @@ const icons = [
   { name: 'icon-512.png', size: 512, isMaskable: false, isOpaque: false },
   { name: 'icon-maskable-192.png', size: 192, isMaskable: true, isOpaque: true },
   { name: 'icon-maskable-512.png', size: 512, isMaskable: true, isOpaque: true },
-  { name: 'apple-touch-icon.png', size: 180, isMaskable: false, isOpaque: true },
+  { name: 'apple-touch-icon.png', size: 180, isMaskable: false, isOpaque: false },
 ];
 
 for (const icon of icons) {
@@ -208,7 +256,7 @@ for (const icon of icons) {
   console.log(`Generated: ${target} (${icon.size}x${icon.size}, maskable=${icon.isMaskable})`);
 }
 
-// Generate multi-resolution binary favicon.ico (16x16, 32x32, 48x48) with transparent corners
+// Generate multi-resolution binary favicon.ico (16x16, 32x32, 48x48)
 const icoSizes = [16, 32, 48];
 const icoEntries = icoSizes.map((size) => ({
   size,
@@ -217,4 +265,4 @@ const icoEntries = icoSizes.map((size) => ({
 const icoBuf = generateIco(icoEntries);
 const icoTarget = path.join(publicDir, 'favicon.ico');
 fs.writeFileSync(icoTarget, icoBuf);
-console.log(`Generated: ${icoTarget} (binary multi-res ICO with transparent corners, sizes: ${icoSizes.join(',')})`);
+console.log(`Generated: ${icoTarget} (binary multi-res ICO, sizes: ${icoSizes.join(',')})`);

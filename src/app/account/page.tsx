@@ -100,8 +100,11 @@ function AccountDashboardContent() {
     user: authUser,
     profile: authProfile,
     isLoading,
+    isPasswordRecovery,
     updateProfile,
     updatePassword,
+    resetPasswordForEmail,
+    clearPasswordRecovery,
     requestAccountDeletion,
     signOut,
     openAuthModal,
@@ -111,8 +114,11 @@ function AccountDashboardContent() {
       user: s.user,
       profile: s.profile,
       isLoading: s.isLoading,
+      isPasswordRecovery: s.isPasswordRecovery,
       updateProfile: s.updateProfile,
       updatePassword: s.updatePassword,
+      resetPasswordForEmail: s.resetPasswordForEmail,
+      clearPasswordRecovery: s.clearPasswordRecovery,
       requestAccountDeletion: s.requestAccountDeletion,
       signOut: s.signOut,
       openAuthModal: s.openAuthModal,
@@ -215,7 +221,20 @@ function AccountDashboardContent() {
 
   // Segmented Sub-Tabs Navigation State
   const tabParam = searchParams.get('tab');
-  const defaultTab: AccountTabId = isOffline ? 'preferences' : 'habits';
+  const recoveryParam = searchParams.get('recovery') === 'true';
+  const [hasClearedRecoveryParam, setHasClearedRecoveryParam] = useState(false);
+  const [prevRecoveryParam, setPrevRecoveryParam] = useState(recoveryParam);
+  if (recoveryParam !== prevRecoveryParam) {
+    setPrevRecoveryParam(recoveryParam);
+    setHasClearedRecoveryParam(false);
+  }
+  const isRecoveryMode =
+    (recoveryParam && !hasClearedRecoveryParam) || Boolean(isPasswordRecovery);
+  const defaultTab: AccountTabId = isOffline
+    ? 'preferences'
+    : isRecoveryMode
+      ? 'security'
+      : 'habits';
   const validTab: AccountTabId =
     tabParam === 'habits' ||
     tabParam === 'profile' ||
@@ -229,11 +248,17 @@ function AccountDashboardContent() {
   const [habitsSubTab, setHabitsSubTab] = useState<HabitsSubTabId>('streaks');
   const [prevTabParam, setPrevTabParam] = useState<string | null>(tabParam);
   const [prevIsOffline, setPrevIsOffline] = useState<boolean>(isOffline);
+  const [prevIsRecoveryMode, setPrevIsRecoveryMode] = useState<boolean>(isRecoveryMode);
 
-  if (tabParam !== prevTabParam || isOffline !== prevIsOffline) {
+  if (
+    tabParam !== prevTabParam ||
+    isOffline !== prevIsOffline ||
+    isRecoveryMode !== prevIsRecoveryMode
+  ) {
     setPrevTabParam(tabParam);
     setPrevIsOffline(isOffline);
-    if (tabParam !== prevTabParam || !tabParam) {
+    setPrevIsRecoveryMode(isRecoveryMode);
+    if (tabParam !== prevTabParam || !tabParam || isRecoveryMode) {
       setActiveTab(validTab);
     }
   }
@@ -313,6 +338,7 @@ function AccountDashboardContent() {
   };
 
   // Security & Password state
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -320,6 +346,40 @@ function AccountDashboardContent() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [resetEmailError, setResetEmailError] = useState<string | null>(null);
+  const [resetCooldown, setResetCooldown] = useState(0);
+
+  // Password reset cooldown effect
+  useEffect(() => {
+    if (resetCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResetCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resetCooldown]);
+
+  const handleRequestPasswordReset = async () => {
+    if (!user?.email || isSendingResetEmail || resetCooldown > 0) return;
+    setIsSendingResetEmail(true);
+    setResetEmailError(null);
+    setResetEmailSent(false);
+
+    try {
+      const { error } = await resetPasswordForEmail(user.email);
+      if (error) {
+        setResetEmailError(error.message);
+      } else {
+        setResetEmailSent(true);
+        setResetCooldown(60);
+      }
+    } catch {
+      setResetEmailError('Failed to send password reset link. Please try again later.');
+    } finally {
+      setIsSendingResetEmail(false);
+    }
+  };
 
   // Danger Zone / Delete Account state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -382,19 +442,41 @@ function AccountDashboardContent() {
       return;
     }
 
+    if (!isRecoveryMode && !currentPassword) {
+      setPasswordError(
+        'Please enter your current password, or send a reset link to your email.'
+      );
+      return;
+    }
+
+    if (!isRecoveryMode && newPassword === currentPassword) {
+      setPasswordError('New password must be different from your current password.');
+      return;
+    }
+
     setIsUpdatingPassword(true);
     setPasswordError(null);
     setPasswordSuccess(false);
 
     try {
-      const { error } = await updatePassword(newPassword);
+      const { error } = isRecoveryMode
+        ? await updatePassword(newPassword)
+        : await updatePassword(newPassword, currentPassword);
 
       if (error) {
         setPasswordError(error.message);
       } else {
         setPasswordSuccess(true);
+        setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
+        setHasClearedRecoveryParam(true);
+        clearPasswordRecovery?.();
+        if (typeof window !== 'undefined' && searchParams.has('recovery')) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('recovery');
+          window.history.replaceState(null, '', url.toString());
+        }
         setTimeout(() => setPasswordSuccess(false), 3000);
       }
     } catch {
@@ -823,6 +905,7 @@ function AccountDashboardContent() {
               }
             >
               <AccountSecuritySection
+                currentPassword={currentPassword}
                 newPassword={newPassword}
                 confirmPassword={confirmPassword}
                 showPassword={showPassword}
@@ -831,11 +914,18 @@ function AccountDashboardContent() {
                 passwordSuccess={passwordSuccess}
                 passwordError={passwordError}
                 strength={strength}
+                isRecoveryMode={isRecoveryMode}
+                isSendingResetEmail={isSendingResetEmail}
+                resetEmailSent={resetEmailSent}
+                resetEmailError={resetEmailError}
+                resetCooldown={resetCooldown}
+                onCurrentPasswordChange={setCurrentPassword}
                 onNewPasswordChange={setNewPassword}
                 onConfirmPasswordChange={setConfirmPassword}
                 onToggleShowPassword={() => setShowPassword(!showPassword)}
                 onGeneratePassword={generateStrongPassword}
                 onUpdatePassword={handleUpdatePassword}
+                onRequestPasswordReset={handleRequestPasswordReset}
                 onSignOut={async () => {
                   await signOut();
                   router.push(ROUTES.HOME);

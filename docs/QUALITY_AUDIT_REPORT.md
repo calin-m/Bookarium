@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 29 Oct 2026 13:53:16 GMT  
+**Last Generated**: Fri, 30 Oct 2026 16:57:30 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 186 passed  
-**Total Verified Tests**: 1992 passed  
+**Total Test Suites**: 187 passed  
+**Total Verified Tests**: 2007 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **186/186 test suites passed** (1992 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (2007 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $ge$ 95%, Statements $ge$ 95%, Functions $ge$ 92%, Branches $ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR Decision Ledger | ✅ Passed | 72 Architectural Decision Records validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.65%** (9912/10255) — *Target: $ge$ 95%*
-- **Statements**: **95.42%** (10802/11320) — *Target: $ge$ 95%*
-- **Functions**: **94.01%** (2388/2540) — *Target: $ge$ 92%*
-- **Branches**: **88.38%** (9871/11168) — *Target: $ge$ 85%*
+- **Lines**: **96.64%** (10048/10397) — *Target: $ge$ 95%*
+- **Statements**: **95.37%** (10936/11466) — *Target: $ge$ 95%*
+- **Functions**: **93.99%** (2409/2563) — *Target: $ge$ 92%*
+- **Branches**: **88.32%** (9976/11295) — *Target: $ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (186 Suites / 1992 Tests)
+## 🧪 Comprehensive Test Suite Catalog (187 Suites / 2007 Tests)
 
-### 🚀 App Routes & Pages (26 Suites · 265 Tests)
+### 🚀 App Routes & Pages (27 Suites · 267 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -46,7 +46,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (20 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top`
 - ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
@@ -55,7 +55,8 @@
 - ✔ `initializes active tab from URL search parameters (?tab=preferences) and handles tab delete when switching back to habits`
 - ✔ `falls back to habits tab when search param has invalid value`
 - ✔ `handles user preferences: atmosphere themes and catalog sticky scroll navigation`
-- ✔ `handles password security lifecycle: mismatch validation, strong password generation, and password update`
+- ✔ `handles password security lifecycle: current password validation, mismatch validation, strong password generation, forgot-password reset link, and password update`
+- ✔ `supports verified email recovery mode (?tab=security&recovery=true) without requiring current password`
 - ✔ `handles account deletion modal lifecycle: opening, cancellation, submission, and confirmation dismissal`
 - ✔ `handles resending email verification on unverified account`
 - ✔ `navigates back to bookmarks when swiping right on mobile`
@@ -244,6 +245,13 @@
 - ✔ `should render children within html structure alongside analytics and performance telemetry`
 - ✔ `should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities`
 - ✔ `should gracefully handle cookie exception and fallback to US`
+
+</details>
+
+<details>
+<summary><b><code>src/app/loading.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders an accessible loading screen with Bookarium branding and status announcement`
 
 </details>
 
@@ -610,7 +618,7 @@
 - ✔ `does not render curation controls for unsaved books in catalog view`
 - ✔ `renders curation controls when activeView is bookshelf or favorites`
 - ✔ `does not render curation controls in catalog view even if book is saved or has ratings in store`
-- ✔ `renders curation toolbar with solid bg-card and text-foreground modal styling`
+- ✔ `renders curation toolbar with solid bg-card, docked negative top margin on lg/xl, and stage curatable CSS variables`
 - ✔ `closes modal when clicking empty space in the viewport container outside the book`
 - ✔ `does not close modal when clicking inside the curation bar`
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is restricted`
@@ -928,8 +936,8 @@
 - ✔ `falls back to button border when dimensions are 0 (e.g. unmeasured or SSR)`
 - ✔ `renders gliding indicator with position, width, and theme bottom border when measurable`
 - ✔ `updates indicator styling for different views`
-- ✔ `activates two-phase directional elastic bridge and corner-tip curl on high tier when moving right`
-- ✔ `activates two-phase directional elastic bridge and corner-tip curl on high tier when moving left`
+- ✔ `glides directly in a single phase without elongating width when moving right on high tier`
+- ✔ `glides directly in a single phase without elongating width when moving left on high tier`
 - ✔ `applies direct target rect without bridge phase on medium tier`
 - ✔ `fades out with opacity-0 and scale-x-50 when activeView is account`
 - ✔ `re-measures on window resize event`
@@ -1366,7 +1374,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 195 Tests)
+### ⚡ Zustand State Stores (10 Suites · 196 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1441,10 +1449,10 @@
 - ✔ `returns error when updateProfile is called while logged out`
 - ✔ `updates profile display name in Supabase and local store when logged in`
 - ✔ `handles updateProfile database failure and records error`
-- ✔ `handles resetPasswordForEmail success and failure`
-- ✔ `handles updatePassword success and failure`
-- ✔ `handles requestAccountDeletion success and failure`
-- ✔ `handles deleteAccount success, 11-table database purge, and 6-store local state reset`
+- ✔ `handles resetPasswordForEmail success and failure with PKCE callback redirect`
+- ✔ `handles updatePassword in recovery mode and with currentPassword re-authentication`
+- ✔ `handles requestAccountDeletion success and failure with PKCE callback redirect`
+- ✔ `handles deleteAccount success, 11-table database purge, IndexedDB offline purge, and local state reset`
 - ✔ `rejects empty or whitespace-only username`
 - ✔ `rejects username shorter than 3 characters`
 - ✔ `rejects username longer than 30 characters`
@@ -1516,7 +1524,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `invites a Fellow Scholar by @username via RPC lookup and accepts invitation`
 - ✔ `validates empty and self @username invitations and handles missing handles`
@@ -1529,6 +1537,7 @@
 - ✔ `queues pendingSymposiumProgress when offline and flushes to Supabase on syncWithCloud`
 - ✔ `correctly identifies placeholder usernames`
 - ✔ `formats fellow scholar labels cleanly avoiding (@scholar)`
+- ✔ `fetchScholarProfilesMap returns empty map for empty input or failed query`
 
 </details>
 
@@ -1623,7 +1632,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (34 Suites · 415 Tests)
+### 📚 Gutenberg Parsers & Metadata (34 Suites · 423 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1689,7 +1698,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/book-metadata.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/lib/book-metadata.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `strips Gutenberg preamble prefixes cleanly`
 - ✔ `identifies placeholder and empty authors correctly`
@@ -1704,11 +1713,14 @@
 - ✔ `resolves structured authors with lifespans from featured static fixtures (Tier 1)`
 - ✔ `preserves structured authors and translators from API results (Tier 3)`
 - ✔ `resolves lifespans from canonical Book authorDetails and embedded date strings in storeBook`
+- ✔ `evaluates hasAuthenticAuthors across strings, Author objects, and placeholders`
+- ✔ `evaluates hasAuthorLifespans for both numeric fields and embedded name lifespans`
+- ✔ `converts a FeaturedHeroBook into a canonical GutendexBook with default and custom overrides`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/book-sorting.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/lib/book-sorting.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `exposes defined sort option lists for Bookshelf and Favorites`
 - ✔ `handles empty arrays, undefined inputs, and single-item arrays safely`
@@ -1719,6 +1731,8 @@
 - ✔ `sorts by reading progress percentage descending and ascending`
 - ✔ `sorts by download count (popularity) descending`
 - ✔ `preserves order when sortBy is "recent", "downloaded", or unrecognized`
+- ✔ `merges and deduplicates downloaded shelf books across savedBooks and offlineBooks`
+- ✔ `resolves bookshelf view state across default, downloaded, and custom shelves`
 
 </details>
 
@@ -2025,7 +2039,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -2047,6 +2061,9 @@
 - ✔ `finds exact matching own annotation`
 - ✔ `finds substring overlapping own annotation`
 - ✔ `returns undefined when bookId or chapter differs`
+- ✔ `filters "mine" and attaches pairedFellowAnnotation when overlapping`
+- ✔ `filters "fellows" and attaches matchingOwnAnnotation when overlapping`
+- ✔ `pairs and deduplicates overlapping items under "all"`
 
 </details>
 
@@ -2526,7 +2543,7 @@
 <details>
 <summary><b><code>src/hooks/useCursorTooltip.test.ts</code></b> (4 tests)</summary>
 
-- ✔ `initializes with default state`
+- ✔ `initializes with default state and 300ms default delay constant`
 - ✔ `updates mouse coordinates on handleMouseMove`
 - ✔ `activates tooltip after specified delay on mouseEnter`
 - ✔ `cleans up state and resets action on mouseLeave`
@@ -2646,7 +2663,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (46 Suites · 235 Tests)
+### 🧩 UI Primitives & Motion (46 Suites · 239 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2761,9 +2778,10 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `renders password fields, strength meter, and buttons`
+- ✔ `renders forgot-password email trigger, confirmation banner, and recovery mode state`
 - ✔ `disables Update Password and Delete Account buttons when offline`
 
 </details>
@@ -2775,8 +2793,8 @@
 - ✔ `renders empty states when there are zero symposiums, circle fellows, or invitations`
 - ✔ `handles fellow invitation form submission with error and success banners`
 - ✔ `allows declining an incoming circle invitation`
-- ✔ `renders completed companion symposium cards, opens New Symposium Pact modal, and handles leaving a symposium`
-- ✔ `supports Reader Circle fellow Symposium launch, fellow removal, and all pending invitation actions`
+- ✔ `renders completed companion symposium cards, opens New Symposium Pact modal, and handles leaving a symposium with confirmation`
+- ✔ `supports Reader Circle fellow Symposium launch, fellow removal with confirmation, and all pending invitation actions`
 - ✔ `disables live invitation controls and enforces offline parity for uncached symposiums when offline`
 
 </details>
@@ -2900,11 +2918,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/CursorTooltip.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/ui/CursorTooltip.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `renders null when not visible`
 - ✔ `renders null when mousePos is null`
 - ✔ `renders in document.body with applied coordinate offsets`
+- ✔ `flips horizontal and vertical transform offsets near right and bottom viewport edges and supports multiline wrapping`
+- ✔ `suppresses native title on mouseover, renders stylized tooltip after 300ms, and restores title on mouseout`
+- ✔ `ignores elements inside data-cursor-tooltip-zone="true" and dismisses on scroll or keydown`
 
 </details>
 

@@ -46,11 +46,27 @@ describe('ReaderSubHeaderRibbon', () => {
     );
 
     expect(screen.getByTestId('resume-notice')).toBeInTheDocument();
-    expect(screen.getByText(/Resumed at Chapter 5, Page 12/i)).toBeInTheDocument();
+    const resumeSpan = screen.getByText(/Resumed at Chapter 5, Page 12/i);
+    expect(resumeSpan).toBeInTheDocument();
+    expect(resumeSpan).toHaveAttribute('title', 'Resumed at Chapter 5, Page 12');
 
     const restartBtn = screen.getByRole('button', { name: /Restart/i });
     fireEvent.click(restartBtn);
-    expect(handleRestart).toHaveBeenCalled();
+
+    // Confirmation modal opens first
+    expect(screen.getByTestId('restart-volume-dialog')).toBeInTheDocument();
+    expect(screen.getByText('Restart this volume from Page 1?')).toBeInTheDocument();
+    expect(handleRestart).not.toHaveBeenCalled();
+
+    // Cancel keeps modal closed without restarting
+    fireEvent.click(screen.getByTestId('cancel-restart-volume-btn'));
+    expect(screen.queryByTestId('restart-volume-dialog')).not.toBeInTheDocument();
+    expect(handleRestart).not.toHaveBeenCalled();
+
+    // Re-open and confirm restart
+    fireEvent.click(restartBtn);
+    fireEvent.click(screen.getByTestId('confirm-restart-volume-btn'));
+    expect(handleRestart).toHaveBeenCalledTimes(1);
 
     const dismissBtn = screen.getByLabelText('Dismiss resume notice');
     fireEvent.click(dismissBtn);

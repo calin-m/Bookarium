@@ -178,6 +178,7 @@ export const BookCard: React.FC<BookCardProps> = ({
         tabIndex={onPreviewClick ? 0 : undefined}
         role={onPreviewClick ? 'button' : undefined}
         aria-label={onPreviewClick ? `Click to preview quotes for ${book.title}` : undefined}
+        data-cursor-tooltip-zone={onPreviewClick ? 'true' : undefined}
         className={`relative aspect-[3/4] w-full overflow-hidden flex items-center justify-center p-2.5 sm:p-3 border-b border-border bg-muted dark:bg-secondary/30 select-none ${
           onPreviewClick ? 'cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary' : ''
         }`}
@@ -212,11 +213,17 @@ export const BookCard: React.FC<BookCardProps> = ({
                   </span>
                 )}
               </div>
-              <h4 className="font-serif font-bold text-sm sm:text-base line-clamp-4 leading-snug">
+              <h4
+                className="font-serif font-bold text-sm sm:text-base line-clamp-4 leading-snug"
+                title={book.title}
+              >
                 {book.title}
               </h4>
             </div>
-            <p className="text-xs text-stone-300 font-serif italic line-clamp-2">
+            <p
+              className="text-xs text-stone-300 font-serif italic line-clamp-2"
+              title={authorNames}
+            >
               {authorNames}
             </p>
           </div>
@@ -319,10 +326,16 @@ export const BookCard: React.FC<BookCardProps> = ({
       <div className="p-2.5 sm:p-4 flex-1 flex flex-col justify-between gap-2 sm:gap-3 min-w-0">
         {/* Top Header: Title & Author */}
         <div>
-          <h3 className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors text-balance">
+          <h3
+            className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors text-balance"
+            title={book.title}
+          >
             {book.title}
           </h3>
-          <p className="text-[11px] sm:text-xs text-muted-foreground font-sans line-clamp-1 mt-0.5">
+          <p
+            className="text-[11px] sm:text-xs text-muted-foreground font-sans line-clamp-1 mt-0.5"
+            title={authorNames}
+          >
             {authorNames}
           </p>
         </div>

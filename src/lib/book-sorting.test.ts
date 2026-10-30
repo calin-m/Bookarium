@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   sortBooks,
+  mergeDownloadedShelfBooks,
+  resolveBookshelfViewState,
+  filterCustomShelfBooks,
   BOOKSHELF_SORT_OPTIONS,
   FAVORITES_SORT_OPTIONS,
 } from './book-sorting';
@@ -163,5 +166,61 @@ describe('book-sorting utility', () => {
     const fallback = sortBooks(books, 'unknown_key');
     expect(fallback.map((b) => b.id)).toEqual([2, 1, 3]);
   });
+
+  it('merges and deduplicates downloaded shelf books across savedBooks and offlineBooks', () => {
+    const isBookOffline = (id: number) => id === 1 || id === 3;
+    const merged = mergeDownloadedShelfBooks(
+      [mockBookA, mockBookB],
+      [mockBookA, mockBookC],
+      isBookOffline
+    );
+    expect(merged.map((b) => b.id)).toEqual([1, 3]);
+  });
+
+  it('resolves bookshelf view state across default, downloaded, and custom shelves', () => {
+    const shelves = [
+      { id: 'shelf-general', name: 'General', is_default: true },
+      { id: 'shelf-gothic', name: 'Gothic', is_default: false },
+    ];
+
+    const defaultState = resolveBookshelfViewState({
+      cloudBookshelves: shelves,
+      activeBookshelfId: null,
+      downloadedShelfId: '__downloaded__',
+    });
+    expect(defaultState.defaultShelf?.id).toBe('shelf-general');
+    expect(defaultState.currentActiveShelfId).toBe('shelf-general');
+    expect(defaultState.isViewingGeneral).toBe(true);
+    expect(defaultState.isViewingDownloaded).toBe(false);
+
+    const downloadedState = resolveBookshelfViewState({
+      cloudBookshelves: shelves,
+      activeBookshelfId: '__downloaded__',
+      downloadedShelfId: '__downloaded__',
+    });
+    expect(downloadedState.isViewingDownloaded).toBe(true);
+    expect(downloadedState.isViewingGeneral).toBe(false);
+    expect(downloadedState.activeShelf?.id).toBe('shelf-general');
+
+    const customState = resolveBookshelfViewState({
+      cloudBookshelves: shelves,
+      activeBookshelfId: 'shelf-gothic',
+      downloadedShelfId: '__downloaded__',
+    });
+    expect(customState.isViewingDownloaded).toBe(false);
+    expect(customState.isViewingGeneral).toBe(false);
+    expect(customState.activeShelf?.id).toBe('shelf-gothic');
+
+    const filtered = filterCustomShelfBooks(
+      [mockBookA, mockBookB, mockBookC],
+      [
+        { bookshelf_id: 'shelf-gothic', book_id: 3 },
+        { bookshelf_id: 'shelf-general', book_id: 1 },
+      ],
+      'shelf-gothic'
+    );
+    expect(filtered.map((b) => b.id)).toEqual([3]);
+  });
 });
+
 

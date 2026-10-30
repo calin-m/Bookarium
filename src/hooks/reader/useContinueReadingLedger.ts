@@ -6,7 +6,12 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { toCanonicalBook, normalizeAuthorName } from '@/lib/adapters/book.adapter';
-import { resolveBookMetadata, cleanBookTitle, isPlaceholderAuthor } from '@/lib/book-metadata';
+import {
+  resolveBookMetadata,
+  cleanBookTitle,
+  isPlaceholderAuthor,
+  hasAuthenticAuthors,
+} from '@/lib/book-metadata';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -118,25 +123,17 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   }, [hasMounted, readingPositions, readingProgress, bookStatuses]);
 
   const missingIds = useMemo(() => {
-    const hasAuthenticAuthor = (authors?: (Author | string)[]): boolean => {
-      if (!authors || authors.length === 0) return false;
-      return authors.some((a) => {
-        const name = typeof a === 'string' ? a : a?.name;
-        return Boolean(name && !isPlaceholderAuthor(name));
-      });
-    };
-
     const known = new Set<number>();
-    savedBooks.forEach((b) => b?.id && hasAuthenticAuthor(b.authors) && known.add(b.id));
-    favoriteBooks.forEach((b) => b?.id && hasAuthenticAuthor(b.authors) && known.add(b.id));
-    recentBooks.forEach((b) => b?.id && hasAuthenticAuthor(b.authors) && known.add(b.id));
-    offlineBooks.forEach((b) => b?.id && hasAuthenticAuthor(b.authors) && known.add(b.id));
+    savedBooks.forEach((b) => b?.id && hasAuthenticAuthors(b.authors) && known.add(b.id));
+    favoriteBooks.forEach((b) => b?.id && hasAuthenticAuthors(b.authors) && known.add(b.id));
+    recentBooks.forEach((b) => b?.id && hasAuthenticAuthors(b.authors) && known.add(b.id));
+    offlineBooks.forEach((b) => b?.id && hasAuthenticAuthors(b.authors) && known.add(b.id));
     const current = useReaderStore.getState().currentBook;
-    if (current?.id && hasAuthenticAuthor(current.authors)) known.add(current.id);
+    if (current?.id && hasAuthenticAuthors(current.authors)) known.add(current.id);
 
     Object.entries(readingPositions).forEach(([idStr, pos]) => {
       const id = parseInt(idStr, 10);
-      if (!Number.isNaN(id) && pos?.bookTitle && hasAuthenticAuthor(pos?.bookAuthors)) {
+      if (!Number.isNaN(id) && pos?.bookTitle && hasAuthenticAuthors(pos?.bookAuthors)) {
         known.add(id);
       }
     });

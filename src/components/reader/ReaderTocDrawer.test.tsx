@@ -29,8 +29,11 @@ describe('ReaderTocDrawer', () => {
     render(<ReaderTocDrawer {...defaultProps} />);
 
     expect(screen.getByText('Table of Contents')).toBeInTheDocument();
-    expect(screen.getByText('Moby Dick')).toBeInTheDocument();
-    expect(screen.getByText('Chapter 1: Loomings')).toBeInTheDocument();
+    expect(screen.getByText('Moby Dick')).toHaveAttribute('title', 'Moby Dick');
+    const chapterTitleEl = screen.getByText('Chapter 1: Loomings');
+    expect(chapterTitleEl).toBeInTheDocument();
+    expect(chapterTitleEl).toHaveAttribute('title', 'Chapter 1: Loomings');
+    expect(chapterTitleEl).toHaveClass('line-clamp-2');
     expect(screen.getByText('p. 3')).toBeInTheDocument();
     expect(screen.getByText('p. 8')).toBeInTheDocument();
   });

@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useCursorTooltip } from './useCursorTooltip';
+import { useCursorTooltip, DEFAULT_TOOLTIP_DELAY_MS } from './useCursorTooltip';
 
 describe('useCursorTooltip', () => {
   beforeEach(() => {
@@ -11,7 +11,8 @@ describe('useCursorTooltip', () => {
     vi.restoreAllMocks();
   });
 
-  it('initializes with default state', () => {
+  it('initializes with default state and 300ms default delay constant', () => {
+    expect(DEFAULT_TOOLTIP_DELAY_MS).toBe(300);
     const { result } = renderHook(() => useCursorTooltip({ initialAction: 'preview' }));
 
     expect(result.current.mousePos).toBeNull();

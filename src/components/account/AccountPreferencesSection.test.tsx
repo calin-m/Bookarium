@@ -98,7 +98,21 @@ describe('AccountPreferencesSection', () => {
 
     const resetBtn = screen.getByRole('button', { name: /Reset/i });
     fireEvent.click(resetBtn);
-    expect(handleReset).toHaveBeenCalled();
+
+    // Confirmation modal opens first
+    expect(screen.getByTestId('reset-speech-preferences-dialog')).toBeInTheDocument();
+    expect(screen.getByText('Reset Read-Aloud preferences to defaults?')).toBeInTheDocument();
+    expect(handleReset).not.toHaveBeenCalled();
+
+    // Cancel keeps settings intact
+    fireEvent.click(screen.getByTestId('cancel-reset-speech-btn'));
+    expect(screen.queryByTestId('reset-speech-preferences-dialog')).not.toBeInTheDocument();
+    expect(handleReset).not.toHaveBeenCalled();
+
+    // Re-open and confirm reset
+    fireEvent.click(resetBtn);
+    fireEvent.click(screen.getByTestId('confirm-reset-speech-btn'));
+    expect(handleReset).toHaveBeenCalledTimes(1);
   });
 
   it('handles voice preview audio playback and toggle', () => {

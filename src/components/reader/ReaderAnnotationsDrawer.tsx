@@ -6,10 +6,8 @@ import { ReaderDrawerShell } from './ReaderDrawerShell';
 import type { Annotation, FellowAnnotation, HighlightColor, MarginaliaSourceFilter } from '@/stores/useAnnotationStore';
 import {
   isFellowAnnotation,
-  pairOverlappingAnnotations,
+  filterAndPairAnnotationsBySource,
   computeSharedQuoteSegments,
-  findMatchingOwnAnnotation,
-  areAnnotationsOverlapping,
   type AnyAnnotation,
 } from '@/lib/reader-annotator';
 import type { ReaderTheme } from '@/stores/useReaderStore';
@@ -109,35 +107,11 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   }, [fellowAnnotations, effectiveSpoilerShield, activeChapterIndex]);
 
   const combinedSourceAnnotations: DrawerDisplayItem[] = useMemo(() => {
-    if (effectiveSourceFilter === 'mine') {
-      return annotations.map((ann) => ({
-        ...ann,
-        pairedFellowAnnotation: visibleFellowAnnotations.find((fa) =>
-          areAnnotationsOverlapping(ann, fa)
-        ),
-      }));
-    }
-    if (effectiveSourceFilter === 'fellows') {
-      return visibleFellowAnnotations.map((fa) => ({
-        ...fa,
-        matchingOwnAnnotation: findMatchingOwnAnnotation(annotations, fa),
-      }));
-    }
-    const paired = pairOverlappingAnnotations(annotations, visibleFellowAnnotations);
-    return paired.map((item) => {
-      if (item.pairedFellowAnnotation) {
-        return {
-          ...item.annotation,
-          pairedFellowAnnotation: item.pairedFellowAnnotation,
-        };
-      }
-      return {
-        ...item.annotation,
-        matchingOwnAnnotation: isFellowAnnotation(item.annotation)
-          ? findMatchingOwnAnnotation(annotations, item.annotation)
-          : undefined,
-      };
-    });
+    return filterAndPairAnnotationsBySource(
+      annotations,
+      visibleFellowAnnotations,
+      effectiveSourceFilter
+    );
   }, [annotations, visibleFellowAnnotations, effectiveSourceFilter]);
 
   const filteredAnnotations = useMemo(() => {

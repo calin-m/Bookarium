@@ -48,6 +48,15 @@ describe('AccountNarrationSubPanel', () => {
     expect(onHighlightChange).toHaveBeenCalledWith(false);
 
     fireEvent.click(screen.getByRole('button', { name: /Reset/i }));
+    expect(screen.getByTestId('reset-speech-preferences-dialog')).toBeInTheDocument();
+    expect(onReset).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('cancel-reset-speech-btn'));
+    expect(screen.queryByTestId('reset-speech-preferences-dialog')).not.toBeInTheDocument();
+    expect(onReset).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Reset/i }));
+    fireEvent.click(screen.getByTestId('confirm-reset-speech-btn'));
     expect(onReset).toHaveBeenCalledTimes(1);
 
     const select = screen.getByLabelText('Preferred narrator voice');

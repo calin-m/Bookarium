@@ -36,7 +36,10 @@ describe('DownloadDrawer component', () => {
     );
 
     expect(screen.getByText('Download Hub')).toBeInTheDocument();
-    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    const titleEl = screen.getByText('Pride and Prejudice');
+    expect(titleEl).toBeInTheDocument();
+    expect(titleEl).toHaveAttribute('title', 'Pride and Prejudice');
+    expect(titleEl).toHaveClass('line-clamp-2');
     expect(screen.getByText('EPUB E-Reader')).toBeInTheDocument();
     expect(screen.getByText('Clean Plain Text')).toBeInTheDocument();
     expect(screen.getAllByText('Download').length).toBeGreaterThan(0);

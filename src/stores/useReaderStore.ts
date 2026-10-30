@@ -9,7 +9,7 @@ import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { formatAuthorWithLifespan } from '@/lib/adapters/book.adapter';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
-import { isPlaceholderAuthor } from '@/lib/book-metadata';
+import { isPlaceholderAuthor, hasAuthorLifespans } from '@/lib/book-metadata';
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
@@ -68,11 +68,7 @@ export interface ReaderState {
 const progressDebounceTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
 function hasEmbeddedLifespans(authors?: string[]): boolean {
-  if (!Array.isArray(authors) || authors.length === 0) return false;
-  return authors.some((a) => {
-    const parsed = parseLifespansFromName(a);
-    return parsed.birthYear != null || parsed.deathYear != null;
-  });
+  return hasAuthorLifespans(authors);
 }
 
 function isGhostReadingPosition(pos: BookReadingPosition, progress: number): boolean {

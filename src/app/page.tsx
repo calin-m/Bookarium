@@ -55,11 +55,15 @@ import { filterBooksSmart } from '@/lib/smart-search';
 import { smartScrollToContent } from '@/lib/scroll-utils';
 import {
   sortBooks,
+  mergeDownloadedShelfBooks,
+  resolveBookshelfViewState,
+  filterCustomShelfBooks,
   BOOKSHELF_SORT_OPTIONS,
   FAVORITES_SORT_OPTIONS,
   type BookshelfSortOption,
   type FavoritesSortOption,
 } from '@/lib/book-sorting';
+import { featuredHeroToGutendexBook } from '@/lib/book-metadata';
 import { ROUTES } from '@/config/routes';
 import { VIEW_CONTENT_CONFIG } from '@/config/views.config';
 
@@ -248,25 +252,23 @@ function HomeContent() {
   });
 
   // Shelf resolution for general vs custom shelves
-  const defaultShelf = useMemo(
-    () => cloudBookshelves.find((s) => s.is_default) || cloudBookshelves[0],
-    [cloudBookshelves]
-  );
-  const currentActiveShelfId = activeBookshelfId || defaultShelf?.id;
-  const isViewingDownloaded = currentActiveShelfId === DOWNLOADED_SHELF_ID;
-  const isViewingGeneral = !isViewingDownloaded && (defaultShelf ? currentActiveShelfId === defaultShelf.id : true);
-  const activeShelf = useMemo(
-    () => cloudBookshelves.find((s) => s.id === currentActiveShelfId) || defaultShelf,
-    [cloudBookshelves, currentActiveShelfId, defaultShelf]
+  const {
+    currentActiveShelfId,
+    activeShelf,
+    isViewingDownloaded,
+    isViewingGeneral,
+  } = useMemo(
+    () =>
+      resolveBookshelfViewState({
+        cloudBookshelves,
+        activeBookshelfId,
+        downloadedShelfId: DOWNLOADED_SHELF_ID,
+      }),
+    [cloudBookshelves, activeBookshelfId]
   );
 
   const resolvedOfflineBooks = useMemo(() => {
-    const savedOffline = savedBooks.filter((b) => isBookOffline(b.id));
-    const savedOfflineIds = new Set(savedOffline.map((b) => b.id));
-    const extraOffline = offlineBooks.filter(
-      (b) => isBookOffline(b.id) && !savedOfflineIds.has(b.id)
-    );
-    return [...savedOffline, ...extraOffline];
+    return mergeDownloadedShelfBooks(savedBooks, offlineBooks, isBookOffline);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedBooks, offlineBooks, isBookOffline, isViewingDownloaded, isOffline]);
 
@@ -277,13 +279,7 @@ function HomeContent() {
     if (cloudBookshelves.length <= 1 || isViewingGeneral) {
       return savedBooks;
     }
-
-    const currentShelfBookIds = new Set(
-      cloudBookshelfItems
-        .filter((item) => item.bookshelf_id === currentActiveShelfId)
-        .map((item) => item.book_id)
-    );
-    return savedBooks.filter((b) => currentShelfBookIds.has(b.id));
+    return filterCustomShelfBooks(savedBooks, cloudBookshelfItems, currentActiveShelfId);
   }, [isViewingDownloaded, resolvedOfflineBooks, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, savedBooks]);
 
   // Reset collection search query when switching views
@@ -667,25 +663,18 @@ function HomeContent() {
                   Array.isArray(featuredMeta.authors) && !featuredMeta.rawBook;
                 const bookPayload: GutendexBook = isDirectGutendexBook
                   ? (featured as GutendexBook)
-                  : featuredMeta.rawBook || {
-                      id: featured.id,
-                      title: featured.title,
-                      authors: [
-                        {
-                          name: featuredMeta.author || 'Classic Masterwork',
-                          birth_year: featuredMeta.authorBirthYear ?? null,
-                          death_year: featuredMeta.authorDeathYear ?? null,
-                        },
-                      ],
-                      translators: [],
-                      subjects: [featuredMeta.primarySubject || 'Classic Literature'],
-                      bookshelves: [],
-                      languages: ['en'],
-                      copyright: false,
-                      media_type: 'Text',
-                      formats: {},
-                      download_count: 50000,
-                    };
+                  : featuredMeta.rawBook ||
+                    featuredHeroToGutendexBook(
+                      {
+                        id: featured.id,
+                        title: featured.title,
+                        author: featuredMeta.author,
+                        authorBirthYear: featuredMeta.authorBirthYear,
+                        authorDeathYear: featuredMeta.authorDeathYear,
+                        primarySubject: featuredMeta.primarySubject,
+                      },
+                      { formats: {}, downloadCount: 50000 }
+                    );
                 useReaderStore.getState().openReader(bookPayload);
                 router.push(ROUTES.READ(featured.id));
                 return;

@@ -12,6 +12,11 @@ import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { isBookPublicDomainInJurisdiction, partitionBooksByJurisdiction } from '@/lib/copyright-engine';
+import {
+  mergeDownloadedShelfBooks,
+  resolveBookshelfViewState,
+  filterCustomShelfBooks,
+} from '@/lib/book-sorting';
 import { Button } from '@/components/ui/Button';
 import { BookshelfSpine } from './bookshelf/BookshelfSpine';
 import { BookshelfMobileModal } from './bookshelf/BookshelfMobileModal';
@@ -201,24 +206,19 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   };
 
   const downloadedSavedBooks = useMemo(() => {
-    const map = new Map<number, GutendexBook>();
-    for (const b of savedBooks) {
-      if (isBookOffline(b.id)) {
-        map.set(b.id, b);
-      }
-    }
-    for (const b of offlineBooks) {
-      if (isBookOffline(b.id) && !map.has(b.id)) {
-        map.set(b.id, b);
-      }
-    }
-    return Array.from(map.values());
+    return mergeDownloadedShelfBooks(savedBooks, offlineBooks, isBookOffline);
   }, [savedBooks, offlineBooks, isBookOffline]);
 
-  const defaultShelf = cloudBookshelves.find((s) => s.is_default) || cloudBookshelves[0];
-  const currentActiveShelfId = activeBookshelfId || defaultShelf?.id;
-  const isViewingDownloaded = activeBookshelfId === DOWNLOADED_SHELF_ID;
-  const isViewingGeneral = !isViewingDownloaded && (defaultShelf ? currentActiveShelfId === defaultShelf.id : true);
+  const {
+    defaultShelf,
+    currentActiveShelfId,
+    isViewingDownloaded,
+    isViewingGeneral,
+  } = resolveBookshelfViewState({
+    cloudBookshelves,
+    activeBookshelfId,
+    downloadedShelfId: DOWNLOADED_SHELF_ID,
+  });
 
   // Auto-fallback to default shelf if user was viewing Downloaded shelf and it becomes empty
   useEffect(() => {
@@ -237,13 +237,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     if (!showShelfControls || cloudBookshelves.length <= 1 || isViewingGeneral) {
       return books;
     }
-
-    const currentShelfBookIds = new Set(
-      cloudBookshelfItems
-        .filter((item) => item.bookshelf_id === currentActiveShelfId)
-        .map((item) => item.book_id)
-    );
-    return books.filter((b) => currentShelfBookIds.has(b.id));
+    return filterCustomShelfBooks(books, cloudBookshelfItems, currentActiveShelfId);
   }, [isViewingDownloaded, isBookOffline, showShelfControls, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, books]);
 
   // Partition shelf books into public domain titles in current jurisdiction vs copyright-restricted titles

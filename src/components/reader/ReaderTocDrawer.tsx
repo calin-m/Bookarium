@@ -54,7 +54,10 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
         Table of Contents
       </h3>
       {bookTitle && (
-        <p className={`text-[10px] font-mono truncate max-w-[220px] mt-0.5 ${activeTheme.textMuted}`}>
+        <p
+          className={`text-[10px] font-mono truncate max-w-[220px] mt-0.5 ${activeTheme.textMuted}`}
+          title={bookTitle}
+        >
           {bookTitle}
         </p>
       )}
@@ -127,7 +130,10 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
                       data-testid={`chapter-item-${originalIndex >= 0 ? originalIndex : idx}`}
                     >
                       <div className="min-w-0 flex-1">
-                        <span className="block truncate font-serif text-sm leading-snug">
+                        <span
+                          className="line-clamp-2 font-serif text-sm leading-snug"
+                          title={ch.displayTitle || ch.title}
+                        >
                           {ch.displayTitle || ch.title}
                         </span>
                         <span className={`text-[10px] block font-mono mt-0.5 ${isActive && theme === 'sepia' ? 'text-[#2b1d16]/80' : activeTheme.textMuted}`}>

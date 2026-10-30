@@ -13,7 +13,7 @@ import {
 } from '@/lib/gutenberg-parser';
 import { useGutenbergParserWorker } from '@/hooks/reader/useGutenbergParserWorker';
 import { getReaderTheme } from '@/config/reader-themes';
-import { resolveBookMetadata, isPlaceholderTitle } from '@/lib/book-metadata';
+import { resolveBookMetadata, isPlaceholderTitle, hasAuthorLifespans } from '@/lib/book-metadata';
 import { areAnnotationsOverlapping, pairOverlappingAnnotations } from '@/lib/reader-annotator';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
 import { ReaderFooter } from '@/components/reader/ReaderFooter';
@@ -284,17 +284,14 @@ function BookReaderContent() {
   const initializedBookIdRef = React.useRef<number | null>(null);
   useEffect(() => {
     if (numericId <= 0) return;
-    const hasLifespans = (
-      authors?: Array<{ birth_year?: number | null; death_year?: number | null }>
-    ) => Boolean(authors?.some((a) => a.birth_year != null || a.death_year != null));
 
     const existingRecent = useBookshelfStore.getState().recentBooks.find((b) => b.id === numericId);
-    const existingRecentHasLifespans = hasLifespans(existingRecent?.authors);
-    const resolvedHasLifespans = hasLifespans(resolvedIdentity.authors);
+    const existingRecentHasLifespans = hasAuthorLifespans(existingRecent?.authors);
+    const resolvedHasLifespans = hasAuthorLifespans(resolvedIdentity.authors);
 
     if (booksData?.results?.[0]) {
       const apiBook = booksData.results[0];
-      const apiBookHasLifespans = hasLifespans(apiBook.authors);
+      const apiBookHasLifespans = hasAuthorLifespans(apiBook.authors);
       const needsEnrichment =
         initializedBookIdRef.current !== numericId ||
         (!existingRecentHasLifespans && apiBookHasLifespans);

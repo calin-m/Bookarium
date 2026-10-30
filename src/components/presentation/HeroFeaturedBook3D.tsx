@@ -87,7 +87,10 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
         </div>
 
         <div className="space-y-1.5">
-          <h3 className="text-xl sm:text-2xl font-serif font-bold text-foreground tracking-tight line-clamp-2">
+          <h3
+            className="text-xl sm:text-2xl font-serif font-bold text-foreground tracking-tight line-clamp-2"
+            title={featuredBook.title}
+          >
             {featuredBook.title}
           </h3>
           <p className="text-xs sm:text-sm font-sans text-muted-foreground">
@@ -153,7 +156,9 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
       </div>
 
       <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
-        <span className={`truncate ${maxWidthClass}`}>{featuredBook.primarySubject}</span>
+        <span className={`truncate ${maxWidthClass}`} title={featuredBook.primarySubject}>
+          {featuredBook.primarySubject}
+        </span>
         <span className="opacity-60">p. 1</span>
       </div>
     </>

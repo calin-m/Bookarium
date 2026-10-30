@@ -10,6 +10,7 @@ import {
   KeyRound,
   LogOut,
   Trash2,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -18,6 +19,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import type { PasswordStrength } from '@/lib/password';
 
 export interface AccountSecuritySectionProps {
+  currentPassword?: string;
   newPassword: string;
   confirmPassword: string;
   showPassword: boolean;
@@ -26,17 +28,25 @@ export interface AccountSecuritySectionProps {
   passwordSuccess: boolean;
   passwordError: string | null;
   strength: { score: number; label: string; color: string };
+  isRecoveryMode?: boolean;
+  isSendingResetEmail?: boolean;
+  resetEmailSent?: boolean;
+  resetEmailError?: string | null;
+  resetCooldown?: number;
+  onCurrentPasswordChange?: (val: string) => void;
   onNewPasswordChange: (val: string) => void;
   onConfirmPasswordChange: (val: string) => void;
   onToggleShowPassword: () => void;
   onGeneratePassword: () => void;
   onUpdatePassword: (e: React.FormEvent) => void;
+  onRequestPasswordReset?: () => void;
   onSignOut: () => Promise<void>;
   onOpenDeleteModal: () => void;
   userEmail?: string;
 }
 
 export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
+  currentPassword = '',
   newPassword,
   confirmPassword,
   showPassword,
@@ -45,11 +55,18 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
   passwordSuccess,
   passwordError,
   strength,
+  isRecoveryMode = false,
+  isSendingResetEmail = false,
+  resetEmailSent = false,
+  resetEmailError = null,
+  resetCooldown = 0,
+  onCurrentPasswordChange,
   onNewPasswordChange,
   onConfirmPasswordChange,
   onToggleShowPassword,
   onGeneratePassword,
   onUpdatePassword,
+  onRequestPasswordReset,
   onSignOut,
   onOpenDeleteModal,
   userEmail,
@@ -85,6 +102,74 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
           </div>
 
           <form onSubmit={onUpdatePassword} className="space-y-4">
+            {isRecoveryMode ? (
+              <div
+                data-testid="password-recovery-banner"
+                role="status"
+                className="p-3 rounded-xl bg-primary/10 border border-border flex items-center gap-2 text-xs font-mono text-primary animate-in fade-in duration-150"
+              >
+                <Check className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  Email recovery link verified — enter and confirm your new password below.
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 min-h-[1.5rem]">
+                  <label
+                    htmlFor="current-password"
+                    className="text-xs font-mono text-foreground font-bold whitespace-nowrap"
+                  >
+                    Current Password
+                  </label>
+                  {onRequestPasswordReset && (
+                    <button
+                      type="button"
+                      onClick={onRequestPasswordReset}
+                      disabled={isOffline || isSendingResetEmail || resetCooldown > 0}
+                      className="text-[11px] font-mono text-primary hover:underline disabled:opacity-50 disabled:no-underline flex items-center gap-1 whitespace-nowrap cursor-pointer select-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded"
+                    >
+                      <Mail className="w-3 h-3 shrink-0" />
+                      <span>
+                        {isSendingResetEmail
+                          ? 'Sending Reset Link...'
+                          : resetCooldown > 0
+                            ? `Resend Reset Link (${resetCooldown}s)`
+                            : 'Forgot current password? Send reset link'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+                <Input
+                  id="current-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => onCurrentPasswordChange?.(e.target.value)}
+                  placeholder="Enter your current password"
+                  className="text-xs font-mono"
+                />
+                {resetEmailSent && (
+                  <div
+                    data-testid="password-reset-sent-banner"
+                    role="status"
+                    className="p-2.5 rounded-lg bg-primary/10 border border-border flex items-center gap-2 text-xs font-mono text-primary animate-in fade-in duration-150"
+                  >
+                    <Mail className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      Password reset link sent{userEmail ? ` to ${userEmail}` : ''}! Click the link in your inbox to set a new password without your current password.
+                    </span>
+                  </div>
+                )}
+                {resetEmailError && (
+                  <p className="text-xs font-mono text-destructive flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{resetEmailError}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2 min-h-[1.5rem]">
@@ -206,7 +291,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
               )}
             </div>
             <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-              Sign out from this browser. Your local bookshelf and bookmarks will remain safely stored.
+              Sign out from this browser. Your synced bookshelves, bookmarks, and notes remain safely stored in your cloud account while local session data is cleared from this device.
             </p>
             <div className="pt-1">
               <Button

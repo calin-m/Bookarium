@@ -276,9 +276,11 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getByText(/Resumed at/i)).toBeInTheDocument();
     expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
 
-    // Click Restart button
-    const restartBtn = screen.getByRole('button', { name: /Restart/i });
+    // Click Restart button -> opens confirmation modal and confirms
+    const restartBtn = screen.getByRole('button', { name: /^Restart$/i });
     fireEvent.click(restartBtn);
+    expect(screen.getByTestId('restart-volume-dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-restart-volume-btn'));
 
     // Resets to beginning
     expect(screen.getAllByText(/Title & Preamble/i).length).toBeGreaterThanOrEqual(1);

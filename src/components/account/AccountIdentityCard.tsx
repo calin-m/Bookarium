@@ -96,7 +96,10 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-serif font-bold text-foreground truncate">
+              <h1
+                className="text-lg sm:text-xl font-serif font-bold text-foreground truncate"
+                title={resolvedName}
+              >
                 {resolvedName}
               </h1>
               {profile?.username && (
