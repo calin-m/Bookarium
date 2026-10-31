@@ -1,5 +1,6 @@
 {
   "preCommit": [
+    "npm run security:audit",
     "npm run lint",
     "npm run typecheck",
     "npm test"
@@ -9,7 +10,7 @@
     "npm run verify:build"
   ],
   "postBuild": [
-    "npm run matrix:generate"
+    "npm run docs:sync"
   ]
 }
 

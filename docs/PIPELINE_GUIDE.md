@@ -25,14 +25,14 @@ Every commit and pull request must pass all quality gateways with zero blockers:
 
 | Pass | Gateway | Stage Name | Target & Tooling | Enforcement & Governance |
 | :--- | :--- | :--- | :--- | :--- |
-| **Pass 0.5** | Pre-Commit | Secret Scanner | Regex scan across all files | Scans all repository files for private keys, fine-grained PATs, Supabase tokens, webhooks, or client-bundle service-role leaks (`0 exposed secrets`). |
-| **Pass 0.75** | Pre-Commit | 7-Pillar SAST & OWASP Security Suite | `npm audit`, SSRF/XSS/RLS/Headers AST guards | Audits dependencies for high/critical CVEs, enforces API rate limiting & mirror allowlist SSRF guards, blocks DOM XSS sinks, sanitizes redirects, verifies MIT & public domain integrity, checks PostgreSQL RLS across all 14 tables (`SET search_path = ''`), and verifies all 7 OWASP HTTP security headers. |
+| **Pass 0.5** | Pre-Commit | Secret & Boundary Scanner | Regex & AST graph scan across all files | Scans all repository files for private keys, fine-grained PATs, Supabase `service_role` JWTs, webhooks, tracked `.env*` leaks, `.env.example` parity, `5 MB` binary limits, and transitive client$\rightarrow$server AST graph isolation (`0 exposed secrets`). |
+| **Pass 0.75** | Pre-Commit | 7-Pillar SAST, OWASP & AST Taint Suite | `npm audit`, `bookarium-security`, SSRF/XSS/RLS/Headers | Audits dependencies, lockfile SHA-512/HTTPS integrity, and GitHub Actions workflows; enforces API rate limiting & mirror allowlist SSRF guards; blocks DOM XSS sinks; sanitizes redirects; verifies MIT & public domain integrity; checks PostgreSQL RLS & idempotency across all 14 tables (`SET search_path = ''`); verifies all 7 OWASP HTTP security headers; and executes the 9-rule `bookarium-security` AST & intra-procedural request-taint engine. |
 | **Pass 1** | Compiler | TypeScript Engine Strict Verification | `tsc --noEmit` | Strict type safety across all components, stores, hooks, route handlers, and types (`0 compile errors`, `0 any`). |
 | **Pass 2** | Network | MSW Server & React Query Validation | Vitest + MSW v2 | Validates Mock Service Worker v2 network interception, error fallbacks, and TanStack React Query hooks. |
-| **Pass 3** | Test Suite | Vitest Unit Suite & Coverage Floor | `vitest run --coverage` | Asserts all 185 unit/integration test suites pass with $\ge$ 85% code coverage across lines, statements, functions, and branches. |
+| **Pass 3** | Test Suite | Vitest Unit Suite & Coverage Floor | `vitest run --coverage` | Asserts all `194` unit/integration test suites (`2,058` tests) pass with tiered `95/95/92/85` code coverage (`Lines >= 95%`, `Statements >= 95%`, `Functions >= 92%`, `Branches >= 85%`). |
 | **Pass 4** | Living Docs | Living AST Documentation Sync | `docs:sync` toolchain | Programmatically recompiles `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `ROADMAP.md`, `docs/GUTENBERG_PARSER.md`, and `docs/QUALITY_AUDIT_REPORT.md` from AST with zero drift. |
-| **Pass 5** | ADR Ledger | ADR Schema & Ledger Validation | Markdown AST verification | Validates sequential numbering and strict schema conformance (Status, Context, Decision, Consequences) in `docs/DECISIONS.md`. |
-| **Pass 6** | Quality Suite | Code Quality & Dead Code Audit | ESLint 9 & Knip | Zero ESLint warnings/errors, zero unreferenced dead files/exports, and zero orphan dependencies. |
+| **Pass 5** | Governance & Parity | ADR, Schema, Graph & Test Co-Location | Markdown/SQL/TS AST verification | Validates contiguous numbering & schema in `docs/DECISIONS.md`, 16-file governance presence, 1:1 `supabase/schema.sql` $\leftrightarrow$ `src/types/database.types.ts` parity, 0 circular/orphan modules, and 100% 1:1 co-located test coverage across all executable files. |
+| **Pass 6** | Quality Suite | Code Quality & Dead Code Audit | ESLint 9 (`--max-warnings 0`) & Knip | Zero ESLint warnings/errors (including the 9-rule `bookarium-security` plugin), zero unreferenced dead files/exports, and zero orphan dependencies. |
 | **Pass 7** | Production Build | Next.js Production Build & Chunk Budget | `next build --webpack` | Optimized production Next.js bundle compilation within performance chunk budget. |
 
 ---
@@ -44,7 +44,8 @@ Bookarium provides a comprehensive suite of Node.js scripts in `scripts/` to aut
 | Command | Script File | Architectural Purpose |
 | :--- | :--- | :--- |
 | `npm run verify` | [`scripts/verify-build.js`](../scripts/verify-build.js) | Full 7-Gateway Closed-Loop Quality Engine verification. |
-| `npm run security:audit` | [`scripts/verify-build.js`](../scripts/verify-build.js) `--security-only` | Rapid standalone execution of Pass 0.5 (Secrets) and Pass 0.75 (SAST & OWASP Security Suite). |
+| `npm run security:audit` | [`scripts/verify-build.js`](../scripts/verify-build.js) `--security-only` | Rapid standalone execution of Pass 0.5 (Secrets & Boundaries), Pass 0.75 (7-Pillar SAST, OWASP & 9-Rule AST Taint Suite), and Pass 5 (ADR, Schema & 1:1 Test Co-Location). |
+| `npm run lint` | [`scripts/eslint-rules/bookarium-security.js`](../scripts/eslint-rules/bookarium-security.js) | Executes ESLint 9 (`--max-warnings 0`) including the custom 9-rule `bookarium-security` AST & intra-procedural request-taint plugin. |
 | `npm run docs:sync` | Living Docs Toolchain | Programmatically re-compiles `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `ROADMAP.md`, `docs/GUTENBERG_PARSER.md`, and `docs/QUALITY_AUDIT_REPORT.md`. |
 | `npm run matrix:generate` | [`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js) | Analyzes Babel AST of all `src/` modules and `scripts/` to compile the living architecture matrix. |
 | `npm run changelog:generate` | [`scripts/generate-changelog.js`](../scripts/generate-changelog.js) | Compiles `CHANGELOG.md` and updates the `README.md` Latest Release block. |
@@ -56,6 +57,7 @@ Bookarium provides a comprehensive suite of Node.js scripts in `scripts/` to aut
 | `npm run translations:sync` | [`scripts/ingest-translations.js`](../scripts/ingest-translations.js) | Queries Wikidata SPARQL for multilingual FRBR work clusters and populates `public.book_translations`. |
 | `npm run adr:new -- "Title"` | [`scripts/new-adr.js`](../scripts/new-adr.js) | Scaffolds a new sequential Architectural Decision Record in `docs/DECISIONS.md`. |
 | `npm run gate:approve` | [`scripts/approval-gate.js`](../scripts/approval-gate.js) | Pre-commit mutation gate verifying `.agents/hooks.json` approval tokens. |
+| `node scripts/generate-pwa-icons.js` | [`scripts/generate-pwa-icons.js`](../scripts/generate-pwa-icons.js) | Compiles standards-compliant 32-bit RGBA multi-resolution `.ico` and vector squircle PWA icons. |
 | `npm run dev:open` | [`scripts/open-browser.js`](../scripts/open-browser.js) | Spawns local development server and automatically opens the browser at `http://localhost:3000`. |
 
 > 📖 **Comprehensive Module Graph**: For complete topological dependency graphs, Node.js package breakdowns, and database entity schemas, see [**`docs/ARCHITECTURE.md`**](ARCHITECTURE.md).

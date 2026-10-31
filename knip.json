@@ -7,11 +7,13 @@
     "src/mocks/**/*.{ts,tsx}",
     "src/test/**/*.{ts,tsx}",
     "src/**/*.test.{ts,tsx}",
-    "scripts/**/*.js"
+    "scripts/**/*.js",
+    "scripts/**/*.test.ts"
   ],
   "project": [
     "src/**/*.{ts,tsx}",
-    "scripts/**/*.js"
+    "scripts/**/*.js",
+    "scripts/**/*.test.ts"
   ],
   "exclude": [
     "types"

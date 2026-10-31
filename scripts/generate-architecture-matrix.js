@@ -166,7 +166,7 @@ function extractDatabaseCatalog(rootDirPath) {
   return { tables, indexes, seedArtifacts };
 }
 
-function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 187) {
+function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 194) {
   const pkgPath = path.join(rootDirPath, 'package.json');
   if (!fs.existsSync(pkgPath)) return { engines: {}, packages: [] };
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
@@ -200,7 +200,7 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 187) {
     '@types/react': 'TypeScript definitions for React 19 core primitives.',
     '@types/react-dom': 'TypeScript definitions for React DOM.',
     '@vitejs/plugin-react': 'Fast React transform plugin for Vitest test execution.',
-    '@vitest/coverage-v8': 'Native V8 code coverage provider enforcing >=85% test threshold.',
+    '@vitest/coverage-v8': 'Native V8 code coverage provider enforcing tiered 95/95/92/85% test thresholds.',
     '@vitest/ui': 'Interactive graphical browser interface for Vitest execution.',
     concurrently: 'Parallel task orchestration for dev servers, watchers, and browser launchers.',
     eslint: 'Pluggable static analysis linter enforcing code quality and type safety.',
@@ -258,7 +258,17 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 187) {
   };
 }
 
+function getSecurityPluginRuleCount() {
+  try {
+    const { bookariumSecurityPlugin } = require('./eslint-rules/bookarium-security');
+    return Object.keys(bookariumSecurityPlugin?.rules || {}).length || 9;
+  } catch {
+    return 9;
+  }
+}
+
 function extractNodeScriptsCatalog() {
+  const securityRuleCount = getSecurityPluginRuleCount();
   return [
     {
       name: 'verify-build.js',
@@ -266,7 +276,15 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run verify`',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
-        'Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets, Pass 0.75 SAST/OWASP, Pass 1 types, Pass 2 MSW, Pass 3 Vitest >=85%, Pass 4 docs sync, Pass 5 ADR, Pass 6 ESLint/Knip, Pass 7 Next.js build).',
+        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env/transitive-graph, Pass 0.75 lockfile/workflows/SAST/OWASP/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 docs sync, Pass 5 ADR/checklist/schema-parity/graph/1:1-test-co-location, Pass 6 ESLint/Knip, Pass 7 Next.js build).`,
+    },
+    {
+      name: 'eslint-rules/bookarium-security.js',
+      file: 'scripts/eslint-rules/bookarium-security.js',
+      npmCommand: '`npm run lint` & `npm run security:audit`',
+      nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
+      responsibility:
+        `In-repo custom ESLint & Babel AST security plugin enforcing ${securityRuleCount} rules: unsafe fetch, unvalidated redirects, client/server boundary isolation, dangerous execution primitives, DOM XSS injection, intra-procedural request taint analysis (including Prototype Pollution guards), secret env/public route guards, test anti-tautology checks, and Project Gutenberg & copyright policy enforcement.`,
     },
     {
       name: 'lib/ast-parser.js',
@@ -422,9 +440,9 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
     {
       name: 'eslint.config.mjs',
       file: 'eslint.config.mjs',
-      layer: 'ESLint 9 Flat Config & Zero-Any Gate',
+      layer: `ESLint 9 Flat Config, Zero-Any & ${getSecurityPluginRuleCount()}-Rule AST Security Gate`,
       responsibility:
-        'Enforces `eslint-config-next/core-web-vitals`, `eslint-config-next/typescript`, and strict `@typescript-eslint/no-explicit-any: "error"` with `--max-warnings 0`.',
+        `Enforces \`eslint-config-next/core-web-vitals\`, \`eslint-config-next/typescript\`, strict \`@typescript-eslint/no-explicit-any: "error"\`, and the in-repo \`bookarium-security\` AST & intra-procedural taint plugin (${getSecurityPluginRuleCount()} rules) with \`--max-warnings 0\`.`,
     },
     {
       name: 'knip.json',
@@ -487,7 +505,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'src/mocks/ & src/test/', role: 'Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`) and JSDOM test environment bootstrap (`setup.ts`).' },
     { path: 'public/', role: 'Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`).' },
     { path: 'supabase/', role: 'Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 22 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`).' },
-    { path: 'scripts/', role: '14 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites.' },
+    { path: 'scripts/', role: '15 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), custom ESLint AST & request-taint security rules (`eslint-rules/bookarium-security.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites.' },
     { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser specification (\`GUTENBERG_PARSER.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
     { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD (`ci.yml`) and weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), plus Husky pre-commit quality gates.' },
   ];
@@ -1396,9 +1414,9 @@ function generateMarkdown() {
     '',
     '```mermaid',
     'flowchart TD',
-    '    subgraph SecurityGates ["Static Security & Boundary Gates (scripts/verify-build.js)"]',
-    '        Pass05["🔒 Pass 0.5: Secret & Boundary Scanner\\n• Zero live tokens / private keys\\n• Zero client SUPABASE_SERVICE_ROLE_KEY"]',
-    '        Pass075["🛡️ Pass 0.75: 7-Pillar SAST & OWASP Suite\\n• 0 High/Crit CVEs • SSRF & RateLimiter.check()\\n• DOM XSS Sinks • Redirect Sanitizer\\n• MIT / copyright=false • 14-Table RLS & search_path\\n• 7 OWASP HTTP Security Headers"]',
+    '    subgraph SecurityGates ["Static Security, AST Taint & Boundary Gates (scripts/verify-build.js & eslint.config.mjs)"]',
+    '        Pass05["🔒 Pass 0.5: Secret, File/Path, Env & Graph Scanner\\n• Zero live tokens / private keys / service_role JWTs\\n• File/Path & 5 MB ceiling • .env.example parity\\n• Transitive Client->Server AST Graph Isolation"]',
+    `        Pass075["🛡️ Pass 0.75: 7-Pillar SAST, Lockfile & AST Taint Suite\\n• Lockfile SHA-512 & HTTPS npm registry + 0 High/Crit CVEs\\n• ${getSecurityPluginRuleCount()}-Rule AST & Request-Taint Engine (SSRF, Redirects, DOM XSS, Eval, Sinks)\\n• MIT / copyright=false • 14-Table RLS, Write-Policy & search_path\\n• 7 OWASP HTTP Security Headers & Service Worker Guard"]`,
     '    end',
     '',
     '    subgraph TestRunner ["Vitest 4 Runner & JSDOM Bootstrap"]',
@@ -1446,12 +1464,18 @@ function generateMarkdown() {
 
   for (const scriptSuite of testHarness.scriptSuites) {
     const baseName = path.basename(scriptSuite);
+    const scriptSuiteLayer =
+      baseName === 'bookarium-security.test.ts'
+        ? 'AST & Request-Taint Security Suite'
+        : 'CLI Data Pipeline Test Suite';
     const scriptSuiteRole =
       baseName === 'ingest-translations.test.ts'
         ? 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.'
-        : 'Hermetic unit & integration tests verifying Project Gutenberg `pg_catalog.csv.gz` streaming decompression, CSV RFC 4180 parsing, author lifespan extraction, and adaptive Supabase batch upserts.';
+        : baseName === 'bookarium-security.test.ts'
+          ? `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`
+          : 'Hermetic unit & integration tests verifying Project Gutenberg `pg_catalog.csv.gz` streaming decompression, CSV RFC 4180 parsing, author lifespan extraction, and adaptive Supabase batch upserts.';
     lines.push(
-      `| **\`${baseName}\`** | [\`${scriptSuite}\`](${scriptSuite}) | CLI Data Pipeline Test Suite | ${scriptSuiteRole} |`
+      `| **\`${baseName}\`** | [\`${scriptSuite}\`](${scriptSuite}) | ${scriptSuiteLayer} | ${scriptSuiteRole} |`
     );
   }
 
@@ -1672,14 +1696,14 @@ function generateMarkdown() {
     '',
     '| Gateway Pass | Stage Name | Target & Tooling | Enforcement & Governance |',
     '| :--- | :--- | :--- | :--- |',
-    '| **Pass 0.5** | Secrets, Credentials & Client Privilege Scanner | Regex & client-bundle AST boundary scan | Zero live API keys, private keys, tokens, or `SUPABASE_SERVICE_ROLE_KEY` leaks in client modules |',
-    '| **Pass 0.75** | 7-Pillar SAST & OWASP Security Suite | `npm audit`, AST taint guards, SQL RLS & HTTP Header auditors | Enforces 0 High/Critical CVEs, SSRF allowlist & rate limiting, DOM XSS guards, open-redirect sanitization, license compliance, PostgreSQL RLS + `SECURITY DEFINER` `search_path`, and OWASP HTTP headers/CSP |',
+    '| **Pass 0.5** | Secrets, File/Path, Env & Transitive Graph Scanner | Regex, JWT decoder, `.env.example` & Babel AST import graph | Zero live keys/JWTs, forbidden files, undocumented app `process.env.*` vars, or transitive client->server imports |',
+    `| **Pass 0.75** | 7-Pillar SAST, Lockfile, Workflow & AST Taint Suite | Lockfile SRI/registry check, workflow scanner, \`npm audit\`, ${getSecurityPluginRuleCount()}-rule AST taint engine, SQL RLS & HTTP Header auditors | Enforces lockfile SHA-512/registry integrity, GitHub Actions workflow hardening, 0 High/Critical CVEs, intra-procedural request taint guards (SSRF, redirects, DB writes, shell, fs, DOM XSS, Prototype Pollution), PostgreSQL RLS + idempotency + write isolation + \`search_path\`, and OWASP HTTP headers/CSP |`,
     '| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |',
     '| **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |',
-    '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 85% coverage floor across all co-located suites |',
+    '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Tiered 95/95/92/85% coverage floor across all co-located suites |',
     '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md`, `GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |',
-    '| **Pass 5** | ADR Schema & Ledger Validation | Markdown AST verification | Validates all ADRs in `docs/DECISIONS.md` conform to Status, Context, Decision, Consequences |',
-    '| **Pass 6** | Code Quality & Dead Code Audit | `eslint . --max-warnings 0` & Knip | Zero ESLint errors or warnings (`--max-warnings 0`), zero unreferenced dead files/exports |',
+    '| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 16 mandatory governance docs, semantic command/metric parity, 1:1 `src/`<->`ARCHITECTURE.md` inventory, 1:1 SQL<->TS schema parity, 0 circular/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites |',
+    `| **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | \`eslint . --max-warnings 0\` (\`bookarium-security\`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and ${getSecurityPluginRuleCount()} custom AST/taint security rules; zero dead files/exports |`,
     '| **Pass 7** | Production Application Build | `next build --webpack` | Optimized production bundle compilation within byte budget |',
     '',
     '---',

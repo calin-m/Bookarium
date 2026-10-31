@@ -47,16 +47,23 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_UPDATE_EXISTING: ${{ github.event.inputs.update_existing }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit }}
         run: |
           CMD_ARGS=""
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
             CMD_ARGS="$CMD_ARGS --dry-run"
           fi
-          if [ "${{ github.event.inputs.update_existing }}" = "true" ]; then
+          if [ "$INPUT_UPDATE_EXISTING" = "true" ]; then
             CMD_ARGS="$CMD_ARGS --update-existing"
           fi
-          if [ -n "${{ github.event.inputs.limit }}" ]; then
-            CMD_ARGS="$CMD_ARGS --limit=${{ github.event.inputs.limit }}"
+          if [ -n "$INPUT_LIMIT" ]; then
+            if [[ ! "$INPUT_LIMIT" =~ ^[0-9]+$ ]]; then
+              echo "Error: limit input must be a positive integer." >&2
+              exit 1
+            fi
+            CMD_ARGS="$CMD_ARGS --limit=$INPUT_LIMIT"
           fi
           node scripts/sync-gutenberg-catalog.js $CMD_ARGS
 
@@ -64,16 +71,23 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_UPDATE_EXISTING: ${{ github.event.inputs.update_existing }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit }}
         run: |
           TRANS_ARGS=""
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
             TRANS_ARGS="$TRANS_ARGS --dry-run"
           fi
-          if [ "${{ github.event.inputs.update_existing }}" = "true" ]; then
+          if [ "$INPUT_UPDATE_EXISTING" = "true" ]; then
             TRANS_ARGS="$TRANS_ARGS --update-existing"
           fi
-          if [ -n "${{ github.event.inputs.limit }}" ]; then
-            TRANS_ARGS="$TRANS_ARGS --limit=${{ github.event.inputs.limit }}"
+          if [ -n "$INPUT_LIMIT" ]; then
+            if [[ ! "$INPUT_LIMIT" =~ ^[0-9]+$ ]]; then
+              echo "Error: limit input must be a positive integer." >&2
+              exit 1
+            fi
+            TRANS_ARGS="$TRANS_ARGS --limit=$INPUT_LIMIT"
           else
             TRANS_ARGS="$TRANS_ARGS --all"
           fi

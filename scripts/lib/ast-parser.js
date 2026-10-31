@@ -912,10 +912,10 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
     },
     {
       id: 'scripts',
-      layer: 'CLI Data Ingestion Pipelines',
-      scope: '`scripts/*.test.ts`',
+      layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
+      scope: '`scripts/**/*.test.ts`',
       match: (f) => f.startsWith('scripts/'),
-      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, and Wikidata SPARQL FRBR translation clustering.',
+      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, Wikidata SPARQL FRBR translation clustering, and 9-rule ESLint AST & request-taint security verification.',
     },
   ];
 

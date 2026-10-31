@@ -1,2 +1,2 @@
 #!/bin/sh
-node scripts/verify-build.js && git add README.md ROADMAP.md docs/ARCHITECTURE.md CHANGELOG.md docs/QUALITY_AUDIT_REPORT.md docs/quality-audit-results.json
+node scripts/approval-gate.js && node scripts/verify-build.js && git add README.md ROADMAP.md docs/ARCHITECTURE.md docs/GUTENBERG_PARSER.md CHANGELOG.md docs/QUALITY_AUDIT_REPORT.md docs/quality-audit-results.json CONTRIBUTING.md docs/PIPELINE_GUIDE.md AGENTS.md .agents/AGENTS.md

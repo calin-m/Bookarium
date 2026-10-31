@@ -5,7 +5,7 @@ Thank you for your interest in contributing to **Bookarium**! We welcome bug rep
 Bookarium is built on three immutable engineering tenets:
 1. **Public Domain Integrity**: 100% legal, open public domain literature (CC0 / Zero-Copyright / Project Gutenberg). All API queries strictly enforce `copyright=false`.
 2. **Zero Paid Keys Requirement**: The complete user experience operates without third-party paid keys, credit cards, or mandatory account creation.
-3. **Rigorous Quality Engine**: Zero regressions, 100% co-located testing with $\ge 85\%$ test coverage, and automated AST-driven documentation synchronization.
+3. **Rigorous Quality Engine**: Zero regressions, 100% 1:1 co-located testing with tiered `95/95/92/85` test coverage (`Lines >= 95%`, `Statements >= 95%`, `Functions >= 92%`, `Branches >= 85%`), and automated AST-driven documentation synchronization.
 
 ---
 
@@ -26,8 +26,8 @@ If you discover a potential security vulnerability or sensitive data leak, pleas
 Before opening a PR, familiarize yourself with Bookarium's state and rendering paradigms:
 
 - **Framework**: Next.js 16 (App Router, Turbopack, standalone serverless output).
-- **Remote Data Fetching**: TanStack React Query (`useBooks`, `useBookContent`, `useTranslations`).
-- **Local-First State Management**: Zustand (`useBookshelfStore`, `useReaderStore`, `useAnnotationStore`, `useThemeStore`).
+- **Remote Data Fetching**: TanStack React Query (`useBooks`, `useBookContent`, `useBookTranslations`).
+- **Local-First State Management**: 10 Zustand stores (`useBookshelfStore`, `useReaderStore`, `useAuthStore`, `useFellowshipStore`, `useAnnotationStore`, `useAccoladesStore`, `useHabitsStore`, `useJurisdictionStore`, `usePreferencesStore`, `useThemeStore`).
 - **Background Threading**: Web Workers (`src/workers/gutenberg.worker.ts`, `useGutenbergParserWorker.ts`) offloading chapter regex splitting and pagination spread math.
 - **Offline Persistence**: Dual-layer browser storage (localStorage for positions/preferences; IndexedDB for multi-megabyte unabridged book volumes) backed by an App Shell Service Worker (`public/sw.js`).
 - **Styling**: Tailwind CSS v4 (Oxide) with hardware-accelerated Framer Motion transitions.
@@ -93,13 +93,13 @@ npm run docs:sync
 npm run verify
 ```
 This runs all automated quality gateways:
-1. **Pass 0.5**: Secret Prevention Scanner
-2. **Pass 0.75**: 7-Pillar Pre-Commit SAST & OWASP Security Suite (Dependency CVEs, Rate Limiting & Mirror SSRF, DOM XSS, Open Redirects, License, PostgreSQL RLS & `search_path`, OWASP HTTP Headers)
+1. **Pass 0.5**: Secret, Boundary, Tracked `.env*`, `.env.example` Parity & Transitive AST Graph Scanner
+2. **Pass 0.75**: 7-Pillar Pre-Commit SAST & OWASP Security Suite (Dependency CVEs & Lockfile/Workflow Sanity, Rate Limiting & Mirror SSRF, DOM XSS, Open Redirects, License & Public Domain Policy, PostgreSQL Idempotent RLS & `search_path`, OWASP HTTP Headers, and 9-Rule `bookarium-security` AST & Request-Taint Engine)
 3. **Pass 1**: TypeScript Strict Typecheck (`tsc --noEmit`)
-4. **Pass 2 & 3**: Vitest MSW & UI Test Suites ($\ge 85\%$ coverage floor across 185 suites)
-5. **Pass 4**: Living Documentation AST Re-Compilation
-6. **Pass 5**: ADR Decision Ledger Validation
-7. **Pass 6**: ESLint & Knip Quality Audit
+4. **Pass 2 & 3**: Vitest MSW & UI Test Suites (`95/95/92/85` tiered coverage floor across `194` suites)
+5. **Pass 4**: Living Documentation AST Re-Compilation (`npm run docs:sync`)
+6. **Pass 5**: ADR Decision Ledger, 16-File Governance, 1:1 SQL$\leftrightarrow$TS Schema Parity, 0 Circular/Orphan Modules & 100% 1:1 Co-Located Test Parity
+7. **Pass 6**: ESLint (`--max-warnings 0`) & Knip Quality Audit
 8. **Pass 7**: Next.js Production Build Verification
 
 ---
@@ -128,9 +128,9 @@ Target all pull requests to the **`master`** branch.
 
 ## Pull Request Guidelines
 
-1. Ensure every new or modified component (`*.tsx`), hook (`*.ts`), or store (`*.ts`) includes an adjacent, co-located test (`*.test.tsx` or `*.test.ts`).
+1. Ensure every new or modified component (`*.tsx`), hook (`*.ts`), store (`*.ts`), route (`route.ts`), utility (`src/lib/**`), config (`src/config/**`), or worker (`src/workers/**`) includes an adjacent, 1:1 co-located test (`*.test.tsx` or `*.test.ts`).
 2. Adhere to the **Anti-Tautology Protocol**: assert genuine DOM interactions and user flows; never write synthetic tests solely to inflate coverage.
-3. Keep test coverage at or above **85%** across lines, statements, functions, and branches.
+3. Keep test coverage at or above the tiered thresholds (**Lines $\ge 95\%$**, **Statements $\ge 95\%$**, **Functions $\ge 92\%$**, **Branches $\ge 85\%$**).
 4. Run `npm run verify` locally before opening your PR.
 5. Fill out the [Pull Request Template](.github/pull_request_template.md) completely.
 

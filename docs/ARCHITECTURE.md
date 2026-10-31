@@ -1,7 +1,7 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-10-30`  
+> **Last Synchronized**: `2026-10-31`  
 > **Topology Health**: `193` Modules Analyzed • `785` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
@@ -798,7 +798,7 @@ Root build, compiler, styling, deployment, static analysis, and multi-agent gove
 | **`tailwind.config.ts`** | [`tailwind.config.ts`](tailwind.config.ts) | Editorial Design System & Theme Tokens | Defines Booksaw editorial color variables (`background`, `foreground`, `primary`, `surface-elevated`), serif/sans/mono font stacks, `shadow-booksaw` depth shadows, and 3D page-turn keyframes. |
 | **`postcss.config.mjs`** | [`postcss.config.mjs`](postcss.config.mjs) | Tailwind CSS v4 Oxide PostCSS Pipeline | Registers `@tailwindcss/postcss` v4 Oxide compiler plugin for zero-runtime CSS generation. |
 | **`src/app/globals.css`** | [`src/app/globals.css`](src/app/globals.css) | Global Theme Palettes & 3D Book Physics CSS | Configures `@import "tailwindcss"`, `@config "../../tailwind.config.ts"`, Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) CSS custom properties, 3D perspective book spreads (`.book-center-crease`, `.preserve-3d`), and custom reader scrollbars (`--reader-sb-*`). |
-| **`eslint.config.mjs`** | [`eslint.config.mjs`](eslint.config.mjs) | ESLint 9 Flat Config & Zero-Any Gate | Enforces `eslint-config-next/core-web-vitals`, `eslint-config-next/typescript`, and strict `@typescript-eslint/no-explicit-any: "error"` with `--max-warnings 0`. |
+| **`eslint.config.mjs`** | [`eslint.config.mjs`](eslint.config.mjs) | ESLint 9 Flat Config, Zero-Any & 9-Rule AST Security Gate | Enforces `eslint-config-next/core-web-vitals`, `eslint-config-next/typescript`, strict `@typescript-eslint/no-explicit-any: "error"`, and the in-repo `bookarium-security` AST & intra-procedural taint plugin (9 rules) with `--max-warnings 0`. |
 | **`knip.json`** | [`knip.json`](knip.json) | Dead Code & Orphan Dependency Auditor | Configures Knip entrypoints (`src/proxy.ts`, `src/workers/*.ts`, `src/components/motion/*.tsx`) to guarantee zero unused files, zero dead exports, and zero orphan dependencies in Pass 6. |
 | **`vitest.config.mts`** | [`vitest.config.mts`](vitest.config.mts) | Vitest Runner & Tiered V8 Coverage Gate (95/95/92/85) | Configures JSDOM test environment, `src/test/setup.ts` bootstrap, `maxWorkers: 4`, and hard V8 coverage thresholds (`lines: 95%`, `statements: 95%`, `functions: 92%`, `branches: 85%`). |
 | **`.husky/pre-commit`** | [`.husky/pre-commit`](.husky/pre-commit) | Git Pre-Commit Quality & Approval Gate | Executes `npm run gate:approve` (`scripts/approval-gate.js`) and `npm run verify` (`scripts/verify-build.js`) prior to any commit creation. |
@@ -809,15 +809,15 @@ Root build, compiler, styling, deployment, static analysis, and multi-agent gove
 
 ## 🧪 Hermetic Testing, MSW v2 Network Isolation & Coverage Architecture
 
-Bookarium enforces a 4-tier hermetic testing and security verification architecture across **187 Test Suites** (`185` co-located `src/**/*.test.{ts,tsx}` suites + `2` CLI pipeline suites in `scripts/`) with zero external network calls:
+Bookarium enforces a 4-tier hermetic testing and security verification architecture across **194 Test Suites** (`191` co-located `src/**/*.test.{ts,tsx}` suites + `3` CLI pipeline suites in `scripts/`) with zero external network calls:
 
 ### 1. Hermetic Testing, MSW v2 Interception, SAST/OWASP & V8 Coverage Pipeline
 
 ```mermaid
 flowchart TD
-    subgraph SecurityGates ["Static Security & Boundary Gates (scripts/verify-build.js)"]
-        Pass05["🔒 Pass 0.5: Secret & Boundary Scanner\n• Zero live tokens / private keys\n• Zero client SUPABASE_SERVICE_ROLE_KEY"]
-        Pass075["🛡️ Pass 0.75: 7-Pillar SAST & OWASP Suite\n• 0 High/Crit CVEs • SSRF & RateLimiter.check()\n• DOM XSS Sinks • Redirect Sanitizer\n• MIT / copyright=false • 14-Table RLS & search_path\n• 7 OWASP HTTP Security Headers"]
+    subgraph SecurityGates ["Static Security, AST Taint & Boundary Gates (scripts/verify-build.js & eslint.config.mjs)"]
+        Pass05["🔒 Pass 0.5: Secret, File/Path, Env & Graph Scanner\n• Zero live tokens / private keys / service_role JWTs\n• File/Path & 5 MB ceiling • .env.example parity\n• Transitive Client->Server AST Graph Isolation"]
+        Pass075["🛡️ Pass 0.75: 7-Pillar SAST, Lockfile & AST Taint Suite\n• Lockfile SHA-512 & HTTPS npm registry + 0 High/Crit CVEs\n• 9-Rule AST & Request-Taint Engine (SSRF, Redirects, DOM XSS, Eval, Sinks)\n• MIT / copyright=false • 14-Table RLS, Write-Policy & search_path\n• 7 OWASP HTTP Security Headers & Service Worker Guard"]
     end
 
     subgraph TestRunner ["Vitest 4 Runner & JSDOM Bootstrap"]
@@ -826,7 +826,7 @@ flowchart TD
         MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\n• MSW v2 setupServer(...handlers) lifecycle\n• GET /api/books, /api/books/content, /api/books/translations\n• HTTPS Gutendex & 4 Allowlisted Gutenberg Mirrors\n• mockBooks & sampleBookText fixtures (0 external network calls)"]
     end
 
-    subgraph TestTiers ["4-Tier Co-Located Test Suites (187 Suites)"]
+    subgraph TestTiers ["4-Tier Co-Located Test Suites (194 Suites)"]
         Tier1["Tier 1: Pure Domain, Security & AST Suites\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]
         Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\n• useBooks, useBookContent, useBookTranslations\n• supabase-provider, gutendex-provider"]
         Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\n• bookshelf-cloud-sync, sync-utils, offline-storage"]
@@ -861,21 +861,22 @@ flowchart TD
 | **`handlers`** | [`src/mocks/handlers.ts`](src/mocks/handlers.ts) | MSW v2 HTTP Interception Handlers | Canonical Mock Service Worker v2 HTTP request handlers and `mockBooks` public domain fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, Gutendex API, and allowlisted HTTPS Project Gutenberg mirror streams (`aleph`, `pglaf`, `readingroo.ms`, `www.gutenberg.org`) for zero-network deterministic testing. |
 | **`server`** | [`src/mocks/server.ts`](src/mocks/server.ts) | MSW v2 Node Server Instance | Node.js `setupServer(...handlers)` singleton providing hermetic request interception across all unit and integration test suites. |
 | **`vitest.config.mts`** | [`vitest.config.mts`](vitest.config.mts) | Vitest Runner & Tiered V8 Coverage Engine (95/95/92/85) | Vite-native test runner configuration (`jsdom`, `maxWorkers: 4`, `@` path alias) enforcing the hard tiered V8 coverage floor (`lines: 95%`, `statements: 95%`, `functions: 92%`, `branches: 85%`) while excluding non-executable type contracts and barrels. |
+| **`bookarium-security.test.ts`** | [`scripts/eslint-rules/bookarium-security.test.ts`](scripts/eslint-rules/bookarium-security.test.ts) | AST & Request-Taint Security Suite | Unit & codebase-wide AST verification tests for all 9 `bookarium-security` ESLint rules and intra-procedural request taint analysis (`Sources -> Sanitizers -> Sinks`). |
 | **`ingest-translations.test.ts`** | [`scripts/ingest-translations.test.ts`](scripts/ingest-translations.test.ts) | CLI Data Pipeline Test Suite | Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation. |
 | **`sync-gutenberg-catalog.test.ts`** | [`scripts/sync-gutenberg-catalog.test.ts`](scripts/sync-gutenberg-catalog.test.ts) | CLI Data Pipeline Test Suite | Hermetic unit & integration tests verifying Project Gutenberg `pg_catalog.csv.gz` streaming decompression, CSV RFC 4180 parsing, author lifespan extraction, and adaptive Supabase batch upserts. |
 
-### 3. Architectural Layer Test Suite Distribution (187 Suites)
+### 3. Architectural Layer Test Suite Distribution (194 Suites)
 
 | Architectural Layer | Target File Scope | Co-Located Suites | Verified Assertions | Hermetic & Security Testing Strategy |
 | :--- | :--- | :--- | :--- | :--- |
 | **App Router Pages, Layouts & API Routes** | `src/app/**/*.test.{ts,tsx}` | `27` | `267` | NextRequest/NextResponse edge route verification, MSW v2 upstream failover, SSR metadata, and full-page user journeys. |
-| **React 19 UI & Presentation Components** | `src/components/**/*.test.tsx` | `79` | `772` | `@testing-library/react` + `userEvent` accessible role assertions (`getByRole`), WCAG 2.2 focus trapping, confirmation modals, and viewport interaction parity. |
+| **React 19 UI & Presentation Components** | `src/components/**/*.test.tsx` | `80` | `774` | `@testing-library/react` + `userEvent` accessible role assertions (`getByRole`), WCAG 2.2 focus trapping, confirmation modals, and viewport interaction parity. |
 | **Zustand Persistent State Stores** | `src/stores/*.test.ts` | `10` | `197` | Local storage hydration, optimistic outbox mutations, tombstone filtering, LWW conflict resolution, and 6-store session teardown. |
 | **Custom Hooks & TanStack Queries** | `src/hooks/**/*.test.{ts,tsx}` | `23` | `264` | `renderHook` with `QueryClientProvider` + MSW v2 network interception, IndexedDB offline-first reads, Web Speech TTS, and reading ledger hydration. |
-| **Domain Engines, Security Primitives & Gutenberg AST** | `src/lib/**/*.test.ts` | `32` | `394` | Pure computational & security verification (multi-jurisdictional copyright, SSRF/redirect sanitizers, rate limiter, Gutenberg AST segmentation/reflow/pagination, interval annotator). |
-| **Configuration, Anthologies & Design Tokens** | `src/config/*.test.ts` | `12` | `64` | Schema integrity, curated 27-masterwork anthology lifespan validation, and theme/accolade token invariants. |
+| **Domain Engines, Security Primitives & Gutenberg AST** | `src/lib/**/*.test.ts` | `35` | `402` | Pure computational & security verification (multi-jurisdictional copyright, SSRF/redirect sanitizers, rate limiter, Gutenberg AST segmentation/reflow/pagination, interval annotator). |
+| **Configuration, Anthologies & Design Tokens** | `src/config/*.test.ts` | `14` | `68` | Schema integrity, curated 27-masterwork anthology lifespan validation, and theme/accolade token invariants. |
 | **Background Web Worker & Edge Reverse Proxy** | `src/workers/*.test.ts` & `src/proxy.test.ts` | `2` | `11` | Off-thread Web Worker message lifecycle (`PARSE_BOOK`) and Edge Geo-IP / cookie / Supabase session refresh proxy tests. |
-| **CLI Data Ingestion Pipelines** | `scripts/*.test.ts` | `2` | `32` | Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, and Wikidata SPARQL FRBR translation clustering. |
+| **CLI Data Ingestion Pipelines & AST Security Rules** | `scripts/**/*.test.ts` | `3` | `50` | Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, Wikidata SPARQL FRBR translation clustering, and 9-rule ESLint AST & request-taint security verification. |
 
 ---
 
@@ -896,8 +897,8 @@ flowchart TD
 | **`src/mocks/ & src/test/`** | Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`) and JSDOM test environment bootstrap (`setup.ts`). |
 | **`public/`** | Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`). |
 | **`supabase/`** | Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 22 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`). |
-| **`scripts/`** | 14 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites. |
-| **`docs/`** | Living architectural reference (`ARCHITECTURE.md`), 72 Architecture Decision Records (`DECISIONS.md`), AST-compiled parser specification (`GUTENBERG_PARSER.md`), CI/CD runbook (`PIPELINE_GUIDE.md`), and live 7-Gateway quality telemetry (`QUALITY_AUDIT_REPORT.md`, `quality-audit-results.json`). |
+| **`scripts/`** | 15 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), custom ESLint AST & request-taint security rules (`eslint-rules/bookarium-security.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites. |
+| **`docs/`** | Living architectural reference (`ARCHITECTURE.md`), 73 Architecture Decision Records (`DECISIONS.md`), AST-compiled parser specification (`GUTENBERG_PARSER.md`), CI/CD runbook (`PIPELINE_GUIDE.md`), and live 7-Gateway quality telemetry (`QUALITY_AUDIT_REPORT.md`, `quality-audit-results.json`). |
 | **`.github/workflows/ & .husky/`** | Automated GitHub Actions CI/CD (`ci.yml`) and weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), plus Husky pre-commit quality gates. |
 
 ### 2. Living Documentation & Governance Artifacts Catalog
@@ -906,9 +907,9 @@ flowchart TD
 | :--- | :--- | :--- | :--- |
 | **[`README.md`](README.md)** | Hybrid (Curated + Script-Synced) | `scripts/generate-changelog.js` & `scripts/generate-quality-report.js` | Primary project overview, system architecture diagrams, Supabase setup guide, and live test/coverage/release blocks. |
 | **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** | 100% AST-Generated | `scripts/generate-architecture-matrix.js` | Complete full-repository C4 architecture map, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology. |
-| **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | Append-Only Governance Ledger | `scripts/new-adr.js` (Validated in Pass 5) | Sequential Architectural Decision Records (ADR-001 through ADR-072) documenting context, trade-offs, and consequences. |
+| **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | Append-Only Governance Ledger | `scripts/new-adr.js` (Validated in Pass 5) | Sequential Architectural Decision Records (ADR-001 through ADR-073) documenting context, trade-offs, and consequences. |
 | **[`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md)** | 100% AST-Generated | `scripts/generate-parser-docs.js` | Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine. |
-| **[`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all 187 test suites and 2,027 tests. |
+| **[`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all 194 test suites and 2,058 tests. |
 | **[`docs/quality-audit-results.json`](docs/quality-audit-results.json)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Machine-readable JSON telemetry of all 7 gateway passes, coverage percentages, ESLint/Knip counts, and suite totals. |
 | **[`ROADMAP.md`](ROADMAP.md)** | 100% AST-Generated | `scripts/generate-roadmap.js` | Zero-drift product roadmap verifying feature completion directly against source files and AST patterns across Milestones 0–7. |
 | **[`CHANGELOG.md`](CHANGELOG.md)** | 100% Script-Generated | `scripts/generate-changelog.js` | Chronological Keep a Changelog 1.0.0 & SemVer release ledger across all application versions. |
@@ -967,7 +968,7 @@ Every source file is analyzed for upstream imports, downstream consumers, and it
 | [`ReadingStatusSelector.tsx`](src/components/bookshelf/ReadingStatusSelector.tsx) | `types/book.types`, `stores/useReaderStore`, `components/ui/Modal`, `components/ui/Button` | `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx` | [`ReadingStatusSelector.test.tsx`](src/components/bookshelf/ReadingStatusSelector.test.tsx) | Bookshelf Presentation Component |
 | [`MotionReveal.tsx`](src/components/motion/MotionReveal.tsx) | `./motion-config` | _Direct Root Consumer_ | [`MotionReveal.test.tsx`](src/components/motion/MotionReveal.test.tsx) | Motion & Transition Primitive |
 | [`StaggerGroup.tsx`](src/components/motion/StaggerGroup.tsx) | `./motion-config` | _Direct Root Consumer_ | [`StaggerGroup.test.tsx`](src/components/motion/StaggerGroup.test.tsx) | Motion & Transition Primitive |
-| [`motion-config.ts`](src/components/motion/motion-config.ts) | _Root Primitive_ | `MotionReveal.tsx`, `StaggerGroup.tsx` | _Tested via Parent Suite_ | Motion & Transition Primitive |
+| [`motion-config.ts`](src/components/motion/motion-config.ts) | _Root Primitive_ | `MotionReveal.tsx`, `StaggerGroup.tsx` | [`motion-config.test.ts`](src/components/motion/motion-config.test.ts) | Motion & Transition Primitive |
 | [`AdvancedFilterDrawer.tsx`](src/components/presentation/AdvancedFilterDrawer.tsx) | `components/ui/Button`, `config/catalog-filters` | `app/page.tsx` | [`AdvancedFilterDrawer.test.tsx`](src/components/presentation/AdvancedFilterDrawer.test.tsx) | Presentation Component |
 | [`BookCard.tsx`](src/components/presentation/BookCard.tsx) | `hooks/useCursorTooltip`, `components/ui/CursorTooltip`, `types/book.types`, `lib/utils`, `lib/book-tags`, `stores/useBookshelfStore`, `stores/useReaderStore`, `components/ui/Badge`, `components/ui/Button`, `components/ui/Card`, `components/ui/StarRating`, `config/routes`, `hooks/useBookCopyright`, `hooks/useOfflineBooks`, `hooks/useNetworkStatus`, `components/ui/RemoveOfflineBookModal`, `components/ui/RemoveCollectionBookModal` | `BookGrid.tsx`, `BookPreviewModal.tsx` | [`BookCard.test.tsx`](src/components/presentation/BookCard.test.tsx) | Presentation Component |
 | [`BookGrid.tsx`](src/components/presentation/BookGrid.tsx) | `types/book.types`, `./BookCard`, `./BookshelfRack`, `components/ui/Button`, `hooks/useOfflineBooks` | `app/page.tsx` | [`BookGrid.test.tsx`](src/components/presentation/BookGrid.test.tsx) | Presentation Component |
@@ -1031,9 +1032,9 @@ Every source file is analyzed for upstream imports, downstream consumers, and it
 | [`RemoveOfflineBookModal.tsx`](src/components/ui/RemoveOfflineBookModal.tsx) | `components/ui/Modal`, `components/ui/Button` | `app/page.tsx`, `BookCard.tsx`, `BookmarksView.tsx`, `BookshelfRack.tsx`, `DownloadDrawer.tsx` | [`RemoveOfflineBookModal.test.tsx`](src/components/ui/RemoveOfflineBookModal.test.tsx) | UI Primitive |
 | [`SectionHeader.tsx`](src/components/ui/SectionHeader.tsx) | `lib/utils` | `app/page.tsx`, `BookmarksView.tsx`, `NotebookView.tsx` | [`SectionHeader.test.tsx`](src/components/ui/SectionHeader.test.tsx) | UI Primitive |
 | [`StarRating.tsx`](src/components/ui/StarRating.tsx) | _Root Primitive_ | `app/read/[id]/page.tsx`, `BookCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx` | [`StarRating.test.tsx`](src/components/ui/StarRating.test.tsx) | UI Primitive |
-| [`accolades-config.ts`](src/config/accolades-config.ts) | `types/accolades.types` | `app/u/[username]/page.tsx`, `AccoladeCelebrationModal.tsx`, `ExLibrisBookplate.tsx`, `AccountAccoladesCard.tsx`, `accolades-engine.ts`, `useAccoladesStore.ts` | _Tested via Parent Suite_ | Configuration & Fixtures |
+| [`accolades-config.ts`](src/config/accolades-config.ts) | `types/accolades.types` | `app/u/[username]/page.tsx`, `AccoladeCelebrationModal.tsx`, `ExLibrisBookplate.tsx`, `AccountAccoladesCard.tsx`, `accolades-engine.ts`, `useAccoladesStore.ts` | [`accolades-config.test.ts`](src/config/accolades-config.test.ts) | Configuration & Fixtures |
 | [`annotation-tokens.ts`](src/config/annotation-tokens.ts) | `stores/useAnnotationStore` | `NotebookQuoteCard.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx`, `ReaderSurface.tsx`, `TextHighlightPopover.tsx` | [`annotation-tokens.test.ts`](src/config/annotation-tokens.test.ts) | Configuration & Fixtures |
-| [`api-endpoints.ts`](src/config/api-endpoints.ts) | _Root Primitive_ | `metadata-cache.ts`, `useBookContent.ts`, `useBooks.ts`, `useOfflineBooks.ts`, `gutendex-provider.ts` | _Tested via Parent Suite_ | Configuration & Fixtures |
+| [`api-endpoints.ts`](src/config/api-endpoints.ts) | _Root Primitive_ | `metadata-cache.ts`, `useBookContent.ts`, `useBooks.ts`, `useOfflineBooks.ts`, `gutendex-provider.ts` | [`api-endpoints.test.ts`](src/config/api-endpoints.test.ts) | Configuration & Fixtures |
 | [`catalog-filters.ts`](src/config/catalog-filters.ts) | _Root Primitive_ | `AdvancedFilterDrawer.tsx`, `HeroSearch.tsx`, `LanguageSelector.tsx`, `useBookTranslations.ts`, `useCatalogFilters.ts` | [`catalog-filters.test.ts`](src/config/catalog-filters.test.ts) | Configuration & Fixtures |
 | [`featured-books.ts`](src/config/featured-books.ts) | `lib/utils`, `lib/copyright-engine` | `metadata-cache.ts`, `EditorialQuoteSection.tsx`, `HeroFeaturedBook3D.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `ReaderHeader.tsx`, `useBookContent.ts`, `useBookPassageShuffle.ts`, `useCollectionAutoHeal.ts`, `useOfflineBooks.ts`, `book-metadata.ts`, `offline-storage.ts` | [`featured-books.test.ts`](src/config/featured-books.test.ts) | Configuration & Fixtures |
 | [`library-tokens.ts`](src/config/library-tokens.ts) | `config/routes` | `Navbar.tsx`, `views.config.ts` | [`library-tokens.test.ts`](src/config/library-tokens.test.ts) | Configuration & Fixtures |
@@ -1097,9 +1098,9 @@ Every source file is analyzed for upstream imports, downstream consumers, and it
 | [`scroll-utils.ts`](src/lib/scroll-utils.ts) | _Root Primitive_ | `app/page.tsx`, `BookmarksView.tsx`, `NotebookView.tsx`, `ReaderAnnotationsDrawer.tsx` | [`scroll-utils.test.ts`](src/lib/scroll-utils.test.ts) | Domain Engine / Utility |
 | [`smart-search.ts`](src/lib/smart-search.ts) | `types/book.types` | `app/page.tsx`, `in-book-search.ts` | [`smart-search.test.ts`](src/lib/smart-search.test.ts) | Domain Engine / Utility |
 | [`speech-utils.ts`](src/lib/speech-utils.ts) | _Root Primitive_ | `AccountNarrationSubPanel.tsx`, `ReaderSpeechBar.tsx`, `useReaderSpeech.ts` | [`speech-utils.test.ts`](src/lib/speech-utils.test.ts) | Domain Engine / Utility |
-| [`client.ts`](src/lib/supabase/client.ts) | `types/database.types` | `metadata-cache.ts`, `app/api/books/content/route.ts`, `reader-layout-utils.ts`, `app/u/[username]/page.tsx`, `bookshelf-cloud-sync.ts`, `supabase-provider.ts`, `middleware.ts`, `server.ts`, `useAccoladesStore.ts`, `useAnnotationStore.ts`, `useAuthStore.ts`, `useBookshelfStore.ts`, `useFellowshipStore.ts`, `useHabitsStore.ts`, `useReaderStore.ts` | _Tested via Parent Suite_ | Supabase SSR / Client Adapter |
-| [`middleware.ts`](src/lib/supabase/middleware.ts) | `types/database.types`, `./client` | `proxy.ts` | _Tested via Parent Suite_ | Supabase SSR / Client Adapter |
-| [`server.ts`](src/lib/supabase/server.ts) | `types/database.types`, `./client` | `app/auth/callback/route.ts` | _Tested via Parent Suite_ | Supabase SSR / Client Adapter |
+| [`client.ts`](src/lib/supabase/client.ts) | `types/database.types` | `metadata-cache.ts`, `app/api/books/content/route.ts`, `reader-layout-utils.ts`, `app/u/[username]/page.tsx`, `bookshelf-cloud-sync.ts`, `supabase-provider.ts`, `middleware.ts`, `server.ts`, `useAccoladesStore.ts`, `useAnnotationStore.ts`, `useAuthStore.ts`, `useBookshelfStore.ts`, `useFellowshipStore.ts`, `useHabitsStore.ts`, `useReaderStore.ts` | [`client.test.ts`](src/lib/supabase/client.test.ts) | Supabase SSR / Client Adapter |
+| [`middleware.ts`](src/lib/supabase/middleware.ts) | `types/database.types`, `./client` | `proxy.ts` | [`middleware.test.ts`](src/lib/supabase/middleware.test.ts) | Supabase SSR / Client Adapter |
+| [`server.ts`](src/lib/supabase/server.ts) | `types/database.types`, `./client` | `app/auth/callback/route.ts` | [`server.test.ts`](src/lib/supabase/server.test.ts) | Supabase SSR / Client Adapter |
 | [`sync-utils.ts`](src/lib/sync-utils.ts) | `stores/useAuthStore`, `stores/useBookshelfStore`, `stores/useAnnotationStore`, `stores/useReaderStore`, `stores/useHabitsStore`, `stores/useAccoladesStore`, `stores/useFellowshipStore` | `providers.tsx` | [`sync-utils.test.ts`](src/lib/sync-utils.test.ts) | Domain Engine / Utility |
 | [`utils.ts`](src/lib/utils.ts) | _Root Primitive_ | `BookCard.tsx`, `BookmarkCard.tsx`, `BookPreviewModal.tsx`, `BookshelfMobileModal.tsx`, `BookshelfSpine.tsx`, `DownloadDrawer.tsx`, `HeroSearch.tsx`, `NotebookView.tsx`, `GutenbergInfoModal.tsx`, `ReaderDrawerShell.tsx`, `ReaderSpeechBar.tsx`, `Badge.tsx`, `Button.tsx`, `Card.tsx`, `Input.tsx`, `Modal.tsx`, `SectionHeader.tsx`, `featured-books.ts`, `useCollectionAutoHeal.ts`, `book.adapter.ts`, `book-metadata.ts`, `book-sorting.ts`, `useAnnotationStore.ts` | [`utils.test.ts`](src/lib/utils.test.ts) | Domain Engine / Utility |
 | [`proxy.ts`](src/proxy.ts) | `lib/supabase/middleware`, `lib/country-resolver` | `app/layout.tsx`, `useJurisdictionStore.ts` | [`proxy.test.ts`](src/proxy.test.ts) | Edge Reverse Proxy |
@@ -1164,7 +1165,7 @@ Bookarium executes on **Node.js `>=20.0.0`** with **npm `>=10.0.0`** (Node 22 LT
 | **`@types/react`** | `^19.3.0` | Development & AST Tooling | TypeScript definitions for React 19 core primitives. |
 | **`@types/react-dom`** | `^19.3.0` | Development & AST Tooling | TypeScript definitions for React DOM. |
 | **`@vitejs/plugin-react`** | `^6.1.2` | Development & AST Tooling | Fast React transform plugin for Vitest test execution. |
-| **`@vitest/coverage-v8`** | `^4.1.12` | Development & AST Tooling | Native V8 code coverage provider enforcing >=85% test threshold. |
+| **`@vitest/coverage-v8`** | `^4.1.12` | Development & AST Tooling | Native V8 code coverage provider enforcing tiered 95/95/92/85% test thresholds. |
 | **`@vitest/ui`** | `^4.1.12` | Development & AST Tooling | Interactive graphical browser interface for Vitest execution. |
 | **`concurrently`** | `^10.0.6` | Development & AST Tooling | Parallel task orchestration for dev servers, watchers, and browser launchers. |
 | **`eslint`** | `^9.39.5` | Development & AST Tooling | Pluggable static analysis linter enforcing code quality and type safety. |
@@ -1176,7 +1177,7 @@ Bookarium executes on **Node.js `>=20.0.0`** with **npm `>=10.0.0`** (Node 22 LT
 | **`postcss`** | `^8.5.30` | Development & AST Tooling | CSS transformer tool for Tailwind CSS v4 processing. |
 | **`tailwindcss`** | `^4.3.3` | Development & AST Tooling | Utility-first CSS framework v4 with Oxide compiler engine. |
 | **`typescript`** | `^5.9.3` | Development & AST Tooling | Static type system verifying strict compile-time safety (zero any). |
-| **`vitest`** | `^4.1.12` | Development & AST Tooling | Fast Vite-native test runner executing all 187 unit and integration suites. |
+| **`vitest`** | `^4.1.12` | Development & AST Tooling | Fast Vite-native test runner executing all 194 unit and integration suites. |
 | **`postcss-selector-parser`** | `^7.1.6` | Supply-Chain Security Override | Supply-chain override pinning selector parser to patched secure release. |
 | **`fast-glob`** | `npm:tinyglobby@^0.2.17` | Supply-Chain Security Override | Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities. |
 
@@ -1188,7 +1189,8 @@ Comprehensive inventory of standalone Node.js automation, ingestion, and verific
 
 | Script Module | File Path | Primary Invocation | Core Node.js APIs & Engines | Architectural Responsibility |
 | :--- | :--- | :--- | :--- | :--- |
-| **`verify-build.js`** | [`scripts/verify-build.js`](scripts/verify-build.js) | `npm run verify` | `fs`, `path`, `child_process` | Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets, Pass 0.75 SAST/OWASP, Pass 1 types, Pass 2 MSW, Pass 3 Vitest >=85%, Pass 4 docs sync, Pass 5 ADR, Pass 6 ESLint/Knip, Pass 7 Next.js build). |
+| **`verify-build.js`** | [`scripts/verify-build.js`](scripts/verify-build.js) | `npm run verify` | `fs`, `path`, `child_process` | Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env/transitive-graph, Pass 0.75 lockfile/workflows/SAST/OWASP/9-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 docs sync, Pass 5 ADR/checklist/schema-parity/graph/1:1-test-co-location, Pass 6 ESLint/Knip, Pass 7 Next.js build). |
+| **`eslint-rules/bookarium-security.js`** | [`scripts/eslint-rules/bookarium-security.js`](scripts/eslint-rules/bookarium-security.js) | `npm run lint` & `npm run security:audit` | `fs`, `path`, `@babel/parser`, `@babel/traverse` | In-repo custom ESLint & Babel AST security plugin enforcing 9 rules: unsafe fetch, unvalidated redirects, client/server boundary isolation, dangerous execution primitives, DOM XSS injection, intra-procedural request taint analysis (including Prototype Pollution guards), secret env/public route guards, test anti-tautology checks, and Project Gutenberg & copyright policy enforcement. |
 | **`lib/ast-parser.js`** | [`scripts/lib/ast-parser.js`](scripts/lib/ast-parser.js) | _Internal Generator Engine_ | `fs`, `path`, `@babel/parser`, `@babel/traverse` | Babel AST parsing engine extracting module dependency graphs, component catalogs, stores, hooks, utilities, and detecting circular dependencies with zero bloat. |
 | **`generate-architecture-matrix.js`** | [`scripts/generate-architecture-matrix.js`](scripts/generate-architecture-matrix.js) | `npm run matrix:generate` (in `docs:sync`) | `fs`, `path`, `scripts/lib/ast-parser.js` | Programmatically compiles docs/ARCHITECTURE.md directly from source AST, mapping topology, databases, Node.js packages, and CLI automation scripts. |
 | **`generate-changelog.js`** | [`scripts/generate-changelog.js`](scripts/generate-changelog.js) | `npm run changelog:generate` (in `docs:sync`) | `fs`, `path` | Compiles CHANGELOG.md from SemVer release ledgers and synchronizes README.md Latest Release section. |
@@ -1211,14 +1213,14 @@ Bookarium enforces a deterministic 7-stage quality assurance pipeline (`scripts/
 
 | Gateway Pass | Stage Name | Target & Tooling | Enforcement & Governance |
 | :--- | :--- | :--- | :--- |
-| **Pass 0.5** | Secrets, Credentials & Client Privilege Scanner | Regex & client-bundle AST boundary scan | Zero live API keys, private keys, tokens, or `SUPABASE_SERVICE_ROLE_KEY` leaks in client modules |
-| **Pass 0.75** | 7-Pillar SAST & OWASP Security Suite | `npm audit`, AST taint guards, SQL RLS & HTTP Header auditors | Enforces 0 High/Critical CVEs, SSRF allowlist & rate limiting, DOM XSS guards, open-redirect sanitization, license compliance, PostgreSQL RLS + `SECURITY DEFINER` `search_path`, and OWASP HTTP headers/CSP |
+| **Pass 0.5** | Secrets, File/Path, Env & Transitive Graph Scanner | Regex, JWT decoder, `.env.example` & Babel AST import graph | Zero live keys/JWTs, forbidden files, undocumented app `process.env.*` vars, or transitive client->server imports |
+| **Pass 0.75** | 7-Pillar SAST, Lockfile, Workflow & AST Taint Suite | Lockfile SRI/registry check, workflow scanner, `npm audit`, 9-rule AST taint engine, SQL RLS & HTTP Header auditors | Enforces lockfile SHA-512/registry integrity, GitHub Actions workflow hardening, 0 High/Critical CVEs, intra-procedural request taint guards (SSRF, redirects, DB writes, shell, fs, DOM XSS, Prototype Pollution), PostgreSQL RLS + idempotency + write isolation + `search_path`, and OWASP HTTP headers/CSP |
 | **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |
 | **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |
-| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Minimum 85% coverage floor across all co-located suites |
+| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Tiered 95/95/92/85% coverage floor across all co-located suites |
 | **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md`, `GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |
-| **Pass 5** | ADR Schema & Ledger Validation | Markdown AST verification | Validates all ADRs in `docs/DECISIONS.md` conform to Status, Context, Decision, Consequences |
-| **Pass 6** | Code Quality & Dead Code Audit | `eslint . --max-warnings 0` & Knip | Zero ESLint errors or warnings (`--max-warnings 0`), zero unreferenced dead files/exports |
+| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 16 mandatory governance docs, semantic command/metric parity, 1:1 `src/`<->`ARCHITECTURE.md` inventory, 1:1 SQL<->TS schema parity, 0 circular/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites |
+| **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | `eslint . --max-warnings 0` (`bookarium-security`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and 9 custom AST/taint security rules; zero dead files/exports |
 | **Pass 7** | Production Application Build | `next build --webpack` | Optimized production bundle compilation within byte budget |
 
 ---

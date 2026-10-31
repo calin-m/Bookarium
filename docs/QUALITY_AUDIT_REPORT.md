@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 30 Oct 2026 19:36:56 GMT  
+**Last Generated**: Sat, 31 Oct 2026 10:56:37 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 187 passed  
-**Total Verified Tests**: 2027 passed  
+**Total Test Suites**: 194 passed  
+**Total Verified Tests**: 2058 passed  
 
 ---
 
@@ -11,29 +11,29 @@
 
 | Gateway | Check | Status | Details |
 |---|---|---|---|
-| **Pass 0.5** | Pre-Commit Secret Scanner | ✅ Passed | 0 exposed tokens, API keys, private certificates, or client service-role leaks |
-| **Pass 0.75** | SAST & OWASP Security Suite | ✅ Passed | 7-Pillar OWASP verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS & `search_path`, CSP/Headers) |
+| **Pass 0.5** | Secret, File/Path, Env & Graph Scanner | ✅ Passed | 0 exposed tokens/JWTs, forbidden files, undocumented `NEXT_PUBLIC_*` vars, or transitive client->server leaks |
+| **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **187/187 test suites passed** (2027 total tests) |
-| **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $ge$ 95%, Statements $ge$ 95%, Functions $ge$ 92%, Branches $ge$ 85%) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **194/194 test suites passed** (2058 total tests) |
+| **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR Decision Ledger | ✅ Passed | 72 Architectural Decision Records validated |
-| **Pass 6** | ESLint & Knip Audit | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 73 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
+| **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
 ---
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.43%** (10374/10758) — *Target: $ge$ 95%*
-- **Statements**: **95.02%** (11269/11859) — *Target: $ge$ 95%*
-- **Functions**: **93.76%** (2465/2629) — *Target: $ge$ 92%*
-- **Branches**: **88.11%** (10311/11702) — *Target: $ge$ 85%*
+- **Lines**: **96.43%** (10374/10758) — *Target: $\ge$ 95%*
+- **Statements**: **95.05%** (11273/11859) — *Target: $\ge$ 95%*
+- **Functions**: **93.64%** (2462/2629) — *Target: $\ge$ 92%*
+- **Branches**: **88.01%** (10299/11702) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (187 Suites / 2027 Tests)
+## 🧪 Comprehensive Test Suite Catalog (194 Suites / 2058 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 267 Tests)
 
@@ -1644,7 +1644,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (34 Suites · 426 Tests)
+### 📚 Gutenberg Parsers & Metadata (38 Suites · 451 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2181,6 +2181,32 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/supabase/client.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `returns placeholder URL when input is undefined, empty, or only slashes`
+- ✔ `strips trailing /rest/v1 suffixes and trailing slashes`
+- ✔ `initializes createBrowserClient with sanitized URL and anon key fallback`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/supabase/middleware.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `bypasses Supabase client creation when environment variables are missing`
+- ✔ `propagates request and response cookies and refreshes auth user session`
+- ✔ `suppresses auth.getUser rejections without failing route navigation`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/supabase/server.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `wires Next.js cookieStore getAll and setAll into createServerClient`
+- ✔ `gracefully ignores cookieStore.set errors when called from a Server Component`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/supabase/supabase.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `creates a browser Supabase client with environment variables`
@@ -2229,6 +2255,29 @@
 - ✔ `returns days ago for timestamps under 7 days`
 - ✔ `formats date string for timestamps older than 7 days`
 - ✔ `falls back gracefully to "Recently" for invalid dates or epoch zero`
+
+</details>
+
+<details>
+<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (17 tests)</summary>
+
+- ✔ `flags unencrypted http:// URLs and direct untrusted searchParams in fetch()`
+- ✔ `permits HTTPS and relative internal API fetch() calls`
+- ✔ `flags unvalidated NextResponse.redirect() calls using raw searchParams or request.url`
+- ✔ `permits NextResponse.redirect() when path and origin are sanitized via redirect-sanitizer`
+- ✔ `flags server-only module imports and secret process.env access in client components`
+- ✔ `permits NEXT_PUBLIC_* and NODE_ENV in client-reachable modules`
+- ✔ `flags eval(), new Function(), string setTimeout(), and shell execSync() in src/`
+- ✔ `permits function-reference setTimeout(), setInterval(), and RegExp.prototype.exec()`
+- ✔ `flags dangerouslySetInnerHTML, .innerHTML, document.write, and insertAdjacentHTML`
+- ✔ `tracks taint from searchParams, headers, cookies, and request.json() to fetch, redirect, DB writes, shell, fs, and external URLs`
+- ✔ `clears taint when values pass through sanitizers or isSafeUpstreamUrl() guards`
+- ✔ `flags NEXT_PUBLIC_ secret naming, service role usage in API routes, process.env serialization, and missing RateLimiter`
+- ✔ `passes compliant public API route handlers that invoke RateLimiter.check()`
+- ✔ `flags describe.only, it.only, and expect(true).toBe(true) in test files`
+- ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), and direct fetch() to www.gutenberg.org`
+- ✔ `permits copyright=false and mirror-prioritized fetches`
+- ✔ `verifies zero AST or taint violations across the entire production src/ directory`
 
 </details>
 
@@ -2680,7 +2729,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (46 Suites · 242 Tests)
+### 🧩 UI Primitives & Motion (49 Suites · 248 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2827,6 +2876,14 @@
 - ✔ `renders clear button immediately following the selected option across all status variants`
 - ✔ `applies theme-aware border and background classes to active and inactive buttons without unsupported opacity variants`
 - ✔ `opens confirmation modal with bookmark reset notice when marking Finished on a book with an active bookmark`
+
+</details>
+
+<details>
+<summary><b><code>src/components/motion/motion-config.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `defines spring physics, cubic-bezier easing arrays, and duration tokens`
+- ✔ `defines fadeInVariants and staggerContainerVariants using motionTokens`
 
 </details>
 
@@ -3042,12 +3099,28 @@
 </details>
 
 <details>
+<summary><b><code>src/config/accolades-config.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `defines complete visual token mappings for all 4 accolade tiers`
+- ✔ `defines all 6 filter categories starting with "all"`
+- ✔ `evaluates all 14 bookplate accolades accurately across empty and populated contexts`
+
+</details>
+
+<details>
 <summary><b><code>src/config/annotation-tokens.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `contains configurations for all 4 primary highlight colors`
 - ✔ `populates ANNOTATION_COLOR_LIST with all 4 items`
 - ✔ `provides complete styling tokens for each color theme`
 - ✔ `exports valid fallback class for all colors filter badge`
+
+</details>
+
+<details>
+<summary><b><code>src/config/api-endpoints.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `exposes HTTPS upstream Gutenberg/Gutendex URLs and root-relative internal API routes`
 
 </details>
 

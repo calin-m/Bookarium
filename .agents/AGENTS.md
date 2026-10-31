@@ -6,19 +6,32 @@ This document establishes immutable engineering rules, governance procedures, op
 
 ## 1. Core Governance Rules
 
-### Rule 0: Mandatory User Approval & Mutation Protocol
+### Rule 0: Mandatory User Approval, Pre-Plan Impact Audit & 6-Stage Zero-Drift Execution Sequence
 - **Approval-First Execution:** The AI agent must never modify existing files, create new files, perform destructive actions, apply architectural mutations, or install unexpected dependencies without explicit prior user approval and review.
+- **Pre-Plan Pending Diff Audit & Mandatory 6-Stage Plan Layout:** Before generating any new `implementation_plan.md`, the AI agent must run `git status --short` for existing uncommitted changes from previous batches (folding any undocumented pending changes into the plan), trace every affected file through the **Inter-Reference Impact Matrix** (`Rule 1`), and lay out the plan using the **6-Stage Logical Execution Order (Zero-Drift Sequence)** (`Stage 0` through `Stage 5`) so Rule 0 approval covers sealing documentation and running generators in the exact bottom-up order immediately after tests pass.
 - **Proposal & Review:** The AI agent must propose technical plans, explain trade-offs and diffs clearly, and obtain explicit user consent before proceeding with any code edits.
-- **Deterministic Hook Enforcement:** All file mutations (`write_to_file`, `replace_file_content`) are gated by `.agents/hooks.json` and verified prior to release.
+- **Deterministic Hook Enforcement:** All file mutations (`write_to_file`, `replace_file_content`) are gated by `.agents/hooks.json` (`scripts/approval-gate.js`) and verified prior to release.
 - **Human Developer Authority:** The human developer retains final authority over all codebase changes, architectural decisions, and terminal command executions.
 
-### Rule 1: Automated Documentation & Generator Script Co-Evolution
+### Rule 1: Two-Phase Automated Documentation, Generator Overwrite Chain & 6-Stage Zero-Drift Sequence
 All architecture diagrams (`docs/ARCHITECTURE.md`), decision records (`docs/DECISIONS.md`), quality reports (`docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`), parser specifications (`docs/GUTENBERG_PARSER.md`), roadmaps (`ROADMAP.md`), and change logs (`CHANGELOG.md`) must be kept in continuous synchronization with the source code.
-- **Post-Change Audit Protocol:** Whenever routes, stores, queries, hooks, utilities, configurations, workers, database schemas, or components are added, modified, or deleted, the agent MUST verify and update:
-  1. **Source-of-Truth Documentation:** `docs/DECISIONS.md` (ADRs) and `README.md` (if setup, architecture diagrams, or user-facing features changed).
-  2. **Documentation Generator Scripts:** `scripts/lib/ast-parser.js` (Babel AST & repository scanner), `scripts/generate-architecture-matrix.js` (full-repository C4 topology, database/index/seed catalog & module descriptions), `scripts/generate-changelog.js` (release ledger & `README.md` latest release block), `scripts/generate-quality-report.js` (audit report, JSON telemetry & `README.md` badge/suite/ADR sync), `scripts/generate-roadmap.js`, and `scripts/generate-parser-docs.js` so that generated outputs never overwrite or drift from the latest changes.
-- **Trigger:** Synchronize all living docs via `npm run docs:sync` after updating any generator scripts or source modules.
-- **Enforcement:** `npm run verify` runs Pass 4 to automatically re-compile living documentation from source AST and generator scripts.
+- **Generator Overwrite & Dependency Chain (Never Edit Generated Outputs Directly):**
+  - Never manually edit generated files (`docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `CHANGELOG.md`, `ROADMAP.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) or auto-overwritten blocks inside `README.md` (`<!-- BEGIN:architecture-diagrams -->`, `<!-- BEGIN:latest-release -->`, and top telemetry badges/counts); always edit their upstream generator scripts or `docs/DECISIONS.md` first, and only after all `src/` modules and `*.test.{ts,tsx}` files are written on disk.
+- **Inter-Reference Impact Matrix (Files That Must Co-Evolve Together):**
+  - **Database Schema / RLS / Triggers**: `supabase/schema.sql` $\rightarrow$ `src/types/database.types.ts` $\rightarrow$ `scripts/generate-architecture-matrix.js` (`descMap`, `storeMap`, `indexDescMap`) $\rightarrow$ `README.md` + standalone chat SQL migration block (`Rule 9`).
+  - **New / Renamed / Deleted `src/` Module**: `src/<module>.ts(x)` $\rightarrow$ 1:1 co-located `src/<module>.test.ts(x)` $\rightarrow$ `scripts/generate-architecture-matrix.js` (`hookRoles`, `utilityDescriptions`, C4 nodes) $\rightarrow$ `src/mocks/handlers.ts` (if new API endpoint).
+  - **Environment Variables (`process.env.*`)**: `src/` or `scripts/` $\rightarrow$ `.env.example` $\rightarrow$ `.github/workflows/*.yml` $\rightarrow$ `DEVELOPMENT.md` & `README.md`.
+  - **Dependencies, CLI Scripts or Hooks**: `package.json` $\rightarrow$ `knip.json` / `.agents/hooks.json` / `.husky/pre-commit` / `scripts/approval-gate.js` $\rightarrow$ `scripts/generate-architecture-matrix.js` (`purposeMap`, `extractNodeScriptsCatalog`) $\rightarrow$ `docs/PIPELINE_GUIDE.md` & `DEVELOPMENT.md`.
+  - **Security Rules or Quality Gates**: `scripts/eslint-rules/bookarium-security.js` (`+.test.ts`) $\rightarrow$ `eslint.config.mjs` $\rightarrow$ `scripts/verify-build.js` $\rightarrow$ `SECURITY.md`, `CONTRIBUTING.md`, `docs/PIPELINE_GUIDE.md`, `.github/pull_request_template.md`, `AGENTS.md`, & `.agents/AGENTS.md`.
+- **Mandatory 6-Stage Logical Execution Order (Zero-Drift Sequence):**
+  Every `implementation_plan.md` and approved execution turn must follow this strict bottom-up sequence:
+  1. **Stage 0 — Pre-Plan Discovery & Inter-Reference Audit**: Run `git status --short` to inspect pending diffs and map all interconnected files via the Inter-Reference Impact Matrix above.
+  2. **Stage 1 — Contracts, Schema, Configs & Environment**: Update `supabase/schema.sql`, `src/types/*.ts`, `.env.example`, `src/config/*.ts`, `next.config.ts`, `package.json`, `knip.json`, `.agents/hooks.json`, and `.github/workflows/*.yml`.
+  3. **Stage 2 — Production Implementation**: Update `src/lib/**`, `src/workers/**`, `src/stores/**`, `src/hooks/**`, `src/app/api/**`, `src/components/**`, `src/app/**`, and `scripts/**`.
+  4. **Stage 3 — 1:1 Co-Located Tests & Consolidated Pending-Changes Check**: Create/update 1:1 `*.test.ts(x)` files and `src/mocks/handlers.ts`, then automatically run a consolidated check across all pending modified/untracked test suites and the 1:1 co-located tests of all modified source files in `git status --short` (`npx vitest run <all-pending-and-colocated-test-files>`, `npm run typecheck`, `npm run lint`).
+  5. **Stage 4 — Upstream Narrative, Generator Lookup Maps & Static Guides (Before `docs:sync`)**: Update `docs/DECISIONS.md` (ADRs), `scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`, `scripts/generate-changelog.js`, `scripts/generate-quality-report.js`, `scripts/generate-roadmap.js`, `scripts/generate-parser-docs.js`, and static sections of `README.md`, `DEVELOPMENT.md`, `CONTRIBUTING.md`, `SECURITY.md`, and `docs/PIPELINE_GUIDE.md`.
+  6. **Stage 5 — Living Documentation Compilation & Final Gate Verification**: Run `npm run docs:sync` (compiling `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `CHANGELOG.md`, `README.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`, and `ROADMAP.md`), followed by `npm run gate:approve`, `npm run security:audit` (`Pass 0.5`, `Pass 0.75`, `Pass 5`), and `npm run lint` (or full `npm run verify` when requested).
+- **Enforcement:** `npm run verify` runs Pass 4 to re-compile living documentation and Pass 5 to enforce semantic command, suite-count, 1:1 `src/` $\leftrightarrow$ `docs/ARCHITECTURE.md` inventory, working-tree changelog freshness, and generator-lookup parity across all governance docs.
 
 ### Rule 2: Zero-Bloat & AST-Driven Single Source of Truth
 Never manually craft static component matrices, route catalogs, or architectural dependency diagrams that can drift.
@@ -54,8 +67,11 @@ Never manually craft static component matrices, route catalogs, or architectural
   ```
 - **Living Documentation Auto-Staging:** Ensure auto-generated and synchronized documentation files (`docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, `README.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) are staged alongside the implementation.
 
-### Rule 6: Verification Engine & Test Execution Protocol (On-Demand & Error-Gated)
-- **User-Driven Test & Verification Execution:** The AI agent must only execute the test suite and 7-Gateway Quality Engine (`npm run verify`, `npm test`, or test commands) when explicitly requested by the user (e.g. when the user asks "run verify", "run tests", "verify build") or when actively investigating/debugging an encountered runtime, type, or lint error in code. The agent must not autonomously run full test passes on intermediate turns without cause or request.
+### Rule 6: Two-Tier Test Execution, Verification Engine & Post-Remediation Re-Sync Protocol
+- **Two-Tier Test Execution Strategy (Automatic Scoped Pending-Changes Check vs. On-Demand Full Engine):**
+  1. **Tier 1 — Mandatory Automatic Consolidated Pending-Changes Check (Per-Plan / Per-Batch Stage 3 & Pre-Verify):** Upon completing the code and test edits of any approved plan or remediation batch (before `npm run docs:sync` or `npm run verify`), the agent MUST automatically inspect `git status --short` and run `npx vitest run <all-pending-and-colocated-test-files>` across all modified/untracked test suites and the 1:1 co-located tests of all modified source files, alongside `npm run typecheck` and `npm run lint`.
+  2. **Tier 2 — User-Driven Full 194-Suite & 7-Gateway Execution (`npm test` / `npm run verify`):** Reserve the full-repository 194-suite coverage run (`npm test`) and 7-Gateway Quality Engine (`npm run verify`) for when explicitly requested by the user (e.g. "run verify", "run tests", "verify build") or when actively investigating an encountered build/coverage error.
+- **Post-Remediation Re-Sync Loop:** Whenever a verification run (`npm run verify`, `npm run security:audit`, `npm test`, `npm run lint`) reveals defects and remediation fixes are applied, those fixes invalidate the prior documentation snapshot. The agent MUST re-audit whether the fixes altered module inventories, test suite counts, security rules, environment variables, schemas, or architectural behavior, update any affected generator scripts/docs (`CHANGELOG.md`, `DECISIONS.md`, `generate-*.js`), and re-run `npm run docs:sync` + verification so the post-fix state is 100% synchronized.
 - **Pre-Commit Verification:** Before committing changes, pushing branches, or opening pull requests, the full 7-Gateway Quality Engine must pass with zero errors:
   ```bash
   npm run verify
@@ -69,16 +85,18 @@ npm run adr:new -- "Your Decision Title"
 ```
 All ADRs in `docs/DECISIONS.md` must adhere to standard schema (Status, Context, Decision, Consequences).
 
-### Rule 8: Repository Hygiene, Secret Prevention & 7-Pillar SAST/OWASP Governance
-- **Zero Secrets & Boundary Policy (Pass 0.5):** Never commit API keys, RSA/EC/OpenSSH private keys, GitHub/Supabase PATs, webhook tokens, passwords, database URLs with embedded credentials, or `.env` files containing live secrets, and never import `SUPABASE_SERVICE_ROLE_KEY` into client-side modules.
-- **7-Pillar SAST & OWASP Security Suite (Pass 0.75):** All code changes must satisfy the automated security invariants in `scripts/verify-build.js`:
-  1. **Supply-Chain Audit:** 0 High or Critical CVEs (`npm audit --omit=dev`).
+### Rule 8: Repository Hygiene, Secret Prevention & 7-Pillar SAST/OWASP/AST-Taint Governance
+- **Zero Secrets & Boundary Policy (Pass 0.5):** Never commit API keys, RSA/EC/OpenSSH private keys, GitHub/Supabase PATs, `service_role` JWT payloads, webhook tokens, passwords, database URLs with embedded credentials, or Git-tracked `.env*` files; enforce `.env.example` parity, `5 MB` binary limits, and transitive AST graph isolation so `SUPABASE_SERVICE_ROLE_KEY` or server-only modules never enter client bundles.
+- **7-Pillar SAST, OWASP & 9-Rule AST Request-Taint Suite (Pass 0.75 & Pass 6):** All code changes must satisfy the automated security invariants in `scripts/verify-build.js` and `scripts/eslint-rules/bookarium-security.js`:
+  1. **Supply-Chain & Workflow Audit:** 0 High or Critical CVEs (`npm audit --omit=dev`), `package-lock.json` SHA-512/HTTPS/specifier sanity, and GitHub Actions `.github/workflows/*.yml` shell-injection & action-pinning checks.
   2. **API Rate Limiting & Anti-SSRF:** Every `/api/books/**` route enforces `RateLimiter.check()` and `url-validator.ts` HTTPS domain allowlisting across redirect hops.
   3. **DOM XSS Prevention:** Zero unsafe DOM sinks (`dangerouslySetInnerHTML`, `.innerHTML`, `document.write`, string `eval`/`setTimeout`).
   4. **Open-Redirect Sanitization:** All auth callback and redirect flows route through `sanitizeRedirectPath` / `resolveCanonicalAuthOrigin` (`src/lib/redirect-sanitizer.ts`).
   5. **Public Domain & License Integrity:** MIT license and `copyright=false` query enforcement.
-  6. **Database RLS & `SECURITY DEFINER` Hardening:** All 14 PostgreSQL tables enforce `ENABLE ROW LEVEL SECURITY` and all `SECURITY DEFINER` functions enforce `SET search_path = ''`.
+  6. **Database RLS, Idempotency & `SECURITY DEFINER` Hardening:** All 14 PostgreSQL tables enforce `ENABLE ROW LEVEL SECURITY`, idempotent DDL/policies/triggers, scoped write-RLS (`TO service_role`), and `SET search_path = ''` on all `SECURITY DEFINER` functions.
   7. **OWASP HTTP Security Headers:** `next.config.ts` enforces all 7 headers (`Content-Security-Policy` with production `unsafe-eval` stripping, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`).
+  8. **9-Rule `bookarium-security` ESLint & Babel AST Plugin (`scripts/eslint-rules/bookarium-security.js`):** Enforces `no-unsafe-fetch`, `no-unvalidated-redirect`, `no-client-server-boundary-violation`, `no-dangerous-execution`, `no-unsafe-dom-injection`, `no-tainted-request-sink` (intra-procedural request taint analysis including Prototype Pollution guards), `no-secret-env-or-public-route-leak`, `no-focused-or-tautological-tests`, and `enforce-gutenberg-and-copyright-policy`.
+  9. **Governance, 1:1 Schema Parity & 100% 1:1 Test Co-Location (Pass 5):** Enforces 16-file repository governance, contiguous ADR schema validation, 1:1 `supabase/schema.sql` $\leftrightarrow$ `src/types/database.types.ts` table/column parity, 0 circular/orphan modules, and 100% 1:1 co-located test coverage across all executable files (`194` suites).
 
 ### Rule 9: Idempotent Database Schema Co-Evolution, RLS Governance & Live SQL Hand-Off
 - **Canonical Schema Co-Evolution:** Any change, addition, or removal of tables, columns, indexes, triggers, or policies in Supabase must be simultaneously documented and synchronized in:
@@ -109,7 +127,7 @@ All ADRs in `docs/DECISIONS.md` must adhere to standard schema (Status, Context,
    - **Cloud Reconciliation**: `src/lib/sync-utils.ts` and `src/lib/bookshelf-cloud-sync.ts` coordinate bi-directional outbox queues and tombstone filtering across shelves, reading progress, annotations/fellow marginalia, habits, accolades, profiles, and symposiums.
 4. **Layer 4 — Focus Reader, Web Worker AST, Row Bookmark & Web Speech TTS (`src/app/read/[id]/`, `src/lib/gutenberg/`, `src/workers/`)**:
    - `src/workers/gutenberg.worker.ts` and `src/lib/gutenberg/` (`segmentation.ts`, `reflow.ts`, `pagination.ts`, `metadata.ts`, `passages.ts`) parse raw Gutenberg plain text off-thread into reflowed chapters and virtual pages (`5,600` chars/page).
-   - `ReaderSurface.tsx` renders fluid typography, an interactive left-margin row-snapping silk bookmark (`bookmarkRow` persisted in `readingPositions` and encoded fractionally in `scroll_offset`), layered dual-band personal + Symposium fellow highlights (`src/lib/reader-annotator.ts`), and Web Speech API sentence-boundary narration (`useReaderSpeech.ts`).
+   - `ReaderSurface.tsx` renders fluid typography, page brightness adjustment (`brightness` `30%`–`100%`), an interactive left-margin row-snapping silk bookmark (`bookmarkRow` and reflow-resilient `bookmarkText` persisted in `readingPositions` and synchronized via `scroll_offset` and `public.reading_progress.bookmark_text`), layered dual-band personal + Symposium fellow highlights (`src/lib/reader-annotator.ts`), and Web Speech API sentence-boundary narration (`useReaderSpeech.ts`).
 5. **Layer 5 — Supabase PostgreSQL Schema, Triggers, Indexes & Seeds (`supabase/`)**:
    - `supabase/schema.sql` defines **14 RLS-enabled tables** (`public.profiles`, `bookshelves`, `bookshelf_items`, `user_favorites`, `reading_progress`, `user_annotations`, `user_book_curation`, `user_reading_habits`, `user_accolades`, `books`, `book_translations`, `reader_circles`, `symposium_sessions`, and `supabase_migrations.schema_migrations`), **6 stored functions/triggers**, and **22 explicit GIN/B-Tree/unique indexes**, paired with `supabase/seed_books.sql` and `supabase/seed_translations.sql`.
 6. **Layer 6 — Living AST Documentation & 7-Gateway Quality Engine (`scripts/` & `docs/`)**:
