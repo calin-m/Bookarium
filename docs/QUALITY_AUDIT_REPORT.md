@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 31 Oct 2026 13:42:16 GMT  
+**Last Generated**: Sat, 31 Oct 2026 15:25:10 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 194 passed  
-**Total Verified Tests**: 2067 passed  
+**Total Test Suites**: 208 passed  
+**Total Verified Tests**: 2092 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **194/194 test suites passed** (2067 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **208/208 test suites passed** (2092 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 73 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.44%** (10641/11033) — *Target: $\ge$ 95%*
-- **Statements**: **95.06%** (11564/12164) — *Target: $\ge$ 95%*
-- **Functions**: **93.8%** (2513/2679) — *Target: $\ge$ 92%*
-- **Branches**: **87.89%** (10506/11953) — *Target: $\ge$ 85%*
+- **Lines**: **96.58%** (10732/11111) — *Target: $\ge$ 95%*
+- **Statements**: **95.23%** (11658/12241) — *Target: $\ge$ 95%*
+- **Functions**: **94.26%** (2531/2685) — *Target: $\ge$ 92%*
+- **Branches**: **87.99%** (10569/12011) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (194 Suites / 2067 Tests)
+## 🧪 Comprehensive Test Suite Catalog (208 Suites / 2092 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 267 Tests)
 
@@ -466,7 +466,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 436 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 439 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
@@ -964,6 +964,21 @@
 </details>
 
 <details>
+<summary><b><code>src/components/presentation/notebook/NotebookFilterStrip.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders symposium source pills when fellowCount > 0 and triggers source and color filter callbacks`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/notebook/NotebookVolumeGroup.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders volume header, quote count, and invokes onOpenVolume when accessible`
+- ✔ `renders Not Downloaded or Protected badges and blocks onOpenVolume when restricted or offline`
+
+</details>
+
+<details>
 <summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders book metadata, quote excerpt, and note`
@@ -1072,7 +1087,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (17 Suites · 171 Tests)
+### 📖 In-Browser Focus Reader (18 Suites · 172 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1178,7 +1193,7 @@
 - ✔ `renders continuous flow indicator and chapter navigation when in scroll mode`
 - ✔ `renders mobile quick tools and dispatches drawer and theme actions`
 - ✔ `renders Prev and Next buttons with visible labels and accessible touch target classes`
-- ✔ `slides footer down out of view when isHidden is true`
+- ✔ `slides footer down out of view as a fixed overlay when isHidden is true`
 
 </details>
 
@@ -1204,7 +1219,7 @@
 - ✔ `renders and dispatches Annotations toggle with count badge`
 - ✔ `renders Read Aloud button and handles click toggles`
 - ✔ `forwards symposiumCompanion to the sub-header ribbon`
-- ✔ `slides header up out of view when isHidden is true`
+- ✔ `slides header up out of view as a fixed overlay when isHidden is true`
 
 </details>
 
@@ -1224,6 +1239,13 @@
 <summary><b><code>src/components/reader/ReaderLoadingView.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `renders loading indicators and typography text`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderRowBookmark.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders single-row and multi-row line bookmark badges and handles rail click, drag, double-click, and keyboard navigation`
 
 </details>
 
@@ -1647,7 +1669,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (38 Suites · 457 Tests)
+### 📚 Gutenberg Parsers & Metadata (42 Suites · 470 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1696,6 +1718,14 @@
 - ✔ `converts a canonical Book with authorDetails, translators, and explicit URLs to a GutendexBook`
 - ✔ `falls back to parsing author string lifespans and standard Gutenberg format URLs when authorDetails or URLs are absent`
 - ✔ `handles empty authors array gracefully`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/annotation-cloud-sync.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `retains real scholar handles over placeholder handles in setOrUpdateFellowMapEntry and buildFellowScholarsMap`
+- ✔ `maps database rows to FellowAnnotation and converts Annotation to db row payload`
 
 </details>
 
@@ -1920,6 +1950,15 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/fellowship-cloud-sync.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `evaluates placeholder usernames and formats fellow scholar labels`
+- ✔ `heals placeholder usernames from a profile map without overwriting valid handles`
+- ✔ `fetches scholar profile maps and resolves self scholar identity from Supabase`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/gutenberg/metadata.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `extracts Title and Author directly from Gutenberg header preamble`
@@ -2085,6 +2124,25 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/reader-bookmark-geometry.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `collects contiguous text segments while excluding fellow scholar highlight badges`
+- ✔ `returns null when needle or haystack is empty or needle is not found`
+- ✔ `selects the occurrence closest to targetRatio when needle appears multiple times`
+- ✔ `extracts row text and resolves row spans using range bounding rects`
+- ✔ `returns undefined or null gracefully when targetRow <= 0 or range measurement is empty`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/reader-cloud-sync.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `identifies ghost reading positions and ghost cloud rows`
+- ✔ `decodes remote reading positions and preserves local lifespans when remote lacks them`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/reading-analytics.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `formats a date to YYYY-MM-DD`
@@ -2133,7 +2191,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `returns false when element does not exist in DOM`
 - ✔ `does not scroll when element top is already comfortably in view`
@@ -2150,6 +2208,7 @@
 - ✔ `scrubs live across multiple tabs across React handler re-renders, updates data-scrub-active attributes, tracks window move/up, and suppresses post-drag click`
 - ✔ `scrubs live across tabs during tactile touch hold-and-swipe and supports one-finger relative thumb-arc stepping across wide containers`
 - ✔ `tracks 1:1 cursor overlap on mouse across variable-width tabs without jumping ahead of the pointer`
+- ✔ `survives mobile pointercancel during touch gestures and disambiguates hold-to-scrub vs flick-to-scroll on overflowing tab bars`
 
 </details>
 
@@ -2334,7 +2393,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (23 Suites · 264 Tests)
+### 🔄 Hooks & React Query (28 Suites · 269 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (17 tests)</summary>
@@ -2494,6 +2553,13 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/reader/useReaderHabitTelemetry.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `transitions reading status to currently_reading on start and finished at end, and derives symposium companion milestones`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
@@ -2538,6 +2604,13 @@
 - ✔ `clears active inter-sentence delay timeout on stop()`
 - ✔ `handles Chromium fallback polling timers on mount and text flip during active sentence delay`
 - ✔ `hydrates voices when voices load asynchronously after initial mount (Chromium cold start)`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `manages profile display name updates, password validation/updates, verification resend, and account deletion state`
 
 </details>
 
@@ -2616,6 +2689,13 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/useCopyFeedback.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `writes to navigator.clipboard, sets copiedKey, and resets after resetDelayMs`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/useCursorTooltip.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `initializes with default state and 300ms default delay constant`
@@ -2665,6 +2745,13 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/useNotebookMetadataResolver.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `resolves book title, author, and jurisdiction restriction from annotation and featured fixtures, and primes reader store`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `initializes and fetches offline book IDs and metadata on mount`
@@ -2681,6 +2768,13 @@
 - ✔ `handles getAllOfflineBookMetas and getStorageQuota rejection on mount and offline-updated event`
 - ✔ `updates storage quota state across quota change transitions`
 - ✔ `handles edge cases in normalizeOfflineAuthors and downloading events`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useOfflineCatalogFallback.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `returns empty results when online and filters/sorts/paginates downloaded books when offline`
 
 </details>
 
@@ -2738,7 +2832,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (49 Suites · 248 Tests)
+### 🧩 UI Primitives & Motion (51 Suites · 251 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -3002,6 +3096,13 @@
 </details>
 
 <details>
+<summary><b><code>src/components/ui/ConfirmActionModal.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders heading, description, optional preview children, and invokes onClose and onConfirm`
+
+</details>
+
+<details>
 <summary><b><code>src/components/ui/CursorTooltip.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders null when not visible`
@@ -3012,6 +3113,14 @@
 - ✔ `ignores elements inside data-cursor-tooltip-zone="true" and dismisses on scroll or keydown`
 - ✔ `copies book link on clicking a data-copy-book-id block, morphs tooltip in-place to "Copied link to book!", and reverts after 1800ms`
 - ✔ `supports keyboard Enter/Space activation on handleCopyBookLinkClick and direct document click fallback`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/EditorialUnderlineTabs.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders tabs with active underline, responsive label visibility, count badges, and handles selection`
+- ✔ `supports aria-pressed selection mode when selectionAttr is aria-pressed`
 
 </details>
 

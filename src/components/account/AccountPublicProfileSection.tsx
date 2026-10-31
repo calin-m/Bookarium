@@ -24,7 +24,7 @@ import type { Profile } from '@/types/database.types';
 import { useAuthStore, validateUsername } from '@/stores/useAuthStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { ROUTES } from '@/config/routes';
-import { createTabScrubberHandlers } from '@/lib/scroll-utils';
+import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -159,51 +159,23 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
       className="space-y-4"
     >
       {/* Centered Editorial Underline Sub-Tab Bar (Outside & Above Card) */}
-      <div className="flex items-center justify-center border-b border-border">
-        <nav
-          role="tablist"
-          data-no-swipe
-          aria-label="Scholar profile sub-sections"
-          {...createTabScrubberHandlers(setActiveSubTab)}
-          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
-        >
-          <button
-            type="button"
-            role="tab"
-            data-tab-id="identity"
-            aria-label="Identity & Bio"
-            title="Identity & Bio"
-            aria-selected={activeSubTab === 'identity'}
-            onClick={() => setActiveSubTab('identity')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
-              activeSubTab === 'identity'
-                ? 'border-primary text-primary font-bold'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-            }`}
-          >
-            <UserIcon className="w-3.5 h-3.5 shrink-0" />
-            <span className={activeSubTab === 'identity' ? 'inline' : 'hidden md:inline'}>Identity & Bio</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            data-tab-id="privacy"
-            aria-label="Sanctuary & Privacy"
-            title="Sanctuary & Privacy"
-            aria-selected={activeSubTab === 'privacy'}
-            onClick={() => setActiveSubTab('privacy')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
-              activeSubTab === 'privacy'
-                ? 'border-primary text-primary font-bold'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5 shrink-0" />
-            <span className={activeSubTab === 'privacy' ? 'inline' : 'hidden md:inline'}>Sanctuary & Privacy</span>
-          </button>
-        </nav>
-      </div>
+      <EditorialUnderlineTabs<'identity' | 'privacy'>
+        tabs={[
+          {
+            id: 'identity',
+            label: 'Identity & Bio',
+            icon: <UserIcon className="w-3.5 h-3.5 shrink-0" />,
+          },
+          {
+            id: 'privacy',
+            label: 'Sanctuary & Privacy',
+            icon: <Shield className="w-3.5 h-3.5 shrink-0" />,
+          },
+        ]}
+        activeTab={activeSubTab}
+        onSelectTab={setActiveSubTab}
+        ariaLabel="Scholar profile sub-sections"
+      />
 
       {/* Main Settings Card */}
       <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">

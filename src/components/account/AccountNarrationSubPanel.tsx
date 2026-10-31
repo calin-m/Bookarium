@@ -11,8 +11,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { isNaturalVoice, cleanVoiceName } from '@/lib/speech-utils';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 
 export interface AccountNarrationSubPanelProps {
   isActive: boolean;
@@ -277,55 +276,23 @@ export const AccountNarrationSubPanel: React.FC<AccountNarrationSubPanelProps> =
         </span>
       </div>
 
-      <Modal
+      <ConfirmActionModal
         isOpen={isResetConfirmOpen}
         onClose={() => setIsResetConfirmOpen(false)}
+        onConfirm={() => {
+          setIsResetConfirmOpen(false);
+          onResetSpeechPreferences?.();
+        }}
         title="Reset Read-Aloud Settings"
-        maxWidth="sm"
-        backdropClassName="bg-transparent backdrop-blur-none"
-        testId="reset-speech-preferences-modal"
-      >
-        <div className="p-6 space-y-4" data-testid="reset-speech-preferences-dialog">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-              <RotateCcw className="w-5 h-5" />
-            </div>
-            <div className="space-y-1">
-              <p className="font-semibold text-foreground text-sm">
-                Reset Read-Aloud preferences to defaults?
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                This will restore your default narration speed (1x), preferred narrator voice (Auto-Select), auto-page advance, and sentence highlighting settings.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              size="chip"
-              data-testid="cancel-reset-speech-btn"
-              onClick={() => setIsResetConfirmOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="chip"
-              data-testid="confirm-reset-speech-btn"
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent"
-              onClick={() => {
-                setIsResetConfirmOpen(false);
-                onResetSpeechPreferences?.();
-              }}
-            >
-              Reset Settings
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        heading="Reset Read-Aloud preferences to defaults?"
+        description="This will restore your default narration speed (1x), preferred narrator voice (Auto-Select), auto-page advance, and sentence highlighting settings."
+        confirmLabel="Reset Settings"
+        icon={<RotateCcw className="w-5 h-5" />}
+        modalTestId="reset-speech-preferences-modal"
+        dialogTestId="reset-speech-preferences-dialog"
+        cancelTestId="cancel-reset-speech-btn"
+        confirmTestId="confirm-reset-speech-btn"
+      />
     </div>
   );
 };

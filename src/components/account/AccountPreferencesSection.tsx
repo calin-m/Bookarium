@@ -10,7 +10,7 @@ import {
   Sliders,
 } from 'lucide-react';
 import type { AppTheme } from '@/stores/useThemeStore';
-import { createTabScrubberHandlers } from '@/lib/scroll-utils';
+import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { AccountNarrationSubPanel } from './AccountNarrationSubPanel';
 
 export interface AccountPreferencesSectionProps {
@@ -53,51 +53,23 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
   return (
     <div className="space-y-4">
       {/* Centered Editorial Underline Sub-Tab Bar (Outside & Above Card) */}
-      <div className="flex items-center justify-center border-b border-border">
-        <nav
-          role="tablist"
-          data-no-swipe
-          aria-label="Preferences sub-sections"
-          {...createTabScrubberHandlers(setActiveSubTab)}
-          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
-        >
-          <button
-            type="button"
-            role="tab"
-            data-tab-id="appearance"
-            aria-selected={activeSubTab === 'appearance'}
-            aria-label="Appearance & Scroll"
-            title="Appearance & Scroll"
-            onClick={() => setActiveSubTab('appearance')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
-              activeSubTab === 'appearance'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5 shrink-0" />
-            <span className={activeSubTab === 'appearance' ? 'inline' : 'hidden md:inline'}>Appearance & Scroll</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            data-tab-id="narration"
-            aria-selected={activeSubTab === 'narration'}
-            aria-label="Read-Aloud Studio"
-            title="Read-Aloud Studio"
-            onClick={() => setActiveSubTab('narration')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
-              activeSubTab === 'narration'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-            }`}
-          >
-            <Headphones className="w-3.5 h-3.5 shrink-0" />
-            <span className={activeSubTab === 'narration' ? 'inline' : 'hidden md:inline'}>Read-Aloud Studio</span>
-          </button>
-        </nav>
-      </div>
+      <EditorialUnderlineTabs<PreferencesSubTabId>
+        tabs={[
+          {
+            id: 'appearance',
+            label: 'Appearance & Scroll',
+            icon: <Sliders className="w-3.5 h-3.5 shrink-0" />,
+          },
+          {
+            id: 'narration',
+            label: 'Read-Aloud Studio',
+            icon: <Headphones className="w-3.5 h-3.5 shrink-0" />,
+          },
+        ]}
+        activeTab={activeSubTab}
+        onSelectTab={setActiveSubTab}
+        ariaLabel="Preferences sub-sections"
+      />
 
       {/* Main Preferences Card */}
       <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">

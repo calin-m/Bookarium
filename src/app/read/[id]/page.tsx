@@ -7,13 +7,12 @@ import { useBooks } from '@/hooks/queries/useBooks';
 import { useBookTranslations } from '@/hooks/queries/useBookTranslations';
 import { useReaderStore, useHydratedReader } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
-import type { GutendexBook } from '@/types/book.types';
 import {
   extractGutenbergHeaderMetadata,
 } from '@/lib/gutenberg-parser';
 import { useGutenbergParserWorker } from '@/hooks/reader/useGutenbergParserWorker';
 import { getReaderTheme } from '@/config/reader-themes';
-import { resolveBookMetadata, isPlaceholderTitle, hasAuthorLifespans } from '@/lib/book-metadata';
+import { resolveBookMetadata } from '@/lib/book-metadata';
 import { areAnnotationsOverlapping, pairOverlappingAnnotations } from '@/lib/reader-annotator';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
 import { ReaderFooter } from '@/components/reader/ReaderFooter';
@@ -30,7 +29,7 @@ import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
 import { useReaderSession } from '@/hooks/reader/useReaderSession';
-import { useReadingTimer } from '@/hooks/useReadingTimer';
+import { useReaderHabitTelemetry } from '@/hooks/reader/useReaderHabitTelemetry';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
@@ -48,7 +47,6 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Trophy } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
-import { SITE_CONFIG } from '@/config/site-config';
 
 function BookReaderContent() {
   const params = useParams();
@@ -274,86 +272,6 @@ function BookReaderContent() {
     });
   }, [numericId, currentBook, booksData, extractedMeta]);
 
-  // Auto-heal missing or placeholder metadata on any stored annotations for this volume
-  useEffect(() => {
-    if (numericId > 0 && resolvedIdentity.title && !isPlaceholderTitle(resolvedIdentity.title)) {
-      updateBookMetadata(numericId, resolvedIdentity.title, resolvedIdentity.author);
-    }
-  }, [numericId, resolvedIdentity.title, resolvedIdentity.author, updateBookMetadata]);
-
-  // Synchronize document.title with authentic resolved book identity for client transitions
-  useEffect(() => {
-    if (resolvedIdentity.title && !isPlaceholderTitle(resolvedIdentity.title)) {
-      const authorSuffix = resolvedIdentity.displayAuthor ? ` by ${resolvedIdentity.displayAuthor}` : '';
-      document.title = `${resolvedIdentity.title}${authorSuffix} | ${SITE_CONFIG.NAME}`;
-    }
-  }, [resolvedIdentity.title, resolvedIdentity.displayAuthor]);
-
-  // Persist authentic resolved book identity into recentBooks and warm reader store
-  const autoRetriedBookIdRef = React.useRef<number | null>(null);
-  const initializedBookIdRef = React.useRef<number | null>(null);
-  useEffect(() => {
-    if (numericId <= 0) return;
-
-    const existingRecent = useBookshelfStore.getState().recentBooks.find((b) => b.id === numericId);
-    const existingRecentHasLifespans = hasAuthorLifespans(existingRecent?.authors);
-    const resolvedHasLifespans = hasAuthorLifespans(resolvedIdentity.authors);
-
-    if (booksData?.results?.[0]) {
-      const apiBook = booksData.results[0];
-      const apiBookHasLifespans = hasAuthorLifespans(apiBook.authors);
-      const needsEnrichment =
-        initializedBookIdRef.current !== numericId ||
-        (!existingRecentHasLifespans && apiBookHasLifespans);
-
-      if (needsEnrichment) {
-        initializedBookIdRef.current = numericId;
-        useBookshelfStore.getState().addRecentBook(apiBook);
-        useReaderStore.getState().openReader(apiBook);
-        useBookshelfStore.getState().enrichSavedBooks([apiBook]);
-        useReaderStore.getState().enrichReadingPositions([apiBook]);
-      }
-      if (isContentError && autoRetriedBookIdRef.current !== numericId && apiBookHasLifespans) {
-        autoRetriedBookIdRef.current = numericId;
-        void refetch();
-      }
-    } else if (
-      resolvedIdentity.title &&
-      !isPlaceholderTitle(resolvedIdentity.title) &&
-      (!existingRecent || isPlaceholderTitle(existingRecent.title)) &&
-      (initializedBookIdRef.current !== numericId ||
-        (resolvedHasLifespans && !existingRecentHasLifespans))
-    ) {
-      initializedBookIdRef.current = numericId;
-      const bookObj: GutendexBook = {
-        id: numericId,
-        title: resolvedIdentity.title,
-        authors: resolvedIdentity.authors?.length
-          ? resolvedIdentity.authors
-          : resolvedIdentity.author
-          ? [{ name: resolvedIdentity.author, birth_year: null, death_year: null }]
-          : [],
-        translators: resolvedIdentity.translators || [],
-        subjects: resolvedIdentity.primarySubject ? [resolvedIdentity.primarySubject] : [],
-        bookshelves: [],
-        languages: resolvedIdentity.languages || ['en'],
-        copyright: false,
-        media_type: 'Text',
-        formats: {
-          'image/jpeg': `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.cover.medium.jpg`,
-          'application/epub+zip': `https://www.gutenberg.org/ebooks/${numericId}.epub3.images`,
-        },
-        download_count: 0,
-      };
-      useBookshelfStore.getState().addRecentBook(bookObj);
-      useReaderStore.getState().openReader(bookObj);
-      if (resolvedHasLifespans) {
-        useBookshelfStore.getState().enrichSavedBooks([bookObj]);
-        useReaderStore.getState().enrichReadingPositions([bookObj]);
-      }
-    }
-  }, [numericId, booksData, resolvedIdentity, isContentError, refetch]);
-
   const bookTitle = resolvedIdentity.title;
   const bookAuthor = resolvedIdentity.author;
 
@@ -475,63 +393,6 @@ function BookReaderContent() {
     return pairOverlappingAnnotations(bookAnnotations, bookFellowAnnotations).length;
   }, [bookAnnotations, bookFellowAnnotations]);
 
-  // Active Symposium & Companion Progress Derivation
-  const activeSymposium = useMemo(
-    () =>
-      symposiums.find(
-        (s) => s.book_id === numericId && (s.status === 'active' || s.status === 'completed')
-      ) || null,
-    [symposiums, numericId]
-  );
-
-  const currentUserId = user?.id;
-  const symposiumCompanion = useMemo(() => {
-    if (!activeSymposium) return null;
-    const isHost = currentUserId ? activeSymposium.host_id === currentUserId : true;
-    const username = isHost
-      ? activeSymposium.fellow_username || 'fellow'
-      : activeSymposium.host_username || 'fellow';
-    const displayName = isHost
-      ? activeSymposium.fellow_display_name || username
-      : activeSymposium.host_display_name || username;
-    const progress = isHost
-      ? activeSymposium.fellow_progress
-      : activeSymposium.host_progress;
-    const currentChapterIndex = isHost
-      ? activeSymposium.fellow_chapter
-      : activeSymposium.host_chapter;
-    return { username, displayName, progress, currentChapterIndex };
-  }, [activeSymposium, currentUserId]);
-
-  const [isMilestoneDismissed, setIsMilestoneDismissed] = useState(false);
-  const symposiumMilestoneNotice = useMemo(() => {
-    if (!symposiumCompanion || isMilestoneDismissed) return null;
-    if (symposiumCompanion.progress >= 25) {
-      return {
-        username: symposiumCompanion.username,
-        displayName: symposiumCompanion.displayName,
-        chapterIndex: symposiumCompanion.currentChapterIndex,
-        progress: symposiumCompanion.progress,
-      };
-    }
-    return null;
-  }, [symposiumCompanion, isMilestoneDismissed]);
-
-  // Synchronize reading progress with active Literary Symposium session
-  useEffect(() => {
-    if (activeSymposium && activeSymposium.status === 'active' && numericId > 0) {
-      syncSymposiumProgress(numericId, activeChapterIndex, volumeProgress);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- narrowed to scalar fields to avoid infinite cycles
-  }, [
-    activeSymposium?.id,
-    activeSymposium?.status,
-    numericId,
-    volumeProgress,
-    activeChapterIndex,
-    syncSymposiumProgress,
-  ]);
-
   const handleSelectSearchMatch = useCallback((chapterIndex: number, page: number) => {
     jumpTo(chapterIndex, page);
     closeDrawer();
@@ -559,25 +420,7 @@ function BookReaderContent() {
     activeChapterIndex === chaptersWithPagination.length - 1 &&
     currentChapterPage === activeChapterPageCount;
 
-  const [isCompletionDismissed, setIsCompletionDismissed] = useState(false);
   const isAtEnd = isNextDisabled && chaptersWithPagination.length > 0;
-  const isCompletionModalOpen = isAtEnd && !isCompletionDismissed;
-
-  // Auto-transition to 'currently_reading' when reader begins a book
-  useEffect(() => {
-    if (numericId > 0 && !isContentLoading && contentText) {
-      if (!readingStatus || readingStatus === 'want_to_read') {
-        setReadingStatus(numericId, 'currently_reading', user?.id);
-      }
-    }
-  }, [numericId, isContentLoading, contentText, readingStatus, setReadingStatus, user?.id]);
-
-  // Auto-update reading status to 'finished' when reaching the final page
-  useEffect(() => {
-    if (isAtEnd && readingStatus !== 'finished' && numericId > 0) {
-      setReadingStatus(numericId, 'finished', user?.id);
-    }
-  }, [isAtEnd, readingStatus, numericId, user?.id, setReadingStatus]);
 
   const activeTheme = getReaderTheme(theme);
 
@@ -611,12 +454,31 @@ function BookReaderContent() {
     onPreviousPage: handlePrevPage,
   });
 
-  // Idle-aware authentic reading & listening telemetry (Milestone 3 Habits & Streaks)
-  useReadingTimer({
-    bookId: numericId > 0 ? numericId : undefined,
-    enabled: !isContentLoading && !isContentError && !!contentText,
+  const {
+    activeSymposium,
+    symposiumCompanion,
+    symposiumMilestoneNotice,
+    dismissSymposiumMilestone,
+    isCompletionModalOpen,
+    dismissCompletionModal,
+  } = useReaderHabitTelemetry({
+    numericId,
     userId: user?.id,
+    isContentLoading,
+    isContentError,
+    contentText,
     isPlayingTTS: speech.isPlaying,
+    isAtEnd,
+    readingStatus,
+    setReadingStatus,
+    symposiums,
+    activeChapterIndex,
+    volumeProgress,
+    syncSymposiumProgress,
+    booksData,
+    resolvedIdentity,
+    refetch,
+    updateBookMetadata,
   });
 
   const handleTextSelected = useCallback(
@@ -817,7 +679,7 @@ function BookReaderContent() {
         }}
         symposiumCompanion={symposiumCompanion}
         symposiumMilestoneNotice={symposiumMilestoneNotice}
-        onDismissSymposiumMilestone={() => setIsMilestoneDismissed(true)}
+        onDismissSymposiumMilestone={dismissSymposiumMilestone}
         isHidden={areBarsHidden}
       />
 
@@ -1036,7 +898,7 @@ function BookReaderContent() {
       {/* Volume Completion Modal */}
       <Modal
         isOpen={isCompletionModalOpen}
-        onClose={() => setIsCompletionDismissed(true)}
+        onClose={dismissCompletionModal}
         title="Volume Finished!"
         maxWidth="md"
       >
@@ -1084,7 +946,7 @@ function BookReaderContent() {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setIsCompletionDismissed(true)}
+              onClick={dismissCompletionModal}
               className="text-xs font-mono uppercase"
             >
               Close

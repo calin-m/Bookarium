@@ -671,6 +671,85 @@ describe('resolveScrubbedTabId & createTabScrubberHandlers', () => {
 
     handlers.onPointerUp({ currentTarget: tablist });
   });
+
+  it('survives mobile pointercancel during touch gestures and disambiguates hold-to-scrub vs flick-to-scroll on overflowing tab bars', () => {
+    vi.useFakeTimers();
+    try {
+      const onSelectTab = vi.fn();
+      const handlers = createTabScrubberHandlers(onSelectTab, { holdDelayMs: 160 });
+
+      // Configure overflowing container (scrollWidth 600 > clientWidth 300 + 4)
+      Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 600 });
+      Object.defineProperty(tablist, 'clientWidth', { configurable: true, value: 300 });
+      vi.spyOn(tablist, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        right: 300,
+        width: 300,
+        top: 0,
+        bottom: 40,
+        height: 40,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+      const scrollIntoViewMock = vi.fn();
+      btnB.scrollIntoView = scrollIntoViewMock;
+
+      // 1. Quick horizontal flick (< 160ms, > 8px movement) yields to native horizontal scroll without scrubbing
+      handlers.onPointerDown({
+        pointerType: 'touch',
+        clientX: 30,
+        currentTarget: tablist,
+      });
+      handlers.onTouchStart({
+        touches: [{ clientX: 30, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      handlers.onTouchMove({
+        touches: [{ clientX: 80, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).not.toHaveBeenCalled();
+
+      // 2. Hold for >= 160ms on overflowing bar locks into scrub mode, ignores touch pointercancel, and auto-centers active tab
+      handlers.onPointerDown({
+        pointerType: 'touch',
+        clientX: 30,
+        currentTarget: tablist,
+      });
+      handlers.onTouchStart({
+        touches: [{ clientX: 30, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      vi.advanceTimersByTime(170);
+      expect(tablist.getAttribute('data-scrubbing')).toBe('true');
+
+      // Mobile browser fires pointercancel(touch) when finger begins moving horizontally
+      handlers.onPointerCancel({ pointerType: 'touch', currentTarget: tablist });
+      const cancelEv = new Event('pointercancel') as PointerEvent;
+      Object.defineProperty(cancelEv, 'pointerType', { value: 'touch' });
+      window.dispatchEvent(cancelEv);
+
+      // Window touchmove continues tracking and switches to 'profile' (btnB)
+      const touchMoveEv = new Event('touchmove', { cancelable: true }) as TouchEvent;
+      Object.defineProperty(touchMoveEv, 'touches', {
+        value: [{ clientX: 85, clientY: 20 }],
+      });
+      window.dispatchEvent(touchMoveEv);
+
+      expect(onSelectTab).toHaveBeenCalledWith('profile');
+      expect(scrollIntoViewMock).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+
+      window.dispatchEvent(new Event('touchend'));
+      expect(tablist.hasAttribute('data-scrubbing')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 

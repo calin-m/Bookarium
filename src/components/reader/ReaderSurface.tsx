@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { BookOpen, Bookmark, ZoomIn } from 'lucide-react';
+import { BookOpen, ZoomIn } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 import type { FellowAnnotation } from '@/stores/useAnnotationStore';
@@ -10,8 +10,13 @@ import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { ANNOTATION_COLOR_CONFIG } from '@/config/annotation-tokens';
 import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
 import { computeAnnotationSpans, type AnyAnnotation } from '@/lib/reader-annotator';
+import {
+  extractRowTextFromElement,
+  resolveTextRowSpanInElement,
+} from '@/lib/reader-bookmark-geometry';
 import { ReaderErrorView } from './ReaderErrorView';
 import { ReaderLoadingView } from './ReaderLoadingView';
+import { ReaderRowBookmark } from './ReaderRowBookmark';
 
 export interface ReaderSurfaceProps {
   theme: ReaderTheme;
@@ -139,72 +144,13 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   );
 
   const extractRowText = useCallback(
-    (targetRow: number): string | undefined => {
-      if (targetRow <= 0 || !contentToDisplay) return undefined;
-      const el = contentBodyRef.current;
-      if (!el) return undefined;
-
-      const segments = collectContentTextSegments(el);
-      const totalChars = segments.length > 0 ? segments[segments.length - 1].end : 0;
-      if (totalChars <= 0) return undefined;
-
-      const getCharRow = (charIdx: number): number | null => {
-        const rect = measureCharRect(segments, charIdx);
-        if (!rect) return null;
-        return computeRowFromClientY(rect.top + rect.height / 2);
-      };
-
-      if (getCharRow(0) === null) return undefined;
-
-      let lo = 0;
-      let hi = totalChars - 1;
-      let firstIdx = totalChars;
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        const r = getCharRow(mid);
-        if (r === null) return undefined;
-        if (r >= targetRow) {
-          firstIdx = mid;
-          hi = mid - 1;
-        } else {
-          lo = mid + 1;
-        }
-      }
-
-      lo = 0;
-      hi = totalChars - 1;
-      let lastIdx = -1;
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        const r = getCharRow(mid);
-        if (r === null) return undefined;
-        if (r <= targetRow) {
-          lastIdx = mid;
-          lo = mid + 1;
-        } else {
-          hi = mid - 1;
-        }
-      }
-
-      if (firstIdx <= lastIdx && firstIdx < totalChars && lastIdx >= 0) {
-        const extracted = contentToDisplay.slice(firstIdx, lastIdx + 1).trim();
-        if (extracted.length > 0) return extracted;
-      }
-
-      if (firstIdx < totalChars) {
-        const nearestRow = getCharRow(firstIdx);
-        if (nearestRow !== null) {
-          let endIdx = firstIdx;
-          while (endIdx + 1 < totalChars && getCharRow(endIdx + 1) === nearestRow) {
-            endIdx++;
-          }
-          const fallbackSlice = contentToDisplay.slice(firstIdx, endIdx + 1).trim();
-          if (fallbackSlice.length > 0) return fallbackSlice;
-        }
-      }
-
-      return undefined;
-    },
+    (targetRow: number): string | undefined =>
+      extractRowTextFromElement(
+        contentBodyRef.current,
+        contentToDisplay,
+        targetRow,
+        computeRowFromClientY
+      ),
     [contentToDisplay, computeRowFromClientY]
   );
 
@@ -212,35 +158,15 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     (
       textToFind: string,
       fallbackRow: number
-    ): { startRow: number; endRow: number } | null => {
-      if (!textToFind || !contentToDisplay) return null;
-      const el = contentBodyRef.current;
-      if (!el) return null;
-
-      const segments = collectContentTextSegments(el);
-      const totalChars = segments.length > 0 ? segments[segments.length - 1].end : 0;
-      if (totalChars <= 0) return null;
-
-      const maxRows = Math.max(1, getMaxBookmarkRows());
-      const targetRatio = Math.min(1, Math.max(0, fallbackRow / maxRows));
-      const match = findBestTextMatch(contentToDisplay, textToFind, targetRatio);
-      if (!match) return null;
-
-      const startRect = measureCharRect(segments, match.start);
-      const endRect = measureCharRect(segments, Math.max(match.start, match.end - 1));
-      if (!startRect || !endRect) return null;
-
-      const startRow = Math.max(
-        1,
-        computeRowFromClientY(startRect.top + startRect.height / 2)
-      );
-      const endRow = Math.max(
-        startRow,
-        computeRowFromClientY(endRect.top + endRect.height / 2)
-      );
-
-      return { startRow, endRow };
-    },
+    ): { startRow: number; endRow: number } | null =>
+      resolveTextRowSpanInElement(
+        contentBodyRef.current,
+        contentToDisplay,
+        textToFind,
+        fallbackRow,
+        getMaxBookmarkRows(),
+        computeRowFromClientY
+      ),
     [contentToDisplay, getMaxBookmarkRows, computeRowFromClientY]
   );
 
@@ -543,7 +469,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     <main
       ref={mainRef}
       data-brightness={brightness}
-      className={`relative flex-1 overflow-y-scroll overscroll-y-contain transition-colors duration-theme select-text ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
+      className={`relative flex-1 h-full w-full overflow-y-scroll overscroll-y-contain transition-colors duration-theme select-text ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
       role="main"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -576,8 +502,10 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       <article
         key={readingMode === 'paginated' ? `p-${activeChapterIndex}-${chapterPage ?? (contentToDisplay?.slice(0, 30) || '0')}` : `s-${activeChapterIndex}`}
         onMouseUp={handleSelection}
-        className={`mx-auto pl-12 pr-5 sm:px-14 md:px-16 pt-10 sm:pt-16 ${
-          isSpeechOpen || highlightedSentence ? 'pb-36 sm:pb-40' : 'pb-10 sm:pb-16'
+        className={`mx-auto pl-12 pr-5 sm:px-14 md:px-16 pt-[calc(7.5rem+env(safe-area-inset-top,0px))] sm:pt-[calc(9rem+env(safe-area-inset-top,0px))] ${
+          isSpeechOpen || highlightedSentence
+            ? 'pb-[calc(11.5rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(12.5rem+env(safe-area-inset-bottom,0px))]'
+            : 'pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))]'
         } select-text ${widthClass} ${fontClass} animate-page-turn`}
         style={{
           fontSize: `${fontSize}px`,
@@ -614,120 +542,20 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
           {/* Standard Reading Body with Interactive Margin Row Bookmark */}
           <div className="relative">
             {contentToDisplay && (
-              <>
-                {/* Click-to-Snap Margin Rail */}
-                <div
-                  data-testid="reader-bookmark-rail"
-                  data-prevent-swipe
-                  aria-hidden="true"
-                  title="Click to snap reading bookmark to this line"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    emitUserBookmarkRowChange(computeRowFromClientY(e.clientY));
-                  }}
-                  className="absolute right-full mr-0 top-0 bottom-0 w-10 sm:w-12 z-10 cursor-pointer group/rail select-none"
-                >
-                  <div className="mx-auto h-full w-px bg-transparent group-hover/rail:bg-primary/20 transition-colors" />
-                </div>
-
-                {/* Draggable Row-Snapping Bookmark Ribbon & Guide Line */}
-                <div
-                  ref={bookmarkElRef}
-                  role="slider"
-                  tabIndex={0}
-                  aria-label="Reading line bookmark"
-                  aria-valuemin={1}
-                  aria-valuemax={estimatedMaxBookmarkRows + 1}
-                  aria-valuenow={effectiveStartRow + 1}
-                  aria-valuetext={
-                    effectiveEndRow > effectiveStartRow
-                      ? `Lines ${effectiveStartRow + 1} to ${effectiveEndRow + 1}`
-                      : `Line ${effectiveStartRow + 1}`
-                  }
-                  data-testid="reader-page-bookmark"
-                  data-bookmark-row={effectiveStartRow}
-                  data-bookmark-end-row={effectiveEndRow}
-                  data-prevent-swipe
-                  title={
-                    effectiveStartRow > 0
-                      ? effectiveEndRow > effectiveStartRow
-                        ? `Bookmarked at Lines ${effectiveStartRow + 1}–${effectiveEndRow + 1} (drag to move, double-click to reset)`
-                        : `Bookmarked at Line ${effectiveStartRow + 1} (drag to move, double-click to reset)`
-                      : 'Drag down to bookmark your reading line on this page'
-                  }
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    setIsDraggingBookmark(true);
-                  }}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    setIsDraggingBookmark(true);
-                  }}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                    setIsDraggingBookmark(true);
-                  }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    emitUserBookmarkRowChange(0);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown') {
-                      e.preventDefault();
-                      emitUserBookmarkRowChange(
-                        Math.min(getMaxBookmarkRows(), effectiveStartRow + 1)
-                      );
-                    } else if (e.key === 'ArrowUp') {
-                      e.preventDefault();
-                      emitUserBookmarkRowChange(Math.max(0, effectiveStartRow - 1));
-                    } else if (e.key === 'Home') {
-                      e.preventDefault();
-                      emitUserBookmarkRowChange(0);
-                    }
-                  }}
-                  style={{
-                    top: `${effectiveStartRow * lineStepPx}px`,
-                    height: `${bookmarkSpanRows * lineStepPx}px`,
-                  }}
-                  className={`absolute left-0 right-0 z-10 pointer-events-none select-none focus:outline-none group/bookmark ${
-                    isDraggingBookmark ? 'transition-none' : 'transition-[top,height] duration-150 ease-out'
-                  }`}
-                >
-                  {/* Interactive Margin Ribbon Tab */}
-                  <div
-                    data-prevent-swipe
-                    className={`pointer-events-auto absolute right-full mr-1.5 sm:mr-2.5 origin-right top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded-l-md rounded-r-xs border transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
-                      isBookmarkActive
-                        ? 'bg-primary text-primary-foreground border-primary scale-105 opacity-100'
-                        : 'bg-card/85 text-primary border-primary/30 opacity-65 hover:opacity-100 group-focus-visible/bookmark:opacity-100 group-focus-visible/bookmark:ring-2 group-focus-visible/bookmark:ring-primary'
-                    }`}
-                  >
-                    <Bookmark className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current shrink-0" />
-                    <span
-                      data-testid="reader-bookmark-line-badge"
-                      className={`text-[9px] font-mono font-bold leading-none ${
-                        isBookmarkActive
-                          ? 'inline'
-                          : 'hidden sm:group-hover/bookmark:inline'
-                      }`}
-                    >
-                      {effectiveEndRow > effectiveStartRow
-                        ? `L${effectiveStartRow + 1}–${effectiveEndRow + 1}`
-                        : `L${effectiveStartRow + 1}`}
-                    </span>
-                  </div>
-
-                  {/* Subtle Full-Width Row Guide Line & Highlight */}
-                  <div
-                    data-testid="reader-bookmark-guide-line"
-                    className={`w-full h-full rounded-xs border-b transition-opacity duration-150 ${
-                      isBookmarkActive
-                        ? 'opacity-100 border-primary/45 bg-primary/[0.04] dark:bg-primary/[0.08]'
-                        : 'opacity-0 border-transparent bg-transparent'
-                    }`}
-                  />
-                </div>
-              </>
+              <ReaderRowBookmark
+                bookmarkElRef={bookmarkElRef}
+                effectiveStartRow={effectiveStartRow}
+                effectiveEndRow={effectiveEndRow}
+                bookmarkSpanRows={bookmarkSpanRows}
+                estimatedMaxBookmarkRows={estimatedMaxBookmarkRows}
+                lineStepPx={lineStepPx}
+                isBookmarkActive={isBookmarkActive}
+                isDraggingBookmark={isDraggingBookmark}
+                getMaxBookmarkRows={getMaxBookmarkRows}
+                computeRowFromClientY={computeRowFromClientY}
+                onStartDrag={() => setIsDraggingBookmark(true)}
+                onEmitRowChange={emitUserBookmarkRowChange}
+              />
             )}
 
             <div
@@ -893,93 +721,3 @@ function renderContentWithAnnotations(
   return <>{elements}</>;
 }
 
-interface TextNodeSegment {
-  node: Text;
-  start: number;
-  end: number;
-}
-
-function collectContentTextSegments(root: HTMLElement): TextNodeSegment[] {
-  if (typeof document === 'undefined' || typeof document.createTreeWalker !== 'function') {
-    return [];
-  }
-  const segments: TextNodeSegment[] = [];
-  let offset = 0;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      const parent = node.parentElement;
-      if (parent?.closest('[data-testid="fellow-highlight-badge"]')) {
-        return NodeFilter.FILTER_REJECT;
-      }
-      return NodeFilter.FILTER_ACCEPT;
-    },
-  });
-  let current = walker.nextNode() as Text | null;
-  while (current) {
-    const len = current.nodeValue?.length ?? 0;
-    if (len > 0) {
-      segments.push({
-        node: current,
-        start: offset,
-        end: offset + len,
-      });
-      offset += len;
-    }
-    current = walker.nextNode() as Text | null;
-  }
-  return segments;
-}
-
-function measureCharRect(segments: TextNodeSegment[], charIdx: number): DOMRect | null {
-  if (typeof document === 'undefined' || typeof document.createRange !== 'function') {
-    return null;
-  }
-  for (const seg of segments) {
-    if (charIdx >= seg.start && charIdx < seg.end) {
-      try {
-        const range = document.createRange();
-        const localOffset = charIdx - seg.start;
-        range.setStart(seg.node, localOffset);
-        range.setEnd(seg.node, localOffset + 1);
-        const rect = range.getBoundingClientRect();
-        if (rect && (rect.height > 0 || rect.width > 0 || rect.top !== 0 || rect.bottom !== 0)) {
-          return rect;
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    }
-  }
-  return null;
-}
-
-function findBestTextMatch(
-  haystack: string,
-  needle: string,
-  targetRatio: number
-): { start: number; end: number } | null {
-  const trimmed = needle.trim();
-  if (!trimmed || !haystack) return null;
-
-  let searchIndex = 0;
-  let bestMatch: { start: number; end: number; distance: number } | null = null;
-  const totalLen = Math.max(1, haystack.length);
-
-  while (searchIndex <= haystack.length - trimmed.length) {
-    const found = haystack.indexOf(trimmed, searchIndex);
-    if (found === -1) break;
-    const ratio = found / totalLen;
-    const distance = Math.abs(ratio - targetRatio);
-    if (!bestMatch || distance < bestMatch.distance) {
-      bestMatch = {
-        start: found,
-        end: found + trimmed.length,
-        distance,
-      };
-    }
-    searchIndex = found + 1;
-  }
-
-  return bestMatch ? { start: bestMatch.start, end: bestMatch.end } : null;
-}

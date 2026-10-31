@@ -5,8 +5,7 @@ import { X, Info, BookOpen, Sparkles, RotateCcw } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { formatFellowScholarLabel, isPlaceholderUsername } from '@/stores/useFellowshipStore';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 
 export interface ResumeNoticeData {
   chapterTitle: string;
@@ -109,55 +108,23 @@ export const ReaderSubHeaderRibbon: React.FC<ReaderSubHeaderRibbonProps> = ({
           </div>
         </div>
 
-        <Modal
+        <ConfirmActionModal
           isOpen={isRestartConfirmOpen}
           onClose={() => setIsRestartConfirmOpen(false)}
+          onConfirm={() => {
+            setIsRestartConfirmOpen(false);
+            onRestart?.();
+          }}
           title="Restart Volume"
-          maxWidth="sm"
-          backdropClassName="bg-transparent backdrop-blur-none"
-          testId="restart-volume-modal"
-        >
-          <div className="p-6 space-y-4" data-testid="restart-volume-dialog">
-            <div className="flex items-start gap-3.5">
-              <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-                <RotateCcw className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold text-foreground text-sm">
-                  Restart this volume from Page 1?
-                </p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  This will reset your current reading position back to the beginning of the book (0%). Your saved highlights and personal notes will remain untouched.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-              <Button
-                type="button"
-                variant="outline"
-                size="chip"
-                data-testid="cancel-restart-volume-btn"
-                onClick={() => setIsRestartConfirmOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="chip"
-                data-testid="confirm-restart-volume-btn"
-                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent"
-                onClick={() => {
-                  setIsRestartConfirmOpen(false);
-                  onRestart?.();
-                }}
-              >
-                Restart Book
-              </Button>
-            </div>
-          </div>
-        </Modal>
+          heading="Restart this volume from Page 1?"
+          description="This will reset your current reading position back to the beginning of the book (0%). Your saved highlights and personal notes will remain untouched."
+          confirmLabel="Restart Book"
+          icon={<RotateCcw className="w-5 h-5" />}
+          modalTestId="restart-volume-modal"
+          dialogTestId="restart-volume-dialog"
+          cancelTestId="cancel-restart-volume-btn"
+          confirmTestId="confirm-restart-volume-btn"
+        />
       </>
     );
   }

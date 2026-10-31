@@ -19,10 +19,10 @@ import { useHydratedFellowship, formatFellowScholarLabel } from '@/stores/useFel
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { Button } from '@/components/ui/Button';
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
+import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { Input } from '@/components/ui/Input';
-import { Modal } from '@/components/ui/Modal';
 import { ROUTES } from '@/config/routes';
-import { createTabScrubberHandlers } from '@/lib/scroll-utils';
 
 const SymposiumInviteModal = dynamic(
   () => import('@/components/symposium/SymposiumInviteModal').then((mod) => mod.SymposiumInviteModal),
@@ -209,95 +209,38 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
       data-testid="account-symposium-section"
     >
       {/* Centered Editorial Underline Sub-Tab Bar (Outside & Above Card) */}
-      <div className="flex items-center justify-center border-b border-border">
-        <nav
-          role="tablist"
-          data-no-swipe
-          aria-label="Symposium and Reader Circle sections"
-          {...createTabScrubberHandlers(setActiveSubTab)}
-          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
-        >
-          <button
-            type="button"
-            role="tab"
-            data-tab-id="symposiums"
-            aria-selected={activeSubTab === 'symposiums'}
-            aria-label={`Active Symposiums (${activeSymposiums.length})`}
-            title={`Active Symposiums (${activeSymposiums.length})`}
-            onClick={() => setActiveSubTab('symposiums')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
-              activeSubTab === 'symposiums'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 shrink-0" />
-            <span className={activeSubTab === 'symposiums' ? 'inline' : 'hidden md:inline'}>Active Symposiums</span>
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold ${
-                activeSubTab === 'symposiums'
-                  ? 'bg-primary/15 text-primary'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {activeSymposiums.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            data-tab-id="circle"
-            aria-selected={activeSubTab === 'circle'}
-            aria-label={`Reader Circle (${acceptedFellows.length})`}
-            title={`Reader Circle (${acceptedFellows.length})`}
-            onClick={() => setActiveSubTab('circle')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
-              activeSubTab === 'circle'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 shrink-0" />
-            <span className={activeSubTab === 'circle' ? 'inline' : 'hidden md:inline'}>Reader Circle</span>
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold ${
-                activeSubTab === 'circle'
-                  ? 'bg-primary/15 text-primary'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {acceptedFellows.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            data-tab-id="invitations"
-            aria-selected={activeSubTab === 'invitations'}
-            aria-label="Invitations"
-            title="Invitations"
-            onClick={() => setActiveSubTab('invitations')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
-              activeSubTab === 'invitations'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-            }`}
-          >
-            <Mail className="w-3.5 h-3.5 shrink-0" />
-            <span className={activeSubTab === 'invitations' ? 'inline' : 'hidden md:inline'}>Invitations</span>
-            {pendingCount > 0 && (
-              <span
-                className="px-1.5 py-0.5 rounded-full text-[10px] leading-none bg-amber-500 text-white font-bold shrink-0"
-                data-testid="symposium-pending-badge"
-              >
-                {pendingCount}
-              </span>
-            )}
-          </button>
-        </nav>
-      </div>
+      <EditorialUnderlineTabs<SymposiumSubTabId>
+        tabs={[
+          {
+            id: 'symposiums',
+            label: 'Active Symposiums',
+            ariaLabel: `Active Symposiums (${activeSymposiums.length})`,
+            title: `Active Symposiums (${activeSymposiums.length})`,
+            icon: <BookOpen className="w-3.5 h-3.5 shrink-0" />,
+            count: activeSymposiums.length,
+          },
+          {
+            id: 'circle',
+            label: 'Reader Circle',
+            ariaLabel: `Reader Circle (${acceptedFellows.length})`,
+            title: `Reader Circle (${acceptedFellows.length})`,
+            icon: <Users className="w-3.5 h-3.5 shrink-0" />,
+            count: acceptedFellows.length,
+          },
+          {
+            id: 'invitations',
+            label: 'Invitations',
+            icon: <Mail className="w-3.5 h-3.5 shrink-0" />,
+            count: pendingCount,
+            countVariant: 'amber',
+            countTestId: 'symposium-pending-badge',
+            hideZeroCount: true,
+          },
+        ]}
+        activeTab={activeSubTab}
+        onSelectTab={setActiveSubTab}
+        ariaLabel="Symposium and Reader Circle sections"
+      />
 
       {/* Main Symposium Card */}
       <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
@@ -783,54 +726,20 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
         preselectedFellow={modalPreselectedFellow}
       />
 
-      <Modal
+      <ConfirmActionModal
         isOpen={pendingConfirmAction !== null && confirmModalCopy !== null}
         onClose={() => setPendingConfirmAction(null)}
+        onConfirm={handleConfirmPendingAction}
         title={confirmModalCopy?.title || 'Confirm Action'}
-        maxWidth="sm"
-        backdropClassName="bg-transparent backdrop-blur-none"
-        testId="fellowship-confirm-modal"
-      >
-        {confirmModalCopy && (
-          <div className="p-6 space-y-4" data-testid="fellowship-confirm-dialog">
-            <div className="flex items-start gap-3.5">
-              <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold text-foreground text-sm">
-                  {confirmModalCopy.heading}
-                </p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {confirmModalCopy.description}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-              <Button
-                type="button"
-                variant="outline"
-                size="chip"
-                data-testid="cancel-fellowship-action-btn"
-                onClick={() => setPendingConfirmAction(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="chip"
-                data-testid="confirm-fellowship-action-btn"
-                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent"
-                onClick={handleConfirmPendingAction}
-              >
-                {confirmModalCopy.confirmLabel}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+        heading={confirmModalCopy?.heading || ''}
+        description={confirmModalCopy?.description || ''}
+        confirmLabel={confirmModalCopy?.confirmLabel || 'Confirm'}
+        icon={<Trash2 className="w-5 h-5" />}
+        modalTestId="fellowship-confirm-modal"
+        dialogTestId="fellowship-confirm-dialog"
+        cancelTestId="cancel-fellowship-action-btn"
+        confirmTestId="confirm-fellowship-action-btn"
+      />
     </div>
   );
 };

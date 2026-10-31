@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Highlighter,
@@ -8,49 +8,26 @@ import {
   Trash2,
   Layers,
   Clock,
-  AlertTriangle,
-  Lock,
-  WifiOff,
 } from 'lucide-react';
 import { NotebookQuoteCard } from './NotebookQuoteCard';
+import { NotebookFilterStrip } from './notebook/NotebookFilterStrip';
+import { NotebookVolumeGroup } from './notebook/NotebookVolumeGroup';
 import { CollectionToolbar } from './CollectionToolbar';
 import type { SortOption } from './CollectionSortDropdown';
-import { smartScrollToContent } from '@/lib/scroll-utils';
+import { smartScrollToContent, createTabScrubberHandlers } from '@/lib/scroll-utils';
 import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
 import {
-  useAnnotationStore,
   useHydratedAnnotations,
   type Annotation,
   type FellowAnnotation,
   type HighlightColor,
 } from '@/stores/useAnnotationStore';
-import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useFellowshipStore } from '@/stores/useFellowshipStore';
-import { useJurisdiction } from '@/stores/useJurisdictionStore';
-import { useOfflineBooks } from '@/hooks/useOfflineBooks';
-import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import {
-  isBookPublicDomainInJurisdiction,
-  parseLifespansFromName,
-  type GenericBookInput,
-} from '@/lib/copyright-engine';
-import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
-import { useBooks } from '@/hooks/queries/useBooks';
+import { useNotebookMetadataResolver } from '@/hooks/useNotebookMetadataResolver';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 import { Pagination } from '@/components/ui/Pagination';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import {
-  cleanBookTitle,
-  isPlaceholderAuthor,
-  isPlaceholderTitle,
-  hasAuthorLifespans,
-  featuredHeroToGutendexBook,
-} from '@/lib/book-metadata';
-import { formatAuthorNames } from '@/lib/utils';
-import { attachHorizontalDragAndWheelScroll, createTabScrubberHandlers } from '@/lib/scroll-utils';
 import {
   pairOverlappingAnnotations,
   filterAndPairAnnotationsBySource,
@@ -61,25 +38,10 @@ export type NotebookDisplayItem = (Annotation | FellowAnnotation) & {
   pairedFellowAnnotation?: FellowAnnotation;
   matchingOwnAnnotation?: Annotation;
 };
-import type { GutendexBook } from '@/types/book.types';
-
-import {
-  ANNOTATION_COLOR_LIST,
-  ALL_COLORS_FILTER_BADGE,
-} from '@/config/annotation-tokens';
 
 export interface NotebookViewProps {
   onBrowseCatalog?: () => void;
 }
-
-const COLOR_FILTERS: Array<{ id: HighlightColor | 'all'; label: string; badgeClass: string }> = [
-  { id: 'all', label: 'All Colors', badgeClass: ALL_COLORS_FILTER_BADGE },
-  ...ANNOTATION_COLOR_LIST.map((c) => ({
-    id: c.id,
-    label: c.label,
-    badgeClass: c.filterBadgeClass,
-  })),
-];
 
 export type NotebookChronoSortOption = 'date_desc' | 'date_asc' | 'title_asc' | 'author_asc' | 'downloaded';
 export type NotebookVolumeSortOption =
@@ -111,7 +73,6 @@ const VOLUME_SORT_OPTIONS: SortOption[] = [
 
 const CHRONO_PAGE_SIZE = 12;
 const VOLUME_PAGE_SIZE = 6;
-const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
 
 export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) => {
   const router = useRouter();
@@ -127,126 +88,8 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     clearAllAnnotations,
   } = useHydratedAnnotations();
   const user = useAuthStore((s) => s.user);
-
-  // Cross-reference metadata sources
-  const savedBooks = useBookshelfStore((s) => s.savedBooks);
-  const favoriteBooks = useBookshelfStore((s) => s.favoriteBooks);
-  const recentBooks = useBookshelfStore((s) => s.recentBooks);
-  const updateBookMetadata = useAnnotationStore((s) => s.updateBookMetadata);
-  const { country } = useJurisdiction();
-  const { isBookOffline, offlineBooks = EMPTY_OFFLINE_BOOKS } = useOfflineBooks();
-  const { isOnline, isOffline } = useNetworkStatus();
-  const [attemptedMetadataIds, setAttemptedMetadataIds] = useState<Set<number>>(() => new Set());
-  const [resolvedRemoteBooks, setResolvedRemoteBooks] = useState<Map<number, GutendexBook>>(() => new Map());
-
-  // Identify book IDs across own and fellow annotations that lack resolved titles/authors
-  // (or lack author lifespans in non-US jurisdictions) and are not in local stores or static fixtures
-  const missingMetadataBookIds = useMemo(() => {
-    const ids = new Set<number>();
-    const allAnnotations = [...annotations, ...fellowAnnotations];
-    const cachedRemotePool = Array.from(resolvedRemoteBooks.values());
-    for (const ann of allAnnotations) {
-      if (!ann.bookId || ann.bookId <= 0 || attemptedMetadataIds.has(ann.bookId)) continue;
-      const cleanTitle = cleanBookTitle(ann.bookTitle);
-      const hasValidTitle = Boolean(cleanTitle && !isPlaceholderTitle(cleanTitle));
-      const hasValidAuthor = Boolean(ann.bookAuthor && !isPlaceholderAuthor(ann.bookAuthor));
-      const annParsed = ann.bookAuthor
-        ? parseLifespansFromName(ann.bookAuthor)
-        : { birthYear: null, deathYear: null };
-      const annHasLifespan = annParsed.birthYear != null || annParsed.deathYear != null;
-
-      if (hasValidTitle && hasValidAuthor && (country === 'US' || annHasLifespan)) continue;
-
-      const hasVerifiedStoreAuthors = (b: GutendexBook) => {
-        if (country === 'US') return true;
-        return hasAuthorLifespans(b.authors);
-      };
-
-      const inLocalPools = [savedBooks, favoriteBooks, recentBooks, offlineBooks, cachedRemotePool].some((pool) =>
-        pool.some((b) => b.id === ann.bookId && hasVerifiedStoreAuthors(b))
-      );
-      const inFeatured = FEATURED_HERO_BOOKS.some((b) => b.id === ann.bookId);
-
-      if (!inLocalPools && !inFeatured) {
-        ids.add(ann.bookId);
-      }
-    }
-    return Array.from(ids).sort((a, b) => a - b);
-  }, [
-    annotations,
-    fellowAnnotations,
-    savedBooks,
-    favoriteBooks,
-    recentBooks,
-    offlineBooks,
-    country,
-    attemptedMetadataIds,
-    resolvedRemoteBooks,
-  ]);
-
-  // Query Gutendex remote API / cache for any unindexed annotated books
-  const { data: remoteBooksData } = useBooks(
-    { ids: missingMetadataBookIds.join(','), page: 1, copyright: false, includeRestrictedMetadata: true },
-    { enabled: isOnline && missingMetadataBookIds.length > 0 }
-  );
-
-  const [prevRemoteResults, setPrevRemoteResults] = useState<unknown>(null);
-  if (remoteBooksData?.results && remoteBooksData.results !== prevRemoteResults) {
-    setPrevRemoteResults(remoteBooksData.results);
-    if (remoteBooksData.results.length > 0) {
-      let nextMap: Map<number, GutendexBook> | null = null;
-      for (const book of remoteBooksData.results) {
-        if (resolvedRemoteBooks.get(book.id) !== book) {
-          if (!nextMap) nextMap = new Map(resolvedRemoteBooks);
-          nextMap.set(book.id, book);
-        }
-      }
-      if (nextMap) {
-        setResolvedRemoteBooks(nextMap);
-      }
-    }
-    if (missingMetadataBookIds.length > 0) {
-      let nextSet: Set<number> | null = null;
-      for (const id of missingMetadataBookIds) {
-        if (!attemptedMetadataIds.has(id)) {
-          if (!nextSet) nextSet = new Set(attemptedMetadataIds);
-          nextSet.add(id);
-        }
-      }
-      if (nextSet) {
-        setAttemptedMetadataIds(nextSet);
-      }
-    }
-  }
-
-  // Auto-heal missing metadata in local annotations, bookshelf, and reading positions when remote books resolve
-  useEffect(() => {
-    if (!remoteBooksData?.results || remoteBooksData.results.length === 0) return;
-    useBookshelfStore.getState().enrichSavedBooks(remoteBooksData.results);
-    useReaderStore.getState().enrichReadingPositions(remoteBooksData.results);
-    for (const book of remoteBooksData.results) {
-      const author = book.authors ? formatAuthorNames(book.authors) : undefined;
-      updateBookMetadata(book.id, book.title, author);
-    }
-  }, [remoteBooksData, updateBookMetadata]);
-
-  // Hydrate reader circle and symposium companion identities and resolve any stale placeholder usernames
-  useEffect(() => {
-    if (!user?.id || !isOnline) return;
-    const fellowshipStore = useFellowshipStore.getState();
-    const annotationStore = useAnnotationStore.getState();
-
-    fellowshipStore
-      .fetchFellowshipData(user.id)
-      .then(async () => {
-        await annotationStore.syncWithCloud(user.id);
-        annotationStore.enrichFellowAnnotations();
-        return annotationStore.resolveStaleFellowProfiles();
-      })
-      .catch(() => {
-        // Non-blocking
-      });
-  }, [user?.id, isOnline]);
+  const { resolveBookDetails, primeReaderForBook, isBookOffline, isOffline } =
+    useNotebookMetadataResolver(annotations, fellowAnnotations, user?.id);
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -269,158 +112,6 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     setPrevFilterKey(filterKey);
     setCurrentPage(1);
   }
-
-  const colorTabsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = colorTabsRef.current;
-    if (!el) return;
-    return attachHorizontalDragAndWheelScroll(el);
-  }, []);
-
-  // Helper to resolve literary metadata for an annotation
-  const resolveBookDetails = useCallback(
-    (ann: Annotation) => {
-      const matchingPoolBooks = [
-        ...savedBooks,
-        ...favoriteBooks,
-        ...recentBooks,
-        ...offlineBooks,
-        ...Array.from(resolvedRemoteBooks.values()),
-        ...(remoteBooksData?.results || []),
-      ].filter((b) => b.id === ann.bookId);
-      const fromPool = matchingPoolBooks[0];
-      const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === ann.bookId);
-
-      let poolTitle = '';
-      let poolAuthor = '';
-      for (const b of matchingPoolBooks) {
-        const cleanedPoolTitle = cleanBookTitle(b.title);
-        if (!poolTitle && cleanedPoolTitle && !isPlaceholderTitle(cleanedPoolTitle)) {
-          poolTitle = cleanedPoolTitle;
-        }
-        if (!poolAuthor && b.authors?.length) {
-          const formatted = formatAuthorNames(b.authors);
-          if (!isPlaceholderAuthor(formatted)) {
-            poolAuthor = formatted;
-          }
-        }
-      }
-
-      const cleanedAnnTitle = cleanBookTitle(ann.bookTitle);
-      const hasValidAnnTitle = cleanedAnnTitle && !isPlaceholderTitle(cleanedAnnTitle);
-
-      const candidateTitle =
-        (hasValidAnnTitle ? cleanedAnnTitle : '') ||
-        poolTitle ||
-        fromFeatured?.title ||
-        cleanedAnnTitle;
-
-      const cleanedAnnAuthor = !isPlaceholderAuthor(ann.bookAuthor)
-        ? ann.bookAuthor?.replace(/^by\s+/i, '').trim()
-        : '';
-
-      const candidateAuthor =
-        cleanedAnnAuthor || poolAuthor || fromFeatured?.author || '';
-
-      const cleanTitle = cleanBookTitle(candidateTitle);
-      const finalTitle =
-        (!isPlaceholderTitle(cleanTitle) ? cleanTitle : '') ||
-        cleanBookTitle(fromFeatured?.title) ||
-        poolTitle ||
-        (ann.bookId ? `Volume #${ann.bookId}` : 'Public Domain Classic');
-
-      const finalAuthor =
-        candidateAuthor || fromFeatured?.author || 'Classic Literature';
-
-      let bookEntity: GenericBookInput | undefined =
-        fromPool ||
-        (fromFeatured
-          ? {
-              id: fromFeatured.id,
-              title: fromFeatured.title,
-              authors: [
-                {
-                  name: fromFeatured.author,
-                  birth_year: fromFeatured.authorBirthYear,
-                  death_year: fromFeatured.authorDeathYear,
-                },
-              ],
-            }
-          : undefined);
-
-      // Fallback enrichment: If a book entity exists but its authors lack lifespan dates,
-      // recover them from FEATURED_HERO_BOOKS or parse them from author strings
-      if (bookEntity && bookEntity.authors && bookEntity.authors.length > 0) {
-        const authorsNeedLifespan = bookEntity.authors.every((a) => {
-          if (typeof a === 'string') return true;
-          return a.birth_year == null && a.death_year == null;
-        });
-
-        if (authorsNeedLifespan) {
-          if (fromFeatured) {
-            bookEntity = {
-              ...bookEntity,
-              authors: [
-                {
-                  name: fromFeatured.author,
-                  birth_year: fromFeatured.authorBirthYear,
-                  death_year: fromFeatured.authorDeathYear,
-                },
-              ],
-            };
-          } else {
-            // Attempt parsing lifespans embedded in author names e.g. "Austen, Jane (1775-1817)"
-            const enrichedAuthors = bookEntity.authors.map((a) => {
-              const nameStr = typeof a === 'string' ? a : a.name;
-              const parsed = parseLifespansFromName(nameStr);
-              if (parsed.birthYear != null || parsed.deathYear != null) {
-                return {
-                  name: nameStr,
-                  birth_year: parsed.birthYear,
-                  death_year: parsed.deathYear,
-                };
-              }
-              return a;
-            });
-            bookEntity = {
-              ...bookEntity,
-              authors: enrichedAuthors,
-            };
-          }
-        }
-      }
-
-      // If bookEntity is still undefined, check if ann.bookAuthor or finalAuthor has dates
-      if (!bookEntity && ann.bookId > 0) {
-        const parsed = parseLifespansFromName(finalAuthor);
-        if (parsed.birthYear != null || parsed.deathYear != null) {
-          bookEntity = {
-            id: ann.bookId,
-            title: finalTitle,
-            authors: [
-              {
-                name: finalAuthor,
-                birth_year: parsed.birthYear,
-                death_year: parsed.deathYear,
-              },
-            ],
-          };
-        }
-      }
-
-      const evaluation = bookEntity ? isBookPublicDomainInJurisdiction(bookEntity, country) : { isAllowed: true };
-      const isRestricted = !evaluation.isAllowed;
-
-      return {
-        title: finalTitle,
-        author: finalAuthor,
-        isRestricted,
-        country,
-      };
-    },
-    [savedBooks, favoriteBooks, recentBooks, offlineBooks, resolvedRemoteBooks, remoteBooksData, country]
-  );
 
   const pairedAllAnnotations = useMemo(() => {
     return pairOverlappingAnnotations(annotations, fellowAnnotations);
@@ -651,24 +342,6 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     setReflectionToDelete(null);
   };
 
-  const primeReaderForBook = (bookId: number) => {
-    const matchedBook =
-      resolvedRemoteBooks.get(bookId) ||
-      remoteBooksData?.results?.find((b) => b.id === bookId) ||
-      savedBooks.find((b) => b.id === bookId) ||
-      favoriteBooks.find((b) => b.id === bookId) ||
-      recentBooks.find((b) => b.id === bookId) ||
-      offlineBooks.find((b) => b.id === bookId);
-    if (matchedBook) {
-      useReaderStore.getState().openReader(matchedBook);
-    } else {
-      const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === bookId);
-      if (fromFeatured) {
-        useReaderStore.getState().openReader(featuredHeroToGutendexBook(fromFeatured));
-      }
-    }
-  };
-
   const handleJumpToReader = (ann: Annotation) => {
     if (isOffline && !isBookOffline(ann.bookId)) return;
     primeReaderForBook(ann.bookId);
@@ -753,7 +426,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             extraControls={
               <div
                 {...createTabScrubberHandlers(setGroupMode)}
-                className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border shrink-0 select-none"
+                className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border shrink-0 select-none touch-pan-y"
               >
                 <button
                   type="button"
@@ -792,94 +465,16 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           />
 
           {/* Color & Symposium Source Filter Tabs */}
-          <div
-            ref={colorTabsRef}
-            data-testid="notebook-color-tabs"
-            data-no-swipe
-            className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] overscroll-x-contain cursor-grab select-none"
-          >
-            {fellowAnnotations.length > 0 && (
-              <>
-                <button
-                  type="button"
-                  data-testid="notebook-source-all"
-                  onClick={() => setMarginaliaSourceFilter('all')}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all shrink-0 border cursor-pointer ${
-                    marginaliaSourceFilter === 'all'
-                      ? 'border-primary bg-primary text-primary-foreground font-bold shadow-xs'
-                      : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50'
-                  }`}
-                >
-                  <span>All Marginalia</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-muted text-foreground">
-                    {pairedAllAnnotations.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  data-testid="notebook-source-mine"
-                  onClick={() => setMarginaliaSourceFilter('mine')}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all shrink-0 border cursor-pointer ${
-                    marginaliaSourceFilter === 'mine'
-                      ? 'border-primary bg-primary text-primary-foreground font-bold shadow-xs'
-                      : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50'
-                  }`}
-                >
-                  <span>My Marginalia</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-muted text-foreground">
-                    {annotations.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  data-testid="notebook-source-fellows"
-                  onClick={() => setMarginaliaSourceFilter('fellows')}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all shrink-0 border cursor-pointer ${
-                    marginaliaSourceFilter === 'fellows'
-                      ? 'border-amber-600 bg-amber-600 text-white font-bold shadow-xs'
-                      : 'border-amber-500/30 bg-amber-500/5 text-amber-800 dark:text-amber-300 hover:border-amber-500'
-                  }`}
-                >
-                  <span>Fellows&apos; Marginalia</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/20 text-inherit">
-                    {fellowAnnotations.length}
-                  </span>
-                </button>
-                <span className="h-4 w-px bg-border shrink-0 mx-0.5" aria-hidden="true" />
-              </>
-            )}
-
-            {COLOR_FILTERS.map((filter) => {
-              const count =
-                filter.id === 'all'
-                  ? sourceFilteredAnnotations.length
-                  : sourceFilteredAnnotations.filter((a) => a.color === filter.id).length;
-              const isSelected = selectedColor === filter.id;
-
-              return (
-                <button
-                  key={filter.id}
-                  type="button"
-                  onClick={() => setSelectedColor(filter.id)}
-                  data-testid={`notebook-filter-${filter.id}`}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono transition-all shrink-0 border cursor-pointer ${
-                    isSelected
-                      ? 'border-primary bg-primary text-primary-foreground font-bold shadow-xs'
-                      : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/50'
-                  }`}
-                >
-                  <span>{filter.label}</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      isSelected ? 'bg-primary-foreground/20 text-inherit' : filter.badgeClass
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <NotebookFilterStrip
+            selectedColor={selectedColor}
+            onSelectColor={setSelectedColor}
+            marginaliaSourceFilter={marginaliaSourceFilter}
+            onSelectSourceFilter={setMarginaliaSourceFilter}
+            ownCount={annotations.length}
+            fellowCount={fellowAnnotations.length}
+            pairedAllCount={pairedAllAnnotations.length}
+            sourceFilteredItems={sourceFilteredAnnotations}
+          />
 
           {/* Zero Results State */}
           {(groupMode === 'volume' ? sortedGroupedByVolume.length === 0 : sortedAnnotations.length === 0) && (
@@ -920,59 +515,16 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             {groupMode === 'volume' && sortedGroupedByVolume.length > 0 && (
               <div className="space-y-8">
                 {paginatedGroupedByVolume.map((group) => (
-                  <div key={group.bookId} className="space-y-3">
-                    {/* Volume Header */}
-                    <div className="flex items-center justify-between border-b border-border pb-2">
-                      <div className="flex items-baseline gap-2.5 flex-wrap">
-                        {(() => {
-                          const isGroupUnavailableOffline = isOffline && !isBookOffline(group.bookId);
-                          return (
-                            <>
-                              <h2
-                                className={`text-lg sm:text-xl font-serif font-bold text-foreground transition-colors ${
-                                  group.isRestricted || isGroupUnavailableOffline
-                                    ? 'cursor-not-allowed opacity-85'
-                                    : 'hover:text-primary cursor-pointer'
-                                }`}
-                                onClick={() => {
-                                  if (group.isRestricted || isGroupUnavailableOffline) return;
-                                  primeReaderForBook(group.bookId);
-                                  router.push(`/read/${group.bookId}`);
-                                }}
-                              >
-                                {group.title}
-                              </h2>
-                              <span className="text-xs font-mono text-muted-foreground">
-                                by {group.author}
-                              </span>
-                              {group.isRestricted ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                                  <Lock className="w-2.5 h-2.5" />
-                                  Protected ({group.country || 'Jurisdiction'})
-                                </span>
-                              ) : isGroupUnavailableOffline ? (
-                                <span
-                                  data-testid={`notebook-volume-offline-badge-${group.bookId}`}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
-                                >
-                                  <WifiOff className="w-2.5 h-2.5" />
-                                  Not Downloaded
-                                </span>
-                              ) : null}
-                            </>
-                          );
-                        })()}
-                      </div>
-                      <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
-                        {group.items.length} quote{group.items.length === 1 ? '' : 's'}
-                      </span>
-                    </div>
-
-                    {/* Cards Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {group.items.map((ann) => renderQuoteCard(ann))}
-                    </div>
-                  </div>
+                  <NotebookVolumeGroup
+                    key={group.bookId}
+                    group={group}
+                    isUnavailableOffline={isOffline && !isBookOffline(group.bookId)}
+                    onOpenVolume={(bookId) => {
+                      primeReaderForBook(bookId);
+                      router.push(`/read/${bookId}`);
+                    }}
+                    renderQuoteCard={renderQuoteCard}
+                  />
                 ))}
               </div>
             )}
@@ -998,49 +550,23 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       )}
 
       {/* Clear All Confirmation Modal */}
-      <Modal
+      <ConfirmActionModal
         isOpen={isConfirmClearOpen}
         onClose={() => setIsConfirmClearOpen(false)}
+        onConfirm={handleConfirmClearAll}
         title="Clear All Saved Notes & Highlights?"
+        heading="Are you sure you want to clear all notes and highlights?"
+        description={`This will permanently remove all ${annotations.length} highlighted passages and notes across your entire library. This action cannot be undone.`}
+        confirmLabel={
+          <>
+            <Trash2 className="w-3.5 h-3.5" />
+            Clear Everything
+          </>
+        }
         maxWidth="md"
-        backdropClassName="bg-transparent backdrop-blur-none"
-      >
-        <div className="p-6 space-y-5" data-testid="clear-all-notes-dialog">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="space-y-1">
-              <p className="font-semibold text-foreground text-sm sm:text-base">
-                Are you sure you want to clear all notes and highlights?
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                This will permanently remove all {annotations.length} highlighted passages and notes across your entire library. This action cannot be undone.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsConfirmClearOpen(false)}
-              className="text-xs font-mono uppercase"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleConfirmClearAll}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear Everything
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        buttonSize="sm"
+        dialogTestId="clear-all-notes-dialog"
+      />
 
       {/* Delete Single Annotation Confirmation Modal */}
       <DeleteAnnotationModal
@@ -1058,60 +584,35 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
       />
 
       {/* Delete Single Personal Reflection Confirmation Modal */}
-      <Modal
+      <ConfirmActionModal
         isOpen={reflectionToDelete !== null}
         onClose={() => setReflectionToDelete(null)}
+        onConfirm={handleConfirmDeleteReflection}
         title="Delete Personal Reflection?"
+        heading="Are you sure you want to delete your personal reflection?"
+        description="This will remove only your written personal reflection. The highlighted book passage will remain safely preserved in your commonplace notebook."
+        confirmLabel={
+          <>
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete Reflection
+          </>
+        }
         maxWidth="md"
-        backdropClassName="bg-transparent backdrop-blur-none"
+        buttonSize="sm"
+        dialogTestId="delete-reflection-dialog"
+        confirmTestId="confirm-delete-reflection-btn"
       >
-        <div className="p-6 space-y-5" data-testid="delete-reflection-dialog">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="space-y-2">
-              <p className="font-semibold text-foreground text-sm sm:text-base">
-                Are you sure you want to delete your personal reflection?
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                This will remove only your written personal reflection. The highlighted book passage will remain safely preserved in your commonplace notebook.
-              </p>
-              {reflectionToDelete?.note && (
-                <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border text-xs">
-                  <span className="font-mono text-[10px] uppercase text-primary block mb-1">
-                    Reflection to be deleted:
-                  </span>
-                  <p className="font-sans text-foreground/90 whitespace-pre-wrap line-clamp-4">
-                    {reflectionToDelete.note}
-                  </p>
-                </div>
-              )}
-            </div>
+        {reflectionToDelete?.note && (
+          <div className="mt-2 p-3 rounded-lg bg-muted/40 border border-border text-xs">
+            <span className="font-mono text-[10px] uppercase text-primary block mb-1">
+              Reflection to be deleted:
+            </span>
+            <p className="font-sans text-foreground/90 whitespace-pre-wrap line-clamp-4">
+              {reflectionToDelete.note}
+            </p>
           </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setReflectionToDelete(null)}
-              className="text-xs font-mono uppercase"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleConfirmDeleteReflection}
-              data-testid="confirm-delete-reflection-btn"
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete Reflection
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        )}
+      </ConfirmActionModal>
     </section>
   );
 

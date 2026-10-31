@@ -87,7 +87,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
     <footer
       data-bars-hidden={isHidden ? 'true' : 'false'}
       aria-hidden={isHidden || undefined}
-      className={`sticky bottom-0 z-40 shrink-0 border-t pb-[env(safe-area-inset-bottom,0px)] transition-[transform,opacity,background-color,border-color,color] duration-300 ease-in-out ${activeTheme.footer} ${
+      className={`fixed bottom-0 inset-x-0 z-40 shrink-0 border-t pb-[env(safe-area-inset-bottom,0px)] transition-[transform,opacity,background-color,border-color,color] duration-300 ease-in-out ${activeTheme.footer} ${
         isHidden ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
       }`}
     >

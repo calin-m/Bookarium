@@ -41,7 +41,7 @@ describe('AccountAccoladesCard', () => {
     expect(allTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
     expect(streaksTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
     expect(within(allTab).getByText('All Bookplates')).toHaveClass('inline');
-    expect(within(streaksTab).getByText('Streaks')).toHaveClass('hidden', 'md:inline');
+    expect(within(streaksTab).getByText('Streaks')).toHaveClass('hidden', 'xl:inline');
   });
 
   it('shows empty showcase message when no bookplates are pinned', () => {
@@ -65,7 +65,7 @@ describe('AccountAccoladesCard', () => {
     fireEvent.click(streaksTab);
 
     expect(within(streaksTab).getByText('Streaks')).toHaveClass('inline');
-    expect(within(allTab).getByText('All Bookplates')).toHaveClass('hidden', 'md:inline');
+    expect(within(allTab).getByText('All Bookplates')).toHaveClass('hidden', 'xl:inline');
     expect(screen.getByText('Seven-Day Sage')).toBeInTheDocument();
     // 'The Marathon Reader' is in Immersion category, should not be in the compendium grid
     expect(screen.queryByText('The Marathon Reader')).not.toBeInTheDocument();

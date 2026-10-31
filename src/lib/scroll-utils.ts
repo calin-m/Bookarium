@@ -210,11 +210,16 @@ export function resolveScrubbedTabId<T extends string = string>(
 export interface TabScrubberOptions {
   /** Minimum horizontal drag distance in pixels before live scrubbing activates (default: 4) */
   scrubThreshold?: number;
+  /** Hold duration in ms before touch scrubbing locks on horizontally overflowing tab bars (default: 160) */
+  holdDelayMs?: number;
 }
 
 interface InternalScrubState {
   isScrubbing: boolean;
   isTouch: boolean;
+  isOverflowing: boolean;
+  holdActivated: boolean;
+  holdTimer: ReturnType<typeof setTimeout> | null;
   hasMoved: boolean;
   startX: number;
   startIndex: number;
@@ -257,8 +262,10 @@ function clearScrubPreview(container: HTMLElement | null) {
  * bidirectional live tab scrubbing across `[data-tab-id]` buttons.
  *
  * - Persists scrub state in a module-level `WeakMap` and tracks movement on `window`
- *   so React re-renders and vertical cursor drift never interrupt multi-tab dragging.
+ *   (including non-passive `touchmove` listeners) so React re-renders, vertical finger drift,
+ *   and mobile `pointercancel` events never interrupt multi-tab dragging.
  * - Supports one-finger relative thumb-arc stepping on wide mobile touch screens.
+ * - Disambiguates horizontal scroll vs. tab scrubbing on overflowing tab strips via `holdDelayMs`.
  * - Applies `[data-scrubbing="true"]` and `[data-scrub-active="true"]` DOM attributes
  *   for real-time visual feedback and suppresses post-drag synthetic clicks.
  */
@@ -266,7 +273,7 @@ export function createTabScrubberHandlers<T extends string>(
   onSelectTab: ((tabId: T) => void) | ((value: T | ((prevState: T) => T)) => void),
   options: TabScrubberOptions = {}
 ) {
-  const { scrubThreshold = 4 } = options;
+  const { scrubThreshold = 4, holdDelayMs = 160 } = options;
   const invokeSelect = onSelectTab as (tabId: string) => void;
 
   // Fallback state for synthetic unit tests that invoke handlers without currentTarget on pointerDown
@@ -274,6 +281,9 @@ export function createTabScrubberHandlers<T extends string>(
   const fallbackState: InternalScrubState = {
     isScrubbing: false,
     isTouch: false,
+    isOverflowing: false,
+    holdActivated: true,
+    holdTimer: null,
     hasMoved: false,
     startX: 0,
     startIndex: 0,
@@ -292,6 +302,9 @@ export function createTabScrubberHandlers<T extends string>(
       st = {
         isScrubbing: false,
         isTouch: false,
+        isOverflowing: false,
+        holdActivated: true,
+        holdTimer: null,
         hasMoved: false,
         startX: 0,
         startIndex: 0,
@@ -309,6 +322,10 @@ export function createTabScrubberHandlers<T extends string>(
   const finishScrub = (container: HTMLElement | null) => {
     const targetContainer = container || fallbackContainer;
     const state = targetContainer ? getOrInitState(targetContainer) : fallbackState;
+    if (state.holdTimer) {
+      clearTimeout(state.holdTimer);
+      state.holdTimer = null;
+    }
     if (state.cleanupWindowListeners) {
       state.cleanupWindowListeners();
       state.cleanupWindowListeners = null;
@@ -320,6 +337,7 @@ export function createTabScrubberHandlers<T extends string>(
       }, 50);
     }
     state.isScrubbing = false;
+    state.holdActivated = true;
     state.hasMoved = false;
     state.lastTabId = null;
     clearScrubPreview(targetContainer);
@@ -350,7 +368,8 @@ export function createTabScrubberHandlers<T extends string>(
   const scrubAtPosition = (
     container: HTMLElement | null,
     clientX: number,
-    clientY?: number
+    clientY?: number,
+    rawEvent?: { preventDefault?: () => void }
   ) => {
     const targetContainer = container || fallbackContainer;
     if (!targetContainer) return;
@@ -359,16 +378,40 @@ export function createTabScrubberHandlers<T extends string>(
     const state = getOrInitState(targetContainer);
     if (!state.isScrubbing) return;
 
+    // Option 3: On horizontally overflowing touch tab strips, require holdDelayMs before locking scrub;
+    // if the user flicks (> 8px) before holdDelayMs expires, yield to native horizontal scrolling.
+    if (state.isTouch && state.isOverflowing && !state.holdActivated) {
+      if (Math.abs(clientX - state.startX) > 8) {
+        finishScrub(targetContainer);
+      }
+      return;
+    }
+
     if (!state.hasMoved && Math.abs(clientX - state.startX) < scrubThreshold) {
       return;
     }
+    if (state.holdTimer) {
+      clearTimeout(state.holdTimer);
+      state.holdTimer = null;
+    }
+    state.holdActivated = true;
     state.hasMoved = true;
+
+    if (state.isTouch) {
+      rawEvent?.preventDefault?.();
+    }
 
     const matchedId = resolveTargetForMove(targetContainer, state, clientX, clientY);
     if (matchedId) {
       applyScrubPreview(targetContainer, matchedId);
       if (matchedId !== state.lastTabId) {
         state.lastTabId = matchedId;
+        if (state.isTouch && state.isOverflowing) {
+          const matchedBtn = targetContainer.querySelector<HTMLElement>(
+            `[data-tab-id="${matchedId}"]`
+          );
+          matchedBtn?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
         const cb = scrubCallbackMap.get(targetContainer) || invokeSelect;
         cb(matchedId);
       }
@@ -386,13 +429,35 @@ export function createTabScrubberHandlers<T extends string>(
     const targetContainer = container || fallbackContainer;
     const state = getOrInitState(targetContainer);
 
+    // Avoid resetting an already-armed touch hold timer when touchstart follows pointerdown(touch)
+    if (
+      isTouch &&
+      state.isScrubbing &&
+      state.isTouch &&
+      !state.hasMoved &&
+      Math.abs(clientX - state.startX) < 2
+    ) {
+      return;
+    }
+
+    if (state.holdTimer) {
+      clearTimeout(state.holdTimer);
+      state.holdTimer = null;
+    }
     if (state.cleanupWindowListeners) {
       state.cleanupWindowListeners();
       state.cleanupWindowListeners = null;
     }
 
+    const isOverflowing =
+      isTouch && targetContainer
+        ? targetContainer.scrollWidth > targetContainer.clientWidth + 4
+        : false;
+
     state.isScrubbing = true;
     state.isTouch = isTouch;
+    state.isOverflowing = isOverflowing;
+    state.holdActivated = !isOverflowing || holdDelayMs <= 0;
     state.hasMoved = false;
     state.startX = clientX;
     state.lastTabId = null;
@@ -419,6 +484,20 @@ export function createTabScrubberHandlers<T extends string>(
       }
       state.startIndex = detectedStartIdx >= 0 ? detectedStartIdx : 0;
 
+      if (isOverflowing && holdDelayMs > 0) {
+        state.holdTimer = setTimeout(() => {
+          state.holdTimer = null;
+          if (state.isScrubbing && !state.hasMoved) {
+            state.holdActivated = true;
+            const startBtn = buttons[state.startIndex];
+            const startId = startBtn?.getAttribute('data-tab-id');
+            if (startId) {
+              applyScrubPreview(targetContainer, startId);
+            }
+          }
+        }, holdDelayMs);
+      }
+
       if (typeof window !== 'undefined') {
         const onWindowPointerMove = (ev: PointerEvent) => {
           if (!state.isScrubbing) return;
@@ -426,7 +505,7 @@ export function createTabScrubberHandlers<T extends string>(
             finishScrub(targetContainer);
             return;
           }
-          scrubAtPosition(targetContainer, ev.clientX, ev.clientY);
+          scrubAtPosition(targetContainer, ev.clientX, ev.clientY, ev);
         };
         const onWindowMouseMove = (ev: MouseEvent) => {
           if (!state.isScrubbing || state.isTouch) return;
@@ -434,24 +513,42 @@ export function createTabScrubberHandlers<T extends string>(
             finishScrub(targetContainer);
             return;
           }
-          scrubAtPosition(targetContainer, ev.clientX, ev.clientY);
+          scrubAtPosition(targetContainer, ev.clientX, ev.clientY, ev);
+        };
+        const onWindowTouchMove = (ev: TouchEvent) => {
+          if (!state.isScrubbing || !state.isTouch) return;
+          const firstTouch = ev.touches?.[0];
+          if (!firstTouch) return;
+          scrubAtPosition(targetContainer, firstTouch.clientX, firstTouch.clientY, ev);
         };
         const onWindowUp = () => {
+          finishScrub(targetContainer);
+        };
+        const onWindowPointerCancel = (ev: PointerEvent) => {
+          // On touch screens, browsers often fire pointercancel when horizontal touch movement starts;
+          // keep the scrub session alive via window touchmove/touchend listeners.
+          if (state.isTouch || ev.pointerType === 'touch') return;
           finishScrub(targetContainer);
         };
 
         window.addEventListener('pointermove', onWindowPointerMove);
         window.addEventListener('mousemove', onWindowMouseMove);
+        window.addEventListener('touchmove', onWindowTouchMove, { passive: false });
         window.addEventListener('pointerup', onWindowUp);
         window.addEventListener('mouseup', onWindowUp);
-        window.addEventListener('pointercancel', onWindowUp);
+        window.addEventListener('touchend', onWindowUp);
+        window.addEventListener('touchcancel', onWindowUp);
+        window.addEventListener('pointercancel', onWindowPointerCancel);
 
         state.cleanupWindowListeners = () => {
           window.removeEventListener('pointermove', onWindowPointerMove);
           window.removeEventListener('mousemove', onWindowMouseMove);
+          window.removeEventListener('touchmove', onWindowTouchMove);
           window.removeEventListener('pointerup', onWindowUp);
           window.removeEventListener('mouseup', onWindowUp);
-          window.removeEventListener('pointercancel', onWindowUp);
+          window.removeEventListener('touchend', onWindowUp);
+          window.removeEventListener('touchcancel', onWindowUp);
+          window.removeEventListener('pointercancel', onWindowPointerCancel);
         };
       }
     }
@@ -474,6 +571,7 @@ export function createTabScrubberHandlers<T extends string>(
       pointerType?: string;
       clientX: number;
       clientY?: number;
+      preventDefault?: () => void;
       currentTarget: HTMLElement;
     }) => {
       const state = getOrInitState(e.currentTarget);
@@ -487,12 +585,13 @@ export function createTabScrubberHandlers<T extends string>(
         finishScrub(e.currentTarget);
         return;
       }
-      scrubAtPosition(e.currentTarget, e.clientX, e.clientY);
+      scrubAtPosition(e.currentTarget, e.clientX, e.clientY, e);
     },
     onPointerUp: (e?: { currentTarget?: HTMLElement }) => {
       finishScrub(e?.currentTarget ?? null);
     },
-    onPointerCancel: (e?: { currentTarget?: HTMLElement }) => {
+    onPointerCancel: (e?: { pointerType?: string; currentTarget?: HTMLElement }) => {
+      if (e?.pointerType === 'touch') return;
       finishScrub(e?.currentTarget ?? null);
     },
     onPointerLeave: () => {
@@ -509,6 +608,7 @@ export function createTabScrubberHandlers<T extends string>(
     },
     onTouchMove: (e: {
       touches?: ArrayLike<{ clientX: number; clientY?: number }>;
+      preventDefault?: () => void;
       currentTarget: HTMLElement;
     }) => {
       const state = getOrInitState(e.currentTarget);
@@ -520,7 +620,7 @@ export function createTabScrubberHandlers<T extends string>(
       }
       const firstTouch = e.touches?.[0];
       if (!firstTouch) return;
-      scrubAtPosition(e.currentTarget, firstTouch.clientX, firstTouch.clientY);
+      scrubAtPosition(e.currentTarget, firstTouch.clientX, firstTouch.clientY, e);
     },
     onTouchEnd: (e?: { currentTarget?: HTMLElement }) => {
       finishScrub(e?.currentTarget ?? null);

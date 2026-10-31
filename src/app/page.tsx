@@ -43,6 +43,7 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useOfflineCatalogFallback } from '@/hooks/useOfflineCatalogFallback';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useCollectionAutoHeal } from '@/hooks/useCollectionAutoHeal';
 import { useHasMounted } from '@/hooks/useHasMounted';
@@ -322,69 +323,31 @@ function HomeContent() {
   });
 
   // Local offline catalog filtering & sorting when device is offline and downloaded books exist
-  const filteredOfflineCatalogBooks = useMemo(() => {
-    if (!isOffline) return [];
-    let list = filterBooksSmart(resolvedOfflineBooks, search);
-    if (topic.trim()) {
-      const topics = topic
-        .split(',')
-        .map((t) => t.trim().toLowerCase())
-        .filter(Boolean);
-      if (topics.length > 0) {
-        list = list.filter((b) =>
-          [...b.subjects, ...b.bookshelves].some((s) => {
-            const lower = s.toLowerCase();
-            return topics.some((t) => lower.includes(t));
-          })
-        );
-      }
-    }
-    if (language.trim()) {
-      const langs = language
-        .split(',')
-        .map((l) => l.trim().toLowerCase())
-        .filter(Boolean);
-      if (langs.length > 0) {
-        list = list.filter((b) =>
-          b.languages.some((l) => langs.includes(l.toLowerCase()))
-        );
-      }
-    }
-    if (queryParams.authorYearStart !== undefined || queryParams.authorYearEnd !== undefined) {
-      list = list.filter((b) => {
-        const author = b.authors?.[0];
-        if (!author) return false;
-        const birthYear = author.birth_year;
-        const deathYear = author.death_year;
-        const spanStart = birthYear ?? deathYear;
-        const spanEnd = deathYear ?? birthYear;
-        if (spanStart === null || spanStart === undefined || spanEnd === null || spanEnd === undefined) {
-          return false;
-        }
-        if (queryParams.authorYearStart !== undefined && spanEnd < queryParams.authorYearStart) return false;
-        if (queryParams.authorYearEnd !== undefined && spanStart > queryParams.authorYearEnd) return false;
-        return true;
-      });
-    }
-    if (sort === 'ascending') {
-      return [...list].sort((a, b) => a.id - b.id);
-    }
-    if (sort === 'descending') {
-      return [...list].sort((a, b) => b.id - a.id);
-    }
-    return [...list].sort((a, b) => (b.download_count || 0) - (a.download_count || 0));
-  }, [isOffline, resolvedOfflineBooks, search, topic, language, queryParams.authorYearStart, queryParams.authorYearEnd, sort]);
+  const {
+    filteredOfflineCatalogBooks,
+    paginatedOfflineCatalogBooks,
+    hasNextOfflinePage,
+  } = useOfflineCatalogFallback({
+    isOffline,
+    resolvedOfflineBooks,
+    search,
+    topic,
+    language,
+    authorYearStart: queryParams.authorYearStart,
+    authorYearEnd: queryParams.authorYearEnd,
+    sort,
+    page,
+    pageSize,
+  });
 
   // Windowed Chunk Sub-Pagination Calculations
   const subPagesPerBatch = Math.max(1, Math.floor(32 / pageSize));
   const subIndex = (page - 1) % subPagesPerBatch;
   const sliceStart = subIndex * pageSize;
   const sliceEnd = sliceStart + pageSize;
-  const offlineSliceStart = (page - 1) * pageSize;
-  const offlineSliceEnd = offlineSliceStart + pageSize;
   const hasNextSubPage = Boolean(booksData?.results && sliceEnd < booksData.results.length);
   const hasNextPage = isOffline
-    ? offlineSliceEnd < filteredOfflineCatalogBooks.length
+    ? hasNextOfflinePage
     : hasNextSubPage || Boolean(booksData?.next);
 
   // Predictive Next-Page Prefetching (triggers when approaching next upstream 32-batch)
@@ -526,7 +489,7 @@ function HomeContent() {
 
   // Derive displayed books with windowed sub-page slicing based on active view
   let displayedBooks = isOffline
-    ? filteredOfflineCatalogBooks.slice(offlineSliceStart, offlineSliceEnd)
+    ? paginatedOfflineCatalogBooks
     : (booksData?.results || []).slice(sliceStart, sliceEnd);
   let isDisplayLoading = isOffline ? false : isLoading || isFetching;
   let isDisplayError = isOffline ? false : isError;

@@ -156,14 +156,14 @@ describe('ReaderFooter', () => {
     expect(nextBtn.className).toContain('min-h-[42px]');
   });
 
-  it('slides footer down out of view when isHidden is true', () => {
+  it('slides footer down out of view as a fixed overlay when isHidden is true', () => {
     const { container, rerender } = render(<ReaderFooter {...defaultProps} isHidden={false} />);
     const footerEl = container.querySelector('footer');
     expect(footerEl).toHaveAttribute('data-bars-hidden', 'false');
-    expect(footerEl).toHaveClass('translate-y-0');
+    expect(footerEl).toHaveClass('fixed', 'bottom-0', 'inset-x-0', 'translate-y-0');
 
     rerender(<ReaderFooter {...defaultProps} isHidden={true} />);
     expect(footerEl).toHaveAttribute('data-bars-hidden', 'true');
-    expect(footerEl).toHaveClass('translate-y-full', 'opacity-0', 'pointer-events-none');
+    expect(footerEl).toHaveClass('fixed', 'bottom-0', 'inset-x-0', 'translate-y-full', 'opacity-0', 'pointer-events-none');
   });
 });

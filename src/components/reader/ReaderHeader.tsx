@@ -33,6 +33,7 @@ import { getReaderTheme, NEXT_READER_THEME } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
+import { useCopyFeedback } from '@/hooks/useCopyFeedback';
 import { GutenbergInfoModal } from './GutenbergInfoModal';
 import {
   CopyBookLinkIndicator,
@@ -119,7 +120,8 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   onDismissSymposiumMilestone,
   isHidden = false,
 }) => {
-  const [isCopied, setIsCopied] = useState(false);
+  const { copiedKey, copyWithFeedback } = useCopyFeedback(2000);
+  const isCopied = copiedKey === 'share';
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
   const activeTheme = getReaderTheme(theme);
 
@@ -128,17 +130,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   const languageButtonLabel = currentBookLang;
   const languageButtonTitle = `Language Editions (${currentBookLang})`;
 
-  const handleShare = async () => {
+  const handleShare = () => {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
-      } catch {
-        // Fallback gracefully if clipboard access is denied
-      }
-    }
+    copyWithFeedback('share', shareUrl);
   };
 
   const numericId = typeof bookId === 'number' ? bookId : parseInt(String(bookId), 10);
@@ -233,7 +227,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
       <header
         data-bars-hidden={isHidden ? 'true' : 'false'}
         aria-hidden={isHidden || undefined}
-        className={`sticky top-0 z-[10000] shrink-0 pt-[env(safe-area-inset-top,0px)] border-b transition-[transform,opacity,background-color,border-color,color] duration-300 ease-in-out ${activeTheme.header} ${
+        className={`fixed top-0 inset-x-0 z-[10000] shrink-0 pt-[env(safe-area-inset-top,0px)] border-b transition-[transform,opacity,background-color,border-color,color] duration-300 ease-in-out ${activeTheme.header} ${
           isHidden ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
         }`}
       >

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -31,6 +31,7 @@ import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
 import { Button } from '@/components/ui/Button';
 import { BackToTop } from '@/components/ui/BackToTop';
+import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { AccountIdentityCard } from '@/components/account/AccountIdentityCard';
 import { AccountHabitsCard } from '@/components/account/AccountHabitsCard';
 import { AccountAccoladesCard } from '@/components/account/AccountAccoladesCard';
@@ -40,11 +41,8 @@ import { AccountSecuritySection } from '@/components/account/AccountSecuritySect
 import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
 import { createTabScrubberHandlers } from '@/lib/scroll-utils';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
-import {
-  generateStrongPassword as generatePasswordUtil,
-  evaluatePasswordStrength,
-} from '@/lib/password';
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
+import { useAccountSecurityActions } from '@/hooks/useAccountSecurityActions';
 import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
 import type { NavViewId } from '@/config/views.config';
 import { ROUTES } from '@/config/routes';
@@ -292,221 +290,64 @@ function AccountDashboardContent() {
     }
   };
 
-  const defaultName =
-    profile?.display_name || user?.user_metadata?.display_name || '';
-  const [customName, setCustomName] = useState<string | null>(null);
-  const displayName = customName !== null ? customName : defaultName;
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
-  // Email verification state
-  const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [resendSuccess, setResendSuccess] = useState(false);
-  const [resendError, setResendError] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
-
-  // Verification cooldown effect
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setResendCooldown((prev) => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
-
-  const handleResendVerification = async () => {
-    if (!user?.email || isResendingVerification || resendCooldown > 0) return;
-    setIsResendingVerification(true);
-    setResendError(null);
-    setResendSuccess(false);
-
-    try {
-      const { error } = await resendVerificationEmail(user.email);
-      if (error) {
-        setResendError(error.message);
-      } else {
-        setResendSuccess(true);
-        setResendCooldown(60);
-        setTimeout(() => setResendSuccess(false), 5000);
+  const {
+    displayName,
+    setCustomName,
+    isSaving,
+    saveSuccess,
+    saveError,
+    handleSaveProfile,
+    isResendingVerification,
+    resendSuccess,
+    resendError,
+    resendCooldown,
+    handleResendVerification,
+    currentPassword,
+    setCurrentPassword,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+    showPassword,
+    setShowPassword,
+    copiedPassword,
+    isUpdatingPassword,
+    passwordSuccess,
+    passwordError,
+    strength,
+    generateStrongPassword,
+    handleUpdatePassword,
+    isSendingResetEmail,
+    resetEmailSent,
+    resetEmailError,
+    resetCooldown,
+    handleRequestPasswordReset,
+    isDeleteModalOpen,
+    setIsDeleteModalOpen,
+    closeDeleteModal,
+    isSendingDeletionEmail,
+    deletionEmailSent,
+    deleteError,
+    handleRequestDeletion,
+  } = useAccountSecurityActions({
+    user,
+    profile,
+    isRecoveryMode,
+    onClearRecoveryParam: () => {
+      setHasClearedRecoveryParam(true);
+      if (typeof window !== 'undefined' && searchParams.has('recovery')) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('recovery');
+        window.history.replaceState(null, '', url.toString());
       }
-    } catch {
-      setResendError('Failed to resend verification email. Please try again later.');
-    } finally {
-      setIsResendingVerification(false);
-    }
-  };
-
-  // Security & Password state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [copiedPassword, setCopiedPassword] = useState(false);
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
-  const [resetEmailSent, setResetEmailSent] = useState(false);
-  const [resetEmailError, setResetEmailError] = useState<string | null>(null);
-  const [resetCooldown, setResetCooldown] = useState(0);
-
-  // Password reset cooldown effect
-  useEffect(() => {
-    if (resetCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setResetCooldown((prev) => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resetCooldown]);
-
-  const handleRequestPasswordReset = async () => {
-    if (!user?.email || isSendingResetEmail || resetCooldown > 0) return;
-    setIsSendingResetEmail(true);
-    setResetEmailError(null);
-    setResetEmailSent(false);
-
-    try {
-      const { error } = await resetPasswordForEmail(user.email);
-      if (error) {
-        setResetEmailError(error.message);
-      } else {
-        setResetEmailSent(true);
-        setResetCooldown(60);
-      }
-    } catch {
-      setResetEmailError('Failed to send password reset link. Please try again later.');
-    } finally {
-      setIsSendingResetEmail(false);
-    }
-  };
-
-  // Danger Zone / Delete Account state
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isSendingDeletionEmail, setIsSendingDeletionEmail] = useState(false);
-  const [deletionEmailSent, setDeletionEmailSent] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    setIsSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-
-    try {
-      const { error } = await updateProfile({
-        display_name: displayName.trim(),
-      });
-
-      if (error) {
-        setSaveError(error.message);
-      } else {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
-      }
-    } catch {
-      setSaveError('An unexpected error occurred while saving your profile.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const generateStrongPassword = () => {
-    const generated = generatePasswordUtil();
-    setNewPassword(generated);
-    setConfirmPassword(generated);
-    setPasswordError(null);
-
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(generated);
-      setCopiedPassword(true);
-      setTimeout(() => setCopiedPassword(false), 2500);
-    }
-  };
-
-  const strength = evaluatePasswordStrength(newPassword);
-
-  const handleUpdatePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match.');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters long.');
-      return;
-    }
-
-    if (!isRecoveryMode && !currentPassword) {
-      setPasswordError(
-        'Please enter your current password, or send a reset link to your email.'
-      );
-      return;
-    }
-
-    if (!isRecoveryMode && newPassword === currentPassword) {
-      setPasswordError('New password must be different from your current password.');
-      return;
-    }
-
-    setIsUpdatingPassword(true);
-    setPasswordError(null);
-    setPasswordSuccess(false);
-
-    try {
-      const { error } = isRecoveryMode
-        ? await updatePassword(newPassword)
-        : await updatePassword(newPassword, currentPassword);
-
-      if (error) {
-        setPasswordError(error.message);
-      } else {
-        setPasswordSuccess(true);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setHasClearedRecoveryParam(true);
-        clearPasswordRecovery?.();
-        if (typeof window !== 'undefined' && searchParams.has('recovery')) {
-          const url = new URL(window.location.href);
-          url.searchParams.delete('recovery');
-          window.history.replaceState(null, '', url.toString());
-        }
-        setTimeout(() => setPasswordSuccess(false), 3000);
-      }
-    } catch {
-      setPasswordError('An unexpected error occurred while updating your password.');
-    } finally {
-      setIsUpdatingPassword(false);
-    }
-  };
-
-  const handleRequestDeletion = async () => {
-    if (!user) return;
-
-    setIsSendingDeletionEmail(true);
-    setDeleteError(null);
-
-    try {
-      const { error } = await requestAccountDeletion();
-
-      if (error) {
-        setDeleteError(error.message);
-      } else {
-        setDeletionEmailSent(true);
-      }
-    } catch {
-      setDeleteError('An unexpected error occurred while requesting account deletion.');
-    } finally {
-      setIsSendingDeletionEmail(false);
-    }
-  };
+    },
+    clearPasswordRecovery,
+    updateProfile,
+    updatePassword,
+    resetPasswordForEmail,
+    requestAccountDeletion,
+    resendVerificationEmail,
+  });
 
   const handleThemeChange = (newTheme: AppTheme) => {
     setTheme(newTheme);
@@ -702,7 +543,7 @@ function AccountDashboardContent() {
                 aria-label="Account sections"
                 onKeyDown={handleTabKeyDown}
                 {...createTabScrubberHandlers(handleTabChange)}
-                className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 p-1 sm:p-1.5 bg-card border border-border rounded-2xl shadow-booksaw w-full select-none"
+                className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 p-1 sm:p-1.5 bg-card border border-border rounded-2xl shadow-booksaw w-full select-none touch-pan-y"
               >
                 {ACCOUNT_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -770,44 +611,23 @@ function AccountDashboardContent() {
               }
             >
               {/* Tier 2 Sub-Tab Bar for Streaks & Accolades */}
-              <div className="flex items-center justify-center border-b border-border">
-                <nav
-                  role="tablist"
-                  data-no-swipe
-                  aria-label="Habits and library sub-sections"
-                  {...createTabScrubberHandlers(setHabitsSubTab)}
-                  className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
-                >
-                  {(
-                    [
-                      { id: 'streaks', label: 'Streaks & Challenge', Icon: Flame, iconClass: 'text-amber-500' },
-                      { id: 'accolades', label: 'Accolades Compendium', Icon: Award, iconClass: 'text-primary' },
-                    ] as const
-                  ).map((sub) => {
-                    const isSubActive = habitsSubTab === sub.id;
-                    return (
-                      <button
-                        key={sub.id}
-                        type="button"
-                        role="tab"
-                        data-tab-id={sub.id}
-                        aria-selected={isSubActive}
-                        aria-label={sub.label}
-                        title={sub.label}
-                        onClick={() => setHabitsSubTab(sub.id)}
-                        className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
-                          isSubActive
-                            ? 'border-primary text-primary'
-                            : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                        }`}
-                      >
-                        <sub.Icon className={`w-3.5 h-3.5 ${sub.iconClass} shrink-0`} />
-                        <span className={isSubActive ? 'inline' : 'hidden md:inline'}>{sub.label}</span>
-                      </button>
-                    );
-                  })}
-                </nav>
-              </div>
+              <EditorialUnderlineTabs
+                ariaLabel="Habits and library sub-sections"
+                activeTab={habitsSubTab}
+                onSelectTab={setHabitsSubTab}
+                tabs={[
+                  {
+                    id: 'streaks',
+                    label: 'Streaks & Challenge',
+                    icon: <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />,
+                  },
+                  {
+                    id: 'accolades',
+                    label: 'Accolades Compendium',
+                    icon: <Award className="w-3.5 h-3.5 text-primary shrink-0" />,
+                  },
+                ]}
+              />
 
               <div
                 id="habits-subpanel-streaks"
@@ -942,11 +762,7 @@ function AccountDashboardContent() {
             {/* Delete Account Confirmation Modal */}
             <AccountDeleteModal
               isOpen={isDeleteModalOpen}
-              onClose={() => {
-                setIsDeleteModalOpen(false);
-                setDeletionEmailSent(false);
-                setDeleteError(null);
-              }}
+              onClose={closeDeleteModal}
               userEmail={user.email ?? ''}
               isSendingDeletionEmail={isSendingDeletionEmail}
               deletionEmailSent={deletionEmailSent}

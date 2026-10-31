@@ -483,15 +483,15 @@ describe('ReaderHeader', () => {
     expect(screen.getByTestId('copy-book-link-indicator-1342')).toHaveTextContent('Copied!');
   });
 
-  it('slides header up out of view when isHidden is true', () => {
+  it('slides header up out of view as a fixed overlay when isHidden is true', () => {
     const { container, rerender } = render(<ReaderHeader {...defaultProps} isHidden={false} />);
     const headerEl = container.querySelector('header');
     expect(headerEl).toHaveAttribute('data-bars-hidden', 'false');
-    expect(headerEl).toHaveClass('translate-y-0');
+    expect(headerEl).toHaveClass('fixed', 'top-0', 'inset-x-0', 'translate-y-0');
 
     rerender(<ReaderHeader {...defaultProps} isHidden={true} />);
     expect(headerEl).toHaveAttribute('data-bars-hidden', 'true');
-    expect(headerEl).toHaveClass('-translate-y-full', 'opacity-0', 'pointer-events-none');
+    expect(headerEl).toHaveClass('fixed', 'top-0', 'inset-x-0', '-translate-y-full', 'opacity-0', 'pointer-events-none');
   });
 });
 

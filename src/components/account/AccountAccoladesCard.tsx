@@ -26,7 +26,7 @@ import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { buildAccoladeContext, evaluateAccolades } from '@/lib/accolades-engine';
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
-import { createTabScrubberHandlers } from '@/lib/scroll-utils';
+import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { ExLibrisBookplate } from '@/components/accolades/ExLibrisBookplate';
 
 const AccoladeCelebrationModal = dynamic(
@@ -258,72 +258,36 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
         </div>
 
         {/* Centered Editorial Underline Category Sub-Tabs */}
-        <div className="flex items-center justify-center border-b border-border">
-          <nav
-            role="tablist"
-            data-no-swipe
-            aria-label="Accolade categories"
-            {...createTabScrubberHandlers(setActiveCategory)}
-            className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
-          >
-            {ACCOLADE_CATEGORIES.map((category) => {
-              const isActive = activeCategory === category.id;
-              const count =
-                category.id === 'all'
-                  ? ACCOLADES_CATALOG.length
-                  : ACCOLADES_CATALOG.filter((item) => item.category === category.id).length;
-
-              const getCategoryIcon = () => {
-                switch (category.id) {
-                  case 'all':
-                    return <Award className="w-3.5 h-3.5 shrink-0" />;
-                  case 'streaks':
-                    return <Flame className="w-3.5 h-3.5 shrink-0 text-amber-500" />;
-                  case 'immersion':
-                    return <Clock className="w-3.5 h-3.5 shrink-0 text-sky-500" />;
-                  case 'exploration':
-                    return <Compass className="w-3.5 h-3.5 shrink-0 text-emerald-500" />;
-                  case 'scholarship':
-                    return <BookOpen className="w-3.5 h-3.5 shrink-0 text-purple-500" />;
-                  case 'curation':
-                    return <Library className="w-3.5 h-3.5 shrink-0 text-amber-600" />;
-                  default:
-                    return <Award className="w-3.5 h-3.5 shrink-0" />;
-                }
-              };
-
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  role="tab"
-                  data-tab-id={category.id}
-                  aria-selected={isActive}
-                  aria-label={category.label}
-                  title={category.label}
-                  onClick={() => setActiveCategory(category.id)}
-                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
-                    isActive
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                  }`}
-                >
-                  {getCategoryIcon()}
-                  <span className={isActive ? 'inline' : 'hidden md:inline'}>{category.label}</span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold ${
-                      isActive
-                        ? 'bg-primary/15 text-primary'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+        <EditorialUnderlineTabs<AccoladeCategory>
+          tabs={ACCOLADE_CATEGORIES.map((category) => ({
+            id: category.id,
+            label: category.label,
+            count:
+              category.id === 'all'
+                ? ACCOLADES_CATALOG.length
+                : ACCOLADES_CATALOG.filter((item) => item.category === category.id).length,
+            icon:
+              category.id === 'streaks' ? (
+                <Flame className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+              ) : category.id === 'immersion' ? (
+                <Clock className="w-3.5 h-3.5 shrink-0 text-sky-500" />
+              ) : category.id === 'exploration' ? (
+                <Compass className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+              ) : category.id === 'scholarship' ? (
+                <BookOpen className="w-3.5 h-3.5 shrink-0 text-purple-500" />
+              ) : category.id === 'curation' ? (
+                <Library className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+              ) : (
+                <Award className="w-3.5 h-3.5 shrink-0" />
+              ),
+          }))}
+          activeTab={activeCategory}
+          onSelectTab={setActiveCategory}
+          ariaLabel="Accolade categories"
+          inactiveLabelClass="hidden xl:inline"
+          hideInactiveCountOnMobile
+          compactPadding
+        />
 
         {/* Bookplate Grid */}
         <div

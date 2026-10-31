@@ -1125,6 +1125,11 @@ function generateMarkdown() {
     useTouchDevice: 'SSR-safe tactile capability and viewport boundary detection enabling touch gestures on tablets and mobile.',
     useBookCopyright: 'Declarative jurisdictional copyright facade hook coordinating territory rules, author lifespan restrictions, and public domain badges.',
     useNetworkStatus: 'Reactive browser online/offline external store hook (`useSyncExternalStore`) driving red offline Account indicators, adaptive offline Catalog fallback, and network-gated controls.',
+    useCopyFeedback: 'Transient clipboard copy state hook with automatic timer cleanup (`copy`, `isCopied`, `copiedKey`) for share URLs and scholar handles.',
+    useNotebookMetadataResolver: 'Multi-source volume metadata resolver (`resolveVolumeMeta`, `missingBookIds`, `isMetadataLoading`) healing missing titles, authors, and languages across Personal and Fellow Marginalia.',
+    useReaderHabitTelemetry: 'Reader session lifecycle, book identity self-healing, reading status auto-transitions (`currently_reading` / `finished`), Literary Symposium companion progress sync, and idle-aware habit telemetry coordinator.',
+    useAccountSecurityActions: 'Account Hub security, profile display name, email verification resend cooldown, password strength/generation/recovery, and account deletion workflow hook.',
+    useOfflineCatalogFallback: 'Local IndexedDB offline catalog filtering, topic/language/author-lifespan matching, sorting, and sub-page slicing hook when offline.',
   };
 
   for (const h of hooks) {
@@ -1224,6 +1229,14 @@ function generateMarkdown() {
       'Zero-trust anti-SSRF upstream URL validator enforcing HTTPS, relative Location redirect resolution, and strict Project Gutenberg hostname allowlisting (`gutenberg.org`, `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`).',
     'reader-layout-utils':
       'Server-side metadata resolution and Next.js RSC request header detector for `/read/[id]` OpenGraph, Twitter Card, and Schema.org Book JSON-LD generation.',
+    'reader-bookmark-geometry':
+      'DOM text-node walker (`collectContentTextSegments`), character range measurement (`measureCharRect`), ratio-weighted passage matching (`findBestTextMatch`), and binary-searched row text/span resolution (`extractRowTextFromElement`, `resolveTextRowSpanInElement`).',
+    'annotation-cloud-sync':
+      'Scholarly annotation and fellow marginalia cloud synchronization helpers, non-regressive scholar handle resolution (`setOrUpdateFellowMapEntry`, `buildFellowScholarsMap`), and outbox payload mappers.',
+    'fellowship-cloud-sync':
+      'Fellowship scholar handle validation (`isPlaceholderUsername`), label formatting (`formatFellowScholarLabel`), profile identity healing (`healProfileIdentity`), and Supabase `public.profiles` batch lookup (`fetchScholarProfilesMap`).',
+    'reader-cloud-sync':
+      'Reading position cloud synchronization helpers, ghost-row filtering (`isGhostReadingPosition`, `isGhostCloudRow`), fractional row-bookmark decoding (`decodeRemoteReadingPosition`), and lifespan-preserving author extraction (`extractVerifiedAuthors`).',
   };
 
   for (const u of utilities) {

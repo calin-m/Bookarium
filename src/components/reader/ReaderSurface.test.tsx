@@ -1045,11 +1045,17 @@ describe('ReaderSurface', () => {
     const { rerender } = render(<ReaderSurface {...defaultProps} isSpeechOpen={false} />);
     const mainEl = screen.getByRole('main');
     const articleEl = screen.getByRole('article');
-    expect(mainEl).toHaveClass('overscroll-y-contain');
-    expect(articleEl).toHaveClass('pb-10', 'sm:pb-16');
+    expect(mainEl).toHaveClass('overscroll-y-contain', 'h-full', 'w-full');
+    expect(articleEl).toHaveClass(
+      'pt-[calc(7.5rem+env(safe-area-inset-top,0px))]',
+      'pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]'
+    );
 
     rerender(<ReaderSurface {...defaultProps} isSpeechOpen={true} />);
-    expect(screen.getByRole('article')).toHaveClass('pb-36', 'sm:pb-40');
+    expect(screen.getByRole('article')).toHaveClass(
+      'pb-[calc(11.5rem+env(safe-area-inset-bottom,0px))]',
+      'sm:pb-[calc(12.5rem+env(safe-area-inset-bottom,0px))]'
+    );
 
     // Verify brightness filter application when brightness < 100
     rerender(<ReaderSurface {...defaultProps} brightness={75} />);
