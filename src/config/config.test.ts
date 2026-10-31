@@ -38,7 +38,7 @@ describe('src/config configuration modules', () => {
 
     it('provides genre facets with valid IDs and labels including children literature', () => {
       expect(GENRE_FACETS.length).toBeGreaterThan(0);
-      expect(GENRE_FACETS[0].label).toBe('All Subjects');
+      expect(GENRE_FACETS[0].label).toBe('All Bookshelves & Subjects');
       expect(GENRE_FACETS.some((f) => f.id === 'children')).toBe(true);
     });
 

@@ -253,7 +253,7 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 194) {
   }
 
   return {
-    engines: pkg.engines || { node: '>=20.0.0', npm: '>=10.0.0' },
+    engines: pkg.engines || { node: '>=22.0.0', npm: '>=10.0.0' },
     packages,
   };
 }
@@ -1163,7 +1163,7 @@ function generateMarkdown() {
     'country-resolver':
       'Synchronous and edge geographic country resolution coordinating timezone mapping, geo-cookies, and developer overrides.',
     'gutendex-provider':
-      'Upstream Gutendex REST catalog provider implementing ICatalogProvider with 15s timeout control, error mapping, and jurisdictional copyright filtering.',
+      'Upstream Gutendex REST catalog provider implementing ICatalogProvider with 15s timeout control, primary topic/mimeType failover normalization, error mapping, and jurisdictional copyright filtering.',
     'gutenberg-parser':
       'Root domain facade barrel re-exporting all Gutenberg segmentation, pagination, reflow, and passage extraction subsystems.',
     index:
@@ -1201,7 +1201,7 @@ function generateMarkdown() {
     'speech-utils':
       'Web Speech API voice selection heuristics identifying natural/neural synthesis voices.',
     'supabase-provider':
-      'Self-hosted Supabase PostgreSQL catalog provider implementing ICatalogProvider with cached healthcheck (60s TTL), GIN full-text search_vector queries, and author lifespan bounds for sub-50ms single-book lookups and ~1-2s catalog page queries.',
+      'Self-hosted Supabase PostgreSQL catalog provider implementing ICatalogProvider with cached healthcheck (60s TTL), GIN full-text search_vector queries across title/subjects/bookshelves, MIME charset prefix matching, and author lifespan bounds for sub-50ms single-book lookups and ~1-2s catalog page queries.',
     client:
       'Browser-side Supabase client initialization with credential sanitization and local session persistence.',
     middleware:
@@ -1215,7 +1215,7 @@ function generateMarkdown() {
     'book-tags':
       'Semantic book tag normalizer mapping verbose Library of Congress subjects and Gutenberg bookshelves to canonical zero-truncation badges (<= 14 chars) with responsive mobile/desktop allocation and administrative prefix sanitization.',
     'scroll-utils':
-      'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, header avoidance, and horizontal pointer click-and-drag + wheel scrolling (`attachHorizontalDragAndWheelScroll`).',
+      'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, header avoidance, horizontal pointer click-and-drag + wheel scrolling (`attachHorizontalDragAndWheelScroll`), and live touch-swipe / mouse-drag tab scrubbing (`createTabScrubberHandlers`, `resolveScrubbedTabId`).',
     utils:
       'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, and format badges.',
     'metadata-cache':
@@ -1281,9 +1281,9 @@ function generateMarkdown() {
     '| Database Function / Trigger | Type | Target Table(s) | Functionality & Security Scope |',
     '| :--- | :--- | :--- | :--- |',
     '| **`public.handle_new_user()`** | Trigger / Function (`on_auth_user_created`) | `auth.users` -> `public.profiles`, `public.bookshelves` | Auto-provisions scholar profile and default `General` shelf on signup (`SECURITY DEFINER`, `SET search_path = \'\'`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |',
-    '| **`public.books_search_vector_trigger()`** | Trigger / Function (`trigger_books_search_vector`) | `public.books` | Automatically generates and updates `search_vector tsvector` from title and subjects on insert/update (`SET search_path = \'\'`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |',
+    '| **`public.books_search_vector_trigger()`** | Trigger / Function (`trigger_books_search_vector`) | `public.books` | Automatically generates and updates `search_vector tsvector` from `title`, `subjects`, and `bookshelves` on insert/update (`SET search_path = \'\'`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |',
     '| **`public.handle_profile_identity_sync()`** | Trigger / Function (`trg_profile_identity_sync`) | `public.profiles` -> `reader_circles`, `symposium_sessions` | Propagates scholar `@username` and `display_name` updates across active/pending fellowship circles and symposium sessions on profile update (`SECURITY DEFINER`, `SET search_path = \'\'`). |',
-    '| **`public.delete_current_user()`** | RPC Function | `auth.users` | Cascade user data erasure and complete self-service account deletion (`SECURITY DEFINER`, `SET search_path = \'\'`, authenticated-only execution, null session guard). |',
+    '| **`public.delete_current_user()`** | RPC Function | `auth.users` | Atomic server-side 11-table + `storage.objects` user data erasure prior to `auth.users` account deletion (`SECURITY DEFINER`, `SET search_path = \'\'`, authenticated-only execution, null session guard). |',
     '| **`public.lookup_scholar_by_username()`** | RPC Function | `public.profiles` | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`SECURITY DEFINER`, `SET search_path = \'\'`, authenticated-only). |',
     '| **`public.rls_auto_enable()` (Guard)** | Conditional Hardening Block | `pg_proc` (`public.rls_auto_enable`) | Idempotent `DO $$` guard revoking RPC execution from `PUBLIC, anon, authenticated` and locking `search_path = \'\'` if provisioned on the remote Supabase instance. |',
     '',
@@ -1659,7 +1659,7 @@ function generateMarkdown() {
 
   const nodeEcosystem = extractNodeEcosystemCatalog(rootDir, testHarness.totalSuites);
   lines.push(
-    `Bookarium executes on **Node.js \`${nodeEcosystem.engines.node || '>=20.0.0'}\`** with **npm \`${nodeEcosystem.engines.npm || '>=10.0.0'}\`** (Node 22 LTS recommended). All dependency versions are programmatically synchronized from \`package.json\` via AST compilation (Rule 2):`,
+    `Bookarium executes on **Node.js \`${nodeEcosystem.engines.node || '>=22.0.0'}\`** with **npm \`${nodeEcosystem.engines.npm || '>=10.0.0'}\`** (Node 22 LTS / Node 24 LTS recommended). All dependency versions are programmatically synchronized from \`package.json\` via AST compilation (Rule 2):`,
     '',
     '| Package | Live Version | Classification & Tier | Architectural Responsibility in Bookarium |',
     '| :--- | :--- | :--- | :--- |'

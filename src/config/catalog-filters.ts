@@ -1,6 +1,7 @@
 /**
  * Centralized Catalog Filters, Historical Eras, Languages, and Facets for Bookarium
  * Single source of truth across Search, Hero, Catalog Toolbar, and Advanced Filter Drawer.
+ * Aligned with Project Gutenberg's official Bookshelf, Subject, Language, and Format taxonomy.
  */
 
 export interface EraOption {
@@ -30,6 +31,9 @@ export interface FormatFilter {
   label: string;
 }
 
+export const INITIAL_VISIBLE_FACET_COUNT = 13;
+export const INITIAL_VISIBLE_LANGUAGE_COUNT = 13;
+
 export const LITERARY_ERAS: EraOption[] = [
   { id: '', label: 'All Historical Eras' },
   { id: 'antiquity', label: 'Antiquity (Pre-500 CE)', start: -800, end: 500 },
@@ -41,39 +45,68 @@ export const LITERARY_ERAS: EraOption[] = [
 ];
 
 export const SORT_OPTIONS: SortOption[] = [
-  { value: 'descending', label: 'Recently Added to Gutenberg' },
-  { value: 'popular', label: 'Most Popular (Download Count)' },
-  { value: 'ascending', label: 'Oldest Catalog ID' },
+  { value: 'descending', label: 'Newest Releases (Latest eBook #)' },
+  { value: 'popular', label: 'Most Popular (Downloads)' },
+  { value: 'ascending', label: 'Oldest Releases (eBook #1 First)' },
 ];
 
 export const GENRE_FACETS: GenreFacet[] = [
-  { id: '', label: 'All Subjects' },
-  { id: 'children', label: "Children's & Juvenile Literature" },
-  { id: 'philosophy', label: 'Classical Philosophy & Ethics' },
-  { id: 'fiction', label: 'Classic Literature & Fiction' },
-  { id: 'gothic', label: 'Gothic, Mystery & Horror' },
-  { id: 'poetry', label: 'Poetry, Epics & Sonnets' },
-  { id: 'science', label: 'Science, Mathematics & Nature' },
-  { id: 'drama', label: 'Drama, Theatre & Plays' },
-  { id: 'history', label: 'History, Treatises & Biographies' },
-  { id: 'adventure', label: 'Sea Stories, Voyages & Adventure' },
+  { id: '', label: 'All Bookshelves & Subjects' },
+  // Primary 12 Project Gutenberg Bookshelves (shown by default)
+  { id: 'fiction', label: 'Fiction' },
+  { id: 'science fiction', label: 'Science Fiction & Fantasy' },
+  { id: 'mystery', label: 'Mystery & Detective Fiction' },
+  { id: 'gothic', label: 'Gothic & Horror Fiction' },
+  { id: 'romance', label: 'Romance & Love Stories' },
+  { id: 'historical fiction', label: 'Historical Fiction' },
+  { id: 'short stories', label: 'Short Stories' },
+  { id: 'adventure', label: 'Adventure & Sea Stories' },
+  { id: 'children', label: "Children's Literature" },
+  { id: 'poetry', label: 'Poetry' },
+  { id: 'drama', label: 'Drama & Plays' },
+  { id: 'philosophy', label: 'Philosophy & Ethics' },
+  // Extended Project Gutenberg Bookshelf Taxonomy (20 shelves)
+  { id: 'history', label: 'History' },
+  { id: 'biography', label: 'Biographies & Memoirs' },
+  { id: 'religion', label: 'Religion & Spirituality' },
   { id: 'mythology', label: 'Mythology & Folklore' },
+  { id: 'science', label: 'Science & Nature' },
+  { id: 'humor', label: 'Humor & Satire' },
+  { id: 'essays', label: 'Essays, Letters & Speeches' },
+  { id: 'politics', label: 'Politics, Society & Law' },
+  { id: 'economics', label: 'Economics & Commerce' },
+  { id: 'psychology', label: 'Psychology & Mind' },
+  { id: 'art', label: 'Art, Architecture & Music' },
+  { id: 'travel', label: 'Travel, Geography & Voyages' },
+  { id: 'classics', label: 'Classical Antiquity' },
+  { id: 'war', label: 'War & Military History' },
+  { id: 'western', label: 'Western Stories' },
+  { id: 'fairy tales', label: 'Fairy Tales & Fables' },
+  { id: 'medicine', label: 'Medicine & Health' },
+  { id: 'astronomy', label: 'Astronomy & Space' },
+  { id: 'mathematics', label: 'Mathematics & Logic' },
+  { id: 'cookery', label: 'Cookery & Domestic Arts' },
 ];
 
 export const HERO_POPULAR_TOPICS: GenreFacet[] = [
   { id: '', label: 'All Classics' },
-  { id: 'children', label: "Children's Classics" },
-  { id: 'philosophy', label: 'Philosophy' },
   { id: 'fiction', label: 'Fiction' },
-  { id: 'gothic', label: 'Gothic Horror' },
+  { id: 'science fiction', label: 'Sci-Fi & Fantasy' },
+  { id: 'mystery', label: 'Mystery' },
+  { id: 'gothic', label: 'Gothic & Horror' },
+  { id: 'children', label: "Children's Literature" },
   { id: 'poetry', label: 'Poetry' },
+  { id: 'drama', label: 'Drama & Plays' },
+  { id: 'philosophy', label: 'Philosophy' },
+  { id: 'history', label: 'History' },
+  { id: 'biography', label: 'Biographies' },
+  { id: 'adventure', label: 'Adventure' },
   { id: 'science', label: 'Science' },
-  { id: 'drama', label: 'Drama' },
-  { id: 'adventure', label: 'Sea & Adventure' },
 ];
 
 export const CATALOG_LANGUAGES: LanguageOption[] = [
   { value: '', label: 'All Languages' },
+  // Primary 12 Project Gutenberg Languages (shown by default)
   { value: 'en', label: 'English' },
   { value: 'fr', label: 'French (Français)' },
   { value: 'de', label: 'German (Deutsch)' },
@@ -86,13 +119,21 @@ export const CATALOG_LANGUAGES: LanguageOption[] = [
   { value: 'ru', label: 'Russian (Русский)' },
   { value: 'zh', label: 'Chinese (中文)' },
   { value: 'ro', label: 'Romanian (Română)' },
+  // Extended Top Project Gutenberg Languages (8 languages)
+  { value: 'fi', label: 'Finnish (Suomi)' },
+  { value: 'sv', label: 'Swedish (Svenska)' },
+  { value: 'da', label: 'Danish (Dansk)' },
+  { value: 'pl', label: 'Polish (Polski)' },
+  { value: 'hu', label: 'Hungarian (Magyar)' },
+  { value: 'ca', label: 'Catalan (Català)' },
+  { value: 'eo', label: 'Esperanto' },
+  { value: 'ja', label: 'Japanese (日本語)' },
 ];
 
 export const FORMAT_FILTERS: FormatFilter[] = [
-  { value: '', label: 'All Digital Formats' },
-  { value: 'application/epub+zip', label: 'EPUB E-Reader Available' },
-  { value: 'application/x-mobipocket-ebook', label: 'Kindle (MOBI) Available' },
+  { value: '', label: 'All E-Book Formats' },
+  { value: 'application/epub+zip', label: 'EPUB (E-Readers)' },
+  { value: 'application/x-mobipocket-ebook', label: 'Kindle (MOBI)' },
   { value: 'text/plain; charset=utf-8', label: 'Plain Text (UTF-8)' },
-  { value: 'text/html', label: 'HTML Web Reader' },
+  { value: 'text/html', label: 'Read Online (HTML)' },
 ];
-

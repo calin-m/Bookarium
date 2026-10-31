@@ -37,7 +37,7 @@ Before opening a PR, familiarize yourself with Bookarium's state and rendering p
 ## Local Development Setup
 
 ### 1. Prerequisites
-- **Node.js**: `20.x` or higher (Node 20 LTS or Node 22 LTS recommended)
+- **Node.js**: `22.x` or higher (Node 22 LTS or Node 24 LTS recommended)
 - **npm**: `10.x` or higher
 - **Git**: Installed and configured
 

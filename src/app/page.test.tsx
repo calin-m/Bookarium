@@ -1107,7 +1107,7 @@ describe('Home page integration', () => {
     const topicChip = screen.getByTestId('topic-chip-philosophy');
     fireEvent.click(topicChip);
     const removeChipBtn = screen.getByRole('button', {
-      name: /Remove filter Classical Philosophy & Ethics/i,
+      name: /Remove filter Philosophy & Ethics/i,
     });
     fireEvent.click(removeChipBtn);
 

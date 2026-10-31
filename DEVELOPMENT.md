@@ -3,7 +3,7 @@
 ## Getting Started
 
 ### Prerequisites
-- Node.js 20+ (Node 22+ recommended)
+- Node.js 22+ (Node 22 LTS or Node 24 LTS recommended)
 - npm 10+
 
 ### Installation

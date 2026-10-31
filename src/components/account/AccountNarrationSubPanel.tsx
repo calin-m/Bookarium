@@ -101,7 +101,7 @@ export const AccountNarrationSubPanel: React.FC<AccountNarrationSubPanelProps> =
   return (
     <div
       id="preferences-subpanel-narration"
-      className={isActive ? 'space-y-4' : 'hidden'}
+      className={isActive ? 'space-y-4 animate-in fade-in duration-150' : 'hidden'}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">

@@ -183,7 +183,7 @@ describe('AccountPage', () => {
     const habitsLabel = habitsTab.querySelector('span');
     const profileLabel = profileTab.querySelector('span');
     expect(habitsLabel).toHaveClass('truncate', 'min-w-0', 'inline');
-    expect(profileLabel).toHaveClass('truncate', 'min-w-0', 'hidden', 'sm:inline');
+    expect(profileLabel).toHaveClass('truncate', 'min-w-0', 'hidden', 'lg:inline');
 
     // Verify Tier-2 Sub-Tabs inside Habits & Accolades (2 tabs: Streaks & Challenge, Accolades Compendium)
     const habitsSubTablist = screen.getByRole('tablist', { name: /Habits and library sub-sections/i });
@@ -223,7 +223,7 @@ describe('AccountPage', () => {
     expect(profileTab).toHaveClass('flex-1', 'min-w-0');
     expect(habitsTab).toHaveClass('shrink-0');
     expect(profileTab.querySelector('span')).toHaveClass('inline');
-    expect(habitsTab.querySelector('span')).toHaveClass('hidden', 'sm:inline');
+    expect(habitsTab.querySelector('span')).toHaveClass('hidden', 'lg:inline');
     expect(document.getElementById('account-tabpanel-profile')).not.toHaveClass('hidden');
     expect(document.getElementById('account-tabpanel-profile')).not.toHaveAttribute('hidden');
     expect(document.getElementById('account-tabpanel-habits')).toHaveClass('hidden');
@@ -284,11 +284,27 @@ describe('AccountPage', () => {
     fireEvent.keyDown(tablist, { key: 'Enter' });
     expect(securityTab).toHaveAttribute('aria-selected', 'true');
 
-    // Touch isolation stops propagation
+    // Touch isolation stops propagation and supports live touch-swipe tab scrubbing
     const touchEvent = new CustomEvent('touchstart', { bubbles: true, cancelable: true });
     const stopPropagationSpy = vi.spyOn(touchEvent, 'stopPropagation');
     tablist.dispatchEvent(touchEvent);
     expect(stopPropagationSpy).toHaveBeenCalled();
+
+    vi.spyOn(profileTab, 'getBoundingClientRect').mockReturnValue({
+      left: 100,
+      right: 200,
+      width: 100,
+      top: 0,
+      bottom: 40,
+      height: 40,
+      x: 100,
+      y: 0,
+      toJSON: () => {},
+    });
+    fireEvent.touchStart(tablist, { touches: [{ clientX: 20, clientY: 20 }] });
+    fireEvent.touchMove(tablist, { touches: [{ clientX: 150, clientY: 20 }] });
+    fireEvent.touchEnd(tablist);
+    expect(profileTab).toHaveAttribute('aria-selected', 'true');
   });
 
   it('initializes active tab from URL search parameters (?tab=preferences) and handles tab delete when switching back to habits', () => {

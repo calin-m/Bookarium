@@ -226,12 +226,19 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
             return evalResult.isAllowed;
           });
 
-      // Filter by mimeType if specified (supports comma-separated list of formats)
+      // Filter by mimeType if specified (supports comma-separated list of formats and MIME charset parameters)
       const mimeTypes = options.mimeType
         ? options.mimeType.split(',').map((m) => m.trim()).filter(Boolean)
         : [];
       const finalResults = mimeTypes.length > 0
-        ? filteredResults.filter((b) => mimeTypes.some((fmt) => Boolean(b.formats && b.formats[fmt])))
+        ? filteredResults.filter((b) =>
+            mimeTypes.some((fmt) => {
+              const baseMime = fmt.split(';')[0].trim();
+              return Object.keys(b.formats || {}).some(
+                (key) => key === fmt || key.startsWith(baseMime)
+              );
+            })
+          )
         : filteredResults;
 
       const totalFiltered = gutendexBooks.length - filteredResults.length;

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { createClient } from '@/lib/supabase/client';
-import type { Database } from '@/types/database.types';
+import type { Database, SymposiumSessionRow } from '@/types/database.types';
 import {
   useFellowshipStore,
   isPlaceholderUsername,
@@ -69,6 +69,12 @@ export interface AnnotationState {
   ) => Promise<FellowAnnotation[]>;
   enrichFellowAnnotations: (
     fellowScholarsMap?: Record<string, { username: string; display_name?: string | null }>
+  ) => void;
+  pruneFellowAnnotationsByFellow: (fellowUserId: string) => void;
+  pruneFellowAnnotationsForSymposium: (bookId: number, fellowUserId?: string) => void;
+  reconcileFellowAnnotationsWithSymposiums: (
+    symposiums: SymposiumSessionRow[],
+    currentUserId: string
   ) => void;
   resolveStaleFellowProfiles: () => Promise<void>;
   getFellowAnnotationsForBook: (bookId: number) => FellowAnnotation[];
@@ -392,6 +398,61 @@ export const useAnnotationStore = create<AnnotationState>()(
           });
 
           return modified ? { fellowAnnotations: nextFellowAnnotations } : state;
+        });
+      },
+
+      pruneFellowAnnotationsByFellow: (fellowUserId) => {
+        if (!fellowUserId) return;
+        set((state) => {
+          const filtered = state.fellowAnnotations.filter((fa) => fa.userId !== fellowUserId);
+          return filtered.length !== state.fellowAnnotations.length
+            ? { fellowAnnotations: filtered }
+            : state;
+        });
+      },
+
+      pruneFellowAnnotationsForSymposium: (bookId, fellowUserId) => {
+        if (!bookId) return;
+        set((state) => {
+          const filtered = state.fellowAnnotations.filter((fa) => {
+            if (fa.bookId !== bookId) return true;
+            if (fellowUserId && fa.userId && fa.userId !== fellowUserId) return true;
+            return false;
+          });
+          return filtered.length !== state.fellowAnnotations.length
+            ? { fellowAnnotations: filtered }
+            : state;
+        });
+      },
+
+      reconcileFellowAnnotationsWithSymposiums: (symposiums, currentUserId) => {
+        if (!currentUserId || !Array.isArray(symposiums)) return;
+        const activeBookFellowPairs = new Map<number, Set<string>>();
+        for (const sym of symposiums) {
+          if (sym.status !== 'active' && sym.status !== 'completed') continue;
+          const partnerId =
+            sym.host_id === currentUserId
+              ? sym.fellow_id
+              : sym.fellow_id === currentUserId
+                ? sym.host_id
+                : null;
+          if (!partnerId) continue;
+          if (!activeBookFellowPairs.has(sym.book_id)) {
+            activeBookFellowPairs.set(sym.book_id, new Set());
+          }
+          activeBookFellowPairs.get(sym.book_id)!.add(partnerId);
+        }
+
+        set((state) => {
+          const filtered = state.fellowAnnotations.filter((fa) => {
+            const allowedPartners = activeBookFellowPairs.get(fa.bookId);
+            if (!allowedPartners || allowedPartners.size === 0) return false;
+            if (fa.userId) return allowedPartners.has(fa.userId);
+            return true;
+          });
+          return filtered.length !== state.fellowAnnotations.length
+            ? { fellowAnnotations: filtered }
+            : state;
         });
       },
 

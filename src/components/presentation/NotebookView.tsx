@@ -50,7 +50,7 @@ import {
   featuredHeroToGutendexBook,
 } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
-import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
+import { attachHorizontalDragAndWheelScroll, createTabScrubberHandlers } from '@/lib/scroll-utils';
 import {
   pairOverlappingAnnotations,
   filterAndPairAnnotationsBySource,
@@ -751,14 +751,18 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             onPageChange={handlePageChange}
             paginationAriaLabel="Top notebook pagination"
             extraControls={
-              <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border shrink-0">
+              <div
+                {...createTabScrubberHandlers(setGroupMode)}
+                className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border shrink-0 select-none"
+              >
                 <button
                   type="button"
+                  data-tab-id="volume"
                   onClick={() => setGroupMode('volume')}
                   title="Group by Volume"
                   aria-label="By Book"
                   aria-pressed={groupMode === 'volume'}
-                  className={`flex items-center gap-1 sm:gap-1.5 px-2 lg:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 lg:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer select-none ${
                     groupMode === 'volume'
                       ? 'bg-background text-foreground shadow-xs font-bold'
                       : 'text-muted-foreground hover:text-foreground'
@@ -769,11 +773,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
                 </button>
                 <button
                   type="button"
+                  data-tab-id="chronological"
                   onClick={() => setGroupMode('chronological')}
                   title="All Passages in Chronological Order"
                   aria-label="Chronological"
                   aria-pressed={groupMode === 'chronological'}
-                  className={`flex items-center gap-1 sm:gap-1.5 px-2 lg:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 lg:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer select-none ${
                     groupMode === 'chronological'
                       ? 'bg-background text-foreground shadow-xs font-bold'
                       : 'text-muted-foreground hover:text-foreground'

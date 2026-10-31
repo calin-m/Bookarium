@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { smartScrollToContent, attachHorizontalDragAndWheelScroll } from './scroll-utils';
+import {
+  smartScrollToContent,
+  attachHorizontalDragAndWheelScroll,
+  resolveScrubbedTabId,
+  createTabScrubberHandlers,
+} from './scroll-utils';
 
 describe('smartScrollToContent', () => {
   let scrollToMock: ReturnType<typeof vi.fn>;
@@ -293,4 +298,379 @@ describe('attachHorizontalDragAndWheelScroll', () => {
     expect(container.scrollLeft).toBe(0);
   });
 });
+
+describe('resolveScrubbedTabId & createTabScrubberHandlers', () => {
+  let tablist: HTMLDivElement;
+  let btnA: HTMLButtonElement;
+  let btnB: HTMLButtonElement;
+  let btnC: HTMLButtonElement;
+
+  beforeEach(() => {
+    tablist = document.createElement('div');
+    btnA = document.createElement('button');
+    btnA.setAttribute('data-tab-id', 'habits');
+    btnB = document.createElement('button');
+    btnB.setAttribute('data-tab-id', 'profile');
+    btnC = document.createElement('button');
+    btnC.setAttribute('data-tab-id', 'symposiums');
+
+    vi.spyOn(btnA, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      right: 100,
+      width: 100,
+      top: 0,
+      bottom: 40,
+      height: 40,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+    vi.spyOn(btnB, 'getBoundingClientRect').mockReturnValue({
+      left: 105,
+      right: 205,
+      width: 100,
+      top: 0,
+      bottom: 40,
+      height: 40,
+      x: 105,
+      y: 0,
+      toJSON: () => {},
+    });
+    vi.spyOn(btnC, 'getBoundingClientRect').mockReturnValue({
+      left: 210,
+      right: 310,
+      width: 100,
+      top: 0,
+      bottom: 40,
+      height: 40,
+      x: 210,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    tablist.appendChild(btnA);
+    tablist.appendChild(btnB);
+    tablist.appendChild(btnC);
+    document.body.appendChild(tablist);
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+    vi.restoreAllMocks();
+  });
+
+  it('resolves tab IDs via bounding box, bridges inter-button flex gaps, clamps edges, and falls back to document.elementFromPoint when rects have zero width', () => {
+    expect(resolveScrubbedTabId(null, 50)).toBeNull();
+    expect(resolveScrubbedTabId(tablist, 50)).toBe('habits');
+    expect(resolveScrubbedTabId(tablist, 150)).toBe('profile');
+    expect(resolveScrubbedTabId(tablist, 260)).toBe('symposiums');
+    // Inter-button flex gap (between btnA right=100 and btnB left=105)
+    expect(resolveScrubbedTabId(tablist, 102)).toBe('habits');
+    expect(resolveScrubbedTabId(tablist, 104)).toBe('profile');
+    // Out-of-bounds without clamping vs with edge clamping
+    expect(resolveScrubbedTabId(tablist, 500)).toBeNull();
+    expect(resolveScrubbedTabId(tablist, -20, undefined, { clampToEdges: true })).toBe('habits');
+    expect(resolveScrubbedTabId(tablist, 500, undefined, { clampToEdges: true })).toBe(
+      'symposiums',
+    );
+
+    // Zero-width rects fallback to document.elementFromPoint
+    vi.spyOn(btnB, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      right: 0,
+      width: 0,
+      top: 0,
+      bottom: 0,
+      height: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+    const spanInsideB = document.createElement('span');
+    btnB.appendChild(spanInsideB);
+    const originalElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn().mockReturnValue(spanInsideB);
+    try {
+      expect(resolveScrubbedTabId(tablist, 150, 20)).toBe('profile');
+    } finally {
+      document.elementFromPoint = originalElementFromPoint;
+    }
+  });
+
+  it('scrubs live across multiple tabs across React handler re-renders, updates data-scrub-active attributes, tracks window move/up, and suppresses post-drag click', () => {
+    const onSelectTab = vi.fn();
+    let handlers = createTabScrubberHandlers(onSelectTab, { scrubThreshold: 4 });
+
+    // Ignore right-click (button: 2)
+    handlers.onPointerDown({
+      button: 2,
+      pointerType: 'mouse',
+      clientX: 20,
+      currentTarget: tablist,
+    });
+    handlers.onPointerMove({
+      buttons: 2,
+      pointerType: 'mouse',
+      clientX: 150,
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).not.toHaveBeenCalled();
+
+    // Primary mouse down on btnA (X=20)
+    handlers.onPointerDown({
+      button: 0,
+      pointerType: 'mouse',
+      clientX: 20,
+      currentTarget: tablist,
+    });
+
+    // Sub-threshold movement (2px < 4px) does not trigger scrub
+    handlers.onPointerMove({
+      buttons: 1,
+      pointerType: 'mouse',
+      clientX: 22,
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).not.toHaveBeenCalled();
+
+    // Drag into btnB (X=150) -> selects 'profile' and marks live DOM preview attributes
+    handlers.onPointerMove({
+      buttons: 1,
+      pointerType: 'mouse',
+      clientX: 150,
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).toHaveBeenCalledTimes(1);
+    expect(onSelectTab).toHaveBeenLastCalledWith('profile');
+    expect(tablist.getAttribute('data-scrubbing')).toBe('true');
+    expect(btnB.getAttribute('data-scrub-active')).toBe('true');
+    expect(btnA.getAttribute('data-scrub-inactive')).toBe('true');
+
+    // Simulate React re-rendering the component and creating a brand-new handlers object mid-drag!
+    handlers = createTabScrubberHandlers(onSelectTab, { scrubThreshold: 4 });
+
+    // Drag further inside btnB (X=175) -> does not duplicate callback for same tab
+    handlers.onPointerMove({
+      buttons: 1,
+      pointerType: 'mouse',
+      clientX: 175,
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).toHaveBeenCalledTimes(1);
+
+    // Continue dragging outside vertical bounds via window mousemove into btnC (X=250) -> selects 'symposiums'
+    window.dispatchEvent(
+      new MouseEvent('mousemove', {
+        buttons: 1,
+        clientX: 250,
+        clientY: -30,
+      }),
+    );
+    expect(onSelectTab).toHaveBeenCalledTimes(2);
+    expect(onSelectTab).toHaveBeenLastCalledWith('symposiums');
+    expect(btnC.getAttribute('data-scrub-active')).toBe('true');
+
+    // Drag back left via window pointermove into btnA (X=30) -> selects 'habits'
+    window.dispatchEvent(
+      new MouseEvent('pointermove', {
+        buttons: 1,
+        clientX: 30,
+        clientY: 80,
+      }),
+    );
+    expect(onSelectTab).toHaveBeenCalledTimes(3);
+    expect(onSelectTab).toHaveBeenLastCalledWith('habits');
+    expect(btnA.getAttribute('data-scrub-active')).toBe('true');
+
+    // Release mouse button via window mouseup -> clears live preview attributes
+    window.dispatchEvent(new MouseEvent('mouseup'));
+    expect(tablist.hasAttribute('data-scrubbing')).toBe(false);
+    expect(btnA.hasAttribute('data-scrub-active')).toBe(false);
+
+    // Synthetic click immediately following a drag is suppressed by onClickCapture
+    const stopPropagation = vi.fn();
+    const preventDefault = vi.fn();
+    handlers.onClickCapture?.({
+      currentTarget: tablist,
+      stopPropagation,
+      preventDefault,
+    });
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+
+    // If mouse button is already released mid-move (buttons: 0), resets scrub state cleanly
+    handlers.onPointerDown({
+      button: 0,
+      pointerType: 'mouse',
+      clientX: 20,
+      currentTarget: tablist,
+    });
+    handlers.onPointerMove({
+      buttons: 0,
+      pointerType: 'mouse',
+      clientX: 150,
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).toHaveBeenCalledTimes(3);
+
+    handlers.onPointerUp({ currentTarget: tablist });
+  });
+
+  it('scrubs live across tabs during tactile touch hold-and-swipe and supports one-finger relative thumb-arc stepping across wide containers', () => {
+    const onSelectTab = vi.fn();
+    const handlers = createTabScrubberHandlers(onSelectTab);
+    const stopPropagation = vi.fn();
+
+    // Configure wide container (360px across 3 tabs -> stepPx = 42px) so one short thumb arc sweeps all tabs
+    vi.spyOn(tablist, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      right: 360,
+      width: 360,
+      top: 0,
+      bottom: 40,
+      height: 40,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    // Touch move before touchStart is ignored
+    handlers.onTouchMove({
+      touches: [{ clientX: 150 }],
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).not.toHaveBeenCalled();
+
+    // Start touch on btnA (index 0, X=30)
+    handlers.onTouchStart({
+      touches: [{ clientX: 30, clientY: 20 }],
+      stopPropagation,
+      currentTarget: tablist,
+    });
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+
+    // Empty touches array is safely ignored
+    handlers.onTouchMove({
+      touches: [],
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).not.toHaveBeenCalled();
+
+    // Swipe right by +45px (X=75, still physically inside btnA's 0..100px box, but >= 1 thumb step!) -> advances to 'profile'
+    handlers.onTouchMove({
+      touches: [{ clientX: 75, clientY: 20 }],
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).toHaveBeenLastCalledWith('profile');
+
+    // Swipe right by +90px total (X=120, >= 2 thumb steps) -> advances to 'symposiums' (index 2)
+    handlers.onTouchMove({
+      touches: [{ clientX: 120, clientY: 20 }],
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).toHaveBeenLastCalledWith('symposiums');
+
+    // Reverse thumb back to X=30 (delta = 0 steps) -> returns to 'habits' (index 0)
+    handlers.onTouchMove({
+      touches: [{ clientX: 30, clientY: 20 }],
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).toHaveBeenLastCalledWith('habits');
+    expect(onSelectTab).toHaveBeenCalledTimes(3);
+
+    handlers.onTouchEnd({ currentTarget: tablist });
+    handlers.onTouchCancel({ currentTarget: tablist });
+    handlers.onPointerCancel({ currentTarget: tablist });
+    handlers.onPointerLeave();
+  });
+
+  it('tracks 1:1 cursor overlap on mouse across variable-width tabs without jumping ahead of the pointer', () => {
+    const onSelectTab = vi.fn();
+    const handlers = createTabScrubberHandlers(onSelectTab, { scrubThreshold: 4 });
+
+    // Simulate desktop Accolade Compendium where btnA ("All") is 48px wide, btnB ("Reading Immersion") is 180px wide, and btnC ("Exploration") is 120px wide
+    vi.spyOn(tablist, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      right: 360,
+      width: 360,
+      top: 0,
+      bottom: 40,
+      height: 40,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+    vi.spyOn(btnA, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      right: 48,
+      width: 48,
+      top: 0,
+      bottom: 40,
+      height: 40,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+    vi.spyOn(btnB, 'getBoundingClientRect').mockReturnValue({
+      left: 52,
+      right: 232,
+      width: 180,
+      top: 0,
+      bottom: 40,
+      height: 40,
+      x: 52,
+      y: 0,
+      toJSON: () => {},
+    });
+    vi.spyOn(btnC, 'getBoundingClientRect').mockReturnValue({
+      left: 236,
+      right: 356,
+      width: 120,
+      top: 0,
+      bottom: 40,
+      height: 40,
+      x: 236,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    handlers.onPointerDown({
+      button: 0,
+      pointerType: 'mouse',
+      clientX: 20,
+      currentTarget: tablist,
+    });
+
+    // Drag into wide btnB (X=90 and X=180 are both physically inside btnB [52..232]) -> stays on 'profile', never jumps ahead to 'symposiums'
+    handlers.onPointerMove({
+      buttons: 1,
+      pointerType: 'mouse',
+      clientX: 90,
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).toHaveBeenLastCalledWith('profile');
+
+    handlers.onPointerMove({
+      buttons: 1,
+      pointerType: 'mouse',
+      clientX: 180,
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).toHaveBeenLastCalledWith('profile');
+    expect(onSelectTab).toHaveBeenCalledTimes(1);
+
+    // Only switches to 'symposiums' when cursor physically overlaps btnC [236..356]
+    handlers.onPointerMove({
+      buttons: 1,
+      pointerType: 'mouse',
+      clientX: 260,
+      currentTarget: tablist,
+    });
+    expect(onSelectTab).toHaveBeenLastCalledWith('symposiums');
+    expect(onSelectTab).toHaveBeenCalledTimes(2);
+
+    handlers.onPointerUp({ currentTarget: tablist });
+  });
+});
+
 

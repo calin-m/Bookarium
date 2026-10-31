@@ -406,6 +406,27 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.results).toHaveLength(2);
     });
 
+    it('matches plain text formats across charset variations (e.g. text/plain; charset=us-ascii vs utf-8)', async () => {
+      const rowsWithUtf8Plain: DatabaseBook[] = [
+        {
+          ...sampleDbRows[0],
+          formats: { 'text/plain; charset=utf-8': 'https://gutenberg.org/1342.txt' },
+        },
+      ];
+      const { client } = createMockQueryBuilder(rowsWithUtf8Plain, 1);
+      const provider = new SupabaseCatalogProvider(client as any);
+
+      const result = await provider.searchBooks({
+        page: 1,
+        limit: 32,
+        mimeType: 'text/plain; charset=us-ascii',
+        country: 'US',
+      });
+
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].id).toBe(1342);
+    });
+
     it('filters by comma-delimited book IDs', async () => {
       const { client, builder } = createMockQueryBuilder([sampleDbRows[0]], 1);
       const provider = new SupabaseCatalogProvider(client as any);

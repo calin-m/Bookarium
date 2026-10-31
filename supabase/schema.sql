@@ -492,13 +492,40 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
+DECLARE
+  target_uid UUID := auth.uid();
 BEGIN
   -- Enforce active authenticated session
-  IF auth.uid() IS NULL THEN
+  IF target_uid IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
-  DELETE FROM auth.users WHERE id = auth.uid();
+  -- 1. Explicitly purge all shared and personal relational rows across all 11 user tables
+  DELETE FROM public.symposium_sessions WHERE host_id = target_uid OR fellow_id = target_uid;
+  DELETE FROM public.reader_circles WHERE requester_id = target_uid OR recipient_id = target_uid;
+  DELETE FROM public.user_accolades WHERE user_id = target_uid;
+  DELETE FROM public.user_annotations WHERE user_id = target_uid;
+  DELETE FROM public.reading_progress WHERE user_id = target_uid;
+  DELETE FROM public.user_favorites WHERE user_id = target_uid;
+  DELETE FROM public.user_book_curation WHERE user_id = target_uid;
+  DELETE FROM public.user_reading_habits WHERE user_id = target_uid;
+  DELETE FROM public.bookshelf_items WHERE user_id = target_uid;
+  DELETE FROM public.bookshelves WHERE user_id = target_uid;
+  DELETE FROM public.profiles WHERE id = target_uid;
+
+  -- 2. Purge any user-owned objects in Supabase Storage if storage.objects exists
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'storage' AND c.relname = 'objects'
+  ) THEN
+    EXECUTE 'DELETE FROM storage.objects WHERE owner = $1 OR owner_id = $1::text'
+      USING target_uid;
+  END IF;
+
+  -- 3. Delete root authentication account (cascades auth.identities, sessions, refresh_tokens)
+  DELETE FROM auth.users WHERE id = target_uid;
 END;
 $$;
 
@@ -674,7 +701,9 @@ AS $$
 BEGIN
   NEW.search_vector := pg_catalog.to_tsvector(
     'pg_catalog.english'::pg_catalog.regconfig,
-    COALESCE(NEW.title, '') || ' ' || COALESCE(pg_catalog.array_to_string(NEW.subjects, ' '), '')
+    COALESCE(NEW.title, '') || ' ' ||
+    COALESCE(pg_catalog.array_to_string(NEW.subjects, ' '), '') || ' ' ||
+    COALESCE(pg_catalog.array_to_string(NEW.bookshelves, ' '), '')
   );
   RETURN NEW;
 END;
@@ -687,7 +716,7 @@ REVOKE EXECUTE ON FUNCTION public.books_search_vector_trigger() FROM authenticat
 
 DROP TRIGGER IF EXISTS trigger_books_search_vector ON public.books;
 CREATE TRIGGER trigger_books_search_vector
-  BEFORE INSERT OR UPDATE OF title, subjects ON public.books
+  BEFORE INSERT OR UPDATE OF title, subjects, bookshelves ON public.books
   FOR EACH ROW EXECUTE FUNCTION public.books_search_vector_trigger();
 
 -- Full-text search and query performance indexes

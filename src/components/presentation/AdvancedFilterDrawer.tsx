@@ -9,6 +9,8 @@ import {
   GENRE_FACETS,
   FORMAT_FILTERS,
   CATALOG_LANGUAGES,
+  INITIAL_VISIBLE_FACET_COUNT,
+  INITIAL_VISIBLE_LANGUAGE_COUNT,
 } from '@/config/catalog-filters';
 
 export interface AdvancedFilterDrawerProps {
@@ -57,6 +59,8 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
   const [draftTopic, setDraftTopic] = useState(selectedTopic);
   const [draftLanguage, setDraftLanguage] = useState(selectedLanguage);
   const [draftFormat, setDraftFormat] = useState(selectedFormat);
+  const [showAllTopics, setShowAllTopics] = useState(false);
+  const [showAllLanguages, setShowAllLanguages] = useState(false);
 
   // Synchronize draft state from props during render (React 19 pattern: adjusting state when props change)
   const [prevSync, setPrevSync] = useState({
@@ -117,6 +121,24 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
       ? draftFormat.split(',').map((f) => f.trim()).filter(Boolean)
       : [];
   }, [draftFormat]);
+
+  const visibleGenreFacets = useMemo(() => {
+    if (showAllTopics) return GENRE_FACETS;
+    const initial = GENRE_FACETS.slice(0, INITIAL_VISIBLE_FACET_COUNT);
+    const extraSelected = GENRE_FACETS.slice(INITIAL_VISIBLE_FACET_COUNT).filter(
+      (facet) => facet.id && selectedTopics.includes(facet.id)
+    );
+    return [...initial, ...extraSelected];
+  }, [showAllTopics, selectedTopics]);
+
+  const visibleLanguages = useMemo(() => {
+    if (showAllLanguages) return CATALOG_LANGUAGES;
+    const initial = CATALOG_LANGUAGES.slice(0, INITIAL_VISIBLE_LANGUAGE_COUNT);
+    const extraSelected = CATALOG_LANGUAGES.slice(INITIAL_VISIBLE_LANGUAGE_COUNT).filter(
+      (lang) => lang.value && selectedLanguages.includes(lang.value)
+    );
+    return [...initial, ...extraSelected];
+  }, [showAllLanguages, selectedLanguages]);
 
   const handleToggleLanguage = (code: string) => {
     if (!code) {
@@ -282,7 +304,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
             </div>
             <div>
               <h3 id="advanced-filter-title" className="font-serif font-bold text-base sm:text-lg leading-tight text-foreground">
-                Advanced Archive Filters
+                Gutenberg Catalog Filters
               </h3>
               <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
                 {stagedFilterCount > 0 ? `${stagedFilterCount} active ${stagedFilterCount === 1 ? 'filter' : 'filters'}` : 'Customize catalog query'}
@@ -303,11 +325,11 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
         {/* Drawer Scrollable Filter Sections */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-6">
           
-          {/* Section 1: Literary Era / Century (Multi-Select Touch Chips) */}
+          {/* Section 1: Author Lifespan & Literary Era (Multi-Select Touch Chips) */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Historical Literary Era
+                <Sparkles className="w-3.5 h-3.5" /> Author Lifespan &amp; Literary Era
               </h4>
               {selectedEras.length > 0 && (
                 <span className="text-[10px] font-mono text-primary font-bold">
@@ -347,7 +369,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
           {/* Section 2: Sort Order */}
           <div className="space-y-2.5">
             <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
-              Sort Ordering
+              Sort Order
             </h4>
             <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Sort Ordering">
               {SORT_OPTIONS.map((sort) => {
@@ -374,11 +396,11 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Genre & Subject Facet (Multi-Select Touch Chips) */}
+          {/* Section 3: Bookshelf & Subject Facet (Multi-Select Touch Chips) */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
-                Subject & Category
+                Bookshelf &amp; Subject
               </h4>
               {selectedTopics.length > 0 && (
                 <span className="text-[10px] font-mono text-primary font-bold">
@@ -387,7 +409,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
               )}
             </div>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Subject Categories">
-              {GENRE_FACETS.map((facet) => {
+              {visibleGenreFacets.map((facet) => {
                 const isAll = facet.id === '';
                 const isSelected = isAll
                   ? selectedTopics.length === 0
@@ -413,6 +435,18 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                 );
               })}
             </div>
+            {GENRE_FACETS.length > INITIAL_VISIBLE_FACET_COUNT && (
+              <button
+                type="button"
+                onClick={() => setShowAllTopics((prev) => !prev)}
+                data-testid="toggle-all-topics-btn"
+                className="text-xs font-mono font-bold text-primary hover:underline cursor-pointer pt-0.5"
+              >
+                {showAllTopics
+                  ? 'Show fewer'
+                  : `+ Show all ${GENRE_FACETS.length - 1} Bookshelves`}
+              </button>
+            )}
           </div>
 
           {/* Section 4: Catalog Languages (Responsive Multi-Select Touch Chips) */}
@@ -428,7 +462,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
               )}
             </div>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Catalog Languages">
-              {CATALOG_LANGUAGES.map((lang) => {
+              {visibleLanguages.map((lang) => {
                 const isAll = lang.value === '';
                 const isSelected = isAll
                   ? selectedLanguages.length === 0
@@ -454,13 +488,25 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                 );
               })}
             </div>
+            {CATALOG_LANGUAGES.length > INITIAL_VISIBLE_LANGUAGE_COUNT && (
+              <button
+                type="button"
+                onClick={() => setShowAllLanguages((prev) => !prev)}
+                data-testid="toggle-all-languages-btn"
+                className="text-xs font-mono font-bold text-primary hover:underline cursor-pointer pt-0.5"
+              >
+                {showAllLanguages
+                  ? 'Show fewer'
+                  : `+ Show all ${CATALOG_LANGUAGES.length - 1} Languages`}
+              </button>
+            )}
           </div>
 
           {/* Section 5: Format Availability (Multi-Select Touch Chips) */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
-                Format Filter
+                E-Book Format
               </h4>
               {selectedFormats.length > 0 && (
                 <span className="text-[10px] font-mono text-primary font-bold">

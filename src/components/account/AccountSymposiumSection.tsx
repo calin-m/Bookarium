@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ROUTES } from '@/config/routes';
+import { createTabScrubberHandlers } from '@/lib/scroll-utils';
 
 const SymposiumInviteModal = dynamic(
   () => import('@/components/symposium/SymposiumInviteModal').then((mod) => mod.SymposiumInviteModal),
@@ -213,16 +214,18 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
           role="tablist"
           data-no-swipe
           aria-label="Symposium and Reader Circle sections"
-          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none]"
+          {...createTabScrubberHandlers(setActiveSubTab)}
+          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
         >
           <button
             type="button"
             role="tab"
+            data-tab-id="symposiums"
             aria-selected={activeSubTab === 'symposiums'}
             aria-label={`Active Symposiums (${activeSymposiums.length})`}
             title={`Active Symposiums (${activeSymposiums.length})`}
             onClick={() => setActiveSubTab('symposiums')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
               activeSubTab === 'symposiums'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -244,11 +247,12 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
           <button
             type="button"
             role="tab"
+            data-tab-id="circle"
             aria-selected={activeSubTab === 'circle'}
             aria-label={`Reader Circle (${acceptedFellows.length})`}
             title={`Reader Circle (${acceptedFellows.length})`}
             onClick={() => setActiveSubTab('circle')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
               activeSubTab === 'circle'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -270,11 +274,12 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
           <button
             type="button"
             role="tab"
+            data-tab-id="invitations"
             aria-selected={activeSubTab === 'invitations'}
             aria-label="Invitations"
             title="Invitations"
             onClick={() => setActiveSubTab('invitations')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
               activeSubTab === 'invitations'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -315,7 +320,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
 
       {/* Sub-Tab 1: Active & Completed Symposiums */}
       {activeSubTab === 'symposiums' && (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-in fade-in duration-150">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-bold">
               Shared Reading Pacts
@@ -475,7 +480,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
 
       {/* Sub-Tab 2: Reader Circle (Fellow Scholars & Handle Invite) */}
       {activeSubTab === 'circle' && (
-        <div className="space-y-5">
+        <div className="space-y-5 animate-in fade-in duration-150">
           <form
             onSubmit={handleInviteSubmit}
             className="p-4 rounded-xl border border-border bg-muted/20 space-y-3"
@@ -603,7 +608,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
 
       {/* Sub-Tab 3: Pending Invitations (Reader Circle & Symposiums) */}
       {activeSubTab === 'invitations' && (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-in fade-in duration-150">
           {pendingCircles.length === 0 && pendingSymposiums.length === 0 ? (
             <div className="p-6 rounded-xl border border-dashed border-border text-center text-xs font-mono text-muted-foreground">
               No pending Reader Circle or Symposium invitations.

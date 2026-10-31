@@ -24,7 +24,7 @@ describe('AdvancedFilterDrawer component', () => {
       />
     );
 
-    expect(screen.getByText('Advanced Archive Filters')).toBeInTheDocument();
+    expect(screen.getByText('Gutenberg Catalog Filters')).toBeInTheDocument();
     expect(screen.getByText('3 active filters')).toBeInTheDocument();
     expect(screen.getByText(/19th Century Victorian & Romantic/i)).toBeInTheDocument();
     const drawer = screen.getByTestId('advanced-filter-drawer');
@@ -172,14 +172,14 @@ describe('AdvancedFilterDrawer component', () => {
       />
     );
 
-    // Toggle science in addition to philosophy
-    const scienceChip = screen.getByTestId('genre-facet-science');
-    fireEvent.click(scienceChip);
+    // Toggle poetry in addition to philosophy
+    const poetryChip = screen.getByTestId('genre-facet-poetry');
+    fireEvent.click(poetryChip);
 
     expect(screen.getByText('2 selected')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
-    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ topic: 'philosophy,science' }));
+    expect(handleApply).toHaveBeenCalledWith(expect.objectContaining({ topic: 'philosophy,poetry' }));
   });
 
   it('should stage format selection change and commit on Show Results click', () => {
@@ -439,13 +439,48 @@ describe('AdvancedFilterDrawer component', () => {
       />
     );
 
-    const titleEl = screen.getByText('Advanced Archive Filters');
+    const titleEl = screen.getByText('Gutenberg Catalog Filters');
     const headerLeft = titleEl.closest('.flex.items-center.gap-2\\.5');
     expect(headerLeft).toBeInTheDocument();
 
     const iconContainer = headerLeft?.firstElementChild;
     expect(iconContainer).toHaveClass('border-border');
     expect(iconContainer?.className).not.toContain('border-primary/20');
+  });
+
+  it('toggles full 32 Project Gutenberg Bookshelves and 20 Languages lists while keeping selected chips visible when collapsed', () => {
+    render(
+      <AdvancedFilterDrawer
+        isOpen={true}
+        onClose={vi.fn()}
+        selectedEra=""
+        selectedSort="descending"
+        selectedTopic="cookery"
+        selectedLanguage="eo"
+        selectedFormat=""
+        onResetAll={vi.fn()}
+        activeFilterCount={2}
+      />
+    );
+
+    // Even when collapsed, pre-selected extended items ('cookery', 'eo') remain visible
+    expect(screen.getByTestId('genre-facet-cookery')).toBeInTheDocument();
+    expect(screen.getByTestId('language-option-eo')).toBeInTheDocument();
+    // Unselected extended items are hidden initially
+    expect(screen.queryByTestId('genre-facet-mythology')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('language-option-ja')).not.toBeInTheDocument();
+
+    const toggleTopicsBtn = screen.getByTestId('toggle-all-topics-btn');
+    expect(toggleTopicsBtn).toHaveTextContent('+ Show all 32 Bookshelves');
+    fireEvent.click(toggleTopicsBtn);
+    expect(toggleTopicsBtn).toHaveTextContent('Show fewer');
+    expect(screen.getByTestId('genre-facet-mythology')).toBeInTheDocument();
+
+    const toggleLangsBtn = screen.getByTestId('toggle-all-languages-btn');
+    expect(toggleLangsBtn).toHaveTextContent('+ Show all 20 Languages');
+    fireEvent.click(toggleLangsBtn);
+    expect(toggleLangsBtn).toHaveTextContent('Show fewer');
+    expect(screen.getByTestId('language-option-ja')).toBeInTheDocument();
   });
 
   describe('Mobile Scroll Locking & Layout Shift Prevention', () => {
@@ -598,7 +633,7 @@ describe('AdvancedFilterDrawer component', () => {
         />
       );
 
-      const titleEl = screen.getByText('Advanced Archive Filters');
+      const titleEl = screen.getByText('Gutenberg Catalog Filters');
       const drawerContainer = titleEl.closest('[data-testid="advanced-filter-drawer"]');
       const scrollableContainer = drawerContainer?.querySelector('.overflow-y-auto');
 

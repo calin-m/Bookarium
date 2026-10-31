@@ -24,6 +24,7 @@ import type { Profile } from '@/types/database.types';
 import { useAuthStore, validateUsername } from '@/stores/useAuthStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { ROUTES } from '@/config/routes';
+import { createTabScrubberHandlers } from '@/lib/scroll-utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -163,16 +164,18 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
           role="tablist"
           data-no-swipe
           aria-label="Scholar profile sub-sections"
-          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none]"
+          {...createTabScrubberHandlers(setActiveSubTab)}
+          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
         >
           <button
             type="button"
             role="tab"
+            data-tab-id="identity"
             aria-label="Identity & Bio"
             title="Identity & Bio"
             aria-selected={activeSubTab === 'identity'}
             onClick={() => setActiveSubTab('identity')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold border-b-2 transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
               activeSubTab === 'identity'
                 ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -185,11 +188,12 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
           <button
             type="button"
             role="tab"
+            data-tab-id="privacy"
             aria-label="Sanctuary & Privacy"
             title="Sanctuary & Privacy"
             aria-selected={activeSubTab === 'privacy'}
             onClick={() => setActiveSubTab('privacy')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold border-b-2 transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-semibold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
               activeSubTab === 'privacy'
                 ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -235,7 +239,7 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
         {/* Sub-Tab 1: Identity, Handle & Bio */}
         <div
           id="profile-subpanel-identity"
-          className={activeSubTab === 'identity' ? 'space-y-6' : 'hidden'}
+          className={activeSubTab === 'identity' ? 'space-y-6 animate-in fade-in duration-150' : 'hidden'}
         >
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Username Configuration */}
@@ -362,7 +366,7 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
         {/* Sub-Tab 2: Public Sanctuary & Granular Privacy Toggles */}
         <div
           id="profile-subpanel-privacy"
-          className={activeSubTab === 'privacy' ? 'space-y-6' : 'hidden'}
+          className={activeSubTab === 'privacy' ? 'space-y-6 animate-in fade-in duration-150' : 'hidden'}
         >
           {/* Master Public Profile Toggle */}
           <div className="p-4 sm:p-5 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

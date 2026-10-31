@@ -26,6 +26,7 @@ import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { buildAccoladeContext, evaluateAccolades } from '@/lib/accolades-engine';
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
+import { createTabScrubberHandlers } from '@/lib/scroll-utils';
 import { ExLibrisBookplate } from '@/components/accolades/ExLibrisBookplate';
 
 const AccoladeCelebrationModal = dynamic(
@@ -262,7 +263,8 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
             role="tablist"
             data-no-swipe
             aria-label="Accolade categories"
-            className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none]"
+            {...createTabScrubberHandlers(setActiveCategory)}
+            className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
           >
             {ACCOLADE_CATEGORIES.map((category) => {
               const isActive = activeCategory === category.id;
@@ -295,11 +297,12 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
                   key={category.id}
                   type="button"
                   role="tab"
+                  data-tab-id={category.id}
                   aria-selected={isActive}
                   aria-label={category.label}
                   title={category.label}
                   onClick={() => setActiveCategory(category.id)}
-                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
                     isActive
                       ? 'border-primary text-primary'
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -323,7 +326,10 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
         </div>
 
         {/* Bookplate Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pt-2">
+        <div
+          key={`accolade-cat-${activeCategory}`}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pt-2 animate-in fade-in duration-150"
+        >
           {filteredCatalog.map((def) => (
             <ExLibrisBookplate
               key={def.id}

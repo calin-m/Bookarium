@@ -229,5 +229,30 @@ describe('GutendexCatalogProvider', () => {
     expect(result.jurisdictionRule).toBe('LIFE_70');
     expect(result.count).toBe(55754);
   });
+
+  it('normalizes comma-separated topic and mimeType to primary token when querying upstream Gutendex', async () => {
+    let capturedUrl = '';
+    vi.spyOn(global, 'fetch').mockImplementationOnce(async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify({ count: 0, results: [] }), { status: 200 });
+    });
+
+    await provider.searchBooks({
+      topic: 'philosophy,science',
+      mimeType: 'application/epub+zip,text/html',
+      languages: ['en', 'fr'],
+      authorYearStart: 1800,
+      authorYearEnd: 1900,
+      sort: 'popular',
+      page: 2,
+      limit: 32,
+      country: 'US',
+    });
+
+    expect(capturedUrl).toContain('topic=philosophy');
+    expect(capturedUrl).not.toContain('science');
+    expect(capturedUrl).toContain('mime_type=application%2Fepub%2Bzip');
+    expect(capturedUrl).toContain('languages=en%2Cfr');
+  });
 });
 

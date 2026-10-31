@@ -777,6 +777,164 @@ describe('useFellowshipStore', () => {
       const errorRes = await fetchScholarProfilesMap(throwingSupabase as never, ['u1']);
       expect(errorRes.size).toBe(0);
     });
+
+    it('prunes orphaned pendingSymposiumProgress and fellowAnnotations on removeFellow, leaveSymposium, and fetchFellowshipData', async () => {
+      const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+      useAuthStore.setState({
+        user: { id: 'user-host', email: 'host@bookarium.test' } as never,
+      });
+
+      useAnnotationStore.setState({
+        fellowAnnotations: [
+          {
+            id: 'fa-sym-1',
+            userId: 'user-fellow',
+            bookId: 1342,
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'Fellow highlight on 1342',
+            color: 'amber',
+            createdAt: '',
+            updatedAt: '',
+            isFellow: true,
+            fellowUsername: 'fellow_u',
+          },
+          {
+            id: 'fa-sym-2',
+            userId: 'user-fellow',
+            bookId: 84,
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'Fellow highlight on 84',
+            color: 'mint',
+            createdAt: '',
+            updatedAt: '',
+            isFellow: true,
+            fellowUsername: 'fellow_u',
+          },
+        ],
+      });
+
+      useFellowshipStore.setState({
+        circles: [
+          {
+            id: 'circle-prune-1',
+            requester_id: 'user-fellow',
+            requester_username: 'fellow_u',
+            requester_display_name: 'Fellow U',
+            recipient_id: 'user-host',
+            recipient_username: 'host_u',
+            recipient_display_name: 'Host U',
+            status: 'accepted',
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+        symposiums: [
+          {
+            id: 'sym-prune-1',
+            book_id: 1342,
+            book_title: 'Pride and Prejudice',
+            host_id: 'user-fellow',
+            host_username: 'fellow_u',
+            host_display_name: 'Fellow U',
+            fellow_id: 'user-host',
+            fellow_username: 'host_u',
+            fellow_display_name: 'Host U',
+            status: 'active',
+            host_chapter: 1,
+            host_progress: 25,
+            fellow_chapter: 1,
+            fellow_progress: 30,
+            created_at: '',
+            updated_at: '',
+          },
+          {
+            id: 'sym-prune-2',
+            book_id: 84,
+            book_title: 'Frankenstein',
+            host_id: 'user-host',
+            host_username: 'host_u',
+            host_display_name: 'Host U',
+            fellow_id: 'user-fellow',
+            fellow_username: 'fellow_u',
+            fellow_display_name: 'Fellow U',
+            status: 'active',
+            host_chapter: 0,
+            host_progress: 10,
+            fellow_chapter: 0,
+            fellow_progress: 10,
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+        pendingSymposiumProgress: {
+          'sym-prune-1': {
+            chapterIndex: 2,
+            progressPct: 40,
+            status: 'active',
+            isHost: false,
+            updatedAt: '2026-10-30T00:00:00Z',
+          },
+          'sym-prune-2': {
+            chapterIndex: 1,
+            progressPct: 20,
+            status: 'active',
+            isHost: true,
+            updatedAt: '2026-10-30T00:00:00Z',
+          },
+        },
+      });
+
+      const mockOrDelete = vi.fn().mockResolvedValue({ error: null });
+      const mockEqDelete = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({
+        delete: vi.fn().mockReturnValue({
+          eq: mockEqDelete,
+          or: mockOrDelete,
+        }),
+      });
+
+      // 1. leaveSymposium prunes sym-prune-1 from pendingSymposiumProgress and fa-sym-1 from fellowAnnotations
+      await useFellowshipStore.getState().leaveSymposium('sym-prune-1');
+      expect(useFellowshipStore.getState().pendingSymposiumProgress['sym-prune-1']).toBeUndefined();
+      expect(useAnnotationStore.getState().fellowAnnotations.map((a) => a.id)).toEqual(['fa-sym-2']);
+
+      // 2. removeFellow deletes both reader_circles and shared symposium_sessions in Supabase and prunes remaining fellow annotations
+      await useFellowshipStore.getState().removeFellow('circle-prune-1');
+      expect(mockOrDelete).toHaveBeenCalledWith(
+        'and(host_id.eq.user-host,fellow_id.eq.user-fellow),and(host_id.eq.user-fellow,fellow_id.eq.user-host)'
+      );
+      expect(useFellowshipStore.getState().pendingSymposiumProgress['sym-prune-2']).toBeUndefined();
+      expect(useAnnotationStore.getState().fellowAnnotations).toHaveLength(0);
+
+      // 3. fetchFellowshipData reconciles fellowAnnotations when remote symposiums were deleted (e.g. deleted fellow account)
+      useAnnotationStore.setState({
+        fellowAnnotations: [
+          {
+            id: 'fa-orphan-remote',
+            userId: 'user-deleted-fellow',
+            bookId: 1342,
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'Orphaned remote quote',
+            note: 'Note',
+            color: 'amber',
+            createdAt: '2026-10-30T00:00:00Z',
+            updatedAt: '2026-10-30T00:00:00Z',
+            isFellow: true,
+            fellowUsername: 'deleted_u',
+          },
+        ],
+      });
+      mockFrom.mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        or: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      });
+      await useFellowshipStore.getState().fetchFellowshipData('user-host');
+      expect(useAnnotationStore.getState().fellowAnnotations).toHaveLength(0);
+    });
   });
 });
 

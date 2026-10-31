@@ -2017,7 +2017,38 @@ describe('useBookshelfStore', () => {
         favoriteCount: 1,
       });
 
-      useAuthStore.setState({ user: null });
+      // Verify clearBookshelf resets both cloudBookshelfItems and outbox
+      act(() => {
+        useBookshelfStore.setState({
+          cloudBookshelfItems: [
+            {
+              id: 'item-clear-1',
+              bookshelf_id: 'shelf-def',
+              user_id: 'user-enrich-1',
+              book_id: 700,
+              book_title: 'Book 700',
+              book_authors: [],
+              cover_url: null,
+              created_at: '',
+            },
+          ],
+          outbox: [
+            {
+              id: 'outbox-1',
+              type: 'DELETE_BOOK',
+              payload: { bookshelf_id: 'shelf-def', book_id: 700 },
+              timestamp: '',
+            },
+          ],
+        });
+        useBookshelfStore.getState().clearBookshelf();
+      });
+      expect(useBookshelfStore.getState().cloudBookshelfItems).toEqual([]);
+      expect(useBookshelfStore.getState().outbox).toEqual([]);
+
+      act(() => {
+        useAuthStore.setState({ user: null });
+      });
     });
   });
 });

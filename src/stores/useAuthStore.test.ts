@@ -471,7 +471,11 @@ describe('useAuthStore', () => {
     const clearFellowshipStateSpy = vi.spyOn(useFellowshipStore.getState(), 'clearFellowshipState');
     const clearAllVolumesSpy = vi.spyOn(useReaderStore.getState(), 'clearAllVolumes').mockResolvedValue(undefined);
     const resetSpeechSpy = vi.spyOn(usePreferencesStore.getState(), 'resetSpeechPreferences');
+    const setStickyScrollSpy = vi.spyOn(usePreferencesStore.getState(), 'setStickyScrollEnabled');
     const clearOfflineSpy = vi.spyOn(offlineStorage, 'clearAllOfflineBooks').mockResolvedValue(undefined);
+
+    useReaderStore.setState({ fontSize: 28, brightness: 60, theme: 'dark' });
+    usePreferencesStore.setState({ stickyScrollEnabled: false });
 
     const res2 = await useAuthStore.getState().deleteAccount();
     expect(res2.error).toBeNull();
@@ -501,7 +505,7 @@ describe('useAuthStore', () => {
     expect(mockEq).toHaveBeenCalledWith('id', 'user-delete');
     expect(mockRpc).toHaveBeenCalledWith('delete_current_user');
 
-    // Verify all local persistent stores, IndexedDB books, and session flags were wiped
+    // Verify all local persistent stores, IndexedDB books, reader/theme/preferences settings, and session flags were wiped
     expect(clearBookshelfSpy).toHaveBeenCalled();
     expect(clearAllAnnotationsSpy).toHaveBeenCalled();
     expect(resetHabitsSpy).toHaveBeenCalled();
@@ -509,6 +513,10 @@ describe('useAuthStore', () => {
     expect(clearFellowshipStateSpy).toHaveBeenCalled();
     expect(clearAllVolumesSpy).toHaveBeenCalled();
     expect(resetSpeechSpy).toHaveBeenCalled();
+    expect(setStickyScrollSpy).toHaveBeenCalledWith(true);
+    expect(useReaderStore.getState().fontSize).toBe(18);
+    expect(useReaderStore.getState().brightness).toBe(100);
+    expect(useReaderStore.getState().theme).toBe('light');
     expect(clearOfflineSpy).toHaveBeenCalled();
     expect(sessionStorage.getItem('bookarium_auto_heal_attempted')).toBeNull();
   });

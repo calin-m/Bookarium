@@ -38,6 +38,7 @@ import { AccountPublicProfileSection } from '@/components/account/AccountPublicP
 import { AccountSymposiumSection } from '@/components/account/AccountSymposiumSection';
 import { AccountSecuritySection } from '@/components/account/AccountSecuritySection';
 import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
+import { createTabScrubberHandlers } from '@/lib/scroll-utils';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
 import {
   generateStrongPassword as generatePasswordUtil,
@@ -700,8 +701,8 @@ function AccountDashboardContent() {
                 role="tablist"
                 aria-label="Account sections"
                 onKeyDown={handleTabKeyDown}
-                onTouchStart={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 p-1.5 bg-card border border-border rounded-2xl shadow-booksaw w-full"
+                {...createTabScrubberHandlers(handleTabChange)}
+                className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 p-1 sm:p-1.5 bg-card border border-border rounded-2xl shadow-booksaw w-full select-none"
               >
                 {ACCOUNT_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -711,6 +712,7 @@ function AccountDashboardContent() {
                     <button
                       key={tab.id}
                       id={`account-tab-${tab.id}`}
+                      data-tab-id={tab.id}
                       role="tab"
                       type="button"
                       aria-selected={isActive}
@@ -719,10 +721,10 @@ function AccountDashboardContent() {
                       title={tab.label}
                       tabIndex={isActive ? 0 : -1}
                       onClick={() => handleTabChange(tab.id)}
-                      className={`relative flex items-center justify-center gap-1.5 lg:gap-2 py-2.5 rounded-xl text-xs sm:text-xs lg:text-sm font-semibold whitespace-nowrap border transition-colors duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
+                      className={`relative flex items-center justify-center gap-1.5 lg:gap-2 py-2.5 rounded-xl text-[11px] sm:text-xs lg:text-sm font-semibold whitespace-nowrap border transition-all duration-200 ease-out select-none focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
                         isActive
-                          ? 'flex-1 min-w-0 px-3 sm:px-3 lg:px-4 bg-primary text-primary-foreground border-primary shadow-xs'
-                          : 'shrink-0 px-2.5 sm:flex-1 sm:min-w-0 sm:px-2.5 lg:px-4 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
+                          ? 'flex-1 min-w-0 px-2.5 sm:px-3.5 lg:px-4 bg-primary text-primary-foreground border-primary shadow-xs'
+                          : 'shrink-0 px-2 sm:px-3 lg:flex-1 lg:min-w-0 lg:px-4 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
                       }`}
                     >
                       <Icon
@@ -732,7 +734,7 @@ function AccountDashboardContent() {
                       />
                       <span
                         className={`truncate min-w-0 ${
-                          isActive ? 'inline' : 'hidden sm:inline'
+                          isActive ? 'inline' : 'hidden lg:inline'
                         }`}
                       >
                         {tab.label}
@@ -773,7 +775,8 @@ function AccountDashboardContent() {
                   role="tablist"
                   data-no-swipe
                   aria-label="Habits and library sub-sections"
-                  className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none]"
+                  {...createTabScrubberHandlers(setHabitsSubTab)}
+                  className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
                 >
                   {(
                     [
@@ -787,11 +790,12 @@ function AccountDashboardContent() {
                         key={sub.id}
                         type="button"
                         role="tab"
+                        data-tab-id={sub.id}
                         aria-selected={isSubActive}
                         aria-label={sub.label}
                         title={sub.label}
                         onClick={() => setHabitsSubTab(sub.id)}
-                        className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+                        className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
                           isSubActive
                             ? 'border-primary text-primary'
                             : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -808,7 +812,7 @@ function AccountDashboardContent() {
               <div
                 id="habits-subpanel-streaks"
                 hidden={habitsSubTab !== 'streaks'}
-                className={habitsSubTab === 'streaks' ? 'block' : 'hidden'}
+                className={habitsSubTab === 'streaks' ? 'block animate-in fade-in duration-150' : 'hidden'}
               >
                 <AccountHabitsCard
                   userId={user.id}
@@ -819,7 +823,7 @@ function AccountDashboardContent() {
               <div
                 id="habits-subpanel-accolades"
                 hidden={habitsSubTab !== 'accolades'}
-                className={habitsSubTab === 'accolades' ? 'block' : 'hidden'}
+                className={habitsSubTab === 'accolades' ? 'block animate-in fade-in duration-150' : 'hidden'}
               >
                 <AccountAccoladesCard userId={user.id} />
               </div>

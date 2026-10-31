@@ -346,6 +346,17 @@ export const useFellowshipStore = create<FellowshipState>()(
             symposiums: healedSymposiums,
             isLoading: false,
           });
+
+          if (!symposiumsRes.error && symposiumsRes.data) {
+            try {
+              const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+              useAnnotationStore
+                .getState()
+                .reconcileFellowAnnotationsWithSymposiums(healedSymposiums, userId);
+            } catch {
+              // Non-blocking cache reconciliation
+            }
+          }
         } catch (err: unknown) {
           set({
             isLoading: false,
@@ -533,19 +544,45 @@ export const useFellowshipStore = create<FellowshipState>()(
               : target.requester_id
             : null;
 
-        set((s) => ({
-          circles: s.circles.filter((c) => c.id !== circleId),
-          symposiums: fellowId
+        set((s) => {
+          const remainingSymposiums = fellowId
             ? s.symposiums.filter(
                 (sym) => sym.host_id !== fellowId && sym.fellow_id !== fellowId
               )
-            : s.symposiums,
-        }));
+            : s.symposiums;
+          const remainingIds = new Set(remainingSymposiums.map((sym) => sym.id));
+          const nextPending = Object.fromEntries(
+            Object.entries(s.pendingSymposiumProgress).filter(([id]) => remainingIds.has(id))
+          );
+
+          return {
+            circles: s.circles.filter((c) => c.id !== circleId),
+            symposiums: remainingSymposiums,
+            pendingSymposiumProgress: nextPending,
+          };
+        });
+
+        if (fellowId) {
+          try {
+            const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+            useAnnotationStore.getState().pruneFellowAnnotationsByFellow(fellowId);
+          } catch {
+            // Non-blocking cache prune
+          }
+        }
 
         const supabase = createClient();
         if (supabase) {
           try {
             await supabase.from('reader_circles').delete().eq('id', circleId);
+            if (authUserId && fellowId) {
+              await supabase
+                .from('symposium_sessions')
+                .delete()
+                .or(
+                  `and(host_id.eq.${authUserId},fellow_id.eq.${fellowId}),and(host_id.eq.${fellowId},fellow_id.eq.${authUserId})`
+                );
+            }
           } catch {
             // Local state preserved
           }
@@ -666,9 +703,34 @@ export const useFellowshipStore = create<FellowshipState>()(
       },
 
       leaveSymposium: async (sessionId) => {
-        set((s) => ({
-          symposiums: s.symposiums.filter((sym) => sym.id !== sessionId),
-        }));
+        const target = get().symposiums.find((sym) => sym.id === sessionId);
+        const authUserId = useAuthStore.getState().user?.id;
+        const fellowId =
+          target && authUserId
+            ? target.host_id === authUserId
+              ? target.fellow_id
+              : target.host_id
+            : undefined;
+
+        set((s) => {
+          const nextPending = { ...s.pendingSymposiumProgress };
+          delete nextPending[sessionId];
+          return {
+            symposiums: s.symposiums.filter((sym) => sym.id !== sessionId),
+            pendingSymposiumProgress: nextPending,
+          };
+        });
+
+        if (target?.book_id) {
+          try {
+            const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+            useAnnotationStore
+              .getState()
+              .pruneFellowAnnotationsForSymposium(target.book_id, fellowId);
+          } catch {
+            // Non-blocking cache prune
+          }
+        }
 
         const supabase = createClient();
         if (supabase) {

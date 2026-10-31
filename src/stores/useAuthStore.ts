@@ -117,6 +117,13 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
       const { useReaderStore } = await import('@/stores/useReaderStore');
       if (options.wipeDeviceStorage) {
         await useReaderStore.getState().clearAllVolumes();
+        useReaderStore.setState({
+          fontSize: 18,
+          lineHeight: 1.8,
+          fontFamily: 'serif',
+          theme: 'light',
+          brightness: 100,
+        });
       } else {
         useReaderStore.getState().resetReaderSession();
       }
@@ -132,6 +139,11 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
       async () => {
         const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
         usePreferencesStore.getState().resetSpeechPreferences();
+        usePreferencesStore.getState().setStickyScrollEnabled(true);
+      },
+      async () => {
+        const { useThemeStore } = await import('@/stores/useThemeStore');
+        useThemeStore.getState().setTheme('light');
       },
       async () => {
         if (typeof sessionStorage !== 'undefined') {

@@ -15,7 +15,7 @@ import { useContinueReadingLedger, type BookmarksSortOption } from '@/hooks/read
 import { useReaderStore } from '@/stores/useReaderStore';
 import { BookmarkCard } from './BookmarkCard';
 import { CollectionToolbar, type SortOption } from './CollectionToolbar';
-import { smartScrollToContent } from '@/lib/scroll-utils';
+import { smartScrollToContent, createTabScrubberHandlers } from '@/lib/scroll-utils';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
@@ -275,19 +275,25 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
 
       {/* Filter Navigation Tabs */}
       <div className="flex items-center justify-center mb-8 border-b border-border">
-        <nav data-no-swipe className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px" aria-label="Reading ledger filters">
+        <nav
+          data-no-swipe
+          {...createTabScrubberHandlers(setActiveFilter)}
+          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px select-none"
+          aria-label="Reading ledger filters"
+        >
           {filterTabs.map((tab) => {
             const isActive = activeFilter === tab.id;
             return (
               <button
                 key={tab.id}
                 type="button"
+                data-tab-id={tab.id}
                 onClick={() => setActiveFilter(tab.id)}
                 aria-pressed={isActive}
                 aria-label={`${tab.label} (${tab.count} volumes)`}
                 title={`${tab.label} (${tab.count} volumes)`}
                 data-testid={`bookmarks-tab-${tab.id}`}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 md:px-4 py-2 sm:py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 cursor-pointer select-none shrink-0 ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 md:px-4 py-2 sm:py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out cursor-pointer select-none shrink-0 ${
                   isActive
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -309,7 +315,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       </div>
 
       {/* Main Ledger Content */}
-      <div key={`bookmarks-filter-${activeFilter}`} className="animate-page-turn">
+      <div>
         {filteredVolumes.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border p-12 text-center max-w-lg mx-auto shadow-xs">
             <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">

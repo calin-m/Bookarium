@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 31 Oct 2026 10:56:37 GMT  
+**Last Generated**: Sat, 31 Oct 2026 13:42:16 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 194 passed  
-**Total Verified Tests**: 2058 passed  
+**Total Verified Tests**: 2067 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **194/194 test suites passed** (2058 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **194/194 test suites passed** (2067 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 73 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.43%** (10374/10758) — *Target: $\ge$ 95%*
-- **Statements**: **95.05%** (11273/11859) — *Target: $\ge$ 95%*
-- **Functions**: **93.64%** (2462/2629) — *Target: $\ge$ 92%*
-- **Branches**: **88.01%** (10299/11702) — *Target: $\ge$ 85%*
+- **Lines**: **96.44%** (10641/11033) — *Target: $\ge$ 95%*
+- **Statements**: **95.06%** (11564/12164) — *Target: $\ge$ 95%*
+- **Functions**: **93.8%** (2513/2679) — *Target: $\ge$ 92%*
+- **Branches**: **87.89%** (10506/11953) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (194 Suites / 2058 Tests)
+## 🧪 Comprehensive Test Suite Catalog (194 Suites / 2067 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 267 Tests)
 
@@ -466,10 +466,10 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (28 Suites · 435 Tests)
+### 🎨 Catalog & Presentation (28 Suites · 436 Tests)
 
 <details>
-<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (21 tests)</summary>
+<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
 
 - ✔ `should render drawer with all filter sections when open`
 - ✔ `should stage era selection and commit on Show Results click`
@@ -487,6 +487,7 @@
 - ✔ `should not render anything when isOpen is false`
 - ✔ `should close when pressing the Escape key`
 - ✔ `renders header icon container with theme-aware solid border-border without fractional opacity`
+- ✔ `toggles full 32 Project Gutenberg Bookshelves and 20 Languages lists while keeping selected chips visible when collapsed`
 - ✔ `locks both document.body and document.documentElement overflow on mobile (<1280px) and restores on unmount`
 - ✔ `compensates for scrollbar width using paddingRight and restores on unmount`
 - ✔ `does not lock overflow when on desktop viewports (>= 1280px)`
@@ -1385,7 +1386,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 197 Tests)
+### ⚡ Zustand State Stores (10 Suites · 199 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1404,7 +1405,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (34 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (35 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1440,6 +1441,7 @@
 - ✔ `addAnnotation enforces chapterIndex isolation for identical text phrases in different chapters`
 - ✔ `covers setOrUpdateFellowMapEntry placeholder upgrade, enrichFellowAnnotations host matching, cached fellow bookMeta, and addAnnotation expand outbox fallback`
 - ✔ `preserves newer local annotation edits via LWW during syncWithCloud and provides useHydratedAnnotationCount`
+- ✔ `prunes and reconciles fellowAnnotations when fellows or symposiums are removed or deleted`
 
 </details>
 
@@ -1535,7 +1537,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `invites a Fellow Scholar by @username via RPC lookup and accepts invitation`
 - ✔ `validates empty and self @username invitations and handles missing handles`
@@ -1549,6 +1551,7 @@
 - ✔ `correctly identifies placeholder usernames`
 - ✔ `formats fellow scholar labels cleanly avoiding (@scholar)`
 - ✔ `fetchScholarProfilesMap returns empty map for empty input or failed query`
+- ✔ `prunes orphaned pendingSymposiumProgress and fellowAnnotations on removeFellow, leaveSymposium, and fetchFellowshipData`
 
 </details>
 
@@ -1644,7 +1647,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (38 Suites · 451 Tests)
+### 📚 Gutenberg Parsers & Metadata (38 Suites · 457 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1779,7 +1782,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/gutendex-provider.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/lib/catalog/gutendex-provider.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `has name "gutendex"`
 - ✔ `searches books, enforces copyright=false, and calculates latency`
@@ -1791,6 +1794,7 @@
 - ✔ `throws CatalogProviderError with status 502 on invalid non-JSON body`
 - ✔ `checks isHealthy via HEAD request`
 - ✔ `uses calibrated baseline count for unfiltered catalog queries under non-US jurisdictions`
+- ✔ `normalizes comma-separated topic and mimeType to primary token when querying upstream Gutendex`
 
 </details>
 
@@ -1809,7 +1813,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (26 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (27 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -1829,6 +1833,7 @@
 - ✔ `generates next and previous pagination links when page bounds allow`
 - ✔ `filters results by mimeType if specified`
 - ✔ `filters results by multiple mimeTypes if specified`
+- ✔ `matches plain text formats across charset variations (e.g. text/plain; charset=us-ascii vs utf-8)`
 - ✔ `filters by comma-delimited book IDs`
 - ✔ `applies ascending and descending sort directions`
 - ✔ `throws CatalogProviderError when Supabase returns an error`
@@ -2128,7 +2133,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `returns false when element does not exist in DOM`
 - ✔ `does not scroll when element top is already comfortably in view`
@@ -2141,6 +2146,10 @@
 - ✔ `allows button click to fire when movement is within threshold (stationary click)`
 - ✔ `ignores secondary and tertiary mouse buttons`
 - ✔ `cleans up listeners on returned cleanup invocation`
+- ✔ `resolves tab IDs via bounding box, bridges inter-button flex gaps, clamps edges, and falls back to document.elementFromPoint when rects have zero width`
+- ✔ `scrubs live across multiple tabs across React handler re-renders, updates data-scrub-active attributes, tracks window move/up, and suppresses post-drag click`
+- ✔ `scrubs live across tabs during tactile touch hold-and-swipe and supports one-finger relative thumb-arc stepping across wide containers`
+- ✔ `tracks 1:1 cursor overlap on mouse across variable-width tabs without jumping ahead of the pointer`
 
 </details>
 
@@ -3128,7 +3137,7 @@
 <summary><b><code>src/config/catalog-filters.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `defines chronological LITERARY_ERAS with valid start < end boundaries`
-- ✔ `defines unique SORT_OPTIONS, GENRE_FACETS, HERO_POPULAR_TOPICS, CATALOG_LANGUAGES, and FORMAT_FILTERS`
+- ✔ `defines all 32 Project Gutenberg Bookshelf & Subject facets and 20 top languages with progressive disclosure limits`
 
 </details>
 

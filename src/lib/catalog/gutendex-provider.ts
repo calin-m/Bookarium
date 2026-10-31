@@ -46,7 +46,10 @@ export class GutendexCatalogProvider implements ICatalogProvider {
       gutendexParams.set('search', options.search);
     }
     if (options.topic) {
-      gutendexParams.set('topic', options.topic);
+      const primaryTopic = options.topic.split(',')[0].trim();
+      if (primaryTopic) {
+        gutendexParams.set('topic', primaryTopic);
+      }
     }
     if (options.languages && options.languages.length > 0) {
       gutendexParams.set('languages', options.languages.join(','));
@@ -64,7 +67,10 @@ export class GutendexCatalogProvider implements ICatalogProvider {
       gutendexParams.set('sort', options.sort);
     }
     if (options.mimeType) {
-      gutendexParams.set('mime_type', options.mimeType);
+      const primaryMime = options.mimeType.split(',')[0].trim();
+      if (primaryMime) {
+        gutendexParams.set('mime_type', primaryMime);
+      }
     }
 
     const apiUrl = `${API_ENDPOINTS.GUTENDEX_BASE_URL}/?${gutendexParams.toString()}`;

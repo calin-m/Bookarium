@@ -10,6 +10,7 @@ import {
   Sliders,
 } from 'lucide-react';
 import type { AppTheme } from '@/stores/useThemeStore';
+import { createTabScrubberHandlers } from '@/lib/scroll-utils';
 import { AccountNarrationSubPanel } from './AccountNarrationSubPanel';
 
 export interface AccountPreferencesSectionProps {
@@ -57,16 +58,18 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
           role="tablist"
           data-no-swipe
           aria-label="Preferences sub-sections"
-          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none]"
+          {...createTabScrubberHandlers(setActiveSubTab)}
+          className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-px [scrollbar-width:none] select-none"
         >
           <button
             type="button"
             role="tab"
+            data-tab-id="appearance"
             aria-selected={activeSubTab === 'appearance'}
             aria-label="Appearance & Scroll"
             title="Appearance & Scroll"
             onClick={() => setActiveSubTab('appearance')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
               activeSubTab === 'appearance'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -79,11 +82,12 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
           <button
             type="button"
             role="tab"
+            data-tab-id="narration"
             aria-selected={activeSubTab === 'narration'}
             aria-label="Read-Aloud Studio"
             title="Read-Aloud Studio"
             onClick={() => setActiveSubTab('narration')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-colors duration-200 whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold border-b-2 transition-all duration-200 ease-out whitespace-nowrap shrink-0 cursor-pointer select-none ${
               activeSubTab === 'narration'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -107,7 +111,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
       {/* Sub-Tab 1: Appearance & Scroll */}
       <div
         id="preferences-subpanel-appearance"
-        className={activeSubTab === 'appearance' ? 'space-y-6' : 'hidden'}
+        className={activeSubTab === 'appearance' ? 'space-y-6 animate-in fade-in duration-150' : 'hidden'}
       >
         {/* Theme Atmosphere */}
         <div className="space-y-3">

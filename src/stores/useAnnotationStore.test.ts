@@ -1396,6 +1396,180 @@ describe('useAnnotationStore', () => {
     expect(result.current.hasMounted).toBe(true);
     expect(result.current.annotationCount).toBe(1);
   });
+
+  it('prunes and reconciles fellowAnnotations when fellows or symposiums are removed or deleted', () => {
+    const store = useAnnotationStore.getState();
+
+    // No-op guards on empty inputs
+    store.pruneFellowAnnotationsByFellow('');
+    store.pruneFellowAnnotationsForSymposium(0);
+    store.reconcileFellowAnnotationsWithSymposiums([], '');
+
+    useAnnotationStore.setState({
+      fellowAnnotations: [
+        {
+          id: 'fa-1',
+          userId: 'fellow-a',
+          bookId: 1342,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Fellow A note on 1342',
+          color: 'amber',
+          createdAt: '2026-10-01T00:00:00Z',
+          updatedAt: '2026-10-01T00:00:00Z',
+          isFellow: true,
+          fellowUsername: 'fellow_a',
+        },
+        {
+          id: 'fa-2',
+          userId: 'fellow-b',
+          bookId: 1342,
+          chapterIndex: 1,
+          chapterPage: 2,
+          selectedText: 'Fellow B note on 1342',
+          color: 'mint',
+          createdAt: '2026-10-01T00:00:00Z',
+          updatedAt: '2026-10-01T00:00:00Z',
+          isFellow: true,
+          fellowUsername: 'fellow_b',
+        },
+        {
+          id: 'fa-3',
+          userId: 'fellow-a',
+          bookId: 84,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Fellow A note on 84',
+          color: 'rose',
+          createdAt: '2026-10-01T00:00:00Z',
+          updatedAt: '2026-10-01T00:00:00Z',
+          isFellow: true,
+          fellowUsername: 'fellow_a',
+        },
+        {
+          id: 'fa-legacy',
+          bookId: 84,
+          chapterIndex: 0,
+          chapterPage: 2,
+          selectedText: 'Legacy fellow note without userId',
+          color: 'yellow',
+          createdAt: '2026-10-01T00:00:00Z',
+          updatedAt: '2026-10-01T00:00:00Z',
+          isFellow: true,
+          fellowUsername: 'fellow_a',
+        },
+      ],
+    });
+
+    // 1. Prune specific symposium (book 1342 with fellow-b only)
+    useAnnotationStore.getState().pruneFellowAnnotationsForSymposium(1342, 'fellow-b');
+    expect(useAnnotationStore.getState().fellowAnnotations.map((f) => f.id)).toEqual([
+      'fa-1',
+      'fa-3',
+      'fa-legacy',
+    ]);
+
+    // Calling again when already pruned is a no-op
+    useAnnotationStore.getState().pruneFellowAnnotationsForSymposium(1342, 'fellow-b');
+
+    // 2. Reconcile with active symposiums (only book 84 with fellow-a as host is active; pending symposiums are ignored)
+    useAnnotationStore.getState().reconcileFellowAnnotationsWithSymposiums(
+      [
+        {
+          id: 'sym-84',
+          book_id: 84,
+          book_title: 'Frankenstein',
+          host_id: 'fellow-a',
+          host_username: 'fellow_a',
+          host_display_name: 'Fellow A',
+          fellow_id: 'me-user',
+          fellow_username: 'me',
+          fellow_display_name: 'Me',
+          status: 'active',
+          host_chapter: 0,
+          host_progress: 20,
+          fellow_chapter: 0,
+          fellow_progress: 10,
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 'sym-pending',
+          book_id: 1342,
+          book_title: 'Pride and Prejudice',
+          host_id: 'me-user',
+          host_username: 'me',
+          host_display_name: 'Me',
+          fellow_id: 'fellow-a',
+          fellow_username: 'fellow_a',
+          fellow_display_name: 'Fellow A',
+          status: 'pending',
+          host_chapter: 0,
+          host_progress: 0,
+          fellow_chapter: 0,
+          fellow_progress: 0,
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 'sym-unrelated',
+          book_id: 999,
+          book_title: 'Other',
+          host_id: 'other-1',
+          host_username: 'o1',
+          host_display_name: 'O1',
+          fellow_id: 'other-2',
+          fellow_username: 'o2',
+          fellow_display_name: 'O2',
+          status: 'completed',
+          host_chapter: 0,
+          host_progress: 100,
+          fellow_chapter: 0,
+          fellow_progress: 100,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      'me-user'
+    );
+
+    // fa-1 (on book 1342 where symposium is only pending) is purged; fa-3 and fa-legacy on book 84 remain
+    expect(useAnnotationStore.getState().fellowAnnotations.map((f) => f.id)).toEqual([
+      'fa-3',
+      'fa-legacy',
+    ]);
+
+    // Calling reconcile again when already in sync is a no-op
+    useAnnotationStore.getState().reconcileFellowAnnotationsWithSymposiums(
+      [
+        {
+          id: 'sym-84',
+          book_id: 84,
+          book_title: 'Frankenstein',
+          host_id: 'me-user',
+          host_username: 'me',
+          host_display_name: 'Me',
+          fellow_id: 'fellow-a',
+          fellow_username: 'fellow_a',
+          fellow_display_name: 'Fellow A',
+          status: 'completed',
+          host_chapter: 0,
+          host_progress: 100,
+          fellow_chapter: 0,
+          fellow_progress: 100,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      'me-user'
+    );
+
+    // 3. Prune by fellow ID
+    useAnnotationStore.getState().pruneFellowAnnotationsByFellow('fellow-a');
+    expect(useAnnotationStore.getState().fellowAnnotations.map((f) => f.id)).toEqual(['fa-legacy']);
+    // No-op when fellow-a already removed
+    useAnnotationStore.getState().pruneFellowAnnotationsByFellow('fellow-a');
+  });
 });
 
 

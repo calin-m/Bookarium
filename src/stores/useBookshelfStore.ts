@@ -545,8 +545,10 @@ export const useBookshelfStore = create<BookshelfState>()(
           lastFavoritesSyncAt: null,
           lastBookshelfSyncAt: null,
           cloudBookshelves: [],
+          cloudBookshelfItems: [],
           activeBookshelfId: null,
           isSyncing: false,
+          outbox: [],
         });
       },
 
