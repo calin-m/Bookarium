@@ -56,6 +56,12 @@ describe('ReaderControls', () => {
     fireEvent.click(screen.getByText('Sepia'));
     expect(onThemeChange).toHaveBeenCalledWith('sepia');
 
+    fireEvent.click(screen.getByText('Light'));
+    expect(onThemeChange).toHaveBeenCalledWith('light');
+
+    fireEvent.click(screen.getByText('Dark'));
+    expect(onThemeChange).toHaveBeenCalledWith('dark');
+
     fireEvent.click(screen.getByText('Mono'));
     expect(onFontFamilyChange).toHaveBeenCalledWith('mono');
   });
@@ -74,6 +80,9 @@ describe('ReaderControls', () => {
 
     fireEvent.click(screen.getByText('Scroll'));
     expect(onReadingModeChange).toHaveBeenCalledWith('scroll');
+
+    fireEvent.click(screen.getByText('Page'));
+    expect(onReadingModeChange).toHaveBeenCalledWith('paginated');
 
     fireEvent.click(screen.getByText('Narrow'));
     expect(onColumnWidthChange).toHaveBeenCalledWith('narrow');
@@ -154,5 +163,30 @@ describe('ReaderControls', () => {
   it('does not render when isOpen is false', () => {
     const { container } = render(<ReaderControls {...defaultProps} isOpen={false} />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it('renders My Default and Factory Reset footer buttons and triggers callbacks', () => {
+    const onRevertToCustomDefaults = vi.fn();
+    const onResetToFactoryDefaults = vi.fn();
+
+    render(
+      <ReaderControls
+        {...defaultProps}
+        hasCustomDefaults={true}
+        isAtCustomDefaults={false}
+        isAtFactoryDefaults={false}
+        onRevertToCustomDefaults={onRevertToCustomDefaults}
+        onResetToFactoryDefaults={onResetToFactoryDefaults}
+      />
+    );
+
+    const revertBtn = screen.getByTestId('reader-revert-custom-defaults-btn');
+    const factoryBtn = screen.getByTestId('reader-reset-factory-defaults-btn');
+
+    fireEvent.click(revertBtn);
+    expect(onRevertToCustomDefaults).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(factoryBtn);
+    expect(onResetToFactoryDefaults).toHaveBeenCalledTimes(1);
   });
 });

@@ -787,12 +787,54 @@ function pass075SecurityAndSastAudit() {
       }
     }
 
+    // Rule 9 Account Deletion & Data Wipe Parity Audit:
+    // Every user-scoped table referencing auth.users(id) must enforce ON DELETE CASCADE
+    // and be explicitly purged in both public.delete_current_user() and useAuthStore.deleteAccount().
+    const deleteUserFnMatch = schemaSql.match(
+      /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.delete_current_user\s*\([\s\S]*?\$\$\s*;/i
+    );
+    const deleteUserFnBody = deleteUserFnMatch ? deleteUserFnMatch[0] : '';
+    const authStorePath = path.join(rootDir, 'src', 'stores', 'useAuthStore.ts');
+    const authStoreCode = fs.existsSync(authStorePath)
+      ? fs.readFileSync(authStorePath, 'utf-8')
+      : '';
+
+    const tableDefRegex =
+      /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?public\.([a-z0-9_]+)\s*\(([\s\S]*?)\r?\n\);/gi;
+    let tblDefMatch;
+    while ((tblDefMatch = tableDefRegex.exec(schemaSql)) !== null) {
+      const tblName = tblDefMatch[1];
+      const tblBody = tblDefMatch[2];
+      const userFkMatches = [...tblBody.matchAll(/REFERENCES\s+auth\.users\s*\(\s*id\s*\)([^\r\n,]*)/gi)];
+      if (userFkMatches.length > 0) {
+        for (const fkMatch of userFkMatches) {
+          if (!/ON\s+DELETE\s+CASCADE/i.test(fkMatch[1] || '')) {
+            rlsViolations.push(
+              `Rule 9 Account Deletion Parity: Foreign key to auth.users(id) in "public.${tblName}" must specify ON DELETE CASCADE.`
+            );
+          }
+        }
+        const rpcDeleteRegex = new RegExp(`DELETE\\s+FROM\\s+public\\.${tblName}\\b`, 'i');
+        if (!rpcDeleteRegex.test(deleteUserFnBody)) {
+          rlsViolations.push(
+            `Rule 9 Account Deletion Parity: User-scoped table "public.${tblName}" is missing explicit DELETE FROM public.${tblName} in public.delete_current_user() (supabase/schema.sql).`
+          );
+        }
+        const clientDeleteRegex = new RegExp(`\\.from\\(\\s*['"]${tblName}['"]\\s*\\)\\s*\\.delete\\(`, 'i');
+        if (authStoreCode && !clientDeleteRegex.test(authStoreCode)) {
+          rlsViolations.push(
+            `Rule 9 Account Deletion Parity: User-scoped table "public.${tblName}" is missing explicit .from('${tblName}').delete() in useAuthStore.deleteAccount() (src/stores/useAuthStore.ts).`
+          );
+        }
+      }
+    }
+
     if (rlsViolations.length > 0) {
       logFail(`Database schema security or idempotency violation(s) in supabase/schema.sql:`);
       rlsViolations.forEach((v) => console.error(`  - ${v}`));
       return false;
     }
-    logPass(`Pillar 6: Verified Row-Level Security across ${publicTables.length} public tables, 100% DDL/policy/trigger idempotency, write-policy isolation, and search_path hardening on all SECURITY DEFINER functions.`);
+    logPass(`Pillar 6: Verified Row-Level Security across ${publicTables.length} public tables, 100% DDL/policy/trigger idempotency, write-policy isolation, account-deletion parity, and search_path hardening on all SECURITY DEFINER functions.`);
   }
 
   // Pillar 7: HTTP Security Headers, Production CSP & Service Worker Cache Guard

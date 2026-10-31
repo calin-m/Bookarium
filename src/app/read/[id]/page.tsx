@@ -13,7 +13,11 @@ import {
 import { useGutenbergParserWorker } from '@/hooks/reader/useGutenbergParserWorker';
 import { getReaderTheme } from '@/config/reader-themes';
 import { resolveBookMetadata } from '@/lib/book-metadata';
-import { areAnnotationsOverlapping, pairOverlappingAnnotations } from '@/lib/reader-annotator';
+import {
+  areAnnotationsOverlapping,
+  findCanonicalTextSpan,
+  pairOverlappingAnnotations,
+} from '@/lib/reader-annotator';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
 import { ReaderFooter } from '@/components/reader/ReaderFooter';
 import { ReaderTocDrawer } from '@/components/reader/ReaderTocDrawer';
@@ -33,6 +37,12 @@ import { useReaderHabitTelemetry } from '@/hooks/reader/useReaderHabitTelemetry'
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import {
+  FACTORY_PREFERENCES,
+  areReaderAppearancePreferencesEqual,
+  resetReaderAppearanceToDefaults,
+  schedulePreferencesCloudSync,
+} from '@/lib/preferences-sync';
 import {
   useHydratedAnnotations,
   type HighlightColor,
@@ -76,11 +86,15 @@ function BookReaderContent() {
     fontFamily,
     theme,
     brightness,
+    readingMode,
+    columnWidth,
     setFontSize,
     setLineHeight,
     setFontFamily,
     setTheme,
     setBrightness,
+    setReadingMode,
+    setColumnWidth,
   } = useHydratedReader();
 
   // Persistent User Preferences
@@ -91,6 +105,7 @@ function BookReaderContent() {
     setSpeechVoiceURI,
     speechAutoPageAdvance,
     speechHighlightEnabled,
+    customDefaults,
   } = usePreferencesStore(
     useShallow((s) => ({
       speechRate: s.speechRate,
@@ -99,6 +114,7 @@ function BookReaderContent() {
       setSpeechVoiceURI: s.setSpeechVoiceURI,
       speechAutoPageAdvance: s.speechAutoPageAdvance,
       speechHighlightEnabled: s.speechHighlightEnabled,
+      customDefaults: s.customDefaults,
     }))
   );
 
@@ -113,8 +129,32 @@ function BookReaderContent() {
     toggleDrawer,
     closeDrawer,
   } = useReaderDrawers();
-  const [readingMode, setReadingMode] = useState<'paginated' | 'scroll'>('paginated');
-  const [columnWidth, setColumnWidth] = useState<'narrow' | 'normal' | 'wide'>('wide');
+
+  const currentReaderAppearance = useMemo(
+    () => ({
+      theme,
+      fontFamily,
+      fontSize,
+      lineHeight,
+      brightness,
+      readingMode,
+      columnWidth,
+    }),
+    [theme, fontFamily, fontSize, lineHeight, brightness, readingMode, columnWidth]
+  );
+
+  const isAtReaderFactoryDefaults = useMemo(
+    () =>
+      areReaderAppearancePreferencesEqual(currentReaderAppearance, FACTORY_PREFERENCES),
+    [currentReaderAppearance]
+  );
+
+  const isAtReaderCustomDefaults = useMemo(
+    () =>
+      Boolean(customDefaults) &&
+      areReaderAppearancePreferencesEqual(currentReaderAppearance, customDefaults),
+    [currentReaderAppearance, customDefaults]
+  );
 
   // Annotations & Highlights Management
   const {
@@ -299,7 +339,8 @@ function BookReaderContent() {
   const resolveReflowedAnnotationPage = useCallback(
     (chapterIndex: number, fallbackPage: number, selectedText: string): number => {
       const chapter = chaptersWithPagination[chapterIndex];
-      const foundIdx = chapter?.pages?.findIndex((p) => p.includes(selectedText)) ?? -1;
+      const foundIdx =
+        chapter?.pages?.findIndex((p) => findCanonicalTextSpan(p, selectedText) !== null) ?? -1;
       return foundIdx !== -1 ? foundIdx + 1 : fallbackPage;
     },
     [chaptersWithPagination]
@@ -486,7 +527,12 @@ function BookReaderContent() {
       const trimmed = selection.text.trim();
       const matchesPassage = (a: { selectedText: string }) => {
         const candidate = a.selectedText.trim();
-        return candidate.includes(trimmed) || trimmed.includes(candidate);
+        return (
+          candidate.includes(trimmed) ||
+          trimmed.includes(candidate) ||
+          findCanonicalTextSpan(candidate, trimmed) !== null ||
+          findCanonicalTextSpan(trimmed, candidate) !== null
+        );
       };
       const ownMatch = activeChapterAnnotations.find(matchesPassage) || null;
       const fellowMatch = activeChapterFellowAnnotations.find(matchesPassage) || null;
@@ -759,19 +805,49 @@ function BookReaderContent() {
         isOpen={isControlsOpen}
         onClose={closeDrawer}
         fontSize={fontSize}
-        onFontSizeChange={setFontSize}
+        onFontSizeChange={(size) => {
+          setFontSize(size);
+          schedulePreferencesCloudSync();
+        }}
         lineHeight={lineHeight}
-        onLineHeightChange={setLineHeight}
+        onLineHeightChange={(height) => {
+          setLineHeight(height);
+          schedulePreferencesCloudSync();
+        }}
         fontFamily={fontFamily}
-        onFontFamilyChange={setFontFamily}
+        onFontFamilyChange={(family) => {
+          setFontFamily(family);
+          schedulePreferencesCloudSync();
+        }}
         theme={theme}
-        onThemeChange={setTheme}
+        onThemeChange={(nextTheme) => {
+          setTheme(nextTheme);
+          schedulePreferencesCloudSync();
+        }}
         brightness={brightness}
-        onBrightnessChange={setBrightness}
+        onBrightnessChange={(val) => {
+          setBrightness(val);
+          schedulePreferencesCloudSync();
+        }}
         readingMode={readingMode}
-        onReadingModeChange={setReadingMode}
+        onReadingModeChange={(mode) => {
+          setReadingMode(mode);
+          schedulePreferencesCloudSync();
+        }}
         columnWidth={columnWidth}
-        onColumnWidthChange={setColumnWidth}
+        onColumnWidthChange={(width) => {
+          setColumnWidth(width);
+          schedulePreferencesCloudSync();
+        }}
+        hasCustomDefaults={Boolean(customDefaults)}
+        isAtCustomDefaults={isAtReaderCustomDefaults}
+        isAtFactoryDefaults={isAtReaderFactoryDefaults}
+        onRevertToCustomDefaults={() => {
+          resetReaderAppearanceToDefaults('custom');
+        }}
+        onResetToFactoryDefaults={() => {
+          resetReaderAppearanceToDefaults('factory');
+        }}
       />
 
       {/* Slide-out Table of Contents Drawer */}

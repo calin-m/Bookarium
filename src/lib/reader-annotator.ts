@@ -34,6 +34,183 @@ export interface SharedQuoteSegments {
   afterText?: string;
 }
 
+interface CanonicalIndexMap {
+  canonical: string;
+  normToRawStart: number[];
+  normToRawEnd: number[];
+}
+
+function isAlphanumericChar(ch: string | undefined): boolean {
+  return Boolean(ch && /[A-Za-z0-9]/.test(ch));
+}
+
+/**
+ * Builds a character-index-mapped canonical representation of `input` that:
+ * 1. Collapses contiguous whitespace (`\s+`, including `\n` hard wraps) to a single `' '`.
+ * 2. Equates ASCII double-hyphens (`--`), em-dashes (`—`), and en-dashes (`–`) to `'-'`.
+ * 3. Strips Gutenberg `_italic_` emphasis boundary underscores while preserving `snake_case` and `____` blanks.
+ * 4. Normalizes curly quotes (`“`/`”` -> `"`, `‘`/`’` -> `'`).
+ */
+function buildCanonicalIndexMap(input: string): CanonicalIndexMap {
+  const chars: string[] = [];
+  const normToRawStart: number[] = [];
+  const normToRawEnd: number[] = [];
+
+  let i = 0;
+  const len = input.length;
+
+  while (i < len) {
+    const ch = input[i];
+
+    // 1. Contiguous whitespace -> single ' '
+    if (/\s/.test(ch)) {
+      let j = i + 1;
+      while (j < len && /\s/.test(input[j])) {
+        j++;
+      }
+      chars.push(' ');
+      normToRawStart.push(i);
+      normToRawEnd.push(j);
+      i = j;
+      continue;
+    }
+
+    // 2. Dash equivalence: '--' (when not part of '---') and '—' / '–' -> '-'
+    if (ch === '—' || ch === '–') {
+      chars.push('-');
+      normToRawStart.push(i);
+      normToRawEnd.push(i + 1);
+      i += 1;
+      continue;
+    }
+    if (
+      ch === '-' &&
+      input[i + 1] === '-' &&
+      input[i - 1] !== '-' &&
+      input[i + 2] !== '-'
+    ) {
+      chars.push('-');
+      normToRawStart.push(i);
+      normToRawEnd.push(i + 2);
+      i += 2;
+      continue;
+    }
+
+    // 3. Gutenberg _italic_ boundary underscore stripping
+    if (ch === '_') {
+      const prev = input[i - 1];
+      const next = input[i + 1];
+      const isMultiUnderscore = prev === '_' || next === '_';
+      const isSnakeCase = isAlphanumericChar(prev) && isAlphanumericChar(next);
+      if (!isMultiUnderscore && !isSnakeCase) {
+        i += 1;
+        continue;
+      }
+    }
+
+    // 4. Curly vs. straight quote normalization
+    if (ch === '“' || ch === '”') {
+      chars.push('"');
+      normToRawStart.push(i);
+      normToRawEnd.push(i + 1);
+      i += 1;
+      continue;
+    }
+    if (ch === '‘' || ch === '’') {
+      chars.push("'");
+      normToRawStart.push(i);
+      normToRawEnd.push(i + 1);
+      i += 1;
+      continue;
+    }
+
+    chars.push(ch);
+    normToRawStart.push(i);
+    normToRawEnd.push(i + 1);
+    i += 1;
+  }
+
+  return {
+    canonical: chars.join(''),
+    normToRawStart,
+    normToRawEnd,
+  };
+}
+
+/**
+ * Finds all occurrences of `needle` inside `haystack`, using an `O(N)` exact `indexOf` fast path
+ * and falling back to a character-index-mapped canonical search (`--` <-> `—`, `_italic_`, `\n` <-> `' '`,
+ * curly <-> straight quotes) so legacy annotations and bookmarks never break when parser typography evolves.
+ */
+export function findAllCanonicalTextSpans(
+  haystack: string,
+  needle: string
+): Array<{ start: number; end: number }> {
+  if (!haystack || !needle) return [];
+
+  // 1. O(N) Exact Fast Path
+  const exactSpans: Array<{ start: number; end: number }> = [];
+  let searchStart = 0;
+  while (searchStart <= haystack.length - needle.length) {
+    const idx = haystack.indexOf(needle, searchStart);
+    if (idx === -1) break;
+    exactSpans.push({ start: idx, end: idx + needle.length });
+    searchStart = idx + needle.length;
+  }
+  if (exactSpans.length > 0) {
+    return exactSpans;
+  }
+
+  const trimmedNeedle = needle.trim();
+  if (!trimmedNeedle) return [];
+
+  if (trimmedNeedle !== needle) {
+    let trimmedStart = 0;
+    while (trimmedStart <= haystack.length - trimmedNeedle.length) {
+      const idx = haystack.indexOf(trimmedNeedle, trimmedStart);
+      if (idx === -1) break;
+      exactSpans.push({ start: idx, end: idx + trimmedNeedle.length });
+      trimmedStart = idx + trimmedNeedle.length;
+    }
+    if (exactSpans.length > 0) {
+      return exactSpans;
+    }
+  }
+
+  // 2. Canonical Index-Mapped Fallback
+  const haystackMap = buildCanonicalIndexMap(haystack);
+  const needleMap = buildCanonicalIndexMap(trimmedNeedle);
+  const cleanNeedle = needleMap.canonical.trim();
+  if (!cleanNeedle || !haystackMap.canonical) return [];
+
+  const canonicalSpans: Array<{ start: number; end: number }> = [];
+  let normSearchPos = 0;
+  while (normSearchPos <= haystackMap.canonical.length - cleanNeedle.length) {
+    const normIdx = haystackMap.canonical.indexOf(cleanNeedle, normSearchPos);
+    if (normIdx === -1) break;
+    const normEndIdx = normIdx + cleanNeedle.length - 1;
+    const rawStart = haystackMap.normToRawStart[normIdx];
+    const rawEnd = haystackMap.normToRawEnd[normEndIdx];
+    if (rawStart !== undefined && rawEnd !== undefined && rawEnd > rawStart) {
+      canonicalSpans.push({ start: rawStart, end: rawEnd });
+    }
+    normSearchPos = normIdx + Math.max(1, cleanNeedle.length);
+  }
+
+  return canonicalSpans;
+}
+
+/**
+ * Returns the first canonical `{ start, end }` span of `needle` inside `haystack`, or `null` if not found.
+ */
+export function findCanonicalTextSpan(
+  haystack: string,
+  needle: string
+): { start: number; end: number } | null {
+  const spans = findAllCanonicalTextSpans(haystack, needle);
+  return spans.length > 0 ? spans[0] : null;
+}
+
 /**
  * Checks whether a personal annotation and fellow annotation belong to the same
  * volume, section, and share an overlapping or matching passage of text.
@@ -53,10 +230,29 @@ export function areAnnotationsOverlapping(
     return true;
   }
 
-  // Handle minor whitespace or sentence punct variations
-  const cleanA = textA.toLowerCase().replace(/\s+/g, ' ');
-  const cleanB = textB.toLowerCase().replace(/\s+/g, ' ');
-  return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
+  if (findCanonicalTextSpan(textA, textB) !== null || findCanonicalTextSpan(textB, textA) !== null) {
+    return true;
+  }
+
+  // Handle case-insensitive minor whitespace or sentence punct variations
+  const cleanA = buildCanonicalIndexMap(textA.toLowerCase()).canonical.trim();
+  const cleanB = buildCanonicalIndexMap(textB.toLowerCase()).canonical.trim();
+  if (!cleanA || !cleanB) return false;
+  if (cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA)) {
+    return true;
+  }
+
+  // Check partial prefix/suffix overlap (>= 12 canonical chars) when two highlights intersect without containment
+  const minOverlap = 12;
+  if (cleanA.length >= minOverlap && cleanB.length >= minOverlap) {
+    const maxCheck = Math.min(cleanA.length, cleanB.length);
+    for (let len = maxCheck; len >= minOverlap; len--) {
+      if (cleanA.endsWith(cleanB.slice(0, len)) || cleanB.endsWith(cleanA.slice(0, len))) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -87,25 +283,31 @@ export function computeSharedQuoteSegments(
     return { isExact: true, fullQuote: ownText };
   }
 
-  if (ownText.includes(trimmedFellow)) {
-    const idx = ownText.indexOf(trimmedFellow);
+  const fellowInOwn = findCanonicalTextSpan(ownText, trimmedFellow);
+  if (fellowInOwn) {
+    if (fellowInOwn.start === 0 && fellowInOwn.end === ownText.length) {
+      return { isExact: true, fullQuote: ownText };
+    }
     return {
       isExact: false,
       fullQuote: ownText,
-      overlapText: trimmedFellow,
-      beforeText: ownText.slice(0, idx),
-      afterText: ownText.slice(idx + trimmedFellow.length),
+      overlapText: ownText.slice(fellowInOwn.start, fellowInOwn.end),
+      beforeText: ownText.slice(0, fellowInOwn.start),
+      afterText: ownText.slice(fellowInOwn.end),
     };
   }
 
-  if (fellowText.includes(trimmedOwn)) {
-    const idx = fellowText.indexOf(trimmedOwn);
+  const ownInFellow = findCanonicalTextSpan(fellowText, trimmedOwn);
+  if (ownInFellow) {
+    if (ownInFellow.start === 0 && ownInFellow.end === fellowText.length) {
+      return { isExact: true, fullQuote: fellowText };
+    }
     return {
       isExact: false,
       fullQuote: fellowText,
-      overlapText: trimmedOwn,
-      beforeText: fellowText.slice(0, idx),
-      afterText: fellowText.slice(idx + trimmedOwn.length),
+      overlapText: fellowText.slice(ownInFellow.start, ownInFellow.end),
+      beforeText: fellowText.slice(0, ownInFellow.start),
+      afterText: fellowText.slice(ownInFellow.end),
     };
   }
 
@@ -213,28 +415,18 @@ export function computeAnnotationSpans(
     return [];
   }
 
-  const matchingAnnotations = annotations.filter(
-    (a) => a.selectedText && text.includes(a.selectedText)
-  );
-
-  if (matchingAnnotations.length === 0) {
-    return [];
-  }
-
   // 1. Build disjoint non-overlapping intervals for self-annotations (prioritizing earlier matches)
   const rawSelfSpans: Array<{ start: number; end: number; annotation: Annotation }> = [];
-  const selfAnnotations = matchingAnnotations.filter((a): a is Annotation => !isFellowAnnotation(a));
+  const selfAnnotations = annotations.filter((a): a is Annotation => !isFellowAnnotation(a));
   for (const ann of selfAnnotations) {
-    let searchStart = 0;
-    while (searchStart < text.length) {
-      const idx = text.indexOf(ann.selectedText, searchStart);
-      if (idx === -1) break;
+    if (!ann.selectedText) continue;
+    const matches = findAllCanonicalTextSpans(text, ann.selectedText);
+    for (const m of matches) {
       rawSelfSpans.push({
-        start: idx,
-        end: idx + ann.selectedText.length,
+        start: m.start,
+        end: m.end,
         annotation: ann,
       });
-      searchStart = idx + ann.selectedText.length;
     }
   }
   rawSelfSpans.sort((a, b) => a.start - b.start || a.end - b.end);
@@ -249,18 +441,16 @@ export function computeAnnotationSpans(
 
   // 2. Build disjoint non-overlapping intervals for fellow-annotations
   const rawFellowSpans: Array<{ start: number; end: number; annotation: FellowAnnotation }> = [];
-  const fellowAnnotations = matchingAnnotations.filter(isFellowAnnotation);
+  const fellowAnnotations = annotations.filter(isFellowAnnotation);
   for (const ann of fellowAnnotations) {
-    let searchStart = 0;
-    while (searchStart < text.length) {
-      const idx = text.indexOf(ann.selectedText, searchStart);
-      if (idx === -1) break;
+    if (!ann.selectedText) continue;
+    const matches = findAllCanonicalTextSpans(text, ann.selectedText);
+    for (const m of matches) {
       rawFellowSpans.push({
-        start: idx,
-        end: idx + ann.selectedText.length,
+        start: m.start,
+        end: m.end,
         annotation: ann,
       });
-      searchStart = idx + ann.selectedText.length;
     }
   }
   rawFellowSpans.sort((a, b) => a.start - b.start || a.end - b.end);
@@ -271,6 +461,10 @@ export function computeAnnotationSpans(
       fellowSpans.push(f);
       lastFellowEnd = f.end;
     }
+  }
+
+  if (selfSpans.length === 0 && fellowSpans.length === 0) {
+    return [];
   }
 
   // 3. Fast-path: if either group is empty, return the other directly
@@ -327,4 +521,3 @@ export function computeAnnotationSpans(
 
   return resultSpans;
 }
-

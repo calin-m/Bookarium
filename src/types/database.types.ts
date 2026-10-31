@@ -23,6 +23,7 @@ export interface Database {
           show_custom_shelves?: boolean;
           preferred_theme: string | null;
           font_size: number | null;
+          preferences?: Json;
           created_at: string;
           updated_at: string;
         };
@@ -39,6 +40,7 @@ export interface Database {
           show_custom_shelves?: boolean;
           preferred_theme?: string | null;
           font_size?: number | null;
+          preferences?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -55,6 +57,7 @@ export interface Database {
           show_custom_shelves?: boolean;
           preferred_theme?: string | null;
           font_size?: number | null;
+          preferences?: Json;
           created_at?: string;
           updated_at?: string;
         };

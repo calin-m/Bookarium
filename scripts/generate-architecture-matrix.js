@@ -55,7 +55,7 @@ function extractDatabaseCatalog(rootDirPath) {
   };
 
   const descMap = {
-    profiles: 'User profile display name, `@username` handle, theme preferences, and typography choices (auto-created on signup, with companion identity RLS resolution for Reader Circles & Symposiums).',
+    profiles: 'User profile display name, `@username` handle, theme preferences, typography choices, and unified `preferences` JSONB (`active` & `customDefaults` presets, auto-created on signup, with companion identity RLS resolution for Reader Circles & Symposiums).',
     bookshelves: 'Default master "General" shelf and custom user-created named shelves.',
     bookshelf_items: 'Books filed in specific shelves with user-scoped uniqueness constraints.',
     user_favorites: 'Cross-device synchronized favorited titles.',
@@ -1012,9 +1012,9 @@ function generateMarkdown() {
     useJurisdictionStore:
       'Client-side geographic jurisdiction state, cookie synchronization (bookarium-geo-country), developer country overrides, and synchronous regional capability resolution.',
     usePreferencesStore:
-      'Reader display choices, sticky header auto-hide preferences, and navigation behaviors.',
+      'Reader display choices, sticky header auto-hide preferences, Web Speech API narration configuration (`speechRate`, `speechVoiceURI`, `speechAutoPageAdvance`, `speechHighlightEnabled`), saved personal default preset (`customDefaults`), and cloud sync timestamp (`preferencesUpdatedAt`).',
     useReaderStore:
-      'Active book payload with verified lifespan preservation, typography settings (size, family, line height), page brightness (`30%–100%`), reading mode (paginated vs scroll), chapter/page/row coordinates (`bookmarkRow`) and cross-display/font-reflow resilient passage anchor (`bookmarkText`, cleared on finished status), bookmark deletion tombstones (`deletedPositionBookIds`), placeholder-to-authentic author & lifespan self-healing (`enrichReadingPositions`, `saveReadingPosition`), and bidirectional Supabase `reading_progress` sync.',
+      'Active book payload with verified lifespan preservation, typography settings (size, family, line height), page brightness (`30%–100%`), persistent reading mode (`paginated` vs `scroll`) and column width (`narrow` / `normal` / `wide`), chapter/page/row coordinates (`bookmarkRow`) and cross-display/font-reflow resilient passage anchor (`bookmarkText`, cleared on finished status), bookmark deletion tombstones (`deletedPositionBookIds`), placeholder-to-authentic author & lifespan self-healing (`enrichReadingPositions`, `saveReadingPosition`), and bidirectional Supabase `reading_progress` sync.',
     useThemeStore:
       'Global application theme state (Day Paper, Sepia Parchment, Obsidian Dark) with immediate document class application.',
   };
@@ -1176,17 +1176,17 @@ function generateMarkdown() {
     metadata:
       'Gutenberg plain-text header/footer metadata extraction, author/title/language detection, and ISO code normalization.',
     pagination:
-      'Continuous chapter pagination algorithms, character-per-page geometry calculations, and reading time estimation.',
+      'Continuous chapter pagination algorithms with UTF-8 curly-quote/guillemet sentence boundary snapping, character-per-page geometry calculations, and reading time estimation.',
     passages:
       'Dynamic book passage and quote extraction engine identifying compelling prose segments with dialogue and character markers.',
     reflow:
-      'Typography text-reflow heuristics repairing Project Gutenberg hard line wraps and paragraph boundaries.',
+      'Typography text-reflow heuristics (`reflowGutenbergParagraphs`, `formatGutenbergTypography`) repairing Project Gutenberg hard line wraps while preserving alternating-indent verse, short stanzas, and scene breaks, and normalizing `--` -> `—` and `_italic_` wrappers.',
     segmentation:
-      'Robust chapter and section boundary detection with Roman numeral, spelled-word, and structural heading patterns.',
+      'Robust chapter and section boundary detection (`parseGutenbergChapters`, `stripDuplicateLeadingChapterHeading`) with Roman numeral, Strategy 1B spelled-word / Stave / Letter divisions, TOC deduplication, and zero-offset-shift display heading deduplication.',
     types:
       'Canonical TypeScript interfaces and configurations for the Project Gutenberg parsing engine and AST nodes.',
     'in-book-search':
-      'Full-text in-volume search algorithm with context snippet generation and matched coordinate navigation.',
+      'Full-text in-volume search algorithm with canonical typography matching (`--` <-> `—`, curly/straight quotes), diacritic fallback, context snippet generation, and matched coordinate navigation.',
     'offline-storage':
       'IndexedDB storage abstraction providing offline book content caching, local store author resolution and asynchronous IndexedDB author back-fill (`patchOfflineBookAuthors`), storage change notifications (`notifyOfflineStorageChanged`), quota calculation, and LRU eviction.',
     password:
@@ -1196,7 +1196,7 @@ function generateMarkdown() {
     'rate-limiter':
       'In-memory sliding-window rate limiter with burst mitigation for API routes.',
     'reader-annotator':
-      'Scholarly marginalia interval partitioning, non-destructive HTML text-node highlighter, overlapping annotation pairing (`pairOverlappingAnnotations`), and shared quote span segmentation (`computeSharedQuoteSegments`).',
+      'Scholarly marginalia interval partitioning, character-index-mapped canonical span matching (`findCanonicalTextSpan`, `findAllCanonicalTextSpans`), overlapping annotation pairing (`pairOverlappingAnnotations`), and shared quote span segmentation (`computeSharedQuoteSegments`).',
     'reading-analytics':
       'Streak calculation, 5-minute immersion thresholds, reading speed metrics, annual reading goal progress, deduplicated completed volume counting (`calculateCompletedBooksCount`), and public scholar habit telemetry resolution (`resolvePublicReadingHabits`).',
     'redirect-sanitizer':
@@ -1237,6 +1237,8 @@ function generateMarkdown() {
       'Fellowship scholar handle validation (`isPlaceholderUsername`), label formatting (`formatFellowScholarLabel`), profile identity healing (`healProfileIdentity`), and Supabase `public.profiles` batch lookup (`fetchScholarProfilesMap`).',
     'reader-cloud-sync':
       'Reading position cloud synchronization helpers, ghost-row filtering (`isGhostReadingPosition`, `isGhostCloudRow`), fractional row-bookmark decoding (`decodeRemoteReadingPosition`), and lifespan-preserving author extraction (`extractVerifiedAuthors`).',
+    'preferences-sync':
+      'Unified 13-key scholar preferences snapshot coordinator (`ScholarPreferencesSnapshot`, `FACTORY_PREFERENCES`), two-tier custom default preset & factory reset actions (`saveCurrentAsCustomDefaults`, `revertToCustomDefaults`, `resetAllPreferencesToFactoryDefaults`, `resetReaderAppearanceToDefaults`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud synchronization (`schedulePreferencesCloudSync`, `reconcileCloudPreferencesWithLocal`).',
   };
 
   for (const u of utilities) {

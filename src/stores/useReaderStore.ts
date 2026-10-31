@@ -26,6 +26,9 @@ export {
   type BookReadingPosition,
 };
 
+export type ReaderReadingMode = 'paginated' | 'scroll';
+export type ReaderColumnWidth = 'narrow' | 'normal' | 'wide';
+
 export interface ReaderState {
   currentBook: GutendexBook | Book | null;
   isOpen: boolean;
@@ -34,6 +37,8 @@ export interface ReaderState {
   fontFamily: ReaderFontFamily;
   theme: ReaderTheme;
   brightness: number;
+  readingMode: ReaderReadingMode;
+  columnWidth: ReaderColumnWidth;
   readingProgress: Record<number, number>;
   readingPositions: Record<number, BookReadingPosition>;
   deletedPositionBookIds: number[];
@@ -53,6 +58,8 @@ export interface ReaderState {
   setFontFamily: (family: ReaderFontFamily) => void;
   setTheme: (theme: ReaderTheme) => void;
   setBrightness: (brightness: number) => void;
+  setReadingMode: (mode: ReaderReadingMode) => void;
+  setColumnWidth: (width: ReaderColumnWidth) => void;
   setMobileTrayOpen: (open: boolean) => void;
   toggleMobileTray: () => void;
   setProgress: (bookId: number, progress: number) => void;
@@ -80,6 +87,8 @@ export const useReaderStore = create<ReaderState>()(
       fontFamily: 'serif',
       theme: 'light',
       brightness: READER_FONT_CONFIG.DEFAULT_BRIGHTNESS,
+      readingMode: 'paginated',
+      columnWidth: 'wide',
       readingProgress: {},
       readingPositions: {},
       deletedPositionBookIds: [],
@@ -167,6 +176,16 @@ export const useReaderStore = create<ReaderState>()(
           READER_FONT_CONFIG.MAX_BRIGHTNESS
         );
         set({ brightness: clamped });
+      },
+
+      setReadingMode: (readingMode) => {
+        set({ readingMode: readingMode === 'scroll' ? 'scroll' : 'paginated' });
+      },
+
+      setColumnWidth: (columnWidth) => {
+        const validWidth: ReaderColumnWidth =
+          columnWidth === 'narrow' || columnWidth === 'normal' ? columnWidth : 'wide';
+        set({ columnWidth: validWidth });
       },
 
       setProgress: (bookId, progress) => {
@@ -645,6 +664,8 @@ export function useHydratedReader() {
   const fontFamily = useReaderStore((s) => s.fontFamily);
   const theme = useReaderStore((s) => s.theme);
   const brightness = useReaderStore((s) => s.brightness);
+  const readingMode = useReaderStore((s) => s.readingMode);
+  const columnWidth = useReaderStore((s) => s.columnWidth);
   const readingProgress = useReaderStore((s) => s.readingProgress);
   const readingPositions = useReaderStore((s) => s.readingPositions);
   const isMobileTrayOpen = useReaderStore((s) => s.isMobileTrayOpen);
@@ -656,6 +677,8 @@ export function useHydratedReader() {
   const setFontFamily = useReaderStore((s) => s.setFontFamily);
   const setTheme = useReaderStore((s) => s.setTheme);
   const setBrightness = useReaderStore((s) => s.setBrightness);
+  const setReadingMode = useReaderStore((s) => s.setReadingMode);
+  const setColumnWidth = useReaderStore((s) => s.setColumnWidth);
   const setMobileTrayOpen = useReaderStore((s) => s.setMobileTrayOpen);
   const toggleMobileTray = useReaderStore((s) => s.toggleMobileTray);
   const setProgress = useReaderStore((s) => s.setProgress);
@@ -675,6 +698,8 @@ export function useHydratedReader() {
         fontFamily,
         theme,
         brightness,
+        readingMode,
+        columnWidth,
         readingProgress,
         readingPositions,
         isMobileTrayOpen,
@@ -688,6 +713,8 @@ export function useHydratedReader() {
         fontFamily: 'serif' as ReaderFontFamily,
         theme: 'light' as ReaderTheme,
         brightness: READER_FONT_CONFIG.DEFAULT_BRIGHTNESS,
+        readingMode: 'paginated' as ReaderReadingMode,
+        columnWidth: 'wide' as ReaderColumnWidth,
         readingProgress: {} as Record<number, number>,
         readingPositions: {} as Record<number, BookReadingPosition>,
         isMobileTrayOpen: false,
@@ -705,6 +732,8 @@ export function useHydratedReader() {
     setFontFamily,
     setTheme,
     setBrightness,
+    setReadingMode,
+    setColumnWidth,
     setMobileTrayOpen,
     toggleMobileTray,
     setProgress,

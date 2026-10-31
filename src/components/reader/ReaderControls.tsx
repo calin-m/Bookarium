@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Type, Sun, Moon, Coffee, AlignLeft, Columns } from 'lucide-react';
+import { Type, Sun, Moon, Coffee, AlignLeft, Columns, Undo2, RotateCcw } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
@@ -24,6 +24,11 @@ export interface ReaderControlsProps {
   onReadingModeChange: (mode: 'paginated' | 'scroll') => void;
   columnWidth: 'narrow' | 'normal' | 'wide';
   onColumnWidthChange: (width: 'narrow' | 'normal' | 'wide') => void;
+  hasCustomDefaults?: boolean;
+  isAtCustomDefaults?: boolean;
+  isAtFactoryDefaults?: boolean;
+  onRevertToCustomDefaults?: () => void;
+  onResetToFactoryDefaults?: () => void;
 }
 
 export const ReaderControls: React.FC<ReaderControlsProps> = ({
@@ -43,6 +48,11 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
   onReadingModeChange,
   columnWidth,
   onColumnWidthChange,
+  hasCustomDefaults = false,
+  isAtCustomDefaults = false,
+  isAtFactoryDefaults = false,
+  onRevertToCustomDefaults,
+  onResetToFactoryDefaults,
 }) => {
   const activeTheme = getReaderTheme(theme);
 
@@ -329,6 +339,36 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Preset & Factory Reset Footer */}
+        {(onRevertToCustomDefaults || onResetToFactoryDefaults) && (
+          <div className={`pt-3 border-t ${activeTheme.border} flex items-center justify-between gap-2`}>
+            {hasCustomDefaults && onRevertToCustomDefaults && (
+              <button
+                type="button"
+                data-testid="reader-revert-custom-defaults-btn"
+                onClick={onRevertToCustomDefaults}
+                disabled={isAtCustomDefaults}
+                className={`flex-1 py-1.5 px-2.5 rounded-lg border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default ${activeTheme.pill} ${activeTheme.inactivePill}`}
+              >
+                <Undo2 className="w-3 h-3 shrink-0" />
+                <span>My Default</span>
+              </button>
+            )}
+            {onResetToFactoryDefaults && (
+              <button
+                type="button"
+                data-testid="reader-reset-factory-defaults-btn"
+                onClick={onResetToFactoryDefaults}
+                disabled={isAtFactoryDefaults}
+                className={`flex-1 py-1.5 px-2.5 rounded-lg border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default ${activeTheme.pill} ${activeTheme.inactivePill}`}
+              >
+                <RotateCcw className="w-3 h-3 shrink-0" />
+                <span>Factory Reset</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </ReaderDrawerShell>
   );

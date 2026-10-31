@@ -53,20 +53,24 @@ All limits, thresholds, and window sizes are centralized in `src/lib/gutenberg/t
 
 ## 🧩 Subsystem Modules & API Contracts
 
-### `segmentation.ts` — Chapter Segmentation & Subtitle Harvesting
+### `segmentation.ts` — Chapter Segmentation, Subtitle Harvesting & Display Heading Deduplication
 
-Slices raw plain-text into ordered, clean `ChapterSection` entities. Normalizes diverse heading styles, harvests subtitles from Roman/Arabic TOC listings and body subtitles, strips ghost TOC chapters, and detects standalone body headings.
+Slices raw plain-text into ordered, clean `ChapterSection` entities. Normalizes diverse heading styles (including Strategy 1B fallback for spelled-out chapter numbers and Stave/Letter/Adventure/Volume divisions), harvests subtitles from Roman/Arabic TOC listings and body subtitles, strips ghost TOC chapters, and provides display-time leading heading deduplication.
 
 **Exported Functions & Symbols:**
 
 | Symbol | Signature | Contract / Rationale |
 |---|---|---|
+| `stripDuplicateLeadingChapterHeading` | `(pageText, chapter)` | Strips the duplicate leading chapter heading line (and any standalone subtitle line already
+absorbed into `chapter.displayTitle`) from the top of a rendered page or scroll section
+when the Reader Surface already renders the `<h2>{chapter.displayTitle}</h2>` banner above it.
+Keeps `chapter.content` unchanged during pagination and search indexing so page boundaries never shift. |
 | `parseGutenbergChapters` | `(rawText)` | Parse raw Gutenberg plain-text into clean structured chapter sections.
 Suppresses front-matter Table of Contents (TOC) lists, prefaces, extracts, and closing license matter. |
 
 ### `pagination.ts` — Virtual Sentence-Snapped Pagination & Reading Metrics
 
-Calculates virtual page spreads snapped cleanly to paragraph and sentence boundaries. Backed by a 500-entry LRU memory cache and dynamic font-size scaling. Derives 200 WPM reading estimates.
+Calculates virtual page spreads snapped cleanly to paragraph and sentence boundaries (including UTF-8 curly quotes, guillemets, and parentheticals). Backed by a 500-entry LRU memory cache and dynamic font-size scaling. Derives 200 WPM reading estimates.
 
 **Exported Functions & Symbols:**
 
@@ -91,16 +95,24 @@ Scans the initial 5,000 bytes of Gutenberg plain-text headers to extract Title, 
 | `normalizeLanguageToCode` | `(rawLang)` | Public subsystem export |
 | `extractGutenbergHeaderMetadata` | `(rawText)` | Extract Title, Author, and Language directly from the Project Gutenberg preamble header. |
 
-### `reflow.ts` — Heuristic Paragraph Reflow
+### `reflow.ts` — Heuristic Paragraph Reflow & Typographic Polish
 
-Unwraps hard 70-character single newlines into fluid paragraphs for responsive reading, while preserving poetry, verse, stanza breaks, and blockquotes with 4+ spaces indentation or lines under 45 characters.
+Unwraps hard 70-character single newlines into fluid paragraphs for responsive reading while preserving poetry, alternating-indent verse, short stanzas, scene breaks, and blockquotes, and normalizing 2-hyphen prose dashes (`--` -> `—`) and Gutenberg `_italic_` wrappers.
 
 **Exported Functions & Symbols:**
 
 | Symbol | Signature | Contract / Rationale |
 |---|---|---|
+| `formatGutenbergTypography` | `(text)` | Normalizes Project Gutenberg plain-text typographic artifacts within a single line or paragraph:
+1. Preserves horizontal dividers, scene breaks, and asterisms (`* * *`, `-----`).
+2. Converts strictly 2-hyphen prose tokens (`--`) into typographic em-dashes (`—`) while
+   leaving `+--+` / `|--|` ASCII table borders, `---` rules, and `-->` arrows untouched.
+3. Strips genuine Gutenberg `_italic_` emphasis underscores around words/phrases while
+   leaving Victorian redacted blanks (`Captain ____ of the ____ Regiment`, `17__`) and
+   `snake_case` identifiers untouched. |
 | `reflowGutenbergParagraphs` | `(rawText)` | Reflows Project Gutenberg plain-text paragraphs by joining single-newline hard wraps
-into fluid prose blocks while preserving double-spaced paragraph breaks, dialogue, and verse. |
+into fluid prose blocks while preserving double-spaced paragraph breaks, dialogue,
+scene breaks, and indented or short-line verse/epigraphs. |
 
 ### `passages.ts` — Dynamic Literary Passage & Quote Extraction
 
@@ -147,14 +159,19 @@ When a book includes a Table of Contents in the front-matter, naive splitters tr
 ### 4. Sentence-Snapped Virtual Pagination (`paginateChapterContent`)
 Splits prose without ever breaking words across virtual page turns using a 3-tier boundary hierarchy:
 1. **Paragraph Boundary (`\n\n`)**: Preferred split within the search window `[0.75 * charsPerPage, charsPerPage + 60]`.
-2. **Sentence Boundary (`[.!?]["']?\s+`)**: Snaps to full sentences if no paragraph break is present.
+2. **Sentence Boundary (`[.!?]["'”’»)]?\s+`)**: Snaps to full sentences (including UTF-8 curly quotes, guillemets, and parentheticals) if no paragraph break is present.
 3. **Word Boundary (`\s`)**: Snaps to the nearest word boundary before `charsPerPage`.
 
-### 5. Paragraph Reflow (`reflowGutenbergParagraphs`)
+### 5. Paragraph Reflow & Typographic Polish (`reflowGutenbergParagraphs` & `formatGutenbergTypography`)
 - Joins single hard newlines (70–75 chars) with a single space for responsive fluid reading across any device viewport.
-- Preserves poetry, verse, and blockquotes if all lines are indented with 4+ spaces or if lines are consistently under 45 characters.
+- Preserves poetry, alternating-indent verse (`2+` spaces on continuation lines with `maxTrimmedLen <= 62` so 70-column dramatic prose speeches still unwrap), short stanzas (`3+` lines, `avg < 50`), and blockquotes (`4+` spaces on all lines).
+- Converts 2-hyphen prose tokens (`--`) to typographic em-dashes (`—`) while preserving `+--+` / `|--|` ASCII tables and `---` dividers, and strips Gutenberg `_italic_` wrappers while preserving Victorian redacted blanks (`Captain ____ of the ____ Regiment`, `17__`) and `snake_case`.
 
-### 6. Single-Section Colophon & License Preservation (`segmentBookChapters`)
+### 6. Fallback Literary Division Segmentation & Display Heading Deduplication (`stripDuplicateLeadingChapterHeading`)
+- **Strategy 1B (Fallback-Only)**: When Strategy 1A finds `<= 1` match, scans for spelled-out chapter numbers (`CHAPTER ONE..TWENTY`, `BOOK THE FIRST`) and literary divisions (`STAVE`, `LETTER`, `ADVENTURE`, `VOLUME`), guarded against isolated mid-book embedded letters.
+- **Zero-Offset-Shift Display Deduplication**: Strips the redundant leading heading/subtitle line on Page 1 when the Reader Surface renders `<h2>{chapter.displayTitle}</h2>` above it, while keeping `chapter.content` unchanged during pagination and search indexing.
+
+### 7. Single-Section Colophon & License Preservation (`segmentBookChapters`)
 - When an unabridged volume contains no recognizable structural chapter headings (`splitIndices.length === 0`) and falls back to a single `Complete Volume` section at `index: 0`, the parser still inspects `licenseContent` extracted after `*** END OF THE PROJECT GUTENBERG EBOOK ... ***`.
 - If an explicit Project Gutenberg footer/license marker is present, a dedicated `Colophon & License` section (`id: "colophon-license"`) is appended at `index: 1` to guarantee 100% Project Gutenberg trademark and license compliance on single-section monographs, essays, and plays.
 

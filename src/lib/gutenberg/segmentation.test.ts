@@ -1,6 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { parseGutenbergChapters } from './segmentation';
+import {
+  parseGutenbergChapters,
+  stripDuplicateLeadingChapterHeading,
+} from './segmentation';
 
 describe('segmentation subsystem', () => {
   it('returns empty array on null or undefined input', () => {
@@ -543,6 +546,102 @@ ${'New settlements flourished across the inland valleys. '.repeat(150)}
     expect(ch2).toBeDefined();
     expect(ch1?.content).toContain('The earliest settlers arrived');
     expect(ch2?.content).toContain('As we observed earlier in Chapter 1');
+  });
+
+  it('segments books with spelled-out chapter numbers or Stave/Letter divisions via Strategy 1B while ignoring isolated mid-book letters', () => {
+    const christmasCarol = `
+*** START OF THE PROJECT GUTENBERG EBOOK A CHRISTMAS CAROL ***
+
+A CHRISTMAS CAROL
+By Charles Dickens
+
+STAVE I
+MARLEY'S GHOST
+
+Marley was dead: to begin with. There is no doubt whatever about that. ${'Narrative prose. '.repeat(25)}
+
+STAVE II
+THE FIRST OF THE THREE SPIRITS
+
+When Scrooge awoke, it was so dark, that looking out of bed, he could scarcely distinguish the transparent window. ${'Spirit prose. '.repeat(25)}
+
+STAVE III
+THE SECOND OF THE THREE SPIRITS
+
+Awaking in the middle of a prodigiously tough snore, Scrooge sat up in bed. ${'Second spirit prose. '.repeat(25)}
+
+*** END OF THE PROJECT GUTENBERG EBOOK A CHRISTMAS CAROL ***
+`;
+    const carolChapters = parseGutenbergChapters(christmasCarol);
+    const stave1 = carolChapters.find((c) => c.title === 'STAVE I');
+    const stave2 = carolChapters.find((c) => c.title === 'STAVE II');
+    expect(stave1).toBeDefined();
+    expect(stave1?.displayTitle).toBe("Stave I: Marley's Ghost");
+    expect(stave2?.displayTitle).toBe('Stave II: The First of the Three Spirits');
+
+    const spelledOutBook = `
+*** START OF THE PROJECT GUTENBERG EBOOK SPELLED ***
+
+CHAPTER ONE
+The Opening Morning
+
+The sun rose over the quiet harbor as the ship prepared to sail. ${'Harbor prose. '.repeat(25)}
+
+CHAPTER TWO
+Into the Storm
+
+Clouds gathered along the western horizon before noon. ${'Storm prose. '.repeat(25)}
+`;
+    const spelledChapters = parseGutenbergChapters(spelledOutBook);
+    expect(spelledChapters.some((c) => c.displayTitle === 'Chapter One: The Opening Morning')).toBe(
+      true
+    );
+    expect(spelledChapters.some((c) => c.displayTitle === 'Chapter Two: Into the Storm')).toBe(
+      true
+    );
+
+    // Mid-book embedded two letters inside an unsegmented novella must not hijack segmentation
+    const novellaWithTwoLetters = `
+${'Long continuous novella narrative without chapter divisions. '.repeat(60)}
+
+LETTER I
+
+My dear friend, I write this short note from the inn. ${'Short letter text. '.repeat(12)}
+
+LETTER II
+
+Thank you for your brief reply. ${'Short reply text. '.repeat(12)}
+
+${'The novella continues for many pages after the two short letters. '.repeat(60)}
+`;
+    const novellaChapters = parseGutenbergChapters(novellaWithTwoLetters);
+    expect(novellaChapters).toHaveLength(1);
+    expect(novellaChapters[0].title).toBe('Complete Volume');
+  });
+
+  it('strips duplicate leading chapter headings and absorbed subtitles for display while preserving non-duplicate opening lines', () => {
+    expect(
+      stripDuplicateLeadingChapterHeading(
+        'CHAPTER I\n\nTHE HIRED CAR\n\nDerby Day fell that year on the first Wednesday in June.',
+        { title: 'CHAPTER I', displayTitle: 'Chapter I: The Hired Car' }
+      )
+    ).toBe('Derby Day fell that year on the first Wednesday in June.');
+
+    // Preserves unabsorbed opening lines such as epigraphs or questions
+    expect(
+      stripDuplicateLeadingChapterHeading(
+        'CHAPTER I.\n\nHAD THERE BEEN WISDOM THERE?\n\nIt was in the early spring.',
+        { title: 'CHAPTER I.', displayTitle: 'CHAPTER I.' }
+      )
+    ).toBe('HAD THERE BEEN WISDOM THERE?\n\nIt was in the early spring.');
+
+    // Never strips synthetic Preamble, Complete Volume, or Colophon sections
+    expect(
+      stripDuplicateLeadingChapterHeading('Complete Volume\n\nBody text.', {
+        title: 'Complete Volume',
+        displayTitle: 'Complete Volume',
+      })
+    ).toBe('Complete Volume\n\nBody text.');
   });
 });
 

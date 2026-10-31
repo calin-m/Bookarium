@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { usePreferencesStore } from './usePreferencesStore';
+import { usePreferencesStore, type ScholarPreferencesSnapshot } from './usePreferencesStore';
 
 describe('usePreferencesStore', () => {
   beforeEach(() => {
-    usePreferencesStore.setState({ stickyScrollEnabled: true });
+    usePreferencesStore.getState().resetAllPreferencesStore();
     localStorage.clear();
   });
 
@@ -55,5 +55,36 @@ describe('usePreferencesStore', () => {
     expect(state.speechAutoPageAdvance).toBe(true);
     expect(state.speechHighlightEnabled).toBe(true);
   });
-});
 
+  it('stores customDefaults, preferencesUpdatedAt, and resets all store state via resetAllPreferencesStore', () => {
+    const samplePreset: ScholarPreferencesSnapshot = {
+      theme: 'sepia',
+      stickyScrollEnabled: false,
+      fontFamily: 'mono',
+      fontSize: 22,
+      lineHeight: 2.0,
+      brightness: 85,
+      readingMode: 'scroll',
+      columnWidth: 'narrow',
+      spoilerShieldEnabled: false,
+      speechRate: 1.25,
+      speechVoiceURI: 'Jenny',
+      speechAutoPageAdvance: false,
+      speechHighlightEnabled: false,
+    };
+
+    usePreferencesStore.getState().setCustomDefaults(samplePreset);
+    usePreferencesStore.getState().setPreferencesUpdatedAt('2026-10-31T19:00:00.000Z');
+    usePreferencesStore.getState().setStickyScrollEnabled(false);
+
+    expect(usePreferencesStore.getState().customDefaults).toEqual(samplePreset);
+    expect(usePreferencesStore.getState().preferencesUpdatedAt).toBe(
+      '2026-10-31T19:00:00.000Z'
+    );
+
+    usePreferencesStore.getState().resetAllPreferencesStore();
+    expect(usePreferencesStore.getState().customDefaults).toBeNull();
+    expect(usePreferencesStore.getState().preferencesUpdatedAt).toBeNull();
+    expect(usePreferencesStore.getState().stickyScrollEnabled).toBe(true);
+  });
+});

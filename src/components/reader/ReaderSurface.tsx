@@ -3,13 +3,20 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { BookOpen, ZoomIn } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
-import type { ChapterSection } from '@/lib/gutenberg-parser';
+import {
+  stripDuplicateLeadingChapterHeading,
+  type ChapterSection,
+} from '@/lib/gutenberg-parser';
 import type { FellowAnnotation } from '@/stores/useAnnotationStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { ANNOTATION_COLOR_CONFIG } from '@/config/annotation-tokens';
 import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
-import { computeAnnotationSpans, type AnyAnnotation } from '@/lib/reader-annotator';
+import {
+  computeAnnotationSpans,
+  findCanonicalTextSpan,
+  type AnyAnnotation,
+} from '@/lib/reader-annotator';
 import {
   extractRowTextFromElement,
   resolveTextRowSpanInElement,
@@ -96,27 +103,50 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   const [isDraggingBookmark, setIsDraggingBookmark] = useState(false);
   const [resolvedBookmarkSpan, setResolvedBookmarkSpan] = useState<{
     text: string;
+    pageContent: string;
     startRow: number;
     endRow: number;
   } | null>(null);
+  const [attemptedBookmarkLayout, setAttemptedBookmarkLayout] = useState<{
+    text: string;
+    pageContent: string;
+  } | null>(null);
   const latestDragRowRef = useRef(bookmarkRow);
-  const hasScrolledBookmarkRef = useRef(false);
+  const lastEmittedReflowRowRef = useRef<number | null>(null);
+  const lastAutoScrolledTargetRef = useRef<string | null>(null);
+  const hasUserInteractedWithBookmarkRef = useRef(false);
 
   useEffect(() => {
     latestDragRowRef.current = bookmarkRow;
+    lastEmittedReflowRowRef.current = null;
   }, [bookmarkRow]);
 
   const lineStepPx = Math.max(16, fontSize * lineHeight);
-  const contentToDisplay = readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
+  const isChapterBannerVisible = Boolean(
+    chapter && !(activeChapterIndex === 0 && (bookTitle || bookAuthor))
+  );
+  const isFirstPageOfSection = readingMode !== 'paginated' || !chapterPage || chapterPage === 1;
+  const rawContentToDisplay =
+    readingMode === 'paginated' ? currentPageText : (chapter?.content || '');
+  const contentToDisplay =
+    isChapterBannerVisible && isFirstPageOfSection
+      ? stripDuplicateLeadingChapterHeading(rawContentToDisplay, chapter)
+      : rawContentToDisplay;
   const estimatedMaxBookmarkRows = Math.max(10, Math.ceil((contentToDisplay?.length || 800) / 65));
   const isBookmarkActive = bookmarkRow > 0 || isDraggingBookmark;
   const activeSpan =
     !isDraggingBookmark &&
     bookmarkRow > 0 &&
     bookmarkText &&
-    resolvedBookmarkSpan?.text === bookmarkText
+    resolvedBookmarkSpan?.text === bookmarkText &&
+    resolvedBookmarkSpan?.pageContent === contentToDisplay
       ? resolvedBookmarkSpan
       : null;
+  const isBookmarkLayoutReady =
+    !bookmarkText ||
+    Boolean(activeSpan) ||
+    (attemptedBookmarkLayout?.text === bookmarkText &&
+      attemptedBookmarkLayout?.pageContent === contentToDisplay);
   const effectiveStartRow = activeSpan ? activeSpan.startRow : bookmarkRow;
   const effectiveEndRow = activeSpan
     ? Math.max(activeSpan.startRow, activeSpan.endRow)
@@ -172,6 +202,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
 
   const emitUserBookmarkRowChange = useCallback(
     (nextRow: number) => {
+      hasUserInteractedWithBookmarkRef.current = true;
       if (!onBookmarkRowChange) return;
       if (nextRow <= 0) {
         onBookmarkRowChange(0);
@@ -181,6 +212,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       if (extracted) {
         setResolvedBookmarkSpan({
           text: extracted,
+          pageContent: contentToDisplay,
           startRow: nextRow,
           endRow: nextRow,
         });
@@ -189,7 +221,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
         onBookmarkRowChange(nextRow);
       }
     },
-    [onBookmarkRowChange, extractRowText]
+    [onBookmarkRowChange, extractRowText, contentToDisplay]
   );
 
   // Re-evaluate startRow..endRow when display width, columnWidth, or typography changes
@@ -210,25 +242,40 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       }
 
       const span = resolveTextRowSpan(bookmarkText, bookmarkRow);
-      if (!span) return;
+      if (!span) {
+        setAttemptedBookmarkLayout((prev) =>
+          prev?.text === bookmarkText && prev?.pageContent === contentToDisplay
+            ? prev
+            : { text: bookmarkText, pageContent: contentToDisplay }
+        );
+        return;
+      }
 
       setResolvedBookmarkSpan((prev) => {
         if (
           prev &&
           prev.text === bookmarkText &&
+          prev.pageContent === contentToDisplay &&
           prev.startRow === span.startRow &&
           prev.endRow === span.endRow
         ) {
           return prev;
         }
-        return { text: bookmarkText, startRow: span.startRow, endRow: span.endRow };
+        return {
+          text: bookmarkText,
+          pageContent: contentToDisplay,
+          startRow: span.startRow,
+          endRow: span.endRow,
+        };
       });
 
-      if (span.startRow !== bookmarkRow) {
+      if (span.startRow !== bookmarkRow && lastEmittedReflowRowRef.current !== span.startRow) {
+        lastEmittedReflowRowRef.current = span.startRow;
         onBookmarkRowChange?.(span.startRow);
       }
     };
 
+    syncBookmarkToLayout();
     const rafId = window.requestAnimationFrame(syncBookmarkToLayout);
 
     let observer: ResizeObserver | null = null;
@@ -283,6 +330,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
         if (extracted) {
           setResolvedBookmarkSpan({
             text: extracted,
+            pageContent: contentToDisplay,
             startRow: finalRow,
             endRow: finalRow,
           });
@@ -295,18 +343,22 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     window.addEventListener('mousemove', handlePointerMove);
     window.addEventListener('touchmove', handleTouchMoveWindow, { passive: false });
     window.addEventListener('pointerup', handleEnd);
+    window.addEventListener('pointercancel', handleEnd);
     window.addEventListener('mouseup', handleEnd);
     window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('mousemove', handlePointerMove);
       window.removeEventListener('touchmove', handleTouchMoveWindow);
       window.removeEventListener('pointerup', handleEnd);
+      window.removeEventListener('pointercancel', handleEnd);
       window.removeEventListener('mouseup', handleEnd);
       window.removeEventListener('touchend', handleEnd);
+      window.removeEventListener('touchcancel', handleEnd);
     };
-  }, [isDraggingBookmark, computeRowFromClientY, extractRowText, onBookmarkRowChange]);
+  }, [isDraggingBookmark, computeRowFromClientY, extractRowText, contentToDisplay, onBookmarkRowChange]);
 
   const { zoomFeedback, handleTouchStart, handleTouchMove, handleTouchEnd } = useReaderGestures({
     fontSize,
@@ -318,10 +370,11 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   });
 
   useEffect(() => {
-    hasScrolledBookmarkRef.current = false;
+    lastAutoScrolledTargetRef.current = null;
+    hasUserInteractedWithBookmarkRef.current = false;
   }, [currentPageText, activeChapterIndex, chapterPage]);
 
-  // Smooth animated scroll-to-top on page or chapter transition, or center on bookmarked row when resuming
+  // Smooth animated scroll-to-top on page or chapter transition, or center on resolved bookmark anchor when resuming
   useEffect(() => {
     if (readingMode === 'paginated' && mainRef.current && !targetAnnotationId && !isDraggingBookmark) {
       const behavior: ScrollBehavior =
@@ -330,21 +383,57 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
           ? 'instant'
           : 'smooth';
       if (bookmarkRow > 0) {
-        if (!hasScrolledBookmarkRef.current && bookmarkElRef.current) {
-          hasScrolledBookmarkRef.current = true;
-          bookmarkElRef.current.scrollIntoView?.({
+        if (!isBookmarkLayoutReady || hasUserInteractedWithBookmarkRef.current) return;
+        const targetKey = `${activeChapterIndex}:${chapterPage ?? 1}:${effectiveStartRow}:${effectiveEndRow}`;
+        if (lastAutoScrolledTargetRef.current !== targetKey && bookmarkElRef.current) {
+          lastAutoScrolledTargetRef.current = targetKey;
+          const mainEl = mainRef.current;
+          const contentEl = contentBodyRef.current;
+          if (contentEl && mainEl.clientHeight > 0) {
+            const mainRect = mainEl.getBoundingClientRect();
+            const contentRect = contentEl.getBoundingClientRect();
+            const contentOffsetTop = contentRect.top - mainRect.top + mainEl.scrollTop;
+            const spanCenterOffsetPx = ((effectiveStartRow + effectiveEndRow + 1) / 2) * lineStepPx;
+            const targetScrollTop = Math.max(
+              0,
+              Math.round(contentOffsetTop + spanCenterOffsetPx - mainEl.clientHeight / 2)
+            );
+            mainEl.scrollTo({
+              top: targetScrollTop,
+              behavior,
+            });
+          } else {
+            bookmarkElRef.current.scrollIntoView?.({
+              behavior,
+              block: 'center',
+            });
+          }
+        }
+      } else if (!bookmarkText) {
+        const resetKey = `${activeChapterIndex}:${chapterPage ?? 1}:top`;
+        if (lastAutoScrolledTargetRef.current !== resetKey) {
+          lastAutoScrolledTargetRef.current = resetKey;
+          mainRef.current.scrollTo({
+            top: 0,
             behavior,
-            block: 'center',
           });
         }
-      } else {
-        mainRef.current.scrollTo({
-          top: 0,
-          behavior,
-        });
       }
     }
-  }, [currentPageText, activeChapterIndex, readingMode, targetAnnotationId, bookmarkRow, isDraggingBookmark]);
+  }, [
+    currentPageText,
+    activeChapterIndex,
+    chapterPage,
+    readingMode,
+    targetAnnotationId,
+    bookmarkRow,
+    bookmarkText,
+    effectiveStartRow,
+    effectiveEndRow,
+    lineStepPx,
+    isBookmarkLayoutReady,
+    isDraggingBookmark,
+  ]);
 
   // Center and visually accent the targeted highlighted passage
   useEffect(() => {
@@ -553,7 +642,10 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
                 isDraggingBookmark={isDraggingBookmark}
                 getMaxBookmarkRows={getMaxBookmarkRows}
                 computeRowFromClientY={computeRowFromClientY}
-                onStartDrag={() => setIsDraggingBookmark(true)}
+                onStartDrag={() => {
+                  hasUserInteractedWithBookmarkRef.current = true;
+                  setIsDraggingBookmark(true);
+                }}
                 onEmitRowChange={emitUserBookmarkRowChange}
               />
             )}
@@ -631,7 +723,7 @@ function renderContentWithAnnotations(
   };
 
   const matchingAnnotations = (annotations || []).filter(
-    (a) => a.selectedText && text.includes(a.selectedText)
+    (a) => a.selectedText && findCanonicalTextSpan(text, a.selectedText) !== null
   );
 
   if (matchingAnnotations.length === 0) {

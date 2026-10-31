@@ -103,5 +103,118 @@ describe('reader-bookmark-geometry', () => {
       expect(extractRowTextFromElement(null, 'Sample line', 1, computeRow)).toBeUndefined();
       expect(resolveTextRowSpanInElement(null, 'Sample line', 'Sample', 1, 5, computeRow)).toBeNull();
     });
+
+    it('disambiguates duplicate phrases on the same page by picking the occurrence closest to fallbackRow', () => {
+      const root = document.createElement('div');
+      const text = 'Yes, indeed. Middle paragraph filler text here. Yes, indeed.';
+      root.textContent = text;
+
+      Range.prototype.getBoundingClientRect = vi.fn(function (this: Range) {
+        const offset = this.startOffset;
+        const row = offset < 15 ? 2 : offset < 45 ? 5 : 9;
+        return {
+          top: row * 28,
+          bottom: row * 28 + 20,
+          left: 0,
+          right: 100,
+          width: 100,
+          height: 20,
+          x: 0,
+          y: row * 28,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+
+      const computeRow = (clientY: number) => Math.floor(clientY / 28);
+
+      // When fallbackRow is near row 2, selects the first occurrence at row 2
+      expect(
+        resolveTextRowSpanInElement(root, text, 'Yes, indeed.', 3, 12, computeRow)
+      ).toEqual({ startRow: 2, endRow: 2 });
+
+      // When fallbackRow is near row 9, selects the second occurrence at row 9
+      expect(
+        resolveTextRowSpanInElement(root, text, 'Yes, indeed.', 8, 12, computeRow)
+      ).toEqual({ startRow: 9, endRow: 9 });
+    });
+
+    it('resolves legacy bookmark_text containing -- dashes and _italic_ wrappers against reflowed content', () => {
+      const root = document.createElement('div');
+      const reflowedText =
+        'Opening line. Some years ago—never mind how long precisely—having little money.';
+      root.textContent = reflowedText;
+
+      Range.prototype.getBoundingClientRect = vi.fn(function (this: Range) {
+        const offset = this.startOffset;
+        const row = offset >= 14 ? 4 : 1;
+        return {
+          top: row * 28,
+          bottom: row * 28 + 20,
+          left: 0,
+          right: 100,
+          width: 100,
+          height: 20,
+          x: 0,
+          y: row * 28,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+
+      const computeRow = (clientY: number) => Math.floor(clientY / 28);
+      expect(
+        resolveTextRowSpanInElement(
+          root,
+          reflowedText,
+          'Some years ago--never mind how long _precisely_',
+          3,
+          10,
+          computeRow
+        )
+      ).toEqual({ startRow: 4, endRow: 4 });
+    });
+
+    it('falls back to nearest row slice in extractRowTextFromElement when targetRow falls in an inter-line gap', () => {
+      const root = document.createElement('div');
+      const text = 'Row one text. Row three text.';
+      root.textContent = text;
+
+      Range.prototype.getBoundingClientRect = vi.fn(function (this: Range) {
+        const offset = this.startOffset;
+        const row = offset < 14 ? 1 : 3;
+        return {
+          top: row * 28,
+          bottom: row * 28 + 20,
+          left: 0,
+          right: 100,
+          width: 100,
+          height: 20,
+          x: 0,
+          y: row * 28,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+
+      const computeRow = (clientY: number) => Math.floor(clientY / 28);
+      // Row 2 has no exact match (firstIdx falls on row 3, lastIdx falls on row 1 -> firstIdx > lastIdx)
+      const fallback = extractRowTextFromElement(root, text, 2, computeRow);
+      expect(fallback).toBe('Row three text.');
+
+      // Zero-dimension rect returns null from measureCharRect
+      Range.prototype.getBoundingClientRect = vi.fn(
+        () =>
+          ({
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            width: 0,
+            height: 0,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+          }) as DOMRect
+      );
+      expect(measureCharRect(collectContentTextSegments(root), 0)).toBeNull();
+    });
   });
 });

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User, Session, AuthError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
-import type { Profile } from '@/types/database.types';
+import type { Profile, Json } from '@/types/database.types';
 import { ROUTES } from '@/config/routes';
 import { buildAuthRedirectUrl } from '@/lib/redirect-sanitizer';
 
@@ -66,6 +66,7 @@ export interface AuthState {
     display_name?: string;
     preferred_theme?: string;
     font_size?: number;
+    preferences?: Json;
     username?: string | null;
     bio?: string | null;
     is_public?: boolean;
@@ -94,12 +95,19 @@ const SIGNED_OUT_AUTH_STATE = {
 async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Promise<void> {
   const localCleanupTasks: Array<() => Promise<unknown>> = [
     async () => {
+      const { cancelPendingPreferencesCloudSync } = await import('@/lib/preferences-sync');
+      cancelPendingPreferencesCloudSync();
+    },
+    async () => {
       const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
       useBookshelfStore.getState().clearBookshelf();
     },
     async () => {
       const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
       useAnnotationStore.getState().clearAllAnnotations();
+      if (options.wipeDeviceStorage) {
+        useAnnotationStore.getState().setSpoilerShieldEnabled(true);
+      }
     },
     async () => {
       const { useHabitsStore } = await import('@/stores/useHabitsStore');
@@ -119,10 +127,12 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
         await useReaderStore.getState().clearAllVolumes();
         useReaderStore.setState({
           fontSize: 18,
-          lineHeight: 1.8,
+          lineHeight: 1.75,
           fontFamily: 'serif',
           theme: 'light',
           brightness: 100,
+          readingMode: 'paginated',
+          columnWidth: 'wide',
         });
       } else {
         useReaderStore.getState().resetReaderSession();
@@ -140,6 +150,8 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
         const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
         usePreferencesStore.getState().resetSpeechPreferences();
         usePreferencesStore.getState().setStickyScrollEnabled(true);
+        usePreferencesStore.getState().setCustomDefaults(null);
+        usePreferencesStore.getState().setPreferencesUpdatedAt(null);
       },
       async () => {
         const { useThemeStore } = await import('@/stores/useThemeStore');
@@ -406,6 +418,12 @@ export const useAuthStore = create<AuthState>()(
 
       if (!error && data) {
         set({ profile: data as Profile });
+        try {
+          const { reconcileCloudPreferencesWithLocal } = await import('@/lib/preferences-sync');
+          reconcileCloudPreferencesWithLocal(data as Profile);
+        } catch {
+          // Non-blocking fallback
+        }
       }
     } catch {
       // Non-blocking fallback

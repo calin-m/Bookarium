@@ -42,9 +42,9 @@ export function paginateChapterContent(content: string, charsPerPage: number): s
     if (paraIndex !== -1 && minSearch + paraIndex <= charsPerPage + 60) {
       splitIndex = minSearch + paraIndex + 2;
     } else {
-      // 2. Look for a sentence boundary (. , ! , ? )
+      // 2. Look for a sentence boundary (. , ! , ? ) including UTF-8 curly quotes, guillemets, and parens
       const searchSub = remaining.slice(minSearch, charsPerPage + 60);
-      const sentenceRegex = /[.!?]["']?\s+/g;
+      const sentenceRegex = /[.!?]["'”’»)]?\s+/g;
       let lastSentenceEnd = -1;
       let match: RegExpExecArray | null;
       while ((match = sentenceRegex.exec(searchSub)) !== null) {

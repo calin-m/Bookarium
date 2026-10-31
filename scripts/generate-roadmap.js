@@ -173,10 +173,10 @@ const ROADMAP_MILESTONES = [
   },
   {
     id: 'm5',
-    title: 'Milestone 5: Autonomous Gutenberg Catalog & Self-Hosted Search Engine',
-    version: 'v2.5.0 (Completed)',
-    badge: 'https://img.shields.io/badge/Milestone-v2.5.0-teal?style=flat-square',
-    description: 'Self-hosted PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, sub-50ms single-book lookups and ~1–2s catalog page queries, automated weekly synchronization, and multi-tier content streaming.',
+    title: 'Milestone 5: Autonomous Gutenberg Catalog, Multilingual FRBR & Copyright Engine',
+    version: 'v2.5.0 - v2.5.4 (Completed)',
+    badge: 'https://img.shields.io/badge/Milestone-v2.5.4-teal?style=flat-square',
+    description: 'Self-hosted PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, relational Wikidata FRBR translation clustering, multi-jurisdictional copyright gatekeeping, automated weekly synchronization, and multi-tier content streaming.',
     features: [
       {
         title: 'Self-Hosted PostgreSQL Catalog (`public.books`) with GIN Search',
@@ -198,14 +198,30 @@ const ROADMAP_MILESTONES = [
         description: 'Unified `ICatalogProvider` seam (`src/lib/catalog/`) probing Supabase PostgreSQL as primary provider (~1–2s catalog / <50ms single-book) with seamless fallback to Gutendex when unseeded, offline, or experiencing network errors.',
         check: () => fileExists('src/lib/catalog/supabase-provider.ts') && fileContains('src/app/api/books/route.ts', 'supabaseCatalogProvider'),
       },
+      {
+        title: 'Relational FRBR Multilingual Translation Engine (`public.book_translations` & `scripts/ingest-translations.js`)',
+        description: 'Wikidata SPARQL (`P2034` / `P407`) work-clustering pipeline (`scripts/ingest-translations.js`), weekly `.github/workflows/translations-sync.yml` cron, `/api/books/translations` endpoint, and 1-click `<Globe />` language edition handoff (`ReaderLanguageDrawer.tsx`).',
+        check: () =>
+          fileContains('supabase/schema.sql', 'CREATE TABLE IF NOT EXISTS public.book_translations') &&
+          fileExists('scripts/ingest-translations.js') &&
+          fileExists('src/components/reader/ReaderLanguageDrawer.tsx'),
+      },
+      {
+        title: 'Multi-Jurisdictional Copyright Engine, Geo-IP Edge Proxy & Content Advisory (`src/lib/copyright-engine.ts` & `src/proxy.ts`)',
+        description: 'Territorial public domain evaluation (`US 1930`, `Life+70`, `Life+80`, `Life+100`, Joint Authorship Art. 7bis, Translator Rights Art. 2(3)), edge Geo-IP cookie resolution (`src/proxy.ts`), 7-layer author lifespan self-healing (`isPlaceholderAuthor` guardrails), `HTTP 451` streaming gates, and lexical Content Advisory banners (`src/lib/content-advisory.ts`, `ContentAdvisoryBanner.tsx`).',
+        check: () =>
+          fileExists('src/lib/copyright-engine.ts') &&
+          fileExists('src/proxy.ts') &&
+          fileExists('src/lib/content-advisory.ts'),
+      },
     ],
   },
   {
     id: 'm6',
-    title: 'Milestone 6: Public Scholar Profiles & Social Portability',
+    title: 'Milestone 6: Public Scholar Profiles, Technical SEO & Share Portability',
     version: 'v2.6.0 (Completed)',
     badge: 'https://img.shields.io/badge/Milestone-v2.6.0-blueviolet?style=flat-square',
-    description: 'Opt-in public scholar profile pages, reader biographies, and shareable reading cards for social platforms.',
+    description: 'Opt-in public scholar profile sanctuaries, server-side book OpenGraph & Schema.org structured data, and unified multi-surface share link portability.',
     features: [
       {
         title: 'Opt-In Public Scholar Profiles (`/u/[username]`)',
@@ -213,9 +229,11 @@ const ROADMAP_MILESTONES = [
         check: () => fileExists('src/app/u/[username]/page.tsx') || fileContains('src/components/profile/PublicProfileView.tsx', 'is_public'),
       },
       {
-        title: 'Shareable Reading Cards & OpenGraph Export',
-        description: 'Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.',
-        check: () => fileExists('src/components/account/ShareableReadingCard.tsx') || fileExists('src/lib/reading-card-export.ts'),
+        title: 'Dynamic Book OpenGraph, Schema.org JSON-LD & 9-Surface Share Link Copy (`src/app/read/[id]/reader-layout-utils.ts` & `src/lib/redirect-sanitizer.ts`)',
+        description: 'Server-side `/read/[id]/layout.tsx` metadata generation with 24h ISR caching (`reader-layout-utils.ts`), `schema.org/Book` & `WebApplication` JSON-LD structured data, crawler rate-shielding (`robots.ts`, `sitemap.ts`), and unified 1-click Title/Author share link copying (`buildBookShareUrl` with `300ms` tooltip & `Copied!` pill) across all 9 book surfaces.',
+        check: () =>
+          fileExists('src/app/read/[id]/reader-layout-utils.ts') &&
+          fileContains('src/lib/redirect-sanitizer.ts', 'buildBookShareUrl'),
       },
     ],
   },
@@ -265,10 +283,99 @@ const ROADMAP_MILESTONES = [
   },
   {
     id: 'm8',
-    title: 'Milestone 8: Community Hub & Public Literary Agora',
+    title: 'Milestone 8: Offline-First PWA Resilience, Accessibility & Cloud Outbox Architecture',
+    version: 'v2.8.0 (Completed)',
+    badge: 'https://img.shields.io/badge/Milestone-v2.8.0-emerald?style=flat-square',
+    description: 'End-to-end offline App Shell resilience, Adaptive Offline Catalog fallback, Project Gutenberg mirror-first content streaming, 6-store snapshot-guarded cloud outboxes, and WCAG 2.2 AA accessibility hardening.',
+    features: [
+      {
+        title: 'Offline-First Service Worker App Shell (`v4`) & Offline Account Hub (`public/sw.js` & `ServiceWorkerRegister.tsx`)',
+        description: 'Pre-cached `/`, `/account`, and `/read/[id]` App Shells (`bookarium-app-shell-v4`), static `/_next/static/` JS/CSS/font bundle extraction and lazy chunk pre-warming, RSC Flight request protection, reactive network detection (`useNetworkStatus.ts`) with red offline navbar status badge, and full offline `/account` workspace access for both guests and signed-in scholars.',
+        check: () =>
+          fileExists('public/sw.js') &&
+          fileExists('src/components/pwa/ServiceWorkerRegister.tsx') &&
+          fileExists('src/hooks/useNetworkStatus.ts'),
+      },
+      {
+        title: 'Adaptive Offline Catalog, `Downloaded (N)` Smart Shelf & Restriction Parity (`useOfflineCatalogFallback.ts` & `CatalogOfflineView.tsx`)',
+        description: 'Automatic IndexedDB catalog fallback when offline (powering 3D Hero spotlight, search, topic/language/era filters, sorting, and `<BookGrid />` or `<CatalogOfflineView />`), Bookshelf `Downloaded (N)` smart shelf pill (`DOWNLOADED_SHELF_ID`), and `isUnavailableOffline` cover/spine dimming + `Not Downloaded` badges across all 9 collection, symposium, language drawer, and public profile views.',
+        check: () =>
+          fileExists('src/hooks/useOfflineCatalogFallback.ts') &&
+          fileExists('src/components/presentation/CatalogOfflineView.tsx'),
+      },
+      {
+        title: 'Project Gutenberg Mirror-First Streaming & 6-Store Snapshot-Guarded Cloud Outboxes (`url-validator.ts` & `bookshelf-cloud-sync.ts`)',
+        description: 'Official Project Gutenberg harvest mirror prioritization (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms` ahead of `www.gutenberg.org`), individual-only download compliance, per-user sync mutex coalescing, and snapshot-guarded bi-directional outbox queues across all 6 cloud-synced stores (`bookshelf-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`).',
+        check: () =>
+          fileContains('src/app/api/books/content/url-validator.ts', 'gutenberg.pglaf.org') &&
+          fileExists('src/lib/bookshelf-cloud-sync.ts') &&
+          fileExists('src/lib/annotation-cloud-sync.ts'),
+      },
+      {
+        title: 'WCAG 2.2 AA Focus-Trapped Modals, Dynamic Overlay Code-Splitting & Zero-Any TypeScript (`Modal.tsx` & `eslint.config.mjs`)',
+        description: 'Keyboard `Tab` / `Shift+Tab` focus trapping and focus restoration across all modals and reader drawers (`Modal.tsx`, `ReaderDrawerShell.tsx`, `ConfirmActionModal.tsx`), `next/dynamic` code-splitting for closed-by-default overlays, and strict `@typescript-eslint/no-explicit-any: "error"` enforcement across the repository.',
+        check: () =>
+          fileExists('src/components/ui/Modal.tsx') &&
+          fileExists('src/components/ui/ConfirmActionModal.tsx') &&
+          fileContains('eslint.config.mjs', 'no-explicit-any'),
+      },
+    ],
+  },
+  {
+    id: 'm9',
+    title: 'Milestone 9: Tactile Focus Reader, Unified Scholar Preferences & AST Security Governance',
+    version: 'v2.8.1 (Completed)',
+    badge: 'https://img.shields.io/badge/Milestone-v2.8.1-teal?style=flat-square',
+    description: 'Reflow-resilient `bookmarkText` row bookmarks, unified 13-key Scholar Preferences with custom default presets and `public.profiles.preferences` JSONB cloud sync, tactile overlay chrome, full 32-bookshelf Gutenberg taxonomy, and 9-rule AST security & request-taint governance.',
+    features: [
+      {
+        title: 'Interactive Row-Snapping Silk Bookmark & `bookmarkText` Reflow-Resilient Resume (`ReaderRowBookmark.tsx` & `reader-bookmark-geometry.ts`)',
+        description: 'Permanently visible left-margin row-snapping silk bookmark tab (`ReaderRowBookmark.tsx`, `role="slider"`), multi-row (`startRow` -> `endRow`) wrapped passage highlights, `bookmarkText`-first canonical resume centering across Phone, Tablet, and Desktop with `bookmarkRow` duplicate-line disambiguation (`resolveTextRowSpanInElement`), cross-page font-reflow healing (`useReaderSession.ts`), and conditional bookmark reset notices when marking volumes `Finished`.',
+        check: () =>
+          fileExists('src/components/reader/ReaderRowBookmark.tsx') &&
+          fileExists('src/lib/reader-bookmark-geometry.ts') &&
+          fileContains('src/lib/reader-bookmark-geometry.ts', 'resolveTextRowSpanInElement'),
+      },
+      {
+        title: 'Unified 13-Key Scholar Preferences, Two-Tier Custom Default Presets & `public.profiles.preferences` JSONB Sync (`preferences-sync.ts` & `AccountTypographySubPanel.tsx`)',
+        description: 'Unified 13-key preferences coordinator (`preferences-sync.ts`), live Typography & Layout Studio (`AccountTypographySubPanel.tsx`), persistent `readingMode` (`paginated` | `scroll`) and `columnWidth` (`narrow` | `normal` | `wide`), Symposium Spoiler Shield toggle, Two-Tier Preset Management (`Save as My Default`, `Revert to My Default`, and `Factory Reset` across `AccountPreferencesSection.tsx` and `ReaderControls.tsx`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud sync.',
+        check: () =>
+          fileExists('src/lib/preferences-sync.ts') &&
+          fileExists('src/components/account/AccountTypographySubPanel.tsx') &&
+          fileContains('supabase/schema.sql', 'preferences JSONB'),
+      },
+      {
+        title: 'Tactile Overlay Reader Chrome, Page Brightness (`30%–100%`), Global `300ms` Stylized Tooltips & Hold-to-Scrub Tabs (`ReaderHeader.tsx`, `CursorTooltip.tsx` & `scroll-utils.ts`)',
+        description: 'Single-finger tap (`onTapSurface`) fixed-overlay immersive header/footer slide (`ReaderHeader.tsx`, `ReaderFooter.tsx`), `30%–100%` page brightness filter (`ReaderControls.tsx`), global `300ms` cursor-anchored stylized tooltips (`GlobalTitleTooltip` in `CursorTooltip.tsx`), and `160ms` hold-to-scrub vs. flick-to-scroll tab bar disambiguation (`createTabScrubberHandlers` in `scroll-utils.ts`, `EditorialUnderlineTabs.tsx`).',
+        check: () =>
+          fileExists('src/components/ui/CursorTooltip.tsx') &&
+          fileExists('src/components/ui/EditorialUnderlineTabs.tsx') &&
+          fileContains('src/lib/scroll-utils.ts', 'createTabScrubberHandlers'),
+      },
+      {
+        title: 'Full 32-Bookshelf & 20-Language Project Gutenberg Discovery Taxonomy (`catalog-filters.ts` & `AdvancedFilterDrawer.tsx`)',
+        description: 'Complete 32 Project Gutenberg Bookshelf & Subject categories and 20 top languages in `src/config/catalog-filters.ts` and `AdvancedFilterDrawer.tsx` with progressive `+ Show all 32 Bookshelves` / `+ Show all 20 Languages` disclosure, `bookshelves` GIN `search_vector` indexing (`public.books_search_vector_trigger()`), and MIME/topic provider parity (`supabase-provider.ts`, `gutendex-provider.ts`).',
+        check: () =>
+          fileExists('src/config/catalog-filters.ts') &&
+          fileContains('src/components/presentation/AdvancedFilterDrawer.tsx', 'Show all') &&
+          fileContains('supabase/schema.sql', 'books_search_vector_trigger'),
+      },
+      {
+        title: '9-Rule `bookarium-security` AST Request-Taint Engine, OWASP Account Security, Rule 9 Account Deletion Parity & 4-Wave Modular Decomposition (`bookarium-security.js` & `verify-build.js`)',
+        description: 'Custom 9-rule ESLint & Babel AST security and intra-procedural request-taint plugin (`scripts/eslint-rules/bookarium-security.js`), OWASP current-password re-authentication & inline recovery (`useAccountSecurityActions.ts`, `AccountSecuritySection.tsx`), atomic 11-table + `storage.objects` server-side erasure (`public.delete_current_user()`) with automated `Pass 0.75` Rule 9 Account Deletion Parity enforcement, 4-wave non-breaking component/hook/cloud-sync decomposition, and `100%` 1:1 co-located test coverage across `210` suites (`95/95/92/85` V8 coverage floor).',
+        check: () =>
+          fileExists('scripts/eslint-rules/bookarium-security.js') &&
+          fileExists('src/hooks/useAccountSecurityActions.ts') &&
+          fileContains('scripts/verify-build.js', 'account-deletion parity'),
+      },
+    ],
+  },
+  {
+    id: 'm10',
+    title: 'Milestone 10: Community Hub & Public Literary Agora',
     version: 'Target: v2.9.0',
     badge: 'https://img.shields.io/badge/Milestone-v2.9.0-violet?style=flat-square',
-    description: 'Open literary agora, public volume discussions, community-wide reading challenges, and curated commonplace quote showcases.',
+    description: 'Open literary agora, public volume discussions, community-wide reading challenges, curated commonplace quote showcases, and shareable social reading cards.',
     features: [
       {
         title: 'Bookarium Community Hub (`/?view=community`)',
@@ -290,6 +397,13 @@ const ROADMAP_MILESTONES = [
         check: () =>
           fileExists('src/components/community/CommunityChallengeCard.tsx') ||
           fileExists('src/stores/useCommunityStore.ts'),
+      },
+      {
+        title: 'Shareable Reading Cards & Social Milestone Canvas Export',
+        description: 'Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.',
+        check: () =>
+          fileExists('src/components/account/ShareableReadingCard.tsx') ||
+          fileExists('src/lib/reading-card-export.ts'),
       },
     ],
   },

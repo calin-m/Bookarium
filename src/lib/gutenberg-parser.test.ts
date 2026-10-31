@@ -5,10 +5,12 @@ import * as gutenbergParser from './gutenberg-parser';
 describe('src/lib/gutenberg-parser (Facade Barrel)', () => {
   it('re-exports all core Gutenberg subsystems and functions without regression', () => {
     expect(typeof gutenbergParser.parseGutenbergChapters).toBe('function');
+    expect(typeof gutenbergParser.stripDuplicateLeadingChapterHeading).toBe('function');
     expect(typeof gutenbergParser.calculateReadingTime).toBe('function');
     expect(typeof gutenbergParser.calculateVolumePageSpread).toBe('function');
     expect(typeof gutenbergParser.getCharsPerPage).toBe('function');
     expect(typeof gutenbergParser.reflowGutenbergParagraphs).toBe('function');
+    expect(typeof gutenbergParser.formatGutenbergTypography).toBe('function');
     expect(typeof gutenbergParser.extractGutenbergHeaderMetadata).toBe('function');
     expect(typeof gutenbergParser.paginateChapterContent).toBe('function');
     expect(typeof gutenbergParser.extractDynamicBookPassages).toBe('function');

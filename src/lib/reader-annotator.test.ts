@@ -6,6 +6,8 @@ import {
   pairOverlappingAnnotations,
   filterAndPairAnnotationsBySource,
   findMatchingOwnAnnotation,
+  findCanonicalTextSpan,
+  findAllCanonicalTextSpans,
 } from './reader-annotator';
 import type { Annotation, FellowAnnotation } from '@/stores/useAnnotationStore';
 
@@ -284,6 +286,88 @@ describe('pairOverlappingAnnotations', () => {
     // Item 2: Standalone fellow
     expect(result[1].annotation.id).toBe('fellow-2');
     expect(result[1].pairedFellowAnnotation).toBeUndefined();
+  });
+});
+
+describe('findCanonicalTextSpan & findAllCanonicalTextSpans (Non-Breaking Typography Resilience)', () => {
+  it('matches legacy annotations containing ASCII -- dashes, _italic_ underscores, hard newlines, and straight quotes against reflowed text', () => {
+    const reflowedPage =
+      'Call me Ishmael. “Some years ago—never mind how long precisely—having very little money in my purse.”';
+    const legacySavedQuote =
+      '"Some years ago--never mind\nhow long _precisely_--having _very little_ money in my purse."';
+
+    const span = findCanonicalTextSpan(reflowedPage, legacySavedQuote);
+    expect(span).not.toBeNull();
+    expect(reflowedPage.slice(span!.start, span!.end)).toBe(
+      '“Some years ago—never mind how long precisely—having very little money in my purse.”'
+    );
+
+    const allSpans = findAllCanonicalTextSpans(reflowedPage, legacySavedQuote);
+    expect(allSpans).toHaveLength(1);
+    expect(allSpans[0]).toEqual(span);
+  });
+
+  it('highlights legacy annotations in computeAnnotationSpans and detects Fellow overlaps across -- and — differences', () => {
+    const reflowedPage = 'Some years ago—never mind how long precisely—having little money.';
+    const legacySelf: Annotation = {
+      id: 'self-legacy',
+      bookId: 1,
+      chapterIndex: 1,
+      chapterPage: 1,
+      selectedText: 'years ago--never mind\nhow long _precisely_',
+      color: 'yellow',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+    const newFellow: FellowAnnotation = {
+      id: 'fellow-new',
+      bookId: 1,
+      chapterIndex: 1,
+      chapterPage: 1,
+      selectedText: 'never mind how long precisely—having little',
+      color: 'amber',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      isFellow: true,
+      fellowUsername: 'melville',
+    };
+
+    expect(areAnnotationsOverlapping(legacySelf, newFellow)).toBe(true);
+    const spans = computeAnnotationSpans(reflowedPage, [legacySelf, newFellow]);
+    expect(spans.length).toBeGreaterThanOrEqual(2);
+    expect(spans.some((s) => s.selfAnnotation && s.fellowAnnotation)).toBe(true);
+
+    const shared = computeSharedQuoteSegments(
+      'Some years ago—never mind how long',
+      'years ago--never mind'
+    );
+    expect(shared.isExact).toBe(false);
+    expect(shared.overlapText).toBe('years ago—never mind');
+
+    // Also cover full-span canonical equivalence and reverse containment in computeSharedQuoteSegments
+    const fullCanonical = computeSharedQuoteSegments(
+      'years ago—never mind',
+      'years ago--never mind'
+    );
+    expect(fullCanonical).toEqual({ isExact: true, fullQuote: 'years ago—never mind' });
+
+    const ownSubInFellow = computeSharedQuoteSegments(
+      'years ago--never mind',
+      'Some years ago—never mind how long'
+    );
+    expect(ownSubInFellow.isExact).toBe(false);
+    expect(ownSubInFellow.fullQuote).toBe('Some years ago—never mind how long');
+
+    const disjointShared = computeSharedQuoteSegments('Alpha Beta', 'Gamma Delta');
+    expect(disjointShared).toEqual({ isExact: true, fullQuote: 'Alpha Beta' });
+
+    // Case-insensitive canonical overlap check in areAnnotationsOverlapping
+    expect(
+      areAnnotationsOverlapping(
+        { bookId: 1, chapterIndex: 1, selectedText: 'CALL ME ISHMAEL—SOME YEARS AGO' },
+        { bookId: 1, chapterIndex: 1, selectedText: 'call me ishmael--some' }
+      )
+    ).toBe(true);
   });
 });
 

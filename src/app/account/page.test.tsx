@@ -375,6 +375,82 @@ describe('AccountPage', () => {
     const smartAutoHideBtn = within(preferencesPanel).getByRole('button', { name: /Smart Auto-Hide/i });
     fireEvent.click(smartAutoHideBtn);
     expect(within(preferencesPanel).getByText('Smart Auto-Hide Active')).toBeInTheDocument();
+
+    // Typography, Reading Flow, Column Width, Spoiler Shield, Save as My Default & Factory Reset
+    fireEvent.click(within(preferencesPanel).getByRole('button', { name: 'Mono' }));
+    expect(useReaderStore.getState().fontFamily).toBe('mono');
+
+    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '24px' }));
+    expect(useReaderStore.getState().fontSize).toBe(24);
+
+    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '2.1x' }));
+    expect(useReaderStore.getState().lineHeight).toBe(2.1);
+
+    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '75%' }));
+    expect(useReaderStore.getState().brightness).toBe(75);
+
+    fireEvent.click(within(preferencesPanel).getByRole('button', { name: 'Scroll' }));
+    expect(useReaderStore.getState().readingMode).toBe('scroll');
+
+    fireEvent.click(within(preferencesPanel).getByRole('button', { name: 'narrow' }));
+    expect(useReaderStore.getState().columnWidth).toBe('narrow');
+
+    const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    fireEvent.click(
+      within(preferencesPanel).getByRole('button', { name: /Show All Marginalia/i })
+    );
+    expect(useAnnotationStore.getState().spoilerShieldEnabled).toBe(false);
+
+    // Switch to Audio & Read Aloud sub-tab inside Preferences and exercise speech callbacks
+    act(() => {
+      usePreferencesStore.setState({ speechVoiceURI: 'en-GB-voice' });
+    });
+    fireEvent.click(within(preferencesPanel).getByRole('tab', { name: /Read-Aloud Studio/i }));
+    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '1.25x' }));
+    expect(usePreferencesStore.getState().speechRate).toBe(1.25);
+
+    const voiceSelect = within(preferencesPanel).getByLabelText('Preferred narrator voice');
+    fireEvent.change(voiceSelect, { target: { value: '' } });
+    expect(usePreferencesStore.getState().speechVoiceURI).toBeNull();
+
+    fireEvent.click(within(preferencesPanel).getByRole('button', { name: /Auto-Page Advance/i }));
+    expect(usePreferencesStore.getState().speechAutoPageAdvance).toBe(false);
+
+    fireEvent.click(
+      within(preferencesPanel).getByRole('button', { name: /Sentence Highlighting/i })
+    );
+    expect(usePreferencesStore.getState().speechHighlightEnabled).toBe(false);
+
+    fireEvent.click(
+      within(preferencesPanel).getByTitle('Reset speech settings to defaults')
+    );
+    fireEvent.click(screen.getByTestId('confirm-reset-speech-btn'));
+    expect(usePreferencesStore.getState().speechRate).toBe(1);
+
+    fireEvent.click(
+      within(preferencesPanel).getByRole('tab', { name: /Appearance & Scroll/i })
+    );
+
+    // Save current as custom default preset
+    fireEvent.click(within(preferencesPanel).getByTestId('save-custom-defaults-btn'));
+    expect(within(preferencesPanel).getByTestId('preferences-preset-status')).toHaveTextContent(
+      'My Default Active'
+    );
+
+    // Modify font size to 14px, then revert to My Default (24px)
+    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '14px' }));
+    expect(useReaderStore.getState().fontSize).toBe(14);
+    fireEvent.click(within(preferencesPanel).getByTestId('revert-custom-defaults-btn'));
+    expect(useReaderStore.getState().fontSize).toBe(24);
+
+    // Reset to Factory Defaults via confirmation modal
+    fireEvent.click(within(preferencesPanel).getByTestId('reset-factory-defaults-btn'));
+    fireEvent.click(screen.getByTestId('confirm-reset-factory-preferences-btn'));
+    expect(useReaderStore.getState().fontSize).toBe(18);
+    expect(useReaderStore.getState().fontFamily).toBe('serif');
+    expect(useReaderStore.getState().readingMode).toBe('paginated');
+    expect(useThemeStore.getState().theme).toBe('light');
   });
 
   it('handles password security lifecycle: current password validation, mismatch validation, strong password generation, forgot-password reset link, and password update', async () => {

@@ -68,6 +68,14 @@ describe('pagination subsystem', () => {
     const spacePages = paginateChapterContent(longUnpunctuated, 50);
     expect(spacePages.length).toBeGreaterThanOrEqual(2);
     expect(spacePages[0].endsWith('word')).toBe(true);
+
+    // Test UTF-8 curly quote, guillemet, and parenthetical sentence boundary snapping
+    const curlyDialogue =
+      '“It is a truth universally acknowledged,” she declared. “A single man in possession of a good fortune must be in want of a wife!” (So the neighborhood believed.) «Indeed!» he replied.';
+    const curlyPages = paginateChapterContent(curlyDialogue, 65);
+    expect(curlyPages.length).toBeGreaterThanOrEqual(2);
+    expect(curlyPages[0].endsWith('declared.')).toBe(true);
+    expect(curlyPages[1].startsWith('“A single man')).toBe(true);
   });
 
   it('caches and retrieves paginated chapter content with clearPaginationCache support', () => {

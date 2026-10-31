@@ -49,8 +49,8 @@ export interface UseReaderSpeechReturn {
 export function segmentTextIntoSentences(rawText: string): string[] {
   if (!rawText || typeof rawText !== 'string') return [];
 
-  // Match sentences ending in punctuation (. ! ?) followed by whitespace or quote boundaries
-  const regex = /[^.!?\n]+(?:[.!?]+["'”»]?|\n+|$)/g;
+  // Match sentences ending in punctuation (. ! ?) followed by whitespace or quote/paren boundaries
+  const regex = /[^.!?\n]+(?:[.!?]+["'”’»)]?|\n+|$)/g;
   const matches = rawText.match(regex);
 
   if (!matches) return [];

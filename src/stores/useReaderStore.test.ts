@@ -1165,6 +1165,19 @@ describe('useReaderStore', () => {
       }
       const html = renderToString(React.createElement(SsrProbe));
       expect(html).toContain('false-false-false-0-false-null-0-0-0');
+
+      // setReadingMode and setColumnWidth persist and validate layout modes
+      useReaderStore.getState().setReadingMode('scroll');
+      expect(useReaderStore.getState().readingMode).toBe('scroll');
+      useReaderStore.getState().setReadingMode('paginated');
+      expect(useReaderStore.getState().readingMode).toBe('paginated');
+
+      useReaderStore.getState().setColumnWidth('narrow');
+      expect(useReaderStore.getState().columnWidth).toBe('narrow');
+      useReaderStore.getState().setColumnWidth('normal');
+      expect(useReaderStore.getState().columnWidth).toBe('normal');
+      useReaderStore.getState().setColumnWidth('wide');
+      expect(useReaderStore.getState().columnWidth).toBe('wide');
     });
   });
 });

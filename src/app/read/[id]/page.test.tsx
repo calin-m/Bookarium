@@ -1121,6 +1121,49 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     Object.defineProperty(window, 'scrollY', { configurable: true, writable: true, value: 0 });
     scrollToSpy.mockRestore();
   });
+
+  it('persists readingMode and columnWidth in useReaderStore and supports My Default & Factory Reset in ReaderControls', async () => {
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    const { saveCurrentAsCustomDefaults } = await import('@/lib/preferences-sync');
+
+    useReaderStore.setState({
+      fontSize: 22,
+      fontFamily: 'mono',
+      readingMode: 'scroll',
+      columnWidth: 'narrow',
+      theme: 'sepia',
+      brightness: 80,
+    });
+    saveCurrentAsCustomDefaults({ syncCloud: false });
+
+    render(<BookReaderPage />);
+
+    // Open Typography & Theme Controls drawer
+    fireEvent.click(screen.getAllByLabelText('Typography & Theme Controls')[0]);
+    const controlsDrawer = screen.getByRole('region', { name: 'Reading Controls' });
+
+    // Tweak font size to 24px in-book
+    fireEvent.click(within(controlsDrawer).getByRole('button', { name: '24px' }));
+    expect(useReaderStore.getState().fontSize).toBe(24);
+
+    // Click "My Default" button inside ReaderControls -> snaps back to 22px mono scroll
+    fireEvent.click(within(controlsDrawer).getByTestId('reader-revert-custom-defaults-btn'));
+    expect(useReaderStore.getState().fontSize).toBe(22);
+    expect(useReaderStore.getState().fontFamily).toBe('mono');
+    expect(useReaderStore.getState().readingMode).toBe('scroll');
+
+    // Click "Factory Reset" button inside ReaderControls -> resets to 18px serif paginated wide light
+    fireEvent.click(within(controlsDrawer).getByTestId('reader-reset-factory-defaults-btn'));
+    expect(useReaderStore.getState().fontSize).toBe(18);
+    expect(useReaderStore.getState().fontFamily).toBe('serif');
+    expect(useReaderStore.getState().readingMode).toBe('paginated');
+    expect(useReaderStore.getState().columnWidth).toBe('wide');
+    expect(useReaderStore.getState().theme).toBe('light');
+
+    act(() => {
+      usePreferencesStore.getState().resetAllPreferencesStore();
+    });
+  });
 });
 
 

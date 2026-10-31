@@ -156,4 +156,21 @@ describe('in-book-search utility', () => {
     expect(res.totalMatches).toBe(1);
     expect(res.matches).toHaveLength(1);
   });
+
+  it('matches canonical typography variations such as -- vs — and straight vs curly quotes', () => {
+    const typographicChapters: ChapterSection[] = [
+      {
+        id: 1,
+        title: 'CHAPTER I',
+        displayTitle: 'Chapter I',
+        content: 'Call me Ishmael. “Some years ago—never mind how long precisely.”',
+        startPageNumber: 1,
+        pageCount: 1,
+      },
+    ];
+
+    const res = searchInBook(typographicChapters, '"Some years ago--never mind');
+    expect(res.totalMatches).toBe(1);
+    expect(res.matches[0].matchedText).toBe('“Some years ago—never mind');
+  });
 });

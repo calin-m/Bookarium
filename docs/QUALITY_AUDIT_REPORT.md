@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 31 Oct 2026 15:25:10 GMT  
+**Last Generated**: Sat, 31 Oct 2026 18:41:06 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 208 passed  
-**Total Verified Tests**: 2092 passed  
+**Total Test Suites**: 210 passed  
+**Total Verified Tests**: 2119 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **208/208 test suites passed** (2092 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2119 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 73 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.58%** (10732/11111) — *Target: $\ge$ 95%*
-- **Statements**: **95.23%** (11658/12241) — *Target: $\ge$ 95%*
-- **Functions**: **94.26%** (2531/2685) — *Target: $\ge$ 92%*
-- **Branches**: **87.99%** (10569/12011) — *Target: $\ge$ 85%*
+- **Lines**: **96.63%** (11232/11623) — *Target: $\ge$ 95%*
+- **Statements**: **95.26%** (12173/12778) — *Target: $\ge$ 95%*
+- **Functions**: **93.96%** (2631/2800) — *Target: $\ge$ 92%*
+- **Branches**: **88%** (11072/12581) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (208 Suites / 2092 Tests)
+## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2119 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 267 Tests)
+### 🚀 App Routes & Pages (27 Suites · 268 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -369,7 +369,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (40 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (41 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -411,6 +411,7 @@
 - ✔ `hydrates recentBooks and reader store from extracted Gutenberg header metadata when upstream booksData is unavailable (offline fallback)`
 - ✔ `handles symposium companion derivation as non-host fellow, syncs theme from global store, and re-fetches fellow annotations when opening drawer`
 - ✔ `resets residual outer window scrollY to 0 on mount and anchors the viewport container`
+- ✔ `persists readingMode and columnWidth in useReaderStore and supports My Default & Factory Reset in ReaderControls`
 
 </details>
 
@@ -1087,7 +1088,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (18 Suites · 172 Tests)
+### 📖 In-Browser Focus Reader (18 Suites · 175 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1140,7 +1141,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders theme and font selection buttons`
 - ✔ `renders correctly under sepia and dark themes`
@@ -1151,6 +1152,7 @@
 - ✔ `renders default 100% brightness and handles slider changes when onBrightnessChange is omitted`
 - ✔ `closes controls on Escape key press`
 - ✔ `does not render when isOpen is false`
+- ✔ `renders My Default and Factory Reset footer buttons and triggers callbacks`
 
 </details>
 
@@ -1300,7 +1302,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (30 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (32 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -1332,6 +1334,8 @@
 - ✔ `renders interactive in-page row-snapping bookmark and supports rail click, drag, keyboard arrows, and double-click reset`
 - ✔ `extracts bookmarkText from the rendered row and spans startRow to endRow when bookmarkText wraps across multiple rows`
 - ✔ `applies overscroll-y-contain and bottom clearance padding when isSpeechOpen is true even while paused`
+- ✔ `waits for bookmarkText layout resolution before centering the viewport on the reflowed row span and finalizes touch drag on touchcancel`
+- ✔ `deduplicates leading chapter heading and absorbed subtitle on Page 1 when the chapter banner is visible`
 
 </details>
 
@@ -1408,7 +1412,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 199 Tests)
+### ⚡ Zustand State Stores (10 Suites · 200 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1613,13 +1617,14 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/usePreferencesStore.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/stores/usePreferencesStore.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `initializes with stickyScrollEnabled = true by default`
 - ✔ `sets stickyScrollEnabled to specified boolean value`
 - ✔ `toggles stickyScrollEnabled back and forth`
 - ✔ `initializes speech preferences with default values`
 - ✔ `updates speech preferences and resets them correctly`
+- ✔ `stores customDefaults, preferencesUpdatedAt, and resets all store state via resetAllPreferencesStore`
 
 </details>
 
@@ -1669,7 +1674,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (42 Suites · 470 Tests)
+### 📚 Gutenberg Parsers & Metadata (43 Suites · 488 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1989,16 +1994,18 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg/reflow.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/lib/gutenberg/reflow.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `reflows single-newline Gutenberg hard wraps while preserving double newlines`
 - ✔ `reflows standard Gutenberg paragraphs that have 4-space first-line indentation`
 - ✔ `preserves indented verse and poetry lines during reflow`
+- ✔ `preserves alternating-indent poetry and unindented short-line stanzas while unwrapping 70-column hanging-indent dramatic prose speeches`
+- ✔ `converts 2-hyphen prose dashes to em-dashes and strips _italic_ wrappers while preserving Victorian redacted blanks, snake_case, and ASCII tables`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/lib/gutenberg/segmentation.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `returns empty array on null or undefined input`
 - ✔ `falls back cleanly to Complete Volume for unformatted single-block text`
@@ -2016,6 +2023,8 @@
 - ✔ `harvests body subtitles when chapter headings have standalone subtitle lines without a TOC`
 - ✔ `deduplicates analytical/descriptive front-matter TOC entries with multi-line synopses`
 - ✔ `protects real chapters from suppression when referenced elsewhere in body narrative or footnotes`
+- ✔ `segments books with spelled-out chapter numbers or Stave/Letter divisions via Strategy 1B while ignoring isolated mid-book letters`
+- ✔ `strips duplicate leading chapter headings and absorbed subtitles for display while preserving non-duplicate opening lines`
 
 </details>
 
@@ -2028,7 +2037,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/in-book-search.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/lib/in-book-search.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `returns empty result when chapters array is empty or undefined`
 - ✔ `returns empty result when search query is empty, whitespace, or less than 2 chars`
@@ -2039,6 +2048,7 @@
 - ✔ `caps matches to maxResults limit`
 - ✔ `safely skips chapters with null or empty content`
 - ✔ `caps matches to maxResults when using diacritic fallback`
+- ✔ `matches canonical typography variations such as -- vs — and straight vs curly quotes`
 
 </details>
 
@@ -2081,6 +2091,20 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/preferences-sync.test.ts</code></b> (8 tests)</summary>
+
+- ✔ `returns FACTORY_PREFERENCES clone when input is null, undefined, or non-object`
+- ✔ `clamps out-of-range numeric values and falls back on invalid enum strings`
+- ✔ `compares full snapshots and reader appearance subsets accurately`
+- ✔ `applies snapshot across all 4 stores, saves custom defaults, reverts to custom defaults, and resets to factory`
+- ✔ `schedules debounced cloud sync and pushes preferences payload to updateProfile`
+- ✔ `hydrates local stores from structured cloud profile.preferences when remote is newer`
+- ✔ `pushes newer local preferences to cloud when local preferencesUpdatedAt is newer than remote`
+- ✔ `falls back to legacy profile.preferred_theme and profile.font_size when structured preferences is empty`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/rate-limiter.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `allows requests within the configured max limit`
@@ -2095,7 +2119,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -2114,6 +2138,8 @@
 - ✔ `identifies sub-span when fellow text contains personal text`
 - ✔ `merges overlapping own and fellow annotations into a single unified item`
 - ✔ `preserves standalone fellow annotations that do not overlap with own notes`
+- ✔ `matches legacy annotations containing ASCII -- dashes, _italic_ underscores, hard newlines, and straight quotes against reflowed text`
+- ✔ `highlights legacy annotations in computeAnnotationSpans and detects Fellow overlaps across -- and — differences`
 - ✔ `finds exact matching own annotation`
 - ✔ `finds substring overlapping own annotation`
 - ✔ `returns undefined when bookId or chapter differs`
@@ -2124,13 +2150,16 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-bookmark-geometry.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/lib/reader-bookmark-geometry.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `collects contiguous text segments while excluding fellow scholar highlight badges`
 - ✔ `returns null when needle or haystack is empty or needle is not found`
 - ✔ `selects the occurrence closest to targetRatio when needle appears multiple times`
 - ✔ `extracts row text and resolves row spans using range bounding rects`
 - ✔ `returns undefined or null gracefully when targetRow <= 0 or range measurement is empty`
+- ✔ `disambiguates duplicate phrases on the same page by picking the occurrence closest to fallbackRow`
+- ✔ `resolves legacy bookmark_text containing -- dashes and _italic_ wrappers against reflowed content`
+- ✔ `falls back to nearest row slice in extractRowTextFromElement when targetRow falls in an inter-line gap`
 
 </details>
 
@@ -2393,7 +2422,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 269 Tests)
+### 🔄 Hooks & React Query (28 Suites · 270 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (17 tests)</summary>
@@ -2560,7 +2589,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -2577,6 +2606,7 @@
 - ✔ `restores saved bookmarkRow with line resumeNotice, persists setBookmarkRow on Page 1, and resets bookmarkRow on page turn`
 - ✔ `self-heals chapterPage when bookmarkText shifts to an adjacent page after fontSize re-pagination`
 - ✔ `supports initialPosition override, scroll mode content, dynamic pagination fallback, within-chapter prevPage, and dismissResumeNotice`
+- ✔ `preserves localPos.lastReadAt on passive restore and adopts a newer cloud bookmark from another device`
 
 </details>
 
@@ -2832,7 +2862,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (51 Suites · 251 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 254 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -2915,7 +2945,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
 - ✔ `renders read-aloud section and handles speed selection`
@@ -2925,6 +2955,7 @@
 - ✔ `handles speech synthesis voice preview completion and error callbacks`
 - ✔ `switches between Appearance & Scroll and Read-Aloud Studio sub-tabs and enables Smart Auto-Hide`
 - ✔ `uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60`
+- ✔ `handles Save as My Default, Revert to My Default, and Factory Reset confirmation modal`
 
 </details>
 
@@ -2965,6 +2996,14 @@
 - ✔ `renders completed companion symposium cards, opens New Symposium Pact modal, and handles leaving a symposium with confirmation`
 - ✔ `supports Reader Circle fellow Symposium launch, fellow removal with confirmation, and all pending invitation actions`
 - ✔ `disables live invitation controls and enforces offline parity for uncached symposiums when offline`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountTypographySubPanel.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders live editorial specimen preview with active theme, font, size, line height, and brightness`
+- ✔ `invokes typeface, font size, line spacing, brightness, reading mode, column width, and spoiler shield callbacks`
 
 </details>
 

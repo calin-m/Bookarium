@@ -1062,4 +1062,113 @@ describe('ReaderSurface', () => {
     expect(screen.getByRole('main')).toHaveAttribute('data-brightness', '75');
     expect(screen.getByRole('main').style.filter).toBe('brightness(0.75)');
   });
+
+  it('waits for bookmarkText layout resolution before centering the viewport on the reflowed row span and finalizes touch drag on touchcancel', async () => {
+    const onBookmarkRowChange = vi.fn();
+    const pageText =
+      'Opening paragraph text on top rows. Bookmarked passage that shifts down on narrow phone screens. Concluding words.';
+
+    const origCreateRange = document.createRange;
+    document.createRange = () => {
+      let startOffset = 0;
+      return {
+        setStart: (_node: Node, offset: number) => {
+          startOffset = offset;
+        },
+        setEnd: () => {},
+        getBoundingClientRect: () => {
+          // On a narrow phone screen (20 chars/row), offset 36..96 lands on rows 4..5 (lineStepPx = 40px)
+          const rowIdx = startOffset >= 36 ? (startOffset >= 65 ? 5 : 4) : 1;
+          const top = rowIdx * 40 + 20;
+          return {
+            top,
+            bottom: top + 20,
+            left: 0,
+            right: 100,
+            width: 10,
+            height: 20,
+            x: 0,
+            y: top,
+            toJSON: () => ({}),
+          } as DOMRect;
+        },
+      } as unknown as Range;
+    };
+
+    try {
+      const { rerender } = render(
+        <ReaderSurface
+          {...defaultProps}
+          currentPageText={pageText}
+          fontSize={20}
+          lineHeight={2}
+          bookmarkRow={0}
+          onBookmarkRowChange={onBookmarkRowChange}
+        />
+      );
+
+      const mainEl = screen.getByRole('main');
+      const scrollToSpy = vi.fn();
+      mainEl.scrollTo = scrollToSpy;
+      Object.defineProperty(mainEl, 'clientHeight', { value: 200, configurable: true });
+      Object.defineProperty(mainEl, 'scrollTop', { value: 0, configurable: true });
+
+      // Simulate resuming with bookmarkRow=1 (from tablet) and bookmarkText (which is at rows 4..5 on phone)
+      rerender(
+        <ReaderSurface
+          {...defaultProps}
+          currentPageText={pageText}
+          fontSize={20}
+          lineHeight={2}
+          bookmarkRow={1}
+          bookmarkText="Bookmarked passage that shifts down on narrow phone screens."
+          onBookmarkRowChange={onBookmarkRowChange}
+        />
+      );
+
+      await waitFor(() => {
+        // spanCenterOffsetPx = ((4 + 5 + 1) / 2) * 40 = 200px; targetScrollTop = 200 - 200/2 = 100px
+        expect(scrollToSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            top: 100,
+          })
+        );
+      });
+
+      // Touch drag interrupted by touchcancel still finalizes and extracts bookmarkText
+      const bookmarkSlider = screen.getByTestId('reader-page-bookmark');
+      fireEvent.touchStart(bookmarkSlider);
+      fireEvent.touchMove(window, { touches: [{ clientY: 180 }] });
+      fireEvent.touchCancel(window);
+      expect(onBookmarkRowChange).toHaveBeenLastCalledWith(
+        4,
+        expect.stringContaining('Bookmarked passage')
+      );
+    } finally {
+      document.createRange = origCreateRange;
+    }
+  });
+
+  it('deduplicates leading chapter heading and absorbed subtitle on Page 1 when the chapter banner is visible', () => {
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        activeChapterIndex={1}
+        chapterPage={1}
+        chapter={{
+          id: 1,
+          title: 'CHAPTER I',
+          displayTitle: 'Chapter I: The Hired Car',
+          content: 'CHAPTER I\n\nTHE HIRED CAR\n\nDerby Day fell on the first Wednesday in June.',
+          startPageNumber: 2,
+          pageCount: 1,
+        }}
+        currentPageText={'CHAPTER I\n\nTHE HIRED CAR\n\nDerby Day fell on the first Wednesday in June.'}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'Chapter I: The Hired Car' })).toBeInTheDocument();
+    const contentBody = screen.getByTestId('reader-content-body');
+    expect(contentBody.textContent).toBe('Derby Day fell on the first Wednesday in June.');
+  });
 });

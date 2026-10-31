@@ -112,16 +112,16 @@ function generateMarkdown() {
   const modules = [
     {
       file: 'segmentation.ts',
-      title: 'Chapter Segmentation & Subtitle Harvesting',
+      title: 'Chapter Segmentation, Subtitle Harvesting & Display Heading Deduplication',
       description:
-        'Slices raw plain-text into ordered, clean `ChapterSection` entities. Normalizes diverse heading styles, harvests subtitles from Roman/Arabic TOC listings and body subtitles, strips ghost TOC chapters, and detects standalone body headings.',
+        'Slices raw plain-text into ordered, clean `ChapterSection` entities. Normalizes diverse heading styles (including Strategy 1B fallback for spelled-out chapter numbers and Stave/Letter/Adventure/Volume divisions), harvests subtitles from Roman/Arabic TOC listings and body subtitles, strips ghost TOC chapters, and provides display-time leading heading deduplication.',
       exports: extractModuleExports('segmentation.ts'),
     },
     {
       file: 'pagination.ts',
       title: 'Virtual Sentence-Snapped Pagination & Reading Metrics',
       description:
-        'Calculates virtual page spreads snapped cleanly to paragraph and sentence boundaries. Backed by a 500-entry LRU memory cache and dynamic font-size scaling. Derives 200 WPM reading estimates.',
+        'Calculates virtual page spreads snapped cleanly to paragraph and sentence boundaries (including UTF-8 curly quotes, guillemets, and parentheticals). Backed by a 500-entry LRU memory cache and dynamic font-size scaling. Derives 200 WPM reading estimates.',
       exports: extractModuleExports('pagination.ts'),
     },
     {
@@ -133,9 +133,9 @@ function generateMarkdown() {
     },
     {
       file: 'reflow.ts',
-      title: 'Heuristic Paragraph Reflow',
+      title: 'Heuristic Paragraph Reflow & Typographic Polish',
       description:
-        'Unwraps hard 70-character single newlines into fluid paragraphs for responsive reading, while preserving poetry, verse, stanza breaks, and blockquotes with 4+ spaces indentation or lines under 45 characters.',
+        'Unwraps hard 70-character single newlines into fluid paragraphs for responsive reading while preserving poetry, alternating-indent verse, short stanzas, scene breaks, and blockquotes, and normalizing 2-hyphen prose dashes (`--` -> `—`) and Gutenberg `_italic_` wrappers.',
       exports: extractModuleExports('reflow.ts'),
     },
     {
@@ -299,14 +299,19 @@ function generateMarkdown() {
     '### 4. Sentence-Snapped Virtual Pagination (`paginateChapterContent`)',
     'Splits prose without ever breaking words across virtual page turns using a 3-tier boundary hierarchy:',
     '1. **Paragraph Boundary (`\\n\\n`)**: Preferred split within the search window `[0.75 * charsPerPage, charsPerPage + 60]`.',
-    '2. **Sentence Boundary (`[.!?]["\']?\\s+`)**: Snaps to full sentences if no paragraph break is present.',
+    '2. **Sentence Boundary (`[.!?]["\'”’»)]?\\s+`)**: Snaps to full sentences (including UTF-8 curly quotes, guillemets, and parentheticals) if no paragraph break is present.',
     '3. **Word Boundary (`\\s`)**: Snaps to the nearest word boundary before `charsPerPage`.',
     '',
-    '### 5. Paragraph Reflow (`reflowGutenbergParagraphs`)',
+    '### 5. Paragraph Reflow & Typographic Polish (`reflowGutenbergParagraphs` & `formatGutenbergTypography`)',
     '- Joins single hard newlines (70–75 chars) with a single space for responsive fluid reading across any device viewport.',
-    '- Preserves poetry, verse, and blockquotes if all lines are indented with 4+ spaces or if lines are consistently under 45 characters.',
+    '- Preserves poetry, alternating-indent verse (`2+` spaces on continuation lines with `maxTrimmedLen <= 62` so 70-column dramatic prose speeches still unwrap), short stanzas (`3+` lines, `avg < 50`), and blockquotes (`4+` spaces on all lines).',
+    '- Converts 2-hyphen prose tokens (`--`) to typographic em-dashes (`—`) while preserving `+--+` / `|--|` ASCII tables and `---` dividers, and strips Gutenberg `_italic_` wrappers while preserving Victorian redacted blanks (`Captain ____ of the ____ Regiment`, `17__`) and `snake_case`.',
     '',
-    '### 6. Single-Section Colophon & License Preservation (`segmentBookChapters`)',
+    '### 6. Fallback Literary Division Segmentation & Display Heading Deduplication (`stripDuplicateLeadingChapterHeading`)',
+    '- **Strategy 1B (Fallback-Only)**: When Strategy 1A finds `<= 1` match, scans for spelled-out chapter numbers (`CHAPTER ONE..TWENTY`, `BOOK THE FIRST`) and literary divisions (`STAVE`, `LETTER`, `ADVENTURE`, `VOLUME`), guarded against isolated mid-book embedded letters.',
+    '- **Zero-Offset-Shift Display Deduplication**: Strips the redundant leading heading/subtitle line on Page 1 when the Reader Surface renders `<h2>{chapter.displayTitle}</h2>` above it, while keeping `chapter.content` unchanged during pagination and search indexing.',
+    '',
+    '### 7. Single-Section Colophon & License Preservation (`segmentBookChapters`)',
     '- When an unabridged volume contains no recognizable structural chapter headings (`splitIndices.length === 0`) and falls back to a single `Complete Volume` section at `index: 0`, the parser still inspects `licenseContent` extracted after `*** END OF THE PROJECT GUTENBERG EBOOK ... ***`.',
     '- If an explicit Project Gutenberg footer/license marker is present, a dedicated `Colophon & License` section (`id: "colophon-license"`) is appended at `index: 1` to guarantee 100% Project Gutenberg trademark and license compliance on single-section monographs, essays, and plays.',
     '',

@@ -3,15 +3,15 @@
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
 [![Current Release](https://img.shields.io/badge/Current%20Release-v2.8.1-teal?style=flat-square)](CHANGELOG.md)
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-88%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-28_of_32-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-91%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-40_of_44-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[██████████████████░░]` **28/32 (88%)**
+`[██████████████████░░]` **40/44 (91%)**
 
 ---
 
@@ -93,10 +93,10 @@
 
 ---
 
-### Milestone 5: Autonomous Gutenberg Catalog & Self-Hosted Search Engine (`v2.5.0 (Completed)`)
-`[████████████████████]` **4/4 (100%)**
+### Milestone 5: Autonomous Gutenberg Catalog, Multilingual FRBR & Copyright Engine (`v2.5.0 - v2.5.4 (Completed)`)
+`[████████████████████]` **6/6 (100%)**
 
-> Self-hosted PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, sub-50ms single-book lookups and ~1–2s catalog page queries, automated weekly synchronization, and multi-tier content streaming.
+> Self-hosted PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, relational Wikidata FRBR translation clustering, multi-jurisdictional copyright gatekeeping, automated weekly synchronization, and multi-tier content streaming.
 
 - [x] **Self-Hosted PostgreSQL Catalog (`public.books`) with GIN Search** `✅ VERIFIED`
   Dedicated database table storing 78,000+ public domain volumes with automated `search_vector` GIN indexing, author lifespan bounds for sub-50ms single-book international copyright filtering, and zero-egress catalog searches.
@@ -106,18 +106,22 @@
   Scheduled GitHub Actions cron workflow updating newly added titles every Sunday at 02:00 UTC, acting as an automated keep-alive heartbeat for the Supabase database instance.
 - [x] **Dual-Provider Catalog Seam & Strangler Fig Fallback** `✅ VERIFIED`
   Unified `ICatalogProvider` seam (`src/lib/catalog/`) probing Supabase PostgreSQL as primary provider (~1–2s catalog / <50ms single-book) with seamless fallback to Gutendex when unseeded, offline, or experiencing network errors.
+- [x] **Relational FRBR Multilingual Translation Engine (`public.book_translations` & `scripts/ingest-translations.js`)** `✅ VERIFIED`
+  Wikidata SPARQL (`P2034` / `P407`) work-clustering pipeline (`scripts/ingest-translations.js`), weekly `.github/workflows/translations-sync.yml` cron, `/api/books/translations` endpoint, and 1-click `<Globe />` language edition handoff (`ReaderLanguageDrawer.tsx`).
+- [x] **Multi-Jurisdictional Copyright Engine, Geo-IP Edge Proxy & Content Advisory (`src/lib/copyright-engine.ts` & `src/proxy.ts`)** `✅ VERIFIED`
+  Territorial public domain evaluation (`US 1930`, `Life+70`, `Life+80`, `Life+100`, Joint Authorship Art. 7bis, Translator Rights Art. 2(3)), edge Geo-IP cookie resolution (`src/proxy.ts`), 7-layer author lifespan self-healing (`isPlaceholderAuthor` guardrails), `HTTP 451` streaming gates, and lexical Content Advisory banners (`src/lib/content-advisory.ts`, `ContentAdvisoryBanner.tsx`).
 
 ---
 
-### Milestone 6: Public Scholar Profiles & Social Portability (`v2.6.0 (Completed)`)
-`[██████████░░░░░░░░░░]` **1/2 (50%)**
+### Milestone 6: Public Scholar Profiles, Technical SEO & Share Portability (`v2.6.0 (Completed)`)
+`[████████████████████]` **2/2 (100%)**
 
-> Opt-in public scholar profile pages, reader biographies, and shareable reading cards for social platforms.
+> Opt-in public scholar profile sanctuaries, server-side book OpenGraph & Schema.org structured data, and unified multi-surface share link portability.
 
 - [x] **Opt-In Public Scholar Profiles (`/u/[username]`)** `✅ VERIFIED`
   Dedicated public profile page showcasing reader biography, public bookshelves, reading challenge progress, and pinned accolade badges with strict privacy toggles (Public vs Private).
-- [ ] **Shareable Reading Cards & OpenGraph Export** `⏳ PLANNED`
-  Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.
+- [x] **Dynamic Book OpenGraph, Schema.org JSON-LD & 9-Surface Share Link Copy (`src/app/read/[id]/reader-layout-utils.ts` & `src/lib/redirect-sanitizer.ts`)** `✅ VERIFIED`
+  Server-side `/read/[id]/layout.tsx` metadata generation with 24h ISR caching (`reader-layout-utils.ts`), `schema.org/Book` & `WebApplication` JSON-LD structured data, crawler rate-shielding (`robots.ts`, `sitemap.ts`), and unified 1-click Title/Author share link copying (`buildBookShareUrl` with `300ms` tooltip & `Copied!` pill) across all 9 book surfaces.
 
 ---
 
@@ -139,10 +143,44 @@
 
 ---
 
-### Milestone 8: Community Hub & Public Literary Agora (`Target: v2.9.0`)
-`[░░░░░░░░░░░░░░░░░░░░]` **0/3 (0%)**
+### Milestone 8: Offline-First PWA Resilience, Accessibility & Cloud Outbox Architecture (`v2.8.0 (Completed)`)
+`[████████████████████]` **4/4 (100%)**
 
-> Open literary agora, public volume discussions, community-wide reading challenges, and curated commonplace quote showcases.
+> End-to-end offline App Shell resilience, Adaptive Offline Catalog fallback, Project Gutenberg mirror-first content streaming, 6-store snapshot-guarded cloud outboxes, and WCAG 2.2 AA accessibility hardening.
+
+- [x] **Offline-First Service Worker App Shell (`v4`) & Offline Account Hub (`public/sw.js` & `ServiceWorkerRegister.tsx`)** `✅ VERIFIED`
+  Pre-cached `/`, `/account`, and `/read/[id]` App Shells (`bookarium-app-shell-v4`), static `/_next/static/` JS/CSS/font bundle extraction and lazy chunk pre-warming, RSC Flight request protection, reactive network detection (`useNetworkStatus.ts`) with red offline navbar status badge, and full offline `/account` workspace access for both guests and signed-in scholars.
+- [x] **Adaptive Offline Catalog, `Downloaded (N)` Smart Shelf & Restriction Parity (`useOfflineCatalogFallback.ts` & `CatalogOfflineView.tsx`)** `✅ VERIFIED`
+  Automatic IndexedDB catalog fallback when offline (powering 3D Hero spotlight, search, topic/language/era filters, sorting, and `<BookGrid />` or `<CatalogOfflineView />`), Bookshelf `Downloaded (N)` smart shelf pill (`DOWNLOADED_SHELF_ID`), and `isUnavailableOffline` cover/spine dimming + `Not Downloaded` badges across all 9 collection, symposium, language drawer, and public profile views.
+- [x] **Project Gutenberg Mirror-First Streaming & 6-Store Snapshot-Guarded Cloud Outboxes (`url-validator.ts` & `bookshelf-cloud-sync.ts`)** `✅ VERIFIED`
+  Official Project Gutenberg harvest mirror prioritization (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms` ahead of `www.gutenberg.org`), individual-only download compliance, per-user sync mutex coalescing, and snapshot-guarded bi-directional outbox queues across all 6 cloud-synced stores (`bookshelf-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`).
+- [x] **WCAG 2.2 AA Focus-Trapped Modals, Dynamic Overlay Code-Splitting & Zero-Any TypeScript (`Modal.tsx` & `eslint.config.mjs`)** `✅ VERIFIED`
+  Keyboard `Tab` / `Shift+Tab` focus trapping and focus restoration across all modals and reader drawers (`Modal.tsx`, `ReaderDrawerShell.tsx`, `ConfirmActionModal.tsx`), `next/dynamic` code-splitting for closed-by-default overlays, and strict `@typescript-eslint/no-explicit-any: "error"` enforcement across the repository.
+
+---
+
+### Milestone 9: Tactile Focus Reader, Unified Scholar Preferences & AST Security Governance (`v2.8.1 (Completed)`)
+`[████████████████████]` **5/5 (100%)**
+
+> Reflow-resilient `bookmarkText` row bookmarks, unified 13-key Scholar Preferences with custom default presets and `public.profiles.preferences` JSONB cloud sync, tactile overlay chrome, full 32-bookshelf Gutenberg taxonomy, and 9-rule AST security & request-taint governance.
+
+- [x] **Interactive Row-Snapping Silk Bookmark & `bookmarkText` Reflow-Resilient Resume (`ReaderRowBookmark.tsx` & `reader-bookmark-geometry.ts`)** `✅ VERIFIED`
+  Permanently visible left-margin row-snapping silk bookmark tab (`ReaderRowBookmark.tsx`, `role="slider"`), multi-row (`startRow` -> `endRow`) wrapped passage highlights, `bookmarkText`-first canonical resume centering across Phone, Tablet, and Desktop with `bookmarkRow` duplicate-line disambiguation (`resolveTextRowSpanInElement`), cross-page font-reflow healing (`useReaderSession.ts`), and conditional bookmark reset notices when marking volumes `Finished`.
+- [x] **Unified 13-Key Scholar Preferences, Two-Tier Custom Default Presets & `public.profiles.preferences` JSONB Sync (`preferences-sync.ts` & `AccountTypographySubPanel.tsx`)** `✅ VERIFIED`
+  Unified 13-key preferences coordinator (`preferences-sync.ts`), live Typography & Layout Studio (`AccountTypographySubPanel.tsx`), persistent `readingMode` (`paginated` | `scroll`) and `columnWidth` (`narrow` | `normal` | `wide`), Symposium Spoiler Shield toggle, Two-Tier Preset Management (`Save as My Default`, `Revert to My Default`, and `Factory Reset` across `AccountPreferencesSection.tsx` and `ReaderControls.tsx`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud sync.
+- [x] **Tactile Overlay Reader Chrome, Page Brightness (`30%–100%`), Global `300ms` Stylized Tooltips & Hold-to-Scrub Tabs (`ReaderHeader.tsx`, `CursorTooltip.tsx` & `scroll-utils.ts`)** `✅ VERIFIED`
+  Single-finger tap (`onTapSurface`) fixed-overlay immersive header/footer slide (`ReaderHeader.tsx`, `ReaderFooter.tsx`), `30%–100%` page brightness filter (`ReaderControls.tsx`), global `300ms` cursor-anchored stylized tooltips (`GlobalTitleTooltip` in `CursorTooltip.tsx`), and `160ms` hold-to-scrub vs. flick-to-scroll tab bar disambiguation (`createTabScrubberHandlers` in `scroll-utils.ts`, `EditorialUnderlineTabs.tsx`).
+- [x] **Full 32-Bookshelf & 20-Language Project Gutenberg Discovery Taxonomy (`catalog-filters.ts` & `AdvancedFilterDrawer.tsx`)** `✅ VERIFIED`
+  Complete 32 Project Gutenberg Bookshelf & Subject categories and 20 top languages in `src/config/catalog-filters.ts` and `AdvancedFilterDrawer.tsx` with progressive `+ Show all 32 Bookshelves` / `+ Show all 20 Languages` disclosure, `bookshelves` GIN `search_vector` indexing (`public.books_search_vector_trigger()`), and MIME/topic provider parity (`supabase-provider.ts`, `gutendex-provider.ts`).
+- [x] **9-Rule `bookarium-security` AST Request-Taint Engine, OWASP Account Security, Rule 9 Account Deletion Parity & 4-Wave Modular Decomposition (`bookarium-security.js` & `verify-build.js`)** `✅ VERIFIED`
+  Custom 9-rule ESLint & Babel AST security and intra-procedural request-taint plugin (`scripts/eslint-rules/bookarium-security.js`), OWASP current-password re-authentication & inline recovery (`useAccountSecurityActions.ts`, `AccountSecuritySection.tsx`), atomic 11-table + `storage.objects` server-side erasure (`public.delete_current_user()`) with automated `Pass 0.75` Rule 9 Account Deletion Parity enforcement, 4-wave non-breaking component/hook/cloud-sync decomposition, and `100%` 1:1 co-located test coverage across `210` suites (`95/95/92/85` V8 coverage floor).
+
+---
+
+### Milestone 10: Community Hub & Public Literary Agora (`Target: v2.9.0`)
+`[░░░░░░░░░░░░░░░░░░░░]` **0/4 (0%)**
+
+> Open literary agora, public volume discussions, community-wide reading challenges, curated commonplace quote showcases, and shareable social reading cards.
 
 - [ ] **Bookarium Community Hub (`/?view=community`)** `⏳ PLANNED`
   Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics across the scholar network.
@@ -150,6 +188,8 @@
   Reader commentary and scholarly reviews on individual book volumes with opt-in public publishing of highlighted excerpts from the Commonplace Notebook.
 - [ ] **Community Reading Challenges & Seasonal Anthologies** `⏳ PLANNED`
   Collective seasonal reading events (e.g., Gothic Autumn, Antiquity Odyssey) with shared community progress meters and commemorative participation badges.
+- [ ] **Shareable Reading Cards & Social Milestone Canvas Export** `⏳ PLANNED`
+  Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.
 
 ---
 

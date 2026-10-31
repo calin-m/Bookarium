@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { AccountPreferencesSection } from './AccountPreferencesSection';
 
@@ -282,5 +282,56 @@ describe('AccountPreferencesSection', () => {
   it('uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60', () => {
     const { container } = render(<AccountPreferencesSection {...defaultProps} />);
     expect(container.innerHTML).not.toContain('border-border/60');
+  });
+
+  it('handles Save as My Default, Revert to My Default, and Factory Reset confirmation modal', () => {
+    vi.useFakeTimers();
+    try {
+      const onSaveCustomDefaults = vi.fn();
+      const onRevertToCustomDefaults = vi.fn();
+      const onResetToFactoryDefaults = vi.fn();
+
+      render(
+        <AccountPreferencesSection
+          {...defaultProps}
+          hasCustomDefaults={true}
+          isAtCustomDefaults={false}
+          isAtFactoryDefaults={false}
+          onSaveCustomDefaults={onSaveCustomDefaults}
+          onRevertToCustomDefaults={onRevertToCustomDefaults}
+          onResetToFactoryDefaults={onResetToFactoryDefaults}
+        />
+      );
+
+      expect(screen.getByTestId('preferences-preset-status')).toHaveTextContent('Custom Modified');
+
+      // Save as My Default
+      const saveBtn = screen.getByTestId('save-custom-defaults-btn');
+      fireEvent.click(saveBtn);
+      expect(onSaveCustomDefaults).toHaveBeenCalledTimes(1);
+      expect(saveBtn).toHaveTextContent('Saved as Default!');
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+
+      // Revert to My Default
+      const revertBtn = screen.getByTestId('revert-custom-defaults-btn');
+      fireEvent.click(revertBtn);
+      expect(onRevertToCustomDefaults).toHaveBeenCalledTimes(1);
+
+      // Factory Reset confirmation modal
+      const factoryResetBtn = screen.getByTestId('reset-factory-defaults-btn');
+      fireEvent.click(factoryResetBtn);
+      expect(screen.getByTestId('reset-factory-preferences-dialog')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('cancel-reset-factory-preferences-btn'));
+      expect(onResetToFactoryDefaults).not.toHaveBeenCalled();
+
+      fireEvent.click(factoryResetBtn);
+      fireEvent.click(screen.getByTestId('confirm-reset-factory-preferences-btn'));
+      expect(onResetToFactoryDefaults).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

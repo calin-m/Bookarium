@@ -1,3 +1,5 @@
+import { findAllCanonicalTextSpans } from './reader-annotator';
+
 export interface TextNodeSegment {
   node: Text;
   start: number;
@@ -77,23 +79,22 @@ export function findBestTextMatch(
   const trimmed = needle.trim();
   if (!trimmed || !haystack) return null;
 
-  let searchIndex = 0;
+  const spans = findAllCanonicalTextSpans(haystack, trimmed);
+  if (spans.length === 0) return null;
+
   let bestMatch: { start: number; end: number; distance: number } | null = null;
   const totalLen = Math.max(1, haystack.length);
 
-  while (searchIndex <= haystack.length - trimmed.length) {
-    const found = haystack.indexOf(trimmed, searchIndex);
-    if (found === -1) break;
-    const ratio = found / totalLen;
+  for (const span of spans) {
+    const ratio = span.start / totalLen;
     const distance = Math.abs(ratio - targetRatio);
     if (!bestMatch || distance < bestMatch.distance) {
       bestMatch = {
-        start: found,
-        end: found + trimmed.length,
+        start: span.start,
+        end: span.end,
         distance,
       };
     }
-    searchIndex = found + 1;
   }
 
   return bestMatch ? { start: bestMatch.start, end: bestMatch.end } : null;
@@ -174,6 +175,8 @@ export function extractRowTextFromElement(
 
 /**
  * Resolves the current rendered `{ startRow, endRow }` span of `textToFind` inside `el`.
+ * When `textToFind` appears multiple times on the same page, selects the occurrence whose
+ * rendered `startRow` is closest to `fallbackRow` (with relative page ratio as tiebreaker).
  */
 export function resolveTextRowSpanInElement(
   el: HTMLElement | null,
@@ -183,30 +186,52 @@ export function resolveTextRowSpanInElement(
   maxRows: number,
   computeRowFromClientY: (clientY: number) => number
 ): { startRow: number; endRow: number } | null {
-  if (!textToFind || !contentToDisplay || !el) return null;
+  const trimmed = textToFind?.trim() || '';
+  if (!trimmed || !contentToDisplay || !el) return null;
 
   const segments = collectContentTextSegments(el);
   const totalChars = segments.length > 0 ? segments[segments.length - 1].end : 0;
   if (totalChars <= 0) return null;
 
+  const occurrences = findAllCanonicalTextSpans(contentToDisplay, trimmed);
+  if (occurrences.length === 0) return null;
+
   const safeMaxRows = Math.max(1, maxRows);
   const targetRatio = Math.min(1, Math.max(0, fallbackRow / safeMaxRows));
-  const match = findBestTextMatch(contentToDisplay, textToFind, targetRatio);
-  if (!match) return null;
+  const totalLen = Math.max(1, contentToDisplay.length);
 
-  const startRect = measureCharRect(segments, match.start);
-  const endRect = measureCharRect(segments, Math.max(match.start, match.end - 1));
-  if (!startRect || !endRect) return null;
+  let bestSpan: {
+    startRow: number;
+    endRow: number;
+    rowDistance: number;
+    ratioDistance: number;
+  } | null = null;
 
-  const startRow = Math.max(
-    1,
-    computeRowFromClientY(startRect.top + startRect.height / 2)
-  );
-  const endRow = Math.max(
-    startRow,
-    computeRowFromClientY(endRect.top + endRect.height / 2)
-  );
+  for (const occ of occurrences) {
+    const startRect = measureCharRect(segments, occ.start);
+    const endRect = measureCharRect(segments, Math.max(occ.start, occ.end - 1));
+    if (!startRect || !endRect) continue;
 
-  return { startRow, endRow };
+    const startRow = Math.max(
+      1,
+      computeRowFromClientY(startRect.top + startRect.height / 2)
+    );
+    const endRow = Math.max(
+      startRow,
+      computeRowFromClientY(endRect.top + endRect.height / 2)
+    );
+    const rowDistance = Math.abs(startRow - fallbackRow);
+    const ratioDistance = Math.abs(occ.start / totalLen - targetRatio);
+
+    if (
+      !bestSpan ||
+      rowDistance < bestSpan.rowDistance ||
+      (rowDistance === bestSpan.rowDistance && ratioDistance < bestSpan.ratioDistance)
+    ) {
+      bestSpan = { startRow, endRow, rowDistance, ratioDistance };
+    }
+  }
+
+  return bestSpan ? { startRow: bestSpan.startRow, endRow: bestSpan.endRow } : null;
 }
 

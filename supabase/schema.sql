@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   show_custom_shelves BOOLEAN NOT NULL DEFAULT true,
   preferred_theme TEXT DEFAULT 'light',
   font_size INTEGER DEFAULT 18,
+  preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -50,7 +51,8 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS show_challenge BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS show_bookshelves BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS show_saved_books BOOLEAN NOT NULL DEFAULT true,
-  ADD COLUMN IF NOT EXISTS show_custom_shelves BOOLEAN NOT NULL DEFAULT true;
+  ADD COLUMN IF NOT EXISTS show_custom_shelves BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS preferences JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- Case-insensitive unique index for public scholar handles
 CREATE UNIQUE INDEX IF NOT EXISTS unique_profile_username_lower

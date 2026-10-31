@@ -588,4 +588,89 @@ describe('useReaderSession', () => {
       vi.useRealTimers();
     }
   });
+
+  it('preserves localPos.lastReadAt on passive restore and adopts a newer cloud bookmark from another device', async () => {
+    useAuthStore.setState({
+      user: { id: 'user-cross-device', email: 'scholar@example.com' } as any,
+    });
+
+    // Tablet has an older local position at Row 5 (T0)
+    useReaderStore.setState({
+      readingPositions: {
+        600: {
+          chapterIndex: 0,
+          chapterPage: 1,
+          globalPage: 1,
+          bookmarkRow: 5,
+          bookmarkText: 'Page 1 content',
+          lastReadAt: '2026-10-30T10:00:00.000Z',
+        },
+      },
+      readingProgress: { 600: 10 },
+    });
+
+    // Phone saved a newer bookmark in cloud at Page 2, Row 14 (T1 > T0)
+    const mockRestore = vi
+      .spyOn(useReaderStore.getState(), 'restoreReadingPositionFromCloud')
+      .mockResolvedValue({
+        chapterIndex: 0,
+        chapterPage: 2,
+        globalPage: 2,
+        bookmarkRow: 14,
+        bookmarkText: 'Page 2 content',
+        lastReadAt: '2026-10-30T12:00:00.000Z',
+      });
+
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 600,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 3,
+        fontSize: 18,
+        readingMode: 'paginated',
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockRestore).toHaveBeenCalledWith(600, 'user-cross-device');
+    expect(result.current.currentChapterPage).toBe(2);
+    expect(result.current.bookmarkRow).toBe(14);
+    expect(result.current.bookmarkText).toBe('Page 2 content');
+    expect(result.current.resumeNotice).toEqual(
+      expect.objectContaining({
+        page: 2,
+        row: 15,
+      })
+    );
+
+    // Also adopts a newer store position pushed later by syncWithCloud
+    act(() => {
+      useReaderStore.setState({
+        readingPositions: {
+          600: {
+            chapterIndex: 1,
+            chapterPage: 1,
+            globalPage: 3,
+            bookmarkRow: 8,
+            bookmarkText: 'Chapter 2 page 1 content',
+            lastReadAt: '2026-10-30T14:00:00.000Z',
+          },
+        },
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.activeChapterIndex).toBe(1);
+    expect(result.current.bookmarkRow).toBe(8);
+    expect(result.current.bookmarkText).toBe('Chapter 2 page 1 content');
+    mockRestore.mockRestore();
+  });
 });

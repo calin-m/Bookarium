@@ -474,8 +474,33 @@ describe('useAuthStore', () => {
     const setStickyScrollSpy = vi.spyOn(usePreferencesStore.getState(), 'setStickyScrollEnabled');
     const clearOfflineSpy = vi.spyOn(offlineStorage, 'clearAllOfflineBooks').mockResolvedValue(undefined);
 
-    useReaderStore.setState({ fontSize: 28, brightness: 60, theme: 'dark' });
-    usePreferencesStore.setState({ stickyScrollEnabled: false });
+    useReaderStore.setState({
+      fontSize: 28,
+      brightness: 60,
+      theme: 'dark',
+      readingMode: 'scroll',
+      columnWidth: 'narrow',
+    });
+    usePreferencesStore.setState({
+      stickyScrollEnabled: false,
+      customDefaults: {
+        theme: 'sepia',
+        stickyScrollEnabled: false,
+        fontFamily: 'mono',
+        fontSize: 22,
+        lineHeight: 2.0,
+        brightness: 80,
+        readingMode: 'scroll',
+        columnWidth: 'narrow',
+        spoilerShieldEnabled: false,
+        speechRate: 1.25,
+        speechVoiceURI: null,
+        speechAutoPageAdvance: false,
+        speechHighlightEnabled: false,
+      },
+      preferencesUpdatedAt: '2026-10-31T18:00:00.000Z',
+    });
+    useAnnotationStore.setState({ spoilerShieldEnabled: false });
 
     const res2 = await useAuthStore.getState().deleteAccount();
     expect(res2.error).toBeNull();
@@ -517,6 +542,11 @@ describe('useAuthStore', () => {
     expect(useReaderStore.getState().fontSize).toBe(18);
     expect(useReaderStore.getState().brightness).toBe(100);
     expect(useReaderStore.getState().theme).toBe('light');
+    expect(useReaderStore.getState().readingMode).toBe('paginated');
+    expect(useReaderStore.getState().columnWidth).toBe('wide');
+    expect(usePreferencesStore.getState().customDefaults).toBeNull();
+    expect(usePreferencesStore.getState().preferencesUpdatedAt).toBeNull();
+    expect(useAnnotationStore.getState().spoilerShieldEnabled).toBe(true);
     expect(clearOfflineSpy).toHaveBeenCalled();
     expect(sessionStorage.getItem('bookarium_auto_heal_attempted')).toBeNull();
   });

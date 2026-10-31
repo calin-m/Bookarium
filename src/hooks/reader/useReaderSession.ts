@@ -10,6 +10,7 @@ import {
   paginateChapterContent,
   type ChapterSection,
 } from '@/lib/gutenberg-parser';
+import { findCanonicalTextSpan } from '@/lib/reader-annotator';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface ResumeNotice {
@@ -70,6 +71,9 @@ export function useReaderSession({
   const setProgress = useReaderStore((s) => s.setProgress);
   const saveReadingPosition = useReaderStore((s) => s.saveReadingPosition);
   const getReadingPosition = useReaderStore((s) => s.getReadingPosition);
+  const storedPosition = useReaderStore((s) =>
+    numericId > 0 ? s.readingPositions[numericId] : undefined
+  );
 
   const internalHasMounted = useHasMounted();
   const isMounted = hasMounted ?? internalHasMounted;
@@ -80,16 +84,29 @@ export function useReaderSession({
   const [bookmarkText, setBookmarkTextState] = useState<string | undefined>(undefined);
   const [resumeNotice, setResumeNotice] = useState<ResumeNotice | null>(null);
   const hasRestoredPositionRef = useRef(false);
+  const isRestoringPositionRef = useRef(false);
+  const restoredPositionRef = useRef<{
+    chapterIndex: number;
+    chapterPage: number;
+    bookmarkRow: number;
+    bookmarkText?: string;
+    lastReadAt?: string;
+  } | null>(null);
 
   const setBookmarkRow = useCallback((row: number, nextBookmarkText?: string) => {
     const clampedRow = Math.max(0, Math.round(row));
     setBookmarkRowState(clampedRow);
     if (clampedRow === 0) {
+      restoredPositionRef.current = null;
       setBookmarkTextState(undefined);
     } else if (nextBookmarkText !== undefined) {
+      restoredPositionRef.current = null;
       const trimmed = nextBookmarkText.trim();
       setBookmarkTextState(trimmed.length > 0 ? trimmed : undefined);
     }
+    setResumeNotice((prev) =>
+      prev && clampedRow > 0 ? { ...prev, row: clampedRow + 1 } : prev
+    );
   }, []);
 
   // Auto-Resume Position from Store or Cloud
@@ -110,6 +127,7 @@ export function useReaderSession({
       globalPage?: number;
       bookmarkRow?: number;
       bookmarkText?: string;
+      lastReadAt?: string;
     }) => {
       const clampedChap = Math.min(
         Math.max(0, pos.chapterIndex),
@@ -120,8 +138,10 @@ export function useReaderSession({
       let clampedPage = Math.min(Math.max(1, pos.chapterPage), targetChap.pageCount);
       if (savedText && Array.isArray(targetChap.pages) && targetChap.pages.length > 0) {
         const candidateSlice = targetChap.pages[clampedPage - 1] || '';
-        if (!candidateSlice.includes(savedText)) {
-          const foundIdx = targetChap.pages.findIndex((p) => p.includes(savedText));
+        if (findCanonicalTextSpan(candidateSlice, savedText) === null) {
+          const foundIdx = targetChap.pages.findIndex(
+            (p) => findCanonicalTextSpan(p, savedText) !== null
+          );
           if (foundIdx !== -1) {
             clampedPage = foundIdx + 1;
           }
@@ -133,7 +153,16 @@ export function useReaderSession({
           ? targetChap.startPageNumber + (clampedPage - 1)
           : pos.globalPage || targetChap.startPageNumber + (clampedPage - 1);
 
+      isRestoringPositionRef.current = true;
       queueMicrotask(() => {
+        isRestoringPositionRef.current = false;
+        restoredPositionRef.current = {
+          chapterIndex: clampedChap,
+          chapterPage: clampedPage,
+          bookmarkRow: savedRow,
+          bookmarkText: savedRow > 0 ? savedText : undefined,
+          lastReadAt: pos.lastReadAt,
+        };
         setActiveChapterIndex(clampedChap);
         setCurrentChapterPage(clampedPage);
         setBookmarkRowState(savedRow);
@@ -161,7 +190,10 @@ export function useReaderSession({
 
     // When volume is completed/finished, start fresh from Chapter 0, Page 1 with archival completion notice
     if (readingStatus === 'finished') {
+      isRestoringPositionRef.current = true;
       queueMicrotask(() => {
+        isRestoringPositionRef.current = false;
+        restoredPositionRef.current = null;
         setActiveChapterIndex(0);
         setCurrentChapterPage(1);
         setBookmarkRowState(0);
@@ -191,22 +223,113 @@ export function useReaderSession({
     };
 
     const localPos = getReadingPosition(numericId);
+    let cleanupRestoreTimer: (() => void) | undefined;
     if (localPos) {
-      return applyPosition(localPos);
+      cleanupRestoreTimer = applyPosition(localPos);
     }
 
     const currentUserId = useAuthStore.getState().user?.id;
     if (currentUserId) {
+      const localTime = localPos?.lastReadAt ? new Date(localPos.lastReadAt).getTime() : 0;
       useReaderStore
         .getState()
         .restoreReadingPositionFromCloud(numericId, currentUserId)
         .then((remotePos) => {
-          if (remotePos) {
-            applyPosition(remotePos);
+          if (!remotePos) return;
+          const remoteTime = remotePos.lastReadAt ? new Date(remotePos.lastReadAt).getTime() : 0;
+          const isRemoteNewer = !localPos || remoteTime > localTime;
+          const hasRemoteBookmarkEnrichment =
+            Boolean(localPos) &&
+            remoteTime >= localTime &&
+            !localPos?.bookmarkText &&
+            Boolean(remotePos.bookmarkText);
+          if (isRemoteNewer || hasRemoteBookmarkEnrichment) {
+            cleanupRestoreTimer?.();
+            cleanupRestoreTimer = applyPosition(remotePos);
           }
         });
     }
+
+    return () => {
+      cleanupRestoreTimer?.();
+    };
   }, [isMounted, numericId, chaptersWithPagination, getReadingPosition, readingStatus, initialPosition]);
+
+  // Adopt newer cross-device position when syncWithCloud updates the store prior to user navigation
+  useEffect(() => {
+    if (
+      !hasRestoredPositionRef.current ||
+      isRestoringPositionRef.current ||
+      !storedPosition ||
+      readingStatus === 'finished' ||
+      initialPosition ||
+      chaptersWithPagination.length === 0
+    ) {
+      return;
+    }
+    const currentRestored = restoredPositionRef.current;
+    if (!currentRestored) return;
+
+    const incomingTime = storedPosition.lastReadAt
+      ? new Date(storedPosition.lastReadAt).getTime()
+      : 0;
+    const currentTime = currentRestored.lastReadAt
+      ? new Date(currentRestored.lastReadAt).getTime()
+      : 0;
+    const isIncomingNewer = incomingTime > currentTime;
+    const isBookmarkTextEnriched =
+      incomingTime >= currentTime &&
+      !currentRestored.bookmarkText &&
+      Boolean(storedPosition.bookmarkText);
+
+    if (isIncomingNewer || isBookmarkTextEnriched) {
+      const clampedChap = Math.min(
+        Math.max(0, storedPosition.chapterIndex),
+        chaptersWithPagination.length - 1
+      );
+      const targetChap = chaptersWithPagination[clampedChap];
+      const savedText = storedPosition.bookmarkText?.trim() || undefined;
+      let clampedPage = Math.min(Math.max(1, storedPosition.chapterPage), targetChap.pageCount);
+      if (savedText && Array.isArray(targetChap.pages) && targetChap.pages.length > 0) {
+        const candidateSlice = targetChap.pages[clampedPage - 1] || '';
+        if (findCanonicalTextSpan(candidateSlice, savedText) === null) {
+          const foundIdx = targetChap.pages.findIndex(
+            (p) => findCanonicalTextSpan(p, savedText) !== null
+          );
+          if (foundIdx !== -1) {
+            clampedPage = foundIdx + 1;
+          }
+        }
+      }
+      const savedRow = Math.max(0, storedPosition.bookmarkRow ?? (savedText ? 1 : 0));
+      const savedGlobalPage =
+        clampedPage !== storedPosition.chapterPage
+          ? targetChap.startPageNumber + (clampedPage - 1)
+          : storedPosition.globalPage || targetChap.startPageNumber + (clampedPage - 1);
+
+      restoredPositionRef.current = {
+        chapterIndex: clampedChap,
+        chapterPage: clampedPage,
+        bookmarkRow: savedRow,
+        bookmarkText: savedRow > 0 ? savedText : undefined,
+        lastReadAt: storedPosition.lastReadAt,
+      };
+      queueMicrotask(() => {
+        setActiveChapterIndex(clampedChap);
+        setCurrentChapterPage(clampedPage);
+        setBookmarkRowState(savedRow);
+        setBookmarkTextState(savedRow > 0 ? savedText : undefined);
+        setResumeNotice({
+          chapterTitle:
+            targetChap.displayTitle ||
+            targetChap.title ||
+            (clampedChap > 0 ? `Chapter ${clampedChap}` : 'Start'),
+          page: savedGlobalPage,
+          ...(savedRow > 0 ? { row: savedRow + 1 } : {}),
+        });
+      });
+    }
+  }, [storedPosition, readingStatus, initialPosition, chaptersWithPagination]);
 
   const activeChapter = chaptersWithPagination[activeChapterIndex] || chaptersWithPagination[0];
   const activeChapterPageCount = activeChapter?.pageCount || 1;
@@ -275,8 +398,34 @@ export function useReaderSession({
         if (readingStatus !== 'finished') {
           setProgress(numericId, volumeProgress);
         }
-        if (hasRestoredPositionRef.current) {
+        if (hasRestoredPositionRef.current && !isRestoringPositionRef.current) {
           const currentUserId = useAuthStore.getState().user?.id;
+          const restored = restoredPositionRef.current;
+          const isSamePageAndTextAsRestored =
+            Boolean(restored) &&
+            restored!.chapterIndex === activeChapterIndex &&
+            restored!.chapterPage === currentChapterPage &&
+            restored!.bookmarkText === bookmarkText;
+
+          if (isSamePageAndTextAsRestored) {
+            if (restored!.bookmarkRow === bookmarkRow) {
+              const existingStored = getReadingPosition(numericId);
+              if (
+                existingStored &&
+                existingStored.chapterIndex === activeChapterIndex &&
+                existingStored.chapterPage === currentChapterPage &&
+                (existingStored.bookmarkRow ?? 0) === bookmarkRow &&
+                existingStored.bookmarkText === bookmarkText
+              ) {
+                return;
+              }
+            } else {
+              restored!.bookmarkRow = bookmarkRow;
+            }
+          } else {
+            restoredPositionRef.current = null;
+          }
+
           saveReadingPosition(
             numericId,
             {
@@ -285,7 +434,10 @@ export function useReaderSession({
               globalPage: currentGlobalPage,
               ...(bookmarkRow > 0 ? { bookmarkRow } : {}),
               ...(bookmarkRow > 0 && bookmarkText ? { bookmarkText } : {}),
-              lastReadAt: new Date().toISOString(),
+              lastReadAt:
+                isSamePageAndTextAsRestored && restored?.lastReadAt
+                  ? restored.lastReadAt
+                  : new Date().toISOString(),
             },
             currentUserId
           );

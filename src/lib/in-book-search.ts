@@ -1,5 +1,6 @@
 import type { ChapterSection } from '@/lib/gutenberg-parser';
 import { getCharsPerPage, paginateChapterContent } from '@/lib/gutenberg-parser';
+import { findAllCanonicalTextSpans } from '@/lib/reader-annotator';
 import { normalizeSearchText } from '@/lib/smart-search';
 
 export interface BookSearchMatch {
@@ -118,8 +119,39 @@ export function searchInBook(
         }
       }
 
-      // 2. Diacritic-Insensitive Fallback (e.g. searching 'valjean' for 'Valjean' or accent variants)
+      // 2. Canonical Typography & Diacritic-Insensitive Fallback
       if (!foundOnPage) {
+        const canonicalSpans = findAllCanonicalTextSpans(pageText, trimmed);
+        if (canonicalSpans.length > 0) {
+          for (const span of canonicalSpans) {
+            const snippetStart = Math.max(0, span.start - 50);
+            const snippetEnd = Math.min(pageText.length, span.end + 50);
+
+            matches.push({
+              id: `match-canon-${cIdx}-${pIdx}-${span.start}`,
+              chapterIndex: cIdx,
+              chapterTitle: chapter.title,
+              chapterDisplayTitle: chapter.displayTitle || chapter.title,
+              chapterPage: pIdx + 1,
+              globalPage: startGlobalPage + pIdx,
+              snippetBefore: (snippetStart > 0 ? '… ' : '') + pageText.slice(snippetStart, span.start),
+              matchedText: pageText.slice(span.start, span.end),
+              snippetAfter: pageText.slice(span.end, snippetEnd) + (snippetEnd < pageText.length ? ' …' : ''),
+            });
+
+            matchedChapterIndices.add(cIdx);
+            if (matches.length >= maxResults) {
+              return {
+                query: trimmed,
+                totalMatches: matches.length,
+                matches,
+                matchedChapterCount: matchedChapterIndices.size,
+              };
+            }
+          }
+          continue;
+        }
+
         const normPage = normalizeSearchText(pageText);
         const normMatchIndex = normPage.indexOf(normalizedQuery);
 

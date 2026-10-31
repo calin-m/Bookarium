@@ -42,6 +42,14 @@ import { AccountPreferencesSection } from '@/components/account/AccountPreferenc
 import { createTabScrubberHandlers } from '@/lib/scroll-utils';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
+import {
+  FACTORY_PREFERENCES,
+  arePreferencesEqual,
+  saveCurrentAsCustomDefaults,
+  revertToCustomDefaults,
+  resetAllPreferencesToFactoryDefaults,
+  schedulePreferencesCloudSync,
+} from '@/lib/preferences-sync';
 import { useAccountSecurityActions } from '@/hooks/useAccountSecurityActions';
 import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
 import type { NavViewId } from '@/config/views.config';
@@ -169,12 +177,45 @@ function AccountDashboardContent() {
       : null);
   const { savedCount, favoriteCount, cloudBookshelves, bookStatuses } =
     useHydratedBookshelf();
-  const { annotations } = useHydratedAnnotations();
+  const { annotations, spoilerShieldEnabled, setSpoilerShieldEnabled } =
+    useHydratedAnnotations();
   const { getStreakStats } = useHydratedHabits();
   const { getPendingInviteCount } = useHydratedFellowship();
   const annotationCount = annotations.length;
   const bookmarksCount = useReaderStore(getActiveReadingCount);
-  const readingProgress = useReaderStore((s) => s.readingProgress);
+  const {
+    readingProgress,
+    fontFamily,
+    setFontFamily,
+    fontSize,
+    setFontSize,
+    lineHeight,
+    setLineHeight,
+    brightness,
+    setBrightness,
+    readingMode,
+    setReadingMode,
+    columnWidth,
+    setColumnWidth,
+    setReaderTheme,
+  } = useReaderStore(
+    useShallow((s) => ({
+      readingProgress: s.readingProgress,
+      fontFamily: s.fontFamily,
+      setFontFamily: s.setFontFamily,
+      fontSize: s.fontSize,
+      setFontSize: s.setFontSize,
+      lineHeight: s.lineHeight,
+      setLineHeight: s.setLineHeight,
+      brightness: s.brightness,
+      setBrightness: s.setBrightness,
+      readingMode: s.readingMode,
+      setReadingMode: s.setReadingMode,
+      columnWidth: s.columnWidth,
+      setColumnWidth: s.setColumnWidth,
+      setReaderTheme: s.setTheme,
+    }))
+  );
   const readingStreak = getStreakStats().currentStreak;
   const pendingInvitesCount = getPendingInviteCount(user?.id);
 
@@ -201,6 +242,7 @@ function AccountDashboardContent() {
     speechHighlightEnabled,
     setSpeechHighlightEnabled,
     resetSpeechPreferences,
+    customDefaults,
   } = usePreferencesStore(
     useShallow((s) => ({
       stickyScrollEnabled: s.stickyScrollEnabled,
@@ -214,9 +256,55 @@ function AccountDashboardContent() {
       speechHighlightEnabled: s.speechHighlightEnabled,
       setSpeechHighlightEnabled: s.setSpeechHighlightEnabled,
       resetSpeechPreferences: s.resetSpeechPreferences,
+      customDefaults: s.customDefaults,
     }))
   );
   const { isHeaderVisible } = useScrollDirection({ enabled: stickyScrollEnabled });
+
+  const activePreferencesSnapshot = useMemo(
+    () => ({
+      theme,
+      stickyScrollEnabled,
+      fontFamily,
+      fontSize,
+      lineHeight,
+      brightness,
+      readingMode,
+      columnWidth,
+      spoilerShieldEnabled,
+      speechRate,
+      speechVoiceURI,
+      speechAutoPageAdvance,
+      speechHighlightEnabled,
+    }),
+    [
+      theme,
+      stickyScrollEnabled,
+      fontFamily,
+      fontSize,
+      lineHeight,
+      brightness,
+      readingMode,
+      columnWidth,
+      spoilerShieldEnabled,
+      speechRate,
+      speechVoiceURI,
+      speechAutoPageAdvance,
+      speechHighlightEnabled,
+    ]
+  );
+
+  const isAtFactoryDefaults = useMemo(
+    () => arePreferencesEqual(activePreferencesSnapshot, FACTORY_PREFERENCES),
+    [activePreferencesSnapshot]
+  );
+
+  const isAtCustomDefaults = useMemo(
+    () =>
+      Boolean(customDefaults) &&
+      arePreferencesEqual(activePreferencesSnapshot, customDefaults),
+    [activePreferencesSnapshot, customDefaults]
+  );
 
   // Segmented Sub-Tabs Navigation State
   const tabParam = searchParams.get('tab');
@@ -351,9 +439,92 @@ function AccountDashboardContent() {
 
   const handleThemeChange = (newTheme: AppTheme) => {
     setTheme(newTheme);
+    setReaderTheme(newTheme);
     if (user) {
       updateProfile({ preferred_theme: newTheme }).catch(() => {});
+      schedulePreferencesCloudSync();
     }
+  };
+
+  const preferencesSectionProps = {
+    theme,
+    onThemeChange: handleThemeChange,
+    stickyScrollEnabled,
+    onStickyScrollChange: (enabled: boolean) => {
+      setStickyScrollEnabled(enabled);
+      schedulePreferencesCloudSync();
+    },
+    fontFamily,
+    onFontFamilyChange: (family: typeof fontFamily) => {
+      setFontFamily(family);
+      schedulePreferencesCloudSync();
+    },
+    fontSize,
+    onFontSizeChange: (size: number) => {
+      setFontSize(size);
+      schedulePreferencesCloudSync();
+    },
+    lineHeight,
+    onLineHeightChange: (height: number) => {
+      setLineHeight(height);
+      schedulePreferencesCloudSync();
+    },
+    brightness,
+    onBrightnessChange: (val: number) => {
+      setBrightness(val);
+      schedulePreferencesCloudSync();
+    },
+    readingMode,
+    onReadingModeChange: (mode: typeof readingMode) => {
+      setReadingMode(mode);
+      schedulePreferencesCloudSync();
+    },
+    columnWidth,
+    onColumnWidthChange: (width: typeof columnWidth) => {
+      setColumnWidth(width);
+      schedulePreferencesCloudSync();
+    },
+    spoilerShieldEnabled,
+    onSpoilerShieldChange: (enabled: boolean) => {
+      setSpoilerShieldEnabled(enabled);
+      schedulePreferencesCloudSync();
+    },
+    speechRate,
+    onSpeechRateChange: (rate: number) => {
+      setSpeechRate(rate);
+      schedulePreferencesCloudSync();
+    },
+    speechVoiceURI,
+    onSpeechVoiceChange: (voice: string | null) => {
+      setSpeechVoiceURI(voice);
+      schedulePreferencesCloudSync();
+    },
+    speechAutoPageAdvance,
+    onSpeechAutoPageAdvanceChange: (enabled: boolean) => {
+      setSpeechAutoPageAdvance(enabled);
+      schedulePreferencesCloudSync();
+    },
+    speechHighlightEnabled,
+    onSpeechHighlightEnabledChange: (enabled: boolean) => {
+      setSpeechHighlightEnabled(enabled);
+      schedulePreferencesCloudSync();
+    },
+    onResetSpeechPreferences: () => {
+      resetSpeechPreferences();
+      schedulePreferencesCloudSync();
+    },
+    hasCustomDefaults: Boolean(customDefaults),
+    isAtCustomDefaults,
+    isAtFactoryDefaults,
+    onSaveCustomDefaults: () => {
+      saveCurrentAsCustomDefaults();
+    },
+    onRevertToCustomDefaults: () => {
+      revertToCustomDefaults();
+    },
+    onResetToFactoryDefaults: () => {
+      resetAllPreferencesToFactoryDefaults();
+    },
   };
 
   const formattedDate = user?.created_at
@@ -450,21 +621,7 @@ function AccountDashboardContent() {
           <div className="space-y-6">
             {isOffline && (
               <div data-testid="guest-offline-workspace" className="space-y-6">
-                <AccountPreferencesSection
-                  theme={theme}
-                  onThemeChange={handleThemeChange}
-                  stickyScrollEnabled={stickyScrollEnabled}
-                  onStickyScrollChange={setStickyScrollEnabled}
-                  speechRate={speechRate}
-                  onSpeechRateChange={setSpeechRate}
-                  speechVoiceURI={speechVoiceURI}
-                  onSpeechVoiceChange={setSpeechVoiceURI}
-                  speechAutoPageAdvance={speechAutoPageAdvance}
-                  onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
-                  speechHighlightEnabled={speechHighlightEnabled}
-                  onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
-                  onResetSpeechPreferences={resetSpeechPreferences}
-                />
+                <AccountPreferencesSection {...preferencesSectionProps} />
                 <AccountHabitsCard completedBooksCount={completedBooksCount} />
                 <AccountAccoladesCard />
               </div>
@@ -698,21 +855,7 @@ function AccountDashboardContent() {
                   : 'hidden'
               }
             >
-              <AccountPreferencesSection
-                theme={theme}
-                onThemeChange={handleThemeChange}
-                stickyScrollEnabled={stickyScrollEnabled}
-                onStickyScrollChange={setStickyScrollEnabled}
-                speechRate={speechRate}
-                onSpeechRateChange={setSpeechRate}
-                speechVoiceURI={speechVoiceURI}
-                onSpeechVoiceChange={setSpeechVoiceURI}
-                speechAutoPageAdvance={speechAutoPageAdvance}
-                onSpeechAutoPageAdvanceChange={setSpeechAutoPageAdvance}
-                speechHighlightEnabled={speechHighlightEnabled}
-                onSpeechHighlightEnabledChange={setSpeechHighlightEnabled}
-                onResetSpeechPreferences={resetSpeechPreferences}
-              />
+              <AccountPreferencesSection {...preferencesSectionProps} />
             </section>
 
             {/* Tab Panel 5: Account & Security */}
