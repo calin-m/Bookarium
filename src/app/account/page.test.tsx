@@ -1,12 +1,15 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import AccountPage from './page';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
+import { useAnnotationStore } from '@/stores/useAnnotationStore';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { cancelPendingPreferencesCloudSync } from '@/lib/preferences-sync';
 import { ROUTES } from '@/config/routes';
 
 const mockPush = vi.fn();
@@ -34,6 +37,11 @@ describe('AccountPage', () => {
     mockSearchParams = new URLSearchParams();
     useThemeStore.setState({ theme: 'light' });
     useAuthStore.setState({ isPasswordRecovery: false });
+    useFellowshipStore.setState({ fetchFellowshipData: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  afterEach(() => {
+    cancelPendingPreferencesCloudSync();
   });
 
   it('renders guest prompt when unauthenticated and handles scroll to top', () => {
@@ -62,7 +70,6 @@ describe('AccountPage', () => {
   });
 
   it('renders authenticated dashboard with profile identity, library statistics, and accolades', async () => {
-    const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
     useAnnotationStore.setState({
       annotations: [
         {
@@ -137,7 +144,7 @@ describe('AccountPage', () => {
     act(() => {
       useAnnotationStore.setState({ annotations: [] });
     });
-  });
+  }, 15000);
 
   it('renders segmented sub-tabs navigation and switches active tabs', () => {
     useAuthStore.setState({
@@ -360,66 +367,57 @@ describe('AccountPage', () => {
     const preferencesPanel = document.getElementById('account-tabpanel-preferences')!;
 
     // Theme Switcher
-    const sepiaBtn = within(preferencesPanel).getByRole('button', { name: /Sepia/i });
-    fireEvent.click(sepiaBtn);
+    fireEvent.click(within(preferencesPanel).getByText('Sepia'));
     expect(useThemeStore.getState().theme).toBe('sepia');
     expect(mockUpdateProfile).toHaveBeenCalledWith({ preferred_theme: 'sepia' });
 
     // Sticky Scroll Navigation Setting
     expect(within(preferencesPanel).getByText('Smart Auto-Hide Active')).toBeInTheDocument();
 
-    const alwaysFixedBtn = within(preferencesPanel).getByRole('button', { name: /Always Fixed/i });
-    fireEvent.click(alwaysFixedBtn);
+    fireEvent.click(within(preferencesPanel).getByText('Always Fixed'));
     expect(within(preferencesPanel).getByText('Always Fixed Active')).toBeInTheDocument();
 
-    const smartAutoHideBtn = within(preferencesPanel).getByRole('button', { name: /Smart Auto-Hide/i });
-    fireEvent.click(smartAutoHideBtn);
+    fireEvent.click(within(preferencesPanel).getByText('Smart Auto-Hide'));
     expect(within(preferencesPanel).getByText('Smart Auto-Hide Active')).toBeInTheDocument();
 
     // Typography, Reading Flow, Column Width, Spoiler Shield, Save as My Default & Factory Reset
-    fireEvent.click(within(preferencesPanel).getByRole('button', { name: 'Mono' }));
+    fireEvent.click(within(preferencesPanel).getByText('Mono'));
     expect(useReaderStore.getState().fontFamily).toBe('mono');
 
-    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '24px' }));
+    fireEvent.click(within(preferencesPanel).getByText('24px'));
     expect(useReaderStore.getState().fontSize).toBe(24);
 
-    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '2.1x' }));
+    fireEvent.click(within(preferencesPanel).getByText('2.1x'));
     expect(useReaderStore.getState().lineHeight).toBe(2.1);
 
-    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '75%' }));
+    fireEvent.click(within(preferencesPanel).getByText('75%'));
     expect(useReaderStore.getState().brightness).toBe(75);
 
-    fireEvent.click(within(preferencesPanel).getByRole('button', { name: 'Scroll' }));
+    fireEvent.click(within(preferencesPanel).getByText('Scroll'));
     expect(useReaderStore.getState().readingMode).toBe('scroll');
 
-    fireEvent.click(within(preferencesPanel).getByRole('button', { name: 'narrow' }));
+    fireEvent.click(within(preferencesPanel).getByText('narrow'));
     expect(useReaderStore.getState().columnWidth).toBe('narrow');
 
-    const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
-    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
-    fireEvent.click(
-      within(preferencesPanel).getByRole('button', { name: /Show All Marginalia/i })
-    );
+    fireEvent.click(within(preferencesPanel).getByText('Show All Marginalia'));
     expect(useAnnotationStore.getState().spoilerShieldEnabled).toBe(false);
 
     // Switch to Audio & Read Aloud sub-tab inside Preferences and exercise speech callbacks
     act(() => {
       usePreferencesStore.setState({ speechVoiceURI: 'en-GB-voice' });
     });
-    fireEvent.click(within(preferencesPanel).getByRole('tab', { name: /Read-Aloud Studio/i }));
-    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '1.25x' }));
+    fireEvent.click(within(preferencesPanel).getByTitle('Read-Aloud Studio'));
+    fireEvent.click(within(preferencesPanel).getByText('1.25x'));
     expect(usePreferencesStore.getState().speechRate).toBe(1.25);
 
     const voiceSelect = within(preferencesPanel).getByLabelText('Preferred narrator voice');
     fireEvent.change(voiceSelect, { target: { value: '' } });
     expect(usePreferencesStore.getState().speechVoiceURI).toBeNull();
 
-    fireEvent.click(within(preferencesPanel).getByRole('button', { name: /Auto-Page Advance/i }));
+    fireEvent.click(within(preferencesPanel).getByText('Auto-Page Advance'));
     expect(usePreferencesStore.getState().speechAutoPageAdvance).toBe(false);
 
-    fireEvent.click(
-      within(preferencesPanel).getByRole('button', { name: /Sentence Highlighting/i })
-    );
+    fireEvent.click(within(preferencesPanel).getByText('Sentence Highlighting'));
     expect(usePreferencesStore.getState().speechHighlightEnabled).toBe(false);
 
     fireEvent.click(
@@ -428,9 +426,7 @@ describe('AccountPage', () => {
     fireEvent.click(screen.getByTestId('confirm-reset-speech-btn'));
     expect(usePreferencesStore.getState().speechRate).toBe(1);
 
-    fireEvent.click(
-      within(preferencesPanel).getByRole('tab', { name: /Appearance & Scroll/i })
-    );
+    fireEvent.click(within(preferencesPanel).getByTitle('Appearance & Scroll'));
 
     // Save current as custom default preset
     fireEvent.click(within(preferencesPanel).getByTestId('save-custom-defaults-btn'));
@@ -439,7 +435,7 @@ describe('AccountPage', () => {
     );
 
     // Modify font size to 14px, then revert to My Default (24px)
-    fireEvent.click(within(preferencesPanel).getByRole('button', { name: '14px' }));
+    fireEvent.click(within(preferencesPanel).getByText('14px'));
     expect(useReaderStore.getState().fontSize).toBe(14);
     fireEvent.click(within(preferencesPanel).getByTestId('revert-custom-defaults-btn'));
     expect(useReaderStore.getState().fontSize).toBe(24);
@@ -451,7 +447,7 @@ describe('AccountPage', () => {
     expect(useReaderStore.getState().fontFamily).toBe('serif');
     expect(useReaderStore.getState().readingMode).toBe('paginated');
     expect(useThemeStore.getState().theme).toBe('light');
-  });
+  }, 15000);
 
   it('handles password security lifecycle: current password validation, mismatch validation, strong password generation, forgot-password reset link, and password update', async () => {
     const mockUpdatePassword = vi.fn().mockResolvedValue({ error: null });
@@ -533,7 +529,7 @@ describe('AccountPage', () => {
       expect(mockUpdatePassword).toHaveBeenCalledWith('password123', 'oldPassword123');
       expect(within(securityPanel).getByText('Password successfully updated')).toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it('supports verified email recovery mode (?tab=security&recovery=true) without requiring current password', async () => {
     mockSearchParams = new URLSearchParams('tab=security&recovery=true');

@@ -352,5 +352,42 @@ export const handlers = [
 
     return HttpResponse.json({ results: [] });
   }),
+
+  // Direct Gutendex trailing-slash & single-book metadata handlers
+  http.get('https://gutendex.com/books/', ({ request }) => {
+    const url = new URL(request.url);
+    const ids = url.searchParams.get('ids');
+    let filtered = [...mockBooks];
+    if (ids) {
+      const idList = ids
+        .split(',')
+        .map((id) => parseInt(id.trim(), 10))
+        .filter((n) => !isNaN(n));
+      if (idList.length > 0) {
+        filtered = filtered.filter((b) => idList.includes(b.id));
+      }
+    }
+    return HttpResponse.json({
+      count: filtered.length,
+      next: null,
+      previous: null,
+      results: filtered,
+    });
+  }),
+  http.get(/https:\/\/gutendex\.com\/books\/(\d+)\/?$/, ({ request }) => {
+    const match = request.url.match(/\/books\/(\d+)\/?$/);
+    const id = match ? parseInt(match[1], 10) : NaN;
+    const found = mockBooks.find((b) => b.id === id);
+    if (!found) {
+      return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
+    }
+    return HttpResponse.json(found);
+  }),
+
+  // Default catch-all Supabase PostgREST, Auth & Storage handlers to prevent unmocked network I/O in component tests
+  // Returns 503 so offline-first Zustand stores immediately fall back to local test-seeded state in <1ms without DNS/socket waits
+  http.all(/https:\/\/[a-z0-9.-]+\.supabase\.co\/(rest|auth|storage)\/v1\/.*/i, () => {
+    return HttpResponse.json({ message: 'Mock offline fallback' }, { status: 503 });
+  }),
 ];
 
