@@ -116,6 +116,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const [deletingShelfId, setDeletingShelfId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMobileBook, setSelectedMobileBook] = useState<GutendexBook | null>(null);
+  const [activeSpineBookId, setActiveSpineBookId] = useState<number | null>(null);
+  const openModalTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [shelfCapacity, setShelfCapacity] = useState<number>(() => {
@@ -124,6 +126,14 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     }
     return 18;
   });
+
+  useEffect(() => {
+    return () => {
+      if (openModalTimerRef.current) {
+        clearTimeout(openModalTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const updateCapacity = () => {
@@ -146,7 +156,12 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   }, []);
 
   const closeMobileSheet = () => {
+    if (openModalTimerRef.current) {
+      clearTimeout(openModalTimerRef.current);
+      openModalTimerRef.current = null;
+    }
     setSelectedMobileBook(null);
+    setActiveSpineBookId(null);
   };
 
   const handleSpineClick = (book: GutendexBook) => {
@@ -163,7 +178,13 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
       (typeof window !== 'undefined' && window.innerWidth < 1024);
 
     if (isTouchOrCompact || isRestricted || isUnavailableOffline) {
-      setSelectedMobileBook(book);
+      if (openModalTimerRef.current) {
+        clearTimeout(openModalTimerRef.current);
+      }
+      setActiveSpineBookId(book.id);
+      openModalTimerRef.current = setTimeout(() => {
+        setSelectedMobileBook(book);
+      }, 120);
     } else {
       if (onBookClick) onBookClick(book);
       else router.push(ROUTES.READ(book.id));
@@ -580,6 +601,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                       currentActiveShelfId={currentActiveShelfId}
                       userId={user?.id}
                       onMoveBookToShelf={moveBookToShelf}
+                      isActive={activeSpineBookId === book.id}
                     />
                   ))}
                 </div>

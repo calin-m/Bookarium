@@ -59,9 +59,10 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(screen.getByText('Verified Reader')).toBeInTheDocument();
     const statStrip = screen.getByTestId('identity-ribbon-stat-strip');
     expect(statStrip).toBeInTheDocument();
-    expect(statStrip).toHaveClass('grid', 'grid-cols-3', 'gap-1.5', 'sm:flex', 'sm:flex-wrap', 'border-t', 'border-border');
+    expect(statStrip).toHaveClass('grid', 'grid-cols-5', 'divide-x', 'border-t', 'border-border');
     expect(statStrip).not.toHaveClass('overflow-x-auto', 'border-border/70');
     expect(screen.getByText('🔥 7d Streak')).toBeInTheDocument();
+    expect(screen.getByTestId('identity-streak-badge')).toBeInTheDocument();
 
     // Toggle quick name editor
     const toggleBtn = screen.getByRole('button', {

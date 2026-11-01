@@ -444,4 +444,55 @@ describe('BookshelfSpine Component', () => {
     expect(useBookshelfStore.getState().bookRatings[1342]).toBe(4);
     expect(onSpineClick).not.toHaveBeenCalled();
   });
+
+  it('applies physical drawn-out classes when isActive is true, and resting classes when false', () => {
+    const { rerender } = render(
+      <BookshelfSpine
+        book={mockBook}
+        bookIndex={0}
+        isSaved={false}
+        isFavorite={false}
+        onToggleSave={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onSpineClick={vi.fn()}
+        isActive={false}
+      />
+    );
+
+    const restingSpine = screen.getByTestId(`shelf-book-${mockBook.id}`);
+    expect(restingSpine).not.toHaveAttribute('data-active-spine');
+    expect(restingSpine).toHaveClass('hover:z-50');
+
+    const innerRestingSpine = restingSpine.firstElementChild;
+    expect(innerRestingSpine).toHaveClass('translate-y-0', 'scale-100', 'shadow-md');
+    expect(innerRestingSpine).not.toHaveClass('-translate-y-3.5');
+
+    // Rerender with isActive=true (drawn out on touch / selection)
+    rerender(
+      <BookshelfSpine
+        book={mockBook}
+        bookIndex={0}
+        isSaved={false}
+        isFavorite={false}
+        onToggleSave={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onSpineClick={vi.fn()}
+        isActive={true}
+      />
+    );
+
+    const activeSpine = screen.getByTestId(`shelf-book-${mockBook.id}`);
+    expect(activeSpine).toHaveAttribute('data-active-spine', 'true');
+    expect(activeSpine).toHaveClass('z-30');
+
+    const innerActiveSpine = activeSpine.firstElementChild;
+    expect(innerActiveSpine).toHaveClass(
+      '-translate-y-3.5',
+      'scale-105',
+      'ring-2',
+      'ring-primary/50',
+      'brightness-105',
+      'z-30'
+    );
+  });
 });

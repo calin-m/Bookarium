@@ -406,7 +406,8 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
         >
           {/* Standing Perspective Drop Shadows */}
           <div
-            className={`hidden lg:block absolute -bottom-7 -left-72 -right-12 h-10 bg-black/40 dark:bg-black/85 [html.sepia_&]:bg-black/75 rounded-full blur-2xl pointer-events-none transition-opacity duration-500 ${
+            data-testid="preview-standing-shadow"
+            className={`hidden lg:block absolute -bottom-7 -left-28 -right-28 h-10 bg-black/40 dark:bg-black/85 [html.sepia_&]:bg-black/75 rounded-full blur-2xl pointer-events-none transition-opacity duration-500 ${
               isCoverOpen ? 'opacity-100' : 'opacity-0'
             }`}
           />

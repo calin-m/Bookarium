@@ -51,6 +51,7 @@ export interface BookshelfSpineProps {
   currentActiveShelfId?: string;
   userId?: string;
   onMoveBookToShelf?: (bookId: number, targetShelfId: string, userId: string) => Promise<boolean | void>;
+  isActive?: boolean;
 }
 
 export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
@@ -73,6 +74,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   currentActiveShelfId,
   userId,
   onMoveBookToShelf,
+  isActive = false,
 }) => {
   const router = useRouter();
   const rating = useBookRating(book.id);
@@ -157,7 +159,9 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
   return (
     <div
       key={book.id}
-      className="group relative shrink-0 cursor-pointer select-none hover:z-50 focus:outline-hidden origin-bottom mb-0"
+      className={`group relative shrink-0 cursor-pointer select-none focus:outline-hidden origin-bottom mb-0 ${
+        isActive ? 'z-30' : 'hover:z-50'
+      }`}
       style={{ height: `${heightVariance}px`, width: `${widthVariance}px` }}
       onClick={() => onSpineClick(book)}
       onKeyDown={(e) => {
@@ -170,10 +174,15 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       role="button"
       aria-label={`Read ${book.title} by ${authorName}`}
       data-testid={`shelf-book-${book.id}`}
+      data-active-spine={isActive ? 'true' : undefined}
     >
       {/* Classic Hardcover Spine */}
       <div
-        className={`relative w-full h-full rounded-t-sm bg-gradient-to-r ${palette.bg} shadow-md origin-bottom group-hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] group-hover:scale-105 transition-all duration-300 ease-out flex flex-col justify-between p-2 sm:p-2.5 border-t border-white/25 overflow-hidden ${
+        className={`relative w-full h-full rounded-t-sm bg-gradient-to-r ${palette.bg} origin-bottom transition-all duration-300 ease-out motion-reduce:transition-none flex flex-col justify-between p-2 sm:p-2.5 border-t border-white/25 overflow-hidden ${
+          isActive
+            ? '-translate-y-3.5 scale-105 shadow-[0_20px_35px_-5px_rgba(0,0,0,0.75)] ring-2 ring-primary/50 brightness-105 z-30'
+            : 'translate-y-0 scale-100 shadow-md group-hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] group-hover:scale-105'
+        } ${
           isRestricted || isUnavailableOffline
             ? 'opacity-65 grayscale-[35%] group-hover:opacity-90 group-hover:grayscale-0 border-amber-500/40'
             : ''

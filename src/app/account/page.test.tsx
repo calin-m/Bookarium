@@ -136,8 +136,8 @@ describe('AccountPage', () => {
     expect(screen.getByText('Ex-Libris Bookplates & Accolades')).toBeInTheDocument();
     expect(screen.getByTestId('account-accolades-card')).toBeInTheDocument();
 
-    // Clicking the Streak pill in AccountIdentityCard switches back to Habits -> Streaks & Challenge
-    const streakPillBtn = within(statStrip).getByRole('button', { name: /🔥 \d+d Streak/i });
+    // Clicking the Streak badge in AccountIdentityCard switches back to Habits -> Streaks & Challenge
+    const streakPillBtn = screen.getByRole('button', { name: /🔥 \d+d Streak/i });
     fireEvent.click(streakPillBtn);
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
 

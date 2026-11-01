@@ -79,7 +79,7 @@ describe('BookshelfRack Component', () => {
     expect(pushMock).toHaveBeenCalledWith(`/read/${mockBooks[0].id}`);
   });
 
-  it('opens mobile/tablet modal when book spine is clicked on mobile, portrait tablet (<1024px), or landscape tablet (touch >=1024px)', () => {
+  it('opens mobile/tablet modal when book spine is clicked on mobile, portrait tablet (<1024px), or landscape tablet (touch >=1024px)', async () => {
     const originalInnerWidth = window.innerWidth;
     const originalMaxTouchPoints = navigator.maxTouchPoints;
 
@@ -92,8 +92,9 @@ describe('BookshelfRack Component', () => {
       act(() => {
         fireEvent.click(bookElem);
       });
+      expect(bookElem).toHaveAttribute('data-active-spine', 'true');
 
-      let actionSheet = screen.getByTestId('mobile-book-action-sheet');
+      let actionSheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
       expect(actionSheet).toBeInTheDocument();
       expect(within(actionSheet).getByText(mockBooks[0].title)).toBeInTheDocument();
 
@@ -103,7 +104,10 @@ describe('BookshelfRack Component', () => {
         fireEvent.click(backdrop);
       });
 
-      expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
+      });
+      expect(bookElem).not.toHaveAttribute('data-active-spine');
       unmount();
 
       // Test 2: Portrait Tablet (768px iPad)
@@ -113,8 +117,9 @@ describe('BookshelfRack Component', () => {
       act(() => {
         fireEvent.click(tabletBookElem);
       });
+      expect(tabletBookElem).toHaveAttribute('data-active-spine', 'true');
 
-      actionSheet = screen.getByTestId('mobile-book-action-sheet');
+      actionSheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
       expect(actionSheet).toBeInTheDocument();
       expect(within(actionSheet).getByText(mockBooks[0].title)).toBeInTheDocument();
       expect(pushMock).not.toHaveBeenCalled();
@@ -131,8 +136,9 @@ describe('BookshelfRack Component', () => {
       act(() => {
         fireEvent.click(landscapeTabletBookElem);
       });
+      expect(landscapeTabletBookElem).toHaveAttribute('data-active-spine', 'true');
 
-      actionSheet = screen.getByTestId('mobile-book-action-sheet');
+      actionSheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
       expect(actionSheet).toBeInTheDocument();
       expect(within(actionSheet).getByText(mockBooks[0].title)).toBeInTheDocument();
       expect(pushMock).not.toHaveBeenCalled();
@@ -145,7 +151,7 @@ describe('BookshelfRack Component', () => {
     }
   });
 
-  it('opens modal on desktop when a copyright-restricted book spine is clicked without navigating to reader', () => {
+  it('opens modal on desktop when a copyright-restricted book spine is clicked without navigating to reader', async () => {
     act(() => {
       useJurisdictionStore.getState().setCountry('GB');
     });
@@ -163,12 +169,13 @@ describe('BookshelfRack Component', () => {
     act(() => {
       fireEvent.click(bookElem);
     });
+    expect(bookElem).toHaveAttribute('data-active-spine', 'true');
 
     // Should NOT push to reader
     expect(pushMock).not.toHaveBeenCalled();
 
     // Should open modal
-    const actionSheet = screen.getByTestId('mobile-book-action-sheet');
+    const actionSheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
     expect(actionSheet).toBeInTheDocument();
     expect(within(actionSheet).getByText('Restricted Modern Masterpiece')).toBeInTheDocument();
     expect(screen.getByTestId(`mobile-restricted-badge-${restrictedBook.id}`)).toBeInTheDocument();
@@ -486,7 +493,7 @@ describe('BookshelfRack Component', () => {
     expect(useBookshelfStore.getState().favoriteBookIds).not.toContain(mockBooks[0].id);
   });
 
-  it('opens quick-action bottom sheet on mobile spine tap without immediate navigation', () => {
+  it('opens quick-action bottom sheet on mobile spine tap without immediate navigation', async () => {
     window.innerWidth = 375;
     const handleBookClick = vi.fn();
 
@@ -495,11 +502,14 @@ describe('BookshelfRack Component', () => {
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
 
+    // Should immediately mark spine active
+    expect(bookElem).toHaveAttribute('data-active-spine', 'true');
+
     // Should NOT immediately trigger onBookClick
     expect(handleBookClick).not.toHaveBeenCalled();
 
-    // Mobile action sheet should be open with accessible dialog
-    const sheet = screen.getByTestId('mobile-book-action-sheet');
+    // Mobile action sheet should be open with accessible dialog after anticipation lead
+    const sheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
     expect(sheet).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: `Book actions for ${mockBooks[0].title}` })).toBeInTheDocument();
 
@@ -514,6 +524,8 @@ describe('BookshelfRack Component', () => {
 
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
+    const sheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
+    expect(sheet).toBeInTheDocument();
 
     // Read action inside sheet triggers callback and closes modal
     const readBtn = screen.getByRole('button', { name: `Read ${mockBooks[0].title}` });
@@ -533,8 +545,9 @@ describe('BookshelfRack Component', () => {
 
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
+    expect(bookElem).toHaveAttribute('data-active-spine', 'true');
 
-    expect(screen.getByTestId('mobile-book-action-sheet')).toBeInTheDocument();
+    expect(await waitFor(() => screen.getByTestId('mobile-book-action-sheet'))).toBeInTheDocument();
 
     const backdrop = screen.getByTestId('mobile-sheet-backdrop');
     fireEvent.click(backdrop);
@@ -542,6 +555,7 @@ describe('BookshelfRack Component', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
     });
+    expect(bookElem).not.toHaveAttribute('data-active-spine');
 
     window.innerWidth = 1024;
   });
@@ -552,14 +566,16 @@ describe('BookshelfRack Component', () => {
 
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
+    expect(bookElem).toHaveAttribute('data-active-spine', 'true');
 
-    const sheet = screen.getByTestId('mobile-book-action-sheet');
+    const sheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
     const closeBtn = within(sheet).getByRole('button', { name: 'Close action sheet' });
     fireEvent.click(closeBtn);
 
     await waitFor(() => {
       expect(screen.queryByTestId('mobile-book-action-sheet')).not.toBeInTheDocument();
     });
+    expect(bookElem).not.toHaveAttribute('data-active-spine');
 
     window.innerWidth = 1024;
   });
@@ -572,7 +588,7 @@ describe('BookshelfRack Component', () => {
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
 
-    const sheet = screen.getByTestId('mobile-book-action-sheet');
+    const sheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
     const downloadBtn = within(sheet).getByRole('button', { name: `Download ${mockBooks[0].title}` });
     fireEvent.click(downloadBtn);
 
@@ -584,7 +600,7 @@ describe('BookshelfRack Component', () => {
     window.innerWidth = 1024;
   });
 
-  it('toggles bookmark and favorite status from mobile action sheet', () => {
+  it('toggles bookmark and favorite status from mobile action sheet', async () => {
     window.innerWidth = 375;
     useBookshelfStore.setState({
       savedBooks: mockBooks,
@@ -596,7 +612,7 @@ describe('BookshelfRack Component', () => {
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
 
-    const sheet = screen.getByTestId('mobile-book-action-sheet');
+    const sheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
 
     // Remove from bookshelf (opens confirmation modal)
     const removeBtn = within(sheet).getByRole('button', { name: 'Remove from bookshelf' });
@@ -613,7 +629,7 @@ describe('BookshelfRack Component', () => {
     window.innerWidth = 1024;
   });
 
-  it('handles moving a book to another shelf and default read routing from mobile action sheet', () => {
+  it('handles moving a book to another shelf and default read routing from mobile action sheet', async () => {
     window.innerWidth = 375;
     useAuthStore.setState({ user: { id: 'user-1' } as any });
     const moveMock = vi.fn().mockResolvedValue(undefined);
@@ -645,7 +661,7 @@ describe('BookshelfRack Component', () => {
     const bookElem = screen.getByTestId(`shelf-book-${mockBooks[0].id}`);
     fireEvent.click(bookElem);
 
-    const sheet = screen.getByTestId('mobile-book-action-sheet');
+    const sheet = await waitFor(() => screen.getByTestId('mobile-book-action-sheet'));
 
     // Move to shelf selector
     const selectElements = screen.getAllByLabelText(`Move ${mockBooks[0].title} to shelf`);

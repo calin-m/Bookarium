@@ -339,6 +339,11 @@ describe('BookPreviewModal component', () => {
     expect(toolbar.className).toContain('xl:-mt-7');
     expect(toolbar.className).not.toContain('bg-card/95');
     expect(toolbar.className).not.toContain('backdrop-blur-md');
+
+    // Symmetrically balanced standing perspective drop-shadow under open spread
+    const standingShadow = screen.getByTestId('preview-standing-shadow');
+    expect(standingShadow).toHaveClass('-left-28', '-right-28');
+    expect(standingShadow).not.toHaveClass('-left-72', '-right-12');
   });
 
   it('closes modal when clicking empty space in the viewport container outside the book', () => {

@@ -136,7 +136,23 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-center">
+          {stats && (
+            <button
+              type="button"
+              onClick={onOpenLibraryBreakdown}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold whitespace-nowrap border transition-colors cursor-pointer ${
+                (stats.readingStreak ?? 0) > 0
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                  : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+              }`}
+              title="View reading streaks and habit telemetry"
+              data-testid="identity-streak-badge"
+            >
+              <span>🔥 {stats.readingStreak ?? 0}d Streak</span>
+            </button>
+          )}
+
           {isEmailVerified ? (
             <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-success/10 text-success border border-border">
               <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
@@ -151,68 +167,76 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
         </div>
       </div>
 
-      {/* Inline Clickable Stat Strip (Replaces Tall Top-Fold Library Stack) */}
+      {/* Scholar Sanctuary Ledger (5 Clean Stacked Collection Counters) */}
       {stats && (
         <div
-          className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2 pt-2.5 border-t border-border"
+          className="grid grid-cols-5 divide-x divide-border/60 pt-3 border-t border-border -mx-1 sm:mx-0"
           data-testid="identity-ribbon-stat-strip"
         >
           <Link
             href={ROUTES.BOOKSHELF}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
+            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <Library className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="font-bold text-foreground">{stats.savedCount}</span>
-            <span className="text-muted-foreground truncate">Shelved</span>
+            <div className="flex items-center gap-1 text-foreground group-hover:text-primary transition-colors">
+              <Library className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary shrink-0" />
+              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.savedCount}</span>
+            </div>
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+              Shelved
+            </span>
           </Link>
 
           <Link
             href={ROUTES.FAVORITES}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
+            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <Heart className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-            <span className="font-bold text-foreground">{stats.favoriteCount}</span>
-            <span className="text-muted-foreground truncate">Favorites</span>
+            <div className="flex items-center gap-1 text-foreground group-hover:text-rose-500 transition-colors">
+              <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-500 shrink-0" />
+              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.favoriteCount}</span>
+            </div>
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+              Favorites
+            </span>
           </Link>
 
           <Link
             href={ROUTES.VIEW('notebook')}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
+            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <Highlighter className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="font-bold text-foreground">{stats.annotationCount}</span>
-            <span className="text-muted-foreground truncate">Notes</span>
+            <div className="flex items-center gap-1 text-foreground group-hover:text-amber-500 transition-colors">
+              <Highlighter className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-500 shrink-0" />
+              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.annotationCount}</span>
+            </div>
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+              Notes
+            </span>
           </Link>
 
           <Link
             href={ROUTES.BOOKSHELF}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
+            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-            <span className="font-bold text-foreground">{stats.customShelvesCount}</span>
-            <span className="text-muted-foreground truncate">Shelves</span>
+            <div className="flex items-center gap-1 text-foreground group-hover:text-purple-500 transition-colors">
+              <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-500 shrink-0" />
+              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.customShelvesCount}</span>
+            </div>
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+              Shelves
+            </span>
           </Link>
 
           <Link
             href={ROUTES.VIEW('bookmarks')}
-            className="inline-flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-mono whitespace-nowrap min-w-0 transition-colors"
+            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <Bookmark className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <span className="font-bold text-foreground">{stats.bookmarksCount}</span>
-            <span className="text-muted-foreground truncate">Bookmarks</span>
+            <div className="flex items-center gap-1 text-foreground group-hover:text-emerald-500 transition-colors">
+              <Bookmark className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-500 shrink-0" />
+              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.bookmarksCount}</span>
+            </div>
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+              Bookmarks
+            </span>
           </Link>
-
-          <button
-            type="button"
-            onClick={onOpenLibraryBreakdown}
-            className={`inline-flex items-center justify-center sm:justify-start gap-1 px-1.5 sm:px-2.5 py-1 rounded-xl border text-xs font-mono font-bold whitespace-nowrap min-w-0 transition-colors cursor-pointer ${
-              (stats.readingStreak ?? 0) > 0
-                ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
-                : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-            }`}
-          >
-            <span className="truncate">🔥 {stats.readingStreak ?? 0}d Streak</span>
-          </button>
         </div>
       )}
 

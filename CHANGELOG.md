@@ -808,3 +808,6 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-072: Full-Stack Schema Parity, Outbox Snapshot Concurrency Guards, Complete Session Teardown & Client-Side Portability Retirement**
 - **ADR-073: Custom ESLint AST Security Plugin, Intra-Procedural Request Taint Analysis & Pre-Commit Supply-Chain Hygiene Gates**
 - **ADR-074: Dynamic Spread-1 Passage Extraction, ASCII Border & Colophon Filtering, Newest Releases Proofreader Filtering & Truthful Bibliographic Placeholders**
+- **ADR-075: Tactile Bookshelf Spine Physics & Touch Selection Choreography**
+- **ADR-076: Mathematical Horizontal Alignment & Symmetric Shadow Physics for 3D Book Preview Spread**
+- **ADR-077: Scholar Sanctuary Ledger & Header Streak Badge in Account Identity Card**

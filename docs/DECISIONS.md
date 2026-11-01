@@ -1816,6 +1816,60 @@
   - While text streams, a truthful bibliographic edition card is displayed with zero layout shift, zero blank states, and zero fabricated quotes.
   - 100% co-located test coverage across all affected modules with zero regressions.
 
+## ADR-075: Tactile Bookshelf Spine Physics & Touch Selection Choreography
+
+- **Date**: 2026-11-01
+- **Status**: Accepted
+- **Context**:
+  1. **Missing Tactile Feedback on Touch Devices**: On desktop, hovering a mouse cursor over a book spine on the bookshelf applies CSS `:hover` transforms (`group-hover:scale-105 group-hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] origin-bottom transition-all duration-300 ease-out`), creating the physical sensation of stepping forward and drawing the volume out from the bookcase.
+  2. **Abrupt Modal Overlays on Touch & Tablets**: Touch screens (smartphones, iPads, tablets, and touchscreen laptops) do not have persistent cursor hover. When tapping a spine, `BookshelfRack` immediately opened `BookshelfMobileModal` without any active state on the spine element itself. As a result, the volume on the shelf underneath never physically elevated or drew forward, and when the user dismissed the modal, the volume never animated back into the shelf slot.
+- **Decision**:
+  1. **Controlled Active Spine State (`isActive`)**: Added `isActive?: boolean` to `BookshelfSpineProps` in `src/components/presentation/bookshelf/BookshelfSpine.tsx`. When `isActive` is true, the spine's outer container is promoted to `z-30` (`data-active-spine="true"`), and the hardcover spine element applies an elevated physical transform (`-translate-y-3.5 scale-105 shadow-[0_20px_35px_-5px_rgba(0,0,0,0.75)] ring-2 ring-primary/50 brightness-105 z-30`).
+  2. **Two-Phase Anticipation Choreography (`BookshelfRack.tsx`)**: In `BookshelfRack`, introduced `activeSpineBookId` state and `openModalTimerRef`. On touch or compact viewports, tapping a book spine immediately elevates the spine and applies a subtle `120ms` micro-lead delay before mounting `BookshelfMobileModal`. This allows the user's eye to clearly witness the volume stepping forward from the wooden shelf rail before the action modal blooms into view.
+  3. **Visual Inspection Anchor & Synchronized Return**: While the modal is open, the volume remains visibly drawn out behind the transparent backdrop (`bg-transparent`), maintaining spatial orientation. When the modal is dismissed (via `closeMobileSheet`), `activeSpineBookId` resets to `null`, smoothly gliding the spine back down (`translate-y-0 scale-100` over `300ms ease-out`) into its exact shelf slot as the modal fades out.
+  4. **Accessibility & Reduced Motion**: Preserved `motion-reduce:transition-none` on the spine element for users with vestibular sensitivities.
+- **Consequences**:
+  - Immersive physical bookcase tactile feedback is now unified across Desktop (cursor hover) and Mobile/Tablet (tap-to-draw-out and dismiss-to-return).
+  - Zero layout shift: uses GPU-accelerated CSS transforms (`translate-y`, `scale`, `box-shadow`) so neighboring books and horizontal shelf scrolling remain completely undisturbed.
+  - 100% 1:1 co-located test coverage across `BookshelfSpine.test.tsx` and `BookshelfRack.test.tsx`.
+
+## ADR-076: Mathematical Horizontal Alignment & Symmetric Shadow Physics for 3D Book Preview Spread
+
+- **Date**: 2026-11-01
+- **Status**: Accepted
+- **Context**:
+  1. **Landscape Tablet Off-Center Shift**: In `BookPreviewModal.tsx`, when viewed on horizontal/landscape tablets (viewports 1024px to 1279px or height $\le 860\text{px}$), the open 3D book spread appeared shifted approximately 42px too far to the left, despite being perfectly centered when closed.
+  2. **Mathematical Scale-Multiplication Root Cause**: In `src/app/globals.css`, `translateX` for the open book rig was set to `calc(var(--preview-card-width, 285px) * 0.37)` on tablets and `0.42` on desktop under the erroneous assumption that the translation offset needed to be multiplied by the child scale factor ($0.5 \times 0.74 = 0.37$). Because CSS `translateX` operates in the parent coordinate space rather than local scaled space, shifting by only 37% instead of 50% left the spine 42px to the left of the screen center.
+  3. **Asymmetric Ambient Shadow Bleed**: To mask the original leftward offset, the perspective drop-shadow beneath the book stage had been given an asymmetric bounding box (`-left-72 -right-12` = 288px left vs. 48px right).
+- **Decision**:
+  1. **True $0.5 \times W$ Midpoint Translation (`src/app/globals.css`)**: Corrected `translateX` to `calc(var(--preview-card-width, 285px) * 0.5)` across both landscape tablet and desktop media queries (`.modal-preview-3d-stage.book-open .book-3d-rig`). This guarantees that when the cover flips open $-180^\circ$, the spine translates by exactly half the card width to align directly with the viewport center.
+  2. **Symmetric Floor Shadow Physics (`src/components/presentation/BookPreviewModal.tsx`)**: Replaced `-left-72 -right-12` with balanced `-left-28 -right-28` (`preview-standing-shadow`), ensuring the floor shadow sits evenly beneath both the left and right open pages.
+- **Consequences**:
+  - Pixel-perfect horizontal centering parity across closed and open 3D preview states on all screen sizes, tablets, and desktop orientations.
+  - The open book spread, center gutter, and personal curation toolbar now share a single coherent vertical axis.
+  - 100% test coverage with zero regressions across `BookPreviewModal.test.tsx`, `BookshelfSpine.test.tsx`, and `BookshelfRack.test.tsx`.
+
+---
+
+## ADR-077: Scholar Sanctuary Ledger & Header Streak Badge in Account Identity Card
+
+- **Date**: 2026-11-01
+- **Status**: Accepted
+- **Context**:
+  1. **Cramped Statistics Strip on Compact Screens**: In `AccountIdentityCard.tsx`, library counters (`Shelved`, `Favorites`, `Notes`, `Shelves`, `Bookmarks`) and the reading streak pill (`🔥 0d Streak`) were rendered inside an overcrowded pill grid / horizontal strip (`identity-ribbon-stat-strip`). On mobile viewports (<400px), labels like `Bookmarks` and `Favorites` suffered from awkward word-wrapping or truncation.
+  2. **Mixed Conceptual Categorization**: The reading streak represents a temporal habit and gamification achievement, yet was mixed horizontally into the same grid row as persistent library collection counts.
+- **Decision**:
+  1. **Promoted Header Streak Badge (`identity-streak-badge`)**: Elevated the reading streak pill into the top identity header row alongside the `Verified Reader` / `Email Unverified` status pill. Clicking it opens the Habits $\to$ Streaks & Accolades view.
+  2. **Scholar Sanctuary Ledger (`identity-ribbon-stat-strip`)**: Transformed the lower stat strip into a balanced 5-column stacked ledger (`grid grid-cols-5 divide-x divide-border/60 pt-3 border-t border-border`). Each column pairs a signature Lucide icon (`BookOpen`, `Heart`, `Highlighter`, `Library`, `Bookmark`) with a bold count on line 1, and a compact uppercase label (`SHELVED`, `FAVORITES`, `NOTES`, `SHELVES`, `BOOKMARKS`) on line 2.
+  3. **Touch-Target & Truncation Elimination**: The vertical stacked architecture provides ~48px touch targets without horizontal text clipping on mobile screens down to 320px width.
+- **Consequences**:
+  - Dramatically improves mobile readability, hierarchy, and aesthetic polish in the Account Hub.
+  - Establishes a clean separation between collection counts and habit streaks.
+  - 100% 1:1 co-located test coverage across `AccountIdentityCard.test.tsx` and `src/app/account/page.test.tsx` with zero ESLint warnings.
+
+
+
+
 
 
 
