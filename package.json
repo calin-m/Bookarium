@@ -82,7 +82,7 @@
     "jsdom": "^25.0.1",
     "knip": "^6.41.0",
     "msw": "^2.15.0",
-    "postcss": "^8.5.30",
+    "postcss": "^8.5.32",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12"
