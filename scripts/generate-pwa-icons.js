@@ -1,7 +1,7 @@
 /**
- * Zero-dependency High-DPI PNG and ICO icon generator for Bookarium PWA & browser tab assets.
- * Generates vector-accurate, 4x4 Sub-Pixel Anti-Aliased (SSAA) PNGs and binary multi-res ICO files
- * using the authentic Bookarium terracotta squircle (#b8731d) and open-book emblem.
+ * Zero-dependency High-DPI Analytical SDF PNG, SVG, and ICO icon generator for Bookarium PWA & browser tab assets.
+ * Renders the exact Lucide `BookOpen` vector geometry on the editorial terracotta squircle (#c05621)
+ * with analytical Signed Distance Field (SDF) sub-pixel anti-aliasing across 16x16 through 1024x1024.
  */
 
 const fs = require('fs');
@@ -45,75 +45,107 @@ function createChunk(type, data) {
   return chunk;
 }
 
-/**
- * Checks if normalized coordinates (nx, ny) in [0, 32] space fall inside the Bookarium Open-Book emblem.
- */
-function isInsideBookEmblem(nx, ny) {
-  // Center spine divider check
-  if (Math.abs(nx - 16) < 0.65 && ny >= 11 && ny <= 24.2) {
-    return false;
-  }
+function clamp(val, min, max) {
+  return val < min ? min : val > max ? max : val;
+}
 
-  // Left Page
-  if (nx >= 7 && nx <= 18.8 && ny >= 8 && ny <= 24) {
-    // Top right outer arc (from (15, 8) to (19, 12))
-    if (nx > 15 && ny < 12) {
-      if (Math.hypot(nx - 15, ny - 12) > 4) {
-        return false;
-      }
-    }
-    // Bottom curve sweep (concave cutoff from (15.5, 21) to (19, 24))
-    if (nx > 15.5 && ny > 21) {
-      const ex = (nx - 15.5) / 3.5;
-      const ey = (24 - ny) / 3.0;
-      if (ex * ex + ey * ey < 1.0) {
-        return false;
-      }
-    } else if (nx <= 15.5 && ny > 21) {
-      return false;
-    }
-    return true;
-  }
-
-  // Right Page (Symmetrical across nx = 16)
-  const rnx = 32 - nx;
-  if (rnx >= 7 && rnx <= 18.8 && ny >= 8 && ny <= 24) {
-    if (rnx > 15 && ny < 12) {
-      if (Math.hypot(rnx - 15, ny - 12) > 4) {
-        return false;
-      }
-    }
-    if (rnx > 15.5 && ny > 21) {
-      const ex = (rnx - 15.5) / 3.5;
-      const ey = (24 - ny) / 3.0;
-      if (ex * ex + ey * ey < 1.0) {
-        return false;
-      }
-    } else if (rnx <= 15.5 && ny > 21) {
-      return false;
-    }
-    return true;
-  }
-
-  return false;
+function smoothstep(edge0, edge1, x) {
+  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
 }
 
 /**
- * Checks if (nx, ny) in [0, 32] space falls inside the rounded squircle.
+ * Exact Euclidean distance from point (px, py) to line segment (ax, ay) -> (bx, by).
  */
-function isInsideSquircle(nx, ny, rx = 7, size = 32) {
+function distToSegment(px, py, ax, ay, bx, by) {
+  const vx = bx - ax;
+  const vy = by - ay;
+  const wx = px - ax;
+  const wy = py - ay;
+  const lenSq = vx * vx + vy * vy;
+  const t = lenSq > 0 ? clamp((wx * vx + wy * vy) / lenSq, 0, 1) : 0;
+  return Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
+}
+
+/**
+ * Exact Euclidean distance from point (px, py) to a 90-degree circular arc centered at (cx, cy)
+ * with radius `r` in quadrant signs (qx, qy) in {-1, +1}.
+ */
+function distToQuarterArc(px, py, cx, cy, r, qx, qy) {
+  const dx = (px - cx) * qx;
+  const dy = (py - cy) * qy;
+  if (dx >= 0 && dy >= 0) {
+    return Math.abs(Math.hypot(dx, dy) - r);
+  }
+  return Math.min(Math.hypot(dx - r, dy), Math.hypot(dx, dy - r));
+}
+
+/**
+ * Computes exact signed distance from normalized (nx, ny) in [0, 32] space to the Lucide `BookOpen`
+ * vector wireframe (`24x24` viewBox scaled into `[0, 32]`), returning stroke coverage in [0, 1].
+ */
+function getBookOpenStrokeCoverage(nx, ny, normPixelSize) {
+  // Map [0, 32] space into Lucide [0, 24] coordinate space with 0.78 scale (18.72 / 32 footprint)
+  const scaleTo32 = 0.78;
+  const lx = (nx - 16) / scaleTo32 + 12;
+  const ly = (ny - 16) / scaleTo32 + 12;
+
+  if (lx < -1 || lx > 25 || ly < -1 || ly > 25) {
+    return 0;
+  }
+
+  // Fold across horizontal symmetry axis lx = 12
+  const sx = 12 - Math.abs(lx - 12);
+
+  // 1. Center spine vertical segment: (12, 7) -> (12, 21)
+  let d = distToSegment(sx, ly, 12, 7, 12, 21);
+
+  // 2. Top page horizontal edge: (3, 3) -> (8, 3)
+  d = Math.min(d, distToSegment(sx, ly, 3, 3, 8, 3));
+
+  // 3. Top-left outer rounded corner: center (3, 4), r = 1, quadrant (-1, -1)
+  d = Math.min(d, distToQuarterArc(sx, ly, 3, 4, 1, -1, -1));
+
+  // 4. Outer page vertical edge: (2, 4) -> (2, 17)
+  d = Math.min(d, distToSegment(sx, ly, 2, 4, 2, 17));
+
+  // 5. Bottom-left outer rounded corner: center (3, 17), r = 1, quadrant (-1, +1)
+  d = Math.min(d, distToQuarterArc(sx, ly, 3, 17, 1, -1, 1));
+
+  // 6. Bottom page horizontal edge: (3, 18) -> (9, 18)
+  d = Math.min(d, distToSegment(sx, ly, 3, 18, 9, 18));
+
+  // 7. Top-inner page curve toward spine: center (8, 7), r = 4, quadrant (+1, -1)
+  d = Math.min(d, distToQuarterArc(sx, ly, 8, 7, 4, 1, -1));
+
+  // 8. Bottom-inner page curve toward spine: center (9, 21), r = 3, quadrant (+1, -1)
+  d = Math.min(d, distToQuarterArc(sx, ly, 9, 21, 3, 1, -1));
+
+  // Convert Lucide distance back to [0, 32] space and apply half-stroke width
+  const halfStrokeInLucide = 1.08; // 2.16px stroke width in 24x24 space
+  const signedDist32 = (d - halfStrokeInLucide) * scaleTo32;
+  const aaRadius = Math.max(normPixelSize * 0.65, 0.02);
+
+  return 1 - smoothstep(-aaRadius, aaRadius, signedDist32);
+}
+
+/**
+ * Signed distance to the rounded squircle centered at (16, 16) with half-size 16 and corner radius rx.
+ * Returns coverage in [0, 1].
+ */
+function getSquircleCoverage(nx, ny, normPixelSize, rx = 7, size = 32) {
   const half = size / 2;
-  const dx = Math.abs(nx - half);
-  const dy = Math.abs(ny - half);
-  if (dx > half || dy > half) return false;
-
-  const cornerX = Math.max(0, dx - (half - rx));
-  const cornerY = Math.max(0, dy - (half - rx));
-  return cornerX * cornerX + cornerY * cornerY <= rx * rx;
+  const qx = Math.abs(nx - half) - (half - rx);
+  const qy = Math.abs(ny - half) - (half - rx);
+  const outsideDist = Math.hypot(Math.max(qx, 0), Math.max(qy, 0));
+  const insideDist = Math.min(Math.max(qx, qy), 0);
+  const signedDist = outsideDist + insideDist - rx;
+  const aaRadius = Math.max(normPixelSize * 0.65, 0.02);
+  return 1 - smoothstep(-aaRadius, aaRadius, signedDist);
 }
 
 /**
- * Generates an ultra-crisp, 4x4 Sub-Pixel Anti-Aliased (SSAA) PNG buffer.
+ * Generates an analytical SDF-antialiased PNG buffer at the requested resolution.
  */
 function generatePng(size, { isMaskable = false, isOpaque = false } = {}) {
   const width = size;
@@ -121,72 +153,40 @@ function generatePng(size, { isMaskable = false, isOpaque = false } = {}) {
   const rowSize = 1 + width * 4;
   const rawData = Buffer.alloc(rowSize * height);
 
-  // Brand Palette
-  const brandR = 184, brandG = 115, brandB = 29; // #b8731d warm terracotta
-  const whiteR = 255, whiteG = 255, whiteB = 255; // #ffffff
-  const subOffsets = [0.125, 0.375, 0.625, 0.875];
-  const numSamples = subOffsets.length * subOffsets.length; // 16 samples per pixel
+  // Brand Palette: #c05621 editorial orange (matching --primary in globals.css)
+  const brandR = 192;
+  const brandG = 86;
+  const brandB = 33;
+  const whiteR = 255;
+  const whiteG = 255;
+  const whiteB = 255;
+
+  const scaleFactor = isMaskable ? 0.66 : isOpaque ? 1.0 : 0.94;
+  const normPixelSize = 32 / (size * scaleFactor);
 
   for (let py = 0; py < height; py++) {
     const rowOffset = py * rowSize;
     rawData[rowOffset] = 0; // Filter: None
+    const normY = ((py + 0.5) / height - 0.5) / scaleFactor * 32 + 16;
 
     for (let px = 0; px < width; px++) {
-      let accR = 0;
-      let accG = 0;
-      let accB = 0;
-      let accA = 0;
+      const normX = ((px + 0.5) / width - 0.5) / scaleFactor * 32 + 16;
 
-      for (const ox of subOffsets) {
-        for (const oy of subOffsets) {
-          const sx = px + ox;
-          const sy = py + oy;
+      const squircleCov =
+        isMaskable || isOpaque ? 1.0 : getSquircleCoverage(normX, normY, normPixelSize, 7, 32);
 
-          if (isMaskable) {
-            // Maskable: Full-bleed #b8731d background, BookOpen scaled inside 80% safe zone
-            const safeScale = 0.62;
-            const normX = (sx / width - 0.5) / safeScale * 32 + 16;
-            const normY = (sy / height - 0.5) / safeScale * 32 + 16;
+      let finalR = 0;
+      let finalG = 0;
+      let finalB = 0;
+      let finalA = 0;
 
-            if (normX >= 0 && normX <= 32 && normY >= 0 && normY <= 32 && isInsideBookEmblem(normX, normY)) {
-              accR += whiteR;
-              accG += whiteG;
-              accB += whiteB;
-            } else {
-              accR += brandR;
-              accG += brandG;
-              accB += brandB;
-            }
-            accA += 255;
-          } else {
-            // Standard / Any icon: Centered squircle on transparent canvas
-            const padRatio = 0.94; // slight 3% breathing margin for clean roundings
-            const normX = (sx / width - 0.5) / padRatio * 32 + 16;
-            const normY = (sy / height - 0.5) / padRatio * 32 + 16;
-
-            if (normX >= 0 && normX <= 32 && normY >= 0 && normY <= 32 && isInsideSquircle(normX, normY, 7, 32)) {
-              if (isInsideBookEmblem(normX, normY)) {
-                accR += whiteR;
-                accG += whiteG;
-                accB += whiteB;
-              } else {
-                accR += brandR;
-                accG += brandG;
-                accB += brandB;
-              }
-              accA += 255;
-            } else {
-              // Outside squircle: transparent
-              accA += 0;
-            }
-          }
-        }
+      if (squircleCov > 0) {
+        const strokeCov = getBookOpenStrokeCoverage(normX, normY, normPixelSize);
+        finalR = Math.round(brandR + (whiteR - brandR) * strokeCov);
+        finalG = Math.round(brandG + (whiteG - brandG) * strokeCov);
+        finalB = Math.round(brandB + (whiteB - brandB) * strokeCov);
+        finalA = Math.round(squircleCov * 255);
       }
-
-      const finalA = Math.round(accA / numSamples);
-      const finalR = finalA > 0 ? Math.round(accR / numSamples) : 0;
-      const finalG = finalA > 0 ? Math.round(accG / numSamples) : 0;
-      const finalB = finalA > 0 ? Math.round(accB / numSamples) : 0;
 
       const idx = rowOffset + 1 + px * 4;
       rawData[idx] = finalR;
@@ -241,22 +241,37 @@ function generateIco(entries) {
   return Buffer.concat([header, ...dirEntries, ...entries.map((e) => e.png)]);
 }
 
+// 1. Generate scalable vector public/icon.svg with exact Lucide BookOpen geometry on #c05621 squircle
+const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="512" height="512" fill="none">
+  <rect width="32" height="32" rx="7" fill="#c05621"/>
+  <g transform="translate(6.64 6.64) scale(0.78)" stroke="#ffffff" stroke-width="2.16" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 7v14"/>
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
+  </g>
+</svg>
+`;
+const svgTarget = path.join(publicDir, 'icon.svg');
+fs.writeFileSync(svgTarget, svgContent, 'utf8');
+console.log(`Generated: ${svgTarget} (vector SVG with Lucide BookOpen geometry)`);
+
+// 2. Generate High-DPI PNG icon suite (192, 512, 1024, maskable, and 512x512 apple-touch-icon)
 const icons = [
   { name: 'icon-192.png', size: 192, isMaskable: false, isOpaque: false },
   { name: 'icon-512.png', size: 512, isMaskable: false, isOpaque: false },
+  { name: 'icon-1024.png', size: 1024, isMaskable: false, isOpaque: false },
   { name: 'icon-maskable-192.png', size: 192, isMaskable: true, isOpaque: true },
   { name: 'icon-maskable-512.png', size: 512, isMaskable: true, isOpaque: true },
-  { name: 'apple-touch-icon.png', size: 180, isMaskable: false, isOpaque: false },
+  { name: 'apple-touch-icon.png', size: 512, isMaskable: false, isOpaque: true },
 ];
 
 for (const icon of icons) {
   const buf = generatePng(icon.size, { isMaskable: icon.isMaskable, isOpaque: icon.isOpaque });
   const target = path.join(outDir, icon.name);
   fs.writeFileSync(target, buf);
-  console.log(`Generated: ${target} (${icon.size}x${icon.size}, maskable=${icon.isMaskable})`);
+  console.log(`Generated: ${target} (${icon.size}x${icon.size}, maskable=${icon.isMaskable}, opaque=${icon.isOpaque})`);
 }
 
-// Generate multi-resolution binary favicon.ico (16x16, 32x32, 48x48)
+// 3. Generate multi-resolution binary favicon.ico (16x16, 32x32, 48x48)
 const icoSizes = [16, 32, 48];
 const icoEntries = icoSizes.map((size) => ({
   size,

@@ -77,9 +77,9 @@ export const metadata: Metadata = {
       'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
     images: [
       {
-        url: '/icons/apple-touch-icon.png',
-        width: 180,
-        height: 180,
+        url: '/icons/apple-touch-icon.png?v=2',
+        width: 512,
+        height: 512,
         alt: 'Bookarium Logo',
       },
     ],
@@ -89,7 +89,7 @@ export const metadata: Metadata = {
     title: 'Bookarium | Zero-Copyright Public Domain Library',
     description:
       'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
-    images: ['/icons/apple-touch-icon.png'],
+    images: ['/icons/apple-touch-icon.png?v=2'],
   },
   robots: {
     index: true,
@@ -110,10 +110,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/icon.svg?v=2', type: 'image/svg+xml' },
+      { url: '/favicon.ico?v=2', sizes: '32x32', type: 'image/x-icon' },
     ],
-    apple: '/icons/apple-touch-icon.png',
+    apple: '/icons/apple-touch-icon.png?v=2',
   },
 };
 

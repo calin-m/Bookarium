@@ -90,7 +90,7 @@ describe('src/config configuration modules', () => {
         authors: [{ name: 'Unknown Author' }],
         subjects: ['Philosophy'],
       });
-      expect(genericPassages.length).toBe(3);
+      expect(genericPassages.length).toBe(1);
       expect(genericPassages[0].openingLine).toContain('Unknown Volume');
     });
 

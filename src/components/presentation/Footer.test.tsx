@@ -10,9 +10,17 @@ describe('Footer component', () => {
     expect(screen.getByText(/Sources & Credits/i)).toBeInTheDocument();
     expect(screen.getByText(/Project Gutenberg Archive/i)).toBeInTheDocument();
     expect(screen.getByText(/Gutendex REST API/i)).toBeInTheDocument();
+    expect(screen.getByText(/Wikidata Knowledge Graph/i)).toBeInTheDocument();
     expect(screen.getByText(/Booksaw UI Template \(CC BY 4\.0\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Google Antigravity \(AI Co-Engineer\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Zero API Keys Required/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/streaming 70,000\+ public domain volumes from Project Gutenberg/i)
+    ).toBeInTheDocument();
+
+    const wikidataLink = screen.getByRole('link', { name: /Wikidata Knowledge Graph/i });
+    expect(wikidataLink).toHaveAttribute('href', 'https://www.wikidata.org');
+    expect(wikidataLink).toHaveAttribute('target', '_blank');
 
     const booksawLink = screen.getByRole('link', { name: /Booksaw UI Template/i });
     expect(booksawLink).toHaveAttribute(

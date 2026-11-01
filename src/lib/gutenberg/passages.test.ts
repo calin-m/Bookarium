@@ -138,5 +138,178 @@ Paragraph four brings the narrative towards its final moments.
     expect(passages[1].chapterLabel).toContain('Act II');
     expect(passages[2].chapterLabel).toContain('Act III');
   });
+
+  it('filters out Distributed Proofreading and Transcriber boilerplate in Newest Releases', () => {
+    const newestReleaseText = `
+*** START OF THE PROJECT GUTENBERG EBOOK NEWEST RELEASE ***
+
+Produced by Greg Weeks and the Online Distributed Proofreading Team at https://www.pgdp.net
+
+Transcriber's Note: Extensive research found no evidence that the copyright was renewed.
+
+[Illustration: Frontispiece portrait of the author in 1910]
+
+CHAPTER I
+
+The real narrative begins with genuine prose and storytelling after the front matter.
+"Here is the authentic dialogue spoken by the characters in chapter one."
+
+CHAPTER II
+
+Continuing the adventure into the next chapter with excitement.
+"Here is another authentic quote from the subsequent events."
+
+*** END OF THE PROJECT GUTENBERG EBOOK NEWEST RELEASE ***
+`;
+    const passages = extractDynamicBookPassages(newestReleaseText, {
+      id: 74500,
+      title: 'Newest Release Volume',
+      authors: [{ name: 'Modern Contributor' }],
+    });
+
+    expect(passages.length).toBeGreaterThanOrEqual(1);
+    expect(passages[0].openingLine).not.toContain('Distributed Proofreading');
+    expect(passages[0].openingLine).not.toContain('Transcriber');
+    expect(passages[0].openingLine).not.toContain('Illustration');
+    expect(passages[0].openingLine).toContain('The real narrative begins');
+    expect(passages[0].quoteExcerpt).toContain('authentic dialogue');
+  });
+
+  it('does not duplicate opening line into secondary or tertiary quotes on short chapters', () => {
+    const shortChapterText = `
+*** START OF THE PROJECT GUTENBERG EBOOK SHORT ***
+CHAPTER I
+Only a single paragraph exists in this concise chapter for test purposes.
+*** END OF THE PROJECT GUTENBERG EBOOK SHORT ***
+`;
+    const passages = extractDynamicBookPassages(shortChapterText, {
+      id: 999,
+      title: 'Short Chapter Volume',
+    });
+
+    expect(passages.length).toBeGreaterThanOrEqual(1);
+    expect(passages[0].openingLine).toContain('Only a single paragraph exists');
+    // Secondary, left2, right2, and tertiary should NOT be duplicates of openingLine
+    expect(passages[0].secondaryQuote).toBeUndefined();
+    expect(passages[0].leftPageQuote2).toBeUndefined();
+    expect(passages[0].rightPageQuote2).toBeUndefined();
+    expect(passages[0].tertiaryQuote).toBeUndefined();
+  });
+
+  it('filters out ASCII divider rules, framed copyright colophons, and underscore blank lines (reproducing book #79835)', () => {
+    const freudBookText = `
+The Project Gutenberg eBook of Inhibition, Symptom and Anxiety, by Sigmund Freud
+
+*** START OF THE PROJECT GUTENBERG EBOOK INHIBITION, SYMPTOM AND ANXIETY ***
+
+------------------------------------------------------------------------
+                             Copyright 1927
+                    By The Psychoanalytic Institute
+------------------------------------------------------------------------
+
+________________________________________________________________________
+
+"_____________________"
+
+CHAPTER I
+
+------------------------------------------------------------------------ Copyright 1927 ------------------------------------------------------------------------
+
+_____________________
+
+In the consideration of symptoms and inhibitions we are led to examine the nature of mental conflict and defense mechanisms.
+
+"The ego is the actual seat of anxiety; it perceives danger and initiates the defensive reaction."
+
+"A symptom is a sign of, and a substitute for, an instinctual satisfaction which has remained in abeyance."
+
+________________________________________________________________________
+Footnotes:
+[1] See Introductory Lectures on Psychoanalysis, 1916.
+
+CHAPTER II
+
+Defense against instinctual demands creates the clinical picture of neurosis in human experience. The symptom is born of the struggle between the ego and the repressed wishes that continually strive for consciousness and active expression.
+
+"Anxiety is a reaction to a situation of danger, and it is obviated by the ego doing something to avoid it."
+
+*** END OF THE PROJECT GUTENBERG EBOOK INHIBITION, SYMPTOM AND ANXIETY ***
+`;
+
+    const passages = extractDynamicBookPassages(freudBookText, {
+      id: 79835,
+      title: 'Inhibition, Symptom and Anxiety',
+      authors: [{ name: 'Freud, Sigmund' }],
+      subjects: ['Psychoanalysis'],
+    });
+
+    expect(passages.length).toBeGreaterThanOrEqual(1);
+
+    // Verify none of the passage fields contain divider rules, copyright colophons, or underscore blanks
+    for (const p of passages) {
+      expect(p.openingLine).not.toContain('Copyright 1927');
+      expect(p.openingLine).not.toContain('----------------');
+      expect(p.openingLine).not.toContain('________________');
+      expect(p.openingLine).not.toContain('____');
+
+      expect(p.quoteExcerpt).not.toContain('Copyright 1927');
+      expect(p.quoteExcerpt).not.toContain('----------------');
+      expect(p.quoteExcerpt).not.toContain('________________');
+
+      if (p.secondaryQuote) {
+        expect(p.secondaryQuote).not.toContain('Copyright 1927');
+        expect(p.secondaryQuote).not.toContain('----------------');
+        expect(p.secondaryQuote).not.toContain('________________');
+      }
+    }
+
+    // Verify that genuine prose from Freud's work is extracted
+    expect(passages[0].openingLine).toContain('In the consideration of symptoms and inhibitions');
+    expect(passages[0].quoteExcerpt).toContain('The ego is the actual seat of anxiety');
+    expect(passages[0].secondaryQuote).toContain('A symptom is a sign of');
+  });
+
+  it('rejects quoted blanks and horizontal dividers in unsegmented single-text books', () => {
+    const singleBookWithArtifacts = `
+*** START OF THE PROJECT GUTENBERG EBOOK DIVIDERS ***
+
+------------------------------------------------------------------------
+Copyright 1925 by Academic Publishing Group. All rights reserved.
+------------------------------------------------------------------------
+
+________________________________________________________________________
+
+"_____________________"
+
+The beginning of the narrative begins with thoughtful observations upon human society and natural history.
+
+"Real dialogue is spoken by real people who discuss genuine philosophical questions."
+
+"Another authentic quote containing sufficient words and wisdom to be shared."
+
+________________________________________________________________________
+[Footnote 1: Citations and historical references]
+
+*** END OF THE PROJECT GUTENBERG EBOOK DIVIDERS ***
+`;
+
+    const passages = extractDynamicBookPassages(singleBookWithArtifacts, {
+      id: 79999,
+      title: 'Philosophical Discourse',
+    });
+
+    expect(passages.length).toBeGreaterThanOrEqual(1);
+    for (const p of passages) {
+      expect(p.openingLine).not.toContain('----------------');
+      expect(p.openingLine).not.toContain('________________');
+      expect(p.openingLine).not.toContain('Copyright 1925');
+      expect(p.quoteExcerpt).not.toContain('----------------');
+      expect(p.quoteExcerpt).not.toContain('________________');
+      expect(p.quoteExcerpt).not.toContain('Copyright 1925');
+    }
+    expect(passages[0].openingLine).toContain('The beginning of the narrative begins');
+    expect(passages[1].openingLine).toContain('Real dialogue is spoken');
+    expect(passages[2].openingLine).toContain('Another authentic quote');
+  });
 });
 

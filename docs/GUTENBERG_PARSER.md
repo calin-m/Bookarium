@@ -46,7 +46,10 @@ All limits, thresholds, and window sizes are centralized in `src/lib/gutenberg/t
 | `ANTHOLOGY_MIN_DISTANCE_CHARS` | `1000` | Minimum character distance between anthology story headings to prevent over-segmentation |
 | `MIN_PARAGRAPH_LENGTH` | `35` | Minimum character threshold for a paragraph to be eligible for dynamic quote extraction |
 | `MAX_PARAGRAPH_LENGTH` | `800` | Maximum character threshold for quote extraction candidates |
+| `MIN_PASSAGE_LETTERS` | `25` | Pipeline threshold |
+| `MIN_ALPHABETIC_DENSITY` | `0.5` | Pipeline threshold |
 | `MIN_QUOTE_LENGTH` | `15` | Minimum character length of an inner dialogue quote string |
+| `MIN_QUOTE_LETTERS` | `15` | Pipeline threshold |
 | `DEFAULT_QUOTE_MAX_LEN` | `220` | Maximum excerpt length before adding ellipses truncation |
 
 ---

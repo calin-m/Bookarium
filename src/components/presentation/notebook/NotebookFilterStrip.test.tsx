@@ -25,6 +25,10 @@ describe('NotebookFilterStrip', () => {
       />
     );
 
+    const strip = screen.getByTestId('notebook-color-tabs');
+    expect(strip).toHaveClass('w-fit', 'max-w-full', 'select-none');
+    expect(strip).not.toHaveClass('cursor-grab');
+
     expect(screen.getByTestId('notebook-source-all')).toHaveTextContent('All Marginalia4');
     expect(screen.getByTestId('notebook-source-mine')).toHaveTextContent('My Marginalia3');
     expect(screen.getByTestId('notebook-source-fellows')).toHaveTextContent("Fellows' Marginalia2");

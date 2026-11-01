@@ -12,7 +12,7 @@ describe('Web App Manifest (PWA)', () => {
     expect(data.start_url).toBe('/');
     expect(data.display).toBe('standalone');
     expect(data.background_color).toBe('#fcfbf9');
-    expect(data.theme_color).toBe('#0e1117');
+    expect(data.theme_color).toBe('#c05621');
     expect(data.categories).toContain('books');
   });
 
@@ -20,11 +20,13 @@ describe('Web App Manifest (PWA)', () => {
     const { icons } = manifest();
 
     expect(icons).toBeDefined();
-    expect(icons?.length).toBeGreaterThanOrEqual(4);
+    expect(icons?.length).toBeGreaterThanOrEqual(6);
 
     const sizes = icons?.map((i) => i.sizes);
+    expect(sizes).toContain('any');
     expect(sizes).toContain('192x192');
     expect(sizes).toContain('512x512');
+    expect(sizes).toContain('1024x1024');
 
     const purposes = icons?.map((i) => i.purpose);
     expect(purposes).toContain('any');

@@ -661,67 +661,32 @@ export function getBookPassages(book: {
         chapterLabel: 'Chapter I • The Opening Incipit',
         openingLine: featured.openingLine,
         secondaryQuote: `“In the unfolding story of ${featured.title}, ${featured.author} explores timeless truths across ${featured.primarySubject.toLowerCase()}.”`,
-        leftPageQuote2: '“A classic is a book that has never finished saying what it has to say.”',
         quoteExcerpt: featured.quoteExcerpt,
-        rightPageQuote2: '“Books are the quietest and most constant of friends; they are the most accessible and wisest of counselors.”',
-        tertiaryQuote: '“To read without reflecting is like eating without digesting.”',
         commentary: `Preserved in complete unabridged form in the worldwide public domain (${featured.year}).`,
-      },
-      {
-        chapterLabel: 'Act II • Notable Dialogue & Passages',
-        openingLine: `“Here the narrative of ${featured.title} deepens into reflection, capturing the unique literary voice of ${featured.author}.”`,
-        secondaryQuote: '“The reading of all good books is like conversation with the finest minds of past centuries.”',
-        leftPageQuote2: '“There is no friend as loyal as a book.”',
-        quoteExcerpt: '“Books are a uniquely portable magic, carrying thought and imagination across centuries without decay.”',
-        rightPageQuote2: '“A room without books is like a body without a soul.”',
-        tertiaryQuote: '“Once you learn to read, you will be forever free.”',
-        commentary: `Historical preservation under open public domain licensing (${featured.year}).`,
-      },
-      {
-        chapterLabel: 'Act III • Climactic Reflections',
-        openingLine: `“As the masterwork reaches its conclusion, ${featured.author} reflects on the enduring questions of human nature.”`,
-        secondaryQuote: '“To acquire the habit of reading is to construct for yourself a refuge from almost all the miseries of life.”',
-        leftPageQuote2: '“I have always imagined that Paradise will be a kind of library.”',
-        quoteExcerpt: '“Reading furnishes the mind only with materials of knowledge; it is thinking that makes what we read ours.”',
-        rightPageQuote2: '“A great book should leave you with many experiences, and slightly exhausted at the end.”',
-        tertiaryQuote: '“Knowledge is the common property of all mankind.”',
-        commentary: 'Dedicated to open scholarship and universal literary access.',
       },
     ];
   }
 
   return [
     {
-      chapterLabel: 'Chapter I • Opening Incipit',
-      openingLine: `“Here begins the timeless account of ${book.title}, a celebrated work by ${author} touching upon ${subject.toLowerCase()}.”`,
-      secondaryQuote: '“A room without books is like a body without a soul.”',
-      leftPageQuote2: '“Once you learn to read, you will be forever free.”',
-      quoteExcerpt: `“Reading furnishes the mind only with materials of knowledge; it is thinking that makes what we read ours.” Discover the complete unabridged edition by ${author}.`,
-      rightPageQuote2: '“The reading of all good books is like conversation with the finest minds of past centuries.”',
-      tertiaryQuote: '“There is no friend as loyal as a book.”',
-      commentary: `Preserved within the Project Gutenberg archive as ID #${book.id}.`,
-    },
-    {
-      chapterLabel: 'Act II • Literary Reflections',
-      openingLine: `“Preserved across generations, ${book.title} stands as a testament to historical scholarship and human creativity in ${subject.toLowerCase()}.”`,
-      secondaryQuote: '“Books are the quietest and most constant of friends; they are the most accessible and wisest of counselors.”',
-      leftPageQuote2: '“To read without reflecting is like eating without digesting.”',
-      quoteExcerpt: `“A classic is a book that has never finished saying what it has to say.” Explore the complete digital text crafted by ${author}.`,
-      rightPageQuote2: '“To acquire the habit of reading is to construct for yourself a refuge from almost all the miseries of life.”',
-      tertiaryQuote: '“I have always imagined that Paradise will be a kind of library.”',
-      commentary: 'Transcribed from original physical editions into open UTF-8 format.',
-    },
-    {
-      chapterLabel: 'Act III • Colophon & Preservation',
-      openingLine: `“This open edition of ${book.title} by ${author} is preserved freely in the worldwide public domain for all readers.”`,
-      secondaryQuote: '“Knowledge is the common property of all mankind.”',
-      leftPageQuote2: '“Books are a uniquely portable magic.”',
-      quoteExcerpt: '“A great book should leave you with many experiences, and slightly exhausted at the end. You live several lives while reading.”',
-      rightPageQuote2: '“Dedicated to open access, preservation of human culture, and universal digital learning.”',
-      tertiaryQuote: '“Accessible on all devices without paywalls or subscriptions.”',
-      commentary: 'Zero DRM, zero authentication, preserved under CC0 public domain dedication.',
+      chapterLabel: 'Volume Information • Project Gutenberg Archive',
+      openingLine: `“${book.title}” is an authentic public domain volume preserved in the Project Gutenberg archive (ID #${book.id}).`,
+      secondaryQuote: author !== 'the author' ? `Preserved work by ${author}.` : undefined,
+      quoteExcerpt: `Extracting authentic passages from this volume… Streaming unabridged text from Project Gutenberg touching upon ${subject.toLowerCase()} to parse narrative chapters, dialogue, and notable quotes.`,
+      commentary: `Preserved within the worldwide public domain archive as Gutenberg ID #${book.id}.`,
     },
   ];
+}
+
+/**
+ * Checks whether a volume has authentic hand-curated multi-quote spreads
+ * or should strictly prioritize dynamic passage extraction from its unabridged text.
+ */
+export function hasCuratedBookPassages(bookId: number, title?: string): boolean {
+  if (!bookId) return false;
+  return FEATURED_HERO_BOOKS.some(
+    (f) => f.id === bookId || (Boolean(title) && f.title.toLowerCase() === title!.toLowerCase())
+  );
 }
 
 /**

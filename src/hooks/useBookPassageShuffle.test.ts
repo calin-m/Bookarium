@@ -90,4 +90,32 @@ describe('useBookPassageShuffle', () => {
     expect(result.current.activePassageIndex).toBe(0);
     expect(result.current.isTurningLeaf).toBe(false);
   });
+
+  it('correctly sets isCuratedFeatured flag and prioritizes dynamic passages for non-featured books', async () => {
+    const { result } = renderHook(
+      () =>
+        useBookPassageShuffle({
+          id: 88888,
+          title: 'Arbitrary Catalog Novel',
+          authors: [{ name: 'Independent Writer' }],
+          subjects: ['Literature'],
+        }),
+      { wrapper: createWrapper() }
+    );
+
+    expect(result.current.isCuratedFeatured).toBe(false);
+
+    // Initial state before query resolution shows the single bibliographic edition spread
+    expect(result.current.currentPassage.chapterLabel).toContain('Volume Information');
+
+    // Wait for useBookContent query to resolve from MSW
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    // Once rawBookText is resolved, dynamic passages take over Spread 1 (passages[0])
+    expect(result.current.passages.length).toBeGreaterThan(0);
+    expect(result.current.currentPassage.openingLine).toBeDefined();
+    expect(result.current.currentPassage.chapterLabel).not.toContain('Volume Information');
+  });
 });

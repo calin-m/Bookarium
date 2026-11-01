@@ -3,6 +3,7 @@ import {
   FEATURED_HERO_BOOKS,
   FEATURED_HERO_BOOK,
   getBookPassages,
+  hasCuratedBookPassages,
   getJurisdictionSafeFeaturedBooks,
   getHourlyHeroBook,
   getDailyEditorialBook,
@@ -13,6 +14,16 @@ describe('featured-books configuration & passage selectors', () => {
     expect(FEATURED_HERO_BOOKS.length).toBeGreaterThanOrEqual(20);
     expect(FEATURED_HERO_BOOK.id).toBe(1342);
     expect(FEATURED_HERO_BOOK.title).toBe('Pride and Prejudice');
+  });
+
+  describe('hasCuratedBookPassages', () => {
+    it('identifies curated featured classic volumes by id or case-insensitive title', () => {
+      expect(hasCuratedBookPassages(1342)).toBe(true);
+      expect(hasCuratedBookPassages(2600)).toBe(true);
+      expect(hasCuratedBookPassages(99999, 'the metamorphosis')).toBe(true);
+      expect(hasCuratedBookPassages(77777, 'Treatise on Astronomy')).toBe(false);
+      expect(hasCuratedBookPassages(0)).toBe(false);
+    });
   });
 
   describe('getBookPassages', () => {
@@ -26,35 +37,39 @@ describe('featured-books configuration & passage selectors', () => {
       }
     });
 
-    it('returns 3-act featured passages for other featured books matched by ID or case-insensitive title', () => {
+    it('returns authentic featured passages for other featured books without fabricated quotes', () => {
       const byId = getBookPassages({ id: 2600, title: 'War and Peace' });
-      expect(byId).toHaveLength(3);
+      expect(byId).toHaveLength(1);
       expect(byId[0].chapterLabel).toContain('The Opening Incipit');
       expect(byId[0].secondaryQuote).toContain('Leo Tolstoy');
+      expect(byId[0].quoteExcerpt).toBeDefined();
 
       const byTitle = getBookPassages({ id: 999991, title: 'the metamorphosis' });
-      expect(byTitle).toHaveLength(3);
+      expect(byTitle).toHaveLength(1);
       expect(byTitle[0].secondaryQuote).toContain('Franz Kafka');
     });
 
-    it('synthesizes 3-act fallback passages for non-featured catalog books with or without authors/subjects', () => {
+    it('synthesizes truthful bibliographic edition spread for non-featured catalog books without generic other-author quotes', () => {
       const withMetadata = getBookPassages({
         id: 77777,
         title: 'Treatise on Astronomy',
         authors: [{ name: 'Galileo Galilei' }],
         subjects: ['Astronomy -- Early works to 1800'],
       });
-      expect(withMetadata).toHaveLength(3);
+      expect(withMetadata).toHaveLength(1);
+      expect(withMetadata[0].chapterLabel).toContain('Volume Information');
       expect(withMetadata[0].openingLine).toContain('Treatise on Astronomy');
-      expect(withMetadata[0].openingLine).toContain('Galileo Galilei');
+      expect(withMetadata[0].secondaryQuote).toContain('Galileo Galilei');
       expect(withMetadata[0].commentary).toContain('#77777');
+      expect(withMetadata[0].quoteExcerpt).toContain('Extracting authentic passages');
 
       const withoutMetadata = getBookPassages({
         id: 88888,
         title: 'Anonymous Chronicle',
       });
-      expect(withoutMetadata).toHaveLength(3);
-      expect(withoutMetadata[0].openingLine).toContain('the author');
+      expect(withoutMetadata).toHaveLength(1);
+      expect(withoutMetadata[0].openingLine).toContain('Anonymous Chronicle');
+      expect(withoutMetadata[0].secondaryQuote).toBeUndefined();
     });
   });
 

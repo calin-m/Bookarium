@@ -759,7 +759,8 @@ describe('NotebookView component', () => {
     render(<NotebookView />);
 
     const colorTabs = screen.getByTestId('notebook-color-tabs');
-    expect(colorTabs).toHaveClass('cursor-grab', 'select-none');
+    expect(colorTabs).toHaveClass('w-fit', 'max-w-full', 'select-none');
+    expect(colorTabs).not.toHaveClass('cursor-grab');
 
     colorTabs.scrollLeft = 0;
     const roseFilter = screen.getByTestId('notebook-filter-rose');

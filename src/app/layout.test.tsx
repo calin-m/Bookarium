@@ -34,9 +34,10 @@ describe('RootLayout', () => {
     expect(metadata.icons).toBeDefined();
     const icons = metadata.icons as { icon: Array<{ url: string }>; apple: string };
     expect(icons.icon).toEqual([
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/icon.svg?v=2', type: 'image/svg+xml' },
+      { url: '/favicon.ico?v=2', sizes: '32x32', type: 'image/x-icon' },
     ]);
+    expect(icons.apple).toBe('/icons/apple-touch-icon.png?v=2');
     expect(viewport.viewportFit).toBe('cover');
     expect(viewport.width).toBe('device-width');
   });

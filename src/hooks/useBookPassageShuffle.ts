@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { getBookPassages, type BookPassage } from '@/config/featured-books';
+import { getBookPassages, hasCuratedBookPassages, type BookPassage } from '@/config/featured-books';
 import { extractDynamicBookPassages } from '@/lib/gutenberg/passages';
 import { useBookContent } from '@/hooks/queries/useBookContent';
 
@@ -10,6 +10,7 @@ export interface UseBookPassageShuffleParams {
   title: string;
   authors?: Array<{ name: string }> | string;
   subjects?: string[];
+  contentUrl?: string;
   enabled?: boolean;
 }
 
@@ -22,6 +23,7 @@ export function useBookPassageShuffle({
   title,
   authors = [],
   subjects = [],
+  contentUrl,
   enabled = true,
 }: UseBookPassageShuffleParams) {
   const [activePassageIndex, setActivePassageIndex] = useState(0);
@@ -38,8 +40,13 @@ export function useBookPassageShuffle({
     return [];
   }, [authors]);
 
+  const isCuratedFeatured = useMemo(() => {
+    return hasCuratedBookPassages(id, title);
+  }, [id, title]);
+
   const targetBookId = enabled && id > 0 ? id : undefined;
-  const { data: rawBookText } = useBookContent(undefined, targetBookId);
+  const targetContentUrl = enabled && id > 0 ? contentUrl : undefined;
+  const { data: rawBookText, isFetching } = useBookContent(targetContentUrl, targetBookId);
 
   const curatedPassages = useMemo(() => {
     if (!id) return [];
@@ -64,13 +71,19 @@ export function useBookPassageShuffle({
   }, [rawBookText, id, title, normalizedAuthors, subjects]);
 
   const passages: BookPassage[] = useMemo(() => {
+    // For non-curated catalog books (including all Newest Releases), prioritize dynamic book-specific passages
+    if (!isCuratedFeatured && dynamicPassages.length > 0) {
+      return dynamicPassages;
+    }
     const baseFirstPassage = curatedPassages[0] || dynamicPassages[0];
     if (!baseFirstPassage) return [];
     if (dynamicPassages.length > 1) {
       return [baseFirstPassage, ...dynamicPassages.slice(1)];
     }
     return curatedPassages.length > 0 ? curatedPassages : [baseFirstPassage];
-  }, [curatedPassages, dynamicPassages]);
+  }, [isCuratedFeatured, curatedPassages, dynamicPassages]);
+
+  const isLoadingPassages = Boolean(isFetching && dynamicPassages.length === 0 && !isCuratedFeatured);
 
   const currentPassage = passages[activePassageIndex] || {
     chapterLabel: 'Chapter I',
@@ -101,6 +114,8 @@ export function useBookPassageShuffle({
     activePassageIndex,
     prevPassageIndex,
     isTurningLeaf,
+    isLoadingPassages,
+    isCuratedFeatured,
     setIsTurningLeaf,
     shuffleNextPassage,
     resetPassages,

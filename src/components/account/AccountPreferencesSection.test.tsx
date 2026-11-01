@@ -45,7 +45,7 @@ describe('AccountPreferencesSection', () => {
     const appearanceTab = screen.getByRole('tab', { name: /Appearance & Scroll/i });
     const narrationTab = screen.getByRole('tab', { name: /Read-Aloud Studio/i });
     expect(within(appearanceTab).getByText('Appearance & Scroll')).toHaveClass('inline');
-    expect(within(narrationTab).getByText('Read-Aloud Studio')).toHaveClass('hidden', 'md:inline');
+    expect(within(narrationTab).getByText('Read-Aloud Studio')).toHaveClass('inline');
 
     const sepiaBtn = screen.getByRole('button', { name: /Sepia/i });
     fireEvent.click(sepiaBtn);

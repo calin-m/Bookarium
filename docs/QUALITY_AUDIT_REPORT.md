@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 01 Nov 2026 06:23:37 GMT  
+**Last Generated**: Sun, 01 Nov 2026 10:19:08 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 210 passed  
-**Total Verified Tests**: 2119 passed  
+**Total Verified Tests**: 2130 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2119 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2130 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 73 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 74 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.63%** (11232/11623) — *Target: $\ge$ 95%*
-- **Statements**: **95.25%** (12172/12778) — *Target: $\ge$ 95%*
-- **Functions**: **93.96%** (2631/2800) — *Target: $\ge$ 92%*
-- **Branches**: **87.99%** (11071/12581) — *Target: $\ge$ 85%*
+- **Lines**: **96.66%** (11346/11738) — *Target: $\ge$ 95%*
+- **Statements**: **95.22%** (12295/12912) — *Target: $\ge$ 95%*
+- **Functions**: **93.99%** (2647/2816) — *Target: $\ge$ 92%*
+- **Branches**: **88.02%** (11198/12722) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2119 Tests)
+## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2130 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 268 Tests)
 
@@ -467,7 +467,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 439 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 440 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
@@ -954,13 +954,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `renders primary quote with CC0 header badge`
 - ✔ `renders secondary and tertiary quotes when provided`
 - ✔ `adjusts padding and line clamp when there are 2 quotes`
 - ✔ `renders Protected (RO) header badge when isRestricted is true`
 - ✔ `renders Not Downloaded header badge when isUnavailableOffline is true and not restricted`
+- ✔ `renders Extracting Passages… badge, active loading card, and scan indicator when isLoading is true`
 
 </details>
 
@@ -1674,7 +1675,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (43 Suites · 488 Tests)
+### 📚 Gutenberg Parsers & Metadata (43 Suites · 495 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1983,13 +1984,17 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg/passages.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/lib/gutenberg/passages.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `returns empty array on empty or invalid text`
 - ✔ `extracts opening lines and authentic quote passages from full book text`
 - ✔ `extracts passages from a 5-chapter book across narrative arc`
 - ✔ `extracts passages from a 3-chapter and 2-chapter book`
 - ✔ `extracts passages from a single-chapter un-segmented text by paragraph chunks`
+- ✔ `filters out Distributed Proofreading and Transcriber boilerplate in Newest Releases`
+- ✔ `does not duplicate opening line into secondary or tertiary quotes on short chapters`
+- ✔ `filters out ASCII divider rules, framed copyright colophons, and underscore blank lines (reproducing book #79835)`
+- ✔ `rejects quoted blanks and horizontal dividers in unsegmented single-text books`
 
 </details>
 
@@ -2220,7 +2225,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `returns false when element does not exist in DOM`
 - ✔ `does not scroll when element top is already comfortably in view`
@@ -2238,6 +2243,9 @@
 - ✔ `scrubs live across tabs during tactile touch hold-and-swipe and supports one-finger relative thumb-arc stepping across wide containers`
 - ✔ `tracks 1:1 cursor overlap on mouse across variable-width tabs without jumping ahead of the pointer`
 - ✔ `survives mobile pointercancel during touch gestures and disambiguates hold-to-scrub vs flick-to-scroll on overflowing tab bars`
+- ✔ `scrubs immediately on touch with default holdDelayMs = 0 even on overflowing bars without mounting duplicate document.body scrub indicators`
+- ✔ `returns inline when totalTabs <= 2 or inactiveLabelClass is explicitly inline`
+- ✔ `returns distance-graded max-width and opacity classes across d = 0, 1, 2, and >= 3 with responsive full-screen overrides`
 
 </details>
 
@@ -2422,7 +2430,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 270 Tests)
+### 🔄 Hooks & React Query (28 Suites · 271 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (17 tests)</summary>
@@ -2654,11 +2662,12 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useBookPassageShuffle.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/hooks/useBookPassageShuffle.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `initializes with curated fallback passages for known books`
 - ✔ `cycles to the next passage on shuffleNextPassage`
 - ✔ `resets passages to index 0 on resetPassages`
+- ✔ `correctly sets isCuratedFeatured flag and prioritizes dynamic passages for non-featured books`
 
 </details>
 
@@ -2862,7 +2871,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 254 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 256 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -3156,10 +3165,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/EditorialUnderlineTabs.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/ui/EditorialUnderlineTabs.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `renders tabs with active underline, responsive label visibility, count badges, and handles selection`
 - ✔ `supports aria-pressed selection mode when selectionAttr is aria-pressed`
+- ✔ `displays all tab labels inline by default when tabs.length <= 2`
 
 </details>
 
@@ -3318,12 +3328,13 @@
 </details>
 
 <details>
-<summary><b><code>src/config/featured-books.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/config/featured-books.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `exports a curated list of featured hero books with Pride and Prejudice as primary default`
+- ✔ `identifies curated featured classic volumes by id or case-insensitive title`
 - ✔ `returns curated multi-chapter passages for each specially mapped featured book ID`
-- ✔ `returns 3-act featured passages for other featured books matched by ID or case-insensitive title`
-- ✔ `synthesizes 3-act fallback passages for non-featured catalog books with or without authors/subjects`
+- ✔ `returns authentic featured passages for other featured books without fabricated quotes`
+- ✔ `synthesizes truthful bibliographic edition spread for non-featured catalog books without generic other-author quotes`
 - ✔ `allows all featured books in the US public domain`
 - ✔ `filters out Life+100 restricted authors or translators in Mexico (MX)`
 - ✔ `deterministically rotates the hourly hero book every 3,600,000 ms`

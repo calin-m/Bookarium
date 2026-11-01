@@ -76,6 +76,7 @@ export function attachHorizontalDragAndWheelScroll(
 
   let isPointerDown = false;
   let hasDragged = false;
+  let hadGrabCursor = false;
   let startX = 0;
   let startScrollLeft = 0;
 
@@ -93,6 +94,7 @@ export function attachHorizontalDragAndWheelScroll(
 
     isPointerDown = true;
     hasDragged = false;
+    hadGrabCursor = el.classList.contains('cursor-grab');
     startX = e.clientX;
     startScrollLeft = el.scrollLeft;
   };
@@ -120,7 +122,9 @@ export function attachHorizontalDragAndWheelScroll(
     if (!isPointerDown) return;
     isPointerDown = false;
     el.classList.remove('cursor-grabbing');
-    el.classList.add('cursor-grab');
+    if (hadGrabCursor) {
+      el.classList.add('cursor-grab');
+    }
   };
 
   // 5. Capture-phase click suppression (prevents button click if user dragged > dragThreshold)
@@ -210,8 +214,10 @@ export function resolveScrubbedTabId<T extends string = string>(
 export interface TabScrubberOptions {
   /** Minimum horizontal drag distance in pixels before live scrubbing activates (default: 4) */
   scrubThreshold?: number;
-  /** Hold duration in ms before touch scrubbing locks on horizontally overflowing tab bars (default: 160) */
+  /** Hold duration in ms before touch scrubbing locks on horizontally overflowing tab bars (default: 0 for instant scrubbing) */
   holdDelayMs?: number;
+  /** Hold duration in ms before the tactile floating `<->` (`‹ • ›`) scrub indicator badge appears on stationary touch hold (default: 120) */
+  holdPreviewDelayMs?: number;
 }
 
 interface InternalScrubState {
@@ -233,17 +239,135 @@ interface InternalScrubState {
 const scrubStateMap = new WeakMap<HTMLElement, InternalScrubState>();
 const scrubCallbackMap = new WeakMap<HTMLElement, (tabId: string) => void>();
 
+/**
+ * Computes distance-graded accordion classes for tab labels on narrow tactile screens
+ * (`distance = |tabIndex - activeIndex|`: `0` = full `220px`, `1` = partial `88px`,
+ * `2` = slight `44px`, `>=3` = `0px` icon-only), with responsive full-expansion overrides
+ * (`max-w-none`) when the viewport is wide enough to fit all tabs.
+ */
+export function getAccordionTabLabelClass(
+  distance: number,
+  totalTabs: number,
+  inactiveLabelClass?: string
+): string {
+  if (totalTabs <= 2 || inactiveLabelClass === 'inline') {
+    return 'inline';
+  }
+
+  if (inactiveLabelClass?.includes('lg:inline')) {
+    if (distance === 0) {
+      return 'inline-block overflow-hidden align-bottom transition-[max-width,opacity] duration-200 ease-out max-w-[220px] opacity-100 lg:inline lg:max-w-none lg:opacity-100';
+    }
+    if (distance === 1) {
+      return 'inline-block overflow-hidden align-bottom transition-[max-width,opacity] duration-200 ease-out max-w-[88px] sm:max-w-[130px] opacity-85 [mask-image:linear-gradient(to_right,black_65%,transparent_100%)] lg:inline lg:max-w-none lg:opacity-100 lg:[mask-image:none]';
+    }
+    if (distance === 2) {
+      return 'inline-block overflow-hidden align-bottom transition-[max-width,opacity] duration-200 ease-out max-w-[44px] sm:max-w-[76px] opacity-65 [mask-image:linear-gradient(to_right,black_55%,transparent_100%)] lg:inline lg:max-w-none lg:opacity-100 lg:[mask-image:none]';
+    }
+    return 'inline-block overflow-hidden align-bottom transition-[max-width,opacity] duration-200 ease-out max-w-0 sm:max-w-[40px] opacity-0 sm:opacity-55 [mask-image:linear-gradient(to_right,black_55%,transparent_100%)] lg:inline lg:max-w-none lg:opacity-100 lg:[mask-image:none]';
+  }
+
+  const bpOverride = inactiveLabelClass?.includes('xl:inline')
+    ? 'xl:inline xl:max-w-none xl:opacity-100 xl:[mask-image:none]'
+    : inactiveLabelClass?.includes('md:inline') || totalTabs > 4
+      ? 'md:inline md:max-w-none md:opacity-100 md:[mask-image:none]'
+      : 'sm:inline sm:max-w-none sm:opacity-100 sm:[mask-image:none]';
+
+  if (distance === 0) {
+    return `inline-block overflow-hidden align-bottom transition-[max-width,opacity] duration-200 ease-out max-w-[220px] opacity-100 ${bpOverride}`;
+  }
+  if (distance === 1) {
+    return `inline-block overflow-hidden align-bottom transition-[max-width,opacity] duration-200 ease-out max-w-[88px] opacity-85 [mask-image:linear-gradient(to_right,black_65%,transparent_100%)] ${bpOverride}`;
+  }
+  if (distance === 2) {
+    return `inline-block overflow-hidden align-bottom transition-[max-width,opacity] duration-200 ease-out max-w-[44px] opacity-65 [mask-image:linear-gradient(to_right,black_55%,transparent_100%)] ${bpOverride}`;
+  }
+  return `inline-block overflow-hidden align-bottom transition-[max-width,opacity] duration-200 ease-out max-w-0 opacity-0 ${bpOverride}`;
+}
+
+/**
+ * Computes distance-graded flex distribution classes so tabs span 100% of the
+ * full-width underline container while prioritizing space for the active tab and its
+ * immediate neighbors, automatically switching to equal width (`flex-1`) when all
+ * tab labels fit without truncation.
+ */
+export function getAccordionTabFlexClass(
+  distance: number,
+  totalTabs: number,
+  inactiveLabelClass?: string
+): string {
+  if (totalTabs <= 2) {
+    return 'flex-1 justify-center shrink-0';
+  }
+
+  if (inactiveLabelClass?.includes('lg:inline')) {
+    if (distance === 0) {
+      return 'flex-[1.8] sm:flex-[1.4] lg:flex-1 justify-center shrink-0';
+    }
+    if (distance === 1) {
+      return 'flex-[1.15] sm:flex-[1.1] lg:flex-1 justify-center min-w-0 shrink-0';
+    }
+    if (distance === 2) {
+      return 'flex-1 sm:flex-1 lg:flex-1 justify-center min-w-0 shrink-0';
+    }
+    return 'shrink-0 sm:flex-1 lg:flex-1 justify-center min-w-0';
+  }
+
+  if (inactiveLabelClass?.includes('md:inline') || totalTabs > 4) {
+    if (distance === 0) {
+      return 'flex-[1.8] md:flex-1 justify-center shrink-0';
+    }
+    if (distance === 1) {
+      return 'flex-[1.15] md:flex-1 justify-center min-w-0 shrink-0';
+    }
+    if (distance === 2) {
+      return 'flex-1 md:flex-1 justify-center min-w-0 shrink-0';
+    }
+    return 'shrink-0 md:flex-1 justify-center min-w-0';
+  }
+
+  if (inactiveLabelClass?.includes('xl:inline')) {
+    if (distance === 0) {
+      return 'flex-[1.8] xl:flex-1 justify-center shrink-0';
+    }
+    if (distance === 1) {
+      return 'flex-[1.15] xl:flex-1 justify-center min-w-0 shrink-0';
+    }
+    if (distance === 2) {
+      return 'flex-1 xl:flex-1 justify-center min-w-0 shrink-0';
+    }
+    return 'shrink-0 xl:flex-1 justify-center min-w-0';
+  }
+
+  // Default: 3-4 tabs with sm:inline full fit
+  if (distance === 0) {
+    return 'flex-[1.8] sm:flex-1 justify-center shrink-0';
+  }
+  if (distance === 1) {
+    return 'flex-[1.15] sm:flex-1 justify-center min-w-0 shrink-0';
+  }
+  return 'flex-1 sm:flex-1 justify-center min-w-0 shrink-0';
+}
+
 function applyScrubPreview(container: HTMLElement, activeTabId: string) {
   container.setAttribute('data-scrubbing', 'true');
   const buttons = Array.from(container.querySelectorAll<HTMLElement>('[data-tab-id]'));
-  for (const btn of buttons) {
+  let activeIndex = 0;
+
+  for (let i = 0; i < buttons.length; i++) {
+    const btn = buttons[i];
     if (btn.getAttribute('data-tab-id') === activeTabId) {
       btn.setAttribute('data-scrub-active', 'true');
       btn.removeAttribute('data-scrub-inactive');
+      activeIndex = i;
     } else {
       btn.setAttribute('data-scrub-inactive', 'true');
       btn.removeAttribute('data-scrub-active');
     }
+  }
+
+  for (let i = 0; i < buttons.length; i++) {
+    buttons[i].setAttribute('data-tab-distance', String(Math.abs(i - activeIndex)));
   }
 }
 
@@ -265,15 +389,17 @@ function clearScrubPreview(container: HTMLElement | null) {
  *   (including non-passive `touchmove` listeners) so React re-renders, vertical finger drift,
  *   and mobile `pointercancel` events never interrupt multi-tab dragging.
  * - Supports one-finger relative thumb-arc stepping on wide mobile touch screens.
- * - Disambiguates horizontal scroll vs. tab scrubbing on overflowing tab strips via `holdDelayMs`.
- * - Applies `[data-scrubbing="true"]` and `[data-scrub-active="true"]` DOM attributes
- *   for real-time visual feedback and suppresses post-drag synthetic clicks.
+ * - Defaults `holdDelayMs` to `0` for immediate touch-and-slide scrubbing across compact tab bars,
+ *   while honoring explicit `holdDelayMs > 0` when disambiguating overflowing strips.
+ * - Synchronizes `data-scrubbing`, `data-scrub-active`, and `data-tab-distance` attributes
+ *   while relying on the active tab's native border-locked `<ActiveTabBorderArrows />`
+ *   and suppresses post-drag synthetic clicks.
  */
 export function createTabScrubberHandlers<T extends string>(
   onSelectTab: ((tabId: T) => void) | ((value: T | ((prevState: T) => T)) => void),
   options: TabScrubberOptions = {}
 ) {
-  const { scrubThreshold = 4, holdDelayMs = 160 } = options;
+  const { scrubThreshold = 4, holdDelayMs = 0, holdPreviewDelayMs = 120 } = options;
   const invokeSelect = onSelectTab as (tabId: string) => void;
 
   // Fallback state for synthetic unit tests that invoke handlers without currentTarget on pointerDown
@@ -403,18 +529,18 @@ export function createTabScrubberHandlers<T extends string>(
 
     const matchedId = resolveTargetForMove(targetContainer, state, clientX, clientY);
     if (matchedId) {
-      applyScrubPreview(targetContainer, matchedId);
       if (matchedId !== state.lastTabId) {
         state.lastTabId = matchedId;
+        const cb = scrubCallbackMap.get(targetContainer) || invokeSelect;
+        cb(matchedId);
         if (state.isTouch && state.isOverflowing) {
           const matchedBtn = targetContainer.querySelector<HTMLElement>(
             `[data-tab-id="${matchedId}"]`
           );
           matchedBtn?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
-        const cb = scrubCallbackMap.get(targetContainer) || invokeSelect;
-        cb(matchedId);
       }
+      applyScrubPreview(targetContainer, matchedId);
     }
   };
 
@@ -484,18 +610,30 @@ export function createTabScrubberHandlers<T extends string>(
       }
       state.startIndex = detectedStartIdx >= 0 ? detectedStartIdx : 0;
 
-      if (isOverflowing && holdDelayMs > 0) {
+      const effectiveHoldMs =
+        isOverflowing && holdDelayMs > 0
+          ? holdDelayMs
+          : isTouch && holdPreviewDelayMs > 0
+            ? holdPreviewDelayMs
+            : 0;
+
+      if (effectiveHoldMs > 0) {
         state.holdTimer = setTimeout(() => {
           state.holdTimer = null;
           if (state.isScrubbing && !state.hasMoved) {
             state.holdActivated = true;
-            const startBtn = buttons[state.startIndex];
-            const startId = startBtn?.getAttribute('data-tab-id');
-            if (startId) {
-              applyScrubPreview(targetContainer, startId);
+            const currentSelectedBtn =
+              buttons.find(
+                (b) =>
+                  b.getAttribute('aria-selected') === 'true' ||
+                  b.getAttribute('aria-pressed') === 'true'
+              ) ?? buttons[state.startIndex];
+            const previewId = currentSelectedBtn?.getAttribute('data-tab-id');
+            if (previewId) {
+              applyScrubPreview(targetContainer, previewId);
             }
           }
-        }, holdDelayMs);
+        }, effectiveHoldMs);
       }
 
       if (typeof window !== 'undefined') {

@@ -24,6 +24,7 @@ export const SITE_CONFIG = {
   // Public Domain Partners & Upstream Providers
   PROJECT_GUTENBERG: 'https://www.gutenberg.org',
   GUTENDEX: 'https://gutendex.com',
+  WIKIDATA: 'https://www.wikidata.org',
 
   // Design Attribution & UI Foundation
   FIGMA_BOOKSAW:

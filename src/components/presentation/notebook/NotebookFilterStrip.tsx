@@ -56,7 +56,7 @@ export const NotebookFilterStrip: React.FC<NotebookFilterStripProps> = ({
       ref={colorTabsRef}
       data-testid="notebook-color-tabs"
       data-no-swipe
-      className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] overscroll-x-contain cursor-grab select-none"
+      className="flex items-center gap-2 w-fit max-w-full overflow-x-auto pb-1 [scrollbar-width:none] overscroll-x-contain select-none"
     >
       {fellowCount > 0 && (
         <>

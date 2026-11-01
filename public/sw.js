@@ -13,8 +13,10 @@ const STATIC_PRECACHE = [
   '/manifest.webmanifest',
   '/favicon.ico',
   '/icon.svg',
+  '/icons/apple-touch-icon.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/icon-1024.png',
   '/icons/icon-maskable-192.png',
   '/icons/icon-maskable-512.png',
 ];

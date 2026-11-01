@@ -284,7 +284,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
           activeTab={activeCategory}
           onSelectTab={setActiveCategory}
           ariaLabel="Accolade categories"
-          inactiveLabelClass="hidden xl:inline"
+          inactiveLabelClass="hidden md:inline"
           hideInactiveCountOnMobile
           compactPadding
         />

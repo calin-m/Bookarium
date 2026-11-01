@@ -225,6 +225,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
     activePassageIndex,
     prevPassageIndex,
     isTurningLeaf,
+    isLoadingPassages,
     setIsTurningLeaf,
     shuffleNextPassage: handleShuffle,
   } = useBookPassageShuffle({
@@ -428,7 +429,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               isCoverOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}>
               <div key={`right-page-base-${book.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
-                <NotablePassagesSpread passage={currentPassage} isRestricted={isRestricted} isUnavailableOffline={isUnavailableOffline} country={country} />
+                <NotablePassagesSpread passage={currentPassage} isRestricted={isRestricted} isUnavailableOffline={isUnavailableOffline} country={country} isLoading={isLoadingPassages} />
 
                 {/* Right Page Footer Actions */}
                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2 mt-2 shrink-0">
@@ -502,7 +503,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               >
                 {/* Front Face of Turning Leaf: Outgoing Right Page quotes lifting away */}
                 <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
-                  <NotablePassagesSpread passage={prevPassage} isRestricted={isRestricted} isUnavailableOffline={isUnavailableOffline} country={country} />
+                  <NotablePassagesSpread passage={prevPassage} isRestricted={isRestricted} isUnavailableOffline={isUnavailableOffline} country={country} isLoading={isLoadingPassages} />
 
                   <div className="pt-2 flex items-center justify-end text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
                     <span className="opacity-60">p. 2</span>

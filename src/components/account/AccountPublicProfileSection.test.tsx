@@ -246,14 +246,14 @@ describe('AccountPublicProfileSection', () => {
 
     expect(identityTab).toHaveAttribute('aria-selected', 'true');
     expect(within(identityTab).getByText('Identity & Bio')).toHaveClass('inline');
-    expect(within(privacyTab).getByText('Sanctuary & Privacy')).toHaveClass('hidden', 'md:inline');
+    expect(within(privacyTab).getByText('Sanctuary & Privacy')).toHaveClass('inline');
     expect(document.getElementById('profile-subpanel-identity')).not.toHaveClass('hidden');
     expect(document.getElementById('profile-subpanel-privacy')).toHaveClass('hidden');
 
     fireEvent.click(privacyTab);
     expect(privacyTab).toHaveAttribute('aria-selected', 'true');
     expect(within(privacyTab).getByText('Sanctuary & Privacy')).toHaveClass('inline');
-    expect(within(identityTab).getByText('Identity & Bio')).toHaveClass('hidden', 'md:inline');
+    expect(within(identityTab).getByText('Identity & Bio')).toHaveClass('inline');
     expect(document.getElementById('profile-subpanel-privacy')).not.toHaveClass('hidden');
     expect(document.getElementById('profile-subpanel-identity')).toHaveClass('hidden');
   });

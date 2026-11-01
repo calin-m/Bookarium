@@ -180,17 +180,27 @@ describe('AccountPage', () => {
     expect(securityTab).toHaveAttribute('title', 'Security');
 
     // Verify adaptive mobile classes: active tab expands with text, inactive tabs collapse to icons
-    expect(habitsTab).toHaveClass('flex-1', 'min-w-0', 'font-semibold', 'whitespace-nowrap', 'border');
-    expect(profileTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
-    expect(symposiumsTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
+    expect(habitsTab).toHaveClass('flex-[1.8]', 'font-semibold', 'whitespace-nowrap', 'border');
+    expect(profileTab).toHaveClass('flex-[1.15]', 'font-semibold', 'whitespace-nowrap', 'border');
+    expect(symposiumsTab).toHaveClass('flex-1', 'font-semibold', 'whitespace-nowrap', 'border');
     expect(preferencesTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
     expect(securityTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
 
-    // Verify truncation and visibility contracts on the text labels
+    // Verify persistent outward border arrows on the active tab (first tab has right arrow only)
+    expect(habitsTab.querySelector('[data-scrub-chevron="left"]')).toBeNull();
+    expect(habitsTab.querySelector('[data-scrub-chevron="right"]')).not.toBeNull();
+    expect(profileTab.querySelector('[data-scrub-chevron="left"]')).toBeNull();
+    expect(profileTab.querySelector('[data-scrub-chevron="right"]')).toBeNull();
+
+    // Verify distance-graded accordion truncation and visibility contracts on the text labels
     const habitsLabel = habitsTab.querySelector('span');
     const profileLabel = profileTab.querySelector('span');
-    expect(habitsLabel).toHaveClass('truncate', 'min-w-0', 'inline');
-    expect(profileLabel).toHaveClass('truncate', 'min-w-0', 'hidden', 'lg:inline');
+    const symposiumsLabel = symposiumsTab.querySelector('span');
+    const preferencesLabel = preferencesTab.querySelector('span');
+    expect(habitsLabel).toHaveClass('min-w-0', 'inline-block', 'max-w-[220px]', 'opacity-100');
+    expect(profileLabel).toHaveClass('min-w-0', 'inline-block', 'max-w-[88px]', 'opacity-85', 'lg:inline');
+    expect(symposiumsLabel).toHaveClass('min-w-0', 'inline-block', 'max-w-[44px]', 'opacity-65', 'lg:inline');
+    expect(preferencesLabel).toHaveClass('min-w-0', 'inline-block', 'max-w-0', 'opacity-0', 'lg:inline');
 
     // Verify Tier-2 Sub-Tabs inside Habits & Accolades (2 tabs: Streaks & Challenge, Accolades Compendium)
     const habitsSubTablist = screen.getByRole('tablist', { name: /Habits and library sub-sections/i });
@@ -203,9 +213,9 @@ describe('AccountPage', () => {
     expect(streaksSubTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
     expect(accoladesSubTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
 
-    // Verify responsive active label expansion contract (active shows label on mobile, inactive collapses on < md)
+    // Verify fit-first 2-tab sub-bar label contract (both labels fit and stay inline across all viewports)
     expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('inline');
-    expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('hidden', 'md:inline');
+    expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('inline');
 
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
     expect(document.getElementById('habits-subpanel-streaks')).not.toHaveAttribute('hidden');
@@ -213,7 +223,7 @@ describe('AccountPage', () => {
     expect(document.getElementById('habits-subpanel-accolades')).toHaveAttribute('hidden');
     fireEvent.click(accoladesSubTab);
     expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('inline');
-    expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('hidden', 'md:inline');
+    expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('inline');
     expect(document.getElementById('habits-subpanel-accolades')).not.toHaveClass('hidden');
     expect(document.getElementById('habits-subpanel-accolades')).not.toHaveAttribute('hidden');
 
@@ -227,10 +237,13 @@ describe('AccountPage', () => {
     fireEvent.click(profileTab);
     expect(profileTab).toHaveAttribute('aria-selected', 'true');
     expect(habitsTab).toHaveAttribute('aria-selected', 'false');
-    expect(profileTab).toHaveClass('flex-1', 'min-w-0');
-    expect(habitsTab).toHaveClass('shrink-0');
-    expect(profileTab.querySelector('span')).toHaveClass('inline');
-    expect(habitsTab.querySelector('span')).toHaveClass('hidden', 'lg:inline');
+    expect(profileTab).toHaveClass('flex-[1.8]', 'justify-center');
+    expect(habitsTab).toHaveClass('flex-[1.15]', 'justify-center');
+    expect(profileTab.querySelector('[data-scrub-chevron="left"]')).not.toBeNull();
+    expect(profileTab.querySelector('[data-scrub-chevron="right"]')).not.toBeNull();
+    expect(habitsTab.querySelector('[data-scrub-chevron="right"]')).toBeNull();
+    expect(profileTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[220px]', 'opacity-100');
+    expect(habitsTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[88px]', 'opacity-85', 'lg:inline');
     expect(document.getElementById('account-tabpanel-profile')).not.toHaveClass('hidden');
     expect(document.getElementById('account-tabpanel-profile')).not.toHaveAttribute('hidden');
     expect(document.getElementById('account-tabpanel-habits')).toHaveClass('hidden');
@@ -245,16 +258,18 @@ describe('AccountPage', () => {
     // Switch to Preferences
     fireEvent.click(preferencesTab);
     expect(preferencesTab).toHaveAttribute('aria-selected', 'true');
-    expect(preferencesTab).toHaveClass('flex-1', 'min-w-0');
-    expect(profileTab).toHaveClass('shrink-0');
+    expect(preferencesTab).toHaveClass('flex-[1.8]', 'justify-center');
+    expect(profileTab).toHaveClass('justify-center');
     expect(document.getElementById('account-tabpanel-preferences')).not.toHaveClass('hidden');
     expect(document.getElementById('account-tabpanel-preferences')).not.toHaveAttribute('hidden');
 
     // Switch to Security
     fireEvent.click(securityTab);
     expect(securityTab).toHaveAttribute('aria-selected', 'true');
-    expect(securityTab).toHaveClass('flex-1', 'min-w-0');
-    expect(preferencesTab).toHaveClass('shrink-0');
+    expect(securityTab).toHaveClass('flex-[1.8]', 'justify-center');
+    expect(securityTab.querySelector('[data-scrub-chevron="left"]')).not.toBeNull();
+    expect(securityTab.querySelector('[data-scrub-chevron="right"]')).toBeNull();
+    expect(preferencesTab).toHaveClass('flex-[1.15]', 'justify-center');
     expect(document.getElementById('account-tabpanel-security')).not.toHaveClass('hidden');
     expect(document.getElementById('account-tabpanel-security')).not.toHaveAttribute('hidden');
   });

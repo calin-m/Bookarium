@@ -40,8 +40,9 @@ describe('AccountAccoladesCard', () => {
 
     expect(allTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
     expect(streaksTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
-    expect(within(allTab).getByText('All Bookplates')).toHaveClass('inline');
-    expect(within(streaksTab).getByText('Streaks')).toHaveClass('hidden', 'xl:inline');
+    expect(within(allTab).getByText('All Bookplates')).toHaveClass('inline-block', 'max-w-[220px]');
+    expect(within(streaksTab).getByText('Streaks')).toHaveClass('inline-block', 'max-w-[88px]', 'md:inline');
+    expect(within(immersionTab).getByText('Immersion')).toHaveClass('inline-block', 'max-w-[44px]', 'md:inline');
   });
 
   it('shows empty showcase message when no bookplates are pinned', () => {
@@ -64,8 +65,8 @@ describe('AccountAccoladesCard', () => {
     const streaksTab = screen.getByRole('tab', { name: 'Streaks' });
     fireEvent.click(streaksTab);
 
-    expect(within(streaksTab).getByText('Streaks')).toHaveClass('inline');
-    expect(within(allTab).getByText('All Bookplates')).toHaveClass('hidden', 'xl:inline');
+    expect(within(streaksTab).getByText('Streaks')).toHaveClass('inline-block', 'max-w-[220px]');
+    expect(within(allTab).getByText('All Bookplates')).toHaveClass('inline-block', 'max-w-[88px]', 'md:inline');
     expect(screen.getByText('Seven-Day Sage')).toBeInTheDocument();
     // 'The Marathon Reader' is in Immersion category, should not be in the compendium grid
     expect(screen.queryByText('The Marathon Reader')).not.toBeInTheDocument();

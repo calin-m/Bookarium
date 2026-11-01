@@ -711,21 +711,19 @@
 /* Smooth active-tab transitions and live-preview scrubbing indicators */
 [data-tab-id] {
   transition:
-    color 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-[data-tab-id][aria-selected="true"] > span,
-[data-tab-id][aria-pressed="true"] > span,
-[data-tab-id][data-scrub-active="true"] > span {
+[data-tab-id][aria-selected="true"] > span:not([data-scrub-chevron]),
+[data-tab-id][aria-pressed="true"] > span:not([data-scrub-chevron]),
+[data-tab-id][data-scrub-active="true"] > span:not([data-scrub-chevron]) {
   animation: tabLabelUnfold 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-[data-tab-id][aria-selected="true"],
-[data-tab-id][aria-pressed="true"],
+[data-tab-id][aria-selected="true"]:not([data-scrub-inactive="true"]),
+[data-tab-id][aria-pressed="true"]:not([data-scrub-inactive="true"]),
 [data-scrubbing="true"] [data-tab-id][data-scrub-active="true"] {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
 }
@@ -737,9 +735,9 @@
   .animate-view-slide-right,
   .book-turning-leaf,
   [data-tab-id],
-  [data-tab-id][aria-selected="true"] > span,
-  [data-tab-id][aria-pressed="true"] > span,
-  [data-tab-id][data-scrub-active="true"] > span {
+  [data-tab-id][aria-selected="true"] > span:not([data-scrub-chevron]),
+  [data-tab-id][aria-pressed="true"] > span:not([data-scrub-chevron]),
+  [data-tab-id][data-scrub-active="true"] > span:not([data-scrub-chevron]) {
     animation: none !important;
     transition: none !important;
     transform: none !important;

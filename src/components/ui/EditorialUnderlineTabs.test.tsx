@@ -45,16 +45,25 @@ describe('EditorialUnderlineTabs', () => {
     );
 
     const nav = screen.getByRole('tablist', { name: 'Sample sections' });
-    expect(nav).toHaveClass('touch-pan-y');
+    expect(nav).toHaveClass('touch-pan-y', 'w-full', 'justify-between', 'p-px');
 
     const allTab = screen.getByTestId('tab-all');
     const activeTab = screen.getByTestId('tab-active');
     const emptyTab = screen.getByTestId('tab-empty');
 
     expect(allTab).toHaveAttribute('aria-selected', 'true');
+    expect(allTab).toHaveAttribute('data-tab-distance', '0');
+    expect(allTab).toHaveClass('transition-colors', 'duration-150', 'flex-[1.8]', 'xl:flex-1', 'justify-center');
+    expect(allTab.querySelector('[data-scrub-chevron="left"]')).toBeNull();
+    expect(allTab.querySelector('[data-scrub-chevron="right"]')).toHaveClass('-right-[6px]');
     expect(activeTab).toHaveAttribute('aria-selected', 'false');
-    expect(within(allTab).getByText('All Items')).toHaveClass('inline');
-    expect(within(activeTab).getByText('Active Items')).toHaveClass('hidden', 'xl:inline');
+    expect(activeTab).toHaveAttribute('data-tab-distance', '1');
+    expect(activeTab.querySelector('[data-scrub-chevron="left"]')).toBeNull();
+    expect(activeTab.querySelector('[data-scrub-chevron="right"]')).toBeNull();
+    expect(emptyTab).toHaveAttribute('data-tab-distance', '2');
+    expect(within(allTab).getByText('All Items')).toHaveClass('inline-block', 'max-w-[220px]', 'opacity-100');
+    expect(within(activeTab).getByText('Active Items')).toHaveClass('inline-block', 'max-w-[88px]', 'opacity-85', 'xl:inline');
+    expect(within(emptyTab).getByText('Empty Tab')).toHaveClass('inline-block', 'max-w-[44px]', 'opacity-65', 'xl:inline');
 
     // Count badge visibility and highlight variant
     expect(within(allTab).getByText('12')).toHaveClass('inline-flex');
@@ -64,6 +73,8 @@ describe('EditorialUnderlineTabs', () => {
 
     fireEvent.click(activeTab);
     expect(onSelectTab).toHaveBeenCalledWith('active');
+    expect(document.querySelectorAll('[data-scrub-chevron]').length).toBe(1);
+    expect(document.getElementById('bookarium-tab-scrub-indicator')).toBeNull();
   });
 
   it('supports aria-pressed selection mode when selectionAttr is aria-pressed', () => {
@@ -79,7 +90,25 @@ describe('EditorialUnderlineTabs', () => {
     );
 
     expect(screen.getByTestId('tab-active')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('tab-active').querySelector('[data-scrub-chevron="left"]')).toHaveClass('-left-[6px]');
+    expect(screen.getByTestId('tab-active').querySelector('[data-scrub-chevron="right"]')).toHaveClass('-right-[6px]');
     expect(screen.getByTestId('tab-all')).toHaveAttribute('aria-pressed', 'false');
+    expect(within(screen.getByTestId('tab-all')).getByText('All Items')).toHaveClass('inline-block', 'max-w-[88px]', 'sm:inline');
+  });
+
+  it('displays all tab labels inline by default when tabs.length <= 2', () => {
+    const onSelectTab = vi.fn();
+    render(
+      <EditorialUnderlineTabs
+        tabs={sampleTabs.slice(0, 2)}
+        activeTab="all"
+        onSelectTab={onSelectTab}
+        ariaLabel="Two-tab section"
+      />
+    );
+
+    expect(within(screen.getByTestId('tab-all')).getByText('All Items')).toHaveClass('inline');
+    expect(within(screen.getByTestId('tab-active')).getByText('Active Items')).toHaveClass('inline');
   });
 });
 

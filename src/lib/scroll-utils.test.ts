@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   smartScrollToContent,
   attachHorizontalDragAndWheelScroll,
+  getAccordionTabFlexClass,
+  getAccordionTabLabelClass,
   resolveScrubbedTabId,
   createTabScrubberHandlers,
 } from './scroll-utils';
@@ -746,9 +748,124 @@ describe('resolveScrubbedTabId & createTabScrubberHandlers', () => {
 
       window.dispatchEvent(new Event('touchend'));
       expect(tablist.hasAttribute('data-scrubbing')).toBe(false);
+      expect(document.getElementById('bookarium-tab-scrub-indicator')).toBeNull();
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('scrubs immediately on touch with default holdDelayMs = 0 even on overflowing bars without mounting duplicate document.body scrub indicators', () => {
+    vi.useFakeTimers();
+    try {
+      const onSelectTab = vi.fn();
+      const handlers = createTabScrubberHandlers(onSelectTab);
+
+      Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 420 });
+      Object.defineProperty(tablist, 'clientWidth', { configurable: true, value: 360 });
+      btnA.setAttribute('aria-selected', 'true');
+      btnB.setAttribute('aria-selected', 'false');
+      btnC.setAttribute('aria-selected', 'false');
+      vi.spyOn(tablist, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        right: 360,
+        width: 360,
+        top: 60,
+        bottom: 100,
+        height: 40,
+        x: 0,
+        y: 60,
+        toJSON: () => {},
+      });
+
+      // 1. Stationary touch hold for >= 120ms (holdPreviewDelayMs) previews the active tab ('habits') without mounting a second document.body indicator
+      handlers.onTouchStart({
+        touches: [{ clientX: 150, clientY: 75 }],
+        currentTarget: tablist,
+      });
+      vi.advanceTimersByTime(125);
+
+      expect(document.getElementById('bookarium-tab-scrub-indicator')).toBeNull();
+      expect(btnA.getAttribute('data-scrub-active')).toBe('true');
+      expect(btnA.getAttribute('data-tab-distance')).toBe('0');
+      expect(btnB.getAttribute('data-tab-distance')).toBe('1');
+      expect(btnC.getAttribute('data-tab-distance')).toBe('2');
+
+      // 2. Immediate slide right from btnB (index 1, X=150 -> X=200) advances to 'symposiums' (index 2)
+      handlers.onTouchMove({
+        touches: [{ clientX: 200, clientY: 75 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).toHaveBeenLastCalledWith('symposiums');
+      expect(document.getElementById('bookarium-tab-scrub-indicator')).toBeNull();
+      expect(btnC.getAttribute('data-scrub-active')).toBe('true');
+      expect(btnA.getAttribute('data-tab-distance')).toBe('2');
+      expect(btnB.getAttribute('data-tab-distance')).toBe('1');
+      expect(btnC.getAttribute('data-tab-distance')).toBe('0');
+
+      // 3. Slide left to 'profile' (index 1, X=150) -> updates distance attributes cleanly
+      handlers.onTouchMove({
+        touches: [{ clientX: 150, clientY: 75 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).toHaveBeenLastCalledWith('profile');
+      expect(btnB.getAttribute('data-scrub-active')).toBe('true');
+      expect(btnA.getAttribute('data-tab-distance')).toBe('1');
+      expect(btnB.getAttribute('data-tab-distance')).toBe('0');
+      expect(btnC.getAttribute('data-tab-distance')).toBe('1');
+
+      // 4. Lifting finger cleans up scrub state
+      handlers.onTouchEnd({ currentTarget: tablist });
+      expect(tablist.hasAttribute('data-scrubbing')).toBe(false);
+      expect(document.getElementById('bookarium-tab-scrub-indicator')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('getAccordionTabLabelClass & getAccordionTabFlexClass', () => {
+  it('returns inline when totalTabs <= 2 or inactiveLabelClass is explicitly inline', () => {
+    expect(getAccordionTabLabelClass(0, 2, 'hidden sm:inline')).toBe('inline');
+    expect(getAccordionTabLabelClass(1, 2, 'hidden sm:inline')).toBe('inline');
+    expect(getAccordionTabLabelClass(1, 4, 'inline')).toBe('inline');
+    expect(getAccordionTabFlexClass(0, 2)).toBe('flex-1 justify-center shrink-0');
+    expect(getAccordionTabFlexClass(0, 5, 'hidden lg:inline')).toBe(
+      'flex-[1.8] sm:flex-[1.4] lg:flex-1 justify-center shrink-0'
+    );
+    expect(getAccordionTabFlexClass(1, 5, 'hidden lg:inline')).toBe(
+      'flex-[1.15] sm:flex-[1.1] lg:flex-1 justify-center min-w-0 shrink-0'
+    );
+    expect(getAccordionTabFlexClass(2, 5, 'hidden lg:inline')).toBe(
+      'flex-1 sm:flex-1 lg:flex-1 justify-center min-w-0 shrink-0'
+    );
+    expect(getAccordionTabFlexClass(3, 5, 'hidden lg:inline')).toBe(
+      'shrink-0 sm:flex-1 lg:flex-1 justify-center min-w-0'
+    );
+    expect(getAccordionTabFlexClass(0, 6, 'hidden md:inline')).toBe(
+      'flex-[1.8] md:flex-1 justify-center shrink-0'
+    );
+    expect(getAccordionTabFlexClass(0, 4, 'hidden sm:inline')).toBe(
+      'flex-[1.8] sm:flex-1 justify-center shrink-0'
+    );
+  });
+
+  it('returns distance-graded max-width and opacity classes across d = 0, 1, 2, and >= 3 with responsive full-screen overrides', () => {
+    const d0 = getAccordionTabLabelClass(0, 5, 'hidden lg:inline');
+    const d1 = getAccordionTabLabelClass(1, 5, 'hidden md:inline');
+    const d2 = getAccordionTabLabelClass(2, 4, 'hidden sm:inline');
+    const d3 = getAccordionTabLabelClass(3, 6, 'hidden xl:inline');
+
+    expect(d0).toContain('max-w-[220px] opacity-100');
+    expect(d0).toContain('lg:inline lg:max-w-none lg:opacity-100');
+
+    expect(d1).toContain('max-w-[88px] opacity-85');
+    expect(d1).toContain('md:inline md:max-w-none md:opacity-100');
+
+    expect(d2).toContain('max-w-[44px] opacity-65');
+    expect(d2).toContain('sm:inline sm:max-w-none sm:opacity-100');
+
+    expect(d3).toContain('max-w-0 opacity-0');
+    expect(d3).toContain('xl:inline xl:max-w-none xl:opacity-100');
   });
 });
 

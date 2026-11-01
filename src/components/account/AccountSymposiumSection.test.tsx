@@ -96,8 +96,8 @@ describe('AccountSymposiumSection', () => {
 
     const activeSympTab = screen.getByRole('tab', { name: /Active Symposiums/i });
     const circleTab = screen.getByRole('tab', { name: /Reader Circle/i });
-    expect(within(activeSympTab).getByText('Active Symposiums')).toHaveClass('inline');
-    expect(within(circleTab).getByText('Reader Circle')).toHaveClass('hidden', 'md:inline');
+    expect(within(activeSympTab).getByText('Active Symposiums')).toHaveClass('inline-block', 'max-w-[220px]');
+    expect(within(circleTab).getByText('Reader Circle')).toHaveClass('inline-block', 'max-w-[88px]', 'sm:inline');
 
     // Switch to Reader Circle sub-tab
     fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));

@@ -39,7 +39,12 @@ import { AccountPublicProfileSection } from '@/components/account/AccountPublicP
 import { AccountSymposiumSection } from '@/components/account/AccountSymposiumSection';
 import { AccountSecuritySection } from '@/components/account/AccountSecuritySection';
 import { AccountPreferencesSection } from '@/components/account/AccountPreferencesSection';
-import { createTabScrubberHandlers } from '@/lib/scroll-utils';
+import {
+  createTabScrubberHandlers,
+  getAccordionTabFlexClass,
+  getAccordionTabLabelClass,
+} from '@/lib/scroll-utils';
+import { ActiveTabBorderArrows } from '@/components/ui/EditorialUnderlineTabs';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
 import {
@@ -352,7 +357,7 @@ function AccountDashboardContent() {
 
   const handleTabChange = (tabId: AccountTabId) => {
     setActiveTab(tabId);
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && !document.querySelector('[data-scrubbing="true"]')) {
       const url = new URL(window.location.href);
       if (tabId === 'habits') {
         url.searchParams.delete('tab');
@@ -700,57 +705,66 @@ function AccountDashboardContent() {
                 aria-label="Account sections"
                 onKeyDown={handleTabKeyDown}
                 {...createTabScrubberHandlers(handleTabChange)}
-                className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 p-1 sm:p-1.5 bg-card border border-border rounded-2xl shadow-booksaw w-full select-none touch-pan-y"
+                className="flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-card border border-border rounded-2xl shadow-booksaw w-full select-none touch-pan-y"
               >
-                {ACCOUNT_TABS.map((tab) => {
-                  const isActive = activeTab === tab.id;
-                  const Icon = tab.icon;
-                  const showBadge = tab.id === 'symposiums' && pendingInvitesCount > 0;
-                  return (
-                    <button
-                      key={tab.id}
-                      id={`account-tab-${tab.id}`}
-                      data-tab-id={tab.id}
-                      role="tab"
-                      type="button"
-                      aria-selected={isActive}
-                      aria-controls={`account-tabpanel-${tab.id}`}
-                      aria-label={tab.label}
-                      title={tab.label}
-                      tabIndex={isActive ? 0 : -1}
-                      onClick={() => handleTabChange(tab.id)}
-                      className={`relative flex items-center justify-center gap-1.5 lg:gap-2 py-2.5 rounded-xl text-[11px] sm:text-xs lg:text-sm font-semibold whitespace-nowrap border transition-all duration-200 ease-out select-none focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
-                        isActive
-                          ? 'flex-1 min-w-0 px-2.5 sm:px-3.5 lg:px-4 bg-primary text-primary-foreground border-primary shadow-xs'
-                          : 'shrink-0 px-2 sm:px-3 lg:flex-1 lg:min-w-0 lg:px-4 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
-                      }`}
-                    >
-                      <Icon
-                        className={`w-4 h-4 shrink-0 ${
-                          isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                        }`}
-                      />
-                      <span
-                        className={`truncate min-w-0 ${
-                          isActive ? 'inline' : 'hidden lg:inline'
-                        }`}
+                {(() => {
+                  const activeIdx = Math.max(0, ACCOUNT_TABS.findIndex((t) => t.id === activeTab));
+                  return ACCOUNT_TABS.map((tab, tabIdx) => {
+                    const isActive = activeTab === tab.id;
+                    const distance = Math.abs(tabIdx - activeIdx);
+                    const Icon = tab.icon;
+                    const showBadge = tab.id === 'symposiums' && pendingInvitesCount > 0;
+                    return (
+                      <button
+                        key={tab.id}
+                        id={`account-tab-${tab.id}`}
+                        data-tab-id={tab.id}
+                        data-tab-distance={distance}
+                        role="tab"
+                        type="button"
+                        aria-selected={isActive}
+                        aria-controls={`account-tabpanel-${tab.id}`}
+                        aria-label={tab.label}
+                        title={tab.label}
+                        tabIndex={isActive ? 0 : -1}
+                        onClick={() => handleTabChange(tab.id)}
+                        className={`relative flex items-center justify-center gap-1.5 lg:gap-2 py-2.5 rounded-xl text-[11px] sm:text-xs lg:text-sm font-semibold whitespace-nowrap border transition-colors duration-150 [-webkit-tap-highlight-color:transparent] select-none focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
+                          isActive
+                            ? 'px-2.5 sm:px-3.5 lg:px-4 bg-primary text-primary-foreground border-primary shadow-xs'
+                            : 'px-2 sm:px-2.5 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
+                        } ${getAccordionTabFlexClass(distance, ACCOUNT_TABS.length, 'hidden lg:inline')}`}
                       >
-                        {tab.label}
-                      </span>
-                      {showBadge && (
-                        <span
-                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold shrink-0 ${
-                            isActive
-                              ? 'bg-primary-foreground text-primary'
-                              : 'bg-primary text-primary-foreground'
+                        <Icon
+                          className={`w-4 h-4 shrink-0 ${
+                            isActive ? 'text-primary-foreground' : 'text-muted-foreground'
                           }`}
+                        />
+                        <span
+                          className={`min-w-0 ${getAccordionTabLabelClass(distance, ACCOUNT_TABS.length, 'hidden lg:inline')}`}
                         >
-                          {pendingInvitesCount}
+                          {tab.label}
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
+                        {showBadge && (
+                          <span
+                            className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold shrink-0 ${
+                              isActive
+                                ? 'bg-primary-foreground text-primary'
+                                : 'bg-primary text-primary-foreground'
+                            }`}
+                          >
+                            {pendingInvitesCount}
+                          </span>
+                        )}
+                        {isActive && ACCOUNT_TABS.length > 1 && (
+                          <ActiveTabBorderArrows
+                            canLeft={tabIdx > 0}
+                            canRight={tabIdx < ACCOUNT_TABS.length - 1}
+                          />
+                        )}
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </div>
 

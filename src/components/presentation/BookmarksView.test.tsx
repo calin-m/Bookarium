@@ -426,17 +426,19 @@ describe('BookmarksView', () => {
     expect(allTab).toHaveAttribute('title', expect.stringContaining('All Volumes'));
     expect(allTab).toHaveAttribute('aria-pressed', 'true');
 
-    // Active tab label has 'inline' class, while inactive has 'hidden md:inline'
-    expect(allTab.querySelector('span')).toHaveClass('inline');
-    expect(inProgressTab.querySelector('span')).toHaveClass('hidden md:inline');
-    expect(completedTab.querySelector('span')).toHaveClass('hidden md:inline');
-    expect(onHoldTab.querySelector('span')).toHaveClass('hidden md:inline');
+    // Distance-graded accordion classes on 4-tab bar
+    expect(allTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[220px]');
+    expect(inProgressTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[88px]', 'sm:inline');
+    expect(completedTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[44px]', 'sm:inline');
+    expect(onHoldTab.querySelector('span')).toHaveClass('inline-block', 'max-w-0', 'sm:inline');
 
-    // Click 'in_progress' tab -> in_progress expands, all collapses
+    // Click 'in_progress' tab -> in_progress expands (d=0), all & completed shift to d=1
     fireEvent.click(inProgressTab);
     expect(inProgressTab).toHaveAttribute('aria-pressed', 'true');
-    expect(inProgressTab.querySelector('span')).toHaveClass('inline');
-    expect(allTab.querySelector('span')).toHaveClass('hidden md:inline');
+    expect(inProgressTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[220px]');
+    expect(allTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[88px]', 'sm:inline');
+    expect(completedTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[88px]', 'sm:inline');
+    expect(onHoldTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[44px]', 'sm:inline');
   });
 
   it('renders completed volume with 100% progress and Read Again action', () => {

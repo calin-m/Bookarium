@@ -27,8 +27,7 @@ export const Footer: React.FC = () => {
               </span>
             </a>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
-              A high-performance, keyless public domain digital library. Dedicated to free, universal
-              access to the world’s greatest literature, philosophy, and timeless works.
+              A high-performance, keyless digital library streaming 70,000+ public domain volumes from Project Gutenberg with zero-copyright verification. Dedicated to free, universal access to timeless world literature.
             </p>
             <div className="inline-flex items-center gap-1.5 text-xs text-success font-mono font-medium">
               <ShieldCheck className="w-3.5 h-3.5" />
@@ -64,6 +63,16 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <a
+                  href={SITE_CONFIG.WIKIDATA}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
+                >
+                  Wikidata Knowledge Graph <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                </a>
+              </li>
+              <li>
+                <a
                   href={SITE_CONFIG.FIGMA_BOOKSAW}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -81,9 +90,6 @@ export const Footer: React.FC = () => {
                 >
                   Google Antigravity (AI Co-Engineer) <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
-              </li>
-              <li className="text-[11px] font-sans text-muted-foreground/80 pt-1 leading-relaxed">
-                70,000+ public domain volumes indexed with zero-copyright verification. Editorial UI inspired by Booksaw. Co-engineered with Google Antigravity.
               </li>
             </ul>
           </div>

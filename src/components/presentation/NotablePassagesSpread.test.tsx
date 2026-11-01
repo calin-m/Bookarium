@@ -83,5 +83,23 @@ describe('NotablePassagesSpread component', () => {
     expect(screen.queryByText('CC0 / Free')).not.toBeInTheDocument();
     expect(screen.getByTestId('notable-passages-offline-unavailable-badge')).toHaveTextContent('Not Downloaded');
   });
+
+  it('renders Extracting Passages… badge, active loading card, and scan indicator when isLoading is true', () => {
+    render(
+      <NotablePassagesSpread
+        passage={{
+          quoteExcerpt: 'Streaming unabridged text from Project Gutenberg...',
+        }}
+        isLoading={true}
+      />
+    );
+
+    expect(screen.getByTestId('notable-passages-extracting-badge')).toHaveTextContent('Extracting Passages…');
+    expect(screen.getByTestId('notable-passage-loading')).toBeInTheDocument();
+    expect(screen.getByText('Extracting Volume Passages…')).toBeInTheDocument();
+    expect(screen.getByText('Streaming unabridged text from Project Gutenberg...')).toBeInTheDocument();
+    expect(screen.getByText('Scanning narrative chapters for authentic dialogue')).toBeInTheDocument();
+    expect(screen.queryByTestId('notable-passage-primary')).not.toBeInTheDocument();
+  });
 });
 
